@@ -21,7 +21,7 @@ This is an implemented production foundation, **not yet approved for public pass
 
 | Component | Technology |
 |---|---|
-| Backend | Go 1.27, net/http, pgx |
+| Backend | Go 1.27.3 or newer patched release, net/http, pgx |
 | Web/mobile browser | React 19, TypeScript, Vite |
 | Database | PostgreSQL 17 |
 | Sessions and rate limits | Redis 7 |

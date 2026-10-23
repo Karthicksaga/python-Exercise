@@ -16,7 +16,7 @@ The routing and geocoding responses in browser/integration tests are **synthetic
 
 ## Not verified / blocked
 
-- The Go vulnerability scan could not fetch `https://vuln.go.dev/index/modules.json.gz`: the environment returned Forbidden. Repeat `govulncheck ./...` on a runner that can access the official feed. This is not a clean vulnerability result.
+- The live endpoint `https://vuln.go.dev/index/modules.json.gz` remains blocked in this workspace. A complete local scan using the official Go vulnerability repository snapshot now passes; see [SECURITY-UPDATE.md](SECURITY-UPDATE.md). CI continues to scan the live database. The remote GitHub Actions result has not been verified here.
 - The full source-to-image Docker build could not resolve the workspace proxy from build containers. Host builds with the checked-in lockfiles succeeded; the alternate artifact runtime Dockerfile was built and exercised. Repeat the full Dockerfile build in normal CI.
 - No production TLS endpoint, production identity realm, SMTP/SMS delivery, production routing/geocoding, multi-host failover, backup restore drill, traffic load target, external penetration test or physical iOS/Android browser check has been completed.
 - CI workflow configuration is committed; a local test run does not establish that the remote GitHub Actions workflow passed.
