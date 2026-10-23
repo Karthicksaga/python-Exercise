@@ -1,5 +1,7 @@
 # Deployment and operations
 
+For the managed testing setup using Render, the Neon project `rapido`, Upstash, and Auth0, follow [RENDER.md](RENDER.md). That setup uses Render's HTTPS endpoint instead of the Caddy stack below.
+
 ## Required services and secrets
 
 Use a VPS or container platform with durable PostgreSQL and Redis, an HTTPS hostname, and an OIDC provider. Keycloak is an open-source option; deploy its production mode against its own durable database behind TLS, with SMTP, verification and operator MFA configured. The local test Keycloak container is not a production identity installation.

@@ -9,6 +9,7 @@
 - TypeScript check and optimized React build. Production browser assets are about 80 KB gzipped JavaScript plus styles, without external CDN assets.
 - Browser flow in Chromium: real OIDC sign-in for three separate identities, operator activation, driver application/approval, browser geolocation heartbeat, rider address search and quote, pickup-code failure and success, completion without automatic payment confirmation, incident reporting, reload-persistent history and logout. Mobile-width layout had no horizontal overflow; no JavaScript exceptions occurred.
 - Database migration applied and rerun successfully.
+- Render startup path: `MIGRATE_ON_START=true` applied migration 001 on an empty disposable PostgreSQL database, reached readiness with Redis and a local OIDC discovery fixture, and preserved an account through restart. A missing migration file caused a nonzero exit before serving requests. Go vet and race-enabled backend tests passed after this change. The Render Blueprint was parsed and checked locally; this is not provider-side validation or a hosted Auth0 login test.
 - Runtime container assembled from the built artifacts; nonroot user 65532 and read-only filesystem verified, migrations and readiness checked, HTML/JS/CSS served successfully.
 - `npm audit --omit=dev --audit-level=high` reported no production dependency vulnerabilities at the time of the run.
 

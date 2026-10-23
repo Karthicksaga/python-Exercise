@@ -1,19 +1,37 @@
+# Current Go application. Add secrets in Render, never in this file.
+# Setup: hop-platform/docs/RENDER.md
 services:
   - type: web
-    name: hop-bike-taxi-demo
-    rootDir: bike-taxi
-    branch: feat/hop-bike-taxi
-    runtime: python
+    name: hop-bike-taxi
+    branch: feat/production-web-foundation
+    rootDir: hop-platform
+    runtime: docker
     plan: free
-    buildCommand: python3 -m unittest -v
-    startCommand: python3 server.py
-    healthCheckPath: /healthz
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /readyz
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.14
-      - key: HOST
-        value: 0.0.0.0
-      - key: DEMO_PASSWORD
+      - key: APP_ENV
+        value: production
+      - key: ADDRESS
+        value: ':10000'
+      - key: MIGRATE_ON_START
+        value: 'true'
+      - key: SESSION_KEY
+        generateValue: true
+      - key: PUBLIC_ORIGIN
         sync: false
-      - key: BIKE_TAXI_DB
-        value: /tmp/hop-rides.sqlite3
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: OIDC_ISSUER
+        sync: false
+      - key: OIDC_CLIENT_ID
+        sync: false
+      - key: OIDC_CLIENT_SECRET
+        sync: false
+      - key: ROUTING_URL
+        sync: false
+      - key: GEOCODING_URL
+        sync: false
