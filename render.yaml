@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: hop-bike-taxi-demo
+    rootDir: bike-taxi
+    branch: feat/hop-bike-taxi
+    runtime: python
+    plan: free
+    buildCommand: python3 -m unittest -v
+    startCommand: python3 server.py
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: HOST
+        value: 0.0.0.0
+      - key: DEMO_PASSWORD
+        sync: false
+      - key: BIKE_TAXI_DB
+        value: /tmp/hop-rides.sqlite3

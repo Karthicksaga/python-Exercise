@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Hop — bike rides, simply</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header><a class="brand" href="/" aria-label="Hop home">hop<span class="arrow-icon" aria-hidden="true"></span></a><span class="city">CHENNAI · DEMO</span><span class="badge">0% platform commission</span></header>
+<main>
+<section class="intro"><p class="eyebrow">LESS WAITING. MORE GOING.</p><h1>Your next stop,<br>one bike ride away.</h1><p>Simple rides. Clear fares. Every rupee of the fare goes to your driver.</p></section>
+<div class="workspace"><section class="panel"><div class="tabs" role="group" aria-label="Choose view"><button id="rider-tab" class="selected" aria-pressed="true">I need a ride</button><button id="driver-tab" aria-pressed="false">I’m a driver</button></div>
+<div id="rider-view"><h2>Where are we going?</h2><form id="booking"><label for="pickup">Pickup</label><select id="pickup" required></select><div class="connector"></div><label for="destination">Destination</label><select id="destination" required></select><div id="estimate" class="estimate" aria-live="polite">Choose your route for an estimate.</div><button class="primary full" id="book" type="submit" disabled>Request a bike <span class="arrow-icon" aria-hidden="true"></span></button></form><p class="subtle">Demo estimates · No payment is collected.</p></div>
+<div id="driver-view" hidden><h2>Make someone’s journey.</h2><p class="subtle">Accept a request, meet the rider, then verify their pickup code.</p><div class="tip">To try both sides, open this app in a separate browser or private window for the driver.</div><div id="requests"></div></div>
+</section>
+<section class="journey"><div class="map" aria-label="Illustration of Chennai streets, not a live map"><div class="road road-a"></div><div class="road road-b"></div><div class="road road-c"></div><div class="park park-a"></div><div class="park park-b"></div><span class="map-label label-a">ANNA NAGAR</span><span class="map-label label-b">T. NAGAR</span><span class="map-label label-c">CHENNAI</span><div class="route-line"></div><span class="pin pin-a">●</span><span class="pin pin-b"><i class="arrow-icon" aria-hidden="true"></i></span><div class="map-note"><span class="dot"></span> Your city. A simpler way around.<small>Illustration only · No live GPS</small></div></div><div id="active" aria-live="polite"></div></section></div>
+<section class="history"><div class="section-heading"><h2>Your rides</h2><span>THIS DEMO SESSION</span></div><div id="history"></div></section>
+<footer><strong>Built for the everyday journey.</strong><span>Local prototype · Independent project, not affiliated with Rapido</span></footer>
+</main><div id="message" role="status" hidden></div>
+</body></html>

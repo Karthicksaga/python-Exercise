@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.local/
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo
+backend/api
+coverage*
+playwright-report/
+test-results/
+
+build-output/

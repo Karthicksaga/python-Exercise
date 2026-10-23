@@ -1,0 +1,72 @@
+name: hop
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: hop
+      POSTGRES_DB: hop
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a unique database password}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U hop -d hop]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --requirepass, '${REDIS_PASSWORD:?Set a unique Redis password}', --appendonly, 'yes', --maxmemory, 256mb, --maxmemory-policy, noeviction]
+    volumes: [redis-data:/data]
+    restart: unless-stopped
+  migrate:
+    build: .
+    image: hop-app:local
+    command: [migrate]
+    environment:
+      DATABASE_URL: postgres://hop:${POSTGRES_PASSWORD}@postgres:5432/hop?sslmode=disable
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: 'no'
+  api:
+    image: hop-app:local
+    environment:
+      APP_ENV: production
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
+      DATABASE_URL: postgres://hop:${POSTGRES_PASSWORD}@postgres:5432/hop?sslmode=disable
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set HTTPS origin}
+      SESSION_KEY: ${SESSION_KEY:?Set session key}
+      OIDC_ISSUER: ${OIDC_ISSUER:?Set identity issuer}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?Set identity client}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?Set identity client secret}
+      ROUTING_URL: ${ROUTING_URL:?Set real road routing service}
+      GEOCODING_URL: ${GEOCODING_URL:?Set Photon-compatible geocoding service}
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_started}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, /app/api, healthcheck]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+  proxy:
+    image: caddy:2-alpine
+    ports: ['80:80', '443:443']
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?Set public hostname}
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+volumes:
+  postgres-data:
+  redis-data:
+  caddy-data:
+  caddy-config:
