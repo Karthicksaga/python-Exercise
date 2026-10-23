@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -51,6 +52,20 @@ func run() error {
 	if e != nil {
 		return e
 	}
+	migrate, e := startupMigrationsEnabled()
+	if e != nil {
+		return e
+	}
+	if migrate {
+		// Free container hosts may not provide a separate migration job.
+		// The migration transaction takes a database lock across replicas.
+		migrationCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		e = command(migrationCtx, []string{"migrate"})
+		cancel()
+		if e != nil {
+			return fmt.Errorf("startup migration: %w", e)
+		}
+	}
 	s, e := app.New(ctx, config)
 	if e != nil {
 		return e
@@ -86,6 +101,17 @@ func run() error {
 		}
 		return e
 	}
+}
+func startupMigrationsEnabled() (bool, error) {
+	value := os.Getenv("MIGRATE_ON_START")
+	if value == "" {
+		return false, nil
+	}
+	enabled, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("MIGRATE_ON_START must be true or false")
+	}
+	return enabled, nil
 }
 func command(ctx context.Context, args []string) error {
 	db, e := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))

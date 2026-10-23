@@ -31,6 +31,8 @@ This is an implemented production foundation, **not yet approved for public pass
 
 See [the architecture and requirements](docs/ARCHITECTURE.md), [deployment instructions](docs/DEPLOYMENT.md), [testing evidence](docs/TESTING.md), and [API contract](docs/API.md).
 
+For Render with Neon PostgreSQL, Upstash Redis, and Auth0 login, use the [Render setup guide](docs/RENDER.md) and the repository-root `render.yaml`. This provisions only the application service; the external accounts and credentials must be configured separately.
+
 ## Developer startup
 
 Use the existing checkout. The platform lives under `/workspace/python-Exercise/hop-platform` in this workspace.

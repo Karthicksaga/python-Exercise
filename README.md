@@ -4,4 +4,6 @@ The current bike-taxi implementation is in **[hop-platform](hop-platform/README.
 
 Read its [architecture](hop-platform/docs/ARCHITECTURE.md) and [deployment instructions](hop-platform/docs/DEPLOYMENT.md) before deploying. It is a tested implementation foundation with explicit production release gates, not a currently launched passenger service.
 
-`bike-taxi/` and the repository-root `render.yaml` are the earlier Python demo. They are not the deployment path for the Go application. Existing Python exercise directories are retained.
+The repository-root `render.yaml` deploys the current Go application with external Neon, Upstash, and Auth0 services. Follow the [Render setup guide](hop-platform/docs/RENDER.md); creating provider accounts alone does not deploy the app.
+
+`bike-taxi/` is the earlier Python demo. Existing Python exercise directories are retained.
