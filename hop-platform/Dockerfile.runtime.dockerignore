@@ -1,0 +1,9 @@
+**
+!build-output/
+!build-output/api
+!backend/
+!backend/migrations/
+!backend/migrations/**
+!web/
+!web/dist/
+!web/dist/**
