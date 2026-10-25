@@ -171,6 +171,58 @@ def setup_cloud_sql(project: str, region: str, instance: str, db_name: str, db_u
     return conn_name, db_password
 
 
+def setup_redis_vm(project: str, region: str, instance: str = "hop-redis-vm") -> str:
+    zone = f"{region}-a"
+    print_step(f"Setting up low-cost Redis VM '{instance}' on e2-micro (~$6.50/mo)")
+    code, out = gcloud(["compute", "instances", "describe", instance, "--zone", zone, "--project", project, "--format", "value(networkInterfaces[0].networkIP)"], check=False)
+    if code == 0 and out.strip():
+        redis_ip = out.strip()
+        print_ok(f"Redis VM '{instance}' already running at internal IP: {redis_ip}:6379")
+        return redis_ip
+
+    print("Creating e2-micro VM running Redis (saves ~$30/mo vs Memorystore)...")
+    startup_script = (
+        "#!/bin/bash\n"
+        "apt-get update && apt-get install -y redis-server\n"
+        "sed -i 's/^bind .*/bind 0.0.0.0/' /etc/redis/redis.conf\n"
+        "sed -i 's/^protected-mode yes/protected-mode no/' /etc/redis/redis.conf\n"
+        "systemctl restart redis-server\n"
+    )
+    gcloud([
+        "compute", "instances", "create", instance,
+        "--project", project,
+        "--zone", zone,
+        "--machine-type", "e2-micro",
+        "--subnet", "default",
+        "--tags", "redis-server",
+        "--metadata", f"startup-script={startup_script}",
+        "--quiet",
+    ], check=True)
+
+    # Firewall rule to allow internal access on 6379 from VPC
+    code, _ = gcloud(["compute", "firewall-rules", "describe", "allow-hop-internal-redis", "--project", project], check=False)
+    if code != 0:
+        gcloud([
+            "compute", "firewall-rules", "create", "allow-hop-internal-redis",
+            "--project", project,
+            "--network", "default",
+            "--allow", "tcp:6379",
+            "--source-ranges", "10.8.0.0/28,10.128.0.0/9",
+            "--target-tags", "redis-server",
+            "--quiet",
+        ], check=True)
+
+    for _ in range(10):
+        code, out = gcloud(["compute", "instances", "describe", instance, "--zone", zone, "--project", project, "--format", "value(networkInterfaces[0].networkIP)"], check=False)
+        if code == 0 and out.strip():
+            redis_ip = out.strip()
+            print_ok(f"Redis VM '{instance}' running at internal IP: {redis_ip}:6379")
+            return redis_ip
+        time.sleep(3)
+
+    return out.strip()
+
+
 def setup_redis(project: str, region: str, instance: str) -> str:
     print_step(f"Setting up Memorystore Redis instance '{instance}'")
     code, out = gcloud(["redis", "instances", "describe", instance, "--region", region, "--project", project, "--format", "value(host)"], check=False)
@@ -302,6 +354,7 @@ def main():
     parser.add_argument("--project", default="rider-app-6ed5b", help="Target Google Cloud Project ID")
     parser.add_argument("--region", default="asia-south1", help="GCP Region (default: asia-south1)")
     parser.add_argument("--prefix", default="hop-staging", help="Cloud Run service prefix (default: hop-staging)")
+    parser.add_argument("--redis-type", choices=["vm", "memorystore"], default="vm", help="Redis deployment type: 'vm' (~$6.50/mo) or 'memorystore' (~$35/mo)")
     parser.add_argument("--maps-key", default="AIzaSyCCa4firTw6fA47CChTyhgpkKyBQrD0fkE", help="Google Maps Browser API Key")
     parser.add_argument("--map-id", default="95dc318d6886956642a639bc", help="Google Maps JavaScript Map ID")
     args = parser.parse_args()
@@ -314,7 +367,6 @@ def main():
     sql_instance = "hop-postgres"
     db_name = "hop"
     db_user = "hop_user"
-    redis_instance = "hop-redis"
 
     print("\033[1;32m============================================================\033[0m")
     print("\033[1;32m   Hop Platform - Automated Google Cloud Infrastructure Setup   \033[0m")
@@ -322,6 +374,7 @@ def main():
     print(f"Project ID : \033[1m{project}\033[0m")
     print(f"Region     : \033[1m{region}\033[0m")
     print(f"Prefix     : \033[1m{prefix}\033[0m")
+    print(f"Redis Type : \033[1m{args.redis_type.upper()} ({'Low-Cost ~$6.50/mo' if args.redis_type == 'vm' else 'Memorystore ~$35/mo'})\033[0m")
 
     # 1. Auth & set project
     check_auth()
@@ -342,8 +395,11 @@ def main():
     # 6. Cloud SQL Postgres
     conn_name, db_pass = setup_cloud_sql(project, region, sql_instance, db_name, db_user)
 
-    # 7. Memorystore Redis
-    redis_host = setup_redis(project, region, redis_instance)
+    # 7. Redis (e2-micro VM by default for low cost)
+    if args.redis_type == "vm":
+        redis_host = setup_redis_vm(project, region, "hop-redis-vm")
+    else:
+        redis_host = setup_redis(project, region, "hop-redis")
 
     # 8. Secret Manager
     print_step("Storing application credentials in Secret Manager")
@@ -361,12 +417,13 @@ def main():
     origins = precreate_cloud_run_origins(project, region, prefix, sa_emails["web"])
 
     # 10. Write deploy.local.json
-    print_step("Generating populated deploy.local.json")
+    print_step("Generating populated deploy.local.json (Low-Cost Optimized)")
     deploy_config = {
         "project_id": project,
         "region": region,
         "repository": repo,
         "service_prefix": prefix,
+        "low_cost": True,
         "runtime_service_account": sa_emails["api"],
         "web_service_account": sa_emails["web"],
         "build_service_account": sa_emails["build"],
@@ -410,6 +467,14 @@ def main():
     print("\nLive Gateway Origins:")
     for app, url in origins.items():
         print(f"  • {app.capitalize():<8}: \033[1m{url}\033[0m")
+    print("\n\033[1;33mEstimated Monthly Run Cost (Low-Cost Option A):\033[0m")
+    print("  • Cloud SQL (db-f1-micro, 10 GB SSD) : ~$9.30/mo")
+    print("  • Redis (e2-micro VM)               : ~$6.50/mo (saves ~$30/mo vs Memorystore)")
+    print("  • VPC Connector (e2-micro)          : ~$15.00/mo")
+    print("  • Cloud Run API & Web (Scales to 0) : ~$0.00 - $2.00/mo")
+    print("  --------------------------------------------------")
+    print("  • \033[1;32mTotal Estimated Spend               : ~$25 - $28 / month\033[0m")
+    print("  • \033[1;32mYour $300 credit will last 3+ months with ~$215 to spare!\033[0m")
     print("\nYou can now build & deploy all 4 services at any time by running:")
     print(f"  \033[36mcd hop-platform && python3 infra/gcp/deploy.py infra/gcp/deploy.local.json --revision \"$(git rev-parse HEAD)\"\033[0m\n")
 
