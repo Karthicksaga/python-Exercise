@@ -94,8 +94,20 @@ def deploy(c, revision):
                       "--project=" + c["project_id"], "--format=value(image_summary.digest)"], capture=True)
         require(re.fullmatch(r"sha256:[a-f0-9]{64}", digest), f"No immutable image digest for {app}")
         images[app] = f"{image_root}/{app}@{digest}"
+    allowed_origins = [
+        c["origins"]["rider"],
+        c["origins"]["captain"],
+        c["origins"]["admin"],
+        f"https://{c['service_prefix']}-rider-{c['project_id'].split('-')[-1]}.{c['region']}.run.app",
+        f"https://{c['service_prefix']}-captain-{c['project_id'].split('-')[-1]}.{c['region']}.run.app",
+        f"https://{c['service_prefix']}-admin-{c['project_id'].split('-')[-1]}.{c['region']}.run.app",
+        "https://hop-staging-rider-614653152825.asia-south1.run.app",
+        "https://hop-staging-captain-614653152825.asia-south1.run.app",
+        "https://hop-staging-admin-614653152825.asia-south1.run.app",
+    ]
     env = dict(c["api_env"], APP_ENV="production", ADDRESS=":8080", MIGRATE_ON_START="true",
                PUBLIC_ORIGIN=c["origins"]["rider"],
+               ALLOWED_ORIGINS=",".join(sorted(set(allowed_origins))),
                **{f"{app.upper()}_ORIGIN": c["origins"][app] for app in APPS})
     secrets = dict(c["api_secrets"])
     if c.get("fcm_secret"):

@@ -22,15 +22,13 @@ export default function LocationGate({ state, areas, onRetry, onPick }: { state:
       <button type="button" onClick={onRetry}>◎ Try my location again</button>
       {areas.length > 0 && (
         <>
-          <p className="eyebrow">{state === "denied" ? "CHOOSE A CITY" : "WE CURRENTLY SERVE"}</p>
+          <p className="eyebrow">{state === "denied" ? "CHOOSE A CITY" : "CHOOSE A CITY TO EXPLORE"}</p>
           <div className="chips">
-            {areas.map((a) =>
-              state === "denied" ? (
-                <button key={a.id} type="button" className="chip" onClick={() => onPick(a)}>{a.name}</button>
-              ) : (
-                <span key={a.id} className="chip static">{a.name}</span>
-              ),
-            )}
+            {areas.map((a) => (
+              <button key={a.id} type="button" className="chip" onClick={() => onPick(a)}>
+                📍 {a.name}
+              </button>
+            ))}
           </div>
         </>
       )}

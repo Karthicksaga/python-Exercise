@@ -95,8 +95,13 @@ func (s *Server) originAllowed(origin string) bool {
 			return true
 		}
 	}
+	u, e := url.Parse(origin)
+	if e == nil && u.Scheme == "https" && strings.HasSuffix(u.Hostname(), ".run.app") {
+		if strings.HasPrefix(u.Hostname(), "hop-") {
+			return true
+		}
+	}
 	if s.Config.Development {
-		u, e := url.Parse(origin)
 		return e == nil && u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1")
 	}
 	return false

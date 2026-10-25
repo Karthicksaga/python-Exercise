@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -296,7 +297,16 @@ func (s *Server) auth(next http.Handler) http.Handler {
 			return
 		}
 		if r.Method != "GET" && r.Method != "HEAD" {
-			if !s.originAllowed(r.Header.Get("Origin")) || !hmac.Equal([]byte(r.Header.Get("X-CSRF-Token")), []byte(session.CSRF)) {
+			origin := r.Header.Get("Origin")
+			if origin == "" {
+				if ref := r.Header.Get("Referer"); ref != "" {
+					if u, err := url.Parse(ref); err == nil {
+						origin = u.Scheme + "://" + u.Host
+					}
+				}
+			}
+			isLogout := r.URL.Path == "/auth/logout"
+			if !s.originAllowed(origin) || (!isLogout && !hmac.Equal([]byte(r.Header.Get("X-CSRF-Token")), []byte(session.CSRF))) {
 				fail(w, 403, "Request origin or CSRF token is invalid")
 				return
 			}

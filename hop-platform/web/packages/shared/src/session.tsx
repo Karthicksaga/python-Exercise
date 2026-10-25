@@ -122,17 +122,15 @@ export function useSession() {
   async function logout() {
     setSigningOut(true);
     try {
-      if (isAndroid && mobileApp === "captain") await api("/api/drivers/offline", {});
-      await stopTracking();
-      await unregisterWebPush();
-      await api("/auth/logout", {});
+      if (isAndroid && mobileApp === "captain") await api("/api/drivers/offline", {}).catch(() => undefined);
+      await stopTracking().catch(() => undefined);
+      await unregisterWebPush().catch(() => undefined);
+      await api("/auth/logout", {}).catch(() => undefined);
+    } finally {
       setCSRF("");
       setUser(null);
       setData(emptyState);
       setStateReady(false);
-    } catch (e) {
-      notify((e as Error).message);
-    } finally {
       setSigningOut(false);
     }
   }
