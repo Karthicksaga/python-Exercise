@@ -160,6 +160,14 @@ export default function DriverPanel({
       setSharing(true);
     }
   }, [d?.online, d?.status]);
+  const prevStatus = useRef(d?.status);
+  useEffect(() => {
+    if (prevStatus.current && prevStatus.current !== "approved" && d?.status === "approved") {
+      notify("🎉 Congratulations! Your driver application has been approved. You can now go online to receive rides!");
+      driverAlert();
+    }
+    prevStatus.current = d?.status;
+  }, [d?.status, notify]);
   useEffect(() => {
     if (d && !d.online) {
       setSharing(false);

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { MapCanvas, MapFit, MapMarker } from "@hop/shared/mapkit";
 import { useGlide } from "@hop/shared/LiveNavMap";
 import MapBoundary from "@hop/shared/MapBoundary";
+import RealisticVehicleMarker from "@hop/shared/RealisticVehicleMarker";
 
 type Share = {
   status: string;
@@ -40,6 +41,21 @@ export default function ShareView({ token }: { token: string }) {
   }, [token]);
   const raw = share && share.driver_lat !== null && share.driver_lng !== null ? { lat: share.driver_lat, lng: share.driver_lng } : undefined;
   const driver = useGlide(raw);
+  const prevLocRef = useRef<{ lat: number; lng: number } | null>(null);
+  const [heading, setHeading] = useState(0);
+  useEffect(() => {
+    if (driver && prevLocRef.current) {
+      const dLat = driver.lat - prevLocRef.current.lat;
+      const dLng = driver.lng - prevLocRef.current.lng;
+      if (Math.hypot(dLat, dLng) > 0.00005) {
+        const rad = Math.atan2(dLng, dLat);
+        const deg = (rad * 180) / Math.PI;
+        setHeading((deg + 360) % 360);
+      }
+    }
+    if (driver) prevLocRef.current = driver;
+  }, [driver?.lat, driver?.lng]);
+
   return (
     <main className="panel narrow" style={{ margin: "40px auto" }}>
       <p className="eyebrow">LIVE TRIP</p>
@@ -56,7 +72,17 @@ export default function ShareView({ token }: { token: string }) {
                 <MapFit points={[{ lat: share.pickup_lat, lng: share.pickup_lng }, { lat: share.dropoff_lat, lng: share.dropoff_lng }, ...(driver ? [driver] : [])]} extra={share.status} />
                 <MapMarker position={{ lat: share.pickup_lat, lng: share.pickup_lng }} title="Pickup"><span className="pin-tag pickup-tag">Pickup</span><span className="map-pin pickup-pin" /></MapMarker>
                 <MapMarker position={{ lat: share.dropoff_lat, lng: share.dropoff_lng }} title="Drop"><span className="pin-tag drop-tag">Drop</span><span className="map-pin destination-pin" /></MapMarker>
-                {driver && <MapMarker position={driver} title="Driver" anchor="center"><span className="car-pin" aria-label="Driver location">🚗</span></MapMarker>}
+                {driver && (
+                  <MapMarker position={driver} title="Driver" anchor="center">
+                    <RealisticVehicleMarker
+                      category="car"
+                      heading={heading}
+                      size={44}
+                      showShadow
+                      className="share-vehicle"
+                    />
+                  </MapMarker>
+                )}
               </MapCanvas>
               <span className="live-chip"><i /> LIVE</span>
             </div>

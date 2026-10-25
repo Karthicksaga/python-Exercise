@@ -263,7 +263,15 @@ export default function ProfilePanel(p: Props) {
         </div>
       </section>
 
-      {!p.driving && (
+      {p.driving ? (
+        <section className="panel become-driver inset approved">
+          <div>
+            <strong>Drive with Hop (Captain Mode)</strong>
+            <p className="muted">Your application is approved. Switch to Captain to start driving.</p>
+          </div>
+          <button type="button" className="secondary" onClick={p.becomeDriver}>Switch to Drive Mode</button>
+        </section>
+      ) : (
         <section className="panel become-driver inset">
           <div>
             <strong>Drive with Hop</strong>

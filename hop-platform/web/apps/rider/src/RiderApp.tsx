@@ -315,6 +315,15 @@ export default function RiderApp() {
   const pageHead = ({ ride: [`Hello, ${firstName}`, "Let’s get you moving"], history: ["Your activity", "Your rides"], support: ["We’re here to help", "Help & support"], profile: ["Your account", "Your profile"], wallet: ["Your money", "Wallet & offers"], more: ["Stay protected", "Safety & more"] } as Record<string, [string, string]>)[tab] ?? [`Hello, ${firstName}`, "Let’s get you moving"];
   const pageHeadView = { eyebrow: pageHead[0], title: pageHead[1] };
 
+  const isApprovedDriver = data.driver.some((d) => d.status === "approved");
+  const prevApproved = useRef(isApprovedDriver);
+  useEffect(() => {
+    if (!prevApproved.current && isApprovedDriver) {
+      notify("🎉 Your driver application has been approved! Tap 'Drive' to start receiving rides.");
+    }
+    prevApproved.current = isApprovedDriver;
+  }, [isApprovedDriver, notify]);
+
   if (isOperator) return <PageLoader label="Opening admin…" />;
   return (
     <div className={user ? "shell has-nav" : "shell"}>
@@ -328,6 +337,16 @@ export default function RiderApp() {
             <span className="emoji-keep">{dark ? "☀️" : "🌙"}</span>
           </button>
           <span className="commission">Everyday rides</span>
+          {user && isApprovedDriver && (
+            <a
+              href={import.meta.env.VITE_CAPTAIN_URL || "http://localhost:5274"}
+              className="duty-pill on"
+              title="You are an approved driver! Click to open Captain Drive mode"
+              style={{ textDecoration: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, background: "#b84333", color: "#fff", fontWeight: 600, fontSize: "0.8rem" }}
+            >
+              🚗 Drive
+            </a>
+          )}
           {user && (
             <span className={"live-pill" + (live ? " on" : "")} title={live ? "Real-time updates connected" : "Reconnecting…"}>
               <i /> {live ? "Live" : "Connecting"}
@@ -945,7 +964,7 @@ export default function RiderApp() {
             {tab === "profile" && (
               <ProfilePanel
                 name={user.name}
-                driving={false}
+                driving={isApprovedDriver}
                 saved={data.saved_locations}
                 busy={busy}
                 notify={notify}

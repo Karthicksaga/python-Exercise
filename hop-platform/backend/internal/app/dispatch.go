@@ -189,7 +189,8 @@ func (s *Server) dispatchRide(ctx context.Context, ride openRide) error {
 	}
 	offer := func(picks []pick, stage int) error {
 		for _, p := range picks {
-			if _, e := tx.Exec(ctx, "INSERT INTO ride_offers(ride_id,driver_id,stage,score,eta_seconds) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING", ride.id, p.id, stage, p.score, int(p.dist*1.3/6.5)); e != nil {
+			etaSec := int(trafficAdjustDuration(p.dist*1.3, 0, category, false))
+			if _, e := tx.Exec(ctx, "INSERT INTO ride_offers(ride_id,driver_id,stage,score,eta_seconds) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING", ride.id, p.id, stage, p.score, etaSec); e != nil {
 				return e
 			}
 		}

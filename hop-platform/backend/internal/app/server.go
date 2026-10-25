@@ -139,6 +139,10 @@ func (s *Server) Handler() http.Handler {
 		"POST /api/operator/surge": s.operatorSaveSurge, "POST /api/operator/surge/{id}/delete": s.operatorDeleteRow("surge_overrides"),
 		"POST /api/operator/areas/{id}/surge": s.operatorAreaSurge, "POST /api/operator/payouts/{id}": s.operatorPayout,
 		"POST /api/operator/refunds": s.operatorRefund, "GET /api/operator/rides": s.operatorRides,
+		"GET /api/operator/live-map": s.operatorLiveMap, "POST /api/operator/rides/{id}/cancel": s.operatorCancelRide,
+		"GET /api/operator/sos": s.operatorSOSEvents, "POST /api/operator/sos/{id}/resolve": s.operatorResolveSOS,
+		"GET /api/operator/lost-items": s.operatorLostItems, "POST /api/operator/lost-items/{id}": s.operatorUpdateLostItem,
+		"GET /api/operator/analytics": s.operatorAnalytics,
 		"GET /api/admin/drivers": s.adminDrivers, "POST /api/admin/drivers/{id}": s.adminDecision,
 	}
 	for pattern, handler := range s.companionRoutes() {

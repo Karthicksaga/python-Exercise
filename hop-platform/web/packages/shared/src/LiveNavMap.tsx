@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MapCanvas, MapFit, MapFollow, MapLine, MapMarker } from "./mapkit";
 import { api } from "./api";
 import type { Ride } from "./types";
+import RealisticVehicleMarker from "./RealisticVehicleMarker";
 
 type LL = { lat: number; lng: number };
 type Step = { instruction: string; maneuver: string; meters: number; lat: number; lng: number };
@@ -167,12 +168,13 @@ export default function LiveNavMap({ ride }: { ride: Ride }) {
           </MapMarker>
           {car && (
             <MapMarker position={car} title="Driver" zIndex={1000} anchor="center">
-              <div className="nav-car">
-                <span className="nav-car-pulse" />
-                <svg viewBox="0 0 24 24" width="40" height="40" style={{ transform: `rotate(${heading}deg)` }}>
-                  <circle cx="12" cy="12" r="11" fill="#2563eb" stroke="#fff" strokeWidth="1.5" />
-                  <path d="M12 4l5 14-5-3-5 3z" fill="#fff" />
-                </svg>
+              <div className="nav-car-realistic">
+                <RealisticVehicleMarker
+                  category={ride.vehicle_category}
+                  heading={heading}
+                  size={52}
+                  showShadow
+                />
               </div>
             </MapMarker>
           )}

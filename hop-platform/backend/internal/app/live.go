@@ -24,8 +24,8 @@ type etaEntry struct {
 var etaCache sync.Map
 
 // etaBetween prefers real road routing (cached briefly so polling does not flood the router)
-// and falls back to a straight-line estimate when routing is unavailable.
-func (s *Server) etaBetween(ctx context.Context, key string, a, b Point) (int64, int64) {
+// and falls back to a straight-line estimate when routing is unavailable, calibrated for urban traffic.
+func (s *Server) etaBetween(ctx context.Context, key string, a, b Point, category string) (int64, int64) {
 	if v, ok := etaCache.Load(key); ok {
 		if e := v.(etaEntry); time.Now().Before(e.expires) {
 			return e.seconds, e.meters
@@ -40,10 +40,10 @@ func (s *Server) etaBetween(ctx context.Context, key string, a, b Point) (int64,
 			seconds, meters = sec, m
 		}
 	}
-	if seconds == 0 {
+	if meters == 0 {
 		meters = int64(distance(a, b) * 1.3)
-		seconds = int64(float64(meters) / 6.5)
 	}
+	seconds = trafficAdjustDuration(float64(meters), float64(seconds), category, false)
 	etaCache.Store(key, etaEntry{seconds, meters, time.Now().Add(12 * time.Second)})
 	return seconds, meters
 }
@@ -68,7 +68,8 @@ func (s *Server) addETAs(ctx context.Context, rides []map[string]any) {
 		default:
 			continue
 		}
-		seconds, meters := s.etaBetween(ctx, fmt.Sprintf("%v:%s", ride["id"], status), Point{Lat: lat, Lng: lng}, target)
+		category, _ := ride["vehicle_category"].(string)
+		seconds, meters := s.etaBetween(ctx, fmt.Sprintf("%v:%s", ride["id"], status), Point{Lat: lat, Lng: lng}, target, category)
 		ride["eta_seconds"], ride["eta_meters"] = seconds, meters
 		ride["eta_at"] = time.Now().Add(time.Duration(seconds) * time.Second).UTC().Format(time.RFC3339)
 	}
@@ -398,13 +399,13 @@ func stepText(kind, modifier, road string) (string, string) {
 // navigate returns the live road route and turn-by-turn steps from the driver's position to the next stop of the trip.
 func (s *Server) navigate(w http.ResponseWriter, r *http.Request) {
 	uid, id := user(r).Account.ID, r.PathValue("id")
-	var status string
+	var status, vehicleCat, tripType string
 	var rider, driver *string
 	var pLat, pLng, dLat, dLng float64
 	var lat, lng *float64
 	var at *time.Time
-	e := s.DB.QueryRow(r.Context(), `SELECT r.status,r.rider_id::text,r.driver_id::text,q.pickup_lat,q.pickup_lng,q.dropoff_lat,q.dropoff_lng,d.lat,d.lng,d.location_at
- FROM rides r JOIN quotes q ON q.id=r.quote_id LEFT JOIN drivers d ON d.user_id=r.driver_id WHERE r.id=$1`, id).Scan(&status, &rider, &driver, &pLat, &pLng, &dLat, &dLng, &lat, &lng, &at)
+	e := s.DB.QueryRow(r.Context(), `SELECT r.status,r.rider_id::text,r.driver_id::text,q.pickup_lat,q.pickup_lng,q.dropoff_lat,q.dropoff_lng,d.lat,d.lng,d.location_at,COALESCE(q.vehicle_category,'car'),COALESCE(q.trip_type,'city')
+ FROM rides r JOIN quotes q ON q.id=r.quote_id LEFT JOIN drivers d ON d.user_id=r.driver_id WHERE r.id=$1`, id).Scan(&status, &rider, &driver, &pLat, &pLng, &dLat, &dLng, &lat, &lng, &at, &vehicleCat, &tripType)
 	if e != nil || !((rider != nil && *rider == uid) || (driver != nil && *driver == uid)) {
 		fail(w, 404, "Ride not found")
 		return
@@ -428,7 +429,8 @@ func (s *Server) navigate(w http.ResponseWriter, r *http.Request) {
 	}
 	from := Point{Lat: *lat, Lng: *lng}
 	out := map[string]any{"phase": phase, "driver": map[string]float64{"lat": *lat, "lng": *lng}, "target": target}
-	meters, seconds := int64(distance(from, target)*1.3), int64(distance(from, target)*1.3/6.5)
+	meters := int64(distance(from, target) * 1.3)
+	seconds := trafficAdjustDuration(float64(meters), 0, vehicleCat, tripType == "outstation")
 	route, steps := []RoutePoint{{Lat: from.Lat, Lng: from.Lng}, {Lat: target.Lat, Lng: target.Lng}}, []navStep{}
 	if s.Config.RoutingURL != "" {
 		c, cancel := context.WithTimeout(r.Context(), 4*time.Second)
@@ -457,7 +459,7 @@ func (s *Server) navigate(w http.ResponseWriter, r *http.Request) {
 			}
 			if json.NewDecoder(http.MaxBytesReader(nil, res.Body, 2*1024*1024)).Decode(&body) == nil && body.Code == "Ok" && len(body.Routes) > 0 && len(body.Routes[0].Geometry.Coordinates) > 1 {
 				rt := body.Routes[0]
-				meters, seconds = int64(rt.Distance), int64(rt.Duration)
+				meters, seconds = int64(rt.Distance), trafficAdjustDuration(rt.Distance, rt.Duration, vehicleCat, tripType == "outstation")
 				route = route[:0]
 				for _, p := range rt.Geometry.Coordinates {
 					if len(p) >= 2 {

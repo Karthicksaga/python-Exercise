@@ -197,7 +197,8 @@ func (s *Server) routesVia(ctx context.Context, points []Point, maxMeters, maxSe
 			}
 			continue
 		}
-		out = append(out, routeOption{int64(math.Ceil(d)), int64(math.Ceil(t)), geometry})
+		tCalibrated := float64(trafficAdjustDuration(d, t, "", false))
+		out = append(out, routeOption{int64(math.Ceil(d)), int64(math.Ceil(tCalibrated)), geometry})
 	}
 	return out, nil
 }
@@ -367,6 +368,7 @@ func (s *Server) buildQuote(ctx context.Context, uid string, input quoteInput) (
 		if e != nil {
 			return nil, qerr(503, "A road quote is unavailable. Please try again later")
 		}
+		seconds = trafficAdjustDuration(float64(meters), float64(seconds), input.VehicleCategory, true)
 		if meters < 40000 {
 			return nil, qerr(400, "Outstation trips must be at least 40 km; book a city ride instead")
 		}
@@ -388,6 +390,7 @@ func (s *Server) buildQuote(ctx context.Context, uid string, input quoteInput) (
 			return nil, qerr(503, "A road quote is unavailable. Please try again later")
 		}
 		meters, seconds, route = options[input.RouteIndex].Meters, options[input.RouteIndex].Seconds, options[input.RouteIndex].Route
+		seconds = trafficAdjustDuration(float64(meters), float64(seconds), input.VehicleCategory, false)
 		distanceFare := (meters*pricing.PerKM + 999) / 1000
 		stopsFare := stopFee * int64(len(input.Stops))
 		calculated := pricing.Base + distanceFare + stopsFare

@@ -67,6 +67,9 @@ services:
       dockerfile: Dockerfile.web
       args:
         HOP_APP: admin
+        VITE_MAP_PROVIDER: ${ADMIN_MAP_PROVIDER:-google}
+        VITE_GOOGLE_MAPS_API_KEY: ${ADMIN_GOOGLE_MAPS_API_KEY:-${RIDER_GOOGLE_MAPS_API_KEY:-}}
+        VITE_GOOGLE_MAP_ID: ${ADMIN_GOOGLE_MAP_ID:-${RIDER_GOOGLE_MAP_ID:-}}
         VITE_RIDER_URL: http://localhost:5273
         VITE_CAPTAIN_URL: http://localhost:5274
         VITE_ADMIN_URL: http://localhost:5275

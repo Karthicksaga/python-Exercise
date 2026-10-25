@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { MapCanvas, MapFit, MapLine, MapMarker } from "./mapkit";
 import type { Ride } from "./types";
+import RealisticVehicleMarker from "./RealisticVehicleMarker";
+
+function bearing(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const rad = Math.PI / 180;
+  const y = Math.sin((b.lng - a.lng) * rad) * Math.cos(b.lat * rad);
+  const x = Math.cos(a.lat * rad) * Math.sin(b.lat * rad) - Math.sin(a.lat * rad) * Math.cos(b.lat * rad) * Math.cos((b.lng - a.lng) * rad);
+  return (Math.atan2(y, x) / rad + 360) % 360;
+}
 
 // Glides the car marker between location updates instead of teleporting it.
 function useSmoothPosition(target?: { lat: number; lng: number }) {
@@ -35,6 +43,18 @@ export default function RideRouteMap({ ride }: { ride: Ride }) {
       ? { lat: ride.driver_lat, lng: ride.driver_lng }
       : undefined;
   const driver = useSmoothPosition(rawDriver);
+
+  const [heading, setHeading] = useState(0);
+  const prevPos = useRef(rawDriver);
+  useEffect(() => {
+    if (rawDriver && prevPos.current) {
+      if (Math.abs(rawDriver.lat - prevPos.current.lat) + Math.abs(rawDriver.lng - prevPos.current.lng) > 0.00002) {
+        setHeading(bearing(prevPos.current, rawDriver));
+      }
+    }
+    if (rawDriver) prevPos.current = rawDriver;
+  }, [rawDriver?.lat, rawDriver?.lng]);
+
   if (route.length < 2) return null;
 
   const pickup = { lat: ride.pickup_lat, lng: ride.pickup_lng };
@@ -58,7 +78,12 @@ export default function RideRouteMap({ ride }: { ride: Ride }) {
           </MapMarker>
           {driver && (
             <MapMarker position={driver} title="Your driver" anchor="center">
-              <span className="car-pin" aria-label="Driver location">🚗</span>
+              <RealisticVehicleMarker
+                category={ride.vehicle_category}
+                heading={heading}
+                size={46}
+                showShadow
+              />
             </MapMarker>
           )}
         </MapCanvas>
