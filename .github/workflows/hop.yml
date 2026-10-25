@@ -79,9 +79,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
-      - name: Install Android SDK
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Setup Android SDK
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
+          chmod +x mobile/rider/android/gradlew mobile/captain/android/gradlew
       - name: Install dependencies
         run: npm ci
       - name: Build Rider Android debug APK
