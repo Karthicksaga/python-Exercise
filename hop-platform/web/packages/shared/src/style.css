@@ -495,6 +495,8 @@ button:not([class*="mantine-"]):active:not(:disabled){transform:scale(.97)}
 .nav-car{position:relative;display:grid;place-items:center;width:40px;height:40px;filter:drop-shadow(0 4px 8px rgba(15,23,42,.45))}
 .nav-car svg{transition:transform .8s ease}
 .nav-car-pulse{position:absolute;inset:-4px;border-radius:50%;background:#2563eb;opacity:.35;animation:pulse-ring 1.8s ease-out infinite}
+.nav-car-realistic{position:relative;display:grid;place-items:center;cursor:pointer}
+.nav-car-realistic:hover{transform:scale(1.08);transition:transform .2s ease}
 .live-chip{position:absolute;top:12px;left:12px;display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:#fff;font-size:11px;font-weight:800;letter-spacing:.06em;color:#dc2626;box-shadow:0 4px 12px rgba(0,0,0,.15)}
 .live-chip i{width:8px;height:8px;border-radius:50%;background:#dc2626;animation:livepulse 1.4s infinite}
 .recenter{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);padding:8px 16px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
@@ -1182,3 +1184,441 @@ html[data-theme="dark"] .lp button:not(.text-button) { color: #30201c; }
 
 .native-android .topbar { padding-top: env(safe-area-inset-top); height: calc(64px + env(safe-area-inset-top)); }
 .native-android .nav { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+
+/* ========================================================
+   Payment Enhancements: Drop-off Settlement & In-Ride Switching
+   ======================================================== */
+.payment-summary-pill {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.payment-summary-pill:hover {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+.pill-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pill-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.pill-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pill-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+.pill-desc {
+  color: var(--muted);
+  font-size: 11px;
+}
+.change-pay-toggle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand);
+  padding: 4px 8px;
+}
+.pay-at-end-reassurance {
+  margin: 4px 2px 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.opt-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.expanded-options {
+  margin-top: 8px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* In-Ride Payment Pill */
+.in-ride-pay-pill {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px dashed var(--line);
+  font-size: 12px;
+}
+.in-ride-pay-pill strong {
+  color: var(--ink);
+}
+.in-ride-switch-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand);
+  padding: 2px 6px;
+}
+.in-ride-pay-switcher {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.pill-opt {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--card, #fff);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.pill-opt.selected {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+
+/* Payment Settlement Sheet */
+.payment-settlement-sheet {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 14px;
+  display: grid;
+  gap: 14px;
+  animation: fadeIn 0.25s ease-out;
+}
+.settlement-header {
+  display: grid;
+  gap: 4px;
+}
+.settlement-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.settlement-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 2px;
+}
+.settlement-amount {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--ink);
+}
+.settlement-fare-note {
+  font-size: 12px;
+  color: var(--ok, #16a34a);
+  margin: 0;
+}
+.payment-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.payment-status-pill.success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+}
+.payment-status-pill.pending {
+  background: rgba(234, 179, 8, 0.15);
+  color: #a16207;
+}
+.payment-status-pill.danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+}
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.status-dot.green { background: #22c55e; }
+.status-dot.yellow { background: #eab308; }
+.status-dot.red { background: #ef4444; }
+
+/* Driver Settlement View */
+.driver-settlement-view {
+  display: grid;
+  gap: 10px;
+}
+.driver-payment-instruction {
+  font-size: 13px;
+  margin: 0;
+}
+.confirm-received-btn {
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: #16a34a !important;
+  color: #fff !important;
+}
+
+/* Method Switcher in Settlement */
+.method-switcher-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.method-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.method-pills {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+.method-pill {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.method-pill.active {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+
+/* UPI Card */
+.upi-settlement-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg);
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  text-align: center;
+}
+.upi-prompt {
+  font-size: 13px;
+  margin: 0;
+  color: var(--muted);
+}
+.upi-qr-wrapper {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 4px auto;
+  padding: 10px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+.upi-qr-img {
+  width: 180px;
+  height: 180px;
+  border-radius: 8px;
+  display: block;
+}
+.qr-caption {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4b5563;
+}
+.upi-actions {
+  display: grid;
+  gap: 8px;
+  max-width: 320px;
+  margin: 0 auto;
+  width: 100%;
+}
+.upi-deeplink-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 10px;
+}
+.upi-id-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--card, #fff);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.upi-id-text {
+  font-family: monospace;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.copy-upi-btn {
+  background: none;
+  border: 1px solid var(--line);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.notify-paid-btn {
+  font-size: 12px;
+  padding: 8px 12px;
+}
+.paid-waiting-banner {
+  padding: 8px 12px;
+  background: rgba(234, 179, 8, 0.15);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #a16207;
+  font-weight: 600;
+}
+.no-upi-fallback {
+  display: grid;
+  gap: 10px;
+}
+.fallback-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* Cash Card */
+.cash-settlement-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg);
+  border-radius: 14px;
+  border: 1px solid var(--line);
+}
+.cash-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.big-cash-emoji {
+  font-size: 36px;
+  line-height: 1;
+}
+.cash-icon-row h4 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+.change-assistant {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  background: var(--card, #fff);
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+.assistant-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.change-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.change-chip {
+  padding: 4px 8px;
+  background: var(--bg);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--ink);
+}
+
+/* Wallet Card */
+.wallet-settlement-card {
+  padding: 14px;
+  background: var(--bg);
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+}
+.wallet-sufficient, .wallet-shortfall {
+  display: grid;
+  gap: 8px;
+}
+.danger-text {
+  color: var(--bad, #dc2626);
+  font-size: 13px;
+  margin: 0;
+}
+
+/* Confirmation & Dispute */
+.settlement-confirmed-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 12px;
+}
+.success-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+.settlement-confirmed-banner strong {
+  color: #15803d;
+  font-size: 15px;
+}
+.settlement-footer {
+  text-align: center;
+}
+.dispute-link {
+  font-size: 12px;
+  color: var(--muted);
+}
+.online-pay-subcard {
+  display: grid;
+  gap: 8px;
+  text-align: center;
+}
+.or-divider {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+

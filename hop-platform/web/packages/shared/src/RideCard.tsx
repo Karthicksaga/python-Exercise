@@ -12,7 +12,7 @@ import { t, useLang } from "./i18n";
 import MaskedCall from "./MaskedCall";
 import SharedRide from "./SharedRide";
 import SwipeButton from "./SwipeButton";
-import OnlinePay from "./OnlinePay";
+import PaymentSettlementSheet from "./PaymentSettlementSheet";
 
 let onlinePaymentsCache: Promise<boolean> | null = null;
 const onlinePaymentsEnabled = () =>
@@ -102,7 +102,26 @@ export default function RideCard({
     [report, setReport] = useState(false),
     [message, setMessage] = useState(""),
     [rating, setRating] = useState(5),
-    [ratingComment, setRatingComment] = useState("");
+    [ratingComment, setRatingComment] = useState(""),
+    [switchingPay, setSwitchingPay] = useState(false);
+  async function changePay(newMethod: "cash" | "upi" | "wallet") {
+    if (newMethod === r.payment_method || busy) return;
+    setBusy(true);
+    try {
+      await api(`/api/rides/${r.id}/actions`, {
+        action: "change_payment_method",
+        version: r.version,
+        payment_method: newMethod,
+      });
+      setSwitchingPay(false);
+      await refresh();
+      notify(`Payment method updated to ${newMethod.toUpperCase()}`);
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function pass() {
     setBusy(true);
     try {
@@ -221,6 +240,49 @@ export default function RideCard({
         {Math.ceil(r.seconds / 60)} min ·{" "}
         {r.payment_method === "upi" ? "Direct UPI" : r.payment_method === "wallet" ? "Wallet" : "Cash"}{r.promo_code ? ` · ${r.promo_code}` : ""}{(r.surge_multiplier ?? 1) > 1 ? ` · ⚡×${r.surge_multiplier}` : ""} · ₹0 platform fee
       </p>
+      {r.mine && active(r) && (
+        <div className="in-ride-pay-pill">
+          <span>
+            Payment: <strong>{r.payment_method === "upi" ? "⚡ Direct UPI" : r.payment_method === "wallet" ? "👛 Hop Wallet" : "💵 Cash"}</strong>
+          </span>
+          <button
+            type="button"
+            className="text-button in-ride-switch-btn"
+            disabled={busy}
+            onClick={() => setSwitchingPay(!switchingPay)}
+          >
+            {switchingPay ? "Done" : "Change"}
+          </button>
+        </div>
+      )}
+      {r.mine && active(r) && switchingPay && (
+        <div className="in-ride-pay-switcher">
+          <button
+            type="button"
+            className={`pill-opt ${r.payment_method === "upi" ? "selected" : ""}`}
+            disabled={busy}
+            onClick={() => changePay("upi")}
+          >
+            ⚡ UPI
+          </button>
+          <button
+            type="button"
+            className={`pill-opt ${r.payment_method === "cash" ? "selected" : ""}`}
+            disabled={busy}
+            onClick={() => changePay("cash")}
+          >
+            💵 Cash
+          </button>
+          <button
+            type="button"
+            className={`pill-opt ${r.payment_method === "wallet" ? "selected" : ""}`}
+            disabled={busy}
+            onClick={() => changePay("wallet")}
+          >
+            👛 Wallet
+          </button>
+        </div>
+      )}
       <SharedRide ride={r} offer={offer} refresh={refresh} notify={notify} />
       {r.trip_type && r.trip_type !== "city" && (
         <p className="muted">
@@ -376,44 +438,14 @@ export default function RideCard({
         </div>
       )}
       {r.status === "completed" && (
-        <div className="settlement">
-          <strong>{r.payment_method === "wallet" ? "Paid with hop wallet" : "Pay your driver directly"}</strong>
-          {r.driver_upi && (
-            <p>
-              Driver’s UPI ID: <strong>{r.driver_upi}</strong>
-            </p>
-          )}
-          <p className="muted">
-            {r.payment_status === "unconfirmed"
-              ? "Payment has not been confirmed."
-              : r.payment_status === "paid_online"
-                ? "Paid online."
-                : r.payment_status === "driver_reported_received"
-                ? "Driver reported receiving payment."
-                : "Payment disputed — operator review needed."}
-          </p>
-          {r.driving && r.payment_status === "unconfirmed" && (
-            <button
-              className="secondary"
-              disabled={busy}
-              onClick={() => action("payment_received")}
-            >
-              I received payment
-            </button>
-          )}
-          {r.mine && onlineOK && r.payment_status === "unconfirmed" && (
-            <OnlinePay rideId={r.id} refresh={refresh} notify={notify} />
-          )}
-          {r.mine && r.payment_status !== "rider_disputed" && r.payment_status !== "paid_online" && (
-            <button
-              className="text-button"
-              disabled={busy}
-              onClick={() => action("payment_disputed")}
-            >
-              Dispute payment record
-            </button>
-          )}
-        </div>
+        <PaymentSettlementSheet
+          ride={r}
+          refresh={refresh}
+          notify={notify}
+          busy={busy}
+          action={action}
+          onlineOK={onlineOK}
+        />
       )}
       {!offer && (r.mine || r.driving) && r.status === "completed" && (
         <div className="inset">

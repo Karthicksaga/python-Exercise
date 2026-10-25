@@ -350,11 +350,12 @@ func (s *Server) Expire(ctx context.Context) error {
 }
 func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Action  string `json:"action"`
-		Version int    `json:"version"`
-		Code    string `json:"code"`
-		Reason  string `json:"reason"`
-		Confirm bool   `json:"confirm"`
+		Action        string `json:"action"`
+		Version       int    `json:"version"`
+		Code          string `json:"code"`
+		Reason        string `json:"reason"`
+		Confirm       bool   `json:"confirm"`
+		PaymentMethod string `json:"payment_method"`
 	}
 	if !decode(w, r, &input) {
 		return
@@ -384,12 +385,12 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	var rider, driver, status, area, payment, category string
+	var rider, driver, status, area, payment, category, payStatus string
 	var version, attempts, pickupRadius int
 	var rideFare int64
 	var expires time.Time
 	var pickup Point
-	e = tx.QueryRow(ctx, `SELECT r.rider_id,COALESCE(r.driver_id::text,''),r.status,r.version,r.pin_attempts,r.expires_at,q.area_id,q.pickup_lat,q.pickup_lng,r.payment_method,q.vehicle_category,COALESCE(r.offered_fare_paise,q.fare_paise)+`+groupFareExtra+` FROM rides r JOIN quotes q ON q.id=r.quote_id WHERE r.id=$1 FOR UPDATE OF r`, id).Scan(&rider, &driver, &status, &version, &attempts, &expires, &area, &pickup.Lat, &pickup.Lng, &payment, &category, &rideFare)
+	e = tx.QueryRow(ctx, `SELECT r.rider_id,COALESCE(r.driver_id::text,''),r.status,r.version,r.pin_attempts,r.expires_at,q.area_id,q.pickup_lat,q.pickup_lng,r.payment_method,q.vehicle_category,COALESCE(r.offered_fare_paise,q.fare_paise)+`+groupFareExtra+`,r.payment_status FROM rides r JOIN quotes q ON q.id=r.quote_id WHERE r.id=$1 FOR UPDATE OF r`, id).Scan(&rider, &driver, &status, &version, &attempts, &expires, &area, &pickup.Lat, &pickup.Lng, &payment, &category, &rideFare, &payStatus)
 	if e != nil {
 		dbError(w, e)
 		return
@@ -643,6 +644,68 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 		}
 		write(w, 200, map[string]bool{"ok": true})
 		return
+	case "change_payment_method":
+		if uid != rider || (status != "requested" && status != "accepted" && status != "arrived" && status != "in_progress" && status != "completed") {
+			break
+		}
+		newMethod := strings.ToLower(strings.TrimSpace(input.PaymentMethod))
+		if newMethod != "cash" && newMethod != "upi" && newMethod != "wallet" {
+			fail(w, 400, "Invalid payment method")
+			return
+		}
+		if status == "completed" && payStatus != "unconfirmed" {
+			fail(w, 409, "Payment for this ride is already settled or under review")
+			return
+		}
+		if driver != "" && newMethod == "upi" {
+			var driverUpi string
+			_ = tx.QueryRow(ctx, "SELECT COALESCE(upi_id,'') FROM drivers WHERE user_id=$1", driver).Scan(&driverUpi)
+			if driverUpi == "" {
+				fail(w, 400, "Driver has no UPI ID registered. Please use Cash or Wallet.")
+				return
+			}
+		}
+		tag, err := tx.Exec(ctx, "UPDATE rides SET payment_method=$2,version=version+1,updated_at=now() WHERE id=$1", id, newMethod)
+		if err != nil {
+			dbError(w, err)
+			return
+		}
+		if tag.RowsAffected() == 0 {
+			fail(w, 404, "Ride not found")
+			return
+		}
+		e = audit(ctx, tx, uid, id, "change_payment_method", map[string]string{"from": payment, "to": newMethod})
+		if e == nil && driver != "" {
+			e = notify(ctx, tx, driver, "payment", "Payment method updated", "Rider switched payment method to "+strings.ToUpper(newMethod))
+		}
+		if e == nil && status == "completed" && newMethod == "wallet" {
+			e = settleWalletRide(ctx, tx, id, rider)
+		}
+		if e == nil {
+			e = tx.Commit(ctx)
+		}
+		if e != nil {
+			dbError(w, e)
+			return
+		}
+		write(w, 200, map[string]any{"ok": true, "payment_method": newMethod})
+		return
+	case "notify_driver_paid":
+		if uid != rider || status != "completed" {
+			break
+		}
+		if driver != "" {
+			e = notify(ctx, tx, driver, "payment", "Payment sent by rider", "Rider reported sending payment. Please verify and confirm.")
+		}
+		if e == nil {
+			e = tx.Commit(ctx)
+		}
+		if e != nil {
+			dbError(w, e)
+			return
+		}
+		write(w, 200, map[string]bool{"ok": true})
+		return
 	}
 	if next == "" {
 		fail(w, 409, "This transition is not allowed")
@@ -826,12 +889,13 @@ func (s *Server) acceptBid(w http.ResponseWriter, r *http.Request) {
 // destination, unless the rider approved the full fare. early=false means the full fare stands.
 func earlyFinishQuote(ctx context.Context, tx pgx.Tx, rideID, driverID string) (adjusted, covered int64, remaining float64, early bool, e error) {
 	var tripType, fullStatus string
-	var total, fare int64
-	var drop, at Point
+	var total, fare, baseFare, minFare int64
+	var pickup, drop, at Point
 	var located bool
-	e = tx.QueryRow(ctx, `SELECT q.trip_type,r.full_fare_status,q.meters,COALESCE(r.offered_fare_paise,q.fare_paise),q.dropoff_lat,q.dropoff_lng,
+	e = tx.QueryRow(ctx, `SELECT q.trip_type,r.full_fare_status,q.meters,COALESCE(r.offered_fare_paise,q.fare_paise),
+ q.pickup_lat,q.pickup_lng,q.dropoff_lat,q.dropoff_lng,q.base_paise,q.minimum_paise,
  COALESCE(d.lat,0),COALESCE(d.lng,0),COALESCE(d.location_at>now()-interval '15 minutes',false)
- FROM rides r JOIN quotes q ON q.id=r.quote_id JOIN drivers d ON d.user_id=$2 WHERE r.id=$1`, rideID, driverID).Scan(&tripType, &fullStatus, &total, &fare, &drop.Lat, &drop.Lng, &at.Lat, &at.Lng, &located)
+ FROM rides r JOIN quotes q ON q.id=r.quote_id JOIN drivers d ON d.user_id=$2 WHERE r.id=$1`, rideID, driverID).Scan(&tripType, &fullStatus, &total, &fare, &pickup.Lat, &pickup.Lng, &drop.Lat, &drop.Lng, &baseFare, &minFare, &at.Lat, &at.Lng, &located)
 	if e != nil {
 		return
 	}
@@ -839,13 +903,38 @@ func earlyFinishQuote(ctx context.Context, tx pgx.Tx, rideID, driverID string) (
 	if tripType != "city" || fullStatus == "approved" || !located || total <= 0 || remaining <= earlyFinishMeters {
 		return
 	}
-	covered = total - int64(remaining)
-	if covered < 0 {
+	fromPickup := distance(pickup, at)
+	toDrop := remaining
+
+	if fromPickup < 250 {
+		// Driver has not moved significantly from pickup point: 0 distance covered
 		covered = 0
-	}
-	adjusted = fare * covered / total
-	if floor := fare / 4; adjusted < floor {
-		adjusted = floor
+		adjusted = baseFare
+		if adjusted <= 0 {
+			adjusted = minFare
+		}
+		if adjusted > fare {
+			adjusted = fare
+		}
+		remaining = float64(total)
+	} else {
+		// Pro-rate distance and fare along the actual pickup-to-dropoff trajectory
+		fraction := fromPickup / (fromPickup + toDrop)
+		if fraction > 1.0 {
+			fraction = 1.0
+		}
+		covered = int64(float64(total) * fraction)
+		if covered > total {
+			covered = total
+		}
+		adjusted = baseFare + int64(float64(fare-baseFare)*fraction)
+		if adjusted < minFare {
+			adjusted = minFare
+		}
+		if adjusted > fare {
+			adjusted = fare
+		}
+		remaining = float64(total - covered)
 	}
 	adjusted = (adjusted + 50) / 100 * 100
 	early = adjusted < fare
