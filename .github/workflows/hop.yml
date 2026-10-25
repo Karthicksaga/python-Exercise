@@ -88,11 +88,13 @@ jobs:
         run: npm ci
       - name: Build Rider Android debug APK
         env:
+          VITE_MAP_PROVIDER: ${{ vars.RIDER_GOOGLE_MAPS_API_KEY != '' && 'google' || 'osm' }}
           VITE_GOOGLE_MAPS_API_KEY: ${{ vars.RIDER_GOOGLE_MAPS_API_KEY }}
           VITE_GOOGLE_MAP_ID: ${{ vars.RIDER_GOOGLE_MAP_ID }}
         run: node scripts/android.mjs rider --apk
       - name: Build Captain Android debug APK
         env:
+          VITE_MAP_PROVIDER: ${{ vars.CAPTAIN_GOOGLE_MAPS_API_KEY != '' && 'google' || 'osm' }}
           VITE_GOOGLE_MAPS_API_KEY: ${{ vars.CAPTAIN_GOOGLE_MAPS_API_KEY }}
           VITE_GOOGLE_MAP_ID: ${{ vars.CAPTAIN_GOOGLE_MAP_ID }}
         run: node scripts/android.mjs captain --apk
