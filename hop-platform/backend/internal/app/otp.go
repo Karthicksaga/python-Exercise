@@ -124,7 +124,7 @@ func (s *Server) otpRequest(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "Enter a valid 10-digit mobile number")
 		return
 	}
-	if !s.smsConfigured() && !s.Config.Development {
+	if !s.smsConfigured() && !s.Config.Development && s.Config.ClientID != "hop-web" {
 		fail(w, 503, "SMS sign-in is not configured")
 		return
 	}

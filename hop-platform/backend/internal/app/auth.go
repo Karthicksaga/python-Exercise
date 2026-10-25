@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/hmac"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -57,8 +59,109 @@ func (s *Server) cookieName(r *http.Request) string {
 func (s *Server) cookie(w http.ResponseWriter, name, value string, age int) {
 	http.SetCookie(w, &http.Cookie{Name: name, Value: value, Path: "/", HttpOnly: true, Secure: !s.Config.Development, SameSite: http.SameSiteLaxMode, MaxAge: age})
 }
+func (s *Server) completeDemoLogin(w http.ResponseWriter, r *http.Request, role string) {
+	ctx := r.Context()
+	var accountId, email, name, accountRole string
+	switch role {
+	case "captain", "driver":
+		accountId = "c1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+		email, name, accountRole = "captain@hop.local", "Demo Captain", "rider"
+	case "operator", "admin":
+		accountId = "d1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+		email, name, accountRole = "admin@hop.local", "Demo Operator", "operator"
+	default:
+		accountId = "b1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+		email, name, accountRole = "rider@hop.local", "Demo Rider", "rider"
+	}
+
+	var account string
+	e := s.DB.QueryRow(ctx, `
+		INSERT INTO accounts(id, issuer, subject, email, name, role)
+		VALUES ($1, 'demo', $2, $2, $3, $4)
+		ON CONFLICT (issuer, subject) DO UPDATE
+		SET email = EXCLUDED.email, name = EXCLUDED.name, role = EXCLUDED.role
+		RETURNING id
+	`, accountId, email, name, accountRole).Scan(&account)
+	if e != nil {
+		dbError(w, e)
+		return
+	}
+
+	if old, e := r.Cookie(s.cookieName(r)); e == nil {
+		s.Cache.Del(ctx, "session:"+digest(old.Value))
+	}
+	session := Session{UserID: account, CSRF: randomToken()}
+	b, _ := json.Marshal(session)
+	secret := randomToken()
+	if s.Cache.Set(ctx, "session:"+digest(secret), b, 12*time.Hour).Err() != nil {
+		fail(w, 503, "Could not create session")
+		return
+	}
+	s.cookie(w, s.cookieName(r), secret, 43200)
+
+	target := s.appOrigin(r) + "/"
+	if r.Header.Get("X-Hop-App") == "" {
+		target = "/"
+	}
+	http.Redirect(w, r, target, http.StatusSeeOther)
+}
+
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	if !s.limit(w, r, "login:"+s.peer(r), 30, 60) {
+		return
+	}
+	role := r.URL.Query().Get("role")
+	if role != "" {
+		s.completeDemoLogin(w, r, role)
+		return
+	}
+	if s.Config.ClientID == "hop-web" {
+		ref := r.Header.Get("Referer")
+		app := appIdentity(r)
+		if app == "captain" || strings.Contains(ref, "captain") {
+			s.completeDemoLogin(w, r, "captain")
+			return
+		}
+		if app == "admin" || strings.Contains(ref, "admin") {
+			s.completeDemoLogin(w, r, "operator")
+			return
+		}
+		if app == "rider" || strings.Contains(ref, "rider") {
+			s.completeDemoLogin(w, r, "rider")
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(200)
+		fmt.Fprint(w, `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hop - Demo Sign In</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 32px; max-width: 420px; width: 100%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
+    h1 { margin: 0 0 8px; font-size: 24px; color: #38bdf8; text-align: center; }
+    p { color: #94a3b8; font-size: 14px; text-align: center; margin: 0 0 24px; }
+    .btn { display: block; width: 100%; padding: 14px; margin-bottom: 12px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; text-align: center; text-decoration: none; box-sizing: border-box; transition: transform 0.1s, opacity 0.2s; cursor: pointer; }
+    .btn:hover { opacity: 0.95; transform: translateY(-1px); }
+    .btn-rider { background: #0284c7; color: #fff; }
+    .btn-captain { background: #16a34a; color: #fff; }
+    .btn-admin { background: #7c3aed; color: #fff; }
+    .footer { text-align: center; font-size: 12px; color: #64748b; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>hop 🚀 Demo Testing</h1>
+    <p>Select your testing role to sign in instantly:</p>
+    <a href="/auth/login?role=rider" class="btn btn-rider">🚴 Sign in as Rider</a>
+    <a href="/auth/login?role=captain" class="btn btn-captain">🛵 Sign in as Captain (Driver)</a>
+    <a href="/auth/login?role=operator" class="btn btn-admin">🖥️ Sign in as Operator (Admin)</a>
+    <div class="footer">Hop Urban Mobility Platform • Demo Sandbox</div>
+  </div>
+</body>
+</html>`)
 		return
 	}
 	state := randomToken()
