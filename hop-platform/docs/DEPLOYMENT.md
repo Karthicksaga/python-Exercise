@@ -20,6 +20,9 @@ Copy `.env.example` to `.env` and enter secrets locally. Generate independent UR
 
 ## Container deployment
 
+The backend is API-only. Rider, captain and admin are separate web containers; see [separate deployments](SEPARATE-DEPLOYMENTS.md). Configure `PUBLIC_HOST`, `CAPTAIN_HOST` and `ADMIN_HOST`, matching app origins and an exact OIDC callback per app. Caddy routes each hostname to its frontend, which proxies API/auth requests to the common backend.
+
+
 ```sh
 cd hop-platform
 cp .env.example .env
@@ -45,7 +48,7 @@ docker build -f Dockerfile.runtime -t hop-app:local .
 docker compose up -d --no-build
 ```
 
-Use the architecture appropriate to your runtime. The runtime Dockerfile copies only the compiled application, web assets, migrations and trusted CA bundle. It does not disable TLS or dependency verification. Keep build artifacts tied to the source commit and dependency lockfiles.
+Use the architecture appropriate to your runtime. The runtime Dockerfile copies only the compiled application, migrations and trusted CA bundle. It does not disable TLS or dependency verification. Keep build artifacts tied to the source commit and dependency lockfiles.
 
 ## First operator and activation
 

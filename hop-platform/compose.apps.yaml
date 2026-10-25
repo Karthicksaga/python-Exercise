@@ -1,0 +1,74 @@
+# Reuses existing local PostgreSQL, Redis and Keycloak. No data services are replaced.
+name: hop-apps
+x-web: &web
+  restart: unless-stopped
+  depends_on:
+    api: {condition: service_healthy}
+  environment:
+    BACKEND_UPSTREAM: api:8080
+  networks: [default]
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: .env.docker.local
+    environment:
+      APP_ENV: development
+      ADDRESS: ':8080'
+      MIGRATE_ON_START: 'true'
+      PUBLIC_ORIGIN: http://localhost:8081
+      RIDER_ORIGIN: http://localhost:5273
+      CAPTAIN_ORIGIN: http://localhost:5274
+      ADMIN_ORIGIN: http://localhost:5275
+    extra_hosts:
+      - 'auth.hop.localhost:host-gateway'
+    ports: ['127.0.0.1:8081:8080']
+    healthcheck:
+      test: [CMD, /app/api, healthcheck]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  rider:
+    <<: *web
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        HOP_APP: rider
+        VITE_MAP_PROVIDER: ${RIDER_MAP_PROVIDER:-osm}
+        VITE_GOOGLE_MAPS_API_KEY: ${RIDER_GOOGLE_MAPS_API_KEY:-}
+        VITE_GOOGLE_MAP_ID: ${RIDER_GOOGLE_MAP_ID:-}
+        VITE_RIDER_URL: http://localhost:5273
+        VITE_CAPTAIN_URL: http://localhost:5274
+        VITE_ADMIN_URL: http://localhost:5275
+    environment: {HOP_APP: rider, BACKEND_UPSTREAM: 'api:8080'}
+    ports: ['127.0.0.1:5273:80']
+  captain:
+    <<: *web
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        HOP_APP: captain
+        VITE_MAP_PROVIDER: ${CAPTAIN_MAP_PROVIDER:-osm}
+        VITE_GOOGLE_MAPS_API_KEY: ${CAPTAIN_GOOGLE_MAPS_API_KEY:-}
+        VITE_GOOGLE_MAP_ID: ${CAPTAIN_GOOGLE_MAP_ID:-}
+        VITE_RIDER_URL: http://localhost:5273
+        VITE_CAPTAIN_URL: http://localhost:5274
+        VITE_ADMIN_URL: http://localhost:5275
+    environment: {HOP_APP: captain, BACKEND_UPSTREAM: 'api:8080'}
+    ports: ['127.0.0.1:5274:80']
+  admin:
+    <<: *web
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        HOP_APP: admin
+        VITE_RIDER_URL: http://localhost:5273
+        VITE_CAPTAIN_URL: http://localhost:5274
+        VITE_ADMIN_URL: http://localhost:5275
+    environment: {HOP_APP: admin, BACKEND_UPSTREAM: 'api:8080'}
+    ports: ['127.0.0.1:5275:80']

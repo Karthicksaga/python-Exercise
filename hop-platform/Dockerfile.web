@@ -1,0 +1,18 @@
+FROM node:24-alpine AS build
+WORKDIR /web
+COPY web/ ./
+RUN npm ci
+ARG HOP_APP
+ARG VITE_GOOGLE_MAPS_API_KEY
+ARG VITE_GOOGLE_MAP_ID
+ARG VITE_MAP_PROVIDER=osm
+ARG VITE_RIDER_URL
+ARG VITE_CAPTAIN_URL
+ARG VITE_ADMIN_URL
+RUN test "$HOP_APP" = rider -o "$HOP_APP" = captain -o "$HOP_APP" = admin
+RUN npm run build -w @hop/$HOP_APP && cp -R dist/$HOP_APP /site
+FROM caddy:2-alpine
+COPY infra/Caddyfile.web /etc/caddy/Caddyfile
+COPY --from=build /site /srv
+ENV BACKEND_UPSTREAM=api:8080
+EXPOSE 80

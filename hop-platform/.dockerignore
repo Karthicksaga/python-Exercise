@@ -6,3 +6,6 @@
 **/dist
 backend/api
 **/*.tsbuildinfo
+
+**/.env
+**/.env.*

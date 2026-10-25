@@ -3,17 +3,20 @@ package main
 import (
 	"context"
 	"fmt"
+	webpush "github.com/SherClockHolmes/webpush-go"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"hop/internal/app"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -43,6 +46,14 @@ func run() error {
 		if response.StatusCode != 200 {
 			return fmt.Errorf("not ready")
 		}
+		return nil
+	}
+	if len(os.Args) > 1 && os.Args[1] == "vapid-keys" {
+		private, public, err := webpush.GenerateVAPIDKeys()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("VAPID_PUBLIC_KEY=%s\nVAPID_PRIVATE_KEY=%s\n", public, private)
 		return nil
 	}
 	if len(os.Args) > 1 {
@@ -84,10 +95,22 @@ func run() error {
 				if e := s.Expire(job); e != nil {
 					slog.Error("ride expiration failed")
 				}
+				if e := s.DispatchScheduled(job); e != nil {
+					slog.Error("scheduled dispatch failed")
+				}
 				cancel()
 			}
 		}
 	}()
+	if e := s.HydrateLive(ctx); e != nil {
+		slog.Error("live index hydration failed", "error", e)
+	}
+	if config.Development {
+		go s.RunFleetSim(ctx)
+	}
+	go s.RunEvents(ctx)
+	go s.RunPush(ctx)
+	go s.RunDispatch(ctx, func(e error) { slog.Error("staged dispatch failed", "error", e) })
 	errors := make(chan error, 1)
 	go func() { slog.Info("API listening", "address", config.Address); errors <- httpServer.ListenAndServe() }()
 	select {
@@ -121,40 +144,7 @@ func command(ctx context.Context, args []string) error {
 	defer db.Close()
 	switch args[0] {
 	case "migrate":
-		data, e := os.ReadFile("migrations/001_initial.sql")
-		if e != nil {
-			return e
-		}
-		tx, e := db.Begin(ctx)
-		if e != nil {
-			return e
-		}
-		defer tx.Rollback(ctx)
-		if _, e = tx.Exec(ctx, "SELECT pg_advisory_xact_lock(704001)"); e != nil {
-			return e
-		}
-		var exists bool
-		if e = tx.QueryRow(ctx, "SELECT to_regclass('public.schema_migrations') IS NOT NULL").Scan(&exists); e != nil {
-			return e
-		}
-		if exists {
-			var version int
-			if e = tx.QueryRow(ctx, "SELECT COALESCE(max(version),0) FROM schema_migrations").Scan(&version); e != nil {
-				return e
-			}
-			if version >= 1 {
-				fmt.Println("Schema already current")
-				return nil
-			}
-		}
-		if _, e = tx.Exec(ctx, string(data)); e != nil {
-			return e
-		}
-		if e = tx.Commit(ctx); e != nil {
-			return e
-		}
-		fmt.Println("Applied migration 001")
-		return nil
+		return migrate(ctx, db)
 	case "promote-operator":
 		if len(args) != 2 {
 			return fmt.Errorf("usage: api promote-operator <account UUID>; account must sign in first")
@@ -182,4 +172,71 @@ func command(ctx context.Context, args []string) error {
 	default:
 		return fmt.Errorf("unknown command")
 	}
+}
+
+func migrate(ctx context.Context, db *pgxpool.Pool) error {
+	files, err := os.ReadDir("migrations")
+	if err != nil {
+		return err
+	}
+	applied := 0
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".sql") {
+			continue
+		}
+		prefix, _, ok := strings.Cut(file.Name(), "_")
+		if !ok {
+			return fmt.Errorf("invalid migration filename %q", file.Name())
+		}
+		version, err := strconv.Atoi(prefix)
+		if err != nil || version < 1 {
+			return fmt.Errorf("invalid migration version in %q", file.Name())
+		}
+		tx, err := db.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, "SELECT pg_advisory_xact_lock(704001)"); err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+		var exists bool
+		if err = tx.QueryRow(ctx, "SELECT to_regclass('public.schema_migrations') IS NOT NULL").Scan(&exists); err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+		current := 0
+		if exists {
+			if err = tx.QueryRow(ctx, "SELECT COALESCE(max(version),0) FROM schema_migrations").Scan(&current); err != nil {
+				tx.Rollback(ctx)
+				return err
+			}
+		}
+		if version <= current {
+			tx.Rollback(ctx)
+			continue
+		}
+		if version != current+1 {
+			tx.Rollback(ctx)
+			return fmt.Errorf("migration sequence gap: database is at %d, found %d", current, version)
+		}
+		data, err := os.ReadFile("migrations/" + file.Name())
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+		if _, err = tx.Exec(ctx, string(data)); err != nil {
+			tx.Rollback(ctx)
+			return fmt.Errorf("migration %03d: %w", version, err)
+		}
+		if err = tx.Commit(ctx); err != nil {
+			return err
+		}
+		applied++
+		fmt.Printf("Applied migration %03d\n", version)
+	}
+	if applied == 0 {
+		fmt.Println("Schema already current")
+	}
+	return nil
 }

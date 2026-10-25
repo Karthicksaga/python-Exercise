@@ -11,3 +11,5 @@ playwright-report/
 test-results/
 
 build-output/
+
+!.env.development
