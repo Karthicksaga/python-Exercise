@@ -12,7 +12,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type loginState struct{ Verifier, Nonce, RedirectURL string }
+type loginState struct{ Verifier, Nonce, RedirectURL, MobileChallenge, MobileApp string }
 
 // App gateways supply a fixed app identity; callback origins come only from configuration.
 func appIdentity(r *http.Request) string {
@@ -65,6 +65,14 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	oauth := s.OAuth
 	oauth.RedirectURL = s.appOrigin(r) + "/auth/callback"
 	entry := loginState{Verifier: oauth2.GenerateVerifier(), Nonce: randomToken(), RedirectURL: oauth.RedirectURL}
+	if challenge := r.URL.Query().Get("mobile_challenge"); challenge != "" {
+		app := r.URL.Query().Get("mobile_app")
+		if !validMobileApp(app) || app != appIdentity(r) || !validMobileChallenge(challenge) {
+			fail(w, 400, "Invalid Android sign-in request")
+			return
+		}
+		entry.MobileChallenge, entry.MobileApp = challenge, app
+	}
 	b, _ := json.Marshal(entry)
 	if s.Cache.Set(r.Context(), "login:"+digest(state), b, 5*time.Minute).Err() != nil {
 		fail(w, 503, "Sign-in temporarily unavailable")
@@ -136,6 +144,10 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
+	if entry.MobileChallenge != "" {
+		s.mobileReturn(w, r, account, entry)
+		return
+	}
 	// Invalidate the current local session before rotating it at sign-in.
 	if old, e := r.Cookie(s.cookieName(r)); e == nil {
 		s.Cache.Del(ctx, "session:"+digest(old.Value))
@@ -193,6 +205,13 @@ func (s *Server) auth(next http.Handler) http.Handler {
 	})
 }
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
+	if token := user(r).Session.NativePushToken; token != "" {
+		if _, e := s.DB.Exec(r.Context(), "DELETE FROM android_push_tokens WHERE token=$1 AND account_id=$2", token, user(r).Account.ID); e != nil {
+			dbError(w, e)
+			return
+		}
+	}
+
 	cookie, _ := r.Cookie(s.cookieName(r))
 	if s.Cache.Del(r.Context(), "session:"+digest(cookie.Value)).Err() != nil {
 		fail(w, 503, "Could not sign out; retry")

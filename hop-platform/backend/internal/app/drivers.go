@@ -134,16 +134,45 @@ func (s *Server) location(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, uid := r.Context(), user(r).Account.ID
+	tx, e := s.DB.Begin(ctx)
+	if e != nil {
+		dbError(w, e)
+		return
+	}
+	defer tx.Rollback(ctx)
+	if e = lockJourney(ctx, tx, uid); e != nil {
+		dbError(w, e)
+		return
+	}
+	var online bool
+	if e = tx.QueryRow(ctx, "SELECT COALESCE((SELECT online FROM drivers WHERE user_id=$1),false)", uid).Scan(&online); e != nil {
+		dbError(w, e)
+		return
+	}
+	riding, e := ridingNow(ctx, tx, uid)
+	if e != nil {
+		dbError(w, e)
+		return
+	}
+	if !online || riding {
+		s.dropLive(ctx, uid)
+		fail(w, 403, "You are offline. Finish your rider trip, then go online in Captain to share location")
+		return
+	}
 	// Fast path: a recently validated driver only updates Redis; the database is checkpointed every few seconds.
 	if meta, ok := s.liveMetaFor(ctx, uid); ok && !s.shouldFlush(ctx, uid) {
 		if s.putLive(ctx, uid, meta, in.Lat, in.Lng, in.Accuracy) == nil {
+			if e = tx.Commit(ctx); e != nil {
+				dbError(w, e)
+				return
+			}
 			write(w, 200, map[string]any{"online": true, "fresh_for_seconds": 60})
 			return
 		}
 	}
 	var area, category string
 	var radius int
-	e := s.DB.QueryRow(ctx, `UPDATE drivers d SET lat=$2,lng=$3,accuracy=$4,location_at=now(),online=true,updated_at=now() FROM areas a WHERE d.user_id=$1 AND d.area_id=a.id AND d.status='approved' AND d.license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND d.insurance_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND a.active AND $2 BETWEEN a.min_lat AND a.max_lat AND $3 BETWEEN a.min_lng AND a.max_lng RETURNING d.area_id::text, d.vehicle_category, d.pickup_radius_meters`, uid, in.Lat, in.Lng, in.Accuracy).Scan(&area, &category, &radius)
+	e = tx.QueryRow(ctx, `UPDATE drivers d SET lat=$2,lng=$3,accuracy=$4,location_at=now(),updated_at=now() FROM areas a WHERE d.user_id=$1 AND d.online AND d.area_id=a.id AND d.status='approved' AND d.license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND d.insurance_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND a.active AND $2 BETWEEN a.min_lat AND a.max_lat AND $3 BETWEEN a.min_lng AND a.max_lng RETURNING d.area_id::text, d.vehicle_category, d.pickup_radius_meters`, uid, in.Lat, in.Lng, in.Accuracy).Scan(&area, &category, &radius)
 	if errors.Is(e, pgx.ErrNoRows) {
 		s.dropLive(ctx, uid)
 		fail(w, 403, "Approval, valid documents and a location inside your active area are required")
@@ -154,15 +183,85 @@ func (s *Server) location(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = s.putLive(ctx, uid, liveMeta{Area: area, Category: category, Radius: radius}, in.Lat, in.Lng, in.Accuracy)
-	write(w, 200, map[string]any{"online": true, "fresh_for_seconds": 60})
-}
-func (s *Server) offline(w http.ResponseWriter, r *http.Request) {
-	_, e := s.DB.Exec(r.Context(), "UPDATE drivers SET online=false WHERE user_id=$1", user(r).Account.ID)
-	if e != nil {
+	if e = tx.Commit(ctx); e != nil {
 		dbError(w, e)
 		return
 	}
-	s.dropLive(r.Context(), user(r).Account.ID)
+	write(w, 200, map[string]any{"online": true, "fresh_for_seconds": 60})
+}
+
+func (s *Server) driverAvailability(w http.ResponseWriter, r *http.Request) {
+	var online bool
+	err := s.DB.QueryRow(r.Context(), "SELECT EXISTS(SELECT 1 FROM drivers WHERE user_id=$1 AND online AND status='approved')", user(r).Account.ID).Scan(&online)
+	if err != nil {
+		dbError(w, err)
+		return
+	}
+	write(w, 200, map[string]bool{"online": online})
+}
+
+// Going online is an explicit user action; background pings never restore availability.
+func (s *Server) online(w http.ResponseWriter, r *http.Request) {
+	ctx, uid := r.Context(), user(r).Account.ID
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		dbError(w, err)
+		return
+	}
+	defer tx.Rollback(ctx)
+	if err = lockJourney(ctx, tx, uid); err != nil {
+		dbError(w, err)
+		return
+	}
+	if riding, e := ridingNow(ctx, tx, uid); e != nil {
+		dbError(w, e)
+		return
+	} else if riding {
+		fail(w, 409, "Finish or cancel your rider trip before going online in Captain")
+		return
+	}
+	tag, err := tx.Exec(ctx, `UPDATE drivers d SET online=true,location_at=NULL,updated_at=now() FROM areas a
+ WHERE d.user_id=$1 AND d.area_id=a.id AND d.status='approved' AND a.active
+ AND d.license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date
+ AND d.insurance_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date`, uid)
+	if err != nil {
+		dbError(w, err)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		fail(w, 403, "Approval, valid documents and an active area are required")
+		return
+	}
+	s.dropLive(ctx, uid)
+	if err = tx.Commit(ctx); err != nil {
+		dbError(w, err)
+		return
+	}
+	write(w, 200, map[string]bool{"online": true})
+}
+
+func (s *Server) offline(w http.ResponseWriter, r *http.Request) {
+	ctx, uid := r.Context(), user(r).Account.ID
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		dbError(w, err)
+		return
+	}
+	defer tx.Rollback(ctx)
+	if err = lockJourney(ctx, tx, uid); err != nil {
+		dbError(w, err)
+		return
+	}
+	_, err = tx.Exec(ctx, "UPDATE drivers SET online=false WHERE user_id=$1", uid)
+	if err != nil {
+		dbError(w, err)
+		return
+	}
+	s.dropLive(ctx, uid)
+	if err = tx.Commit(ctx); err != nil {
+		dbError(w, err)
+		return
+	}
 	write(w, 200, map[string]bool{"online": false})
 }
 

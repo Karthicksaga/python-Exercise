@@ -50,7 +50,7 @@ export default function CaptainApp() {
           <button type="button" className="theme-toggle" onClick={s.toggleDark} aria-label={s.dark ? "Switch to light mode" : "Switch to dark mode"}>
             <span className="emoji-keep">{s.dark ? "☀️" : "🌙"}</span>
           </button>
-          <span className="commission">Keep 100% of fares</span>
+          <span className="commission">Built for your drive</span>
           {user && dutyOn !== null && (
             <span className={"duty-pill" + (dutyOn ? " on" : "")} role="status" title={dutyOn ? "You are online and visible to riders" : "You are offline. Go online to get requests"}>
               <i /> {dutyOn ? "Online" : "Offline"}
@@ -183,7 +183,7 @@ export default function CaptainApp() {
         </Modal>
         <footer>
           <strong>hop captain</strong>
-          <span>India · Cash, UPI & online · Zero platform commission</span>
+          <span>Your trips, in one place.</span>
         </footer>
       </main>
     </div>

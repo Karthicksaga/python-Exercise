@@ -7,9 +7,19 @@
     "dev": "npm run dev -w @hop/rider & npm run dev -w @hop/captain & npm run dev -w @hop/admin & wait",
     "build": "npm run build -w @hop/rider && npm run build -w @hop/captain && npm run build -w @hop/admin",
     "typecheck": "tsc --noEmit -p apps/rider && tsc --noEmit -p apps/captain && tsc --noEmit -p apps/admin",
-    "format": "prettier --write apps packages"
+    "format": "prettier --write apps packages",
+    "android:rider": "node scripts/android.mjs rider",
+    "android:captain": "node scripts/android.mjs captain"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/geolocation": "^8.2.4",
+    "@capacitor/push-notifications": "^8.1.3",
+    "@capacitor/share": "^8.0.3",
     "@mantine/core": "^8.3.18",
     "@mantine/hooks": "^8.3.18",
     "@tabler/icons-react": "^3.49.0",
@@ -20,6 +30,7 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
     "@types/google.maps": "^3.66.7",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -30,6 +41,7 @@
   },
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "mobile/*"
   ]
 }

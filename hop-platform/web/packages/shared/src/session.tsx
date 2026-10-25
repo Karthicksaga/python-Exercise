@@ -1,3 +1,4 @@
+import { isAndroid, mobileApp, stopTracking } from "./platform";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, APIError, setCSRF } from "./api";
 import type { Area, State, User, VehiclePricing } from "./types";
@@ -23,6 +24,12 @@ export function useSession() {
     // False until the first /api/state answer, so the wrong screen never flashes on refresh.
     [stateReady, setStateReady] = useState(false),
     [dark, toggleDark] = useDarkMode();
+  useEffect(() => {
+    if (!isAndroid) return;
+    const show = (e: Event) => setNotice((e as CustomEvent<string>).detail);
+    window.addEventListener('hop-native-error', show);
+    return () => window.removeEventListener('hop-native-error', show);
+  }, []);
   const notify = useCallback((s: string) => setNotice(s), []);
   useEffect(() => {
     if (!notice) return;
@@ -115,6 +122,8 @@ export function useSession() {
   async function logout() {
     setSigningOut(true);
     try {
+      if (isAndroid && mobileApp === "captain") await api("/api/drivers/offline", {});
+      await stopTracking();
       await unregisterWebPush();
       await api("/auth/logout", {});
       setCSRF("");

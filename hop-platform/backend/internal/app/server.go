@@ -28,13 +28,15 @@ import (
 )
 
 type Server struct {
-	Config   Config
-	DB       *pgxpool.Pool
-	Cache    *redis.Client
-	OAuth    oauth2.Config
-	Verifier *oidc.IDTokenVerifier
-	HTTP     *http.Client
-	Events   *eventHub
+	FCM        oauth2.TokenSource
+	FCMProject string
+	Config     Config
+	DB         *pgxpool.Pool
+	Cache      *redis.Client
+	OAuth      oauth2.Config
+	Verifier   *oidc.IDTokenVerifier
+	HTTP       *http.Client
+	Events     *eventHub
 }
 type Account struct {
 	ID    string `json:"id"`
@@ -43,8 +45,9 @@ type Account struct {
 	Role  string `json:"role"`
 }
 type Session struct {
-	UserID string `json:"user_id"`
-	CSRF   string `json:"csrf"`
+	NativePushToken string `json:"native_push_token,omitempty"`
+	UserID          string `json:"user_id"`
+	CSRF            string `json:"csrf"`
 }
 type requestContext struct {
 	Account Account
@@ -85,7 +88,12 @@ func New(ctx context.Context, c Config) (*Server, error) {
 		cache.Close()
 		return nil, fmt.Errorf("OIDC discovery: %w", e)
 	}
-	return &Server{Events: newEventHub(), Config: c, DB: db, Cache: cache, HTTP: hc, OAuth: oauth2.Config{ClientID: c.ClientID, ClientSecret: c.ClientSecret, RedirectURL: c.PublicOrigin + "/auth/callback", Endpoint: provider.Endpoint(), Scopes: []string{oidc.ScopeOpenID, "profile", "email"}}, Verifier: provider.Verifier(&oidc.Config{ClientID: c.ClientID})}, nil
+	server := &Server{Events: newEventHub(), Config: c, DB: db, Cache: cache, HTTP: hc, OAuth: oauth2.Config{ClientID: c.ClientID, ClientSecret: c.ClientSecret, RedirectURL: c.PublicOrigin + "/auth/callback", Endpoint: provider.Endpoint(), Scopes: []string{oidc.ScopeOpenID, "profile", "email"}}, Verifier: provider.Verifier(&oidc.Config{ClientID: c.ClientID})}
+	if e := server.configureNativePush(ctx); e != nil {
+		server.Close()
+		return nil, e
+	}
+	return server, nil
 }
 func (s *Server) Close() { s.DB.Close(); s.Cache.Close() }
 func (s *Server) Handler() http.Handler {
@@ -96,6 +104,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /auth/callback", s.callback)
 	mux.HandleFunc("POST /auth/otp/request", s.otpRequest)
 	mux.HandleFunc("POST /auth/otp/verify", s.otpVerify)
+	mux.HandleFunc("POST /auth/mobile/exchange", s.mobileExchange)
 	mux.HandleFunc("POST /api/payments/webhook", s.paymentWebhook)
 	mux.Handle("POST /auth/logout", s.auth(http.HandlerFunc(s.logout)))
 	mux.Handle("GET /api/me", s.auth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +119,10 @@ func (s *Server) Handler() http.Handler {
 		"POST /api/locations/{id}/delete": s.deleteLocation, "POST /api/rides/{id}/rating": s.rateRide, "GET /api/rides/{id}/nav": s.navigate, "GET /api/rides/{id}/position": s.ridePosition, "POST /api/dev/driver-near-request": s.devDriverNearRequest,
 		"POST /api/rides/{id}/actions": s.action, "POST /api/drivers/apply": s.applyDriver,
 		"POST /api/drivers/location": s.location, "POST /api/drivers/offline": s.offline,
+		"POST /api/drivers/online":      s.online,
+		"GET /api/drivers/availability": s.driverAvailability,
 		"POST /api/drivers/preferences": s.saveDriverPreferences, "POST /api/drivers/vehicle": s.requestVehicleChange,
+		"POST /api/android/push/subscribe": s.androidPushSubscribe, "POST /api/android/push/unsubscribe": s.androidPushUnsubscribe,
 		"GET /api/push/key": s.pushKey, "POST /api/push/subscribe": s.pushSubscribe, "POST /api/push/unsubscribe": s.pushUnsubscribe,
 		"GET /api/nearby": s.nearby, "GET /api/stream": s.stream, "POST /api/operator/vehicle-changes/{id}": s.reviewVehicleChange,
 		"GET /api/drivers/earnings": s.driverEarnings, "GET /api/drivers/demand": s.driverDemand, "POST /api/drivers/go-home": s.goHome, "POST /api/drivers/goal": s.saveGoal, "GET /api/drivers/insights": s.driverInsights,

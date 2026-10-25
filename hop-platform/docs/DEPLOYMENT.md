@@ -1,5 +1,7 @@
 # Deployment and operations
 
+For Google Cloud Run and GitHub Actions, follow [GCP-CICD.md](GCP-CICD.md).
+
 For the managed testing setup using Render, the Neon project `rapido`, Upstash, and Auth0, follow [RENDER.md](RENDER.md). That setup uses Render's HTTPS endpoint instead of the Caddy stack below.
 
 ## Required services and secrets
@@ -33,7 +35,7 @@ docker compose up -d
 
 The migration service runs before the API. The database and Redis are private to the container network; only Caddy exposes 80/443. Caddy obtains TLS certificates for `PUBLIC_HOST`. Persist and back up the named database and identity volumes; a container image is not a data backup. The API runs as an unprivileged user on a read-only filesystem with dropped Linux capabilities.
 
-The schema migration command is transaction-protected and repeatable. Only migration 001 exists in this initial foundation. Future schema changes need numbered forward migrations and a rollback/recovery plan; do not edit an already-applied migration on a live database.
+The schema migration command is transaction-protected and repeatable. Apply every outstanding numbered migration, including Android migrations 026–027 and availability migration 028. Future schema changes need numbered forward migrations and a rollback/recovery plan; do not edit an already-applied migration on a live database.
 
 For a build runner with dependency access outside Docker, an alternative runtime image is provided:
 

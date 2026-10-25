@@ -40,6 +40,7 @@
     "./useDarkMode": "./src/useDarkMode.ts",
     "./usePush": "./src/usePush.ts",
     "./validate": "./src/validate.ts",
-    "./style.css": "./src/style.css"
+    "./style.css": "./src/style.css",
+    "./platform": "./src/platform.ts"
   }
 }

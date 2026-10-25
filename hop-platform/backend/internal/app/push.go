@@ -134,7 +134,7 @@ const pushMaxAttempts = 5
 
 // RunPush drains the push outbox until the context ends. It does nothing without VAPID keys.
 func (s *Server) RunPush(ctx context.Context) {
-	if !s.pushEnabled() {
+	if !s.pushEnabled() && s.FCM == nil {
 		return
 	}
 	ticker := time.NewTicker(time.Second)
@@ -241,6 +241,7 @@ func (s *Server) composePush(ctx context.Context, tx pushDB, j pushJob) (pushMes
 
 // deliver sends to every device of an account. It returns true when a transient failure should be retried.
 func (s *Server) deliver(ctx context.Context, tx pushDB, account string, msg pushMessage) (retry bool) {
+	retry = s.deliverNative(ctx, tx, account, msg)
 	rows, e := tx.Query(ctx, "SELECT id::text,endpoint,p256dh,auth FROM push_subscriptions WHERE account_id=$1", account)
 	if e != nil {
 		return true
@@ -259,6 +260,12 @@ func (s *Server) deliver(ctx context.Context, tx pushDB, account string, msg pus
 	for _, x := range subs {
 		if !pushEndpointAllowed(x.endpoint) {
 			_, _ = tx.Exec(ctx, "DELETE FROM push_subscriptions WHERE id=$1::uuid", x.id)
+			continue
+		}
+		if !s.pushEnabled() {
+			continue
+		}
+		if !s.pushEnabled() {
 			continue
 		}
 		res, e := webpush.SendNotificationWithContext(ctx, payload, &webpush.Subscription{Endpoint: x.endpoint, Keys: webpush.Keys{P256dh: x.p256dh, Auth: x.auth}}, &webpush.Options{

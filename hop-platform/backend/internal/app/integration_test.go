@@ -506,6 +506,8 @@ func TestOperatorApprovalAndAreaActivation(t *testing.T) {
 	require(t, code, 400)
 	code, _ = f.call(op, "POST", "/api/admin/drivers/"+d.id, map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "status": "approved", "note": "Reviewed evidence in verification record TEST-001"})
 	require(t, code, 200)
+	code, _ = f.call(d, "POST", "/api/drivers/online", map[string]any{})
+	require(t, code, 200)
 	code, _ = f.call(d, "POST", "/api/drivers/location", map[string]any{"lat": 13.08, "lng": 80.27, "accuracy": 10})
 	require(t, code, 200)
 	code, _ = f.call(op, "POST", "/api/operator/drivers/"+d.id, map[string]string{"status": "suspended", "note": "Suspended following documented review"})

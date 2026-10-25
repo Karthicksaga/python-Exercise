@@ -1,0 +1,33 @@
+{
+  "project_id": "rider-app-6ed5b",
+  "region": "asia-south1",
+  "repository": "hop-containers",
+  "service_prefix": "hop-staging",
+  "runtime_service_account": "hop-api@rider-app-6ed5b.iam.gserviceaccount.com",
+  "web_service_account": "hop-web@rider-app-6ed5b.iam.gserviceaccount.com",
+  "build_service_account": "hop-build@rider-app-6ed5b.iam.gserviceaccount.com",
+  "cloud_sql_instance": "rider-app-6ed5b:asia-south1:hop-postgres",
+  "vpc_connector": "hop-vpc",
+  "maps": {
+    "rider": { "api_key": "YOUR_RIDER_BROWSER_KEY", "map_id": "YOUR_JAVASCRIPT_MAP_ID" },
+    "captain": { "api_key": "YOUR_CAPTAIN_BROWSER_KEY", "map_id": "YOUR_JAVASCRIPT_MAP_ID" }
+  },
+  "origins": {
+    "rider": "https://rider.staging.example.com",
+    "captain": "https://captain.staging.example.com",
+    "admin": "https://admin.staging.example.com"
+  },
+  "api_env": {
+    "OIDC_ISSUER": "https://identity.example.com/realms/hop",
+    "OIDC_CLIENT_ID": "hop-web",
+    "ROUTING_URL": "https://routing.example.com",
+    "GEOCODING_URL": "https://geocoding.example.com"
+  },
+  "api_secrets": {
+    "DATABASE_URL": "hop-db-url:1",
+    "REDIS_URL": "hop-redis-url:1",
+    "SESSION_KEY": "hop-session-key:1",
+    "OIDC_CLIENT_SECRET": "hop-oidc-secret:1"
+  },
+  "fcm_secret": ""
+}

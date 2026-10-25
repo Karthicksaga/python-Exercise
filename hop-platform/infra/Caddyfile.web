@@ -3,6 +3,7 @@
     @backend path /api /api/* /auth /auth/* /healthz /readyz
     handle @backend {
         reverse_proxy {$BACKEND_UPSTREAM} {
+            header_up Host {upstream_hostport}
             header_up X-Hop-App {$HOP_APP}
         }
     }

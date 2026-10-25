@@ -1,5 +1,7 @@
+import { serverFetch } from "./platform";
 let csrf = "";
 let accountID = "";
+export function getCSRF() { return csrf; }
 export function setCSRF(value: string) {
   csrf = value;
   if (!value) accountID = "";
@@ -8,6 +10,7 @@ export class APIError extends Error {
   constructor(
     message: string,
     public status: number,
+    public code?: string,
   ) {
     super(message);
   }
@@ -17,7 +20,7 @@ export async function api<T>(
   body?: unknown,
   signal?: AbortSignal,
 ): Promise<T> {
-  const send = () => fetch(path, {
+  const send = () => serverFetch(path, {
     method: body === undefined ? "GET" : "POST",
     credentials: "same-origin",
     headers:
@@ -37,7 +40,7 @@ export async function api<T>(
   // The rejected request has not run; retry once only for the same signed-in account.
   if (body !== undefined && accountID && response.status === 403 &&
       data.error === "Request origin or CSRF token is invalid") {
-    const me = await fetch("/api/me", { credentials: "same-origin", signal });
+    const me = await serverFetch("/api/me", { credentials: "same-origin", signal });
     if (me.ok) {
       const session = await me.json();
       if (session.user.id !== accountID) {
@@ -51,6 +54,6 @@ export async function api<T>(
     }
   }
   if (!response.ok)
-    throw new APIError(data.error || "Request failed", response.status);
+    throw new APIError(data.error || "Request failed", response.status, data.code);
   return data;
 }

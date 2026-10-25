@@ -1,3 +1,4 @@
+import { serverURL } from "@hop/shared/platform";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@hop/shared/api";
 import { applyLargeText, languages, setLang, t, useLang } from "@hop/shared/i18n";
@@ -107,7 +108,7 @@ export default function CompanionPanel({
             <button
               onClick={async () => {
                 const out = await run(`/api/rides/${activeRide.id}/share`, {});
-                if (out?.path) setShareLink(location.origin + out.path);
+                if (out?.path) setShareLink(new URL(serverURL(out.path), location.origin).href);
               }}
             >
               {t("more.share")}

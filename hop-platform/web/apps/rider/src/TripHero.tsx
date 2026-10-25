@@ -1,3 +1,4 @@
+import { serverURL, shareTrip } from "@hop/shared/platform";
 import { useState } from "react";
 import { api } from "@hop/shared/api";
 import RideChat from "@hop/shared/RideChat";
@@ -30,10 +31,9 @@ export default function TripHero({ ride: r, notify }: { ride: Ride; notify: (s: 
   const share = async () => {
     try {
       const out = await api<{ path: string }>(`/api/rides/${r.id}/share`, {});
-      const url = location.origin + out.path;
+      const url = new URL(serverURL(out.path), location.origin).href;
       setLink(url);
-      if (navigator.share) await navigator.share({ title: "Follow my hop trip", url }).catch(() => undefined);
-      else await navigator.clipboard?.writeText(url).catch(() => undefined);
+      await shareTrip(url).catch(() => undefined);
       notify("Trip link ready to share");
     } catch (e) {
       notify((e as Error).message);

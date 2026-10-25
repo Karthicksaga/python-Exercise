@@ -498,7 +498,7 @@ func (s *Server) devDriverNearRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	lat, lng = lat+0.004, lng+0.003
-	tag, e := s.DB.Exec(r.Context(), "UPDATE drivers SET lat=$2,lng=$3,accuracy=10,location_at=now(),online=true WHERE user_id=$1 AND status='approved'", user(r).Account.ID, lat, lng)
+	tag, e := s.DB.Exec(r.Context(), "UPDATE drivers SET lat=$2,lng=$3,accuracy=10,location_at=now() WHERE user_id=$1 AND online AND status='approved'", user(r).Account.ID, lat, lng)
 	if e != nil || tag.RowsAffected() == 0 {
 		fail(w, 400, "Driver is not approved")
 		return

@@ -9,6 +9,7 @@ import (
 )
 
 type Config struct {
+	FCMServiceAccountFile                                                                                                                                                                  string
 	RiderOrigin, CaptainOrigin, AdminOrigin                                                                                                                                                string
 	VAPIDPublic, VAPIDPrivate, VAPIDSubject, Address, DatabaseURL, ListenURL, RedisURL, PublicOrigin, AllowedOrigins, Issuer, ClientID, ClientSecret, SessionKey, RoutingURL, GeocodingURL string
 	Development                                                                                                                                                                            bool
@@ -36,6 +37,7 @@ func ConfigFromEnv() (Config, error) {
 			return c, fmt.Errorf("app origins must be HTTPS origins without paths (HTTP allowed in development)")
 		}
 	}
+	c.FCMServiceAccountFile = os.Getenv("FCM_SERVICE_ACCOUNT_FILE")
 	c.SMSWebhookURL, c.SMSWebhookToken = os.Getenv("SMS_WEBHOOK_URL"), os.Getenv("SMS_WEBHOOK_TOKEN")
 	c.MSG91AuthKey, c.MSG91TemplateID = os.Getenv("MSG91_AUTH_KEY"), os.Getenv("MSG91_TEMPLATE_ID")
 	c.PaymentAPIURL, c.PaymentKeyID, c.PaymentKeySecret, c.PaymentWebhookKey = env("PAYMENT_API_URL", "https://api.razorpay.com/v1"), os.Getenv("PAYMENT_KEY_ID"), os.Getenv("PAYMENT_KEY_SECRET"), os.Getenv("PAYMENT_WEBHOOK_SECRET")

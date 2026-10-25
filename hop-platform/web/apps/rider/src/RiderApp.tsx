@@ -1,6 +1,6 @@
 import { ShareToggle } from "@hop/shared/SharedRide";
 import { useEffect, useRef, useState } from "react";
-import { api } from "@hop/shared/api";
+import { api, APIError } from "@hop/shared/api";
 import {
   active,
   money,
@@ -42,7 +42,7 @@ import { IconAlertTriangle } from "@tabler/icons-react";
 // The API rejects unknown fields, so strip extras such as hub notes before sending a place.
 const pt = (p: Point | null) => p && ({ lat: p.lat, lng: p.lng, label: p.label });
 
-// The rider app: booking, trips, wallet, safety and profile. Drivers use the captain app.
+// Rider access is available to every account, including approved drivers.
 export default function RiderApp() {
   useLang();
   const s = useSession();
@@ -51,6 +51,7 @@ export default function RiderApp() {
   const [extras, setExtras] = useState<BookingExtrasValue>({});
   const [gender, setGender] = useState("");
   const [logoutAsk, setLogoutAsk] = useState(false);
+  const [goOfflineAsk, setGoOfflineAsk] = useState(false);
   const [pink, setPink] = useState(false);
   const [share, setShare] = useState(false);
   const [routeIndex, setRouteIndex] = useState(0);
@@ -127,6 +128,7 @@ export default function RiderApp() {
   }, [user, area, pickup, dropoff, vehicleCategory, trip, promo, pink, routeIndex]);
   const areaVehicles = vehicles.filter((item) => item.area_id === area);
   const current = data.rides.find((r) => r.mine && active(r));
+  const drivingTrip = data.rides.find((r) => r.driving && active(r));
   useEffect(() => setRouteIndex(0), [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
   const prevRide = useRef<{ id: string; status: string } | null>(null);
   useEffect(() => {
@@ -169,8 +171,17 @@ export default function RiderApp() {
   const offerPaise = offer ? Math.round(Number(offer) * 100) : 0;
   const offerBad =
     !!offer && !!quote && (!(offerPaise > 0) || offerPaise < quote.fare_paise * 0.7 || offerPaise > quote.fare_paise * 1.5);
-  async function book() {
+  async function book(goOffline = false) {
     if (!quote) return;
+    if (drivingTrip) {
+      notify("Finish or cancel your driver trip in Captain before booking a ride.");
+      return;
+    }
+    if (!goOffline && data.driver.some(d => d.online)) {
+      setGoOfflineAsk(true);
+      return;
+    }
+    setGoOfflineAsk(false);
     setBusy(true);
     const body = bookingAttempt.current ?? {
       quote_id: quote.id,
@@ -182,7 +193,7 @@ export default function RiderApp() {
     };
     bookingAttempt.current = body;
     try {
-      await api("/api/rides", body);
+      await api("/api/rides", { ...body, ...(goOffline && { go_offline: true }) });
       setQuote(null);
       setStep("where");
       bookingAttempt.current = null;
@@ -190,6 +201,7 @@ export default function RiderApp() {
       showMoment({ vehicle: vehicleCategory, kind: "booked", title: "Ride requested!", sub: "Alerting drivers near you…" });
       notify("Ride requested. Waiting for a nearby approved driver.");
     } catch (e) {
+      if (e instanceof APIError && e.code === "driver_online") setGoOfflineAsk(true);
       notify((e as Error).message);
     } finally {
       setBusy(false);
@@ -248,12 +260,10 @@ export default function RiderApp() {
   function becomeDriver() {
     location.assign(import.meta.env.VITE_CAPTAIN_URL || "/captain");
   }
-  // Anyone with a driver profile uses the captain app.
-  const isDriver = data.driver.length > 0;
   const [locState, setLocState] = useState<"detecting" | "ready" | "unsupported" | "denied">("detecting");
   const [detectTick, setDetectTick] = useState(0);
   useEffect(() => {
-    if (!user || isDriver || !areas.length) return;
+    if (!user || !areas.length) return;
     if (!navigator.geolocation) return setLocState("denied");
     let live = true;
     setLocState("detecting");
@@ -279,13 +289,13 @@ export default function RiderApp() {
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isDriver, areas, detectTick]);
+  }, [user?.id, areas, detectTick]);
   const choosePickup = (point: Point | null) => {
     setFollowGps(false);
     setPickup(point);
   };
   const gps = useLivePickup(
-    Boolean(user) && tab === "ride" && followGps && !isDriver && locState === "ready",
+    Boolean(user) && tab === "ride" && followGps && locState === "ready",
     areas.find((item) => item.id === area),
     setPickup,
   );
@@ -293,9 +303,6 @@ export default function RiderApp() {
   useEffect(() => {
     if (isOperator) location.replace(import.meta.env.VITE_ADMIN_URL || "/admin");
   }, [isOperator]);
-  useEffect(() => {
-    if (stateReady && isDriver) location.replace(import.meta.env.VITE_CAPTAIN_URL || "/captain");
-  }, [stateReady, isDriver]);
   const navItems: string[][] = [
     ["ride", t("nav.ride")],
     ["history", t("nav.history")],
@@ -320,7 +327,7 @@ export default function RiderApp() {
           <button type="button" className="theme-toggle" onClick={toggleDark} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} title={dark ? "Light mode" : "Dark mode"}>
             <span className="emoji-keep">{dark ? "☀️" : "🌙"}</span>
           </button>
-          <span className="commission">0% commission</span>
+          <span className="commission">Everyday rides</span>
           {user && (
             <span className={"live-pill" + (live ? " on" : "")} title={live ? "Real-time updates connected" : "Reconnecting…"}>
               <i /> {live ? "Live" : "Connecting"}
@@ -349,6 +356,7 @@ export default function RiderApp() {
           </div>
         )}
         <Toast notice={notice} onClose={() => setNotice("")} />
+        {user && drivingTrip && <Alert color="yellow">You’re driving a trip. Finish or cancel it in Captain before booking a ride here.</Alert>}
         {loading || (user && !stateReady) ? (
           <PageLoader label="Connecting to hop…" />
         ) : !user ? (
@@ -807,7 +815,7 @@ export default function RiderApp() {
                             disabled={
                               busy || (!share && offerBad) || Date.parse(quote.expires_at) <= now
                             }
-                            onClick={book}
+                            onClick={() => void book()}
                           >
                             {busy
                               ? "Requesting…"
@@ -859,7 +867,7 @@ export default function RiderApp() {
                     <ol>
                       <li><b>Know your fare</b><span>Route and price shown before you book.</span></li>
                       <li><b>Meet with confidence</b><span>Check the vehicle, share your pickup code in person.</span></li>
-                      <li><b>Pay your way</b><span>Cash, UPI or online. Zero platform commission.</span></li>
+                      <li><b>Pay your way</b><span>Choose an available payment method for your trip.</span></li>
                     </ol>
                   </div>
                   <div className="safety-note">
@@ -957,6 +965,15 @@ export default function RiderApp() {
         )}
         {signingOut && <PageLoader overlay label="Signing you out…" />}
         <RideMoment />
+        <Modal opened={goOfflineAsk} onClose={() => !busy && setGoOfflineAsk(false)} title="Go offline and book a ride?" centered radius="lg">
+          <Stack gap="sm">
+            <Text>You’re online in Captain. Booking this ride will take you offline so you won’t receive driver requests. You can go online again after your rider trip ends.</Text>
+            <Group grow>
+              <Button variant="default" disabled={busy} onClick={() => setGoOfflineAsk(false)}>Keep driving</Button>
+              <Button loading={busy} onClick={() => void book(true)}>Go offline and book</Button>
+            </Group>
+          </Stack>
+        </Modal>
         <Modal opened={logoutAsk} onClose={() => setLogoutAsk(false)} title="Sign out of hop?" centered radius="lg">
           <Stack gap="sm">
             {current && <Alert color="yellow" icon={<IconAlertTriangle size={16} />}>You have a ride in progress. It keeps running, but you won't see live updates or driver messages until you sign in again.</Alert>}
@@ -969,7 +986,7 @@ export default function RiderApp() {
         </Modal>
         <footer>
           <strong>hop</strong>
-          <span>India · Cash, UPI & online · Zero platform commission</span>
+          <span>Plan your trip. Follow your ride.</span>
         </footer>
       </main>
     </div>

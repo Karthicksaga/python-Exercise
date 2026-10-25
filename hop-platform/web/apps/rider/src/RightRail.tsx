@@ -1,5 +1,5 @@
 import { Badge, Card, Group, Stack, Text, ThemeIcon, UnstyledButton } from "@mantine/core";
-import { IconClockHour4, IconHeartHandshake, IconMapPin, IconShieldCheck, IconStar } from "@tabler/icons-react";
+import { IconClockHour4, IconMapPin, IconShieldCheck, IconStar } from "@tabler/icons-react";
 import { money, type Ride } from "@hop/shared/types";
 
 type Place = { lat: number; lng: number; label: string };
@@ -46,8 +46,8 @@ export default function RightRail({
         <Stack gap="sm">
           {[
             [IconShieldCheck, "Verified drivers", "Vehicle and licence checked before approval."],
-            [IconHeartHandshake, "Zero commission", "Drivers keep every rupee of the fare."],
-            [IconStar, "Upfront fares", "Route and price shown before you book."],
+            [IconMapPin, "Trip tracking", "Follow your ride and share trip details with someone you trust."],
+            [IconStar, "Fare estimates", "Review your route and estimated fare before requesting a ride."],
           ].map(([Icon, title, text], i) => {
             const I = Icon as typeof IconStar;
             return (

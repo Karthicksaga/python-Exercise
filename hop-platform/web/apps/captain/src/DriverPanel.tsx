@@ -1,3 +1,5 @@
+import { isAndroid, startTracking, stopTracking } from "@hop/shared/platform";
+import { getCSRF } from "@hop/shared/api";
 import { applicationProblem, today } from "@hop/shared/validate";
 import { driverAlert, goOfflineSound, goOnlineSound } from "@hop/shared/sounds";
 import { useEffect, useRef, useState } from "react";
@@ -158,6 +160,12 @@ export default function DriverPanel({
       setSharing(true);
     }
   }, [d?.online, d?.status]);
+  useEffect(() => {
+    if (d && !d.online) {
+      setSharing(false);
+      void stopTracking();
+    }
+  }, [d?.online]);
   simRef.current =
     development && simulate && Number.isFinite(Number(simLat)) && Number.isFinite(Number(simLng))
       ? { lat: Number(simLat), lng: Number(simLng) }
@@ -193,6 +201,15 @@ export default function DriverPanel({
       document.removeEventListener("visibilitychange", visible);
     };
   }, [d?.user_id]);
+  useEffect(() => {
+    if (!isAndroid) return;
+    if (!sharing) { void stopTracking(); return; }
+    let cancelled = false;
+    void startTracking(getCSRF()).then(() => {
+      if (cancelled) void stopTracking();
+    }).catch(e => { if (!cancelled) { setLocationStatus((e as Error).message); setSharing(false); void api("/api/drivers/offline", {}).catch(() => {}); } });
+    return () => { cancelled = true; };
+  }, [sharing]);
   useEffect(() => {
     if (!sharing) return;
     let cancelled = false;
@@ -449,17 +466,30 @@ export default function DriverPanel({
               role="switch"
               aria-checked={sharing}
               className={"duty-switch" + (burst ? " burst-" + burst : "")}
-              disabled={Boolean(current && current.status !== "requested")}
-              onClick={() => {
-                setBurst(sharing ? "off" : "on");
-                if (sharing) goOfflineSound(); else goOnlineSound();
-                setTimeout(() => setBurst(""), 900);
+              disabled={busy || Boolean(current && current.status !== "requested")}
+              onClick={async () => {
+                if (busy) return;
+                if (!sharing && data.rides.some(r => r.mine && active(r))) {
+                  notify("Finish or cancel your rider trip before going online.");
+                  return;
+                }
                 if (!simRef.current && !navigator.geolocation) {
                   notify("This browser does not support location.");
                   return;
                 }
-                if (sharing) void api("/api/drivers/offline", {}).catch(() => {});
-                setSharing(!sharing);
+                setBusy(true);
+                try {
+                  await api(sharing ? "/api/drivers/offline" : "/api/drivers/online", {});
+                  setBurst(sharing ? "off" : "on");
+                  if (sharing) goOfflineSound(); else goOnlineSound();
+                  setTimeout(() => setBurst(""), 900);
+                  setSharing(!sharing);
+                  await refresh();
+                } catch (e) {
+                  notify((e as Error).message);
+                } finally {
+                  setBusy(false);
+                }
               }}
             >
               <span className="duty-knob" />

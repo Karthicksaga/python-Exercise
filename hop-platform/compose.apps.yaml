@@ -37,7 +37,7 @@ services:
       dockerfile: Dockerfile.web
       args:
         HOP_APP: rider
-        VITE_MAP_PROVIDER: ${RIDER_MAP_PROVIDER:-osm}
+        VITE_MAP_PROVIDER: ${RIDER_MAP_PROVIDER:-google}
         VITE_GOOGLE_MAPS_API_KEY: ${RIDER_GOOGLE_MAPS_API_KEY:-}
         VITE_GOOGLE_MAP_ID: ${RIDER_GOOGLE_MAP_ID:-}
         VITE_RIDER_URL: http://localhost:5273
@@ -52,7 +52,7 @@ services:
       dockerfile: Dockerfile.web
       args:
         HOP_APP: captain
-        VITE_MAP_PROVIDER: ${CAPTAIN_MAP_PROVIDER:-osm}
+        VITE_MAP_PROVIDER: ${CAPTAIN_MAP_PROVIDER:-google}
         VITE_GOOGLE_MAPS_API_KEY: ${CAPTAIN_GOOGLE_MAPS_API_KEY:-}
         VITE_GOOGLE_MAP_ID: ${CAPTAIN_GOOGLE_MAP_ID:-}
         VITE_RIDER_URL: http://localhost:5273

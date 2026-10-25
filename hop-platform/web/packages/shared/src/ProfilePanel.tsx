@@ -1,3 +1,4 @@
+import { serverFetch, isAndroid, nativeExport } from "./platform";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import { getLang, languages, setLang } from "./i18n";
@@ -121,8 +122,9 @@ export default function ProfilePanel(p: Props) {
     }
   }
   async function download() {
-    const res = await fetch("/api/profile/export", { credentials: "same-origin" });
+    const res = await serverFetch("/api/profile/export", { credentials: "same-origin" });
     if (!res.ok) return p.notify("Could not export your data right now.");
+    if (isAndroid) { await nativeExport(await res.json()); return; }
     const url = URL.createObjectURL(await res.blob());
     const a = Object.assign(document.createElement("a"), { href: url, download: "hop-my-data.json" });
     a.click();
@@ -265,7 +267,7 @@ export default function ProfilePanel(p: Props) {
         <section className="panel become-driver inset">
           <div>
             <strong>Drive with Hop</strong>
-            <p className="muted">Keep 100% of every fare. Register your vehicle and start taking rides.</p>
+            <p className="muted">Register your vehicle and apply to drive with Hop.</p>
           </div>
           <button type="button" className="secondary" onClick={p.becomeDriver}>Become a driver</button>
         </section>

@@ -127,6 +127,19 @@ func (s *Server) dispatchOne(ctx context.Context, d dueSchedule) error {
 		return e
 	}
 	defer tx.Rollback(ctx)
+	if e = lockJourney(ctx, tx, d.Rider); e != nil {
+		return e
+	}
+	var driving bool
+	if e = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM drivers WHERE user_id=$1 AND online)
+ OR EXISTS(SELECT 1 FROM rides WHERE driver_id=$1 AND status IN ('accepted','arrived','in_progress'))`, d.Rider).Scan(&driving); e != nil {
+		return e
+	}
+	if driving {
+		// Keep the schedule pending within its existing dispatch window. Never switch
+		// a working driver offline or create a conflicting passenger trip silently.
+		return nil
+	}
 	if e = expire(ctx, tx, d.Rider); e != nil {
 		return e
 	}

@@ -34,13 +34,13 @@ var offerFrom = `
  FROM rides r JOIN quotes q ON q.id=r.quote_id JOIN areas a ON a.id=q.area_id JOIN drivers d ON d.user_id=$1
  WHERE r.status='requested' AND r.expires_at>now() AND r.rider_id<>$1 AND r.share_state<>'waiting' AND (r.group_id IS NULL OR r.group_leader) AND d.status='approved' AND d.online AND a.active AND d.area_id=q.area_id AND d.vehicle_category=q.vehicle_category
  AND d.license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND d.insurance_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND d.location_at>now()-interval '60 seconds'
- AND (r.payment_method<>'upi' OR d.upi_id<>'') AND COALESCE(r.offered_fare_paise,q.fare_paise)+`+groupFareExtra+`>=d.minimum_fare_paise
+ AND (r.payment_method<>'upi' OR d.upi_id<>'') AND COALESCE(r.offered_fare_paise,q.fare_paise)+` + groupFareExtra + `>=d.minimum_fare_paise
  AND (r.favorite_first_until IS NULL OR r.favorite_first_until<=now() OR EXISTS(SELECT 1 FROM favorite_drivers f WHERE f.rider_id=r.rider_id AND f.driver_id=d.user_id))
  AND (r.reserved_until IS NULL OR r.reserved_until<=now() OR r.reserved_driver_id=d.user_id)
  AND (r.reserved_driver_id=d.user_id OR EXISTS(SELECT 1 FROM ride_offers o WHERE o.ride_id=r.id AND o.driver_id=d.user_id))
  AND 6371000*acos(least(1,greatest(-1,sin(radians(d.lat))*sin(radians(q.pickup_lat))+cos(radians(d.lat))*cos(radians(q.pickup_lat))*cos(radians(d.lng-q.pickup_lng)))))<=d.pickup_radius_meters
  AND NOT EXISTS(SELECT 1 FROM ride_declines dc WHERE dc.ride_id=r.id AND dc.driver_id=d.user_id)
- AND NOT EXISTS(SELECT 1 FROM rides busy WHERE busy.driver_id=d.user_id AND busy.status IN ('accepted','arrived','in_progress'))` + goHomeFilter
+ AND NOT EXISTS(SELECT 1 FROM rides busy WHERE busy.driver_id=d.user_id AND busy.status IN ('accepted','arrived','in_progress'))` + riderBusyFilter + goHomeFilter
 
 func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 	uid := user(r).Account.ID
@@ -146,6 +146,7 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 		FavoriteFirst  bool   `json:"favorite_first"`
 		OfferPaise     *int64 `json:"offer_paise"`
 		Share          bool   `json:"share"`
+		GoOffline      bool   `json:"go_offline"`
 	}
 	if !decode(w, r, &input) {
 		return
@@ -183,6 +184,10 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(ctx)
+	if e = lockJourney(ctx, tx, uid); e != nil {
+		dbError(w, e)
+		return
+	}
 	// Lock the rider before checking idempotency so concurrent retried requests have the same result.
 	var lock string
 	e = tx.QueryRow(ctx, "SELECT id FROM accounts WHERE id=$1 FOR UPDATE", uid).Scan(&lock)
@@ -201,6 +206,23 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !errors.Is(e, pgx.ErrNoRows) {
+		dbError(w, e)
+		return
+	}
+	var driving, online bool
+	if e = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM rides WHERE driver_id=$1 AND status IN ('accepted','arrived','in_progress')), EXISTS(SELECT 1 FROM drivers WHERE user_id=$1 AND online)", uid).Scan(&driving, &online); e != nil {
+		dbError(w, e)
+		return
+	}
+	if driving {
+		fail(w, 409, "Finish or cancel your driver trip in Captain before booking a ride")
+		return
+	}
+	if online && !input.GoOffline {
+		write(w, 409, map[string]string{"error": "Go offline in Captain before booking a ride", "code": "driver_online"})
+		return
+	}
+	if _, e = tx.Exec(ctx, "UPDATE drivers SET online=false,updated_at=now() WHERE user_id=$1 AND online", uid); e != nil {
 		dbError(w, e)
 		return
 	}
@@ -301,6 +323,8 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// Remove supply while the transition lock is held, before new location pings can run.
+	s.dropLive(ctx, uid)
 	if e = tx.Commit(ctx); e != nil {
 		dbError(w, e)
 		return
@@ -347,6 +371,19 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(ctx)
+	if input.Action == "accept" {
+		if e = lockJourney(ctx, tx, uid); e != nil {
+			dbError(w, e)
+			return
+		}
+		if riding, err := ridingNow(ctx, tx, uid); err != nil {
+			dbError(w, err)
+			return
+		} else if riding {
+			fail(w, 409, "Finish or cancel your rider trip before accepting driver requests")
+			return
+		}
+	}
 	var rider, driver, status, area, payment, category string
 	var version, attempts, pickupRadius int
 	var rideFare int64

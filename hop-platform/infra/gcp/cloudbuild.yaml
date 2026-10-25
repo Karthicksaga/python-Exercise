@@ -1,0 +1,18 @@
+# Run from hop-platform; deploy.py supplies only non-secret substitutions.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: [build, -f, Dockerfile.api, -t, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/api:${_REVISION}', .]
+  - name: gcr.io/cloud-builders/docker
+    args: [build, -f, Dockerfile.web, --build-arg, HOP_APP=rider, --build-arg, VITE_MAP_PROVIDER=google, --build-arg, 'VITE_GOOGLE_MAPS_API_KEY=${_RIDER_GOOGLE_MAPS_API_KEY}', --build-arg, 'VITE_GOOGLE_MAP_ID=${_RIDER_GOOGLE_MAP_ID}', --build-arg, 'VITE_RIDER_URL=${_RIDER_ORIGIN}', --build-arg, 'VITE_CAPTAIN_URL=${_CAPTAIN_ORIGIN}', --build-arg, 'VITE_ADMIN_URL=${_ADMIN_ORIGIN}', -t, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/rider:${_REVISION}', .]
+  - name: gcr.io/cloud-builders/docker
+    args: [build, -f, Dockerfile.web, --build-arg, HOP_APP=captain, --build-arg, VITE_MAP_PROVIDER=google, --build-arg, 'VITE_GOOGLE_MAPS_API_KEY=${_CAPTAIN_GOOGLE_MAPS_API_KEY}', --build-arg, 'VITE_GOOGLE_MAP_ID=${_CAPTAIN_GOOGLE_MAP_ID}', --build-arg, 'VITE_RIDER_URL=${_RIDER_ORIGIN}', --build-arg, 'VITE_CAPTAIN_URL=${_CAPTAIN_ORIGIN}', --build-arg, 'VITE_ADMIN_URL=${_ADMIN_ORIGIN}', -t, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/captain:${_REVISION}', .]
+  - name: gcr.io/cloud-builders/docker
+    args: [build, -f, Dockerfile.web, --build-arg, HOP_APP=admin, --build-arg, VITE_MAP_PROVIDER=osm, --build-arg, 'VITE_RIDER_URL=${_RIDER_ORIGIN}', --build-arg, 'VITE_CAPTAIN_URL=${_CAPTAIN_ORIGIN}', --build-arg, 'VITE_ADMIN_URL=${_ADMIN_ORIGIN}', -t, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/admin:${_REVISION}', .]
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/api:${_REVISION}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/rider:${_REVISION}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/captain:${_REVISION}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/admin:${_REVISION}'
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1800s

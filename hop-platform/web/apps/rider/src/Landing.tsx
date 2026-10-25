@@ -5,17 +5,17 @@ import PhoneLogin from "@hop/shared/PhoneLogin";
 import VehicleArt from "@hop/shared/VehicleArt";
 
 const rides = [
-  { id: "bike", name: "Bike", note: "Beat the traffic", from: 25 },
-  { id: "auto", name: "Auto", note: "Everyday city hops", from: 40 },
-  { id: "mini", name: "Mini cab", note: "Compact AC", from: 60 },
-  { id: "sedan", name: "Sedan", note: "Comfort for 4", from: 80 },
-  { id: "suv", name: "SUV", note: "Room for 6", from: 120 },
+  { id: "bike", name: "Bike", note: "Beat the traffic" },
+  { id: "auto", name: "Auto", note: "Everyday city hops" },
+  { id: "mini", name: "Mini cab", note: "Compact AC" },
+  { id: "sedan", name: "Sedan", note: "Comfort for 4" },
+  { id: "suv", name: "SUV", note: "Room for 6" },
 ];
 
 const perks: [string, string, string][] = [
-  ["tag", "Upfront fares", "See the route and price before you book. No surprises at the end."],
+  ["tag", "Clear fare estimates", "Review the route and estimated fare before requesting a ride."],
   ["shield", "Verified drivers", "Checked drivers and vehicles, a pickup PIN and one-tap SOS."],
-  ["wallet", "Pay your way", "Cash, UPI, wallet or card, straight to your driver."],
+  ["wallet", "Payment options", "Choose from the payment options available for your trip."],
 ];
 
 const steps = [
@@ -30,20 +30,20 @@ export default function Landing({ phoneLogin }: { phoneLogin: boolean }) {
     <div className="lp">
       <section className="lp-hero">
         <div className="lp-copy">
-          <span className="chip">0% commission · fair for drivers and riders</span>
+          <span className="chip">Everyday rides, made simple</span>
           <h1>
-            Go anywhere.
+            Your next stop.
             <br />
-            <em>Keep every rupee fair.</em>
+            <em>A simpler ride.</em>
           </h1>
           <p className="intro-copy">
-            Bikes, autos and cabs with upfront fares and verified drivers. Rent by the hour,
-            travel outstation or negotiate your fare.
+            Choose a bike, auto or cab. Review your fare, confirm your pickup
+            and follow your trip in the app.
           </p>
           <ul className="lp-trust">
             <li><Icon name="shield" size={18} /> Verified drivers</li>
-            <li><Icon name="tag" size={18} /> Upfront fares</li>
-            <li><Icon name="wallet" size={18} /> Cash, UPI or card</li>
+            <li><Icon name="tag" size={18} /> Fare estimates</li>
+            <li><Icon name="pin" size={18} /> Trip tracking</li>
           </ul>
         </div>
         {going && <PageLoader overlay label={going} />}
@@ -59,19 +59,18 @@ export default function Landing({ phoneLogin }: { phoneLogin: boolean }) {
               <PhoneLogin onSignedIn={() => { setGoing("Signing you in…"); window.location.reload(); }} />
             </>
           )}
-          <p className="lp-fine">Drivers and riders use the same sign in.</p>
+          <p className="lp-fine">Sign in to book and manage your rides.</p>
         </div>
       </section>
 
       <section className="lp-section">
-        <h2>Every ride, one app</h2>
+        <h2>Find a ride for your day</h2>
         <div className="lp-rides">
           {rides.map((r) => (
             <div className="lp-ride" key={r.id}>
               <VehicleArt category={r.id} width={96} />
               <b>{r.name}</b>
               <small>{r.note}</small>
-              <span>from ₹{r.from}</span>
             </div>
           ))}
         </div>

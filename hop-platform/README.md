@@ -134,3 +134,7 @@ The code stack uses open-source components. Hosting, identity delivery, routing 
 ## Independent app deployments
 
 See [separate deployments](docs/SEPARATE-DEPLOYMENTS.md) for the common API and independently built rider, captain and admin containers, app-specific authentication callbacks, local Docker configuration and shared package ownership.
+
+## Android apps
+
+The rider and captain React UIs also build as separate Capacitor Android apps. See [Android setup and verification](docs/ANDROID.md) for APK builds, device connectivity, native login, foreground tracking, Firebase and release configuration.

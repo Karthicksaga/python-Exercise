@@ -13,3 +13,23 @@ test-results/
 build-output/
 
 !.env.development
+
+# Android source configuration (local overrides and signing stay private).
+!.env.android
+!.env.android.example
+**/google-services.json
+*firebase*.json
+firebase-key.json
+*.jks
+*.keystore
+
+# Local deployment configuration and Python tooling caches.
+infra/gcp/deploy.local.json
+__pycache__/
+
+# Android build outputs and caches
+.gradle/
+**/build/
+.idea/
+*.apk
+*.aab

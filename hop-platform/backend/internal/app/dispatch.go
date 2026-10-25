@@ -33,13 +33,13 @@ var candidateSQL = `SELECT d.user_id::text, c.dist,
  AND d.lat BETWEEN q.pickup_lat-$3::float8/111320.0 AND q.pickup_lat+$3::float8/111320.0
  AND d.lng BETWEEN q.pickup_lng-$3::float8/(111320.0*cos(radians(q.pickup_lat))) AND q.pickup_lng+$3::float8/(111320.0*cos(radians(q.pickup_lat)))
  AND d.license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND d.insurance_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND d.location_at>now()-interval '60 seconds'
- AND (r.payment_method<>'upi' OR d.upi_id<>'') AND COALESCE(r.offered_fare_paise,q.fare_paise)+`+groupFareExtra+`>=d.minimum_fare_paise
+ AND (r.payment_method<>'upi' OR d.upi_id<>'') AND COALESCE(r.offered_fare_paise,q.fare_paise)+` + groupFareExtra + `>=d.minimum_fare_paise
  AND (r.favorite_first_until IS NULL OR r.favorite_first_until<=now() OR EXISTS(SELECT 1 FROM favorite_drivers f WHERE f.rider_id=r.rider_id AND f.driver_id=d.user_id))
  AND (r.reserved_until IS NULL OR r.reserved_until<=now() OR r.reserved_driver_id=d.user_id)
  AND NOT EXISTS(SELECT 1 FROM rides busy WHERE busy.driver_id=d.user_id AND busy.status IN ('accepted','arrived','in_progress'))
  AND NOT EXISTS(SELECT 1 FROM ride_offers o WHERE o.ride_id=r.id AND o.driver_id=d.user_id)
  AND c.dist<=LEAST(d.pickup_radius_meters,$2::float8)
- AND ($5::uuid[] IS NULL OR d.user_id=ANY($5::uuid[]))`+goHomeFilter+`
+ AND ($5::uuid[] IS NULL OR d.user_id=ANY($5::uuid[]))` + riderBusyFilter + goHomeFilter + `
  ORDER BY score LIMIT $4::int`
 
 const (

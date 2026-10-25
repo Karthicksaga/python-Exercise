@@ -5,11 +5,11 @@ import VehicleArt from "@hop/shared/VehicleArt";
 
 const vehicles: [string, string][] = [["bike", "Bike"], ["auto", "Auto"], ["mini", "Mini cab"], ["sedan", "Sedan"], ["suv", "SUV"]];
 const perks: [string, string, string][] = [
-  ["₹0", "Commission", "Keep 100% of every fare. hop never takes a cut."],
-  ["You", "Set the rules", "Choose your pickup radius, minimum fare and the way home."],
-  ["Same day", "Direct payment", "Cash or UPI goes straight to you from the rider."],
+  ["Your time", "Choose when to drive", "Go online when you’re ready and offline when you need a break."],
+  ["Your choice", "Review ride requests", "Check the pickup, destination and fare before accepting."],
+  ["One place", "Keep track of trips", "View your trip history and earnings in the app."],
 ];
-const steps = ["Sign in with your mobile number", "Add your licence, RC and insurance", "Get approved, go online and drive"];
+const steps = ["Sign in to your account", "Add your licence, RC and insurance", "Get approved, go online and drive"];
 
 export default function CaptainLanding({ phoneLogin }: { phoneLogin: boolean }) {
   const [going, setGoing] = useState("");
@@ -18,8 +18,8 @@ export default function CaptainLanding({ phoneLogin }: { phoneLogin: boolean }) 
       <section className="cl-hero">
         <div className="cl-copy">
           <span className="cl-tag">hop Captain</span>
-          <h1>Drive.<br /><em>Keep every rupee.</em></h1>
-          <p>Zero commission, fair ride matching and tools built for the road: hot-zones, go-home mode and daily goals.</p>
+          <h1>Your day.<br /><em>Your next ride.</em></h1>
+          <p>Go online, review nearby ride requests and manage your trips with tools built for your day on the road.</p>
           <div className="cl-fleet">
             {vehicles.map(([id, name]) => (
               <div key={id}><VehicleArt category={id} width={64} /><small>{name}</small></div>
@@ -29,7 +29,7 @@ export default function CaptainLanding({ phoneLogin }: { phoneLogin: boolean }) 
         {going && <PageLoader overlay label={going} />}
         <div className="cl-card">
           <span className="cl-tag dark">Captain sign in</span>
-          <h2>Start earning today</h2>
+          <h2>Sign in to drive</h2>
           <a className="button full" href="/auth/login" onClick={() => setGoing("Taking you to sign in…")}>Continue with your account</a>
           {phoneLogin && (
             <>
@@ -46,7 +46,7 @@ export default function CaptainLanding({ phoneLogin }: { phoneLogin: boolean }) 
         ))}
       </section>
       <section className="cl-steps">
-        <h2>Get on the road in 3 steps</h2>
+        <h2>How to get started</h2>
         <ol>{steps.map((s, i) => <li key={s}><span>{i + 1}</span>{s}</li>)}</ol>
       </section>
     </div>
