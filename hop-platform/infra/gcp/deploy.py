@@ -100,9 +100,13 @@ def deploy(c, revision):
     with tempfile.TemporaryDirectory(prefix="hop-deploy-") as directory:
         env_file = Path(directory) / "api-env.json"
         env_file.write_text(json.dumps(env))
+        low_cost = bool(c.get("low_cost", False))
         run(["run", "deploy", c["service_prefix"] + "-api", "--image=" + images["api"],
              "--service-account=" + c["runtime_service_account"], "--port=8080",
-             "--allow-unauthenticated", "--no-cpu-throttling", "--min-instances=1", "--max-instances=1",
+             "--allow-unauthenticated",
+             "--cpu-throttling" if low_cost else "--no-cpu-throttling",
+             "--min-instances=0" if low_cost else "--min-instances=1",
+             "--max-instances=2" if low_cost else "--max-instances=1",
              "--memory=512Mi", "--cpu=1", "--timeout=3600",
              "--add-cloudsql-instances=" + c["cloud_sql_instance"],
              "--vpc-connector=" + c["vpc_connector"], "--vpc-egress=private-ranges-only",
