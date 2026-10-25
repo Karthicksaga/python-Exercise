@@ -112,12 +112,15 @@ def setup_vpc_connector(project: str, region: str, connector: str):
     if code == 0:
         print_ok(f"VPC connector '{connector}' already exists")
     else:
-        print("Creating VPC connector (this may take 2-3 minutes)...")
+        print("Creating VPC connector (e2-micro, min 2 instances)...")
         gcloud([
             "compute", "networks", "vpc-access", "connectors", "create", connector,
             "--region", region,
             "--range", "10.8.0.0/28",
             "--network", "default",
+            "--min-instances", "2",
+            "--max-instances", "3",
+            "--machine-type", "e2-micro",
             "--project", project,
         ], check=True, capture=False)
         print_ok(f"VPC connector '{connector}' created")
@@ -134,11 +137,14 @@ def setup_cloud_sql(project: str, region: str, instance: str, db_name: str, db_u
     if code == 0:
         print_ok(f"Cloud SQL instance '{instance}' already exists ({conn_name})")
     else:
-        print("Creating Cloud SQL instance (db-f1-micro, this may take 3-5 minutes)...")
+        print("Creating Cloud SQL instance (db-f1-micro, 10 GB SSD, this may take 3-5 minutes)...")
         gcloud([
             "sql", "instances", "create", instance,
             "--database-version", "POSTGRES_17",
             "--tier", "db-f1-micro",
+            "--storage-size", "10",
+            "--storage-type", "SSD",
+            "--no-storage-auto-increase",
             "--region", region,
             "--project", project,
             "--backup-start-time", "02:00",
