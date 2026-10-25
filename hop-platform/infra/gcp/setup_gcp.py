@@ -24,8 +24,8 @@ import time
 from pathlib import Path
 from urllib.parse import quote
 
-ROOT = Path(__file__).resolve().parents[2]
-GCP_DIR = ROOT / "hop-platform" / "infra" / "gcp"
+GCP_DIR = Path(__file__).resolve().parent
+ROOT = GCP_DIR.parents[1]
 
 REQUIRED_APIS = [
     "run.googleapis.com",
@@ -90,6 +90,46 @@ def check_auth():
     print_ok(f"Authenticated as: {active_account}")
 
 
+def check_billing(project: str):
+    print_step("Checking Google Cloud billing status")
+    code, out = gcloud(["billing", "projects", "describe", project, "--format=json"], check=False)
+    if code == 0:
+        try:
+            info = json.loads(out)
+            if info.get("billingEnabled"):
+                print_ok("Billing is enabled for project")
+                return
+        except Exception:
+            pass
+
+    print_warn(f"Billing is NOT enabled for project '{project}'.")
+    code, out = gcloud(["billing", "accounts", "list", "--filter=open=true", "--format=json"], check=False)
+    accounts = []
+    if code == 0:
+        try:
+            accounts = json.loads(out)
+        except Exception:
+            pass
+
+    if accounts:
+        acct_id = accounts[0].get("name", "").split("/")[-1] or accounts[0].get("account_id")
+        acct_name = accounts[0].get("displayName") or accounts[0].get("name")
+        print(f"  Found open billing account: {acct_name} ({acct_id})")
+        print(f"  Linking billing account to project '{project}'...")
+        link_code, link_out = gcloud(["billing", "projects", "link", project, "--billing-account", acct_id], check=False)
+        if link_code == 0:
+            print_ok(f"Linked billing account '{acct_id}' to project '{project}'")
+            return
+        else:
+            print_warn(f"Could not automatically link billing account: {link_out}")
+
+    print("\n\033[31mAction Required: Link a Billing Account to your GCP Project\033[0m", file=sys.stderr)
+    print(f"Visit: https://console.cloud.google.com/billing/linkedaccount?project={project}", file=sys.stderr)
+    print("Or run:", file=sys.stderr)
+    print(f"  gcloud billing projects link {project} --billing-account <BILLING_ACCOUNT_ID>\n", file=sys.stderr)
+    sys.exit(1)
+
+
 def enable_apis(project: str):
     print_step("Enabling required Google Cloud APIs")
     gcloud(["services", "enable", *REQUIRED_APIS, "--project", project], check=True, capture=False)
@@ -141,6 +181,7 @@ def setup_cloud_sql(project: str, region: str, instance: str, db_name: str, db_u
         gcloud([
             "sql", "instances", "create", instance,
             "--database-version", "POSTGRES_17",
+            "--edition", "ENTERPRISE",
             "--tier", "db-f1-micro",
             "--storage-size", "10",
             "--storage-type", "SSD",
@@ -298,7 +339,7 @@ def setup_service_accounts(project: str) -> dict[str, str]:
     return sa_emails
 
 
-def store_secret(project: str, name: str, data: str, sa_api_email: str):
+def store_secret(project: str, name: str, data: str, sa_api_email: str) -> str:
     code, _ = gcloud(["secrets", "describe", name, "--project", project], check=False)
     if code != 0:
         run_cmd(["gcloud", "secrets", "create", name, "--replication-policy", "automatic", "--project", project], check=True)
@@ -311,7 +352,11 @@ def store_secret(project: str, name: str, data: str, sa_api_email: str):
 
     # Grant read permission to hop-api
     gcloud(["secrets", "add-iam-policy-binding", name, "--member", f"serviceAccount:{sa_api_email}", "--role", "roles/secretmanager.secretAccessor", "--project", project, "--quiet"], check=True)
-    print_ok(f"Secret '{name}:1' stored & granted to {sa_api_email}")
+    _, out = gcloud(["secrets", "versions", "list", name, "--project", project, "--format=value(name)", "--limit=1"], check=True)
+    version = out.strip()
+    ref = f"{name}:{version}"
+    print_ok(f"Secret '{ref}' stored & granted to {sa_api_email}")
+    return ref
 
 
 def precreate_cloud_run_origins(project: str, region: str, prefix: str, sa_web: str) -> dict[str, str]:
@@ -379,6 +424,7 @@ def main():
     # 1. Auth & set project
     check_auth()
     gcloud(["config", "set", "project", project], check=True)
+    check_billing(project)
 
     # 2. APIs
     enable_apis(project)
@@ -408,10 +454,10 @@ def main():
     session_key = secrets.token_hex(32)
     oidc_secret = secrets.token_urlsafe(32)
 
-    store_secret(project, "hop-db-url", db_dsn, sa_emails["api"])
-    store_secret(project, "hop-redis-url", redis_url, sa_emails["api"])
-    store_secret(project, "hop-session-key", session_key, sa_emails["api"])
-    store_secret(project, "hop-oidc-secret", oidc_secret, sa_emails["api"])
+    sec_db = store_secret(project, "hop-db-url", db_dsn, sa_emails["api"])
+    sec_redis = store_secret(project, "hop-redis-url", redis_url, sa_emails["api"])
+    sec_session = store_secret(project, "hop-session-key", session_key, sa_emails["api"])
+    sec_oidc = store_secret(project, "hop-oidc-secret", oidc_secret, sa_emails["api"])
 
     # 9. Cloud Run Origins
     origins = precreate_cloud_run_origins(project, region, prefix, sa_emails["web"])
@@ -441,10 +487,10 @@ def main():
             "GEOCODING_URL": f"{origins['rider']}/geocoding",
         },
         "api_secrets": {
-            "DATABASE_URL": "hop-db-url:1",
-            "REDIS_URL": "hop-redis-url:1",
-            "SESSION_KEY": "hop-session-key:1",
-            "OIDC_CLIENT_SECRET": "hop-oidc-secret:1",
+            "DATABASE_URL": sec_db,
+            "REDIS_URL": sec_redis,
+            "SESSION_KEY": sec_session,
+            "OIDC_CLIENT_SECRET": sec_oidc,
         },
         "fcm_secret": "",
     }
