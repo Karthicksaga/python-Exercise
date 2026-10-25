@@ -35,6 +35,9 @@ services:
       DATABASE_URL: postgres://hop:${POSTGRES_PASSWORD}@postgres:5432/hop?sslmode=disable
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set HTTPS origin}
+      RIDER_ORIGIN: ${PUBLIC_ORIGIN:?Set rider HTTPS origin}
+      CAPTAIN_ORIGIN: https://${CAPTAIN_HOST:?Set captain hostname}
+      ADMIN_ORIGIN: https://${ADMIN_HOST:?Set admin hostname}
       SESSION_KEY: ${SESSION_KEY:?Set session key}
       OIDC_ISSUER: ${OIDC_ISSUER:?Set identity issuer}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?Set identity client}
@@ -53,17 +56,76 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+  rider:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        HOP_APP: rider
+        VITE_RIDER_URL: ${PUBLIC_ORIGIN}
+        VITE_CAPTAIN_URL: https://${CAPTAIN_HOST}
+        VITE_ADMIN_URL: https://${ADMIN_HOST}
+        VITE_MAP_PROVIDER: ${RIDER_MAP_PROVIDER:-google}
+        VITE_GOOGLE_MAPS_API_KEY: ${RIDER_GOOGLE_MAPS_API_KEY:-}
+        VITE_GOOGLE_MAP_ID: ${RIDER_GOOGLE_MAP_ID:-}
+    environment:
+      HOP_APP: rider
+      BACKEND_UPSTREAM: api:8080
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+  captain:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        HOP_APP: captain
+        VITE_RIDER_URL: ${PUBLIC_ORIGIN}
+        VITE_CAPTAIN_URL: https://${CAPTAIN_HOST}
+        VITE_ADMIN_URL: https://${ADMIN_HOST}
+        VITE_MAP_PROVIDER: ${CAPTAIN_MAP_PROVIDER:-google}
+        VITE_GOOGLE_MAPS_API_KEY: ${CAPTAIN_GOOGLE_MAPS_API_KEY:-}
+        VITE_GOOGLE_MAP_ID: ${CAPTAIN_GOOGLE_MAP_ID:-}
+    environment:
+      HOP_APP: captain
+      BACKEND_UPSTREAM: api:8080
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        HOP_APP: admin
+        VITE_RIDER_URL: ${PUBLIC_ORIGIN}
+        VITE_CAPTAIN_URL: https://${CAPTAIN_HOST}
+        VITE_ADMIN_URL: https://${ADMIN_HOST}
+        VITE_MAP_PROVIDER: ${ADMIN_MAP_PROVIDER:-osm}
+        VITE_GOOGLE_MAPS_API_KEY: ${ADMIN_GOOGLE_MAPS_API_KEY:-}
+        VITE_GOOGLE_MAP_ID: ${ADMIN_GOOGLE_MAP_ID:-}
+    environment:
+      HOP_APP: admin
+      BACKEND_UPSTREAM: api:8080
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
   proxy:
     image: caddy:2-alpine
     ports: ['80:80', '443:443']
     environment:
-      PUBLIC_HOST: ${PUBLIC_HOST:?Set public hostname}
+      PUBLIC_HOST: ${PUBLIC_HOST:?Set rider hostname}
+      CAPTAIN_HOST: ${CAPTAIN_HOST:?Set captain hostname}
+      ADMIN_HOST: ${ADMIN_HOST:?Set admin hostname}
     volumes:
       - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
       api: {condition: service_healthy}
+      rider: {condition: service_started}
+      captain: {condition: service_started}
+      admin: {condition: service_started}
     restart: unless-stopped
 volumes:
   postgres-data:

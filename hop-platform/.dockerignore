@@ -6,3 +6,16 @@
 **/dist
 backend/api
 **/*.tsbuildinfo
+
+**/.env
+**/.env.*
+
+# Web containers bundle JS only; native build trees are not Docker input.
+web/mobile/*/android
+
+**/__pycache__
+**/google-services.json
+**/*firebase*.json
+**/*.jks
+**/*.keystore
+infra/gcp/deploy.local.json

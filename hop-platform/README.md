@@ -1,8 +1,8 @@
-# Hop platform — Go backend, mobile-friendly web
+# Hop platform — Go backend and React web prototype
 
-The new application for the confirmed product direction: **India-wide architecture, Go backend, mobile-friendly web first, zero platform commission, cash/direct UPI paid to drivers**. The older Python prototype in `../bike-taxi` is a separate demo and is not the production architecture.
+This repository currently contains a Go API and a React/TypeScript rider, driver, and operator web prototype. The target product now calls for separate Flutter customer/captain apps and a React admin portal; the migration path and target architecture are documented in [ARCHITECTURE.md](docs/ARCHITECTURE.md). The older Python prototype in `../bike-taxi` is a separate demo.
 
-This is an implemented production foundation, **not yet approved for public passenger service**. The release gates below distinguish working software from configuration and operating capabilities that are still needed.
+The current code is a tested implementation foundation, not the complete requested product and **not approved for public passenger service**. Phone OTP (needs an SMS provider webhook), online payments (need gateway keys), driver verification, push delivery, Flutter customer/captain apps, mobile background tracking, refunds/reconciliation, and launch operations still require provider configuration or implementation. See `docs/API.md` for trip types, fare negotiation, scheduled dispatch, OTP and payments.
 
 ## What is implemented
 
@@ -10,8 +10,12 @@ This is an implemented production foundation, **not yet approved for public pass
 - Go API with PostgreSQL persistence, migrations, transaction-protected booking/acceptance, and database uniqueness constraints.
 - OIDC authorization-code sign-in with PKCE and nonce, verified email, server-side Redis sessions, HttpOnly/Secure production cookies, origin/CSRF checks, session rotation and logout.
 - Operator-managed service areas and pricing. Production starts with **no active areas**.
+- Per-area bike, auto-rickshaw, mini cab, sedan, and SUV fare rules; operators explicitly configure and enable non-bike categories before they appear to riders. Quotes snapshot category pricing and expose a fare breakdown.
 - Photon-compatible address search and OSRM-compatible road quotes; account-bound quotes expire after two minutes. No approximate-distance fallback exists.
-- Idempotent ride creation, five-minute request expiry, a 3 km driver acceptance radius, and one active trip per rider/driver.
+- Idempotent ride creation, five-minute request expiry, a 3 km default driver acceptance radius, and one active trip per rider/driver.
+- Customer display-name editing, private saved Home/Work/Favorite locations, and one audited 1–5 star review per participant after a completed trip.
+- Driver-configurable pickup radius (500 m–20 km) and minimum acceptable fare; both are enforced for offers and rechecked during acceptance.
+- Captain earnings dashboard with daily/weekly/monthly and all-time completed-fare totals, payment-report totals, and recent ride receipts; direct-payment reports are explicitly not gateway-verified.
 - Driver application/review, document expiry, fresh accurate location, explicit online availability and participant-only trip information.
 - Six-digit pickup codes, attempt limits, controlled status transitions, cancellation reasons, separate direct-payment reporting/disputes, and transactional audit events.
 - Incident reports and operator responses; immediate emergencies are directed to India's 112 service.
@@ -42,7 +46,8 @@ Prerequisites: Go matching `backend/go.mod`, Node 24, PostgreSQL 17, Redis 7, an
 ```sh
 cd hop-platform/web
 npm ci
-npm run build
+npm run build   # builds rider, captain and admin into web/dist/{rider,captain,admin}
+# dev: npm run dev -> rider :5173, captain :5174, admin :5175
 cd ../backend
 go build -o api ./cmd/api
 # Set DATABASE_URL to your development database before applying migrations.
@@ -51,7 +56,7 @@ go build -o api ./cmd/api
 ./api
 ```
 
-Open the address represented by `PUBLIC_ORIGIN` on the machine hosting the application. The Go server serves the compiled web UI and API from the same origin. The cloud onboarding workspace does not automatically expose a browser preview.
+Open the address represented by `PUBLIC_ORIGIN` on the machine hosting the application. Each frontend serves its own UI and proxies `/api` and `/auth` to the common API-only Go server. The backend does not serve frontend assets. The cloud onboarding workspace does not automatically expose a browser preview.
 
 Development runtime variables:
 
@@ -62,7 +67,20 @@ Development runtime variables:
 - `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`: your OIDC provider. Register exactly `PUBLIC_ORIGIN/auth/callback`, require PKCE S256 and verified email.
 - `SESSION_KEY`: at least 32 random characters. Protect it and retain it across deploys; it derives pickup codes.
 - `ROUTING_URL`: your OSRM-compatible server; `GEOCODING_URL`: your Photon-compatible `/api/` endpoint.
-- Optional `ADDRESS=:8080`, `WEB_DIR=../web/dist`.
+- Optional `ADDRESS=:8080`, `ALLOWED_ORIGINS=https://captain.example.com,https://admin.example.com` (extra origins allowed to sign in and POST; with `APP_ENV=development` any localhost port is allowed).
+
+### Google Maps and Places for local development
+
+The booking map and live address suggestions use the Google Maps JavaScript API and Places API (New). Create a Google Cloud key with billing enabled, restrict its website referrers to `http://localhost:8080/*` and your real app domains, and restrict enabled APIs to Maps JavaScript API and Places API (New). The browser key is visible to clients by design, so referrer and API restrictions are required; do not commit it or paste it into chat.
+
+```sh
+cd web
+cp .env.example .env.local
+# Set VITE_GOOGLE_MAPS_API_KEY in .env.local; optionally set your VITE_GOOGLE_MAP_ID.
+npm run build
+```
+
+Rebuild and redeploy the affected frontend after changing its map settings. Without a key, the app keeps its local fixture search and shows setup instructions instead of attempting to load map tiles. Google Maps does not provide this app's fare route: `ROUTING_URL` still needs a real, supported road-routing service. The local `route_fixture.py` returns synthetic geometry and fares and is only for development.
 
 There is **no development-login bypass**. Accounts are created only after signed identity-token verification. Create a first account through sign-in, obtain its account UUID from `/api/me`, then use an authenticated maintenance session to run:
 
@@ -71,6 +89,21 @@ There is **no development-login bypass**. Accounts are created only after signed
 ```
 
 Reload the app and open Operations. Configure and activate an area, then review driver applications. In production, operators must record real operational/verification references and use identity-provider MFA. Test data and synthetic verification references are never launch approval.
+
+### Live trips, push alerts and vehicle changes
+
+- **Road routing:** for realistic dev routes set `ROUTING_URL=https://router.project-osrm.org` (public demo server, development only; production needs your own OSRM).
+- **Live ETA:** riders see "driver arrives in N min" (pickup) and time-to-destination during the trip; vehicle cards show nearby drivers via `GET /api/nearby`.
+- **Push alerts:** `GET /api/stream` is a server-sent-events stream (new ride requests for drivers, ride status for riders, notifications). Users click "Enable alerts" for system notifications when the tab is in the background. It is not a mobile/Web Push (FCM/APNs) service.
+- **Vehicle change:** approved drivers request a new vehicle (`POST /api/drivers/vehicle`); an operator approves it under Operator → Vehicle change requests, after which the driver goes offline and re-registers.
+
+### Feature status
+
+See [docs/FEATURES.md](docs/FEATURES.md) for built features and open work, and [docs/SCALING.md](docs/SCALING.md) for the scaling design.
+
+### Demo data for local booking
+
+Booking stays closed until an operator creates a service area. For a ready-to-use local demo, run `infra/dev_seed.sql` against your **local development** database. It adds active areas for seven metros, pricing for all five vehicle types, ten online demo drivers around central Bengaluru, and promotes the `e2e-operator-*` account. Re-run it to refresh driver locations, which go stale after a few minutes. Never run it against a real environment.
 
 ## Testing
 
@@ -97,3 +130,11 @@ Tests without the integration variables explicitly skip the database suites; tha
 - Implement retention/deletion automation and protected verification-document storage if documents will be collected directly. This version uses operator-issued verification references only.
 
 The code stack uses open-source components. Hosting, identity delivery, routing datasets, support and operations have costs even when platform commission is zero. Do not use the old free/ephemeral demo deployment for real rides.
+
+## Independent app deployments
+
+See [separate deployments](docs/SEPARATE-DEPLOYMENTS.md) for the common API and independently built rider, captain and admin containers, app-specific authentication callbacks, local Docker configuration and shared package ownership.
+
+## Android apps
+
+The rider and captain React UIs also build as separate Capacitor Android apps. See [Android setup and verification](docs/ANDROID.md) for APK builds, device connectivity, native login, foreground tracking, Firebase and release configuration.

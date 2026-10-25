@@ -1,5 +1,12 @@
 name: Hop platform checks
 on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment environment (configure required reviewers for production)
+        type: choice
+        options: [staging, production]
+        default: staging
   push:
     paths: ['hop-platform/**', '.github/workflows/hop.yml']
   pull_request:
@@ -56,3 +63,88 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hop-platform/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: hop-platform/web/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Setup Android SDK
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
+          chmod +x mobile/rider/android/gradlew mobile/captain/android/gradlew
+      - name: Install dependencies
+        run: npm ci
+      - name: Build Rider Android debug APK
+        env:
+          VITE_MAP_PROVIDER: ${{ vars.RIDER_GOOGLE_MAPS_API_KEY != '' && 'google' || 'osm' }}
+          VITE_GOOGLE_MAPS_API_KEY: ${{ vars.RIDER_GOOGLE_MAPS_API_KEY }}
+          VITE_GOOGLE_MAP_ID: ${{ vars.RIDER_GOOGLE_MAP_ID }}
+        run: node scripts/android.mjs rider --apk
+      - name: Build Captain Android debug APK
+        env:
+          VITE_MAP_PROVIDER: ${{ vars.CAPTAIN_GOOGLE_MAPS_API_KEY != '' && 'google' || 'osm' }}
+          VITE_GOOGLE_MAPS_API_KEY: ${{ vars.CAPTAIN_GOOGLE_MAPS_API_KEY }}
+          VITE_GOOGLE_MAP_ID: ${{ vars.CAPTAIN_GOOGLE_MAP_ID }}
+        run: node scripts/android.mjs captain --apk
+      - name: Archive Android APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: hop-android-apks
+          path: |
+            hop-platform/web/mobile/rider/android/app/build/outputs/apk/debug/app-debug.apk
+            hop-platform/web/mobile/captain/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+  deployment-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s hop-platform/infra/gcp -p 'test_*.py'
+  deploy:
+    needs: [api, web, android, deployment-config]
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.HOP_AUTO_DEPLOY == 'true')
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+    concurrency:
+      group: hop-deploy-${{ inputs.environment || 'staging' }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate environment configuration
+        env:
+          DEPLOY_CONFIG: ${{ vars.HOP_DEPLOY_CONFIG }}
+          WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          DEPLOY_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$WIF_PROVIDER" && test -n "$DEPLOY_ACCOUNT"
+          python -c 'import os,pathlib; pathlib.Path(os.environ["RUNNER_TEMP"], "hop-deploy.json").write_text(os.environ["DEPLOY_CONFIG"])'
+          python hop-platform/infra/gcp/deploy.py "$RUNNER_TEMP/hop-deploy.json" --validate-only
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Build, deploy and check gateways
+        run: python hop-platform/infra/gcp/deploy.py "$RUNNER_TEMP/hop-deploy.json" --revision "$GITHUB_SHA"

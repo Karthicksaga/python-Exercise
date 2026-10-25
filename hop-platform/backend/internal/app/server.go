@@ -16,8 +16,6 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -30,12 +28,15 @@ import (
 )
 
 type Server struct {
-	Config   Config
-	DB       *pgxpool.Pool
-	Cache    *redis.Client
-	OAuth    oauth2.Config
-	Verifier *oidc.IDTokenVerifier
-	HTTP     *http.Client
+	FCM        oauth2.TokenSource
+	FCMProject string
+	Config     Config
+	DB         *pgxpool.Pool
+	Cache      *redis.Client
+	OAuth      oauth2.Config
+	Verifier   *oidc.IDTokenVerifier
+	HTTP       *http.Client
+	Events     *eventHub
 }
 type Account struct {
 	ID    string `json:"id"`
@@ -44,8 +45,9 @@ type Account struct {
 	Role  string `json:"role"`
 }
 type Session struct {
-	UserID string `json:"user_id"`
-	CSRF   string `json:"csrf"`
+	NativePushToken string `json:"native_push_token,omitempty"`
+	UserID          string `json:"user_id"`
+	CSRF            string `json:"csrf"`
 }
 type requestContext struct {
 	Account Account
@@ -53,7 +55,10 @@ type requestContext struct {
 }
 type contextKey int
 
-const userKey contextKey = 0
+const (
+	userKey  contextKey = 0
+	nonceKey contextKey = 1
+)
 
 func user(r *http.Request) requestContext { return r.Context().Value(userKey).(requestContext) }
 func New(ctx context.Context, c Config) (*Server, error) {
@@ -83,7 +88,12 @@ func New(ctx context.Context, c Config) (*Server, error) {
 		cache.Close()
 		return nil, fmt.Errorf("OIDC discovery: %w", e)
 	}
-	return &Server{Config: c, DB: db, Cache: cache, HTTP: hc, OAuth: oauth2.Config{ClientID: c.ClientID, ClientSecret: c.ClientSecret, RedirectURL: c.PublicOrigin + "/auth/callback", Endpoint: provider.Endpoint(), Scopes: []string{oidc.ScopeOpenID, "profile", "email"}}, Verifier: provider.Verifier(&oidc.Config{ClientID: c.ClientID})}, nil
+	server := &Server{Events: newEventHub(), Config: c, DB: db, Cache: cache, HTTP: hc, OAuth: oauth2.Config{ClientID: c.ClientID, ClientSecret: c.ClientSecret, RedirectURL: c.PublicOrigin + "/auth/callback", Endpoint: provider.Endpoint(), Scopes: []string{oidc.ScopeOpenID, "profile", "email"}}, Verifier: provider.Verifier(&oidc.Config{ClientID: c.ClientID})}
+	if e := server.configureNativePush(ctx); e != nil {
+		server.Close()
+		return nil, e
+	}
+	return server, nil
 }
 func (s *Server) Close() { s.DB.Close(); s.Cache.Close() }
 func (s *Server) Handler() http.Handler {
@@ -92,6 +102,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /readyz", s.ready)
 	mux.HandleFunc("GET /auth/login", s.login)
 	mux.HandleFunc("GET /auth/callback", s.callback)
+	mux.HandleFunc("POST /auth/otp/request", s.otpRequest)
+	mux.HandleFunc("POST /auth/otp/verify", s.otpVerify)
+	mux.HandleFunc("POST /auth/mobile/exchange", s.mobileExchange)
+	mux.HandleFunc("POST /api/payments/webhook", s.paymentWebhook)
 	mux.Handle("POST /auth/logout", s.auth(http.HandlerFunc(s.logout)))
 	mux.Handle("GET /api/me", s.auth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := user(r)
@@ -99,17 +113,46 @@ func (s *Server) Handler() http.Handler {
 	})))
 	mux.HandleFunc("GET /api/config", s.publicConfig)
 	routes := map[string]http.HandlerFunc{
-		"GET /api/state": s.state, "GET /api/places": s.places, "POST /api/quotes": s.quote, "POST /api/rides": s.book,
+		"GET /api/state": s.state, "POST /api/estimates": s.estimates, "GET /api/rides/{id}/messages": s.rideMessages, "POST /api/rides/{id}/messages": s.sendRideMessage, "GET /api/places": s.places, "GET /api/places/reverse": s.placesReverse, "POST /api/quotes": s.quote, "POST /api/routes/alternatives": s.routeAlternatives, "POST /api/rides": s.book,
+		"POST /api/profile": s.updateProfile, "GET /api/profile": s.profileState, "POST /api/profile/contacts": s.addEmergencyContact,
+		"POST /api/profile/contacts/{id}/delete": s.deleteEmergencyContact, "GET /api/profile/export": s.exportProfile, "POST /api/profile/deletion": s.requestDeletion, "POST /api/locations": s.saveLocation,
+		"POST /api/locations/{id}/delete": s.deleteLocation, "POST /api/rides/{id}/rating": s.rateRide, "GET /api/rides/{id}/nav": s.navigate, "GET /api/rides/{id}/position": s.ridePosition, "POST /api/dev/driver-near-request": s.devDriverNearRequest,
 		"POST /api/rides/{id}/actions": s.action, "POST /api/drivers/apply": s.applyDriver,
 		"POST /api/drivers/location": s.location, "POST /api/drivers/offline": s.offline,
+		"POST /api/drivers/online":      s.online,
+		"GET /api/drivers/availability": s.driverAvailability,
+		"POST /api/drivers/preferences": s.saveDriverPreferences, "POST /api/drivers/vehicle": s.requestVehicleChange,
+		"POST /api/android/push/subscribe": s.androidPushSubscribe, "POST /api/android/push/unsubscribe": s.androidPushUnsubscribe,
+		"GET /api/push/key": s.pushKey, "POST /api/push/subscribe": s.pushSubscribe, "POST /api/push/unsubscribe": s.pushUnsubscribe,
+		"GET /api/nearby": s.nearby, "GET /api/stream": s.stream, "POST /api/operator/vehicle-changes/{id}": s.reviewVehicleChange,
+		"GET /api/drivers/earnings": s.driverEarnings, "GET /api/drivers/demand": s.driverDemand, "POST /api/drivers/go-home": s.goHome, "POST /api/drivers/goal": s.saveGoal, "GET /api/drivers/insights": s.driverInsights,
 		"POST /api/incidents": s.incident, "GET /api/operator": s.operatorState,
 		"POST /api/operator/areas": s.saveArea, "POST /api/operator/drivers/{id}": s.reviewDriver,
+		"POST /api/operator/pricing":        s.saveVehiclePricing,
 		"POST /api/operator/incidents/{id}": s.reviewIncident,
+		"GET /api/wallet":                   s.walletState, "POST /api/wallet/topup": s.walletTopup, "POST /api/wallet/verify": s.walletVerify,
+		"POST /api/promos/check": s.promoCheck, "GET /api/promos": s.promoList,
+		"GET /api/drivers/wallet": s.driverWallet, "POST /api/drivers/payouts": s.requestPayout,
+		"POST /api/rides/{id}/call": s.rideCall,
+		"GET /api/operator/finance": s.operatorFinance, "POST /api/operator/promos": s.operatorSavePromo,
+		"POST /api/operator/peak-windows": s.operatorSavePeak, "POST /api/operator/peak-windows/{id}/delete": s.operatorDeleteRow("peak_windows"),
+		"POST /api/operator/surge": s.operatorSaveSurge, "POST /api/operator/surge/{id}/delete": s.operatorDeleteRow("surge_overrides"),
+		"POST /api/operator/areas/{id}/surge": s.operatorAreaSurge, "POST /api/operator/payouts/{id}": s.operatorPayout,
+		"POST /api/operator/refunds": s.operatorRefund, "GET /api/operator/rides": s.operatorRides,
+		"GET /api/operator/live-map": s.operatorLiveMap, "POST /api/operator/rides/{id}/cancel": s.operatorCancelRide,
+		"GET /api/operator/sos": s.operatorSOSEvents, "POST /api/operator/sos/{id}/resolve": s.operatorResolveSOS,
+		"GET /api/operator/lost-items": s.operatorLostItems, "POST /api/operator/lost-items/{id}": s.operatorUpdateLostItem,
+		"GET /api/operator/analytics": s.operatorAnalytics,
+		"GET /api/admin/drivers": s.adminDrivers, "POST /api/admin/drivers/{id}": s.adminDecision,
 	}
+	for pattern, handler := range s.companionRoutes() {
+		routes[pattern] = handler
+	}
+	mux.HandleFunc("GET /api/share/{token}", s.viewShare)
 	for pattern, handler := range routes {
 		mux.Handle(pattern, s.auth(handler))
 	}
-	mux.HandleFunc("GET /", s.static)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fail(w, http.StatusNotFound, "Not found") })
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
@@ -118,16 +161,22 @@ func (s *Server) Handler() http.Handler {
 			}
 		}()
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Referrer-Policy", "same-origin")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "geolocation=(self), camera=(), microphone=()")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+		nonce := randomToken()
+		w.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'self'; script-src 'nonce-%s' 'strict-dynamic' https: 'unsafe-eval' blob:; style-src 'self' 'nonce-%s' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; img-src 'self' https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://*.googleapis.com https://*.gstatic.com *.google.com *.googleusercontent.com data: blob:; connect-src 'self' https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://*.razorpay.com https://*.googleapis.com *.google.com https://*.gstatic.com data: blob:; frame-src *.google.com https://api.razorpay.com; font-src 'self' https://fonts.gstatic.com data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'", nonce, nonce))
 		w.Header().Set("Cache-Control", "no-store")
 		if !s.Config.Development {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, 16*1024)
 		ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+		if r.URL.Path == "/api/stream" {
+			cancel()
+			ctx, cancel = context.WithCancel(r.Context())
+		}
 		defer cancel()
+		ctx = context.WithValue(ctx, nonceKey, nonce)
 		mux.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -139,17 +188,6 @@ func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, 200, map[string]bool{"ok": true})
-}
-func (s *Server) static(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/auth/") {
-		fail(w, 404, "Not found")
-		return
-	}
-	path := filepath.Join(s.Config.WebDir, filepath.Clean("/"+r.URL.Path))
-	if info, e := os.Stat(path); e != nil || info.IsDir() {
-		path = filepath.Join(s.Config.WebDir, "index.html")
-	}
-	http.ServeFile(w, r, path)
 }
 func write(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")

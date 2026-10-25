@@ -1,3 +1,5 @@
+> The backend image is now API-only. The root Render blueprint deploys only the common backend; it no longer hosts the rider, captain or admin UI. Deploy each frontend separately and configure its API/auth proxy and exact callback origin as described in [separate deployments](SEPARATE-DEPLOYMENTS.md).
+
 # Render testing deployment with Neon, Upstash, and Auth0
 
 This deploys the current Go API and mobile-friendly React website as one Docker web service. The repository-root `render.yaml` selects the free application plan and branch `feat/production-web-foundation`. It does not create paid databases or other provider resources. Check the providers' current allowances in their dashboards; free-tier availability and continued eligibility are not guaranteed.

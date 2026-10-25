@@ -12,13 +12,47 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type loginState struct{ Verifier, Nonce string }
+type loginState struct{ Verifier, Nonce, RedirectURL, MobileChallenge, MobileApp string }
 
-func (s *Server) cookieName() string {
-	if s.Config.Development {
-		return "hop_session"
+// App gateways supply a fixed app identity; callback origins come only from configuration.
+func appIdentity(r *http.Request) string {
+	switch app := r.Header.Get("X-Hop-App"); app {
+	case "rider", "captain", "admin":
+		return app
+	default:
+		return ""
 	}
-	return "__Host-hop_session"
+}
+func (s *Server) appOrigin(r *http.Request) string {
+	var origin string
+	switch appIdentity(r) {
+	case "rider":
+		origin = s.Config.RiderOrigin
+	case "captain":
+		origin = s.Config.CaptainOrigin
+	case "admin":
+		origin = s.Config.AdminOrigin
+	}
+	if origin == "" {
+		return s.Config.PublicOrigin
+	}
+	return origin
+}
+func loginCookie(r *http.Request) string {
+	if app := appIdentity(r); app != "" {
+		return "hop_login_" + app
+	}
+	return "hop_login"
+}
+func (s *Server) cookieName(r *http.Request) string {
+	suffix := ""
+	if app := appIdentity(r); app != "" {
+		suffix = "_" + app
+	}
+	if s.Config.Development {
+		return "hop_session" + suffix
+	}
+	return "__Host-hop_session" + suffix
 }
 func (s *Server) cookie(w http.ResponseWriter, name, value string, age int) {
 	http.SetCookie(w, &http.Cookie{Name: name, Value: value, Path: "/", HttpOnly: true, Secure: !s.Config.Development, SameSite: http.SameSiteLaxMode, MaxAge: age})
@@ -28,18 +62,28 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	state := randomToken()
-	entry := loginState{Verifier: oauth2.GenerateVerifier(), Nonce: randomToken()}
+	oauth := s.OAuth
+	oauth.RedirectURL = s.appOrigin(r) + "/auth/callback"
+	entry := loginState{Verifier: oauth2.GenerateVerifier(), Nonce: randomToken(), RedirectURL: oauth.RedirectURL}
+	if challenge := r.URL.Query().Get("mobile_challenge"); challenge != "" {
+		app := r.URL.Query().Get("mobile_app")
+		if !validMobileApp(app) || app != appIdentity(r) || !validMobileChallenge(challenge) {
+			fail(w, 400, "Invalid Android sign-in request")
+			return
+		}
+		entry.MobileChallenge, entry.MobileApp = challenge, app
+	}
 	b, _ := json.Marshal(entry)
 	if s.Cache.Set(r.Context(), "login:"+digest(state), b, 5*time.Minute).Err() != nil {
 		fail(w, 503, "Sign-in temporarily unavailable")
 		return
 	}
-	s.cookie(w, "hop_login", state, 300)
-	http.Redirect(w, r, s.OAuth.AuthCodeURL(state, oauth2.S256ChallengeOption(entry.Verifier), oidc.Nonce(entry.Nonce)), http.StatusFound)
+	s.cookie(w, loginCookie(r), state, 300)
+	http.Redirect(w, r, oauth.AuthCodeURL(state, oauth2.S256ChallengeOption(entry.Verifier), oidc.Nonce(entry.Nonce), oauth2.SetAuthURLParam("prompt", "login")), http.StatusFound)
 }
 func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
-	cookie, e := r.Cookie("hop_login")
+	cookie, e := r.Cookie(loginCookie(r))
 	if e != nil || len(state) < 32 || !hmac.Equal([]byte(cookie.Value), []byte(state)) {
 		fail(w, 400, "Invalid sign-in state; start sign-in again")
 		return
@@ -49,7 +93,7 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "Sign-in expired; start again")
 		return
 	}
-	s.cookie(w, "hop_login", "", -1)
+	s.cookie(w, loginCookie(r), "", -1)
 	var entry loginState
 	if json.Unmarshal(b, &entry) != nil {
 		fail(w, 400, "Invalid sign-in state")
@@ -58,7 +102,15 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 	ctx = oidc.ClientContext(ctx, s.HTTP)
-	token, e := s.OAuth.Exchange(ctx, r.URL.Query().Get("code"), oauth2.VerifierOption(entry.Verifier))
+	oauth := s.OAuth
+	if entry.RedirectURL != "" {
+		if entry.RedirectURL != s.appOrigin(r)+"/auth/callback" {
+			fail(w, 400, "Sign-in belongs to another app")
+			return
+		}
+		oauth.RedirectURL = entry.RedirectURL
+	}
+	token, e := oauth.Exchange(ctx, r.URL.Query().Get("code"), oauth2.VerifierOption(entry.Verifier))
 	if e != nil {
 		fail(w, 401, "Identity provider rejected sign-in")
 		return
@@ -92,8 +144,12 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
+	if entry.MobileChallenge != "" {
+		s.mobileReturn(w, r, account, entry)
+		return
+	}
 	// Invalidate the current local session before rotating it at sign-in.
-	if old, e := r.Cookie(s.cookieName()); e == nil {
+	if old, e := r.Cookie(s.cookieName(r)); e == nil {
 		s.Cache.Del(ctx, "session:"+digest(old.Value))
 	}
 	session := Session{UserID: account, CSRF: randomToken()}
@@ -103,12 +159,12 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 		fail(w, 503, "Could not create session")
 		return
 	}
-	s.cookie(w, s.cookieName(), secret, 43200)
+	s.cookie(w, s.cookieName(r), secret, 43200)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 func (s *Server) auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, e := r.Cookie(s.cookieName())
+		cookie, e := r.Cookie(s.cookieName(r))
 		if e != nil || len(cookie.Value) > 100 {
 			fail(w, 401, "Sign in to continue")
 			return
@@ -137,7 +193,7 @@ func (s *Server) auth(next http.Handler) http.Handler {
 			return
 		}
 		if r.Method != "GET" && r.Method != "HEAD" {
-			if r.Header.Get("Origin") != s.Config.PublicOrigin || !hmac.Equal([]byte(r.Header.Get("X-CSRF-Token")), []byte(session.CSRF)) {
+			if !s.originAllowed(r.Header.Get("Origin")) || !hmac.Equal([]byte(r.Header.Get("X-CSRF-Token")), []byte(session.CSRF)) {
 				fail(w, 403, "Request origin or CSRF token is invalid")
 				return
 			}
@@ -149,11 +205,18 @@ func (s *Server) auth(next http.Handler) http.Handler {
 	})
 }
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie(s.cookieName())
+	if token := user(r).Session.NativePushToken; token != "" {
+		if _, e := s.DB.Exec(r.Context(), "DELETE FROM android_push_tokens WHERE token=$1 AND account_id=$2", token, user(r).Account.ID); e != nil {
+			dbError(w, e)
+			return
+		}
+	}
+
+	cookie, _ := r.Cookie(s.cookieName(r))
 	if s.Cache.Del(r.Context(), "session:"+digest(cookie.Value)).Err() != nil {
 		fail(w, 503, "Could not sign out; retry")
 		return
 	}
-	s.cookie(w, s.cookieName(), "", -1)
+	s.cookie(w, s.cookieName(r), "", -1)
 	write(w, 200, map[string]bool{"ok": true})
 }

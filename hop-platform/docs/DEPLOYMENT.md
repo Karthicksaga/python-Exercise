@@ -1,5 +1,7 @@
 # Deployment and operations
 
+For Google Cloud Run and GitHub Actions, follow [GCP-CICD.md](GCP-CICD.md).
+
 For the managed testing setup using Render, the Neon project `rapido`, Upstash, and Auth0, follow [RENDER.md](RENDER.md). That setup uses Render's HTTPS endpoint instead of the Caddy stack below.
 
 ## Required services and secrets
@@ -20,6 +22,9 @@ Copy `.env.example` to `.env` and enter secrets locally. Generate independent UR
 
 ## Container deployment
 
+The backend is API-only. Rider, captain and admin are separate web containers; see [separate deployments](SEPARATE-DEPLOYMENTS.md). Configure `PUBLIC_HOST`, `CAPTAIN_HOST` and `ADMIN_HOST`, matching app origins and an exact OIDC callback per app. Caddy routes each hostname to its frontend, which proxies API/auth requests to the common backend.
+
+
 ```sh
 cd hop-platform
 cp .env.example .env
@@ -30,7 +35,7 @@ docker compose up -d
 
 The migration service runs before the API. The database and Redis are private to the container network; only Caddy exposes 80/443. Caddy obtains TLS certificates for `PUBLIC_HOST`. Persist and back up the named database and identity volumes; a container image is not a data backup. The API runs as an unprivileged user on a read-only filesystem with dropped Linux capabilities.
 
-The schema migration command is transaction-protected and repeatable. Only migration 001 exists in this initial foundation. Future schema changes need numbered forward migrations and a rollback/recovery plan; do not edit an already-applied migration on a live database.
+The schema migration command is transaction-protected and repeatable. Apply every outstanding numbered migration, including Android migrations 026–027 and availability migration 028. Future schema changes need numbered forward migrations and a rollback/recovery plan; do not edit an already-applied migration on a live database.
 
 For a build runner with dependency access outside Docker, an alternative runtime image is provided:
 
@@ -45,7 +50,7 @@ docker build -f Dockerfile.runtime -t hop-app:local .
 docker compose up -d --no-build
 ```
 
-Use the architecture appropriate to your runtime. The runtime Dockerfile copies only the compiled application, web assets, migrations and trusted CA bundle. It does not disable TLS or dependency verification. Keep build artifacts tied to the source commit and dependency lockfiles.
+Use the architecture appropriate to your runtime. The runtime Dockerfile copies only the compiled application, migrations and trusted CA bundle. It does not disable TLS or dependency verification. Keep build artifacts tied to the source commit and dependency lockfiles.
 
 ## First operator and activation
 

@@ -1,12 +1,11 @@
-# Build backend and web on a trusted CI runner first; see docs/DEPLOYMENT.md.
+# Build backend on a trusted CI runner first; see docs/DEPLOYMENT.md.
 FROM golang:1.27.3-alpine AS certificates
 FROM scratch
 WORKDIR /app
 COPY --from=certificates /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --chmod=0555 build-output/api /app/api
 COPY --chmod=0555 backend/migrations /app/migrations
-COPY --chmod=0555 web/dist /app/web
-ENV ADDRESS=:8080 WEB_DIR=/app/web
+ENV ADDRESS=:8080
 USER 65532:65532
 EXPOSE 8080
 ENTRYPOINT ["/app/api"]

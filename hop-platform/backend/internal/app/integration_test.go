@@ -48,12 +48,21 @@ func setup(t *testing.T) *fixture {
 	if _, e = db.Exec(ctx, "DROP SCHEMA public CASCADE; CREATE SCHEMA public"); e != nil {
 		t.Fatal(e)
 	}
-	migration, e := os.ReadFile("../../migrations/001_initial.sql")
+	migrations, e := os.ReadDir("../../migrations")
 	if e != nil {
 		t.Fatal(e)
 	}
-	if _, e = db.Exec(ctx, string(migration)); e != nil {
-		t.Fatal(e)
+	for _, migration := range migrations {
+		if migration.IsDir() || !strings.HasSuffix(migration.Name(), ".sql") {
+			continue
+		}
+		content, readErr := os.ReadFile("../../migrations/" + migration.Name())
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if _, execErr := db.Exec(ctx, string(content)); execErr != nil {
+			t.Fatalf("apply %s: %v", migration.Name(), execErr)
+		}
 	}
 	ro, e := redis.ParseURL(cacheURL)
 	if e != nil {
@@ -67,7 +76,12 @@ func setup(t *testing.T) *fixture {
 		t.Fatal(e)
 	}
 	router := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		write(w, 200, map[string]any{"code": "Ok", "routes": []map[string]any{{"distance": 5000, "duration": 900}}})
+		geometry := map[string]any{"type": "LineString", "coordinates": [][]float64{{80.27, 13.08}, {80.23, 13.04}}}
+		routes := []map[string]any{{"distance": 5000, "duration": 900, "geometry": geometry}}
+		if r.URL.Query().Get("alternatives") == "true" {
+			routes = append(routes, map[string]any{"distance": 4200, "duration": 1100, "geometry": geometry})
+		}
+		write(w, 200, map[string]any{"code": "Ok", "routes": routes})
 	}))
 	s := &Server{Config: Config{PublicOrigin: "https://hop.test", SessionKey: strings.Repeat("test-key", 8), RoutingURL: router.URL, Development: true}, DB: db, Cache: cache, HTTP: &http.Client{Timeout: time.Second}}
 	httpServer := httptest.NewServer(s.Handler())
@@ -89,6 +103,9 @@ func (f *fixture) actor(role string, driver bool) client {
 	}
 	b, _ := json.Marshal(Session{UserID: c.id, CSRF: c.csrf})
 	if e = f.s.Cache.Set(ctx, "session:"+digest(c.secret), b, time.Hour).Err(); e != nil {
+		f.t.Fatal(e)
+	}
+	if _, e = f.s.DB.Exec(ctx, "INSERT INTO account_profiles(account_id,phone) VALUES($1,'9876543210') ON CONFLICT(account_id) DO NOTHING", c.id); e != nil {
 		f.t.Fatal(e)
 	}
 	if driver {
@@ -119,23 +136,204 @@ func (f *fixture) call(c client, method, path string, body any) (int, map[string
 	return res.StatusCode, out
 }
 func (f *fixture) quote(c client) string {
+	return f.quoteVehicle(c, "bike")
+}
+func (f *fixture) quoteVehicle(c client, category string) string {
 	f.t.Helper()
-	code, out := f.call(c, "POST", "/api/quotes", map[string]any{"area_id": f.area, "pickup": Point{13.08, 80.27, "Central"}, "dropoff": Point{13.04, 80.23, "Destination"}})
+	code, out := f.call(c, "POST", "/api/quotes", map[string]any{"area_id": f.area, "vehicle_category": category, "pickup": Point{13.08, 80.27, "Central"}, "dropoff": Point{13.04, 80.23, "Destination"}})
 	if code != 201 {
 		f.t.Fatalf("quote %d %#v", code, out)
 	}
 	if out["fare_paise"] != float64(5500) {
 		f.t.Fatalf("wrong price %#v", out)
 	}
+	if route, ok := out["route"].([]any); !ok || len(route) < 2 {
+		f.t.Fatalf("missing route geometry %#v", out["route"])
+	}
 	return out["id"].(string)
 }
+func TestVehicleCategoryQuoteAndDriverMatching(t *testing.T) {
+	f := setup(t)
+	rider := f.actor("rider", false)
+	bikeDriver := f.actor("rider", true)
+	autoDriver := f.actor("rider", true)
+	operator := f.actor("operator", false)
+	if _, e := f.s.DB.Exec(context.Background(), "UPDATE drivers SET vehicle_category='auto' WHERE user_id=$1", autoDriver.id); e != nil {
+		t.Fatal(e)
+	}
+	code, _ := f.call(operator, "POST", "/api/operator/pricing", map[string]any{
+		"area_id": f.area, "category": "auto", "base_paise": 3000,
+		"per_km_paise": 1200, "minimum_paise": 4000, "enabled": true,
+	})
+	require(t, code, 200)
+	code, pricing := f.call(rider, "GET", "/api/config", nil)
+	require(t, code, 200)
+	vehicles := pricing["vehicles"].([]any)
+	if len(vehicles) != 2 {
+		t.Fatalf("expected bike and auto pricing, got %#v", vehicles)
+	}
+	code, unavailable := f.call(rider, "POST", "/api/quotes", map[string]any{"area_id": f.area, "vehicle_category": "suv", "pickup": Point{13.08, 80.27, "Central"}, "dropoff": Point{13.04, 80.23, "Destination"}})
+	require(t, code, 409)
+	if unavailable["error"] == "" {
+		t.Fatalf("missing unavailable category error: %#v", unavailable)
+	}
+	code, quote := f.call(rider, "POST", "/api/quotes", map[string]any{"area_id": f.area, "vehicle_category": "auto", "pickup": Point{13.08, 80.27, "Central"}, "dropoff": Point{13.04, 80.23, "Destination"}})
+	require(t, code, 201)
+	if quote["vehicle_category"] != "auto" || quote["fare_paise"] != float64(9000) {
+		t.Fatalf("incorrect category quote: %#v", quote)
+	}
+	breakdown := quote["fare_breakdown"].(map[string]any)
+	if breakdown["base_paise"] != float64(3000) || breakdown["distance_paise"] != float64(6000) || breakdown["platform_fee_paise"] != float64(0) {
+		t.Fatalf("incorrect fare breakdown: %#v", breakdown)
+	}
+	id := f.book(rider, quote["id"].(string))
+	require(t, f.act(bikeDriver, id, "accept", 1, ""), 403)
+	require(t, f.act(autoDriver, id, "accept", 1, ""), 200)
+}
+
+func TestDriverPreferencesFilterOffersAndAcceptance(t *testing.T) {
+	f := setup(t)
+	rider := f.actor("rider", false)
+	driver := f.actor("rider", true)
+	// About 2 km from the pickup, so a 500 m radius excludes it and a 5 km radius includes it.
+	if _, e := f.s.DB.Exec(context.Background(), "UPDATE drivers SET lat=13.098 WHERE user_id=$1", driver.id); e != nil {
+		t.Fatal(e)
+	}
+	id := f.book(rider, f.quote(rider))
+
+	code, _ := f.call(driver, "POST", "/api/drivers/preferences", map[string]any{
+		"pickup_radius_meters": 500, "minimum_fare_paise": 0,
+	})
+	require(t, code, 200)
+	_, state := f.call(driver, "GET", "/api/state", nil)
+	if offers := state["offers"].([]any); len(offers) != 0 {
+		t.Fatalf("offer outside configured pickup radius: %#v", offers)
+	}
+	require(t, f.act(driver, id, "accept", 1, ""), 403)
+
+	code, _ = f.call(driver, "POST", "/api/drivers/preferences", map[string]any{
+		"pickup_radius_meters": 5000, "minimum_fare_paise": 5501,
+	})
+	require(t, code, 200)
+	_, state = f.call(driver, "GET", "/api/state", nil)
+	if offers := state["offers"].([]any); len(offers) != 0 {
+		t.Fatalf("offer below configured minimum fare: %#v", offers)
+	}
+
+	code, _ = f.call(driver, "POST", "/api/drivers/preferences", map[string]any{
+		"pickup_radius_meters": 5000, "minimum_fare_paise": 5500,
+	})
+	require(t, code, 200)
+	_, state = f.call(driver, "GET", "/api/state", nil)
+	if offers := state["offers"].([]any); len(offers) != 1 {
+		t.Fatalf("expected one matching offer at preference boundary, got %#v", offers)
+	}
+	require(t, f.act(driver, id, "accept", 1, ""), 200)
+
+	code, _ = f.call(driver, "POST", "/api/drivers/preferences", map[string]any{
+		"pickup_radius_meters": 499, "minimum_fare_paise": 0,
+	})
+	require(t, code, 400)
+}
+
+func TestProfileSavedLocationsAndRideRatings(t *testing.T) {
+	f := setup(t)
+	rider := f.actor("rider", false)
+	driver := f.actor("rider", true)
+
+	code, profile := f.call(rider, "POST", "/api/profile", map[string]string{"name": "  Rider Updated  "})
+	require(t, code, 200)
+	if profile["name"] != "Rider Updated" {
+		t.Fatalf("profile name was not normalized: %#v", profile)
+	}
+
+	code, _ = f.call(rider, "POST", "/api/profile", map[string]string{"name": "x"})
+	require(t, code, 400)
+
+	code, location := f.call(rider, "POST", "/api/locations", map[string]any{
+		"label": "Home", "kind": "home", "lat": 13.08, "lng": 80.27, "place_label": "Central, Chennai",
+	})
+	require(t, code, 200)
+	locationID := location["id"].(string)
+	_, state := f.call(rider, "GET", "/api/state", nil)
+	if len(state["saved_locations"].([]any)) != 1 {
+		t.Fatalf("saved place missing from account state: %#v", state["saved_locations"])
+	}
+	code, _ = f.call(driver, "POST", "/api/locations/"+locationID+"/delete", nil)
+	require(t, code, 404)
+	code, _ = f.call(rider, "POST", "/api/locations/"+locationID+"/delete", nil)
+	require(t, code, 200)
+
+	rideID := f.book(rider, f.quote(rider))
+	require(t, f.act(driver, rideID, "accept", 1, ""), 200)
+	require(t, f.act(driver, rideID, "arrive", 2, ""), 200)
+	require(t, f.act(driver, rideID, "start", 3, f.s.pin(rideID)), 200)
+	f.atDestination(driver, rideID)
+	require(t, f.act(driver, rideID, "complete", 4, ""), 200)
+	code, rating := f.call(rider, "POST", "/api/rides/"+rideID+"/rating", map[string]any{
+		"score": 5, "comment": "A smooth ride",
+	})
+	require(t, code, 201)
+	if rating["score"] != float64(5) {
+		t.Fatalf("rating response incorrect: %#v", rating)
+	}
+	code, _ = f.call(rider, "POST", "/api/rides/"+rideID+"/rating", map[string]any{"score": 4})
+	require(t, code, 409)
+	_, state = f.call(rider, "GET", "/api/state", nil)
+	ride := state["rides"].([]any)[0].(map[string]any)
+	if ride["my_rating"] != float64(5) || ride["my_rating_comment"] != "A smooth ride" {
+		t.Fatalf("rating not returned to rater: %#v", ride)
+	}
+}
+
+func TestDriverEarningsAndReceiptAccess(t *testing.T) {
+	f := setup(t)
+	rider := f.actor("rider", false)
+	driver := f.actor("rider", true)
+	rideID := f.book(rider, f.quote(rider))
+	require(t, f.act(driver, rideID, "accept", 1, ""), 200)
+	require(t, f.act(driver, rideID, "arrive", 2, ""), 200)
+	require(t, f.act(driver, rideID, "start", 3, f.s.pin(rideID)), 200)
+	f.atDestination(driver, rideID)
+	require(t, f.act(driver, rideID, "complete", 4, ""), 200)
+
+	code, report := f.call(driver, "GET", "/api/drivers/earnings", nil)
+	require(t, code, 200)
+	summary := report["summary"].(map[string]any)
+	if summary["all_time_completed_trips"] != float64(1) || summary["all_time_fare_paise"] != float64(5500) || summary["all_time_reported_paid_paise"] != float64(0) {
+		t.Fatalf("unexpected unconfirmed driver earnings summary: %#v", summary)
+	}
+	receipts := report["rides"].([]any)
+	if len(receipts) != 1 || receipts[0].(map[string]any)["fare_paise"] != float64(5500) {
+		t.Fatalf("driver receipt missing fare: %#v", report["rides"])
+	}
+	code, _ = f.call(rider, "GET", "/api/drivers/earnings", nil)
+	require(t, code, 403)
+
+	require(t, f.act(driver, rideID, "payment_received", 5, ""), 200)
+	code, report = f.call(driver, "GET", "/api/drivers/earnings", nil)
+	require(t, code, 200)
+	summary = report["summary"].(map[string]any)
+	if summary["all_time_reported_paid_paise"] != float64(5500) {
+		t.Fatalf("reported payment not reflected: %#v", summary)
+	}
+}
+
 func (f *fixture) book(c client, q string) string {
 	f.t.Helper()
 	code, out := f.call(c, "POST", "/api/rides", map[string]any{"quote_id": q, "request_key": "11111111-1111-4111-8111-" + strings.ReplaceAll(c.id, "-", "")[:12], "payment_method": "cash"})
 	if code != 201 {
 		f.t.Fatalf("book %d %#v", code, out)
 	}
+	// Drivers can only accept rides they were offered, so run the dispatcher once as the server loop would.
+	f.dispatch()
 	return out["id"].(string)
+}
+func (f *fixture) dispatch() {
+	f.t.Helper()
+	if e := f.s.DispatchStaged(context.Background()); e != nil {
+		f.t.Fatal(e)
+	}
 }
 func (f *fixture) act(c client, id, action string, version int, code string) int {
 	status, _ := f.call(c, "POST", "/api/rides/"+id+"/actions", map[string]any{"action": action, "version": version, "code": code, "reason": "Change of plans"})
@@ -154,11 +352,17 @@ func TestRideLifecycleAndPaymentSeparation(t *testing.T) {
 	d := f.actor("rider", true)
 	stranger := f.actor("rider", false)
 	id := f.book(r, f.quote(r))
+	_, state := f.call(r, "GET", "/api/state", nil)
+	rides := state["rides"].([]any)
+	route := rides[0].(map[string]any)["route"].([]any)
+	if len(route) < 2 {
+		t.Fatalf("booked ride lost its road geometry: %#v", route)
+	}
 	require(t, f.act(r, id, "accept", 1, ""), 409)
 	require(t, f.act(stranger, id, "cancel", 1, ""), 403)
 	require(t, f.act(d, id, "accept", 1, ""), 200)
 	require(t, f.act(d, id, "complete", 2, ""), 409)
-	_, state := f.call(d, "GET", "/api/state", nil)
+	_, state = f.call(d, "GET", "/api/state", nil)
 	ride := state["rides"].([]any)[0].(map[string]any)
 	if _, ok := ride["pickup_code"]; ok {
 		t.Fatal("driver can see pickup code")
@@ -167,6 +371,7 @@ func TestRideLifecycleAndPaymentSeparation(t *testing.T) {
 	require(t, f.act(d, id, "start", 3, "wrong"), 400)
 	require(t, f.act(d, id, "start", 3, f.s.pin(id)), 200)
 	require(t, f.act(r, id, "cancel", 4, ""), 409)
+	f.atDestination(d, id)
 	require(t, f.act(d, id, "complete", 4, ""), 200)
 	var status string
 	f.s.DB.QueryRow(context.Background(), "SELECT payment_status FROM rides WHERE id=$1", id).Scan(&status)
@@ -296,6 +501,12 @@ func TestOperatorApprovalAndAreaActivation(t *testing.T) {
 	code, _ = f.call(d, "POST", "/api/operator/drivers/"+d.id, map[string]string{"status": "approved", "note": "Approve myself improperly"})
 	require(t, code, 403)
 	code, _ = f.call(op, "POST", "/api/operator/drivers/"+d.id, map[string]string{"status": "approved", "note": "Reviewed evidence in verification record TEST-001"})
+	require(t, code, 400)
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+d.id, map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "status": "approved", "note": "Missing police check should block"})
+	require(t, code, 400)
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+d.id, map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "status": "approved", "note": "Reviewed evidence in verification record TEST-001"})
+	require(t, code, 200)
+	code, _ = f.call(d, "POST", "/api/drivers/online", map[string]any{})
 	require(t, code, 200)
 	code, _ = f.call(d, "POST", "/api/drivers/location", map[string]any{"lat": 13.08, "lng": 80.27, "accuracy": 10})
 	require(t, code, 200)
@@ -316,5 +527,105 @@ func TestConfigurationFailsClosed(t *testing.T) {
 	}
 	if got := fmt.Sprint(1500 + (int64(5000)*800+999)/1000); got != "5500" {
 		t.Fatal(got)
+	}
+}
+
+func TestPinkRidesNeedFemaleRiderAndCertifiedDriver(t *testing.T) {
+	f := setup(t)
+	op := f.actor("operator", false)
+	rider := f.actor("rider", false)
+	d := f.actor("rider", true)
+	body := map[string]any{"area_id": f.area, "vehicle_category": "bike", "pink": true, "pickup": Point{13.08, 80.27, "Central"}, "dropoff": Point{13.04, 80.23, "Destination"}}
+	code, _ := f.call(rider, "POST", "/api/quotes", body)
+	require(t, code, 403)
+	_, e := f.s.DB.Exec(context.Background(), "INSERT INTO account_profiles(account_id,gender) VALUES($1,'female'),($2,'male') ON CONFLICT(account_id) DO UPDATE SET gender=EXCLUDED.gender", rider.id, d.id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	code, _ = f.call(rider, "POST", "/api/quotes", body)
+	require(t, code, 201)
+	checks := map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "status": "approved", "pink_certified": true, "note": "Verified in person at the hub"}
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+d.id, checks)
+	require(t, code, 400) // male profile cannot be pink certified
+	_, _ = f.s.DB.Exec(context.Background(), "UPDATE account_profiles SET gender='female' WHERE account_id=$1", d.id)
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+d.id, checks)
+	require(t, code, 200)
+	code, _ = f.call(rider, "GET", "/api/admin/drivers", nil)
+	require(t, code, 403)
+	code, _ = f.call(op, "GET", "/api/admin/drivers", nil)
+	require(t, code, 200)
+}
+
+func TestRouteAlternativesChangeTheQuote(t *testing.T) {
+	f := setup(t)
+	rider := f.actor("rider", false)
+	body := map[string]any{"pickup": Point{13.08, 80.27, "Central"}, "dropoff": Point{13.04, 80.23, "Destination"}}
+	code, out := f.call(rider, "POST", "/api/routes/alternatives", body)
+	if code != 200 || len(out["routes"].([]any)) != 2 {
+		t.Fatalf("alternatives = %d %v", code, out)
+	}
+	quote := func(index int) map[string]any {
+		code, q := f.call(rider, "POST", "/api/quotes", map[string]any{"area_id": f.area, "vehicle_category": "bike", "pickup": body["pickup"], "dropoff": body["dropoff"], "route_index": index})
+		if code != 201 {
+			t.Fatalf("quote %d = %d %v", index, code, q)
+		}
+		return q
+	}
+	if quote(0)["meters"].(float64) != 5000 || quote(1)["meters"].(float64) != 4200 {
+		t.Fatal("route_index should select the matching route distance")
+	}
+	if code, _ := f.call(rider, "POST", "/api/quotes", map[string]any{"area_id": f.area, "vehicle_category": "bike", "pickup": body["pickup"], "dropoff": body["dropoff"], "route_index": 5}); code != 400 {
+		t.Fatalf("bad route_index = %d", code)
+	}
+}
+
+func TestEarlyFinishAdjustsFareUnlessRiderApprovesFull(t *testing.T) {
+	f := setup(t)
+	fare := func(c client, id string) (float64, any) {
+		_, state := f.call(c, "GET", "/api/state", nil)
+		for _, item := range state["rides"].([]any) {
+			if ride := item.(map[string]any); ride["id"] == id {
+				return ride["fare_paise"].(float64), ride["adjusted_from_paise"]
+			}
+		}
+		f.t.Fatal("ride not in state")
+		return 0, nil
+	}
+	run := func(approve bool) (float64, any) {
+		rider := f.actor("rider", false)
+		driver := f.actor("rider", true)
+		id := f.book(rider, f.quote(rider))
+		require(t, f.act(driver, id, "accept", 1, ""), 200)
+		require(t, f.act(driver, id, "arrive", 2, ""), 200)
+		require(t, f.act(driver, id, "start", 3, f.s.pin(id)), 200)
+		version := 4
+		if approve {
+			require(t, f.act(driver, id, "request_full_fare", 4, ""), 200)
+			require(t, f.act(rider, id, "approve_full_fare", 5, ""), 200)
+			version = 6
+		}
+		if !approve {
+			require(t, f.act(driver, id, "complete", version, ""), 409)
+		}
+		status, _ := f.call(driver, "POST", "/api/rides/"+id+"/actions", map[string]any{"action": "complete", "version": version, "confirm": true})
+		require(t, status, 200)
+		return fare(rider, id)
+	}
+	early, from := run(false)
+	if early >= 5500 || from != float64(5500) {
+		t.Fatalf("early finish should reduce the fare, got %v from %v", early, from)
+	}
+	full, from := run(true)
+	if full != 5500 || from != nil {
+		t.Fatalf("approved full fare should be kept, got %v from %v", full, from)
+	}
+}
+
+// atDestination moves the driver to the ride's drop-off so completing is not treated as an early finish.
+func (f *fixture) atDestination(driver client, rideID string) {
+	f.t.Helper()
+	_, e := f.s.DB.Exec(context.Background(), `UPDATE drivers SET lat=q.dropoff_lat,lng=q.dropoff_lng,location_at=now() FROM rides r JOIN quotes q ON q.id=r.quote_id WHERE r.id=$1 AND drivers.user_id=$2`, rideID, driver.id)
+	if e != nil {
+		f.t.Fatal(e)
 	}
 }
