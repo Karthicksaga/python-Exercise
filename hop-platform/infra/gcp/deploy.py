@@ -78,6 +78,10 @@ def deploy(c, revision):
     for app in ("rider", "captain"):
         substitutions[f"_{app.upper()}_GOOGLE_MAPS_API_KEY"] = c["maps"][app]["api_key"]
         substitutions[f"_{app.upper()}_GOOGLE_MAP_ID"] = c["maps"][app]["map_id"]
+    admin_map = c.get("maps", {}).get("admin", c["maps"]["rider"])
+    substitutions["_ADMIN_MAP_PROVIDER"] = "google" if admin_map.get("api_key") else "osm"
+    substitutions["_ADMIN_GOOGLE_MAPS_API_KEY"] = admin_map.get("api_key", "")
+    substitutions["_ADMIN_GOOGLE_MAP_ID"] = admin_map.get("map_id", "")
     require(not any("," in value for value in substitutions.values()), "Build values cannot contain commas")
     # Explicit build identity: no reliance on the project's changing default Cloud Build account.
     run(["builds", "submit", ".", "--config=infra/gcp/cloudbuild.yaml",
