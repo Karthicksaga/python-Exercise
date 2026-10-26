@@ -43,6 +43,8 @@
     "./usePush": "./src/usePush.ts",
     "./validate": "./src/validate.ts",
     "./style.css": "./src/style.css",
-    "./platform": "./src/platform.ts"
+    "./platform": "./src/platform.ts",
+    "./ResponsiveNav": "./src/ResponsiveNav.tsx",
+    "./ResponsiveTable": "./src/ResponsiveTable.tsx"
   }
 }

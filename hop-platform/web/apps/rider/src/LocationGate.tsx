@@ -8,6 +8,10 @@ export default function LocationGate({ state, areas, onRetry, onPick }: { state:
         <div className="radar" aria-hidden><i /><i /><i /></div>
         <strong>Finding your location…</strong>
         <p className="muted">We use your GPS to pick the right city and set your pickup.</p>
+        {areas.length > 0 && <>
+          <p className="eyebrow">OR CHOOSE A CITY</p>
+          <div className="chips">{areas.map((a) => <button key={a.id} type="button" className="chip" onClick={() => onPick(a)}>📍 {a.name}</button>)}</div>
+        </>}
       </div>
     );
   return (

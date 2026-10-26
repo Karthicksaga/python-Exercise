@@ -1,3 +1,4 @@
+import ResponsiveTable from "@hop/shared/ResponsiveTable";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@hop/shared/api";
 import { Badge, Button, Group, Modal, Paper, Select, Table, Text, TextInput } from "@mantine/core";
@@ -129,7 +130,7 @@ export default function OperatorRides({ notify }: { notify: (msg: string) => voi
       <Paper p="md" withBorder style={{ borderRadius: 8, background: "#fff" }}>
         <form onSubmit={handleSearchSubmit}>
           <Group justify="space-between" wrap="wrap">
-            <Group gap="sm" style={{ flex: 1, minWidth: 280 }}>
+            <Group gap="sm" style={{ flex: "1 1 280px", minWidth: 0 }}>
               <TextInput
                 placeholder="Search by ID prefix, rider name, driver name..."
                 value={search}
@@ -175,7 +176,7 @@ export default function OperatorRides({ notify }: { notify: (msg: string) => voi
 
       {/* Rides Table */}
       <Paper withBorder style={{ borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-        <Table striped highlightOnHover>
+        <ResponsiveTable striped highlightOnHover>
           <Table.Thead style={{ background: "#f8fafc" }}>
             <Table.Tr>
               <Table.Th>ID & Time</Table.Th>
@@ -275,7 +276,7 @@ export default function OperatorRides({ notify }: { notify: (msg: string) => voi
               })
             )}
           </Table.Tbody>
-        </Table>
+        </ResponsiveTable>
       </Paper>
 
       {/* Ride Detail Inspection Modal */}

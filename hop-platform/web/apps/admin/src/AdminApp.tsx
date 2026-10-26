@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Button, Text } from "@mantine/core";
+import { useEffect, useRef, useState } from "react";
+import { Burger, Drawer, Button, Text } from "@mantine/core";
 import { api, APIError, setCSRF } from "@hop/shared/api";
 import OperatorPanel, { type OpsSection } from "./OperatorPanel";
 import AdminConsole from "./AdminConsole";
@@ -21,6 +21,8 @@ export type AdminView =
   | "lost-found";
 
 export default function AdminApp() {
+  const content = useRef<HTMLElement>(null);
+  const [menuOpened, setMenuOpened] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<AdminView>(
@@ -74,6 +76,7 @@ export default function AdminApp() {
 
   useEffect(() => {
     location.hash = view;
+    content.current?.scrollTo({ top: 0, behavior: "auto" });
   }, [view]);
 
   async function signOut() {
@@ -179,20 +182,17 @@ export default function AdminApp() {
 
   const title = groups.flatMap(([, items]) => items).find(([id]) => id === view)?.[1] ?? "";
 
-  return (
-    <div className="ad-shell">
-      <aside className="ad-side">
-        <div className="ad-brand">
-          <span className="ad-dot" />hop admin
-        </div>
+  const navigation = <>
         {groups.map(([g, items]) => (
           <nav key={g} aria-label={g}>
             <small>{g}</small>
             {items.map(([id, label]) => (
               <button
                 key={id}
+                type="button"
+                aria-current={view === id ? "page" : undefined}
                 className={view === id ? "on" : ""}
-                onClick={() => setView(id)}
+                onClick={() => { setView(id); setMenuOpened(false); }}
                 style={id === "sos" && activeSOSCount > 0 ? { color: "#f87171", fontWeight: 700 } : undefined}
               >
                 {label}
@@ -203,8 +203,21 @@ export default function AdminApp() {
         <button className="ad-out" onClick={() => void signOut()}>
           Sign out
         </button>
+  </>;
+
+  return (
+    <div className="ad-shell">
+      <div className="ad-mobile-toolbar"><Burger opened={menuOpened} onClick={() => setMenuOpened((value) => !value)} aria-label="Open admin navigation" aria-expanded={menuOpened} size="sm" /><strong>hop · Operations</strong></div>
+      <Drawer opened={menuOpened} onClose={() => setMenuOpened(false)} title="Operations" position="left" size="min(320px, 90vw)">
+        <div className="ad-mobile-navigation">{navigation}</div>
+      </Drawer>
+      <aside className="ad-side">
+        <div className="ad-brand">
+          <span className="ad-dot" />hop admin
+        </div>
+        {navigation}
       </aside>
-      <main className="ad-content">
+      <main className="ad-content" ref={content}>
         {/* Global Emergency Alert Banner */}
         {activeSOSCount > 0 && view !== "sos" && (
           <div

@@ -1,3 +1,4 @@
+import ResponsiveTable from "@hop/shared/ResponsiveTable";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@hop/shared/api";
 import { Badge, Button, Group, Modal, Paper, Table, Tabs, Text, TextInput } from "@mantine/core";
@@ -145,7 +146,7 @@ export default function OperatorSafety({ notify }: { notify: (msg: string) => vo
         {/* SOS Incidents Tab */}
         <Tabs.Panel value="sos" pt="md">
           <Paper withBorder style={{ borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-            <Table striped highlightOnHover>
+            <ResponsiveTable striped highlightOnHover>
               <Table.Thead style={{ background: "#f8fafc" }}>
                 <Table.Tr>
                   <Table.Th>Triggered At</Table.Th>
@@ -232,14 +233,14 @@ export default function OperatorSafety({ notify }: { notify: (msg: string) => vo
                   })
                 )}
               </Table.Tbody>
-            </Table>
+            </ResponsiveTable>
           </Paper>
         </Tabs.Panel>
 
         {/* Driver Scores Tab */}
         <Tabs.Panel value="scores" pt="md">
           <Paper withBorder style={{ borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-            <Table striped highlightOnHover>
+            <ResponsiveTable striped highlightOnHover>
               <Table.Thead style={{ background: "#f8fafc" }}>
                 <Table.Tr>
                   <Table.Th>Driver Name</Table.Th>
@@ -287,7 +288,7 @@ export default function OperatorSafety({ notify }: { notify: (msg: string) => vo
                   ))
                 )}
               </Table.Tbody>
-            </Table>
+            </ResponsiveTable>
           </Paper>
         </Tabs.Panel>
       </Tabs>

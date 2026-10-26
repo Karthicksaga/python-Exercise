@@ -513,7 +513,7 @@ main>*:nth-child(1){animation-delay:.02s}main>*:nth-child(2){animation-delay:.07
 .driver-mode .page-title h1{background:linear-gradient(135deg,var(--ink),#047857);-webkit-background-clip:text;background-clip:text}
 
 button:not([class*="mantine-"]):not(.secondary):not(.text-button):not(.danger):not(.nav *){position:relative;overflow:hidden}
-button:not([class*="mantine-"]):not(.secondary):not(.text-button):not(.danger)::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);transform:translateX(-120%);transition:transform .6s}
+button:not([class*="mantine-"]):not(.secondary):not(.text-button):not(.danger)::after{pointer-events:none;content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);transform:translateX(-120%);transition:transform .6s}
 button:not([class*="mantine-"]):not(.secondary):not(.text-button):not(.danger):hover:not(:disabled)::after{transform:translateX(120%)}
 button:not([class*="mantine-"]):active:not(:disabled){transform:scale(.97)}
 
@@ -714,13 +714,13 @@ button.recenter,button.recenter:hover{position:absolute!important}
 .stage-panel > .eyebrow, .stage-panel > h2 { display: none; }
 .stage { display: grid; grid-template-columns: minmax(280px, 42%) minmax(0, 1fr); gap: 0; height: min(720px, calc(100vh - 240px)); min-height: 440px; border-radius: 24px; overflow: hidden; background: var(--card); box-shadow: 0 20px 50px rgba(15, 23, 42, .14); }
 .stage-map { grid-column: 2; grid-row: 1; position: relative; min-height: 0; display: flex; flex-direction: column; }
-.stage-map > div { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.stage-map > .map-frame { flex: 1; min-height: 0; }
 .stage-map .map-picker-heading { position: absolute; z-index: 5; top: 12px; left: 12px; right: 12px; margin: 0; pointer-events: none; }
 .stage-map .map-picker-heading > * { pointer-events: auto; }
 .stage-map .map-picker-heading > span { background: rgba(255, 255, 255, .92); padding: 6px 12px; border-radius: 999px; box-shadow: var(--shadow); }
 .stage-map .segmented { background: rgba(255, 255, 255, .95); box-shadow: var(--shadow); }
-.stage-map [class*="map"] { border-radius: 0; }
-.stage-map .gm-style, .stage-map > div > div { flex: 1; min-height: 0; }
+.stage-map > .map-frame { border-radius: 0; }
+.stage-map > .map-frame > .booking-map { height: 100%; min-height: 0; }
 .sheet { grid-column: 1; grid-row: 1; padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; z-index: 2; }
 .sheet fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 10px; }
 .sheet > button.full, .step-actions { position: sticky; bottom: -18px; margin-top: auto; background: linear-gradient(transparent, var(--card) 28%); padding: 14px 0 4px; }
@@ -767,7 +767,7 @@ button.recenter,button.recenter:hover{position:absolute!important}
     width: 100% !important;
     position: relative !important;
   }
-  .stage-map > div, .stage-map .gm-style, .stage-map .booking-map, .stage-map .osm-map {
+  .stage-map > .map-frame, .stage-map > .map-frame > .booking-map {
     width: 100% !important;
     height: 100% !important;
     flex: 1;
@@ -1903,3 +1903,76 @@ img, video { max-width: 100%; height: auto; }
 @media (pointer: coarse) {
   button:not([class*="mantine-"]):not(.swipe-knob), .button { min-height: 44px; }
 }
+
+/* Map chrome must size itself, independently of the map canvas. */
+.stage-map { isolation: isolate; }
+.stage-map > .map-picker-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+  height: auto;
+  width: auto;
+}
+.stage-map .map-picker-heading > span { display: none; }
+.stage-map .map-picker-heading .segmented { flex: 0 1 auto; align-self: flex-start; }
+.stage-map .map-picker-heading button { flex: 0 1 auto; }
+.stage-map > .map-frame { width: 100%; position: relative; margin-bottom: 0; }
+
+/* Fixed navigation has stable, non-overlapping hit targets on touch screens. */
+@media (max-width: 820px) {
+  .has-nav .nav {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    justify-content: stretch;
+    align-items: stretch;
+    gap: 0;
+    isolation: isolate;
+    z-index: 100;
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  .has-nav .nav button {
+    width: 100%; max-width: 100%; min-width: 0;
+    padding: 4px 1px; margin: 0;
+    animation: none; transition: background .2s, color .2s;
+    transform: none;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+  .has-nav .nav button:hover:not(:disabled),
+  .has-nav .nav button:active:not(:disabled) { transform: none; }
+  .has-nav .nav button::before, .has-nav .nav button::after { display: none; }
+  .has-nav .nav button > * { pointer-events: none; }
+  .has-nav .nav button span { font-size: 10px; line-height: 1.2; }
+  .has-nav .nav .nav-out { display: none; }
+  .has-nav .topbar { height: auto; min-height: calc(60px + env(safe-area-inset-top, 0px)); flex-wrap: wrap; gap: 8px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-bottom: 8px; }
+  .header-right { flex: 0 1 auto; flex-wrap: nowrap; justify-content: flex-end; gap: 6px; }
+  .header-right > * { flex-shrink: 0; }
+  .header-right .avatar { width: 32px; height: 32px; }
+  .stage-map > .map-picker-heading { top: 10px; left: auto; right: 10px; max-width: calc(100% - 20px); }
+  .stage-map .map-picker-heading button { min-height: 36px; padding: 6px 10px; font-size: 12px; }
+  .stage-map .map-controls { top: 56px; }
+  .stage-map .map-search { top: 142px; }
+  .stage-map .map-tools { top: 56px; }
+  .stage-map { min-height: 340px !important; max-height: 440px !important; }
+  .stage-panel { animation: none; backdrop-filter: none; }
+}
+
+.nav .nav-label-mobile { display: none; }
+@media (max-width: 820px) {
+  .nav .nav-label-desktop { display: none; }
+  .nav .nav-label-mobile { display: block; }
+}
+
+@media (max-width: 820px) {
+  .header-right .alerts-label { display: none; }
+  .header-right .alerts-btn, .header-right .theme-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; min-height: 36px; padding: 0; flex: none;
+  }
+  .header-right .live-pill { width: 10px; min-width: 10px; font-size: 0; padding: 0; gap: 0; background: transparent; }
+  .header-right .duty-pill { font-size: 11px; letter-spacing: 0; white-space: nowrap; }
+}
+@media (max-width: 480px) { .topbar .logo-sub { display: none; } }

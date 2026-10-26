@@ -118,7 +118,7 @@ export default function OperatorLiveMap({ notify }: { notify: (msg: string) => v
   };
 
   return (
-    <div className="live-map-container" style={{ display: "grid", gridTemplateRows: "auto 1fr", gap: 12, height: "calc(100vh - 120px)" }}>
+    <div className="live-map-container">
       {/* Top Filter and Controls Bar */}
       <Paper p="sm" withBorder style={{ background: "#ffffff", borderRadius: 8 }}>
         <Group justify="space-between" wrap="wrap">
@@ -176,9 +176,9 @@ export default function OperatorLiveMap({ notify }: { notify: (msg: string) => v
       </Paper>
 
       {/* Main Map + Sidebar Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 12, minHeight: 0, height: "100%" }}>
+      <div className="dispatch-grid">
         {/* Map Canvas */}
-        <Paper withBorder style={{ borderRadius: 8, overflow: "hidden", position: "relative", width: "100%", height: "100%", minHeight: 450 }}>
+        <Paper withBorder className="dispatch-map">
           <MapCanvas center={mapCenter} zoom={13}>
             {selectedRide && (
               <MapFit

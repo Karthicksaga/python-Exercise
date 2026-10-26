@@ -1,3 +1,4 @@
+import ResponsiveTable from "@hop/shared/ResponsiveTable";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert, Badge, Button, Card, Checkbox, Container, Drawer, Group, SimpleGrid, Stack, Switch, Table, Tabs, Text, Textarea,
@@ -80,7 +81,7 @@ export default function AdminConsole({ notify }: { notify: (s: string) => void; 
         </Tabs.List>
       </Tabs>
       <Card withBorder radius="lg" p={0} style={{ overflowX: "auto" }}>
-        <Table highlightOnHover verticalSpacing="sm">
+        <ResponsiveTable highlightOnHover verticalSpacing="sm">
           <Table.Thead><Table.Tr><Table.Th>Driver</Table.Th><Table.Th>Vehicle</Table.Th><Table.Th>Area</Table.Th><Table.Th>Checks</Table.Th><Table.Th>Status</Table.Th><Table.Th /></Table.Tr></Table.Thead>
           <Table.Tbody>
             {shown.map((r) => {
@@ -98,14 +99,14 @@ export default function AdminConsole({ notify }: { notify: (s: string) => void; 
             })}
             {shown.length === 0 && <Table.Tr><Table.Td colSpan={6}><Text c="dimmed" ta="center" py="lg">Nothing here.</Text></Table.Td></Table.Tr>}
           </Table.Tbody>
-        </Table>
+        </ResponsiveTable>
       </Card>
 
-      <Drawer lockScroll={false} opened={!!sel} onClose={() => setSel(null)} position="right" size="lg" title={sel ? `Review ${sel.name}` : ""}>
+      <Drawer opened={!!sel} onClose={() => setSel(null)} position="right" size="lg" title={sel ? `Review ${sel.name}` : ""}>
         {sel && (
           <Stack gap="md">
             <Card withBorder radius="md">
-              <SimpleGrid cols={2} spacing="xs">
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
                 <div><Text size="xs" c="dimmed">Phone</Text><Text size="sm">{sel.phone || "—"}</Text></div>
                 <div><Text size="xs" c="dimmed">Gender (profile)</Text><Text size="sm">{sel.gender || "not set"}</Text></div>
                 <div><Text size="xs" c="dimmed">Vehicle</Text><Text size="sm">{sel.vehicle_number} · {sel.vehicle_category}</Text></div>

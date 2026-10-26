@@ -1,3 +1,4 @@
+import ResponsiveTable from "@hop/shared/ResponsiveTable";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@hop/shared/api";
 import { Badge, Button, Group, Modal, Paper, Select, Table, Tabs, Text, TextInput } from "@mantine/core";
@@ -102,7 +103,7 @@ export default function OperatorLostFound({ notify }: { notify: (msg: string) =>
             placeholder="Search item description, passenger, or driver..."
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
-            style={{ width: 340 }}
+            style={{ width: 340, maxWidth: "100%" }}
             size="xs"
           />
           <Group gap="sm">
@@ -135,7 +136,7 @@ export default function OperatorLostFound({ notify }: { notify: (msg: string) =>
 
       {/* Claims Table */}
       <Paper withBorder style={{ borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-        <Table striped highlightOnHover>
+        <ResponsiveTable striped highlightOnHover>
           <Table.Thead style={{ background: "#f8fafc" }}>
             <Table.Tr>
               <Table.Th>Reported At</Table.Th>
@@ -206,7 +207,7 @@ export default function OperatorLostFound({ notify }: { notify: (msg: string) =>
               ))
             )}
           </Table.Tbody>
-        </Table>
+        </ResponsiveTable>
       </Paper>
 
       {/* Update Modal */}

@@ -40,7 +40,7 @@ export default function PlaceInput({
   current?: boolean;
   scope?: "india";
 }) {
-  const isMobile = useMediaQuery("(max-width: 800px)");
+  const isMobile = useMediaQuery("(max-width: 820px)");
   const [text, setText] = useState(value?.label || "");
   const [places, setPlaces] = useState<Point[]>([]);
   const [error, setError] = useState("");

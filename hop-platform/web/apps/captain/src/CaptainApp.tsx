@@ -1,8 +1,8 @@
+import ResponsiveNav from "@hop/shared/ResponsiveNav";
 import { useEffect, useState } from "react";
 import { Alert, Button, Group, Modal, Stack, Text } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { t, useLang } from "@hop/shared/i18n";
-import Icon from "@hop/shared/Icons";
 import PageLoader from "@hop/shared/PageLoader";
 import RideCard from "@hop/shared/RideCard";
 import RideMoment from "@hop/shared/RideMoment";
@@ -60,7 +60,7 @@ export default function CaptainApp() {
             <span className={"live-pill" + (s.live ? " on" : "")}><i /> {s.live ? "Live" : "Connecting"}</span>
           )}
           {user && s.permission === "default" && (
-            <button type="button" className="alerts-btn" onClick={() => void s.requestPermission()}>Enable alerts</button>
+            <button type="button" className="alerts-btn" aria-label="Enable alerts" title="Enable alerts" onClick={() => void s.requestPermission()}><span aria-hidden="true">🔔</span><span className="alerts-label">Enable alerts</span></button>
           )}
           {user && <span className="avatar" title={user.name} style={{ background: avatarColors[avatarColor] }}>{(user.name[0] || "?").toUpperCase()}</span>}
         </div>
@@ -79,19 +79,8 @@ export default function CaptainApp() {
           <CaptainLanding phoneLogin={s.phoneLogin} />
         ) : (
           <>
-            <nav className="nav" aria-label="Main navigation">
-              {navItems.map(([id, label]) => (
-                <button key={id} onClick={() => setTab(id)} aria-current={tab === id ? "page" : undefined} className={tab === id ? "selected" : ""}>
-                  <Icon name={id} />
-                  <span>{label}</span>
-                  {id === "driver" && data.offers.length > 0 && <em className="badge">{data.offers.length}</em>}
-                </button>
-              ))}
-              <button className="nav-out" onClick={() => setLogoutAsk(true)}>
-                <Icon name="logout" />
-                <span>Sign out</span>
-              </button>
-            </nav>
+            <ResponsiveNav items={navItems.map(([id, label]) => ({ id, label, shortLabel: id === "history" ? "Trips" : label, badge: id === "driver" ? data.offers.length : undefined }))}
+              primary={["driver", "history", "profile"]} value={tab} onChange={setTab} onSignOut={() => setLogoutAsk(true)} />
             <div className="page-title">
               <div>
                 <p className="eyebrow">{eyebrow}</p>

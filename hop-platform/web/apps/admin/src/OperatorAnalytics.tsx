@@ -1,3 +1,4 @@
+import ResponsiveTable from "@hop/shared/ResponsiveTable";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@hop/shared/api";
 import { Badge, Button, Group, Paper, Progress, SimpleGrid, Table, Text } from "@mantine/core";
@@ -170,7 +171,7 @@ export default function OperatorAnalytics({ notify }: { notify: (msg: string) =>
         {/* Daily Volume Trend */}
         <Paper p="md" withBorder style={{ borderRadius: 8, background: "#fff" }}>
           <Text fw={700} size="sm" mb="xs">14-Day Trip Volume</Text>
-          <Table striped>
+          <ResponsiveTable striped>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Date</Table.Th>
@@ -204,7 +205,7 @@ export default function OperatorAnalytics({ notify }: { notify: (msg: string) =>
                 })
               )}
             </Table.Tbody>
-          </Table>
+          </ResponsiveTable>
         </Paper>
       </SimpleGrid>
     </div>

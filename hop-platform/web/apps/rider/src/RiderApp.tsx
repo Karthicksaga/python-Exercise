@@ -1,3 +1,4 @@
+import ResponsiveNav from "@hop/shared/ResponsiveNav";
 import { ShareToggle } from "@hop/shared/SharedRide";
 import { useEffect, useRef, useState } from "react";
 import { api, APIError } from "@hop/shared/api";
@@ -16,7 +17,6 @@ const MapPicker = lazyPanel(() => import("./MapPicker"), "Loading map…", true)
 import RideCard from "@hop/shared/RideCard";
 const CompanionPanel = lazyPanel(() => import("./CompanionPanel"), "Loading…");
 const VoiceBooking = lazyPanel(() => import("./VoiceBooking"), "Loading…");
-import Icon from "@hop/shared/Icons";
 import RideOptions from "./RideOptions";
 import QuickPlaces from "./QuickPlaces";
 import TripHero from "./TripHero";
@@ -262,14 +262,16 @@ export default function RiderApp() {
   }
   const [locState, setLocState] = useState<"detecting" | "ready" | "unsupported" | "denied">("detecting");
   const [detectTick, setDetectTick] = useState(0);
+  const locationRequest = useRef(0);
   useEffect(() => {
     if (!user || !areas.length) return;
     if (!navigator.geolocation) return setLocState("denied");
     let live = true;
+    const request = ++locationRequest.current;
     setLocState("detecting");
     navigator.geolocation.getCurrentPosition(
       (p) => {
-        if (!live) return;
+        if (!live || request !== locationRequest.current) return;
         const { latitude: lat, longitude: lng } = p.coords;
         const hit = areas.find((a) => lat >= a.min_lat && lat <= a.max_lat && lng >= a.min_lng && lng <= a.max_lng);
         if (!hit) return setLocState("unsupported");
@@ -282,7 +284,7 @@ export default function RiderApp() {
         setFollowGps(true);
         setLocState("ready");
       },
-      (e) => live && setLocState(e.code === e.PERMISSION_DENIED ? "denied" : "unsupported"),
+      (e) => live && request === locationRequest.current && setLocState(e.code === e.PERMISSION_DENIED ? "denied" : "unsupported"),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
     );
     return () => {
@@ -353,8 +355,8 @@ export default function RiderApp() {
             </span>
           )}
           {user && permission === "default" && (
-            <button type="button" className="alerts-btn" onClick={() => void requestPermission()}>
-              Enable alerts
+            <button type="button" className="alerts-btn" aria-label="Enable alerts" title="Enable alerts" onClick={() => void requestPermission()}>
+              <span aria-hidden="true">🔔</span><span className="alerts-label">Enable alerts</span>
             </button>
           )}
           {user && <span className="avatar" title={user.name} style={{ background: avatarColors[avatarColor] }}>{(user.name[0] || "?").toUpperCase()}</span>}
@@ -382,23 +384,8 @@ export default function RiderApp() {
           <Landing phoneLogin={phoneLogin} />
         ) : (
           <>
-            <nav className="nav" aria-label="Main navigation">
-              {navItems.map(([id, label]) => (
-                <button
-                  key={id}
-                  onClick={() => setTab(id)}
-                  aria-current={tab === id ? "page" : undefined}
-                  className={tab === id ? "selected" : ""}
-                >
-                  <Icon name={id} />
-                  <span>{label}</span>
-                </button>
-              ))}
-              <button className="nav-out" onClick={() => setLogoutAsk(true)}>
-                <Icon name="logout" />
-                <span>Sign out</span>
-              </button>
-            </nav>
+            <ResponsiveNav items={navItems.map(([id, label]) => ({ id, label, shortLabel: ({ ride: "Book", history: "Rides", wallet: "Wallet", profile: "Account" } as Record<string, string>)[id] }))}
+              primary={["ride", "history", "wallet", "profile"]} value={tab} onChange={setTab} onSignOut={() => setLogoutAsk(true)} />
             <div className="page-title">
               <div>
                 <p className="eyebrow">{pageHeadView.eyebrow}</p>
@@ -436,6 +423,7 @@ export default function RiderApp() {
                       areas={areas}
                       onRetry={() => setDetectTick((n) => n + 1)}
                       onPick={(a) => {
+                        locationRequest.current += 1;
                         setArea(a.id);
                         setPickup(null);
                         setDropoff(null);
