@@ -168,9 +168,14 @@ func TestVehicleCategoryQuoteAndDriverMatching(t *testing.T) {
 	require(t, code, 200)
 	code, pricing := f.call(rider, "GET", "/api/config", nil)
 	require(t, code, 200)
-	vehicles := pricing["vehicles"].([]any)
-	if len(vehicles) != 2 {
-		t.Fatalf("expected bike and auto pricing, got %#v", vehicles)
+	var areaVehicles []any
+	for _, v := range pricing["vehicles"].([]any) {
+		if m, ok := v.(map[string]any); ok && m["area_id"] == f.area {
+			areaVehicles = append(areaVehicles, v)
+		}
+	}
+	if len(areaVehicles) != 2 {
+		t.Fatalf("expected bike and auto pricing for area %s, got %#v", f.area, areaVehicles)
 	}
 	code, unavailable := f.call(rider, "POST", "/api/quotes", map[string]any{"area_id": f.area, "vehicle_category": "suv", "pickup": Point{13.08, 80.27, "Central"}, "dropoff": Point{13.04, 80.23, "Destination"}})
 	require(t, code, 409)
