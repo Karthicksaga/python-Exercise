@@ -1,4 +1,4 @@
-import { isAndroid } from "./platform";
+import { isAndroid, serverURL } from "./platform";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
@@ -79,46 +79,68 @@ export function usePush(enabled: boolean, onPush: (message: Push) => void) {
     let cancelled = false;
     const handles: { remove: () => Promise<void> }[] = [];
     void (async () => {
-      const received = await PushNotifications.addListener('pushNotificationReceived', n => {
-        handler.current({ kind: 'ride', title: n.title || 'Hop', body: n.body || '' });
-      });
-      handles.push(received);
-      const registration = await PushNotifications.addListener('registration', async token => {
-        nativeToken = token.value;
-        try { await api('/api/android/push/subscribe', { token: token.value }); }
-        catch (e) { window.dispatchEvent(new CustomEvent('hop-native-error', { detail: (e as Error).message })); }
-      });
-      handles.push(registration);
-      const errors = await PushNotifications.addListener('registrationError', () => {
-        window.dispatchEvent(new CustomEvent('hop-native-error', { detail: 'Android push needs this app’s Firebase configuration. In-app updates remain available.' }));
-      });
-      handles.push(errors);
-      const status = await PushNotifications.checkPermissions();
-      if (!cancelled) {
-        setPermission(status.receive === 'granted' ? 'granted' : status.receive === 'denied' ? 'denied' : 'default');
-        if (status.receive === 'granted') {
-          await PushNotifications.createChannel({ id: 'hop-rides', name: 'Hop rides', importance: 4 });
-          await PushNotifications.register();
+      try {
+        const received = await PushNotifications.addListener('pushNotificationReceived', n => {
+          handler.current({ kind: 'ride', title: n.title || 'Hop', body: n.body || '' });
+        });
+        handles.push(received);
+        const registration = await PushNotifications.addListener('registration', async token => {
+          nativeToken = token.value;
+          try { await api('/api/android/push/subscribe', { token: token.value }); }
+          catch (e) { window.dispatchEvent(new CustomEvent('hop-native-error', { detail: (e as Error).message })); }
+        });
+        handles.push(registration);
+        const errors = await PushNotifications.addListener('registrationError', () => {
+          window.dispatchEvent(new CustomEvent('hop-native-error', { detail: 'Android push needs this app’s Firebase configuration. In-app updates remain available.' }));
+        });
+        handles.push(errors);
+        const status = await PushNotifications.checkPermissions();
+        if (!cancelled) {
+          setPermission(status.receive === 'granted' ? 'granted' : status.receive === 'denied' ? 'denied' : 'default');
+          if (status.receive === 'granted') {
+            try {
+              await PushNotifications.createChannel({ id: 'hop-rides', name: 'Hop rides', importance: 4 });
+            } catch (e) {
+              console.warn('Channel creation error:', e);
+            }
+            try {
+              await PushNotifications.register();
+            } catch (e) {
+              console.warn('Push registration error:', e);
+            }
+          }
         }
+      } catch (err) {
+        console.warn('Android push setup error:', err);
       }
-      if (cancelled) await Promise.all(handles.map(h => h.remove()));
+      if (cancelled) await Promise.all(handles.map(h => h.remove().catch(() => undefined)));
     })().catch(() => undefined);
-    return () => { cancelled = true; void Promise.all(handles.map(h => h.remove())); };
+    return () => { cancelled = true; void Promise.all(handles.map(h => h.remove().catch(() => undefined))); };
   }, [enabled]);
   useEffect(() => {
     if (!isAndroid && enabled && permission === "granted") void registerWebPush();
   }, [enabled, permission]);
   useEffect(() => {
-    if (isAndroid || !enabled || typeof EventSource === "undefined") return;
-    const source = new EventSource("/api/stream");
+    if (!enabled || typeof EventSource === "undefined") return;
+    const streamUrl = isAndroid ? serverURL("/api/stream") : "/api/stream";
+    let source: EventSource;
+    try {
+      source = new EventSource(streamUrl);
+    } catch {
+      return;
+    }
     source.onopen = () => setLive(true);
     source.onerror = () => setLive(false);
     source.addEventListener("push", (event) => {
-      const message = JSON.parse((event as MessageEvent<string>).data) as Push;
-      handler.current(message);
-      chime();
-      if (typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
-        new Notification(message.title, { body: message.body, tag: message.kind });
+      try {
+        const message = JSON.parse((event as MessageEvent<string>).data) as Push;
+        handler.current(message);
+        chime();
+        if (typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
+          new Notification(message.title, { body: message.body, tag: message.kind });
+        }
+      } catch {
+        // Audio or parse error
       }
     });
     return () => {
@@ -128,16 +150,36 @@ export function usePush(enabled: boolean, onPush: (message: Push) => void) {
   }, [enabled]);
   async function requestPermission() {
     if (isAndroid) {
-      const status = await PushNotifications.requestPermissions();
-      setPermission(status.receive === 'granted' ? 'granted' : 'denied');
-      if (status.receive === 'granted') {
-        await PushNotifications.createChannel({ id: 'hop-rides', name: 'Hop rides', importance: 4 });
-        await PushNotifications.register().catch(() => undefined);
+      try {
+        const status = await PushNotifications.requestPermissions();
+        setPermission(status.receive === 'granted' ? 'granted' : 'denied');
+        if (status.receive === 'granted') {
+          try {
+            await PushNotifications.createChannel({ id: 'hop-rides', name: 'Hop rides', importance: 4 });
+          } catch (e) {
+            console.warn('Channel creation error:', e);
+          }
+          try {
+            await PushNotifications.register();
+          } catch (e) {
+            console.warn('Push registration error:', e);
+            window.dispatchEvent(new CustomEvent('hop-native-error', {
+              detail: 'Push notification service unavailable on this device. Live in-app updates remain active.'
+            }));
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to request push permissions:', err);
+        setPermission('denied');
       }
       return;
     }
     if (typeof Notification === "undefined") return;
-    setPermission(await Notification.requestPermission());
+    try {
+      setPermission(await Notification.requestPermission());
+    } catch {
+      setPermission('denied');
+    }
   }
-  return { permission, requestPermission, live: isAndroid ? enabled : live };
+  return { permission, requestPermission, live: isAndroid ? (live || enabled) : live };
 }

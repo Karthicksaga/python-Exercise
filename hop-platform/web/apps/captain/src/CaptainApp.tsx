@@ -72,16 +72,6 @@ export default function CaptainApp() {
             <span className="emoji-keep">{s.dark ? "☀️" : "🌙"}</span>
           </button>
           <span className="commission">Built for your drive</span>
-          {user && (
-            <a
-              href={import.meta.env.VITE_RIDER_URL || "https://hop-staging-rider-qp262su4sq-el.a.run.app"}
-              className="duty-pill"
-              title="Switch to Rider mode to book rides"
-              style={{ textDecoration: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, background: "rgba(255,255,255,0.15)", color: "#fff", fontWeight: 600, fontSize: "0.8rem" }}
-            >
-              🚗 Rider mode
-            </a>
-          )}
           {user && dutyOn !== null && (
             <span className={"duty-pill" + (dutyOn ? " on" : "")} role="status" title={dutyOn ? "You are online and visible to riders" : "You are offline. Go online to get requests"}>
               <i /> {dutyOn ? "Online" : "Offline"}
