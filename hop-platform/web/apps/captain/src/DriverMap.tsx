@@ -1,14 +1,13 @@
-import MapControls from "@hop/shared/MapControls";
 import { useEffect, useRef, useState } from "react";
 import { MapCanvas, MapFit, MapFollow, MapLine, MapMarker } from "@hop/shared/mapkit";
-import { hotZone, kmText, MapToolbar, MapToolLayers, useDemand, useMapTools } from "@hop/shared/MapExtras";
+import { hotZone, kmText, MapToolLayers, useDemand, useMapTools } from "@hop/shared/MapExtras";
 import { useGlide } from "@hop/shared/LiveNavMap";
 import { money, type Area, type Ride } from "@hop/shared/types";
 
 type Pos = { lat: number; lng: number };
 
 // Live driver map: your position, each request's pickup/drop and its road route.
-export default function DriverMap({ area, pos: rawPos, rides, notify, nudge }: { area: Area; pos: Pos | null; rides: Ride[]; notify?: (s: string) => void; nudge?: boolean }) {
+export default function DriverMap({ area, pos: rawPos, rides, nudge }: { area: Area; pos: Pos | null; rides: Ride[]; notify?: (s: string) => void; nudge?: boolean }) {
   const pos = useGlide(rawPos ?? undefined) ?? null;
   const tools = useMapTools({ demand: true });
   const cells = useDemand(true);
@@ -70,22 +69,6 @@ export default function DriverMap({ area, pos: rawPos, rides, notify, nudge }: {
           </span>
         ))}
       </MapCanvas>
-      <MapControls at={pos ?? undefined} notify={notify} />
-      <MapToolbar
-        tools={tools}
-        areaId={area.id}
-        area={area.name}
-        demand
-        sheet={
-          rides.length > 0 && (
-            <div className="sheet-grid">
-              {rides.slice(0, 2).map((r) => (
-                <div key={r.id}><small>{r.pickup_label.split(",")[0]} →</small><strong>{money(r.fare_paise)}</strong><em>{(r.meters / 1000).toFixed(1)} km</em></div>
-              ))}
-            </div>
-          )
-        }
-      />
       {nudge && (() => {
         const hz = hotZone(cells, rawPos);
         return hz ? (
@@ -97,10 +80,6 @@ export default function DriverMap({ area, pos: rawPos, rides, notify, nudge }: {
           </div>
         ) : null;
       })()}
-      <span className="live-chip"><i /> LIVE</span>
-      <button type="button" className="recenter" onClick={() => setFollow((f) => !f)}>
-        {follow ? "Show requests" : "◎ Follow me"}
-      </button>
     </div>
   );
 }

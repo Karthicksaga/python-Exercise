@@ -81,6 +81,45 @@ export default function RiderApp() {
       payment_method: PayMethod;
       offer_paise?: number;
     } | null>(null);
+
+  const changeTab = (nextTab: string, replace = false) => {
+    if (nextTab === tab) return;
+    setTab(nextTab);
+    const state = { tab: nextTab, step };
+    if (replace) {
+      window.history.replaceState(state, "");
+    } else {
+      window.history.pushState(state, "");
+    }
+  };
+
+  const changeStep = (nextStep: "where" | "choose" | "confirm", replace = false) => {
+    if (nextStep === step) return;
+    setStep(nextStep);
+    const state = { tab, step: nextStep };
+    if (replace) {
+      window.history.replaceState(state, "");
+    } else {
+      window.history.pushState(state, "");
+    }
+  };
+
+  useEffect(() => {
+    if (!window.history.state) {
+      window.history.replaceState({ tab: "ride", step: "where" }, "");
+    }
+    const onPop = (e: PopStateEvent) => {
+      if (e.state) {
+        if (e.state.tab) setTab(e.state.tab);
+        if (e.state.step) setStep(e.state.step);
+      } else {
+        setTab("ride");
+        setStep("where");
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   useEffect(() => {
     if (!areas.length || area) return;
     setArea(areas[0].id);
@@ -127,7 +166,8 @@ export default function RiderApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, area, pickup, dropoff, vehicleCategory, trip, promo, pink, routeIndex]);
   const areaVehicles = vehicles.filter((item) => item.area_id === area);
-  const current = data.rides.find((r) => r.mine && active(r));
+  const myRides = data.rides.filter((r) => r.mine);
+  const current = myRides.find((r) => active(r));
   const drivingTrip = data.rides.find((r) => r.driving && active(r));
   useEffect(() => setRouteIndex(0), [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
   const prevRide = useRef<{ id: string; status: string } | null>(null);
@@ -195,7 +235,7 @@ export default function RiderApp() {
     try {
       await api("/api/rides", { ...body, ...(goOffline && { go_offline: true }) });
       setQuote(null);
-      setStep("where");
+      changeStep("where", true);
       bookingAttempt.current = null;
       await refresh();
       showMoment({ vehicle: vehicleCategory, kind: "booked", title: "Ride requested!", sub: "Alerting drivers near you…" });
@@ -339,12 +379,12 @@ export default function RiderApp() {
             <span className="emoji-keep">{dark ? "☀️" : "🌙"}</span>
           </button>
           <span className="commission">Everyday rides</span>
-          {user && isApprovedDriver && (
+          {user && (
             <a
-              href={import.meta.env.VITE_CAPTAIN_URL || "http://localhost:5274"}
-              className="duty-pill on"
-              title="You are an approved driver! Click to open Captain Drive mode"
-              style={{ textDecoration: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, background: "#b84333", color: "#fff", fontWeight: 600, fontSize: "0.8rem" }}
+              href={import.meta.env.VITE_CAPTAIN_URL || "/captain"}
+              className={"duty-pill" + (isApprovedDriver ? " on" : "")}
+              title={isApprovedDriver ? "Switch to Captain (Drive mode)" : "Start driving with Hop"}
+              style={{ textDecoration: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, background: isApprovedDriver ? "#b84333" : "rgba(255,255,255,0.18)", color: "#fff", fontWeight: 600, fontSize: "0.8rem" }}
             >
               🚗 Drive
             </a>
@@ -385,7 +425,7 @@ export default function RiderApp() {
         ) : (
           <>
             <ResponsiveNav items={navItems.map(([id, label]) => ({ id, label, shortLabel: ({ ride: "Book", history: "Rides", wallet: "Wallet", profile: "Account" } as Record<string, string>)[id] }))}
-              primary={["ride", "history", "wallet", "profile"]} value={tab} onChange={setTab} onSignOut={() => setLogoutAsk(true)} />
+              primary={["ride", "history", "wallet", "profile"]} value={tab} onChange={changeTab} onSignOut={() => setLogoutAsk(true)} />
             <div className="page-title">
               <div>
                 <p className="eyebrow">{pageHeadView.eyebrow}</p>
@@ -437,51 +477,28 @@ export default function RiderApp() {
                       <div className="stage">
                         <div className="stage-map">
                       {locState === "ready" && areas.find((item) => item.id === area) && (
-                        <>
-                          <div className="map-picker-heading">
-                            <span>Tap the map to set</span>
-                            <div className="segmented" role="group" aria-label="Choose map location">
-                              <button
-                                type="button"
-                                aria-pressed={mapTarget === "pickup"}
-                                className={mapTarget === "pickup" ? "selected" : ""}
-                                onClick={() => setMapTarget("pickup")}
-                              >
-                                Pickup
-                              </button>
-                              <button
-                                type="button"
-                                aria-pressed={mapTarget === "dropoff"}
-                                className={mapTarget === "dropoff" ? "selected" : ""}
-                                onClick={() => setMapTarget("dropoff")}
-                              >
-                                Destination
-                              </button>
-                            </div>
-                          </div>
-                          <MapBoundary>
-                          <MapPicker
-                            area={areas.find((item) => item.id === area)!}
-                            pickup={pickup}
-                            dropoff={dropoff}
-                            route={quote?.route}
-                            drivers={nearbyDrivers}
-                            pois={[
-                              ...(data.saved_locations ?? []).map((l) => ({ lat: l.lat, lng: l.lng, label: l.place_label, icon: l.kind === "home" ? "🏠" : l.kind === "work" ? "💼" : "⭐" })),
-                              ...data.rides.filter((r) => r.status !== "cancelled").slice(0, 5).map((r) => ({ lat: r.dropoff_lat, lng: r.dropoff_lng, label: r.dropoff_label, icon: "🕘" })),
-                            ]}
-                            summary={quote ? { meters: quote.meters, seconds: quote.seconds, fare_paise: quote.fare_paise } : undefined}
-                            vehicleCategory={vehicleCategory}
-                            target={mapTarget}
-                            onTargetChange={setMapTarget}
-                            notify={notify}
-                            onPinStart={() => setFollowGps(false)}
-                            onSelect={(kind, point) =>
-                              kind === "pickup" ? choosePickup(point) : setDropoff(point)
-                            }
-                          />
-                          </MapBoundary>
-                        </>
+                        <MapBoundary>
+                        <MapPicker
+                          area={areas.find((item) => item.id === area)!}
+                          pickup={pickup}
+                          dropoff={dropoff}
+                          route={quote?.route}
+                          drivers={nearbyDrivers}
+                          pois={[
+                            ...(data.saved_locations ?? []).map((l) => ({ lat: l.lat, lng: l.lng, label: l.place_label, icon: l.kind === "home" ? "🏠" : l.kind === "work" ? "💼" : "⭐" })),
+                            ...data.rides.filter((r) => r.status !== "cancelled").slice(0, 5).map((r) => ({ lat: r.dropoff_lat, lng: r.dropoff_lng, label: r.dropoff_label, icon: "🕘" })),
+                          ]}
+                          summary={quote ? { meters: quote.meters, seconds: quote.seconds, fare_paise: quote.fare_paise } : undefined}
+                          vehicleCategory={vehicleCategory}
+                          target={mapTarget}
+                          onTargetChange={setMapTarget}
+                          notify={notify}
+                          onPinStart={() => setFollowGps(false)}
+                          onSelect={(kind, point) =>
+                            kind === "pickup" ? choosePickup(point) : setDropoff(point)
+                          }
+                        />
+                        </MapBoundary>
                       )}
                         </div>
                         <div className="sheet">
@@ -496,6 +513,27 @@ export default function RiderApp() {
                           {step === "where" && (
                             <>
                               <fieldset disabled={busy}>
+                        <div className="map-target-strip">
+                          <span>Tap map sets:</span>
+                          <div className="segmented" role="group" aria-label="Choose map location">
+                            <button
+                              type="button"
+                              aria-pressed={mapTarget === "pickup"}
+                              className={mapTarget === "pickup" ? "selected" : ""}
+                              onClick={() => setMapTarget("pickup")}
+                            >
+                              Pickup
+                            </button>
+                            <button
+                              type="button"
+                              aria-pressed={mapTarget === "dropoff"}
+                              className={mapTarget === "dropoff" ? "selected" : ""}
+                              onClick={() => setMapTarget("dropoff")}
+                            >
+                              Destination
+                            </button>
+                          </div>
+                        </div>
                         <div className={"gps-line " + (followGps ? gps : "manual")} role="status">
                           {followGps ? (
                             gps === "live" ? (
@@ -654,7 +692,7 @@ export default function RiderApp() {
                                 <button
                                   className="full"
                                   disabled={!pickup || (!dropoff && trip.trip_type !== "rental")}
-                                  onClick={() => setStep("choose")}
+                                  onClick={() => changeStep("choose")}
                                 >
                                   Choose a ride <span className="arrow" aria-hidden="true" />
                                 </button>
@@ -676,8 +714,8 @@ export default function RiderApp() {
                         />
                               </fieldset>
                               <div className="step-actions">
-                                <button type="button" className="ghost" onClick={() => setStep("where")}>← Back</button>
-                                <button className="grow" disabled={!vehicleCategory} onClick={() => setStep("confirm")}>
+                                <button type="button" className="ghost" onClick={() => changeStep("where")}>← Back</button>
+                                <button className="grow" disabled={!vehicleCategory} onClick={() => changeStep("confirm")}>
                                   Continue <span className="arrow" aria-hidden="true" />
                                 </button>
                               </div>
@@ -685,7 +723,7 @@ export default function RiderApp() {
                           )}
                           {step === "confirm" && (
                             <>
-                              <button type="button" className="text-button back" onClick={() => setStep("choose")}>← Change ride</button>
+                              <button type="button" className="text-button back" onClick={() => changeStep("choose")}>← Change ride</button>
                               <fieldset disabled={busy}>
                         {gender === "female" && !pink && (new Date().getHours() >= 21 || new Date().getHours() < 5) && (
                           <Alert color="pink" mb="sm" icon={<IconAlertTriangle size={16} />}>Travelling late? Switch on Pink ride to be matched with a verified woman driver.</Alert>
@@ -872,36 +910,38 @@ export default function RiderApp() {
                 {!current && locState === "ready" && (
                   <RightRail rides={data.rides} saved={data.saved_locations ?? []} onPick={setDropoff} />
                 )}
-                <aside className="side-info">
-                  <div className="info-card">
-                    <h3>How it works</h3>
-                    <ol>
-                      <li><b>Know your fare</b><span>Route and price shown before you book.</span></li>
-                      <li><b>Meet with confidence</b><span>Check the vehicle, share your pickup code in person.</span></li>
-                      <li><b>Pay your way</b><span>Choose an available payment method for your trip.</span></li>
-                    </ol>
-                  </div>
-                  <div className="safety-note">
-                    <strong>Ride safe</strong>
-                    <p>Wear a fastened helmet and verify the vehicle before starting. Emergency? Call 112.</p>
-                  </div>
-                </aside>
+                {!current && step === "where" && (
+                  <aside className="side-info">
+                    <div className="info-card">
+                      <h3>How it works</h3>
+                      <ol>
+                        <li><b>Know your fare</b><span>Route and price shown before you book.</span></li>
+                        <li><b>Meet with confidence</b><span>Check the vehicle, share your pickup code in person.</span></li>
+                        <li><b>Pay your way</b><span>Choose an available payment method for your trip.</span></li>
+                      </ol>
+                    </div>
+                    <div className="safety-note">
+                      <strong>Ride safe</strong>
+                      <p>Wear a fastened helmet and verify the vehicle before starting. Emergency? Call 112.</p>
+                    </div>
+                  </aside>
+                )}
               </div>
             )}
             {tab === "history" && (
               <section>
                 <div className="stat-strip">
-                  <div><strong>{data.rides.length}</strong><span>Total rides</span></div>
-                  <div><strong>{data.rides.filter((r) => r.status === "completed").length}</strong><span>Completed</span></div>
-                  <div><strong>₹{(data.rides.filter((r) => r.status === "completed").reduce((a, r) => a + r.fare_paise, 0) / 100).toFixed(0)}</strong><span>Total fares</span></div>
+                  <div><strong>{myRides.length}</strong><span>Total rides</span></div>
+                  <div><strong>{myRides.filter((r) => r.status === "completed").length}</strong><span>Completed</span></div>
+                  <div><strong>₹{(myRides.filter((r) => r.status === "completed").reduce((a, r) => a + r.fare_paise, 0) / 100).toFixed(0)}</strong><span>Total fares</span></div>
                 </div>
-                {!data.rides.length ? (
+                {!myRides.length ? (
                   <div className="empty">
-                    Your booked and driven rides will appear here.
+                    Your booked rides will appear here.
                   </div>
                 ) : (
                   <div className="ride-grid">
-                    {data.rides.map((r) => (
+                    {myRides.map((r) => (
                       <RideCard
                         key={r.id}
                         ride={r}
@@ -917,8 +957,8 @@ export default function RiderApp() {
               <section className="support-page">
                 <div className="support-actions">
                   <a className="support-card danger" href="tel:112"><span>📞</span><strong>Call 112</strong><small>Immediate danger</small></a>
-                  <button className="support-card" onClick={() => setTab("history")}><span>🧾</span><strong>Report a ride issue</strong><small>Open a trip in Your rides</small></button>
-                  <button className="support-card" onClick={() => setTab("more")}><span>🛡️</span><strong>Safety tools</strong><small>SOS and live trip sharing</small></button>
+                  <button className="support-card" onClick={() => changeTab("history")}><span>🧾</span><strong>Report a ride issue</strong><small>Open a trip in Your rides</small></button>
+                  <button className="support-card" onClick={() => changeTab("more")}><span>🛡️</span><strong>Safety tools</strong><small>SOS and live trip sharing</small></button>
                 </div>
                 <div className="panel">
                 <h2>Ride support</h2>
@@ -963,7 +1003,8 @@ export default function RiderApp() {
                 onName={(name) => setUser((c) => (c ? { ...c, name } : c))}
                 onDetails={(d) => setAvatarColor(d.avatar_color)}
                 onDeleteSaved={(l) => void deleteLocation(l)}
-                goTo={(id) => setTab(id)}
+                role="rider"
+                goTo={(id) => changeTab(id)}
                 becomeDriver={becomeDriver}
                 logout={() => setLogoutAsk(true)}
               />

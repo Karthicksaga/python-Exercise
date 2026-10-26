@@ -22,6 +22,26 @@ export default function CaptainApp() {
   const [tab, setTab] = useState("driver"),
     [logoutAsk, setLogoutAsk] = useState(false),
     [avatarColor, setAvatarColor] = useState("indigo");
+
+  const navigateTab = (nextTab: string, push = true) => {
+    if (push && nextTab !== tab) {
+      window.history.pushState({ tab: nextTab }, "", `#${nextTab}`);
+    }
+    setTab(nextTab);
+  };
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      if (e.state?.tab && TABS.includes(e.state.tab)) {
+        setTab(e.state.tab);
+      } else {
+        setTab("driver");
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   const dutyDriver = data.driver.find((d) => d.status === "approved");
   const dutyOn = dutyDriver ? dutyDriver.online : null;
   const isOperator = user?.role === "operator";
@@ -37,7 +57,8 @@ export default function CaptainApp() {
     profile: ["Captain mode", "Your profile"],
   };
   const [eyebrow, title] = heads[tab] ?? heads.driver;
-  const done = data.rides.filter((r) => r.status === "completed");
+  const driverRides = data.rides.filter((r) => r.driving);
+  const done = driverRides.filter((r) => r.status === "completed");
 
   return (
     <div className={`${user ? "shell has-nav" : "shell"} driver-mode captain`}>
@@ -51,6 +72,16 @@ export default function CaptainApp() {
             <span className="emoji-keep">{s.dark ? "☀️" : "🌙"}</span>
           </button>
           <span className="commission">Built for your drive</span>
+          {user && (
+            <a
+              href={import.meta.env.VITE_RIDER_URL || "http://localhost:5273"}
+              className="duty-pill"
+              title="Switch to Rider mode to book rides"
+              style={{ textDecoration: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, background: "rgba(255,255,255,0.15)", color: "#fff", fontWeight: 600, fontSize: "0.8rem" }}
+            >
+              🚗 Rider mode
+            </a>
+          )}
           {user && dutyOn !== null && (
             <span className={"duty-pill" + (dutyOn ? " on" : "")} role="status" title={dutyOn ? "You are online and visible to riders" : "You are offline. Go online to get requests"}>
               <i /> {dutyOn ? "Online" : "Offline"}
@@ -80,7 +111,7 @@ export default function CaptainApp() {
         ) : (
           <>
             <ResponsiveNav items={navItems.map(([id, label]) => ({ id, label, shortLabel: id === "history" ? "Trips" : label, badge: id === "driver" ? data.offers.length : undefined }))}
-              primary={["driver", "history", "profile"]} value={tab} onChange={setTab} onSignOut={() => setLogoutAsk(true)} />
+              primary={["driver", "history", "profile"]} value={tab} onChange={navigateTab} onSignOut={() => setLogoutAsk(true)} />
             <div className="page-title">
               <div>
                 <p className="eyebrow">{eyebrow}</p>
@@ -99,15 +130,15 @@ export default function CaptainApp() {
             {tab === "history" && (
               <section>
                 <div className="stat-strip">
-                  <div><strong>{data.rides.length}</strong><span>Total trips</span></div>
+                  <div><strong>{driverRides.length}</strong><span>Total trips</span></div>
                   <div><strong>{done.length}</strong><span>Completed</span></div>
                   <div><strong>₹{(done.reduce((a, r) => a + r.fare_paise, 0) / 100).toFixed(0)}</strong><span>Total fares</span></div>
                 </div>
-                {!data.rides.length ? (
+                {!driverRides.length ? (
                   <div className="empty">Your driven trips will appear here.</div>
                 ) : (
                   <div className="ride-grid">
-                    {data.rides.map((r) => <RideCard key={r.id} ride={r} refresh={s.refresh} notify={s.notify} />)}
+                    {driverRides.map((r) => <RideCard key={r.id} ride={r} refresh={s.refresh} notify={s.notify} />)}
                   </div>
                 )}
               </section>
@@ -145,14 +176,15 @@ export default function CaptainApp() {
               <ProfilePanel
                 name={user.name}
                 driving
+                role="captain"
                 saved={[]}
                 busy={false}
                 notify={s.notify}
                 onName={(name) => s.setUser((c) => (c ? { ...c, name } : c))}
                 onDetails={(d) => setAvatarColor(d.avatar_color)}
                 onDeleteSaved={() => undefined}
-                goTo={(id) => setTab(TABS.includes(id) ? id : "profile")}
-                becomeDriver={() => setTab("driver")}
+                goTo={(id) => navigateTab(TABS.includes(id) ? id : "profile")}
+                becomeDriver={() => navigateTab("driver")}
                 logout={() => setLogoutAsk(true)}
               />
             )}

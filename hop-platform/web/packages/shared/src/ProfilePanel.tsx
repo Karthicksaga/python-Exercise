@@ -43,6 +43,7 @@ type Props = {
   driving: boolean;
   saved: SavedLocation[];
   busy: boolean;
+  role?: "rider" | "captain";
   notify: (m: string) => void;
   onName: (name: string) => void;
   onDetails: (d: ProfileDetails) => void;
@@ -161,13 +162,22 @@ export default function ProfilePanel(p: Props) {
         </div>
       </section>
 
-      <section className="profile-stats">
-        <div><b>{s.rides_taken}</b><span>Rides taken</span></div>
-        <div><b>{(s.meters / 1000).toFixed(0)} km</b><span>Travelled</span></div>
-        <div><b>{money(s.spent_paise)}</b><span>Total spent</span></div>
-        <div><b>{money(s.wallet_paise)}</b><span>Wallet</span></div>
-        <div><b>{s.reward_points}</b><span>Reward points</span></div>
-      </section>
+      {p.role === "captain" ? (
+        <section className="profile-stats">
+          <div><b>{s.drives_completed}</b><span>Trips driven</span></div>
+          <div><b>{(s.meters / 1000).toFixed(0)} km</b><span>Travelled</span></div>
+          <div><b>{s.rating_count > 0 ? `★ ${s.rating_avg?.toFixed(1)}` : "5.0"}</b><span>Rating</span></div>
+          <div><b>{s.reward_points}</b><span>Reward points</span></div>
+        </section>
+      ) : (
+        <section className="profile-stats">
+          <div><b>{s.rides_taken}</b><span>Rides taken</span></div>
+          <div><b>{(s.meters / 1000).toFixed(0)} km</b><span>Travelled</span></div>
+          <div><b>{money(s.spent_paise)}</b><span>Total spent</span></div>
+          <div><b>{money(s.wallet_paise)}</b><span>Wallet</span></div>
+          <div><b>{s.reward_points}</b><span>Reward points</span></div>
+        </section>
+      )}
 
       <section className="panel">
         <p className="eyebrow">PERSONAL DETAILS</p>
@@ -257,13 +267,29 @@ export default function ProfilePanel(p: Props) {
           </select>
         </label>
         <div className="link-rows">
-          <button type="button" onClick={() => p.goTo("more")}><b>Accessibility & notifications</b><small>Wheelchair access, hearing, large text, alerts</small></button>
-          <button type="button" onClick={() => p.goTo("wallet")}><b>Wallet & promo codes</b><small>Balance {money(s.wallet_paise)}</small></button>
+          <button type="button" onClick={() => p.goTo(p.role === "captain" ? "driver" : "more")}><b>Accessibility & notifications</b><small>Wheelchair access, hearing, large text, alerts</small></button>
+          {p.role !== "captain" && (
+            <button type="button" onClick={() => p.goTo("wallet")}><b>Wallet & promo codes</b><small>Balance {money(s.wallet_paise)}</small></button>
+          )}
           <button type="button" onClick={() => p.goTo("support")}><b>Help & support</b><small>Complaints, lost items, ride issues</small></button>
         </div>
       </section>
 
-      {p.driving ? (
+      {p.role === "captain" ? (
+        <section className="panel become-driver inset approved">
+          <div>
+            <strong>Rider Mode</strong>
+            <p className="muted">Need to take a ride? Switch back to the Rider app.</p>
+          </div>
+          <a
+            href={import.meta.env.VITE_RIDER_URL || "http://localhost:5273"}
+            className="secondary"
+            style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "10px 16px", borderRadius: 12, fontWeight: 700 }}
+          >
+            Switch to Rider App
+          </a>
+        </section>
+      ) : p.driving ? (
         <section className="panel become-driver inset approved">
           <div>
             <strong>Drive with Hop (Captain Mode)</strong>

@@ -238,9 +238,15 @@
   }
   .has-nav .ride-grid,
   .has-nav .booking-grid,
-  .has-nav .wallet-grid,
   .has-nav .profile-grid {
     gap: 16px;
+  }
+  .has-nav .wallet-grid {
+    gap: 16px;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .has-nav footer {
+    display: none !important;
   }
   .has-nav .support-actions {
     gap: 10px;

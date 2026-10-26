@@ -186,7 +186,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 48px; }
 .segmented { display: inline-flex; padding: 3px; background: var(--bg); border-radius: 12px; gap: 2px; }
 .segmented button { min-height: 34px; padding: 6px 14px; background: transparent; color: var(--ink-2); box-shadow: none; border-radius: 10px; }
 .segmented button.selected { background: #fff; color: var(--brand); box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1); }
-.map-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0 10px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.map-picker-heading,
+.map-target-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0 12px; font-size: 13px; font-weight: 600; color: var(--muted); }
 .map-frame, .ride-route-map { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: #e8ebf7; margin-bottom: 18px; }
 .map-frame { height: 340px; }
 .ride-route-map { height: 260px; }
@@ -1040,7 +1041,9 @@ button.recenter,button.recenter:hover{position:absolute!important}
   box-shadow: none !important;
   min-height: 48px !important;
   border-radius: 12px !important;
+  font-size: 14px !important;
   font-weight: 700 !important;
+  line-height: 1.4 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;

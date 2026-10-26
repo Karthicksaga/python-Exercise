@@ -2,10 +2,8 @@ import { useCallback, useState } from "react";
 import { api } from "@hop/shared/api";
 import { NearbyCar } from "./NearbyCar";
 import { MapCanvas, MapFit, MapLine, MapMarker, MapPan } from "@hop/shared/mapkit";
-import MapControls from "@hop/shared/MapControls";
 import { PinCard, PinOverlay } from "./PinPicker";
-import { MapToolbar, MapToolLayers, trafficNow, useMapTools, type MapTools, type Poi } from "@hop/shared/MapExtras";
-import { money } from "@hop/shared/types";
+import { MapToolLayers, trafficNow, useMapTools, type MapTools, type Poi } from "@hop/shared/MapExtras";
 import type { Area, NearbyDriver, Point, RoutePoint } from "@hop/shared/types";
 
 export type Kind = "pickup" | "dropoff";
@@ -30,8 +28,6 @@ function BookingMap({
   target,
   onSelect,
   onTargetChange,
-  notify,
-  onPinStart,
   pois,
   summary,
   tools,
@@ -70,12 +66,6 @@ function BookingMap({
     onSelect(kind, { lat, lng, label: await reverse(lat, lng) });
   }
   const focus = (target === "pickup" ? pickup : dropoff) ?? pickup ?? { lat: (area.min_lat + area.max_lat) / 2, lng: (area.min_lng + area.max_lng) / 2 };
-  function startPin() {
-    onPinStart?.();
-    setPending(null);
-    setCenter(focus);
-    setPin(true);
-  }
   function pinConfirm(p: Point) {
     onSelect(target, p);
     if (target === "pickup") {
@@ -135,21 +125,6 @@ function BookingMap({
             <NearbyCar key={d.id ?? i} driver={d} />
           ))}
       </MapCanvas>
-      <MapControls at={focus} notify={notify} />
-      <MapToolbar
-        tools={tools}
-        areaId={area.id}
-        area={area.name}
-        hasPois={Boolean(pois?.length)}
-        traffic={Boolean(summary)}
-        onPick={(p) => void place(p.lat, p.lng)}
-        sheet={summary && <TripSheet summary={summary} factor={traffic.factor} label={traffic.label} />}
-      />
-      {!pin && (
-        <button type="button" className="pin-fab" onClick={startPin}>
-          📍 Set {target === "pickup" ? "pickup" : "drop"} with pin
-        </button>
-      )}
       {pin && <PinOverlay moving={moving} />}
       {pin && center && (
         <PinCard area={area.name} target={target} center={center} moving={moving} drivers={drivers?.filter((d) => !vehicleCategory || d.category === vehicleCategory)} reverse={reverse} onConfirm={pinConfirm} onCancel={() => { setPin(false); setMoving(false); }} />
@@ -171,16 +146,6 @@ function BookingMap({
         </div>
       )}
     </>
-  );
-}
-
-function TripSheet({ summary, factor, label }: { summary: { meters: number; seconds: number; fare_paise: number }; factor: number; label: string }) {
-  return (
-    <div className="sheet-grid">
-      <div><small>ETA</small><strong>{Math.ceil((summary.seconds * factor) / 60)} min</strong><em>{label} traffic</em></div>
-      <div><small>Distance</small><strong>{(summary.meters / 1000).toFixed(1)} km</strong></div>
-      <div><small>Fare</small><strong>{money(summary.fare_paise)}</strong></div>
-    </div>
   );
 }
 
