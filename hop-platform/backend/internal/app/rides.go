@@ -355,6 +355,12 @@ func (s *Server) Expire(ctx context.Context) error {
 	if e = expire(ctx, tx, ""); e != nil {
 		return e
 	}
+	if _, e = tx.Exec(ctx, "DELETE FROM profile_phone_challenges WHERE expires_at<now()"); e != nil {
+		return e
+	}
+	if _, e = tx.Exec(ctx, "DELETE FROM phone_otps WHERE expires_at<now()"); e != nil {
+		return e
+	}
 	return tx.Commit(ctx)
 }
 func (s *Server) action(w http.ResponseWriter, r *http.Request) {

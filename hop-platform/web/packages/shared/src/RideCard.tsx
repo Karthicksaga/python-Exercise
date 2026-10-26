@@ -2,7 +2,7 @@ import TripReceipt from "./TripReceipt";
 import { PrivateImage } from "./TrustProfile";
 import { acceptSound } from "./sounds";
 import { showMoment } from "./RideMoment";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "@mantine/core";
 import { api } from "./api";
 import { active, money, statuses, type Ride } from "./types";
@@ -92,11 +92,17 @@ export default function RideCard({
     sedan: "Sedan",
     suv: "SUV",
   };
+  const offerRef=useRef<HTMLElement>(null);
   useEffect(() => {
-    if (!offer) return;
-    const seen = () => { if (document.visibilityState === "visible") void api(`/api/rides/${r.id}/offer-seen`, {}).catch(() => {}); };
-    seen(); document.addEventListener("visibilitychange", seen);
-    return () => document.removeEventListener("visibilitychange", seen);
+    if (!offer || !offerRef.current) return;
+    let visible=false,sent=false;
+    const seen=()=>{
+      if (!visible || sent || document.visibilityState!=="visible") return;
+      sent=true;void api(`/api/rides/${r.id}/offer-seen`,{}).catch(()=>{sent=false;});
+    };
+    const observer=new IntersectionObserver(entries=>{visible=entries.some(e=>e.isIntersecting && e.intersectionRatio>=0.1);seen();},{threshold:[0,0.1]});
+    observer.observe(offerRef.current);document.addEventListener("visibilitychange",seen);
+    return()=>{observer.disconnect();document.removeEventListener("visibilitychange",seen);};
   }, [offer, r.id]);
   const [onlineOK, setOnlineOK] = useState(false);
   useEffect(() => {
@@ -204,7 +210,7 @@ export default function RideCard({
     }
   }
   return (
-    <article className="ride-card">
+    <article className="ride-card" ref={offerRef}>
       <Modal opened={early !== null} onClose={() => setEarly(null)} title="End trip early?" centered>
         <p>{early}</p>
         <div className="actions">

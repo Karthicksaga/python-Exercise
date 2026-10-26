@@ -6,7 +6,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(HopTrackingPlugin.class);
         super.onCreate(state);
         try {
-            com.google.firebase.FirebaseApp.initializeApp(this);
+            Class<?> cls = Class.forName("com.google.firebase.FirebaseApp");
+            cls.getMethod("initializeApp", android.content.Context.class).invoke(null, this);
         } catch (Throwable t) {
             android.util.Log.w("HopCaptain", "Firebase auto-init skipped or failed: " + t.getMessage());
         }

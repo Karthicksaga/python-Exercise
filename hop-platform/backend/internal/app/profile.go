@@ -160,6 +160,17 @@ func (s *Server) updateProfile(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
+	if in.Phone != nil {
+		var currentPhone string
+		if e = tx.QueryRow(ctx, `SELECT COALESCE(NULLIF(p.phone,''),CASE WHEN a.issuer='phone' THEN a.subject ELSE '' END) FROM accounts a LEFT JOIN account_profiles p ON p.account_id=a.id WHERE a.id=$1`, uid).Scan(&currentPhone); e != nil {
+			dbError(w, e)
+			return
+		}
+		if *in.Phone != currentPhone {
+			fail(w, 409, "Verify a new mobile through the verification-code flow before changing it")
+			return
+		}
+	}
 	var oldName string
 	if e = tx.QueryRow(ctx, "SELECT name FROM accounts WHERE id=$1 FOR UPDATE", uid).Scan(&oldName); e != nil {
 		dbError(w, e)

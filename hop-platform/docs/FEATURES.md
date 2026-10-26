@@ -1,5 +1,16 @@
 # Feature status and agent task board
 
+## Trust, onboarding and expense statements (2026-10-26)
+
+- Exact-number ownership in `verified_phones`; authenticated profile OTP challenges are separate from login. Booking, captain application/acceptance and going online require verified ownership. Profile updates cannot bypass the OTP flow. Production never returns development OTP codes, including when the client ID is `hop-web`.
+- Private portrait and identity/licence/RC/insurance uploads: client preview/compression plus independent server JPEG/PNG validation, re-encoding and size limits. Production stores binaries in separate private GCS buckets, with metadata/checksums only in PostgreSQL. Startup rejects configured buckets without uniform access and enforced public-access prevention. Without configuration, production uploads fail closed. Development uses disposable in-memory images. See `PRIVATE-MEDIA.md` for access, retention, cost assumptions and setup.
+- Four-step captain application with server-side drafts, verified mobile, vehicle make/model/colour, private evidence, review summary, corrections and resubmission. Changed approved-captain portraits/documents/names require review; active captain trips block identity changes. Admin can inspect private evidence with document-read auditing. Existing version-0 approvals retain their prior evidence path during rollout.
+- Assigned rider cards show approved captain portraits and vehicle descriptors. Unrelated accounts cannot access media; riders cannot access KYC evidence. Current captain portrait access ends seven days after trip completion.
+- Business-profile fields and downloadable PDF trip statements, including Android native save/share. Fare/name/business snapshots are immutable at completion; payment/refund annotations are separate and current at download. Statements are explicitly not GST tax invoices. Captain downloads omit rider business details. Older completed rides get a snapshot from available records on first download.
+- Dispatch uses a bounded OSRM table shortlist before taking ride locks, with a 1.2-second timeout, short Redis ETA caching, provider-failure cooldown and estimated fallback. Favourite score bonus is capped at one minute-like unit, ratings are smoothed, and superseded/unseen offers no longer lower acceptance ranking. Visible offer cards acknowledge display; explicit declines and supersession have distinct outcomes.
+- Migration: `031_trust_onboarding_receipts.sql`. Backend, three web apps and Android bundles must be released together. Configure real SMS and private GCS before real onboarding. No cloud resources are automatically created. Full legal invoice issuance, submitted-KYC retention policy, whole-account purge and physical-device/cloud-provider acceptance remain release prerequisites or separate work as documented.
+- Carpool/commute expansion is on hold; this work does not add a personal-vehicle carpool product.
+
 Single source of truth for what is built and what is open. Pick one **Open** item, work in its listed files, finish with the shared **Definition of done**, then move the row to **Built**.
 
 ## Conventions for every agent

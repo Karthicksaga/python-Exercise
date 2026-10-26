@@ -93,3 +93,24 @@ Products are off until an operator sets them: `POST /api/operator/trip-pricing` 
 - `POST /api/drivers/goal` `{daily_goal_paise}` sets the daily earnings goal.
 - `GET /api/drivers/demand` cells now include `drivers` (online drivers in the same ~1 km cell).
 - Rides include `wait_charge_paise`; `driver` state includes `home_until`, `home_uses`, `daily_goal_paise`.
+# Trust, onboarding and trip statements (migration 031)
+
+All endpoints below use existing session authorization; POSTs require the existing CSRF token and approved Origin. Responses are private/no-store. Android uses the existing native authenticated JSON transport.
+
+- `POST /api/profile/phone/request` — `{phone}` (10-digit Indian number); account-bound, purpose-separated OTP challenge; 30-second resend cooldown. Only explicit development mode can return `dev_code`.
+- `POST /api/profile/phone/verify` — `{phone,code}`; at most five attempts per challenge; atomically records exact-number ownership and replaces the profile contact. Codes are single-use and expire in ten minutes. Number collisions do not merge accounts. Changing a phone-login identity requires support.
+- `GET /api/profile` — adds `id`, `phone_verified`, `has_photo`, `photo_approved` and optional business fields to `details`.
+- `POST /api/profile` — adds optional `company_name`, `business_gstin`, `cost_centre`, `work_email`. These are rider-supplied details, not independently verified business identity. The `phone` field cannot change a number; use OTP endpoints. Name changes to approved captain accounts require identity re-review.
+- `POST /api/profile/photo` — `{image: base64JPEGorPNG}`; decoded input/output at most 512 KiB; server re-encodes as JPEG. Approved captains return to pending review and go offline; an active captain trip blocks replacement.
+- `POST /api/profile/photo/delete` — removes a rider portrait reference. Captains must upload a replacement instead.
+- `GET /api/profile/photo/{accountId}` — `{image,content_type}` for the owner, an operator, or an assigned rider with an approved captain portrait during/recently after the trip. Never returns a public object URL.
+- `GET /api/drivers/onboarding` — `{draft,documents,has_photo,photo_approved,phone_verified,storage_mode}` for the caller.
+- `POST /api/drivers/onboarding` — saves the application fields plus `step` (0–3); returns `{ok:true}`. Drafts are private and server-side.
+- `POST /api/drivers/documents/{kind}` — `{image: base64JPEGorPNG}`; `kind` is identity/license/rc/insurance; max 2 MiB decoded input/output, max 2048 pixels per side. Server validation/re-encoding applies. Only the caller's document can be written.
+- `GET /api/drivers/documents/{accountId}/{kind}` — owner/operator only; read is audited before disclosure; returns `{image,content_type}`. Unauthorized callers receive 404.
+- `POST /api/drivers/apply` — existing fields plus required `vehicle_make`, `vehicle_model`, `vehicle_color`. Requires verified mobile, portrait and all four document images. Pending applications may be corrected and resubmitted; approved/suspended accounts cannot use this to change status or vehicle.
+- `GET /api/admin/drivers` — adds verified-phone state, portrait presence, document-kind list, vehicle descriptors and onboarding version. Existing admin decision endpoint reviews the uploaded evidence together with its checklist.
+- `POST /api/rides/{rideId}/offer-seen` — captain display acknowledgement. Does not accept/reserve the ride or prove an FCM notification was delivered.
+- `GET /api/rides/{rideId}/receipt` — completed-trip participant only; `{details,issued_at,payment_status,payment_description,refunded_paise,filename,content_type,pdf}` with PDF base64. Snapshot fare facts are immutable; payment/refund annotations reflect current records. Unconfirmed cash/direct-UPI payments remain unconfirmed, captain reports are labelled, and wallet/provider confirmations are distinguished. Captain views omit rider business fields. This produces a trip statement, not a legally applicable supplier GST invoice.
+
+Production media uses `MEDIA_PROFILE_BUCKET` and `MEDIA_KYC_BUCKET` plus attached runtime credentials. See [private media setup](PRIVATE-MEDIA.md). Storage, SMS, Android delivery and tax-provider setup are not implied by a successful local API response.

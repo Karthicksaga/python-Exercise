@@ -172,13 +172,13 @@ export default function ProfilePanel(p: Props) {
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel profile-trust">
         <VerifyPhone initialPhone={d.phone} verified={d.phone_verified} phoneLogin={d.phone_login} onVerified={load} notify={p.notify} />
-        <h3>Profile photo</h3>
+        <div className="trust-block"><h3>Profile photo</h3>
         <p className="muted">{p.role === "captain" ? "Use a clear, front-facing portrait. Changing it pauses new captain assignments until operator review; finish active trips first." : "Optional. Your photo is stored privately."}</p>
         <MediaUpload endpoint="/api/profile/photo" label={d.has_photo ? "Replace profile photo" : "Add profile photo"} portrait onSaved={async () => {setPhotoRevision(v=>v+1);await load();}} notify={p.notify} />
         {d.has_photo && p.role !== "captain" && !p.driving && <button type="button" className="text-button" onClick={() => {void api("/api/profile/photo/delete",{}).then(load).catch(e=>p.notify(e.message));}}>Remove photo</button>}
-        {p.role === "captain" && d.has_photo && <p className="pill">{d.photo_approved ? "Portrait approved" : "Portrait awaiting review"}</p>}
+        {p.role === "captain" && d.has_photo && <p className="pill">{d.photo_approved ? "Portrait approved" : "Portrait awaiting review"}</p>}</div>
       </section>
 
       {p.role === "captain" ? (
@@ -201,6 +201,7 @@ export default function ProfilePanel(p: Props) {
       <section className="panel">
         <p className="eyebrow">PERSONAL DETAILS</p>
         <h3>About you</h3>
+        {p.role === "captain" && <p className="muted">Changing your name pauses new captain assignments until identity review. Finish active captain trips first.</p>}
         <form onSubmit={save} key={d.name + d.phone + d.gender + d.birth_date}>
           <div className="grid-2">
             <label>Full name<input name="name" defaultValue={d.name} minLength={2} maxLength={80} required /></label>

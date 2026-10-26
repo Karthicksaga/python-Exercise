@@ -10,6 +10,10 @@ func TestRichProfile(t *testing.T) {
 	require(t, code, 400)
 	code, _ = f.call(r, "POST", "/api/profile", map[string]any{"name": "Asha K", "birth_date": "2015-01-01"})
 	require(t, code, 400)
+	code, challenge := f.call(r, "POST", "/api/profile/phone/request", map[string]string{"phone": "9876543210"})
+	require(t, code, 200)
+	code, _ = f.call(r, "POST", "/api/profile/phone/verify", map[string]any{"phone": "9876543210", "code": challenge["dev_code"]})
+	require(t, code, 200)
 	code, _ = f.call(r, "POST", "/api/profile", map[string]any{"name": "Asha K", "phone": "9876543210", "gender": "female", "birth_date": "1992-04-05", "avatar_color": "rose", "default_payment": "wallet", "default_vehicle": "auto"})
 	require(t, code, 200)
 	// A name-only update (older clients) must not wipe the other details.

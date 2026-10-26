@@ -44,7 +44,11 @@ func TestProfilePhoneOwnershipAndPurposeIsolation(t *testing.T) {
 	f := setup(t)
 	r, other := f.actor("rider", false), f.actor("rider", false)
 	code, _ := f.call(r, "POST", "/api/profile", map[string]string{"name": "Asha", "phone": "9876543210"})
-	require(t, code, 200)
+	require(t, code, 409)
+	// Imported legacy profile numbers remain unverified until ownership is proven.
+	if _, e := f.s.DB.Exec(t.Context(), "UPDATE account_profiles SET phone='9876543210' WHERE account_id=$1", r.id); e != nil {
+		t.Fatal(e)
+	}
 	if hasMobile(t.Context(), f.s.DB, r.id) {
 		t.Fatal("manually supplied phone counted as verified")
 	}

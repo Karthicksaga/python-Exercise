@@ -23,8 +23,8 @@ func normalizedPhoto(encoded string, maxBytes int) ([]byte, error) {
 		return nil, errors.New("Choose a JPEG or PNG image within the upload limit")
 	}
 	cfg, format, e := image.DecodeConfig(bytes.NewReader(raw))
-	if e != nil || (format != "jpeg" && format != "png") || cfg.Width < 64 || cfg.Height < 64 || cfg.Width > 4096 || cfg.Height > 4096 || cfg.Width*cfg.Height > 16000000 {
-		return nil, errors.New("Choose a JPEG or PNG between 64 and 4096 pixels per side")
+	if e != nil || (format != "jpeg" && format != "png") || cfg.Width < 64 || cfg.Height < 64 || cfg.Width > 2048 || cfg.Height > 2048 || cfg.Width*cfg.Height > 4194304 {
+		return nil, errors.New("Choose a JPEG or PNG between 64 and 2048 pixels per side")
 	}
 	img, _, e := image.Decode(bytes.NewReader(raw))
 	if e != nil {
@@ -206,7 +206,13 @@ func (s *Server) onboardingState(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	write(w, 200, map[string]any{"draft": draft, "documents": docs, "has_photo": photo, "photo_approved": approved, "storage_mode": map[bool]string{true: "private_cloud", false: "unavailable"}[s.Media != nil], "phone_verified": hasMobile(ctx, s.DB, uid)})
+	mode := "unavailable"
+	if _, ok := s.Media.(*memoryMedia); ok {
+		mode = "development_memory"
+	} else if s.Media != nil {
+		mode = "private_cloud"
+	}
+	write(w, 200, map[string]any{"draft": draft, "documents": docs, "has_photo": photo, "photo_approved": approved, "storage_mode": mode, "phone_verified": hasMobile(ctx, s.DB, uid)})
 }
 func (s *Server) saveOnboarding(w http.ResponseWriter, r *http.Request) {
 	var in applicationDraft

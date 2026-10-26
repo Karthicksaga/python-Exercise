@@ -44,11 +44,18 @@ func (s *Server) configureMedia(ctx context.Context) error {
 	}
 	client.Timeout = 8 * time.Second
 	store := &cloudMedia{client: client, portraits: s.Config.ProfileBucket, kyc: s.Config.KYCBucket}
+	if e = store.validatePrivacy(ctx); e != nil {
+		return e
+	}
+	s.Media = store
+	return nil
+}
+func (m *cloudMedia) validatePrivacy(ctx context.Context) error {
 	// Fail startup rather than trusting an accidentally public/misconfigured bucket.
-	for _, bucket := range []string{store.portraits, store.kyc} {
+	for _, bucket := range []string{m.portraits, m.kyc} {
 		req, _ := http.NewRequestWithContext(ctx, "GET", "https://storage.googleapis.com/storage/v1/b/"+url.PathEscape(bucket)+"?fields=iamConfiguration", nil)
-		res, err := client.Do(req)
-		if err != nil {
+		res, e := m.client.Do(req)
+		if e != nil {
 			return errors.New("could not validate private media bucket")
 		}
 		var meta struct {
@@ -59,15 +66,15 @@ func (s *Server) configureMedia(ctx context.Context) error {
 				} `json:"uniformBucketLevelAccess"`
 			} `json:"iamConfiguration"`
 		}
-		err = json.NewDecoder(io.LimitReader(res.Body, 64*1024)).Decode(&meta)
+		e = json.NewDecoder(io.LimitReader(res.Body, 64*1024)).Decode(&meta)
 		res.Body.Close()
-		if err != nil || res.StatusCode != 200 || !meta.IAM.Uniform.Enabled || meta.IAM.PublicAccess != "enforced" {
+		if e != nil || res.StatusCode != 200 || !meta.IAM.Uniform.Enabled || meta.IAM.PublicAccess != "enforced" {
 			return errors.New("media buckets require uniform bucket-level access and enforced public access prevention")
 		}
 	}
-	s.Media = store
 	return nil
 }
+
 func (m *cloudMedia) bucket(kind string) string {
 	if kind == "kyc" {
 		return m.kyc
@@ -194,9 +201,6 @@ func (s *Server) readPrivateMedia(ctx context.Context, kind, key string) ([]byte
 // Cleanup is bounded and retryable. Active/reviewed evidence is never aged out
 // blindly: its retention requires the operator's approved jurisdiction policy.
 func (s *Server) CleanupMedia(ctx context.Context) error {
-	if s.Media == nil {
-		return nil
-	}
 	// Unsubmitted KYC expires after 30 days of application inactivity. Never
 	// expire approved/pending driver evidence through this draft-only rule.
 	_, e := s.DB.Exec(ctx, `DELETE FROM driver_documents d WHERE d.updated_at<now()-interval '30 days'
@@ -204,6 +208,12 @@ func (s *Server) CleanupMedia(ctx context.Context) error {
       AND NOT EXISTS(SELECT 1 FROM driver_application_drafts a WHERE a.account_id=d.account_id AND a.updated_at>now()-interval '30 days')`)
 	if e != nil {
 		return e
+	}
+	if _, e = s.DB.Exec(ctx, `DELETE FROM driver_application_drafts a WHERE a.updated_at<now()-interval '30 days' AND NOT EXISTS(SELECT 1 FROM drivers WHERE user_id=a.account_id)`); e != nil {
+		return e
+	}
+	if s.Media == nil {
+		return nil
 	}
 	rows, e := s.DB.Query(ctx, `SELECT object_key,kind FROM media_objects m WHERE created_at<now()-interval '24 hours'
  AND NOT EXISTS(SELECT 1 FROM profile_photos p WHERE p.object_key=m.object_key)

@@ -138,3 +138,8 @@ See [separate deployments](docs/SEPARATE-DEPLOYMENTS.md) for the common API and 
 ## Android apps
 
 The rider and captain React UIs also build as separate Capacitor Android apps. See [Android setup and verification](docs/ANDROID.md) for APK builds, device connectivity, native login, foreground tracking, Firebase and release configuration.
+# Trust and onboarding update
+
+Migration 031 adds verified profile-mobile ownership, private photos/documents, resumable captain onboarding, vehicle descriptors, business-profile fields and PDF trip statements. Dispatch now distinguishes explicit declines from offers won by another captain and supports bounded road-matrix ranking with fallback.
+
+Apply all migrations and release the backend plus rider/captain/admin clients together. Configure real SMS for verification and two private GCS buckets for production uploads; no storage resources are provisioned by the app. Development images are held in process memory and are not durable. See [private media: security, retention and cost](docs/PRIVATE-MEDIA.md), [API additions](docs/API.md), and [feature status](docs/FEATURES.md). Personal-vehicle carpool expansion is on hold.

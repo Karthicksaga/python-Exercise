@@ -1996,3 +1996,6 @@ img, video { max-width: 100%; height: auto; }
 .onboarding-flow .check { display: flex; align-items: flex-start; gap: 10px; }
 .onboarding-flow .check input { width: auto; }
 @media(max-width: 480px) { .onboarding-steps { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+.profile-trust { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; align-items: start; }
+@media(max-width: 700px) { .profile-trust { grid-template-columns: minmax(0,1fr); gap: 8px; } }
