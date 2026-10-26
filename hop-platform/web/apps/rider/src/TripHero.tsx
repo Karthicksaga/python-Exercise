@@ -1,3 +1,4 @@
+import { PrivateImage } from "@hop/shared/TrustProfile";
 import { serverURL, shareTrip } from "@hop/shared/platform";
 import { useState } from "react";
 import { api } from "@hop/shared/api";
@@ -57,7 +58,7 @@ export default function TripHero({ ride: r, notify }: { ride: Ride; notify: (s: 
       {r.driver_name && (
         <div className="driver-card">
           <div className="avatar" aria-hidden>
-            {initial}
+            {r.driver_has_photo && r.driver_id ? <PrivateImage accountId={r.driver_id} alt="Your captain" className="captain-portrait" /> : initial}
           </div>
           <div className="driver-info">
             <strong>{r.driver_name}</strong>
@@ -66,6 +67,7 @@ export default function TripHero({ ride: r, notify }: { ride: Ride; notify: (s: 
               {r.driver_trips ? ` · ${r.driver_trips} trips` : ""}
             </span>
             {r.vehicle_number && <span className="plate">{r.vehicle_number}</span>}
+            <small>{[r.vehicle_color,r.vehicle_make,r.vehicle_model].filter(Boolean).join(" · ")}</small>
           </div>
           <VehicleArt category={r.vehicle_category} width={84} />
         </div>

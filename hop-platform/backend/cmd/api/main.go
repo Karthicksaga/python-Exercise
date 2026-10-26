@@ -108,6 +108,7 @@ func run() error {
 	if config.Development {
 		go s.RunFleetSim(ctx)
 	}
+	go s.RunMediaCleanup(ctx)
 	go s.RunEvents(ctx)
 	go s.RunPush(ctx)
 	go s.RunDispatch(ctx, func(e error) { slog.Error("staged dispatch failed", "error", e) })

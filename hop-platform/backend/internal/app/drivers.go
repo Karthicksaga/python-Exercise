@@ -59,6 +59,9 @@ func validateDriverApplication(area, vehicle, license, insurance, upi *string, l
 func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Area             string `json:"area_id"`
+		Make             string `json:"vehicle_make"`
+		Model            string `json:"vehicle_model"`
+		Color            string `json:"vehicle_color"`
 		Category         string `json:"vehicle_category"`
 		Vehicle          string `json:"vehicle_number"`
 		UPI              string `json:"upi_id"`
@@ -85,6 +88,12 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, msg)
 		return
 	}
+	for _, field := range []string{in.Make, in.Model, in.Color} {
+		if len(strings.TrimSpace(field)) < 2 || len(field) > 60 {
+			fail(w, 400, "Enter the vehicle make, model and colour (2–60 characters each)")
+			return
+		}
+	}
 	ctx := r.Context()
 	tx, e := s.DB.Begin(ctx)
 	if e != nil {
@@ -92,6 +101,19 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(ctx)
+	if e = lockJourney(ctx, tx, user(r).Account.ID); e != nil {
+		dbError(w, e)
+		return
+	}
+	var mediaReady bool
+	if e = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM profile_photos WHERE account_id=$1) AND (SELECT count(*)=4 FROM driver_documents WHERE account_id=$1)`, user(r).Account.ID).Scan(&mediaReady); e != nil {
+		dbError(w, e)
+		return
+	}
+	if !mediaReady {
+		fail(w, 400, "Upload your profile photo, identity, licence, RC and insurance images before submitting")
+		return
+	}
 	var active, categoryEnabled bool
 	if e = tx.QueryRow(ctx, `SELECT active,
  EXISTS(SELECT 1 FROM area_vehicle_pricing WHERE area_id=areas.id AND category=$2 AND enabled)
@@ -107,7 +129,16 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 		fail(w, 409, "This vehicle category is not enabled in the selected service area")
 		return
 	}
-	_, e = tx.Exec(ctx, `INSERT INTO drivers(user_id,area_id,vehicle_category,vehicle_number,upi_id,license_reference,insurance_reference,license_expires,insurance_expires) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, user(r).Account.ID, in.Area, in.Category, in.Vehicle, in.UPI, in.License, in.Insurance, in.LicenseExpires, in.InsuranceExpires)
+	tag, e := tx.Exec(ctx, `INSERT INTO drivers(user_id,area_id,vehicle_category,vehicle_number,upi_id,license_reference,insurance_reference,license_expires,insurance_expires,vehicle_make,vehicle_model,vehicle_color,onboarding_version)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,1)
+ ON CONFLICT(user_id) DO UPDATE SET area_id=$2,vehicle_category=$3,vehicle_number=$4,upi_id=$5,license_reference=$6,insurance_reference=$7,license_expires=$8,insurance_expires=$9,vehicle_make=$10,vehicle_model=$11,vehicle_color=$12,onboarding_version=1,updated_at=now(),review_note='Application resubmitted for review.' WHERE drivers.status='pending'`, user(r).Account.ID, in.Area, in.Category, in.Vehicle, in.UPI, in.License, in.Insurance, in.LicenseExpires, in.InsuranceExpires, strings.TrimSpace(in.Make), strings.TrimSpace(in.Model), strings.TrimSpace(in.Color))
+	if e == nil && tag.RowsAffected() == 0 {
+		fail(w, 409, "Only pending applications can be edited. Contact support for an approved or suspended account.")
+		return
+	}
+	if e == nil {
+		_, e = tx.Exec(ctx, "UPDATE driver_verifications SET identity_ok=false,license_ok=false,rc_ok=false,insurance_ok=false,vehicle_ok=false,police_ok=false WHERE driver_id=$1", user(r).Account.ID)
+	}
 	if e == nil {
 		e = audit(ctx, tx, user(r).Account.ID, "", "driver_application", map[string]string{"area": in.Area})
 	}
@@ -202,6 +233,10 @@ func (s *Server) driverAvailability(w http.ResponseWriter, r *http.Request) {
 
 // Going online is an explicit user action; background pings never restore availability.
 func (s *Server) online(w http.ResponseWriter, r *http.Request) {
+	if !hasMobile(r.Context(), s.DB, user(r).Account.ID) {
+		fail(w, 403, mobileRequired)
+		return
+	}
 	ctx, uid := r.Context(), user(r).Account.ID
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
@@ -222,6 +257,7 @@ func (s *Server) online(w http.ResponseWriter, r *http.Request) {
 	}
 	tag, err := tx.Exec(ctx, `UPDATE drivers d SET online=true,location_at=NULL,updated_at=now() FROM areas a
  WHERE d.user_id=$1 AND d.area_id=a.id AND d.status='approved' AND a.active
+ AND (d.onboarding_version=0 OR EXISTS(SELECT 1 FROM profile_photos f WHERE f.account_id=d.user_id AND f.approved))
  AND d.license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date
  AND d.insurance_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date`, uid)
 	if err != nil {

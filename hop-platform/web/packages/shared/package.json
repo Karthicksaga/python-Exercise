@@ -45,6 +45,8 @@
     "./style.css": "./src/style.css",
     "./platform": "./src/platform.ts",
     "./ResponsiveNav": "./src/ResponsiveNav.tsx",
-    "./ResponsiveTable": "./src/ResponsiveTable.tsx"
+    "./ResponsiveTable": "./src/ResponsiveTable.tsx",
+    "./TrustProfile": "./src/TrustProfile.tsx",
+    "./TripReceipt": "./src/TripReceipt.tsx"
   }
 }

@@ -19,6 +19,11 @@ const rideSelect = `SELECT r.id,r.status,r.version,r.payment_method,r.payment_st
  r.rider_id=$1::uuid AS mine,r.driver_id=$1::uuid AS driving,
  CASE WHEN r.driver_id IS NOT NULL THEN d.vehicle_number ELSE '' END AS vehicle_number,
  CASE WHEN r.driver_id IS NOT NULL THEN da.name ELSE '' END AS driver_name,
+ CASE WHEN r.driver_id IS NOT NULL THEN d.vehicle_make ELSE '' END AS vehicle_make,
+ CASE WHEN r.driver_id IS NOT NULL THEN d.vehicle_model ELSE '' END AS vehicle_model,
+ CASE WHEN r.driver_id IS NOT NULL THEN d.vehicle_color ELSE '' END AS vehicle_color,
+ CASE WHEN r.driver_id IS NOT NULL THEN r.driver_id::text ELSE '' END AS driver_id,
+ EXISTS(SELECT 1 FROM profile_photos f WHERE f.account_id=r.driver_id AND f.approved) AS driver_has_photo,
  CASE WHEN r.driver_id IS NOT NULL AND r.rider_id=$1::uuid AND r.payment_method='upi' THEN d.upi_id ELSE '' END AS driver_upi,
  CASE WHEN r.driver_id=$1::uuid THEN ra.name ELSE '' END AS rider_name,
  CASE WHEN r.rider_id=$1::uuid AND r.status IN ('accepted','arrived','in_progress') AND d.location_at>now()-interval '60 seconds' THEN d.lat ELSE NULL END AS driver_lat,
@@ -98,7 +103,7 @@ func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	driver, e := jsonRows(r.Context(), s.DB, `SELECT user_id,area_id,status,vehicle_number,vehicle_category,upi_id,license_expires,insurance_expires,review_note,online,location_at,pickup_radius_meters,minimum_fare_paise,home_lat,home_lng,home_until,home_uses,home_uses_on,daily_goal_paise FROM drivers WHERE user_id=$1`, uid)
+	driver, e := jsonRows(r.Context(), s.DB, `SELECT user_id,area_id,status,vehicle_number,vehicle_category,vehicle_make,vehicle_model,vehicle_color,onboarding_version,upi_id,license_reference,insurance_reference,license_expires,insurance_expires,review_note,online,location_at,pickup_radius_meters,minimum_fare_paise,home_lat,home_lng,home_until,home_uses,home_uses_on,daily_goal_paise,lat,lng FROM drivers WHERE user_id=$1`, uid)
 	if e != nil {
 		dbError(w, e)
 		return
@@ -186,6 +191,10 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(ctx)
 	if e = lockJourney(ctx, tx, uid); e != nil {
 		dbError(w, e)
+		return
+	}
+	if !hasMobile(ctx, tx, uid) {
+		fail(w, 403, mobileRequired)
 		return
 	}
 	// Lock the rider before checking idempotency so concurrent retried requests have the same result.
@@ -720,6 +729,9 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 	if e == nil && next == "completed" && payment == "wallet" {
 		e = settleWalletRide(ctx, tx, id, rider)
 	}
+	if e == nil && next == "completed" {
+		e = ensureTripStatement(ctx, tx, id)
+	}
 	if e == nil {
 		e = audit(ctx, tx, uid, id, next, map[string]string{"reason": input.Reason})
 	}
@@ -969,7 +981,10 @@ func (s *Server) decline(w http.ResponseWriter, r *http.Request) {
 		_, e = tx.Exec(ctx, "DELETE FROM ride_bids WHERE ride_id=$1 AND driver_id=$2", rideID, uid)
 	}
 	if e == nil {
-		e = audit(ctx, tx, uid, rideID, "driver_declined", nil)
+		_, e = tx.Exec(ctx, "UPDATE ride_offers SET outcome='declined' WHERE ride_id=$1 AND driver_id=$2 AND outcome IS NULL", rideID, uid)
+		if e == nil {
+			e = audit(ctx, tx, uid, rideID, "driver_declined", nil)
+		}
 	}
 	if e == nil {
 		e = tx.Commit(ctx)

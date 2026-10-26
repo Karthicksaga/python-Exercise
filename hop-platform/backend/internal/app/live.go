@@ -338,7 +338,7 @@ func (s *Server) reviewVehicleChange(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Status == "approved" {
 		// Going offline forces the driver to re-register their location under the new vehicle category.
-		if _, e = tx.Exec(ctx, "UPDATE drivers SET vehicle_category=$2,vehicle_number=$3,online=false,updated_at=now() WHERE user_id=$1", driver, category, number); e != nil {
+		if _, e = tx.Exec(ctx, "UPDATE drivers SET vehicle_category=$2,vehicle_number=$3,vehicle_make='',vehicle_model='',vehicle_color='',online=false,updated_at=now() WHERE user_id=$1", driver, category, number); e != nil {
 			dbError(w, e)
 			return
 		}

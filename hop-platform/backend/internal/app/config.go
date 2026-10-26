@@ -9,6 +9,7 @@ import (
 )
 
 type Config struct {
+	ProfileBucket, KYCBucket                                                                                                                                                               string
 	FCMServiceAccountFile                                                                                                                                                                  string
 	RiderOrigin, CaptainOrigin, AdminOrigin                                                                                                                                                string
 	VAPIDPublic, VAPIDPrivate, VAPIDSubject, Address, DatabaseURL, ListenURL, RedisURL, PublicOrigin, AllowedOrigins, Issuer, ClientID, ClientSecret, SessionKey, RoutingURL, GeocodingURL string
@@ -37,6 +38,7 @@ func ConfigFromEnv() (Config, error) {
 			return c, fmt.Errorf("app origins must be HTTPS origins without paths (HTTP allowed in development)")
 		}
 	}
+	c.ProfileBucket, c.KYCBucket = os.Getenv("MEDIA_PROFILE_BUCKET"), os.Getenv("MEDIA_KYC_BUCKET")
 	c.FCMServiceAccountFile = os.Getenv("FCM_SERVICE_ACCOUNT_FILE")
 	c.SMSWebhookURL, c.SMSWebhookToken = os.Getenv("SMS_WEBHOOK_URL"), os.Getenv("SMS_WEBHOOK_TOKEN")
 	c.MSG91AuthKey, c.MSG91TemplateID = os.Getenv("MSG91_AUTH_KEY"), os.Getenv("MSG91_TEMPLATE_ID")

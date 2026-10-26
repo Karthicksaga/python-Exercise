@@ -27,11 +27,12 @@ export default function DriverMap({ area, pos: rawPos, rides, nudge }: { area: A
     prev.current = pos;
   }, [pos?.lat, pos?.lng]);
   const points = [...(pos ? [pos] : []), ...rides.flatMap((r) => [{ lat: r.pickup_lat, lng: r.pickup_lng }, { lat: r.dropoff_lat, lng: r.dropoff_lng }])];
+  const center = pos ?? (area ? { lat: (area.min_lat + area.max_lat) / 2, lng: (area.min_lng + area.max_lng) / 2 } : { lat: 12.9716, lng: 77.5946 });
   return (
     <div className={"map-frame driver-map" + (tools.full ? " map-full" : "")} aria-label="Driver map">
       <MapCanvas
-        center={pos ?? { lat: (area.min_lat + area.max_lat) / 2, lng: (area.min_lng + area.max_lng) / 2 }}
-        zoom={13}
+        center={center}
+        zoom={14}
         onUserDrag={() => setFollow(false)}
         onClick={(p) => void tools.onMapClick(p)}
       >
@@ -46,7 +47,7 @@ export default function DriverMap({ area, pos: rawPos, rides, nudge }: { area: A
           ) : null,
         )}
         {pos && (
-          <MapMarker position={pos} title="You" anchor="center">
+          <MapMarker position={pos} title="You" anchor="center" zIndex={1000}>
             <div className="me-dot" aria-label="Your live location">
               <span className="me-pulse" />
               <svg viewBox="0 0 24 24" width="38" height="38" style={{ transform: `rotate(${heading}deg)` }}>
@@ -58,17 +59,30 @@ export default function DriverMap({ area, pos: rawPos, rides, nudge }: { area: A
         )}
         {rides.map((r) => (
           <span key={r.id}>
-            <MapMarker position={{ lat: r.pickup_lat, lng: r.pickup_lng }} title="Pickup">
+            <MapMarker position={{ lat: r.pickup_lat, lng: r.pickup_lng }} title="Pickup" anchor="center">
               <span className="pin-tag pickup-tag">Pickup · {money(r.fare_paise)}</span>
               <span className="map-pin pickup-pin" />
             </MapMarker>
-            <MapMarker position={{ lat: r.dropoff_lat, lng: r.dropoff_lng }} title="Drop">
+            <MapMarker position={{ lat: r.dropoff_lat, lng: r.dropoff_lng }} title="Drop" anchor="center">
               <span className="pin-tag drop-tag">Drop</span>
               <span className="map-pin destination-pin" />
             </MapMarker>
           </span>
         ))}
       </MapCanvas>
+      {!follow && pos && (
+        <button
+          type="button"
+          className="recenter"
+          onClick={() => {
+            setFollow(true);
+            tools.goTo(pos);
+          }}
+          title="Re-center map on your location"
+        >
+          ◎ Re-center
+        </button>
+      )}
       {nudge && (() => {
         const hz = hotZone(cells, rawPos);
         return hz ? (

@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"net/http"
+	"net/mail"
+	"regexp"
 	"strings"
 	"time"
 	"unicode"
@@ -16,6 +18,8 @@ var (
 	vehicleChoice = map[string]bool{"": true, "bike": true, "auto": true, "mini": true, "sedan": true, "suv": true}
 )
 
+var gstinPattern = regexp.MustCompile(`^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$`)
+
 const maxEmergencyContacts = 5
 
 func (s *Server) profileState(w http.ResponseWriter, r *http.Request) {
@@ -26,10 +30,13 @@ func (s *Server) profileState(w http.ResponseWriter, r *http.Request) {
 		Contacts any `json:"contacts"`
 	}
 	var e error
-	if out.Details, e = jsonRows(ctx, s.DB, `SELECT a.name,a.email,a.issuer='phone' AS phone_login,a.created_at,
- COALESCE(p.phone,CASE WHEN a.issuer='phone' THEN a.subject ELSE '' END) AS phone,COALESCE(p.gender,'') AS gender,
+	if out.Details, e = jsonRows(ctx, s.DB, `SELECT a.id,a.name,a.email,a.issuer='phone' AS phone_login,a.created_at,
+ COALESCE(NULLIF(p.phone,''),CASE WHEN a.issuer='phone' THEN a.subject ELSE '' END) AS phone,
+ EXISTS(SELECT 1 FROM verified_phones v WHERE v.account_id=a.id AND v.phone=COALESCE(NULLIF(p.phone,''),CASE WHEN a.issuer='phone' THEN a.subject ELSE '' END)) AS phone_verified,
+ EXISTS(SELECT 1 FROM profile_photos f WHERE f.account_id=a.id) AS has_photo,
+ COALESCE((SELECT approved FROM profile_photos f WHERE f.account_id=a.id),false) AS photo_approved,COALESCE(p.gender,'') AS gender,
  to_char(p.birth_date,'YYYY-MM-DD') AS birth_date,COALESCE(p.avatar_color,'indigo') AS avatar_color,
- COALESCE(p.default_payment,'cash') AS default_payment,COALESCE(p.default_vehicle,'') AS default_vehicle,p.deletion_requested_at
+ COALESCE(p.default_payment,'cash') AS default_payment,COALESCE(p.default_vehicle,'') AS default_vehicle,p.deletion_requested_at,COALESCE(p.company_name,'') AS company_name,COALESCE(p.business_gstin,'') AS business_gstin,COALESCE(p.cost_centre,'') AS cost_centre,COALESCE(p.work_email,'') AS work_email
  FROM accounts a LEFT JOIN account_profiles p ON p.account_id=a.id WHERE a.id=$1`, uid); e != nil {
 		dbError(w, e)
 		return
@@ -58,6 +65,10 @@ func (s *Server) profileState(w http.ResponseWriter, r *http.Request) {
 func (s *Server) updateProfile(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Name           string  `json:"name"`
+		CompanyName    *string `json:"company_name"`
+		BusinessGSTIN  *string `json:"business_gstin"`
+		CostCentre     *string `json:"cost_centre"`
+		WorkEmail      *string `json:"work_email"`
 		Phone          *string `json:"phone"`
 		Gender         *string `json:"gender"`
 		BirthDate      *string `json:"birth_date"`
@@ -113,6 +124,31 @@ func (s *Server) updateProfile(w http.ResponseWriter, r *http.Request) {
 			birth = &d
 		}
 	}
+	for _, field := range []*string{in.CompanyName, in.CostCentre, in.WorkEmail, in.BusinessGSTIN} {
+		if field != nil {
+			v := strings.TrimSpace(*field)
+			*field = v
+			if len(v) > 160 || strings.IndexFunc(v, unicode.IsControl) >= 0 {
+				fail(w, 400, "Business fields must be at most 160 characters without control characters")
+				return
+			}
+		}
+	}
+	if in.BusinessGSTIN != nil && *in.BusinessGSTIN != "" {
+		v := strings.ToUpper(*in.BusinessGSTIN)
+		in.BusinessGSTIN = &v
+		if !gstinPattern.MatchString(v) {
+			fail(w, 400, "Enter a valid 15-character GSTIN or leave it blank")
+			return
+		}
+	}
+	if in.WorkEmail != nil && *in.WorkEmail != "" {
+		address, err := mail.ParseAddress(*in.WorkEmail)
+		if err != nil || address.Address != *in.WorkEmail {
+			fail(w, 400, "Enter a valid work email")
+			return
+		}
+	}
 	uid, ctx := user(r).Account.ID, r.Context()
 	tx, e := s.DB.Begin(ctx)
 	if e != nil {
@@ -120,14 +156,42 @@ func (s *Server) updateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(ctx)
+	if e = lockJourney(ctx, tx, uid); e != nil {
+		dbError(w, e)
+		return
+	}
+	var oldName string
+	if e = tx.QueryRow(ctx, "SELECT name FROM accounts WHERE id=$1 FOR UPDATE", uid).Scan(&oldName); e != nil {
+		dbError(w, e)
+		return
+	}
+	if oldName != in.Name {
+		var active bool
+		if e = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM rides WHERE driver_id=$1 AND status IN ('accepted','arrived','in_progress'))", uid).Scan(&active); e != nil {
+			dbError(w, e)
+			return
+		}
+		if active {
+			fail(w, 409, "Finish your captain trip before changing your name")
+			return
+		}
+		if _, e = tx.Exec(ctx, "UPDATE drivers SET status='pending',online=false,pink_certified=false,review_note='Name changed. Awaiting identity review.',updated_at=now() WHERE user_id=$1 AND status='approved'", uid); e != nil {
+			dbError(w, e)
+			return
+		}
+		if _, e = tx.Exec(ctx, "UPDATE driver_verifications SET identity_ok=false WHERE driver_id=$1", uid); e != nil {
+			dbError(w, e)
+			return
+		}
+	}
 	if _, e = tx.Exec(ctx, "UPDATE accounts SET name=$2 WHERE id=$1", uid, in.Name); e == nil {
 		_, e = tx.Exec(ctx, "INSERT INTO account_profiles(account_id) VALUES($1) ON CONFLICT DO NOTHING", uid)
 	}
 	if e == nil {
 		_, e = tx.Exec(ctx, `UPDATE account_profiles SET phone=COALESCE($2,phone),gender=COALESCE($3,gender),
  birth_date=CASE WHEN $4 THEN NULL ELSE COALESCE($5::date,birth_date) END,avatar_color=COALESCE($6,avatar_color),
- default_payment=COALESCE($7,default_payment),default_vehicle=COALESCE($8,default_vehicle),updated_at=now() WHERE account_id=$1`,
-			uid, in.Phone, in.Gender, clearBirth, birth, in.AvatarColor, in.DefaultPayment, in.DefaultVehicle)
+ default_payment=COALESCE($7,default_payment),default_vehicle=COALESCE($8,default_vehicle),company_name=COALESCE($9,company_name),business_gstin=COALESCE($10,business_gstin),cost_centre=COALESCE($11,cost_centre),work_email=COALESCE($12,work_email),updated_at=now() WHERE account_id=$1`,
+			uid, in.Phone, in.Gender, clearBirth, birth, in.AvatarColor, in.DefaultPayment, in.DefaultVehicle, in.CompanyName, in.BusinessGSTIN, in.CostCentre, in.WorkEmail)
 	}
 	if e == nil {
 		e = audit(ctx, tx, uid, "", "profile_updated", map[string]string{"scope": "details"})
@@ -138,6 +202,9 @@ func (s *Server) updateProfile(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		dbError(w, e)
 		return
+	}
+	if oldName != in.Name {
+		s.dropLive(ctx, uid)
 	}
 	write(w, 200, map[string]string{"id": uid, "name": in.Name})
 }
@@ -206,7 +273,7 @@ func (s *Server) exportProfile(w http.ResponseWriter, r *http.Request) {
 	ctx, uid := r.Context(), user(r).Account.ID
 	queries := []struct{ key, sql string }{
 		{"account", "SELECT id,email,name,role,created_at FROM accounts WHERE id=$1"},
-		{"profile", "SELECT phone,gender,birth_date,avatar_color,default_payment,default_vehicle FROM account_profiles WHERE account_id=$1"},
+		{"profile", "SELECT phone,gender,birth_date,avatar_color,default_payment,default_vehicle,company_name,business_gstin,cost_centre,work_email FROM account_profiles WHERE account_id=$1"},
 		{"emergency_contacts", "SELECT name,phone,relation FROM emergency_contacts WHERE account_id=$1"},
 		{"saved_locations", "SELECT label,kind,lat,lng,place_label FROM saved_locations WHERE account_id=$1"},
 		{"rides", `SELECT r.id,r.status,r.payment_method,r.created_at,q.pickup_label,q.dropoff_label,q.meters,COALESCE(r.offered_fare_paise,q.fare_paise) AS fare_paise FROM rides r JOIN quotes q ON q.id=r.quote_id WHERE r.rider_id=$1 ORDER BY r.created_at DESC LIMIT 1000`},

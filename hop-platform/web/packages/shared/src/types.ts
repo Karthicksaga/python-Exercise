@@ -116,6 +116,11 @@ export type Ride = {
   adjusted_from_paise?: number | null;
   covered_meters?: number | null;
   driver_name?: string;
+  driver_id?: string;
+  driver_has_photo?: boolean;
+  vehicle_make?: string;
+  vehicle_model?: string;
+  vehicle_color?: string;
   vehicle_number?: string;
   driver_upi?: string;
   driver_lat?: number;
@@ -154,6 +159,10 @@ export type Estimate = { meters: number; seconds: number; route: RoutePoint[]; o
 export type ChatMessage = { id: number; body: string; mine: boolean; created_at: string };
 export type Driver = {
   user_id: string;
+  vehicle_make?: string;
+  vehicle_model?: string;
+  vehicle_color?: string;
+  onboarding_version?: number;
   area_id: string;
   status: string;
   vehicle_number: string;
@@ -161,6 +170,8 @@ export type Driver = {
   upi_id: string;
   review_note: string;
   online: boolean;
+  lat?: number | null;
+  lng?: number | null;
   location_at: string;
   pickup_radius_meters: number;
   minimum_fare_paise: number;

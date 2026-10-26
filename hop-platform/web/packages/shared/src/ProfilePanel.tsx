@@ -1,3 +1,4 @@
+import { MediaUpload, PrivateImage, VerifyPhone } from "./TrustProfile";
 import { serverFetch, isAndroid, nativeExport } from "./platform";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
@@ -5,6 +6,14 @@ import { getLang, languages, setLang } from "./i18n";
 import { money, type SavedLocation } from "./types";
 
 export type ProfileDetails = {
+  id: string;
+  phone_verified: boolean;
+  has_photo: boolean;
+  photo_approved: boolean;
+  company_name: string;
+  business_gstin: string;
+  cost_centre: string;
+  work_email: string;
   name: string;
   email: string;
   phone_login: boolean;
@@ -56,6 +65,7 @@ type Props = {
 export default function ProfilePanel(p: Props) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [saving, setSaving] = useState(false);
+  const [photoRevision,setPhotoRevision]=useState(0);
   const [contact, setContact] = useState({ name: "", phone: "", relation: "" });
   const [lang, setLangState] = useState(getLang());
 
@@ -75,7 +85,7 @@ export default function ProfilePanel(p: Props) {
   const d = profile.details[0];
   const s = profile.stats[0];
   const since = new Date(d.created_at).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
-  const verified = d.phone_login;
+  const verified = d.phone_verified;
 
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -83,7 +93,7 @@ export default function ProfilePanel(p: Props) {
     setSaving(true);
     try {
       const out = await api<{ name: string }>("/api/profile", {
-        name: f.get("name"), phone: f.get("phone"), gender: f.get("gender"), birth_date: f.get("birth_date"),
+        name: f.get("name"), company_name: f.get("company_name"), business_gstin: f.get("business_gstin"), cost_centre: f.get("cost_centre"), work_email: f.get("work_email"), gender: f.get("gender"), birth_date: f.get("birth_date"),
         default_payment: f.get("default_payment"), default_vehicle: f.get("default_vehicle"),
       });
       p.onName(out.name);
@@ -145,7 +155,7 @@ export default function ProfilePanel(p: Props) {
   return (
     <div className="profile-grid">
       <section className="panel profile-hero">
-        <span className="avatar xl" style={{ background: avatarColors[d.avatar_color] }}>{(d.name[0] || "?").toUpperCase()}</span>
+        <span className="avatar xl" style={{ background: avatarColors[d.avatar_color] }}>{d.has_photo ? <PrivateImage accountId={d.id} revision={String(photoRevision)} alt="Your profile" className="captain-portrait" /> : (d.name[0] || "?").toUpperCase()}</span>
         <div className="profile-id">
           <h2>{d.name}</h2>
           <p className="muted">{d.phone ? `+91 ${d.phone}` : "Add your mobile number"} · {/\.invalid$/.test(d.email) ? "No email" : d.email}</p>
@@ -162,11 +172,20 @@ export default function ProfilePanel(p: Props) {
         </div>
       </section>
 
+      <section className="panel">
+        <VerifyPhone initialPhone={d.phone} verified={d.phone_verified} phoneLogin={d.phone_login} onVerified={load} notify={p.notify} />
+        <h3>Profile photo</h3>
+        <p className="muted">{p.role === "captain" ? "Use a clear, front-facing portrait. Changing it pauses new captain assignments until operator review; finish active trips first." : "Optional. Your photo is stored privately."}</p>
+        <MediaUpload endpoint="/api/profile/photo" label={d.has_photo ? "Replace profile photo" : "Add profile photo"} portrait onSaved={async () => {setPhotoRevision(v=>v+1);await load();}} notify={p.notify} />
+        {d.has_photo && p.role !== "captain" && !p.driving && <button type="button" className="text-button" onClick={() => {void api("/api/profile/photo/delete",{}).then(load).catch(e=>p.notify(e.message));}}>Remove photo</button>}
+        {p.role === "captain" && d.has_photo && <p className="pill">{d.photo_approved ? "Portrait approved" : "Portrait awaiting review"}</p>}
+      </section>
+
       {p.role === "captain" ? (
         <section className="profile-stats">
           <div><b>{s.drives_completed}</b><span>Trips driven</span></div>
           <div><b>{(s.meters / 1000).toFixed(0)} km</b><span>Travelled</span></div>
-          <div><b>{s.rating_count > 0 ? `★ ${s.rating_avg?.toFixed(1)}` : "5.0"}</b><span>Rating</span></div>
+          <div><b>{s.rating_count > 0 ? `★ ${s.rating_avg?.toFixed(1)}` : "New"}</b><span>Rating</span></div>
           <div><b>{s.reward_points}</b><span>Reward points</span></div>
         </section>
       ) : (
@@ -186,7 +205,7 @@ export default function ProfilePanel(p: Props) {
           <div className="grid-2">
             <label>Full name<input name="name" defaultValue={d.name} minLength={2} maxLength={80} required /></label>
             <label>Mobile number
-              <input name="phone" defaultValue={d.phone} inputMode="numeric" pattern="[6-9][0-9]{9}" maxLength={10} placeholder="10-digit number" readOnly={d.phone_login} />
+              <input name="phone" defaultValue={d.phone} inputMode="numeric" pattern="[6-9][0-9]{9}" maxLength={10} placeholder="10-digit number" readOnly />
             </label>
             <label>Email<input value={/\.invalid$/.test(d.email) ? "" : d.email} placeholder="Not linked" readOnly /></label>
             <label>Gender
@@ -200,6 +219,14 @@ export default function ProfilePanel(p: Props) {
             <label>Date of birth<input type="date" name="birth_date" defaultValue={d.birth_date ?? ""} max={new Date(Date.now() - 16 * 365.25 * 864e5).toISOString().slice(0, 10)} /></label>
           </div>
           <p className="muted">Your email and sign-in are managed by your sign-in provider. Gender and date of birth are optional and never shown to drivers.</p>
+          <h4>Business travel (optional)</h4>
+          <p className="muted">Saved on future trip statements. Existing statements keep their original details. Employer claim approval and tax eligibility are separate.</p>
+          <div className="grid-2">
+            <label>Company name<input name="company_name" defaultValue={d.company_name} maxLength={160} /></label>
+            <label>GSTIN<input name="business_gstin" defaultValue={d.business_gstin} maxLength={15} placeholder="Optional" /></label>
+            <label>Cost centre / project<input name="cost_centre" defaultValue={d.cost_centre} maxLength={160} /></label>
+            <label>Work email<input type="email" name="work_email" defaultValue={d.work_email} maxLength={160} /></label>
+          </div>
           <h4>Ride defaults</h4>
           <div className="grid-2">
             <label>Pay with

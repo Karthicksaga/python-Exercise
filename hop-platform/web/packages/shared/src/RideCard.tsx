@@ -1,3 +1,5 @@
+import TripReceipt from "./TripReceipt";
+import { PrivateImage } from "./TrustProfile";
 import { acceptSound } from "./sounds";
 import { showMoment } from "./RideMoment";
 import { useEffect, useState } from "react";
@@ -90,6 +92,12 @@ export default function RideCard({
     sedan: "Sedan",
     suv: "SUV",
   };
+  useEffect(() => {
+    if (!offer) return;
+    const seen = () => { if (document.visibilityState === "visible") void api(`/api/rides/${r.id}/offer-seen`, {}).catch(() => {}); };
+    seen(); document.addEventListener("visibilitychange", seen);
+    return () => document.removeEventListener("visibilitychange", seen);
+  }, [offer, r.id]);
   const [onlineOK, setOnlineOK] = useState(false);
   useEffect(() => {
     void onlinePaymentsEnabled().then(setOnlineOK);
@@ -312,9 +320,10 @@ export default function RideCard({
           </span>
         </div>
       )}
+      {r.driver_has_photo && r.driver_id && <PrivateImage accountId={r.driver_id} alt="Captain portrait" className="captain-portrait" />}
       {r.driver_name && (
         <p>
-          <strong>{r.driver_name}</strong> · {r.vehicle_number}
+          <strong>{r.driver_name}</strong> · {r.vehicle_number}<small className="muted">{[r.vehicle_color,r.vehicle_make,r.vehicle_model].filter(Boolean).join(" · ")}</small>
         </p>
       )}
       {(r.mine || r.driving) && ["accepted", "arrived", "in_progress"].includes(r.status) && r.driver_name && <MaskedCall rideId={r.id} notify={notify} />}
@@ -436,6 +445,9 @@ export default function RideCard({
             Confirm cancellation
           </button>
         </div>
+      )}
+      {r.status === "completed" && (
+        <TripReceipt rideId={r.id} notify={notify} />
       )}
       {r.status === "completed" && (
         <PaymentSettlementSheet

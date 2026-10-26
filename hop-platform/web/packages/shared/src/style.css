@@ -841,7 +841,7 @@ button.recenter,button.recenter:hover{position:absolute!important}
 .osm-anchor { position: absolute; left: 0; top: 0; pointer-events: auto; }
 .osm-anchor.bottom { transform: translate(-50%, -100%); }
 .osm-anchor.center { transform: translate(-50%, -50%); }
-.osm-anchor.bottom .map-pin { display: block; }
+.osm-anchor.bottom .map-pin, .osm-anchor.center .map-pin { display: block; }
 .live-nav-map, .ride-route-map, .stage-map .map-frame, .map-frame { position: relative; }
 .nav-tools { position: absolute; z-index: 600; right: 10px; top: 10px; display: grid; gap: 8px; }
 .nav-tools button, .nav-tools .button { width: 40px; height: 40px; padding: 0; display: grid; place-items: center; border-radius: 12px; background: #fff; color: var(--ink); box-shadow: var(--shadow); border: 0; font-size: 18px; text-decoration: none; }
@@ -1979,3 +1979,20 @@ img, video { max-width: 100%; height: auto; }
   .header-right .duty-pill { font-size: 11px; letter-spacing: 0; white-space: nowrap; }
 }
 @media (max-width: 480px) { .topbar .logo-sub { display: none; } }
+
+/* Account trust, private media and resumable onboarding. */
+.trust-block { padding: 14px 0; display: grid; gap: 10px; }
+.trust-block small { display: block; }
+.trust-upload { padding: 12px 0; display: grid; gap: 10px; }
+.trust-upload input[type=file] { max-width: 100%; }
+.captain-portrait { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; display: inline-block; }
+.avatar .captain-portrait { width: 100%; height: 100%; }
+.onboarding-flow { max-width: 760px; margin-inline: auto; }
+.onboarding-steps { list-style: none; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; padding: 0; }
+.onboarding-steps li { font-size: .8rem; opacity: .6; }
+.onboarding-steps li[aria-current=step] { opacity: 1; font-weight: 700; }
+.onboarding-steps li span { display: block; font-weight: 700; margin-bottom: 4px; }
+.onboarding-flow .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.onboarding-flow .check { display: flex; align-items: flex-start; gap: 10px; }
+.onboarding-flow .check input { width: auto; }
+@media(max-width: 480px) { .onboarding-steps { grid-template-columns: repeat(2,minmax(0,1fr)); } }

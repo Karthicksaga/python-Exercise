@@ -83,7 +83,7 @@ func setup(t *testing.T) *fixture {
 		}
 		write(w, 200, map[string]any{"code": "Ok", "routes": routes})
 	}))
-	s := &Server{Config: Config{PublicOrigin: "https://hop.test", SessionKey: strings.Repeat("test-key", 8), RoutingURL: router.URL, Development: true}, DB: db, Cache: cache, HTTP: &http.Client{Timeout: time.Second}}
+	s := &Server{Media: &memoryMedia{objects: map[string][]byte{}}, Config: Config{PublicOrigin: "https://hop.test", SessionKey: strings.Repeat("test-key", 8), RoutingURL: router.URL, Development: true}, DB: db, Cache: cache, HTTP: &http.Client{Timeout: time.Second}}
 	httpServer := httptest.NewServer(s.Handler())
 	f := &fixture{s: s, http: httpServer, route: router, t: t}
 	e = db.QueryRow(ctx, `INSERT INTO areas(name,state,min_lat,max_lat,min_lng,max_lng,base_paise,per_km_paise,minimum_paise,active,approval_reference) VALUES('Test area','Test state',12,14,79,81,1500,800,2500,true,'test only') RETURNING id`).Scan(&f.area)
@@ -105,7 +105,11 @@ func (f *fixture) actor(role string, driver bool) client {
 	if e = f.s.Cache.Set(ctx, "session:"+digest(c.secret), b, time.Hour).Err(); e != nil {
 		f.t.Fatal(e)
 	}
-	if _, e = f.s.DB.Exec(ctx, "INSERT INTO account_profiles(account_id,phone) VALUES($1,'9876543210') ON CONFLICT(account_id) DO NOTHING", c.id); e != nil {
+	phone := fmt.Sprintf("9%09d", time.Now().UnixNano()%1000000000)
+	if _, e = f.s.DB.Exec(ctx, "INSERT INTO verified_phones(account_id,phone) VALUES($1,$2)", c.id, phone); e != nil {
+		f.t.Fatal(e)
+	}
+	if _, e = f.s.DB.Exec(ctx, "INSERT INTO account_profiles(account_id,phone) VALUES($1,$2) ON CONFLICT(account_id) DO NOTHING", c.id, phone); e != nil {
 		f.t.Fatal(e)
 	}
 	if driver {
@@ -119,7 +123,7 @@ func (f *fixture) actor(role string, driver bool) client {
 func (f *fixture) call(c client, method, path string, body any) (int, map[string]any) {
 	b, _ := json.Marshal(body)
 	req, _ := http.NewRequest(method, f.http.URL+path, bytes.NewReader(b))
-	req.AddCookie(&http.Cookie{Name: "hop_session", Value: c.secret})
+	req.AddCookie(&http.Cookie{Name: f.s.cookieName(req), Value: c.secret})
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "https://hop.test")
 	req.Header.Set("X-CSRF-Token", c.csrf)
@@ -501,7 +505,8 @@ func TestOperatorApprovalAndAreaActivation(t *testing.T) {
 	f := setup(t)
 	op := f.actor("operator", false)
 	d := f.actor("rider", false)
-	code, _ := f.call(d, "POST", "/api/drivers/apply", map[string]string{"area_id": f.area, "vehicle_number": "TEST12345", "upi_id": "driver@bank", "license_reference": "verified-license-reference", "insurance_reference": "verified-insurance-reference", "license_expires": time.Now().Add(24 * time.Hour).Format("2006-01-02"), "insurance_expires": time.Now().Add(24 * time.Hour).Format("2006-01-02")})
+	f.uploadEvidence(d)
+	code, _ := f.call(d, "POST", "/api/drivers/apply", map[string]string{"area_id": f.area, "vehicle_make": "Honda", "vehicle_model": "Shine", "vehicle_color": "Black", "vehicle_number": "TEST12345", "upi_id": "driver@bank", "license_reference": "verified-license-reference", "insurance_reference": "verified-insurance-reference", "license_expires": time.Now().Add(24 * time.Hour).Format("2006-01-02"), "insurance_expires": time.Now().Add(24 * time.Hour).Format("2006-01-02")})
 	require(t, code, 201)
 	code, _ = f.call(d, "POST", "/api/operator/drivers/"+d.id, map[string]string{"status": "approved", "note": "Approve myself improperly"})
 	require(t, code, 403)

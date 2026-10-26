@@ -71,28 +71,44 @@ export default function CaptainApp() {
 
   return (
     <div className={`${user ? "shell has-nav" : "shell"} driver-mode captain`}>
-      <header className={"topbar" + (dutyOn === null ? "" : dutyOn ? " duty-on" : " duty-off")}>
+      <header className={"topbar floating-pill-bar" + (dutyOn === null ? "" : dutyOn ? " duty-on" : " duty-off")}>
         <a href="/captain" className="logo">
           <span className="logo-mark" aria-hidden="true">h</span>
           hop <small className="logo-sub">captain</small>
         </a>
+        <div className="topbar-center">
+          {user && dutyOn !== null && (
+            <span className={"topbar-status-chip duty-chip" + (dutyOn ? " on" : "")} role="status" title={dutyOn ? "You are online and visible to riders" : "You are offline. Go online to get requests"}>
+              <span className="status-dot" />
+              <span>{dutyOn ? "Online" : "Offline"}</span>
+            </span>
+          )}
+          {user && dutyOn === null && (
+            <span className={"topbar-status-chip" + (s.live ? " on" : "")}>
+              <span className="status-dot" />
+              <span>{s.live ? "Live" : "Connecting"}</span>
+            </span>
+          )}
+        </div>
         <div className="header-right">
           <button type="button" className="theme-toggle" onClick={s.toggleDark} aria-label={s.dark ? "Switch to light mode" : "Switch to dark mode"}>
             <span className="emoji-keep">{s.dark ? "☀️" : "🌙"}</span>
           </button>
-          <span className="commission">Built for your drive</span>
-          {user && dutyOn !== null && (
-            <span className={"duty-pill" + (dutyOn ? " on" : "")} role="status" title={dutyOn ? "You are online and visible to riders" : "You are offline. Go online to get requests"}>
-              <i /> {dutyOn ? "Online" : "Offline"}
-            </span>
-          )}
-          {user && dutyOn === null && (
-            <span className={"live-pill" + (s.live ? " on" : "")}><i /> {s.live ? "Live" : "Connecting"}</span>
-          )}
           {user && s.permission === "default" && (
-            <button type="button" className="alerts-btn" aria-label="Enable alerts" title="Enable alerts" onClick={() => void s.requestPermission()}><span aria-hidden="true">🔔</span><span className="alerts-label">Enable alerts</span></button>
+            <button type="button" className="alerts-btn" aria-label="Enable alerts" title="Enable alerts" onClick={() => void s.requestPermission()}><span aria-hidden="true">🔔</span><span className="alerts-label">Alerts</span></button>
           )}
-          {user && <span className="avatar" title={user.name} style={{ background: avatarColors[avatarColor] }}>{(user.name[0] || "?").toUpperCase()}</span>}
+          {user && (
+            <button
+              type="button"
+              className="avatar-btn"
+              onClick={() => setTab("profile")}
+              title={`${user.name} · View Profile`}
+            >
+              <span className="avatar" style={{ background: avatarColors[avatarColor] }}>
+                {(user.name[0] || "?").toUpperCase()}
+              </span>
+            </button>
+          )}
         </div>
       </header>
       <main>
@@ -126,12 +142,12 @@ export default function CaptainApp() {
                 <p className="eyebrow">{eyebrow}</p>
                 <h1>{title}</h1>
               </div>
-              <span className="verified">Verified</span>
+              <span className="verified">Captain account</span>
             </div>
             <div hidden={!["driver", "earnings", "vehicle"].includes(tab)}>
               {!data.driver.length && (
                 <div className="notice">
-                  New to hop? Fill in the form below to apply. You can add your licence, RC and insurance details.
+                  New to hop? Complete the steps below to apply. You can save your progress and upload evidence privately.
                 </div>
               )}
               <DriverPanel

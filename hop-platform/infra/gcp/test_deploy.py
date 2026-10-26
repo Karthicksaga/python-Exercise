@@ -36,6 +36,16 @@ class DeploymentChecks(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.validate(self.config)
 
+    def test_private_media_requires_distinct_complete_bucket_configuration(self):
+        self.config["api_env"].update(MEDIA_PROFILE_BUCKET="hop-test-portraits", MEDIA_KYC_BUCKET="hop-test-kyc")
+        module.validate(self.config)
+        self.config["api_env"]["MEDIA_KYC_BUCKET"] = "hop-test-portraits"
+        with self.assertRaises(ValueError):
+            module.validate(self.config)
+        self.config["api_env"].pop("MEDIA_KYC_BUCKET")
+        with self.assertRaises(ValueError):
+            module.validate(self.config)
+
     def test_rejects_insecure_and_shared_origins(self):
         for origin in ["http://rider.hop-test.net", "https://rider.hop-test.net/", "https://user:pass@hop-test.net", "https://localhost"]:
             config = copy.deepcopy(self.config)

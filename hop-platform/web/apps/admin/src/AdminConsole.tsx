@@ -1,3 +1,4 @@
+import { PrivateImage } from "@hop/shared/TrustProfile";
 import ResponsiveTable from "@hop/shared/ResponsiveTable";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -7,6 +8,7 @@ import { IconAlertTriangle } from "@tabler/icons-react";
 import { api } from "@hop/shared/api";
 
 type AdminDriver = {
+  has_photo: boolean; phone_verified: boolean; documents: string[]; onboarding_version: number; vehicle_make: string; vehicle_model: string; vehicle_color: string;
   id: string; name: string; email: string; phone: string; gender: string; status: string; online: boolean; area: string;
   vehicle_category: string; vehicle_number: string; license_reference: string; insurance_reference: string;
   license_expires: string; insurance_expires: string; docs_expired: boolean; review_note: string; pink_certified: boolean;
@@ -30,6 +32,7 @@ export default function AdminConsole({ notify }: { notify: (s: string) => void; 
   const [form, setForm] = useState<Record<string, boolean>>({});
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [documentKind,setDocumentKind]=useState("");
 
   const load = useCallback(async () => {
     try {
@@ -44,7 +47,7 @@ export default function AdminConsole({ notify }: { notify: (s: string) => void; 
   const count = (s: string) => rows.filter((r) => r.status === s).length;
 
   function open(r: AdminDriver) {
-    setSel(r);
+    setSel(r); setDocumentKind("");
     setNote("");
     setForm(Object.fromEntries([...CHECKS.map(([k]) => [k, Boolean(r[k])]), ["pink_certified", r.pink_certified]]));
   }
@@ -107,15 +110,20 @@ export default function AdminConsole({ notify }: { notify: (s: string) => void; 
           <Stack gap="md">
             <Card withBorder radius="md">
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-                <div><Text size="xs" c="dimmed">Phone</Text><Text size="sm">{sel.phone || "—"}</Text></div>
+                {sel.has_photo && <PrivateImage accountId={sel.id} alt="Applicant portrait" className="captain-portrait"/>}
+                <div><Text size="xs" c="dimmed">Phone {sel.phone_verified ? "(verified)" : "(unverified)"}</Text><Text size="sm">{sel.phone || "—"}</Text></div>
                 <div><Text size="xs" c="dimmed">Gender (profile)</Text><Text size="sm">{sel.gender || "not set"}</Text></div>
-                <div><Text size="xs" c="dimmed">Vehicle</Text><Text size="sm">{sel.vehicle_number} · {sel.vehicle_category}</Text></div>
+                <div><Text size="xs" c="dimmed">Vehicle</Text><Text size="sm">{sel.vehicle_number} · {sel.vehicle_category}<br/>{sel.vehicle_color} {sel.vehicle_make} {sel.vehicle_model}</Text></div>
                 <div><Text size="xs" c="dimmed">Area · trips</Text><Text size="sm">{sel.area} · {sel.trips}</Text></div>
                 <div><Text size="xs" c="dimmed">Licence ref · expires</Text><Text size="sm">{sel.license_reference} · {sel.license_expires}</Text></div>
                 <div><Text size="xs" c="dimmed">Insurance ref · expires</Text><Text size="sm">{sel.insurance_reference} · {sel.insurance_expires}</Text></div>
               </SimpleGrid>
               {sel.review_note && <Text size="xs" c="dimmed" mt="sm">Last note: {sel.review_note}</Text>}
             </Card>
+            <Text size="sm">Private evidence · document views are audited. Confirm images match the application before ticking checks.</Text>
+            <Group>{(sel.documents || []).map(kind=><Button key={kind} variant="light" size="compact-sm" onClick={()=>setDocumentKind(documentKind===kind?"":kind)}>{kind}</Button>)}</Group>
+            {documentKind && <PrivateImage key={sel.id+documentKind} accountId={sel.id} kind={documentKind} alt={`${documentKind} document`}/>}
+            {sel.onboarding_version>0 && (!sel.has_photo || sel.documents.length<4) && <Alert color="orange">Portrait and all four private documents are required.</Alert>}
             {sel.docs_expired && <Alert color="red" icon={<IconAlertTriangle size={16} />}>Documents have expired. The driver cannot be enabled.</Alert>}
             <Stack gap="xs">
               <Text fw={700}>Verification checklist</Text>
@@ -133,7 +141,8 @@ export default function AdminConsole({ notify }: { notify: (s: string) => void; 
             />
             <Textarea label="Review note (required to change status)" minRows={3} value={note} onChange={(e) => setNote(e.currentTarget.value)} placeholder="What you verified, and how (min 10 characters)" />
             <Group>
-              <Button disabled={busy || !all || sel.docs_expired || note.trim().length < 10} onClick={() => submit("approved")}>{sel.status === "approved" ? "Save & keep enabled" : "Approve & enable"}</Button>
+              <Button disabled={busy || !all || !sel.phone_verified || (sel.onboarding_version>0 && (!sel.has_photo || sel.documents.length<4)) || sel.docs_expired || note.trim().length < 10} onClick={() => submit("approved")}>{sel.status === "approved" ? "Save & keep enabled" : "Approve & enable"}</Button>
+              <Button variant="light" disabled={busy || note.trim().length < 10} onClick={() => submit("pending")}>Request corrections</Button>
               <Button color="red" variant="light" disabled={busy || note.trim().length < 10} onClick={() => submit("suspended")}>Disable</Button>
               <Button variant="default" disabled={busy} onClick={() => submit("")}>Save checklist only</Button>
             </Group>

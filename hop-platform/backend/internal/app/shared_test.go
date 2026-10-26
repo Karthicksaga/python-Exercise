@@ -217,7 +217,7 @@ func TestMobileNumberRequiredToRideAndDrive(t *testing.T) {
 	require(t, code, 403)
 	code, _ = f.call(rider, "POST", "/api/drivers/apply", map[string]any{"area_id": f.area, "vehicle_category": "bike", "vehicle_number": "TN01AB1234", "license_reference": "DL-12345", "insurance_reference": "INS-12345", "license_expires": "2099-01-01", "insurance_expires": "2099-01-01"})
 	require(t, code, 403)
-	f.s.DB.Exec(context.Background(), "UPDATE account_profiles SET phone='9876543210' WHERE account_id=$1", rider.id)
+	f.s.DB.Exec(context.Background(), "UPDATE account_profiles SET phone=(SELECT phone FROM verified_phones WHERE account_id=$1) WHERE account_id=$1", rider.id)
 	code, _ = f.call(rider, "POST", "/api/rides", map[string]any{"quote_id": f.quote(rider), "request_key": "33333333-3333-4333-8333-" + strings.ReplaceAll(rider.id, "-", "")[:12], "payment_method": "cash"})
 	require(t, code, 201)
 }

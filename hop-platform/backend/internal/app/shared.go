@@ -79,11 +79,11 @@ func planStops(driver Point, a, b shareLeg) []planStop {
 // hasMobile is true when the account has a mobile number (phone login or a number saved in the profile).
 func hasMobile(ctx context.Context, db querier, uid string) bool {
 	var ok bool
-	e := db.QueryRow(ctx, `SELECT COALESCE((SELECT phone<>'' FROM account_profiles WHERE account_id=$1),false) OR EXISTS(SELECT 1 FROM accounts WHERE id=$1 AND issuer='phone')`, uid).Scan(&ok)
+	e := db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM verified_phones v JOIN accounts a ON a.id=v.account_id LEFT JOIN account_profiles p ON p.account_id=a.id WHERE a.id=$1 AND v.phone=COALESCE(NULLIF(p.phone,''),CASE WHEN a.issuer='phone' THEN a.subject ELSE '' END))`, uid).Scan(&ok)
 	return e == nil && ok
 }
 
-const mobileRequired = "Add your mobile number in Profile before you ride or drive"
+const mobileRequired = "Verify your mobile number in Profile before you ride or drive"
 
 // MatchShared moves waiting riders to a normal ride at the shared price when the wait is over, and pairs
 // compatible riders. One instance at a time.

@@ -129,7 +129,7 @@ func (s *Server) otpRequest(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "Enter a valid 10-digit mobile number")
 		return
 	}
-	if !s.smsConfigured() && !s.Config.Development && s.Config.ClientID != "hop-web" {
+	if !s.smsConfigured() && !s.Config.Development {
 		fail(w, 503, "SMS sign-in is not configured")
 		return
 	}
@@ -215,6 +215,12 @@ func (s *Server) otpVerify(w http.ResponseWriter, r *http.Request) {
 	var account string
 	e = tx.QueryRow(ctx, `INSERT INTO accounts(issuer,subject,email,name) VALUES('phone',$1,$2,$3)
  ON CONFLICT(issuer,subject) DO UPDATE SET issuer=accounts.issuer RETURNING id`, in.Phone, in.Phone+"@phone.invalid", "Rider "+in.Phone[6:]).Scan(&account)
+	if e == nil {
+		_, e = tx.Exec(ctx, `INSERT INTO verified_phones(account_id,phone) VALUES($1,$2) ON CONFLICT(account_id) DO UPDATE SET phone=$2,verified_at=now()`, account, in.Phone)
+	}
+	if e == nil {
+		_, e = tx.Exec(ctx, `INSERT INTO account_profiles(account_id,phone) VALUES($1,$2) ON CONFLICT(account_id) DO UPDATE SET phone=$2,updated_at=now()`, account, in.Phone)
+	}
 	if e == nil {
 		_, e = tx.Exec(ctx, "DELETE FROM phone_otps WHERE phone=$1", in.Phone)
 	}

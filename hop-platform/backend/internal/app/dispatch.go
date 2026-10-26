@@ -20,12 +20,12 @@ const stageWait = "15 seconds"
 
 // Lower score is better: road-ish ETA in minutes, penalties for low rating and low recent acceptance,
 // a small reward for idle time (fairness) and a bonus for the rider's favourite drivers.
-var candidateSQL = `SELECT d.user_id::text, c.dist,
+var candidateSQL = `SELECT d.user_id::text, c.dist, d.lat,d.lng,
  (c.dist*1.3/6.5/60.0)
- + (5-COALESCE((SELECT avg(score) FROM ride_ratings WHERE rated_id=d.user_id),4.5))*1.5
- + (1-COALESCE((SELECT avg((outcome='accepted')::int) FROM (SELECT outcome FROM ride_offers WHERE driver_id=d.user_id AND outcome IS NOT NULL ORDER BY offered_at DESC LIMIT 20) x),0.5))*3
+ + (5-COALESCE((SELECT (sum(score)+22.5)/(count(*)+5) FROM ride_ratings WHERE rated_id=d.user_id),4.5))*1.5
+ + (1-COALESCE((SELECT avg((outcome='accepted')::int) FROM (SELECT outcome FROM ride_offers WHERE driver_id=d.user_id AND outcome IN ('accepted','declined') AND (outcome='accepted' OR displayed_at IS NOT NULL) ORDER BY offered_at DESC LIMIT 20) x),0.5))*3
  - LEAST(COALESCE((SELECT extract(epoch FROM now()-max(updated_at))/60 FROM rides WHERE driver_id=d.user_id AND status='completed'),30),30)*0.05
- - CASE WHEN EXISTS(SELECT 1 FROM favorite_drivers f WHERE f.rider_id=r.rider_id AND f.driver_id=d.user_id) THEN 5 ELSE 0 END AS score
+ - CASE WHEN EXISTS(SELECT 1 FROM favorite_drivers f WHERE f.rider_id=r.rider_id AND f.driver_id=d.user_id) THEN 1 ELSE 0 END AS score
  FROM rides r JOIN quotes q ON q.id=r.quote_id JOIN areas a ON a.id=q.area_id
  JOIN drivers d ON d.area_id=q.area_id AND d.vehicle_category=q.vehicle_category
  CROSS JOIN LATERAL (SELECT 6371000*acos(least(1,greatest(-1,sin(radians(d.lat))*sin(radians(q.pickup_lat))+cos(radians(d.lat))*cos(radians(q.pickup_lat))*cos(radians(d.lng-q.pickup_lng))))) AS dist) c
@@ -55,8 +55,10 @@ type openRide struct {
 }
 
 type pick struct {
-	id          string
-	dist, score float64
+	id            string
+	dist, score   float64
+	lat, lng, eta float64
+	source        string
 }
 
 // DispatchStaged advances open rides by at most one successful stage each and records offer outcomes.
@@ -111,7 +113,7 @@ func (s *Server) settleOffers(ctx context.Context) error {
 	if e = tx.QueryRow(ctx, "SELECT pg_try_advisory_xact_lock(8472102)").Scan(&locked); e != nil || !locked {
 		return e
 	}
-	if _, e = tx.Exec(ctx, `UPDATE ride_offers o SET outcome=CASE WHEN r.driver_id=o.driver_id THEN 'accepted' ELSE 'missed' END
+	if _, e = tx.Exec(ctx, `UPDATE ride_offers o SET outcome=CASE WHEN r.driver_id=o.driver_id THEN 'accepted' WHEN EXISTS(SELECT 1 FROM ride_declines dc WHERE dc.ride_id=o.ride_id AND dc.driver_id=o.driver_id) THEN 'declined' WHEN r.driver_id IS NOT NULL THEN 'superseded' ELSE 'expired' END
  FROM rides r WHERE r.id=o.ride_id AND o.outcome IS NULL AND r.status<>'requested'`); e != nil {
 		return e
 	}
@@ -144,10 +146,10 @@ func (s *Server) claimRides(ctx context.Context) ([]openRide, error) {
 // candidates scores eligible drivers. The nearest drivers come from the Redis GEO index; PostgreSQL then
 // validates and ranks only that shortlist. It falls back to the bounding-box query when Redis has no
 // shortlist (cold start, database-only demo drivers) or the shortlist was cut off and nothing qualified.
-func (s *Server) candidates(ctx context.Context, tx pgx.Tx, rideID, area, category string, lat, lng, radius float64, limit int) ([]pick, error) {
+func (s *Server) candidates(ctx context.Context, tx candidateQuerier, rideID, area, category string, lat, lng, radius float64, limit int, road map[string]float64) ([]pick, error) {
 	ids, truncated := s.shortlistLive(ctx, area, category, lat, lng, radius)
 	run := func(ids []string) ([]pick, error) {
-		rows, e := tx.Query(ctx, candidateSQL, rideID, radius, radius, limit, ids)
+		rows, e := tx.Query(ctx, candidateSQL, rideID, radius, radius, max(limit, 24), ids)
 		if e != nil {
 			return nil, e
 		}
@@ -155,12 +157,12 @@ func (s *Server) candidates(ctx context.Context, tx pgx.Tx, rideID, area, catego
 		var out []pick
 		for rows.Next() {
 			var p pick
-			if e = rows.Scan(&p.id, &p.dist, &p.score); e != nil {
+			if e = rows.Scan(&p.id, &p.dist, &p.lat, &p.lng, &p.score); e != nil {
 				return nil, e
 			}
 			out = append(out, p)
 		}
-		return out, rows.Err()
+		return rankCandidates(out, road, limit), rows.Err()
 	}
 	if len(ids) > 0 {
 		picks, e := run(ids)
@@ -172,6 +174,7 @@ func (s *Server) candidates(ctx context.Context, tx pgx.Tx, rideID, area, catego
 }
 
 func (s *Server) dispatchRide(ctx context.Context, ride openRide) error {
+	road := s.dispatchRoadETAs(ctx, ride.id)
 	tx, e := s.DB.Begin(ctx)
 	if e != nil {
 		return e
@@ -189,8 +192,8 @@ func (s *Server) dispatchRide(ctx context.Context, ride openRide) error {
 	}
 	offer := func(picks []pick, stage int) error {
 		for _, p := range picks {
-			etaSec := int(trafficAdjustDuration(p.dist*1.3, 0, category, false))
-			if _, e := tx.Exec(ctx, "INSERT INTO ride_offers(ride_id,driver_id,stage,score,eta_seconds) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING", ride.id, p.id, stage, p.score, etaSec); e != nil {
+			etaSec := int(p.eta)
+			if _, e := tx.Exec(ctx, "INSERT INTO ride_offers(ride_id,driver_id,stage,score,eta_seconds,eta_source) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING", ride.id, p.id, stage, p.score, etaSec, p.source); e != nil {
 				return e
 			}
 		}
@@ -199,7 +202,7 @@ func (s *Server) dispatchRide(ctx context.Context, ride openRide) error {
 	last := len(stageRadius) - 1
 	if ride.stage >= len(stageRadius) {
 		// Every stage has run: keep sweeping at the widest radius so drivers who come online or move closer still get the request.
-		picks, e := s.candidates(ctx, tx, ride.id, area, category, lat, lng, stageRadius[last], stageSize[last])
+		picks, e := s.candidates(ctx, tx, ride.id, area, category, lat, lng, stageRadius[last], stageSize[last], road)
 		if e != nil {
 			return e
 		}
@@ -220,7 +223,7 @@ func (s *Server) dispatchRide(ctx context.Context, ride openRide) error {
 		if ride.window {
 			radius = stageRadius[last]
 		}
-		picks, e := s.candidates(ctx, tx, ride.id, area, category, lat, lng, radius, stageSize[stage])
+		picks, e := s.candidates(ctx, tx, ride.id, area, category, lat, lng, radius, stageSize[stage], road)
 		if e != nil {
 			return e
 		}

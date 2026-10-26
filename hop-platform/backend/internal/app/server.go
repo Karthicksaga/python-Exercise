@@ -28,6 +28,7 @@ import (
 )
 
 type Server struct {
+	Media      mediaStore
 	FCM        oauth2.TokenSource
 	FCMProject string
 	Config     Config
@@ -89,6 +90,10 @@ func New(ctx context.Context, c Config) (*Server, error) {
 		return nil, fmt.Errorf("OIDC discovery: %w", e)
 	}
 	server := &Server{Events: newEventHub(), Config: c, DB: db, Cache: cache, HTTP: hc, OAuth: oauth2.Config{ClientID: c.ClientID, ClientSecret: c.ClientSecret, RedirectURL: c.PublicOrigin + "/auth/callback", Endpoint: provider.Endpoint(), Scopes: []string{oidc.ScopeOpenID, "profile", "email"}}, Verifier: provider.Verifier(&oidc.Config{ClientID: c.ClientID})}
+	if e := server.configureMedia(ctx); e != nil {
+		server.Close()
+		return nil, e
+	}
 	if e := server.configureNativePush(ctx); e != nil {
 		server.Close()
 		return nil, e
@@ -114,6 +119,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/config", s.publicConfig)
 	routes := map[string]http.HandlerFunc{
 		"GET /api/state": s.state, "POST /api/estimates": s.estimates, "GET /api/rides/{id}/messages": s.rideMessages, "POST /api/rides/{id}/messages": s.sendRideMessage, "GET /api/places": s.places, "GET /api/places/reverse": s.placesReverse, "POST /api/quotes": s.quote, "POST /api/routes/alternatives": s.routeAlternatives, "POST /api/rides": s.book,
+		"POST /api/profile/phone/request": s.requestProfilePhone, "POST /api/profile/phone/verify": s.verifyProfilePhone,
+		"GET /api/profile/photo/{id}": s.profilePhoto, "POST /api/profile/photo": s.uploadProfilePhoto, "POST /api/profile/photo/delete": s.deleteProfilePhoto,
+		"GET /api/drivers/onboarding": s.onboardingState, "POST /api/drivers/onboarding": s.saveOnboarding,
+		"POST /api/drivers/documents/{kind}": s.uploadDriverDocument, "GET /api/drivers/documents/{id}/{kind}": s.driverDocument,
+		"GET /api/rides/{id}/receipt": s.tripReceipt, "POST /api/rides/{id}/offer-seen": s.offerSeen,
 		"POST /api/profile": s.updateProfile, "GET /api/profile": s.profileState, "POST /api/profile/contacts": s.addEmergencyContact,
 		"POST /api/profile/contacts/{id}/delete": s.deleteEmergencyContact, "GET /api/profile/export": s.exportProfile, "POST /api/profile/deletion": s.requestDeletion, "POST /api/locations": s.saveLocation,
 		"POST /api/locations/{id}/delete": s.deleteLocation, "POST /api/rides/{id}/rating": s.rateRide, "GET /api/rides/{id}/nav": s.navigate, "GET /api/rides/{id}/position": s.ridePosition, "POST /api/dev/driver-near-request": s.devDriverNearRequest,
@@ -143,7 +153,7 @@ func (s *Server) Handler() http.Handler {
 		"GET /api/operator/sos": s.operatorSOSEvents, "POST /api/operator/sos/{id}/resolve": s.operatorResolveSOS,
 		"GET /api/operator/lost-items": s.operatorLostItems, "POST /api/operator/lost-items/{id}": s.operatorUpdateLostItem,
 		"GET /api/operator/analytics": s.operatorAnalytics,
-		"GET /api/admin/drivers": s.adminDrivers, "POST /api/admin/drivers/{id}": s.adminDecision,
+		"GET /api/admin/drivers":      s.adminDrivers, "POST /api/admin/drivers/{id}": s.adminDecision,
 	}
 	for pattern, handler := range s.companionRoutes() {
 		routes[pattern] = handler
@@ -169,7 +179,11 @@ func (s *Server) Handler() http.Handler {
 		if !s.Config.Development {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		}
-		r.Body = http.MaxBytesReader(w, r.Body, 16*1024)
+		limit := int64(16 * 1024)
+		if r.URL.Path == "/api/profile/photo" || strings.HasPrefix(r.URL.Path, "/api/drivers/documents/") {
+			limit = 3 * 1024 * 1024
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
 		ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
 		if r.URL.Path == "/api/stream" {
 			cancel()

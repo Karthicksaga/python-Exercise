@@ -11,8 +11,12 @@ func (s *Server) adminDrivers(w http.ResponseWriter, r *http.Request) {
 	if !operator(w, r) {
 		return
 	}
-	rows, e := jsonRows(r.Context(), s.DB, `SELECT d.user_id AS id,a.name,a.email,COALESCE(p.phone,'') AS phone,COALESCE(p.gender,'') AS gender,
- d.status,d.online,ar.name AS area,d.vehicle_category,d.vehicle_number,d.license_reference,d.insurance_reference,d.license_expires,d.insurance_expires,
+	rows, e := jsonRows(r.Context(), s.DB, `SELECT d.user_id AS id,a.name,a.email,COALESCE(NULLIF(p.phone,''),CASE WHEN a.issuer='phone' THEN a.subject ELSE '' END) AS phone,COALESCE(p.gender,'') AS gender,
+ d.status,d.online,d.vehicle_make,d.vehicle_model,d.vehicle_color,d.onboarding_version,
+ EXISTS(SELECT 1 FROM verified_phones v WHERE v.account_id=d.user_id AND v.phone=COALESCE(NULLIF(p.phone,''),CASE WHEN a.issuer='phone' THEN a.subject ELSE '' END)) AS phone_verified,
+ EXISTS(SELECT 1 FROM profile_photos f WHERE f.account_id=d.user_id) AS has_photo,
+ (SELECT COALESCE(json_agg(kind ORDER BY kind),'[]'::json) FROM driver_documents WHERE account_id=d.user_id) AS documents,
+ ar.name AS area,d.vehicle_category,d.vehicle_number,d.license_reference,d.insurance_reference,d.license_expires,d.insurance_expires,
  d.license_expires<(now() AT TIME ZONE 'Asia/Kolkata')::date OR d.insurance_expires<(now() AT TIME ZONE 'Asia/Kolkata')::date AS docs_expired,
  d.review_note,d.pink_certified,d.updated_at,
  COALESCE(v.identity_ok,false) AS identity_ok,COALESCE(v.license_ok,false) AS license_ok,COALESCE(v.rc_ok,false) AS rc_ok,
@@ -72,6 +76,10 @@ func (s *Server) adminDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(ctx)
+	if e = lockJourney(ctx, tx, id); e != nil {
+		dbError(w, e)
+		return
+	}
 	var status, gender string
 	var expired bool
 	e = tx.QueryRow(ctx, `SELECT d.status,COALESCE(p.gender,''),
@@ -84,6 +92,21 @@ func (s *Server) adminDecision(w http.ResponseWriter, r *http.Request) {
 	next := status
 	if in.Status != "" {
 		next = in.Status
+	}
+	if next == "approved" {
+		if !complete {
+			fail(w, 400, "Every verification check is required to keep a captain enabled")
+			return
+		}
+		var ready bool
+		if e = tx.QueryRow(ctx, `SELECT onboarding_version=0 OR (EXISTS(SELECT 1 FROM profile_photos WHERE account_id=$1) AND (SELECT count(*)=4 FROM driver_documents WHERE account_id=$1)) FROM drivers WHERE user_id=$1`, id).Scan(&ready); e != nil {
+			dbError(w, e)
+			return
+		}
+		if !ready || !hasMobile(ctx, tx, id) {
+			fail(w, 400, "Verified mobile, photo and all onboarding documents are required before approval")
+			return
+		}
 	}
 	if next == "approved" && expired {
 		fail(w, 400, "Driver documents have expired")
@@ -100,6 +123,9 @@ func (s *Server) adminDecision(w http.ResponseWriter, r *http.Request) {
 	_, e = tx.Exec(ctx, `INSERT INTO driver_verifications(driver_id,identity_ok,license_ok,rc_ok,insurance_ok,vehicle_ok,police_ok,verified_by)
  VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(driver_id) DO UPDATE SET identity_ok=$2,license_ok=$3,rc_ok=$4,insurance_ok=$5,vehicle_ok=$6,police_ok=$7,verified_by=$8,updated_at=now()`,
 		id, in.Identity, in.License, in.RC, in.Insurance, in.Vehicle, in.Police, user(r).Account.ID)
+	if e == nil && next == "approved" && complete {
+		_, e = tx.Exec(ctx, "UPDATE profile_photos SET approved=true WHERE account_id=$1", id)
+	}
 	if e == nil {
 		_, e = tx.Exec(ctx, `UPDATE drivers SET status=$2,pink_certified=$3,online=online AND $2='approved',
  review_note=CASE WHEN $4<>'' THEN $4 ELSE review_note END,reviewed_by=$5,reviewed_at=now(),updated_at=now() WHERE user_id=$1`,

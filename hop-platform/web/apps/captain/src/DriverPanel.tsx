@@ -1,6 +1,6 @@
+import CaptainOnboarding from "./CaptainOnboarding";
 import { isAndroid, startTracking, stopTracking } from "@hop/shared/platform";
 import { getCSRF } from "@hop/shared/api";
-import { applicationProblem, today } from "@hop/shared/validate";
 import { driverAlert, goOfflineSound, goOnlineSound } from "@hop/shared/sounds";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@hop/shared/api";
@@ -128,6 +128,7 @@ export default function DriverPanel({
   const d = data.driver[0],
     currents = data.rides.filter((r) => r.driving && active(r)),
     current = currents[0];
+  const [editingApplication,setEditingApplication]=useState(false);
   const [chatOpen, setChatOpen] = useState(false),
     [sharing, setSharing] = useState(false),
     [burst, setBurst] = useState(""),
@@ -137,7 +138,26 @@ export default function DriverPanel({
     [earningsError, setEarningsError] = useState("");
   const inFlight = useRef(false);
   const seenOffers = useRef(0);
-  const [myPos, setMyPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [myPos, setMyPos] = useState<{ lat: number; lng: number } | null>(() => {
+    if (d?.lat && d?.lng) return { lat: d.lat, lng: d.lng };
+    return null;
+  });
+  useEffect(() => {
+    if (!myPos && d?.lat && d?.lng) {
+      setMyPos({ lat: d.lat, lng: d.lng });
+    }
+  }, [d?.lat, d?.lng, myPos]);
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (p) => {
+          setMyPos({ lat: p.coords.latitude, lng: p.coords.longitude });
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    }
+  }, []);
   useEffect(() => {
     const count = data.offers.length;
     if (count > seenOffers.current) {
@@ -147,9 +167,17 @@ export default function DriverPanel({
     seenOffers.current = count;
   }, [data.offers.length, notify]);
   const [simulate, setSimulate] = useState(false),
-    home = areas.find((a) => a.id === d?.area_id),
-    [simLat, setSimLat] = useState(home ? ((home.min_lat + home.max_lat) / 2).toFixed(4) : "12.9759"),
-    [simLng, setSimLng] = useState(home ? ((home.min_lng + home.max_lng) / 2).toFixed(4) : "77.6060");
+    home = areas.find((a) => a.id === d?.area_id) || areas[0] || {
+      id: "default",
+      name: "Bengaluru",
+      state: "Karnataka",
+      min_lat: 12.8,
+      max_lat: 13.2,
+      min_lng: 77.4,
+      max_lng: 77.8,
+    },
+    [simLat, setSimLat] = useState(((home.min_lat + home.max_lat) / 2).toFixed(4)),
+    [simLng, setSimLng] = useState(((home.min_lng + home.max_lng) / 2).toFixed(4));
   const simRef = useRef<{ lat: number; lng: number } | null>(null);
   const [autoDrive, setAutoDrive] = useState(false);
   const driveRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -328,28 +356,6 @@ export default function DriverPanel({
       driveRef.current = null;
     }
   }, [current?.id]);
-  async function apply(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setBusy(true);
-    const form = Object.fromEntries(new FormData(e.currentTarget));
-    const problem = applicationProblem(form);
-    if (problem) {
-      setBusy(false);
-      notify(problem);
-      return;
-    }
-    try {
-      await api("/api/drivers/apply", form);
-      await refresh();
-      notify(
-        "Application submitted. An operator must verify and approve your documents before you can drive.",
-      );
-    } catch (e) {
-      notify((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
   async function savePreferences(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -369,91 +375,7 @@ export default function DriverPanel({
       setBusy(false);
     }
   }
-  if (!d)
-    return (
-      <section className="panel narrow">
-        <p className="eyebrow">DRIVE WITH HOP</p>
-        <h2>Your work. Your fare.</h2>
-        <p className="muted">
-          Apply to drive in an active service area. An operator reviews your
-          licence, vehicle and insurance before approval.
-        </p>
-        {!areas.length ? (
-          <div className="empty">
-            Driver applications open when service areas become available.
-          </div>
-        ) : (
-          <form onSubmit={apply} noValidate>
-            <label>
-              Service area
-              <select name="area_id" required>
-                {areas.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}, {a.state}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Vehicle category
-              <select name="vehicle_category" required defaultValue="bike">
-                <option value="bike">Bike</option>
-                <option value="auto">Auto-rickshaw</option>
-                <option value="mini">Mini cab</option>
-                <option value="sedan">Sedan</option>
-                <option value="suv">SUV</option>
-              </select>
-            </label>
-            <label>
-              Vehicle registration
-              <input
-                name="vehicle_number"
-                required
-                maxLength={16}
-                placeholder="KA01AB1234"
-                autoCapitalize="characters"
-              />
-            </label>
-            <label>
-              UPI ID (optional)
-              <input name="upi_id" placeholder="yourname@bank" />
-            </label>
-            <p className="muted">
-              Use the verification references supplied by your operator after
-              sharing documents through their approved private process. Do not
-              paste document images or public file links here.
-            </p>
-            <label>
-              Driving licence verification reference
-              <input
-                name="license_reference"
-                required
-                minLength={5}
-                maxLength={160}
-              />
-            </label>
-            <label>
-              Licence expiry
-              <input name="license_expires" type="date" required min={today()} />
-            </label>
-            <label>
-              Insurance verification reference
-              <input
-                name="insurance_reference"
-                required
-                minLength={5}
-                maxLength={160}
-              />
-            </label>
-            <label>
-              Insurance expiry
-              <input name="insurance_expires" type="date" required min={today()} />
-            </label>
-            <button disabled={busy}>Submit for review</button>
-          </form>
-        )}
-      </section>
-    );
+  if (!d || editingApplication) return <CaptainOnboarding areas={areas} driver={d} notify={notify} refresh={refresh} onClose={d?()=>setEditingApplication(false):undefined}/>;
   const fresh = d.online && Date.now() - Date.parse(d.location_at) < 60000;
   return (
     <>
@@ -468,6 +390,8 @@ export default function DriverPanel({
               <span className="pill">{d.status}</span>
             </p>
             {d.review_note && <p className="muted">{d.review_note}</p>}
+            {d.status === "pending" && <button type="button" className="secondary" onClick={()=>setEditingApplication(true)}>Review or correct application</button>}
+            {d.status === "suspended" && <p className="muted">Contact support to resolve your suspension before driving.</p>}
           </div>
           <div className={"duty" + (sharing ? " on" : "")}>
             <button

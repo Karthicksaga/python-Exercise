@@ -114,3 +114,15 @@ export async function shareTrip(url: string) {
   if (navigator.share) await navigator.share({ title: 'Follow my Hop trip', url });
   else await navigator.clipboard?.writeText(url);
 }
+
+export async function downloadPDF(base64: string, filename: string) {
+  if (isAndroid) {
+    const file = await Filesystem.writeFile({path: filename, data: base64, directory: Directory.Cache});
+    await Share.share({title: 'Hop trip statement',url: file.uri,dialogTitle: 'Save or share trip statement'});
+    return;
+  }
+  const data = Uint8Array.from(atob(base64), char => char.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([data], {type: 'application/pdf'}));
+  const link = Object.assign(document.createElement('a'), {href: url, download: filename});
+  document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

@@ -175,10 +175,20 @@ func (s *Server) reviewDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(ctx)
+	if e = lockJourney(ctx, tx, r.PathValue("id")); e != nil {
+		dbError(w, e)
+		return
+	}
 	if in.Status == "approved" {
 		var ok bool
 		_ = tx.QueryRow(ctx, "SELECT COALESCE((SELECT identity_ok AND license_ok AND rc_ok AND insurance_ok AND vehicle_ok AND police_ok FROM driver_verifications WHERE driver_id=$1),false)", r.PathValue("id")).Scan(&ok)
-		if !ok {
+		var ready bool
+		err := tx.QueryRow(ctx, `SELECT onboarding_version=0 OR EXISTS(SELECT 1 FROM profile_photos WHERE account_id=$1 AND approved) FROM drivers WHERE user_id=$1`, r.PathValue("id")).Scan(&ready)
+		if err != nil {
+			dbError(w, err)
+			return
+		}
+		if !ok || !ready || !hasMobile(ctx, tx, r.PathValue("id")) {
 			fail(w, 400, "Complete the verification checklist in the admin console first")
 			return
 		}
