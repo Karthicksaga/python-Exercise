@@ -195,3 +195,64 @@ html[data-theme="dark"] .captain button:not([class*="mantine-"]):not(.text-butto
 }
 html[data-theme="dark"] .captain .cl-card .button:hover,
 html[data-theme="dark"] .captain .cl-card button:not(.text-button):hover { background: #f7b49f; }
+
+/* Captain Quick Stats Ribbon & Multi-screen Styling */
+.captain-quick-ribbon {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.captain-quick-ribbon::-webkit-scrollbar {
+  display: none;
+}
+.quick-chip {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.quick-chip:hover {
+  transform: translateY(-1px);
+  border-color: #dfb83f;
+  box-shadow: 0 4px 12px rgba(223, 184, 63, 0.15);
+}
+.quick-chip .chip-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.quick-chip .chip-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.quick-chip .chip-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+html[data-theme="dark"] .quick-chip {
+  background: var(--card);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .quick-chip .chip-value {
+  color: var(--ink);
+}
+html[data-theme="dark"] .quick-chip:hover {
+  border-color: #e2bd59;
+}

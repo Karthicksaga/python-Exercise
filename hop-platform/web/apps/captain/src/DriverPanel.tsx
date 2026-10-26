@@ -113,12 +113,16 @@ export default function DriverPanel({
   refresh,
   notify,
   development = false,
+  activeTab = "driver",
+  onNavigateTab,
 }: {
   data: State;
   areas: Area[];
   development?: boolean;
   refresh: () => Promise<void>;
   notify: (s: string) => void;
+  activeTab?: "driver" | "earnings" | "vehicle";
+  onNavigateTab?: (tab: string) => void;
 }) {
   useLang();
   const d = data.driver[0],
@@ -453,21 +457,18 @@ export default function DriverPanel({
   const fresh = d.online && Date.now() - Date.parse(d.location_at) < 60000;
   return (
     <>
-      <section className="panel driver-heading">
-        <div>
-          <p className="eyebrow">DRIVER WORKSPACE</p>
-          <h2>
-            {d.status === "approved"
-              ? t("duty.title")
-              : "Your application"}
-          </h2>
-          <p>
-            {d.vehicle_category} · {d.vehicle_number}{" "}
-            <span className="pill">{d.status}</span>
-          </p>
-          {d.review_note && <p className="muted">{d.review_note}</p>}
-        </div>
-        {d.status === "approved" && (
+      {/* 1. DRIVE SCREEN */}
+      <div hidden={activeTab !== "driver"} className="captain-subview">
+        <section className="panel driver-heading">
+          <div>
+            <p className="eyebrow">CAPTAIN COCKPIT</p>
+            <h2>{t("duty.title")}</h2>
+            <p>
+              {d.vehicle_category} · {d.vehicle_number}{" "}
+              <span className="pill">{d.status}</span>
+            </p>
+            {d.review_note && <p className="muted">{d.review_note}</p>}
+          </div>
           <div className={"duty" + (sharing ? " on" : "")}>
             <button
               type="button"
@@ -477,7 +478,7 @@ export default function DriverPanel({
               disabled={busy || Boolean(current && current.status !== "requested")}
               onClick={async () => {
                 if (busy) return;
-                if (!sharing && data.rides.some(r => r.mine && active(r))) {
+                if (!sharing && data.rides.some((r) => r.mine && active(r))) {
                   notify("Finish or cancel your rider trip before going online.");
                   return;
                 }
@@ -489,7 +490,8 @@ export default function DriverPanel({
                 try {
                   await api(sharing ? "/api/drivers/offline" : "/api/drivers/online", {});
                   setBurst(sharing ? "off" : "on");
-                  if (sharing) goOfflineSound(); else goOnlineSound();
+                  if (sharing) goOfflineSound();
+                  else goOnlineSound();
                   setTimeout(() => setBurst(""), 900);
                   setSharing(!sharing);
                   await refresh();
@@ -553,75 +555,164 @@ export default function DriverPanel({
               </details>
             )}
           </div>
-        )}
-      </section>
-      {current ? (
-        <>
-          {["accepted", "arrived", "in_progress"].includes(current.status) && (
-            <div className="driver-chat">
-              <button type="button" onClick={() => setChatOpen((v) => !v)} aria-pressed={chatOpen}>
-                💬 {chatOpen ? "Hide chat" : "Chat with rider"}
-              </button>
-              {chatOpen && <RideChat rideId={current.id} as="driver" onClose={() => setChatOpen(false)} notify={notify} />}
+        </section>
+
+        <div className="captain-quick-ribbon" role="navigation" aria-label="Quick links">
+          <button
+            type="button"
+            className="quick-chip"
+            onClick={() => onNavigateTab?.("earnings")}
+            title="Open Earnings screen"
+          >
+            <div className="chip-head">
+              <span>💰</span>
+              <span>Today's earnings</span>
             </div>
-          )}
-          {currents.map((r) => (
-            <RideCard key={r.id} ride={r} refresh={refresh} notify={notify} />
-          ))}
-        </>
-      ) : (
-        d.status === "approved" && (
+            <strong className="chip-value">{money(earnings?.summary?.today_fare_paise ?? 0)}</strong>
+            <small className="chip-sub">
+              {earnings?.summary?.today_completed_trips ?? 0} {((earnings?.summary?.today_completed_trips ?? 0) === 1) ? "trip" : "trips"} · Details →
+            </small>
+          </button>
+          <button
+            type="button"
+            className="quick-chip"
+            onClick={() => onNavigateTab?.("vehicle")}
+            title="Open Vehicle screen"
+          >
+            <div className="chip-head">
+              <span>🚗</span>
+              <span>Vehicle</span>
+            </div>
+            <strong className="chip-value">{d.vehicle_number}</strong>
+            <small className="chip-sub">
+              {{ bike: "Bike taxi", auto: "Auto", mini: "Mini", sedan: "Sedan", suv: "SUV" }[d.vehicle_category] ?? d.vehicle_category} · Settings →
+            </small>
+          </button>
+        </div>
+
+        {current ? (
+          <>
+            {["accepted", "arrived", "in_progress"].includes(current.status) && (
+              <div className="driver-chat">
+                <button type="button" onClick={() => setChatOpen((v) => !v)} aria-pressed={chatOpen}>
+                  💬 {chatOpen ? "Hide chat" : "Chat with rider"}
+                </button>
+                {chatOpen && <RideChat rideId={current.id} as="driver" onClose={() => setChatOpen(false)} notify={notify} />}
+              </div>
+            )}
+            {currents.map((r) => (
+              <RideCard key={r.id} ride={r} refresh={refresh} notify={notify} />
+            ))}
+          </>
+        ) : (
           <section>
             <h3>Ride requests{data.offers.length ? ` (${data.offers.length})` : ""}</h3>
             {data.offers.length ? (
               <div className="ride-grid">
                 {data.offers.map((r) => (
-                  <RideCard
-                    key={r.id}
-                    ride={r}
-                    offer
-                    refresh={refresh}
-                    notify={notify}
-                  />
+                  <RideCard key={r.id} ride={r} offer refresh={refresh} notify={notify} />
                 ))}
               </div>
             ) : (
               <div className="empty">
-                No requests within {(d.pickup_radius_meters / 1000).toFixed(1)} km right now. Stay online with a fresh location and new
-                requests appear here automatically.
+                No requests within {(d.pickup_radius_meters / 1000).toFixed(1)} km right now. Stay online with a fresh location and new requests appear here automatically.
               </div>
             )}
           </section>
-        )
-      )}
-      <section className="panel vehicle-card">
-        <span className="vehicle-badge">
-          <Icon name={d.vehicle_category} size={30} />
-        </span>
-        <div>
-          <p className="eyebrow">Your vehicle</p>
-          <h3>
-            {{ bike: "Bike taxi", auto: "Auto-rickshaw", mini: "Mini cab", sedan: "Sedan", suv: "SUV" }[d.vehicle_category as string] ??
-              d.vehicle_category}
-          </h3>
-          <p className="plate">{d.vehicle_number}</p>
+        )}
+
+        {home && !(current && current.status !== "requested") && (
+          <DriverMap area={home} pos={myPos} rides={currents.length ? currents : data.offers} notify={notify} nudge={sharing && currents.length === 0} />
+        )}
+
+        <div className="tip">
+          Keep this screen open while driving. Location stops updating when your browser suspends the page. Drivers without a fresh location cannot accept new rides.
         </div>
-        <dl>
-          <div>
-            <dt>Service area</dt>
-            <dd>{areas.find((a) => a.id === d.area_id)?.name ?? "—"}</dd>
+        {locationStatus && (
+          <p role="status" className="gps-line denied">
+            {locationStatus}
+          </p>
+        )}
+      </div>
+
+      {/* 2. EARNINGS SCREEN */}
+      <div hidden={activeTab !== "earnings"} className="captain-subview">
+        <DriverMoney notify={notify} />
+        {earningsError && (
+          <div className="alert" role="alert">
+            Could not load earnings: {earningsError}
           </div>
+        )}
+        {earnings && (
+          <section className="panel driver-earnings">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">YOUR COMPLETED RIDES</p>
+                <h2>Fare and payment summary</h2>
+              </div>
+              <button
+                className="secondary"
+                onClick={() =>
+                  void api<Earnings>("/api/drivers/earnings")
+                    .then(setEarnings)
+                    .catch((e: Error) => setEarningsError(e.message))
+                }
+              >
+                Refresh
+              </button>
+            </div>
+            <p className="muted">
+              Gross fares are not a payment confirmation. “Reported paid” means the driver marked a direct cash/UPI settlement as received; Hop does not verify it.
+            </p>
+            <div className="earnings-grid">
+              {[
+                { title: "Today", trips: earnings.summary.today_completed_trips, fare: earnings.summary.today_fare_paise, paid: earnings.summary.today_reported_paid_paise },
+                { title: "This week", trips: earnings.summary.week_completed_trips, fare: earnings.summary.week_fare_paise, paid: earnings.summary.week_reported_paid_paise },
+                { title: "This month", trips: earnings.summary.month_completed_trips, fare: earnings.summary.month_fare_paise, paid: earnings.summary.month_reported_paid_paise },
+                { title: "All time", trips: earnings.summary.all_time_completed_trips, fare: earnings.summary.all_time_fare_paise, paid: earnings.summary.all_time_reported_paid_paise },
+              ].map((period) => (
+                <article className="earnings-card" key={period.title}>
+                  <span>{period.title}</span>
+                  <strong>{money(period.fare)}</strong>
+                  <small>{period.trips} completed {period.trips === 1 ? "ride" : "rides"}</small>
+                  <small>Reported paid: {money(period.paid)}</small>
+                </article>
+              ))}
+            </div>
+            <DriverInsights refreshKey={earnings} />
+          </section>
+        )}
+      </div>
+
+      {/* 3. VEHICLE & PREFERENCES SCREEN */}
+      <div hidden={activeTab !== "vehicle"} className="captain-subview">
+        <section className="panel vehicle-card">
+          <span className="vehicle-badge">
+            <Icon name={d.vehicle_category} size={30} />
+          </span>
           <div>
-            <dt>Licence valid till</dt>
-            <dd>{String(d.license_expires).slice(0, 10)}</dd>
+            <p className="eyebrow">Your vehicle</p>
+            <h3>
+              {{ bike: "Bike taxi", auto: "Auto-rickshaw", mini: "Mini cab", sedan: "Sedan", suv: "SUV" }[d.vehicle_category as string] ?? d.vehicle_category}
+            </h3>
+            <p className="plate">{d.vehicle_number}</p>
           </div>
-          <div>
-            <dt>Insurance valid till</dt>
-            <dd>{String(d.insurance_expires).slice(0, 10)}</dd>
-          </div>
-        </dl>
-      </section>
-      {d.status === "approved" && (
+          <dl>
+            <div>
+              <dt>Service area</dt>
+              <dd>{areas.find((a) => a.id === d.area_id)?.name ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>Licence valid till</dt>
+              <dd>{String(d.license_expires).slice(0, 10)}</dd>
+            </div>
+            <div>
+              <dt>Insurance valid till</dt>
+              <dd>{String(d.insurance_expires).slice(0, 10)}</dd>
+            </div>
+          </dl>
+        </section>
+
         <VehicleChange
           current={d}
           change={data.vehicle_change?.[0]}
@@ -639,29 +730,11 @@ export default function DriverPanel({
             }
           }}
         />
-      )}
-      {d.status === "approved" && <DriverTools d={d} sharing={sharing} pos={myPos} notify={notify} refresh={refresh} />}
-      {d.status === "approved" && home && !(current && current.status !== "requested") && (
-        <DriverMap area={home} pos={myPos} rides={currents.length ? currents : data.offers} notify={notify} nudge={sharing && currents.length === 0} />
-      )}
-      {d.status === "approved" && (
-        <div className="tip">
-          Keep this screen open while driving. Location stops updating when your
-          browser suspends the page. Drivers without a fresh location cannot
-          accept new rides.
-        </div>
-      )}
-      {locationStatus && (
-        <p role="status" className="gps-line denied">
-          {locationStatus}
-        </p>
-      )}
-      {d.status === "approved" && (
+
         <section className="panel narrow">
           <h3>Ride request preferences</h3>
           <p className="muted">
-            Requests outside these pickup-distance and minimum-fare limits
-            won’t be offered to you.
+            Requests outside these pickup-distance and minimum-fare limits won’t be offered to you.
           </p>
           <form onSubmit={savePreferences}>
             <label>
@@ -691,77 +764,9 @@ export default function DriverPanel({
             <button disabled={busy}>Save preferences</button>
           </form>
         </section>
-      )}
-      {earningsError && (
-        <div className="alert" role="alert">
-          Could not load earnings: {earningsError}
-        </div>
-      )}
-      {d && d.status === "approved" && <DriverMoney notify={notify} />}
-      {earnings && (
-        <section className="panel driver-earnings">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">YOUR COMPLETED RIDES</p>
-              <h2>Fare and payment summary</h2>
-            </div>
-            <button
-              className="secondary"
-              onClick={() =>
-                void api<Earnings>("/api/drivers/earnings")
-                  .then(setEarnings)
-                  .catch((e: Error) => setEarningsError(e.message))
-              }
-            >
-              Refresh
-            </button>
-          </div>
-          <p className="muted">
-            Gross fares are not a payment confirmation. “Reported paid” means
-            the driver marked a direct cash/UPI settlement as received; Hop does
-            not verify it.
-          </p>
-          <div className="earnings-grid">
-            {[
-              {
-                title: "Today",
-                trips: earnings.summary.today_completed_trips,
-                fare: earnings.summary.today_fare_paise,
-                paid: earnings.summary.today_reported_paid_paise,
-              },
-              {
-                title: "This week",
-                trips: earnings.summary.week_completed_trips,
-                fare: earnings.summary.week_fare_paise,
-                paid: earnings.summary.week_reported_paid_paise,
-              },
-              {
-                title: "This month",
-                trips: earnings.summary.month_completed_trips,
-                fare: earnings.summary.month_fare_paise,
-                paid: earnings.summary.month_reported_paid_paise,
-              },
-              {
-                title: "All time",
-                trips: earnings.summary.all_time_completed_trips,
-                fare: earnings.summary.all_time_fare_paise,
-                paid: earnings.summary.all_time_reported_paid_paise,
-              },
-            ].map((period) => (
-              <article className="earnings-card" key={period.title}>
-                <span>{period.title}</span>
-                <strong>{money(period.fare)}</strong>
-                <small>
-                  {period.trips} completed{" "}
-                  {period.trips === 1 ? "ride" : "rides"}
-                </small>
-                <small>Reported paid: {money(period.paid)}</small>
-              </article>
-            ))}
-          </div>
-          <DriverInsights refreshKey={earnings} />
-        </section>
-      )}
+
+        <DriverTools d={d} sharing={sharing} pos={myPos} notify={notify} refresh={refresh} />
+      </div>
     </>
   );
 }

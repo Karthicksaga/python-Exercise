@@ -12,7 +12,7 @@ import { lazyPanel } from "@hop/shared/lazy";
 import { Toast, useSession } from "@hop/shared/session";
 
 const DriverPanel = lazyPanel(() => import("./DriverPanel"), "Loading driver tools…");
-const TABS = ["driver", "history", "support", "profile"];
+const TABS = ["driver", "earnings", "vehicle", "history", "support", "profile"];
 
 // The captain (driver) app: duty, ride offers, trips, support and profile. No rider booking screens.
 export default function CaptainApp() {
@@ -49,10 +49,19 @@ export default function CaptainApp() {
     if (isOperator) location.replace(import.meta.env.VITE_ADMIN_URL || "/admin");
   }, [isOperator]);
   if (isOperator) return <PageLoader label="Opening admin…" />;
-  const navItems: [string, string][] = [["driver", "Drive"], ["history", "My trips"], ["support", t("nav.support")], ["profile", t("nav.profile")]];
+  const navItems: [string, string][] = [
+    ["driver", "Drive"],
+    ["earnings", "Earnings"],
+    ["vehicle", "Vehicle"],
+    ["history", "My trips"],
+    ["support", t("nav.support")],
+    ["profile", t("nav.profile")],
+  ];
   const heads: Record<string, [string, string]> = {
-    driver: ["Captain mode", "Ready to earn?"],
-    history: ["Captain mode", "Your trips"],
+    driver: ["Captain cockpit", "Ready to earn?"],
+    earnings: ["Captain finance", "Earnings & payouts"],
+    vehicle: ["Fleet & settings", "Your vehicle & preferences"],
+    history: ["Trip ledger", "Your trips"],
     support: ["Captain mode", "Help & support"],
     profile: ["Captain mode", "Your profile"],
   };
@@ -100,8 +109,18 @@ export default function CaptainApp() {
           <CaptainLanding phoneLogin={s.phoneLogin} />
         ) : (
           <>
-            <ResponsiveNav items={navItems.map(([id, label]) => ({ id, label, shortLabel: id === "history" ? "Trips" : label, badge: id === "driver" ? data.offers.length : undefined }))}
-              primary={["driver", "history", "profile"]} value={tab} onChange={navigateTab} onSignOut={() => setLogoutAsk(true)} />
+            <ResponsiveNav
+              items={navItems.map(([id, label]) => ({
+                id,
+                label,
+                shortLabel: id === "history" ? "Trips" : label,
+                badge: id === "driver" ? data.offers.length : undefined,
+              }))}
+              primary={["driver", "earnings", "vehicle", "history"]}
+              value={tab}
+              onChange={navigateTab}
+              onSignOut={() => setLogoutAsk(true)}
+            />
             <div className="page-title">
               <div>
                 <p className="eyebrow">{eyebrow}</p>
@@ -109,13 +128,21 @@ export default function CaptainApp() {
               </div>
               <span className="verified">Verified</span>
             </div>
-            <div hidden={tab !== "driver"}>
+            <div hidden={!["driver", "earnings", "vehicle"].includes(tab)}>
               {!data.driver.length && (
                 <div className="notice">
                   New to hop? Fill in the form below to apply. You can add your licence, RC and insurance details.
                 </div>
               )}
-              <DriverPanel data={data} areas={s.areas} refresh={s.refresh} notify={s.notify} development={s.development} />
+              <DriverPanel
+                data={data}
+                areas={s.areas}
+                refresh={s.refresh}
+                notify={s.notify}
+                development={s.development}
+                activeTab={tab as "driver" | "earnings" | "vehicle"}
+                onNavigateTab={navigateTab}
+              />
             </div>
             {tab === "history" && (
               <section>
