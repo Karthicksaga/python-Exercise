@@ -50,7 +50,7 @@ def validate(c):
     for key in ("OIDC_ISSUER", "ROUTING_URL", "GEOCODING_URL"):
         https_url(env[key])
     require(bool(env["OIDC_CLIENT_ID"]), "OIDC_CLIENT_ID is required")
-    allowed_env = {"OIDC_ISSUER", "OIDC_CLIENT_ID", "ROUTING_URL", "GEOCODING_URL", "VAPID_PUBLIC_KEY", "VAPID_SUBJECT", "MEDIA_PROFILE_BUCKET", "MEDIA_KYC_BUCKET"}
+    allowed_env = {"OIDC_ISSUER", "OIDC_CLIENT_ID", "ROUTING_URL", "GEOCODING_URL", "VAPID_PUBLIC_KEY", "VAPID_SUBJECT", "MEDIA_PROFILE_BUCKET", "MEDIA_KYC_BUCKET", "DEV_SMS"}
     require(set(env) <= allowed_env, "api_env accepts public configuration only; use api_secrets for credentials")
     buckets = [env.get("MEDIA_PROFILE_BUCKET", ""), env.get("MEDIA_KYC_BUCKET", "")]
     if any(buckets):

@@ -18,7 +18,8 @@ export default function PhoneLogin({ onSignedIn }: { onSignedIn: () => void }) {
     try {
       const r = await api<{ dev_code?: string }>("/auth/otp/request", { phone });
       setSent(true);
-      setMsg(r.dev_code ? `Development code: ${r.dev_code}` : "We sent a 6-digit code by SMS.");
+      if (r.dev_code) setCode(r.dev_code);
+      setMsg(r.dev_code ? `Test sign-in code: ${r.dev_code}` : "We sent a 6-digit code by SMS.");
     } catch (err) {
       setMsg((err as Error).message);
     } finally {

@@ -376,8 +376,11 @@ export default function RiderApp() {
         </a>
         <div className="topbar-center">
           {user && (
-            <span className={"topbar-status-chip" + (live ? " on" : "")} title={live ? "Real-time updates connected" : "Reconnecting…"}>
-              <span className="status-dot" />
+            <span
+              className={"topbar-status-chip " + (live ? "live on" : "connecting")}
+              title={live ? "Real-time updates connected" : "Reconnecting…"}
+            >
+              <span className={"status-dot " + (live ? "live" : "connecting")} />
               <span>{live ? "Live" : "Connecting"}</span>
             </span>
           )}

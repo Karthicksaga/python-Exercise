@@ -21,7 +21,8 @@ export function VerifyPhone({ initialPhone = "", verified, phoneLogin = false, o
     setBusy(true);
     try {
       const out = await api<{ dev_code?: string; retry_after: number }>("/api/profile/phone/request", { phone });
-      setSent(true); setCode(""); setDevCode(out.dev_code || ""); setCooldown(out.retry_after || 30); notify("Verification code sent. It expires in 10 minutes.");
+      setSent(true); setCode(out.dev_code || ""); setDevCode(out.dev_code || ""); setCooldown(out.retry_after || 30);
+      notify(out.dev_code ? `Test code: ${out.dev_code}` : "Verification code sent. It expires in 10 minutes.");
     } catch (e) { notify((e as Error).message); } finally { setBusy(false); }
   }
   async function verify() {
@@ -38,7 +39,7 @@ export function VerifyPhone({ initialPhone = "", verified, phoneLogin = false, o
     {phoneLogin && <small className="muted">Contact support to change your sign-in number.</small>}
     {sent && <div>
       <label>6-digit verification code<input aria-label="Mobile verification code" value={code} autoComplete="one-time-code" inputMode="numeric" maxLength={6} onChange={e => setCode(e.target.value.replace(/\D/g, ""))} /></label>
-      {devCode && <p className="muted">Development only · code {devCode}</p>}
+      {devCode && <p className="muted" style={{ fontWeight: 600, color: "var(--brand)" }}>Test verification code: <span style={{ letterSpacing: "2px", fontWeight: 800 }}>{devCode}</span></p>}
       <button type="button" disabled={busy || code.length !== 6} onClick={() => void verify()}>Verify mobile</button>
     </div>}
   </div>;

@@ -78,14 +78,18 @@ export default function CaptainApp() {
         </a>
         <div className="topbar-center">
           {user && dutyOn !== null && (
-            <span className={"topbar-status-chip duty-chip" + (dutyOn ? " on" : "")} role="status" title={dutyOn ? "You are online and visible to riders" : "You are offline. Go online to get requests"}>
-              <span className="status-dot" />
+            <span
+              className={"topbar-status-chip duty-chip " + (dutyOn ? "online on" : "offline")}
+              role="status"
+              title={dutyOn ? "You are online and visible to riders" : "You are offline. Go online to get requests"}
+            >
+              <span className={"status-dot " + (dutyOn ? "live" : "offline")} />
               <span>{dutyOn ? "Online" : "Offline"}</span>
             </span>
           )}
           {user && dutyOn === null && (
-            <span className={"topbar-status-chip" + (s.live ? " on" : "")}>
-              <span className="status-dot" />
+            <span className={"topbar-status-chip " + (s.live ? "live on" : "connecting")}>
+              <span className={"status-dot " + (s.live ? "live" : "connecting")} />
               <span>{s.live ? "Live" : "Connecting"}</span>
             </span>
           )}

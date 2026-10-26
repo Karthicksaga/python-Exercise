@@ -28,7 +28,7 @@ func (s *Server) requestProfilePhone(w http.ResponseWriter, r *http.Request) {
 	if !s.limit(w, r, "profile-phone:"+uid, 5, 600) || !s.limit(w, r, "profile-phone-number:"+in.Phone, 5, 600) {
 		return
 	}
-	if !s.smsConfigured() && !s.Config.Development {
+	if !s.smsConfigured() && !s.devSMS() {
 		fail(w, 503, "SMS verification is not configured")
 		return
 	}

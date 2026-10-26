@@ -30,6 +30,10 @@ func (s *Server) smsConfigured() bool {
 	return s.Config.SMSWebhookURL != "" || (s.Config.MSG91AuthKey != "" && s.Config.MSG91TemplateID != "")
 }
 
+func (s *Server) devSMS() bool {
+	return s.Config.Development || s.Config.DevSMS
+}
+
 // sendOTPSMS delivers the code through MSG91 (DLT template with an ##otp## variable) or the generic webhook.
 func (s *Server) sendOTPSMS(ctx context.Context, phone, code string) error {
 	if s.Config.MSG91AuthKey == "" || s.Config.MSG91TemplateID == "" {
@@ -129,7 +133,7 @@ func (s *Server) otpRequest(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "Enter a valid 10-digit mobile number")
 		return
 	}
-	if !s.smsConfigured() && !s.Config.Development {
+	if !s.smsConfigured() && !s.devSMS() {
 		fail(w, 503, "SMS sign-in is not configured")
 		return
 	}
@@ -212,9 +216,13 @@ func (s *Server) otpVerify(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "Incorrect code")
 		return
 	}
+	defaultName := "Rider " + in.Phone[6:]
+	if strings.Contains(strings.ToLower(r.Header.Get("Origin")), "captain") || strings.Contains(strings.ToLower(r.Header.Get("Referer")), "captain") {
+		defaultName = "Captain " + in.Phone[6:]
+	}
 	var account string
 	e = tx.QueryRow(ctx, `INSERT INTO accounts(issuer,subject,email,name) VALUES('phone',$1,$2,$3)
- ON CONFLICT(issuer,subject) DO UPDATE SET issuer=accounts.issuer RETURNING id`, in.Phone, in.Phone+"@phone.invalid", "Rider "+in.Phone[6:]).Scan(&account)
+ ON CONFLICT(issuer,subject) DO UPDATE SET issuer=accounts.issuer RETURNING id`, in.Phone, in.Phone+"@phone.invalid", defaultName).Scan(&account)
 	if e == nil {
 		_, e = tx.Exec(ctx, `INSERT INTO verified_phones(account_id,phone) VALUES($1,$2) ON CONFLICT(account_id) DO UPDATE SET phone=$2,verified_at=now()`, account, in.Phone)
 	}
