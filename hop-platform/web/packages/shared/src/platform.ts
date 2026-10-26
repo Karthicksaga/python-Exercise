@@ -8,7 +8,16 @@ import { Geolocation } from '@capacitor/geolocation';
 export const isAndroid = Capacitor.getPlatform() === 'android';
 export const mobileApp = import.meta.env.VITE_MOBILE_APP as 'rider' | 'captain' | undefined;
 export function mobileOrigin() {
-  const url = new URL(import.meta.env.VITE_MOBILE_API_URL || location.origin);
+  const configured = import.meta.env.VITE_MOBILE_API_URL;
+  const fallback = mobileApp === 'captain'
+    ? 'https://hop-staging-captain-qp262su4sq-el.a.run.app'
+    : 'https://hop-staging-rider-qp262su4sq-el.a.run.app';
+  // On an Android device or emulator, localhost cannot connect unless adb reverse is active.
+  // Fallback to the live staging backend if configured is empty or points to localhost.
+  const target = (configured && !configured.includes('localhost'))
+    ? configured
+    : (isAndroid ? fallback : (configured || location.origin));
+  const url = new URL(target);
   if (url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('Invalid Android API origin');
   if (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '10.0.2.2'].includes(url.hostname))) throw new Error('Android API requires HTTPS');
   return url.origin;

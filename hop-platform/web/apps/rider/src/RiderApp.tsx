@@ -381,7 +381,7 @@ export default function RiderApp() {
           <span className="commission">Everyday rides</span>
           {user && (
             <a
-              href={import.meta.env.VITE_CAPTAIN_URL || "/captain"}
+              href={import.meta.env.VITE_CAPTAIN_URL || "https://hop-staging-captain-qp262su4sq-el.a.run.app"}
               className={"duty-pill" + (isApprovedDriver ? " on" : "")}
               title={isApprovedDriver ? "Switch to Captain (Drive mode)" : "Start driving with Hop"}
               style={{ textDecoration: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, background: isApprovedDriver ? "#b84333" : "rgba(255,255,255,0.18)", color: "#fff", fontWeight: 600, fontSize: "0.8rem" }}

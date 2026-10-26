@@ -282,7 +282,7 @@ export default function ProfilePanel(p: Props) {
             <p className="muted">Need to take a ride? Switch back to the Rider app.</p>
           </div>
           <a
-            href={import.meta.env.VITE_RIDER_URL || "http://localhost:5273"}
+            href={import.meta.env.VITE_RIDER_URL || "https://hop-staging-rider-qp262su4sq-el.a.run.app"}
             className="secondary"
             style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "10px 16px", borderRadius: 12, fontWeight: 700 }}
           >
