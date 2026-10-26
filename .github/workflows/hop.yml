@@ -98,13 +98,41 @@ jobs:
           VITE_GOOGLE_MAPS_API_KEY: ${{ vars.CAPTAIN_GOOGLE_MAPS_API_KEY }}
           VITE_GOOGLE_MAP_ID: ${{ vars.CAPTAIN_GOOGLE_MAP_ID }}
         run: node scripts/android.mjs captain --apk
-      - name: Archive Android APKs
+      - name: Stage Android debug APKs
+        run: |
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          cp mobile/rider/android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/artifacts/hop-rider-debug.apk"
+          cp mobile/captain/android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/artifacts/hop-captain-debug.apk"
+          {
+            echo "### 📱 Android Debug Applications"
+            echo ""
+            echo "| Application | File | Artifact |"
+            echo "|---|---|---|"
+            echo "| 🚗 **Hop Rider** | \`hop-rider-debug.apk\` | **hop-rider-debug-apk** |"
+            echo "| 🚕 **Hop Captain** | \`hop-captain-debug.apk\` | **hop-captain-debug-apk** |"
+            echo ""
+            echo "Directly download the debug APKs from the **Artifacts** section at the bottom of this run summary."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Archive Rider Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hop-rider-debug-apk
+          path: ${{ runner.temp }}/artifacts/hop-rider-debug.apk
+          if-no-files-found: error
+
+      - name: Archive Captain Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hop-captain-debug-apk
+          path: ${{ runner.temp }}/artifacts/hop-captain-debug.apk
+          if-no-files-found: error
+
+      - name: Archive Combined Android APKs
         uses: actions/upload-artifact@v4
         with:
           name: hop-android-apks
-          path: |
-            hop-platform/web/mobile/rider/android/app/build/outputs/apk/debug/app-debug.apk
-            hop-platform/web/mobile/captain/android/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ runner.temp }}/artifacts/*.apk
           if-no-files-found: error
   deployment-config:
     runs-on: ubuntu-latest

@@ -662,13 +662,15 @@ export default function RiderApp() {
                         </button>
                       </form>
                       </Modal>
-                              <button
-                                className="full"
-                                disabled={!pickup || (!dropoff && trip.trip_type !== "rental")}
-                                onClick={() => setStep("choose")}
-                              >
-                                Choose a ride <span className="arrow" aria-hidden="true" />
-                              </button>
+                              <div className="step-footer">
+                                <button
+                                  className="full"
+                                  disabled={!pickup || (!dropoff && trip.trip_type !== "rental")}
+                                  onClick={() => setStep("choose")}
+                                >
+                                  Choose a ride <span className="arrow" aria-hidden="true" />
+                                </button>
+                              </div>
                             </>
                           )}
                           {step === "choose" && (
@@ -851,20 +853,22 @@ export default function RiderApp() {
                           </div>
                         </>
                       ) : (
-                        <button
-                          className="full"
-                          disabled={
-                            busy ||
-                            !pickup ||
-                            (!dropoff && trip.trip_type !== "rental") ||
-                            !vehicleCategory ||
-                            !areaVehicles.length
-                          }
-                          onClick={estimate}
-                        >
-                          {busy ? "Finding a road route…" : "See fare"}{" "}
-                          <span className="arrow" aria-hidden="true" />
-                        </button>
+                        <div className="step-footer">
+                          <button
+                            className="full"
+                            disabled={
+                              busy ||
+                              !pickup ||
+                              (!dropoff && trip.trip_type !== "rental") ||
+                              !vehicleCategory ||
+                              !areaVehicles.length
+                            }
+                            onClick={estimate}
+                          >
+                            {busy ? "Finding a road route…" : "See fare"}{" "}
+                            <span className="arrow" aria-hidden="true" />
+                          </button>
+                        </div>
                       )}
                       <p className="muted">
                         Your fare is calculated from road distance. No money is

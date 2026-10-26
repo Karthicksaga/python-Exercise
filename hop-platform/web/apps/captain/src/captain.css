@@ -9,7 +9,7 @@
   --brand-2: #f39b83;
   --brand-soft: #fcece6;
 }
-button:not([class*="mantine-"]):not(.text-button):not(.theme-toggle), .button { color: #111 !important; }
+button.secondary:not([class*="mantine-"]), .button.secondary { color: #111; }
 .button, button.primary, .nav .active { text-shadow: none; }
 .nav button.active, .nav a.active { background: #111; color: #f39b83; }
 .logo-mark { background: #111; color: #f39b83; }
