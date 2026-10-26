@@ -222,7 +222,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 48px; }
 .info-card li span { color: var(--muted); font-size: 13px; }
 
 /* Rides */
-.ride-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.ride-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 16px; }
 .ride-card { margin: 0; display: grid; gap: 10px; }
 .ride-card .card-top, .card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .card-top strong { font-size: 22px; letter-spacing: -0.02em; }
@@ -244,7 +244,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 48px; }
 .earnings-card > span, .earnings-card small, .earnings-ride small { color: var(--muted); font-size: 12px; }
 .earnings-rides { display: grid; gap: 10px; }
 .earnings-ride { display: flex; justify-content: space-between; gap: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
-.operator-grid, .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.operator-grid, .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 18px; }
 .pricing-grid form { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); }
 .area-row, .audit-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .area-row small, .audit-row time { color: var(--muted); font-size: 12px; }
@@ -259,7 +259,7 @@ footer strong { color: var(--ink); }
   .hero-card { left: 12px; }
   .booking-grid { grid-template-columns: 1fr; }
 }
-@media (max-width: 800px) {
+@media (max-width: 820px) {
   :root {
     --nav-bottom-h: calc(58px + env(safe-area-inset-bottom, 0px));
   }
@@ -447,14 +447,14 @@ button:not([class*="mantine-"])[aria-busy="true"]::after {
 .driver-mode .topbar .logo { color: #fff; }
 .driver-mode .commission { color: #6ee7b7; background: rgba(16, 185, 129, 0.16); }
 .driver-mode .avatar { background: #059669; color: #fff; }
-@media (max-width: 800px) {
+@media (max-width: 820px) {
   .mode-switch { display: none; }
   .driver-mode .nav { background: #0b1f1a; }
 }
 .mode-chip { display: none; padding: 6px 12px; min-height: 0; font-size: 12px; border-radius: 999px; }
-@media (max-width: 800px) { .mode-chip { display: inline-flex; } .commission { display: none; } }
+@media (max-width: 820px) { .mode-chip { display: inline-flex; } .commission { display: none; } }
 .badge { margin-left: auto; min-width: 20px; padding: 1px 7px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 700; font-style: normal; animation: pulse-ring 1.6s ease-out infinite; }
-@media (max-width: 800px) { .nav button { position: relative; } .badge { position: absolute; top: 2px; right: 10px; margin: 0; } }
+@media (max-width: 820px) { .nav button { position: relative; } .badge { position: absolute; top: 2px; right: 10px; margin: 0; } }
 
 /* Driver vehicle card + map */
 .vehicle-card { display: grid; grid-template-columns: auto 1fr; gap: 14px 18px; align-items: center; }
@@ -712,7 +712,7 @@ button.recenter,button.recenter:hover{position:absolute!important}
 .booking-grid.staged .side-info { display: none; }
 .stage-panel { padding: 0 !important; background: transparent !important; box-shadow: none !important; }
 .stage-panel > .eyebrow, .stage-panel > h2 { display: none; }
-.stage { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 0; height: min(720px, calc(100vh - 240px)); min-height: 440px; border-radius: 24px; overflow: hidden; background: var(--card); box-shadow: 0 20px 50px rgba(15, 23, 42, .14); }
+.stage { display: grid; grid-template-columns: minmax(280px, 42%) minmax(0, 1fr); gap: 0; height: min(720px, calc(100vh - 240px)); min-height: 440px; border-radius: 24px; overflow: hidden; background: var(--card); box-shadow: 0 20px 50px rgba(15, 23, 42, .14); }
 .stage-map { grid-column: 2; grid-row: 1; position: relative; min-height: 0; display: flex; flex-direction: column; }
 .stage-map > div { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .stage-map .map-picker-heading { position: absolute; z-index: 5; top: 12px; left: 12px; right: 12px; margin: 0; pointer-events: none; }
@@ -877,7 +877,7 @@ button.recenter,button.recenter:hover{position:absolute!important}
 
 /* ---- Money: wallet, promo, payouts, surge ---- */
 .sheet .quote > button.full { position: sticky; bottom: 8px; z-index: 3; box-shadow: 0 -10px 18px 6px var(--card), 0 10px 24px rgba(184,67,51,.3); }
-@media (max-width: 860px) { .sheet .quote > button.full { bottom: calc(56px + env(safe-area-inset-bottom, 0px)); background: var(--card); } }
+@media (max-width: 820px) { .sheet .quote > button.full { bottom: calc(56px + env(safe-area-inset-bottom, 0px)); background: var(--card); } }
 .money-box { display: grid; gap: 10px; }
 .pay-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .pay-opt { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); border-radius: 12px; cursor: pointer; min-height: 0; box-shadow: none; }
@@ -900,7 +900,7 @@ button.recenter,button.recenter:hover{position:absolute!important}
 .call-btn { justify-self: start; }
 .wallet-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .wallet-grid .wide { grid-column: 1 / -1; }
-@media (max-width: 860px) { .wallet-grid { grid-template-columns: 1fr; } }
+@media (max-width: 820px) { .wallet-grid { grid-template-columns: 1fr; } }
 .wallet-card { background: linear-gradient(135deg, #b84333, #cc503d); color: #fff; }
 .wallet-card .eyebrow, .wallet-card .muted, .wallet-card label { color: rgba(255,255,255,.85); }
 .wallet-card .chip { background: rgba(255,255,255,.15); color: #fff; border-color: rgba(255,255,255,.3); }
@@ -964,18 +964,18 @@ button.recenter,button.recenter:hover{position:absolute!important}
 .lp-how li { display: flex; gap: 14px; align-items: flex-start; }
 .lp-how p { margin: 4px 0 0; color: var(--muted); }
 .lp-num { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
-@media (max-width: 860px) {
+@media (max-width: 820px) {
   .lp { gap: 40px; }
   .lp-hero { grid-template-columns: 1fr; gap: 28px; }
   .lp-rides { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lp-perks, .lp-how ol { grid-template-columns: 1fr; }
 }
-@media (max-width: 860px) { .lp-ride:last-child { grid-column: 1 / -1; } }
+@media (max-width: 820px) { .lp-ride:last-child { grid-column: 1 / -1; } }
 
 /* ===== Profile ===== */
 .profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .profile-grid > .profile-hero, .profile-grid > .profile-stats { grid-column: 1 / -1; }
-@media (max-width: 860px) { .profile-grid { grid-template-columns: 1fr; } }
+@media (max-width: 820px) { .profile-grid { grid-template-columns: 1fr; } }
 .profile-hero { display: flex; gap: 22px; align-items: center; background: linear-gradient(135deg, #fff1ed, #fff7f3); }
 .profile-hero h2 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
 .avatar.xl { width: 84px; height: 84px; font-size: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; color: #fff; font-weight: 800; box-shadow: 0 10px 26px rgba(184,67,51,.3); }
@@ -991,7 +991,7 @@ button.recenter,button.recenter:hover{position:absolute!important}
 .profile-stats div { background: #fff; border-radius: 16px; padding: 14px 16px; box-shadow: 0 8px 22px rgba(15,23,42,.06); display: grid; gap: 2px; }
 .profile-stats b { font-size: 22px; letter-spacing: -0.02em; }
 .profile-stats span { color: var(--muted); font-size: 13px; }
-@media (max-width: 860px) { .profile-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .profile-hero { flex-direction: column; text-align: center; } .profile-hero .badges, .profile-hero .swatches { justify-content: center; } }
+@media (max-width: 820px) { .profile-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .profile-hero { flex-direction: column; text-align: center; } .profile-hero .badges, .profile-hero .swatches { justify-content: center; } }
 .profile-grid h3 { margin: 2px 0 10px; font-size: 20px; }
 .profile-grid h4 { margin: 18px 0 8px; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -1156,7 +1156,7 @@ body.low-data .right-rail { display: none !important; }
   width: 100%;
   padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
 }
-@media (min-width: 861px) {
+@media (min-width: 821px) {
   .profile-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1252,7 +1252,7 @@ button.full:not([class*="mantine-"]), .step-footer button.full, .step-actions bu
 .step-footer { position: sticky; bottom: -18px; z-index: 5; margin: auto -18px -18px; padding: 10px 18px 14px; display: grid; gap: 4px; background: var(--card); border-top: 1px solid var(--line); box-shadow: 0 -8px 16px rgba(15,23,42,.06); }
 .step-footer .text-button { justify-self: center; }
 .step-actions { margin: auto -18px -18px; padding: 10px 18px 14px; bottom: -18px; background: var(--card); border-top: 1px solid var(--line); box-shadow: 0 -8px 16px rgba(15,23,42,.06); }
-@media (max-width: 860px) {
+@media (max-width: 820px) {
   .step-footer, .step-actions {
     bottom: calc(66px + env(safe-area-inset-bottom, 0px)) !important;
     margin: 12px 0 0 0 !important;
@@ -1866,3 +1866,40 @@ html[data-theme="dark"] .lp button:not(.text-button) { color: #30201c; }
   letter-spacing: 0.1em;
 }
 
+
+/* Responsive sizing shared by the website and Capacitor WebViews. */
+#root, main, .panel, .ride-card, .info-card,
+.form-grid > *, .booking-grid > *, .operator-grid > *, .pricing-grid > *,
+.earnings-grid > *, .lp-hero > *, .cl-hero > * { min-width: 0; }
+:is(.panel, .ride-card, .info-card, .sheet, .profile-hero) {
+  overflow-wrap: anywhere;
+}
+img, video { max-width: 100%; height: auto; }
+.logo-mark, .avatar, .steps li i, .cl-steps li span { flex-shrink: 0; }
+.shell { min-height: 100dvh; }
+@media (min-width: 821px) {
+  .stage { height: clamp(440px, calc(100dvh - 255px), 760px); }
+}
+@media (max-width: 820px) {
+  .page-title { flex-wrap: wrap; align-items: flex-start; }
+  .header-right { gap: 8px; min-width: 0; }
+  .topbar { padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+  .native-android .nav {
+    height: calc(58px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+  }
+  .nav button { flex-shrink: 1; }
+  .sheet { padding-bottom: 24px !important; }
+  .pay-options { grid-template-columns: repeat(auto-fit, minmax(min(100%, 100px), 1fr)); }
+  .upi-app-buttons, .fallback-buttons { flex-wrap: wrap; }
+}
+@media (max-width: 480px) {
+  main { padding: 16px 12px 32px; }
+  .stat-strip { grid-template-columns: 1fr; }
+  .stepper { flex-wrap: wrap; }
+  .steps li { flex-wrap: wrap; }
+  .pin-fab { max-width: calc(100% - 24px); white-space: normal; }
+}
+@media (pointer: coarse) {
+  button:not([class*="mantine-"]):not(.swipe-knob), .button { min-height: 44px; }
+}

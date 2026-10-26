@@ -32,7 +32,7 @@
 @media (max-width: 820px) { .ad-land { grid-template-columns: 1fr; } .ad-hero { padding: 32px 20px; } }
 
 /* sidebar shell: one section per screen, no long scrolling page */
-.ad-shell { display: grid; grid-template-columns: 224px 1fr; height: 100vh; overflow: hidden; }
+.ad-shell { display: grid; grid-template-columns: 224px minmax(0, 1fr); height: 100vh; height: 100dvh; overflow: hidden; }
 .ad-side { background: #0f172a; color: #cbd5e1; padding: 14px 10px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
 .ad-brand { color: #fff; font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 8px; padding: 4px 10px 8px; }
 .ad-side nav { display: grid; gap: 2px; }
@@ -61,7 +61,7 @@
 .ad-content .earnings-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
 .ad-content .pricing-grid { grid-template-columns: repeat(4, 1fr); }
 .ad-content .pricing-grid .form-grid { grid-template-columns: 1fr; gap: 8px; }
-.ad-content .operator-grid { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); align-items: start; }
+.ad-content .operator-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); align-items: start; }
 .ad-content .operator-grid > section { display: contents; }
 .ad-content .operator-grid > section > h3 { grid-column: 1 / -1; }
 .ad-content .operator-grid > section > .empty { grid-column: 1 / -1; }
@@ -76,5 +76,20 @@
 .ad-content dd { margin: 0; }
 main.ad-content { max-width: none; margin: 0; padding: 0 24px 40px; min-width: 0; }
 main.ad-content > * { max-width: none; }
-.ad-content .operator-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.ad-content .operator-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 12px; }
 .ad-content .operator-grid article { padding: 16px; }
+
+@media (max-width: 820px) {
+  .ad-shell { grid-template-rows: auto minmax(0, 1fr); }
+  .ad-side { min-width: 0; align-items: center; }
+  .ad-side nav, .ad-side button { flex-shrink: 0; }
+  .ad-side button { width: auto; min-height: 44px !important; }
+  .ad-side .ad-out { margin: 0; }
+  main.ad-content { padding: 0 12px 24px; }
+  .ad-content .operations > .panel:last-child { max-height: none; overflow: visible; }
+}
+@media (max-width: 480px) {
+  .ad-content .pricing-grid, .ad-content .earnings-grid, .ad-stats { grid-template-columns: minmax(0, 1fr); }
+  .ad-panel, .ad-card { padding: 16px; }
+  .ad-bar { flex-wrap: wrap; }
+}
