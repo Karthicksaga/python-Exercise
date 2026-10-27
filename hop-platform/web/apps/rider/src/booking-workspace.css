@@ -1,103 +1,164 @@
-.booking-workspace { display: grid; grid-template-columns: minmax(300px,42%) minmax(0,1fr); height: clamp(560px,calc(100dvh - 200px),820px); min-width: 0; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--card); box-shadow: 0 16px 40px rgb(0 0 0 / .07); }
+/* Scoped to the three booking steps. The shared shell and map implementation stay intact. */
+.booking-workspace {
+  --booking-pad: clamp(16px, 1.5vw, 24px);
+  display: grid;
+  grid-template-columns: minmax(340px, 46%) minmax(0, 1fr);
+  height: max(36rem, calc(100dvh - 200px));
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
 .booking-workspace > .stage-map { grid-column: 2; grid-row: 1; min-width: 0; }
-.booking-panel { grid-column: 1; grid-row: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px; display: flex; flex-direction: column; gap: 18px; background: var(--card); color: var(--ink); border-right: 1px solid var(--line); scroll-padding-block: 70px 110px; }
+.booking-panel {
+  grid-column: 1; grid-row: 1; min-width: 0; overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-gutter: stable;
+  padding: var(--booking-pad); display: flex; flex-direction: column; gap: 16px;
+  background: var(--card); color: var(--ink); border-right: 1px solid var(--line);
+  scroll-padding-block: 80px 120px;
+}
 .booking-panel > * { min-width: 0; flex-shrink: 0; }
-.booking-panel .steps { position: sticky; top: -20px; z-index: 6; background: var(--card); padding: 16px 0; margin: -20px 0 0; border-bottom: 1px solid var(--line); }
-.booking-stage-heading h2 { margin: 0 0 6px; font-size: 1.4rem; letter-spacing: -.035em; }
-.booking-stage-heading p { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.5; }
-.booking-panel fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 16px; }
-.booking-panel .map-target-strip { display: grid; gap: 8px; margin: 0; font-size: .8rem; }
-.booking-panel .gps-line { margin: 0; font-size: .78rem; line-height: 1.5; }
-.booking-panel .segmented { display: flex; }
-.booking-panel .segmented button { flex: 1; min-height: 40px; }
-.booking-panel :is(input,select,textarea) { max-width: 100%; box-sizing: border-box; }
-.booking-panel :is(button,input,select,summary):focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
-.booking-panel .booking-footer { position: sticky; bottom: -20px; z-index: 7; margin: auto -20px -20px; padding: 16px 20px max(16px,env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); display: grid; gap: 8px; box-shadow: 0 -8px 20px rgb(0 0 0 / .04); }
-.booking-footer button { margin: 0; min-height: 48px; border-radius: 12px; }
-.booking-footer .full { width: 100%; }
+.booking-panel .steps {
+  position: sticky; top: calc(-1 * var(--booking-pad)); z-index: 6;
+  display: flex; gap: 8px; background: var(--card);
+  padding: 16px 0; margin: calc(-1 * var(--booking-pad)) 0 0;
+  border-bottom: 1px solid var(--line);
+}
+.booking-panel .steps li { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; font-size: .72rem; line-height: 1.3; }
+.booking-panel .steps li i { flex-shrink: 0; width: 24px; height: 24px; }
+.booking-stage-heading h2 { margin: 0 0 4px; font-size: clamp(1.2rem, 1.6vw, 1.55rem); font-weight: 750; letter-spacing: -.035em; }
+.booking-stage-heading p { margin: 0; color: var(--muted); font-size: .8rem; line-height: 1.5; }
+.booking-panel fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 14px; }
+.booking-panel :is(input, select, textarea) { max-width: 100%; box-sizing: border-box; font-size: .85rem; }
+.booking-panel :is(button, input, select, summary):focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+.booking-panel :is(button, select, summary) { min-height: 44px; }
+.booking-panel .booking-location-fields { display: grid; gap: 10px; }
+.booking-panel .booking-place-field { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.booking-panel .place-field { margin: 0; }
+.booking-panel .booking-place-field .mantine-InputWrapper-label { font-size: .8rem; font-weight: 650; margin-bottom: 6px; }
+.booking-panel .booking-place-field .mantine-Input-input { min-height: 48px; background: var(--bg); font-size: .8rem; }
+.booking-panel .booking-place-field[data-location="pickup"] .mantine-Input-section[data-position="left"] { color: var(--ok); }
+.booking-panel .booking-place-field[data-location="destination"] .mantine-Input-section[data-position="left"] { color: var(--brand); }
+.booking-panel .booking-place-field .mantine-Input-section button { min-height: 44px; }
+.booking-panel .booking-place-field .mantine-ActionIcon-root { min-width: 36px; }
+.booking-panel .booking-place-field .place-field > button { min-height: 44px; font-size: .75rem; }
+.booking-panel .booking-location-fields > .map-target-strip { order: 2; }
+.booking-panel .booking-location-fields > .gps-line { order: 3; }
+.booking-panel .map-target-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; font-size: .75rem; color: var(--muted); }
+.booking-panel .map-target-strip .segmented { display: flex; flex: 1 1 190px; gap: 4px; width: auto; margin: 0; padding: 4px; background: var(--bg); }
+.booking-panel .segmented button { flex: 1; min-width: 0; white-space: nowrap; font-size: .75rem; }
+.booking-panel .gps-line { margin: 0; font-size: .72rem; line-height: 1.5; overflow-wrap: anywhere; }
+.booking-panel .gps-line button { display: inline; font-size: inherit; }
+.booking-panel .booking-location-tools > .row { margin: 0; }
+.booking-panel .booking-location-tools button { width: 100%; margin: 0; padding: 8px 12px; color: var(--brand); background: var(--brand-soft); box-shadow: none; font-size: .8rem; }
+.booking-panel .quick-places h3 { margin: 0 0 10px; font-size: .8rem; }
+.booking-panel .quick-place-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.booking-panel .quick-place { display: flex; align-items: center; gap: 8px; padding: 12px; margin: 0; min-width: 0; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 2px 6px rgb(0 0 0 / .03); }
+.booking-panel .quick-place:hover { background: var(--brand-soft); border-color: var(--brand); transform: none; }
+.booking-panel .quick-place > span:last-child { min-width: 0; display: grid; gap: 3px; }
+.booking-panel .quick-place strong { font-size: .75rem; font-weight: 650; }
+.booking-panel .quick-place small { font-size: .65rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.booking-panel .manage-places-wrapper > button { width: 100%; font-size: .75rem; }
+.booking-panel .booking-footer {
+  position: sticky; bottom: calc(-1 * var(--booking-pad)); z-index: 7;
+  margin: auto calc(-1 * var(--booking-pad)) calc(-1 * var(--booking-pad));
+  padding: 14px var(--booking-pad) max(14px, env(safe-area-inset-bottom));
+  background: var(--card); border-top: 1px solid var(--line); display: grid; gap: 8px;
+  box-shadow: 0 -8px 20px rgb(0 0 0 / .03);
+}
+.booking-panel .booking-footer button { margin: 0; min-height: 48px; border-radius: 10px; font-size: .85rem; }
+.booking-panel .booking-footer > button:not(.ghost):not(.text-button) { color: var(--action-ink, #fff); }
+.booking-panel .booking-footer .full { width: 100%; }
 .booking-panel .booking-footer-row { grid-template-columns: auto 1fr; gap: 12px; }
+/* Vehicle and confirmation primitives shared by the existing booking workflow. */
 .booking-panel .ride-options { display: grid; gap: 10px; }
-.booking-ride-option { box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 64px minmax(0,1fr) auto; align-items: center; gap: 12px; margin: 0; padding: 14px 12px; min-height: 92px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); text-align: left; box-shadow: none; }
-.booking-ride-option[data-selected="true"] { background: color-mix(in srgb,var(--card) 93%,var(--brand)); border-color: var(--brand); box-shadow: inset 3px 0 var(--brand); }
+.booking-ride-option { box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 12px; margin: 0; padding: 12px; min-height: 84px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); text-align: left; box-shadow: none; }
+.booking-panel .booking-ride-option:hover { border-color: var(--brand); transform: none; }
+.booking-ride-option[data-selected="true"] { background: var(--brand-soft); border-color: var(--brand); box-shadow: inset 3px 0 var(--brand); }
+.booking-ride-option > svg { width: 64px; max-width: 100%; height: auto; }
 .booking-ride-description { min-width: 0; display: grid; gap: 5px; }
-.booking-ride-description strong { font-size: .9rem; overflow-wrap: anywhere; }
-.booking-ride-description small { color: var(--muted); font-size: .75rem; line-height: 1.4; }
+.booking-ride-description strong { font-size: .85rem; overflow-wrap: anywhere; }
+.booking-ride-description small { color: var(--muted); font-size: .72rem; line-height: 1.4; }
 .booking-ride-tags { display: flex; flex-wrap: wrap; gap: 4px; }
 .booking-ride-tags:empty { display: none; }
 .booking-ride-price { display: grid; justify-items: end; gap: 10px; font-size: .85rem; font-variant-numeric: tabular-nums; }
-.booking-radio-dot { width: 16px; height: 16px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 50%; }
-[data-selected="true"] .booking-radio-dot { border: 5px solid var(--brand); background: var(--card); }
-.booking-route-summary { border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.booking-ride-price strong { white-space: nowrap; }
+.booking-radio-dot { width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 50%; }
+.booking-ride-option[data-selected="true"] .booking-radio-dot { border: 5px solid var(--brand); background: var(--card); }
+.booking-panel .trip-meta { margin: 0; font-size: .8rem; color: var(--muted); }
+.booking-route-summary { border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
 .booking-route-summary > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.booking-route-summary h3 { margin: 0; font-size: .9rem; }
+.booking-route-summary h3 { margin: 0; font-size: .85rem; }
 .booking-route-summary ol { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 14px; }
-.booking-route-summary li { border-left: 2px solid var(--brand); padding-left: 12px; display: grid; gap: 4px; font-size: .82rem; overflow-wrap: anywhere; }
-.booking-route-summary li span { font-size: .72rem; color: var(--muted); }
-.booking-passenger legend { font-size: .9rem; font-weight: 650; padding: 0 0 14px; }
-.booking-panel .quote { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin: 0; display: grid; gap: 16px; }
-.booking-panel .quote-top { display: grid; gap: 16px; }
-.booking-panel .fare-breakdown { margin: 0; display: grid; gap: 10px; font-size: .82rem; }
+.booking-route-summary li { border-left: 2px solid var(--line); padding-left: 12px; display: grid; gap: 4px; font-size: .8rem; overflow-wrap: anywhere; position: relative; }
+.booking-route-summary li::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); position: absolute; left: -5px; top: 5px; }
+.booking-route-summary li:first-child::before { background: var(--ok); }
+.booking-route-summary li span { font-size: .7rem; color: var(--muted); }
+.booking-panel .booking-passenger { border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.booking-passenger legend { font-size: .85rem; font-weight: 650; padding: 0 6px; }
+.booking-panel .quote { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 0; display: grid; gap: 14px; }
+.booking-panel .quote-top { display: grid; gap: 14px; }
+.booking-panel .fare-breakdown { margin: 0; display: grid; gap: 10px; font-size: .8rem; }
 .booking-panel .fare-breakdown > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
 .booking-panel .fare-breakdown dd { margin: 0; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.booking-panel .fare { font-size: 1.8rem; text-align: right; border-top: 1px solid var(--line); padding-top: 14px; }
+.booking-panel .fare { font-size: 1.55rem; text-align: right; border-top: 1px solid var(--line); padding-top: 14px; }
 .booking-panel .fare::before { content: 'Estimated total'; display: block; font-size: .75rem; font-weight: 400; color: var(--muted); }
-.booking-panel .booking-advanced { border-top: 1px solid var(--line); padding-top: 14px; }
-.booking-advanced summary { cursor: pointer; font-size: .85rem; font-weight: 600; padding: 8px 0; }
+.booking-panel .booking-advanced { border-top: 1px solid var(--line); padding-top: 8px; }
+.booking-panel .booking-advanced summary { cursor: pointer; font-size: .8rem; font-weight: 600; padding: 8px 0; }
 .booking-validity { margin: 0; color: var(--muted); font-size: .75rem; }
 .booking-panel .money-box { min-width: 0; }
 .booking-panel .promo-row { display: flex; gap: 8px; }
 .booking-panel .promo-row input { min-width: 0; flex: 1; }
-@media (max-width: 1100px) and (min-width: 821px) { .booking-workspace { grid-template-columns: minmax(290px,43%) minmax(0,1fr); } .booking-ride-option { grid-template-columns: 48px minmax(0,1fr); gap: 10px; } .booking-ride-option > svg { max-width: 48px; } .booking-ride-price { grid-column: 2; display: flex; justify-content: space-between; } }
-@media (max-width: 820px) {
- .booking-workspace { grid-template-columns: minmax(0,1fr); height: auto; border: 0; overflow: visible; background: transparent; box-shadow: none; }
- .booking-workspace .booking-panel { grid-column: 1; grid-row: 2; border: 1px solid var(--line); border-radius: 20px; padding: 18px; gap: 18px; overflow: visible; overscroll-behavior: auto; z-index: 2; margin-top: -18px; }
- .booking-panel .steps { position: static; margin: 0; padding: 0 0 14px; }
- .booking-panel .booking-footer { bottom: calc(66px + env(safe-area-inset-bottom,0px)); margin: 0 -18px -18px; padding: 12px 18px; border-radius: 0 0 20px 20px; }
- .booking-ride-option { grid-template-columns: 54px minmax(0,1fr); gap: 10px; }
- .booking-ride-price { grid-column: 2; display: flex; justify-content: space-between; width: 100%; }
- .booking-panel .booking-footer-row { grid-template-columns: auto 1fr; }
-}
-.booking-route-summary .booking-summary-fare { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; border-bottom: 1px solid var(--line); padding: 14px 0; margin-bottom: 14px; }
-.booking-summary-fare span { grid-row: 2; font-size: .75rem; color: var(--muted); }
-.booking-summary-fare strong:last-child { grid-column: 2; grid-row: 1/3; font-size: 1.25rem; }
-
-/* Booking-only refinements; shared navigation and other pages keep their styles. */
-.booking-workspace { border-radius: 16px; box-shadow: 0 8px 28px rgb(0 0 0 / .04); }
-.booking-panel { gap: 16px; padding: 22px; }
-.booking-panel .steps { top: -22px; margin-top: -22px; gap: 10px; }
-.booking-panel .steps li { font-size: .72rem; gap: 6px; padding-block: 12px; }
-.booking-panel .steps li i { flex-shrink: 0; }
-.booking-stage-heading h2 { font-size: 1.2rem; }
-.booking-panel .booking-footer { bottom: -22px; margin-inline: -22px; margin-bottom: -22px; padding-inline: 22px; }
-.booking-panel .booking-footer > button.full { box-shadow: 0 4px 10px color-mix(in srgb,var(--brand) 20%,transparent); }
-.booking-panel .map-target-strip { padding: 12px; border-radius: 12px; background: var(--bg); }
-.booking-panel .gps-line { overflow-wrap: anywhere; }
-@media (max-width: 820px) {
- .booking-workspace .booking-panel { padding: 18px; }
- .booking-panel .booking-footer { bottom: calc(66px + env(safe-area-inset-bottom,0px)); margin-inline: -18px; margin-bottom: -18px; padding-inline: 18px; }
- .booking-panel .steps { margin-top: 0; gap: 6px; }
-}
-
-.booking-panel .booking-ride-option { min-height: 80px; border-radius: 12px; padding: 12px; transition: border-color .15s, background-color .15s; }
-.booking-panel .booking-ride-option:hover { border-color: var(--brand); transform: none; }
-.booking-panel .booking-ride-option[data-selected="true"] { background: var(--brand-soft); }
-.booking-panel .booking-ride-option > svg { width: 64px; max-width: 100%; height: auto; }
-.booking-panel .trip-meta { margin: 0 0 4px; font-size: .8rem; color: var(--muted); }
-.booking-panel .booking-ride-price strong { white-space: nowrap; }
-
-.booking-panel .booking-route-summary { padding: 16px; background: var(--bg); }
-.booking-route-summary li { position: relative; }
-.booking-route-summary li::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); position: absolute; left: -5px; top: 5px; }
-.booking-panel .booking-passenger { border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
-.booking-panel .booking-passenger legend { padding: 0 6px; }
-.booking-panel .booking-summary-fare { align-items: start; }
-.booking-summary-fare strong { overflow-wrap: anywhere; }
-
-.booking-panel .booking-footer > button:not(.ghost):not(.text-button) { color: var(--action-ink, #fff); }
 .booking-panel .payment-summary-pill { flex-wrap: wrap; gap: 12px; }
 .booking-panel .payment-summary-pill .pill-left { flex: 1 1 130px; min-width: 0; }
 .booking-panel .payment-summary-pill .pill-text { min-width: 0; overflow-wrap: anywhere; }
 .booking-panel .payment-summary-pill .change-pay-toggle { flex-shrink: 0; white-space: nowrap; }
-.booking-panel .pay-options { grid-template-columns: repeat(auto-fit,minmax(min(100%,140px),1fr)); }
-.booking-panel .map-target-strip .segmented { width: 100%; }
-.booking-panel .map-target-strip .segmented button { min-width: 0; white-space: nowrap; }
+.booking-panel .pay-options { grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); }
+.booking-route-summary .booking-summary-fare { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; border-bottom: 1px solid var(--line); padding: 12px 0; margin-bottom: 14px; align-items: start; }
+.booking-summary-fare span { grid-row: 2; font-size: .75rem; color: var(--muted); }
+.booking-summary-fare strong { overflow-wrap: anywhere; }
+.booking-summary-fare strong:last-child { grid-column: 2; grid-row: 1 / 3; font-size: 1.25rem; }
+@media (max-width: 1100px) and (min-width: 821px) {
+  .booking-workspace { grid-template-columns: minmax(320px, 50%) minmax(0, 1fr); }
+  .booking-ride-option { grid-template-columns: 48px minmax(0, 1fr); gap: 10px; }
+  .booking-ride-price { grid-column: 2; display: flex; justify-content: space-between; }
+}
+@media (max-width: 820px) {
+  .booking-workspace { --booking-pad: 16px; grid-template-columns: minmax(0, 1fr); height: auto; border: 0; overflow: visible; background: transparent; box-shadow: none; }
+  .booking-workspace .booking-panel { grid-column: 1; grid-row: 2; border: 1px solid var(--line); border-radius: 20px; overflow: visible; overscroll-behavior: auto; scrollbar-gutter: auto; z-index: 2; margin-top: -18px; }
+  .booking-panel .steps { position: static; margin: 0; padding: 0 0 14px; gap: 6px; }
+  .booking-panel .booking-footer { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); padding-bottom: 12px; border-radius: 0 0 20px 20px; }
+}
+@media (max-width: 430px) {
+  .booking-ride-option { grid-template-columns: 48px minmax(0, 1fr); gap: 10px; }
+  .booking-ride-price { grid-column: 2; display: flex; justify-content: space-between; width: 100%; }
+  .booking-panel .quick-place-grid { grid-template-columns: minmax(0, 1fr); }
+  .booking-route-summary .booking-summary-fare { grid-template-columns: 40px minmax(0, 1fr); }
+  .booking-summary-fare .booking-summary-price { grid-column: 2; text-align: left; }
+}
+.booking-panel .booking-ride-list { display: grid; gap: 12px; }
+.booking-panel .booking-estimate-status { margin: 0; padding: 12px; border-radius: 10px; background: var(--bg); color: var(--muted); font-size: .8rem; }
+.booking-panel .booking-estimate-error { padding: 14px; display: grid; gap: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--warn-soft); color: var(--ink); font-size: .8rem; }
+.booking-panel .booking-estimate-error p { margin: 0; }
+.booking-panel .booking-estimate-error small { color: var(--muted); line-height: 1.5; }
+.booking-panel .booking-estimate-error button { margin: 0; }
+.booking-panel .booking-ride-option[data-unavailable="true"] .booking-availability { color: var(--warn); }
+.booking-panel .booking-ride-option[aria-busy="true"] .booking-ride-price { color: var(--muted); }
+.booking-panel .booking-selection-summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-block: 1px solid var(--line); font-size: .9rem; }
+.booking-panel .booking-selection-summary span { display: grid; gap: 3px; }
+.booking-panel .booking-selection-summary small { color: var(--muted); font-size: .72rem; }
+.booking-panel .booking-estimate-note { color: var(--muted); font-size: .72rem; line-height: 1.6; margin: 0; }
+.booking-route-summary .booking-summary-fare { grid-template-columns: 54px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.booking-summary-fare > svg { width: 54px; max-width: 100%; }
+.booking-summary-fare .booking-summary-vehicle, .booking-summary-fare .booking-summary-price { grid-row: auto; display: grid; gap: 4px; font-size: .85rem; color: var(--ink); }
+.booking-summary-fare .booking-summary-price { text-align: right; }
+.booking-summary-fare small { font-size: .7rem; color: var(--muted); }
+.booking-summary-fare .booking-summary-price strong { font-size: 1.15rem; white-space: nowrap; }
+.booking-panel .booking-preferences { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.booking-panel .booking-preferences summary { display: list-item; cursor: pointer; padding: 12px 0; font-size: .8rem; font-weight: 650; }
+.booking-panel .booking-preferences-content { display: grid; gap: 12px; padding: 10px 0; }
+.booking-panel .booking-preferences-content .mantine-Switch-body { align-items: flex-start; }
+.booking-panel .quote-top > div:first-child { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.booking-panel .quote-top > div:first-child small { text-align: right; font-size: .72rem; color: var(--muted); }

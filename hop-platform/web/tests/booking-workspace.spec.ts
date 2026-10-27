@@ -36,7 +36,11 @@ for (const theme of ['light', 'dark']) for (const width of widths) {
     await page.route('**/api/state', r => r.fulfill({ json: { rides: [], driver: [], offers: [], incidents: [], saved_locations: [{ id: 'work', label: 'Test office', place_label: longAddress, kind: 'work', lat: 13.04, lng: 80.2 }] } }));
     await page.route('**/api/reverse**', r => r.fulfill({ json: { lat: 13.02, lng: 80.18, label: longAddress } }));
     await page.route('**/api/estimates', r => r.fulfill({ json: { meters: 2000, seconds: 600, route: [], options: [{ category: 'auto', fare_paise: 6000 }] } }));
-    await page.route('**/api/quotes', async r => r.fulfill({ json: { id: 'quote-ui', meters: 2000, seconds: 600, fare_paise: 6000, vehicle_category: 'auto', vehicle_name: 'Auto-rickshaw', commission_paise: 0, route: [], expires_at: await page.evaluate(() => new Date(Date.now()+60000).toISOString()), shared_fare_paise: 4800, fare_breakdown: { base_paise: 3000, distance_paise: 3000, minimum_adjustment_paise: 0, platform_fee_paise: 0, total_paise: 6000 } } }));
+    let quotesReturned = 0;
+    await page.route('**/api/quotes', async r => {
+      await r.fulfill({ json: { id: 'quote-ui', meters: 2000, seconds: 600, fare_paise: 6000, vehicle_category: 'auto', vehicle_name: 'Auto-rickshaw', commission_paise: 0, route: [], expires_at: await page.evaluate(() => new Date(Date.now()+60000).toISOString()), shared_fare_paise: 4800, fare_breakdown: { base_paise: 3000, distance_paise: 3000, minimum_adjustment_paise: 0, platform_fee_paise: 0, total_paise: 6000 } } });
+      quotesReturned++;
+    });
     const requests: Record<string,unknown>[] = [];
     let failBooking = true;
     await page.route('**/api/rides',route => {
@@ -53,6 +57,7 @@ for (const theme of ['light', 'dark']) for (const width of widths) {
     await expect(page.getByRole('button', { name: 'See available rides', exact: true })).toBeEnabled();
     await page.getByRole('button', { name: 'See available rides', exact: true }).click();
     await expect(page.getByRole('radio', {name: /Auto-rickshaw/})).toHaveAttribute('aria-checked','true');
+    await expect.poll(() => quotesReturned).toBeGreaterThan(0);
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page.locator('.quote')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
@@ -156,4 +161,56 @@ test('leaving a loading upcoming tab keeps past rides accessible', async ({ page
   await expect(page.getByRole('heading',{name:'No past rides'})).toBeVisible();
   await expect(page.getByRole('tabpanel')).toHaveAttribute('aria-busy','false');
   release();
+});
+
+async function fareFixture(page: Page) {
+  await fixture(page, false);
+  await page.context().grantPermissions(['geolocation']);
+  await page.context().setGeolocation({latitude:13.02,longitude:80.18});
+  const vehicle = {area_id:'chennai',category:'auto',name:'Auto-rickshaw',base_paise:3000,per_km_paise:1500,minimum_paise:4000,pricing_version:1,stop_fee_paise:500,hourly_paise:20000,included_km_per_hour:10,extra_km_paise:1500,outstation_per_km_paise:1500,outstation_allowance_paise:10000};
+  await page.route('**/api/config', route => route.fulfill({json:{areas:[{id:'chennai',name:'Chennai',min_lat:12.8,max_lat:13.2,min_lng:80,max_lng:80.4}],vehicles:[vehicle,{...vehicle,category:'bike',name:'Bike',minimum_paise:2500}],development:true,phone_login:true}}));
+  await page.route('**/api/places/reverse**', route => route.fulfill({json:{label:'Test pickup'}}));
+  await page.route('**/api/quotes', route => route.fulfill({json:{id:'fare-test-quote',meters:18000,seconds:1800,fare_paise:28600,vehicle_category:route.request().postDataJSON().vehicle_category,vehicle_name:'Auto-rickshaw',commission_paise:0,route:[],expires_at:'2099-01-01T00:00:00Z',fare_breakdown:{base_paise:3000,distance_paise:25600,minimum_adjustment_paise:0,platform_fee_paise:0,total_paise:28600}}}));
+}
+
+test('route fares use contract-only points, expose errors and retry without minimum-price fallback', async ({page}) => {
+  await fareFixture(page);
+  let estimates = 0;
+  const bodies: Record<string,any>[] = [];
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => {release=resolve;});
+  await page.route('**/api/estimates', async route => {
+    const body = route.request().postDataJSON(); bodies.push(body); estimates++;
+    for (const point of [body.pickup,body.dropoff,...body.stops]) expect(Object.keys(point).sort()).toEqual(['label','lat','lng']);
+    if (estimates === 1) {await pending; return route.fulfill({status:400,json:{error:'Unable to estimate the selected route'}});}
+    return route.fulfill({json:{meters:18000,seconds:1800,route:[],options:[{category:'auto',fare_paise:28600},{category:'bike',fare_paise:14600}]}});
+  });
+  await page.goto('http://127.0.0.1:5173');
+  await page.getByRole('button',{name:/Chennai Airport/}).click();
+  await page.getByRole('button',{name:'See available rides',exact:true}).click();
+  await expect(page.getByRole('status').filter({hasText:'Calculating fares'})).toBeVisible();
+  await expect(page.getByRole('radiogroup')).not.toContainText('From ₹');
+  release();
+  await expect(page.getByRole('alert')).toContainText('Unable to estimate the selected route');
+  await expect(page.getByRole('radio',{name:/Auto-rickshaw/})).toContainText('Fare unavailable');
+  await page.getByRole('button',{name:'Retry fare estimates'}).click();
+  await expect(page.getByRole('radio',{name:/Auto-rickshaw/})).toContainText('Est. ₹286.00');
+  await expect(page.getByRole('radio',{name:/Bike/})).toContainText('Est. ₹146.00');
+  await page.getByRole('radio',{name:/Bike/}).click();
+  await expect(page.getByRole('radio',{name:/Bike/})).toHaveAttribute('aria-checked','true');
+  await expect(page.locator('.booking-selection-summary')).toContainText('146.00');
+  expect(bodies[0].dropoff.label).toContain('Chennai International Airport');
+});
+
+for (const type of ['rental','outstation']) test(`${type} does not display city comparison fares`, async ({page}) => {
+  await fareFixture(page);
+  let estimates = 0;
+  await page.route('**/api/estimates', route => {estimates++; return route.fulfill({json:{options:[],route:[],meters:0,seconds:0}});});
+  await page.goto('http://127.0.0.1:5173');
+  await page.getByRole('combobox',{name:'Trip type',exact:true}).selectOption(type);
+  if(type === 'outstation') await page.getByRole('button',{name:/Chennai Airport/}).click();
+  await page.getByRole('button',{name:'See available rides',exact:true}).click();
+  await expect(page.getByRole('radio',{name:/Auto-rickshaw/})).toContainText('Est. ₹286.00');
+  await expect(page.getByRole('radio',{name:/Bike/})).toContainText('Quote at review');
+  expect(estimates).toBe(0);
 });

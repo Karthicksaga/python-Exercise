@@ -172,7 +172,7 @@ export default function PlaceInput({
   }
 
   return (
-    <div ref={containerRef} style={{ position: "relative", width: "100%" }}>
+    <div className="booking-place-field" data-location={current ? "pickup" : "destination"} ref={containerRef} style={{ position: "relative", width: "100%" }}>
       <Stack gap={6} className="place-field" mb="sm">
         <TextInput
           label={label}
@@ -186,7 +186,7 @@ export default function PlaceInput({
           onClick={() => {
             if (isMobile) setMobileModalOpen(true);
           }}
-          leftSection={<IconSearch size={18} />}
+          leftSection={<IconMapPin size={18} />}
           rightSectionWidth={text ? 108 : 80}
           rightSectionPointerEvents="all"
           rightSection={

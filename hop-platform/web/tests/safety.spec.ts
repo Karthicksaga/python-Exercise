@@ -1,3 +1,5 @@
+import os from 'os';
+import path from 'path';
 import { test, expect, type Page } from '@playwright/test';
 const widths = [320, 360, 390, 430, 768, 1024, 1280, 1440, 1920];
 const details = { id: 'ui-user', name: 'Responsive Test Rider With A Long Name', email: 'ui@example.invalid', phone: '9092112969', phone_verified: true, phone_login: true, has_photo: false, photo_approved: false, created_at: '2026-01-01T00:00:00Z', gender: '', birth_date: null, avatar_color: 'indigo', default_payment: 'cash', default_vehicle: '', company_name: '', business_gstin: '', cost_centre: '', work_email: '', deletion_requested_at: null };
@@ -53,6 +55,6 @@ for (const width of [320,375,390,430,768,1024,1440]) for (const theme of ['light
   await card.getByRole('button',{name:'Invite',exact:true}).click();
   await expect.poll(()=>writes.includes('/api/family/invite')).toBe(true);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await card.screenshot({path:`/private/tmp/hop-safety-${width}-${theme}.png`});
+  await card.screenshot({path: path.join(os.tmpdir(), `hop-safety-${width}-${theme}.png`)});
  });
 }

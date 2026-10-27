@@ -17,22 +17,25 @@ export default function QuickPlaces({ saved, rides, onPick, area }: { saved: Sav
   const hubList = (area && hubs[area]) || [];
   if (!saved.length && !recent.length && !hubList.length) return null;
   return (
-    <div className="chips quick-places" aria-label="Quick destinations">
+    <div className="quick-places" aria-label="Quick destinations">
+      <h3>Saved & recent places</h3>
+      <div className="quick-place-grid">
       {saved.map((s) => (
-        <button key={s.id} type="button" className="chip" onClick={() => onPick({ lat: s.lat, lng: s.lng, label: s.place_label })}>
-          {icon[s.kind]} {s.label}
+        <button key={s.id} type="button" className="quick-place" onClick={() => onPick({ lat: s.lat, lng: s.lng, label: s.place_label })}>
+          <span aria-hidden="true">{icon[s.kind]}</span><span><strong>{s.label}</strong><small>{s.place_label}</small></span>
         </button>
       ))}
       {recent.map((p) => (
-        <button key={p.label} type="button" className="chip" onClick={() => onPick(p)} title={p.label}>
-          🕘 {p.label.split(",")[0]}
+        <button key={p.label} type="button" className="quick-place" onClick={() => onPick(p)} title={p.label}>
+          <span aria-hidden="true">🕘</span><span><strong>{p.label.split(",")[0]}</strong><small>Recent destination</small></span>
         </button>
       ))}
       {hubList.map((h) => (
-        <button key={h.label} type="button" className="chip" onClick={() => onPick(h)} title={h.note}>
-          {h.kind === "airport" ? "✈️" : "🚆"} {h.label.split(",")[0].replace(/ International| Railway Station| \(.*\)/g, "")}
+        <button key={h.label} type="button" className="quick-place" onClick={() => onPick({ lat: h.lat, lng: h.lng, label: h.label })} title={h.note}>
+          <span aria-hidden="true">{h.kind === "airport" ? "✈️" : "🚆"}</span><span><strong>{h.label.split(",")[0].replace(/ International| Railway Station| \(.*\)/g, "")}</strong><small>{h.note}</small></span>
         </button>
       ))}
+      </div>
     </div>
   );
 }

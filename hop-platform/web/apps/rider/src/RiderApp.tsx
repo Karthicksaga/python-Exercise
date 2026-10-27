@@ -1,4 +1,5 @@
 import BookingWorkspace from "./BookingWorkspace";
+import VehicleArt from "@hop/shared/VehicleArt";
 import RideHistory from "./RideHistory";
 import ResponsiveNav from "@hop/shared/ResponsiveNav";
 import AppHeader from "@hop/shared/AppHeader";
@@ -533,10 +534,11 @@ export default function RiderApp() {
                               </li>
                             ))}
                           </ol>
-                          <div className="booking-stage-heading"><h2>{step === "where" ? "Where are you heading?" : step === "choose" ? "Choose your ride" : "Review your trip"}</h2><p>{step === "where" ? "Set your pickup and destination to get started." : step === "choose" ? "Compare estimated fares for your route." : "Check your route, payment and fare before requesting."}</p></div>
+                          <div className="booking-stage-heading"><h2>{step === "where" ? "Where are you heading?" : step === "choose" ? "Choose your ride" : "Review and confirm"}</h2><p>{step === "where" ? "Set your pickup and destination to get started." : step === "choose" ? "Compare estimated fares for your route." : "Check your route, payment and fare before requesting."}</p></div>
                           {step === "where" && (
                             <>
-                              <fieldset disabled={busy}>
+                              <fieldset disabled={busy} className="booking-location-form">
+                        <div className="booking-location-fields">
                         <div className="map-target-strip">
                           <span>Tap map sets:</span>
                           <div className="segmented" role="group" aria-label="Choose map location">
@@ -598,9 +600,11 @@ export default function RiderApp() {
                             onChange={setDropoff}
                           />
                         )}
+                        </div>
                         {trip.trip_type !== "rental" && (
                           <QuickPlaces saved={data.saved_locations ?? []} rides={data.rides} onPick={setDropoff} area={areas.find((a) => a.id === area)?.name} />
                         )}
+                        <div className="booking-location-tools">
                         <VoiceBooking
                           area={area}
                           categories={vehicles.map((v) => v.category)}
@@ -611,6 +615,7 @@ export default function RiderApp() {
                             if (r.dropoff) setDropoff(r.dropoff);
                           }}
                         />
+                        </div>
                         <TripOptions
                           area={area}
                           vehicle={areaVehicles.find((v) => v.category === vehicleCategory)}
@@ -737,6 +742,8 @@ export default function RiderApp() {
                           value={vehicleCategory}
                           onChange={setVehicleCategory}
                           nearby={nearby}
+                          tripType={trip.trip_type}
+                          quote={quote}
                         />
                               </fieldset>
                               <div className="booking-footer booking-footer-row">
@@ -752,14 +759,20 @@ export default function RiderApp() {
                               <button type="button" className="text-button back" onClick={() => changeStep("choose")}>← Change ride</button>
                               <section className="booking-route-summary" aria-label="Trip summary">
                                 <div><h3>Trip summary</h3><button type="button" className="text-button" onClick={() => changeStep("where")}>Edit route</button></div>
-                                {quote && <div className="booking-summary-fare"><strong>{quote.vehicle_name}</strong><span>{(quote.meters / 1000).toFixed(1)} km · {Math.ceil(quote.seconds / 60)} min</span><strong>{money(share && quote.shared_fare_paise ? quote.shared_payable_paise ?? quote.shared_fare_paise : quote.payable_paise ?? quote.fare_paise)}</strong></div>}
+                                {quote && <div className="booking-summary-fare">
+                                  <VehicleArt category={vehicleCategory} width={64} />
+                                  <span className="booking-summary-vehicle"><strong>{quote.vehicle_name}</strong><small>{(quote.meters / 1000).toFixed(1)} km · {Math.ceil(quote.seconds / 60)} min</small></span>
+                                  <span className="booking-summary-price"><strong>{money(share && quote.shared_fare_paise ? quote.shared_payable_paise ?? quote.shared_fare_paise : quote.payable_paise ?? quote.fare_paise)}</strong><small>Estimated fare</small></span>
+                                </div>}
                                 <ol><li><span>Pickup</span><strong>{pickup?.label}</strong></li>
                                   {trip.stops.filter(s => s.label).map((s, i) => <li key={i}><span>Stop {i + 1}</span><strong>{s.label}</strong></li>)}
                                   <li><span>{trip.trip_type === "rental" ? "Rental" : "Destination"}</span><strong>{trip.trip_type === "rental" ? `${trip.rental_hours} hours` : dropoff?.label}</strong></li>
                                 </ol>
                               </section>
                               <fieldset disabled={busy} className="booking-passenger">
-                                <legend>Passenger & payment</legend>
+                                <legend>Payment & preferences</legend>
+                        <details className="booking-preferences"><summary>Passenger & ride preferences</summary>
+                        <div className="booking-preferences-content">
                         {gender === "female" && !pink && (new Date().getHours() >= 21 || new Date().getHours() < 5) && (
                           <Alert color="pink" mb="sm" icon={<IconAlertTriangle size={16} />}>Travelling late? Switch on Pink ride to be matched with a verified woman driver.</Alert>
                         )}
@@ -767,6 +780,7 @@ export default function RiderApp() {
                           label="Pink ride — women drivers only"
                           description={gender === "female" ? "Matched only with verified, pink-certified women drivers." : "Set your gender to female in Profile to use pink rides."} />
                         <BookingExtras onChange={setExtras} />
+                        </div></details>
                         <BookingMoney area={area} payment={payment} onPayment={setPayment} promo={promo} onPromo={setPromo} promoError={promoError} discount={quote?.discount_paise ?? 0} />
                               </fieldset>
                       {trip.trip_type === "city" && pickup && dropoff && (
@@ -777,7 +791,7 @@ export default function RiderApp() {
                         <div className="quote">
                           <div className="quote-top">
                             <div>
-                              <strong>{quote.vehicle_name} ride</strong>
+                              <strong>Fare breakdown</strong>
                               <small>
                                 {(quote.meters / 1000).toFixed(1)} km · about{" "}
                                 {Math.ceil(quote.seconds / 60)} min
