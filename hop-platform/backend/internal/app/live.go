@@ -153,7 +153,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	keepalive := 0
 	for {
 		var messages []map[string]string
-		ids, e := jsonRows(ctx, s.DB, `SELECT r.id::text AS id, q.pickup_label, q.dropoff_label, COALESCE(r.offered_fare_paise,q.fare_paise) AS fare`+offerFrom+` ORDER BY r.created_at LIMIT 20`, uid)
+		ids, e := jsonRows(ctx, s.DB, `SELECT r.id::text AS id, q.pickup_label, q.dropoff_label, COALESCE(r.offered_fare_paise,q.fare_paise) AS fare`+s.circleOfferFrom()+` ORDER BY r.created_at LIMIT 20`, uid)
 		if e == nil {
 			var raw []map[string]any
 			_ = json.Unmarshal(ids, &raw)

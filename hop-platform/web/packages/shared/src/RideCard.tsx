@@ -336,6 +336,8 @@ export default function RideCard({
       {r.driving && r.status !== "completed" && r.payment_method !== "wallet" && active(r) && (
         <p className="collect">{t("collect.from")}: <strong>{money(r.payable_paise ?? r.fare_paise)}</strong>{!!r.discount_paise && <small> (promo of {money(r.discount_paise)} is reimbursed by hop)</small>}</p>
       )}
+      {r.circle_invitation && <p className="muted">Hop Circle · preferred invitation</p>}
+      {r.pickup_instructions && <p><strong>Pickup instructions:</strong> {r.pickup_instructions}</p>}
       {r.rider_name && <p>Rider: {r.rider_name}</p>}
       {r.passenger_name && (
         <p>

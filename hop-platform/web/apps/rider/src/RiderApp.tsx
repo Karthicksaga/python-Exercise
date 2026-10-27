@@ -1,3 +1,4 @@
+import { readDraft, saveDraft, clearDraft, readPending, writePending, type PendingBooking } from "./bookingDraft";
 import BookingWorkspace from "./BookingWorkspace";
 import ResponsiveNav from "@hop/shared/ResponsiveNav";
 import AppHeader from "@hop/shared/AppHeader";
@@ -49,6 +50,16 @@ export default function RiderApp() {
   useLang();
   const s = useSession();
   const { user, data, areas, vehicles, notify, setNotice, refresh, lowData, loading, signingOut, dark, toggleDark, development, phoneLogin, connection, notice, stateReady, permission, requestPermission, live, setUser } = s;
+  const [instructions, setInstructions] = useState("");
+  const [draftOwner, setDraftOwner] = useState("");
+  const restoredSelection = useRef(false);
+  const [restored, setRestored] = useState(false);
+  const [pendingBooking, setPendingBooking] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
+  useEffect(() => { const update=()=>setOnline(navigator.onLine); window.addEventListener("online",update); window.addEventListener("offline",update); return ()=>{window.removeEventListener("online",update);window.removeEventListener("offline",update);}; },[]);
+  const bookingLock = useRef(false);
+  const [nearbyStatus, setNearbyStatus] = useState<"loading"|"ready"|"error">("loading");
+  const [nearbyRetry, setNearbyRetry] = useState(0);
   const [placesOpen, setPlacesOpen] = useState(false);
   const [extras, setExtras] = useState<BookingExtrasValue>({});
   const [gender, setGender] = useState("");
@@ -77,12 +88,7 @@ export default function RiderApp() {
     [nearbyDrivers, setNearbyDrivers] = useState<NearbyDriver[]>([]),
     [now, setNow] = useState(Date.now());
   const bookingKey = useRef(""),
-    bookingAttempt = useRef<{
-      quote_id: string;
-      request_key: string;
-      payment_method: PayMethod;
-      offer_paise?: number;
-    } | null>(null);
+    bookingAttempt = useRef<PendingBooking | null>(null);
 
   const changeTab = (nextTab: string, replace = false) => {
     if (nextTab === tab) return;
@@ -96,7 +102,7 @@ export default function RiderApp() {
   };
 
   const changeStep = (nextStep: "where" | "choose" | "confirm", replace = false) => {
-    if (nextStep === step) return;
+    if (nextStep === step || pendingBooking || busy) return;
     setStep(nextStep);
     const state = { tab, step: nextStep };
     if (replace) {
@@ -134,42 +140,47 @@ export default function RiderApp() {
       return;
     }
     let live = true;
+    setNearby(null); setNearbyDrivers([]); setNearbyStatus("loading");
     const load = () =>
       api<{ nearby: Nearby[]; drivers: NearbyDriver[] }>(`/api/nearby?lat=${pickup.lat}&lng=${pickup.lng}${pink ? "&pink=1" : ""}`)
         .then((r) => {
           if (!live) return;
+          setNearbyStatus("ready");
           setNearby(r.nearby ?? []);
           setNearbyDrivers(r.drivers ?? []);
         })
-        .catch(() => live && setNearby(null));
+        .catch(() => { if (live) { setNearby(null); setNearbyDrivers([]); setNearbyStatus("error"); } });
     void load();
     const timer = setInterval(load, lowData ? 20000 : 6000);
     return () => {
       live = false;
       clearInterval(timer);
     };
-  }, [user, pickup?.lat, pickup?.lng, pink, lowData]);
+  }, [user, pickup?.lat, pickup?.lng, pink, lowData, nearbyRetry]);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
     setQuote(null);
-    bookingKey.current = "";
-    bookingAttempt.current = null;
+    if (!bookingAttempt.current) bookingKey.current = "";
     setOffer("");
   }, [area, pickup, dropoff, payment, vehicleCategory, trip, promo, pink, routeIndex]);
   useEffect(() => {
     // Show the fare and road route as soon as both places are chosen, like a ride-hailing app.
-    if (!user || !area || !pickup || !vehicleCategory) return;
+    if (!user || !area || !pickup || !vehicleCategory || pendingBooking) return;
     if (trip.trip_type !== "rental" && !dropoff) return;
     const timer = setTimeout(() => void estimate(), 800);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, area, pickup, dropoff, vehicleCategory, trip, promo, pink, routeIndex]);
+  }, [user, area, pickup, dropoff, vehicleCategory, trip, promo, pink, routeIndex, pendingBooking]);
   const areaVehicles = vehicles.filter((item) => item.area_id === area);
   const myRides = data.rides.filter((r) => r.mine);
   const current = myRides.find((r) => active(r));
+  useEffect(() => {
+    if (!current || !pendingBooking || !user) return;
+    bookingAttempt.current=null; setPendingBooking(false); writePending(user.id,null); clearDraft(user.id);
+  },[current?.id,pendingBooking,user?.id]);
   const drivingTrip = data.rides.find((r) => r.driving && active(r));
   useEffect(() => setRouteIndex(0), [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
   const prevRide = useRef<{ id: string; status: string } | null>(null);
@@ -181,6 +192,7 @@ export default function RiderApp() {
     prevRide.current = current ? { id: current.id, status: current.status } : null;
   }, [current?.id, current?.status]); // eslint-disable-line react-hooks/exhaustive-deps
   async function estimate() {
+    if (pendingBooking || bookingLock.current) return;
     setBusy(true);
     setNotice("");
     try {
@@ -214,7 +226,9 @@ export default function RiderApp() {
   const offerBad =
     !!offer && !!quote && (!(offerPaise > 0) || offerPaise < quote.fare_paise * 0.7 || offerPaise > quote.fare_paise * 1.5);
   async function book(goOffline = false) {
-    if (!quote) return;
+    if (!navigator.onLine) { notify("You are offline. Reconnect before requesting or retrying your ride."); return; }
+    if ((!quote && !bookingAttempt.current) || bookingLock.current) return;
+    if (!bookingAttempt.current && quote && Date.parse(quote.expires_at) <= Date.now()) { notify("Quote expired. Refresh before requesting."); return; }
     if (drivingTrip) {
       notify("Finish or cancel your driver trip in Captain before booking a ride.");
       return;
@@ -224,29 +238,48 @@ export default function RiderApp() {
       return;
     }
     setGoOfflineAsk(false);
+    bookingLock.current = true;
     setBusy(true);
     const body = bookingAttempt.current ?? {
-      quote_id: quote.id,
+      quote_id: quote!.id,
       request_key: bookingKey.current,
       payment_method: payment,
       ...extras,
       ...(share && { favorite_first: false }),
-      ...(share && quote.shared_fare_paise ? { share: true } : offerPaise && offerPaise !== quote.fare_paise && { offer_paise: offerPaise }),
+      ...(instructions.trim() && { pickup_instructions: instructions.trim() }),
+      ...(share && quote!.shared_fare_paise ? { share: true } : offerPaise && offerPaise !== quote!.fare_paise && { offer_paise: offerPaise }),
     };
     bookingAttempt.current = body;
+    if (user) writePending(user.id, body);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 20000);
+    let bookingConfirmed = false;
     try {
-      await api("/api/rides", { ...body, ...(goOffline && { go_offline: true }) });
+      await api("/api/rides", { ...body, ...(goOffline && { go_offline: true }) }, controller.signal);
+      bookingConfirmed = true;
       setQuote(null);
-      changeStep("where", true);
+      setPendingBooking(false);
+      setStep("where"); window.history.replaceState({tab:"ride",step:"where"}, "");
       bookingAttempt.current = null;
+      setInstructions(""); setPickup(null); setDropoff(null); setRestored(false);
+      if (user) { clearDraft(user.id); writePending(user.id,null); }
       await refresh();
       showMoment({ vehicle: vehicleCategory, kind: "booked", title: "Ride requested!", sub: "Alerting drivers near you…" });
       notify("Ride requested. Waiting for a nearby approved driver.");
     } catch (e) {
-      if (e instanceof APIError && e.code === "driver_online") setGoOfflineAsk(true);
-      notify((e as Error).message);
+      if (bookingConfirmed) {
+        notify("Ride requested successfully. Reload to update your ride status.");
+      } else if (e instanceof APIError && e.status < 500) {
+        bookingAttempt.current = null; setPendingBooking(false);
+        if (user) writePending(user.id,null);
+        if (e.code === "driver_online") setGoOfflineAsk(true);
+        notify(e.message);
+      } else {
+        setPendingBooking(true);
+        notify("We could not confirm the booking outcome. Retry the same request safely below.");
+      }
     } finally {
-      setBusy(false);
+      clearTimeout(timeout); bookingLock.current = false; setBusy(false);
     }
   }
   const signedIn = Boolean(user);
@@ -257,7 +290,7 @@ export default function RiderApp() {
         setAvatarColor(d.avatar_color);
         setGender(d.gender);
         if (d.default_payment === "upi" || d.default_payment === "wallet") setPayment(d.default_payment);
-        if (d.default_vehicle) setVehicleCategory(d.default_vehicle);
+        if (d.default_vehicle && !restoredSelection.current) setVehicleCategory(d.default_vehicle);
       })
       .catch(() => undefined);
   }, [signedIn]);
@@ -307,6 +340,19 @@ export default function RiderApp() {
   const locationRequest = useRef(0);
   useEffect(() => {
     if (!user || !areas.length) return;
+    if (draftOwner !== user.id) {
+      const draft = readDraft(user.id);
+      const pending = readPending(user.id);
+      bookingAttempt.current = pending; setPendingBooking(!!pending);
+      setDraftOwner(user.id);
+      if (draft && areas.some(a => a.id === draft.area) && vehicles.some(v => v.area_id===draft.area && v.category===draft.vehicleCategory)) {
+        restoredSelection.current = true;
+        setArea(draft.area); setPickup(draft.pickup); setDropoff(draft.dropoff); setVehicleCategory(draft.vehicleCategory); setTrip(draft.trip); setInstructions(draft.instructions);
+        setStep(pending ? "confirm" : draft.pickup && (draft.dropoff || draft.trip.trip_type === "rental") ? draft.step : "where");
+        setFollowGps(false); setLocState("ready"); setRestored(true); return;
+      }
+      if (pending) setStep("confirm");
+    }
     if (!navigator.geolocation) return setLocState("denied");
     let live = true;
     const request = ++locationRequest.current;
@@ -334,6 +380,15 @@ export default function RiderApp() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, areas, detectTick]);
+  useEffect(() => {
+    if (!user || draftOwner!==user.id || !area || current) return;
+    saveDraft(user.id,{area,pickup,dropoff,vehicleCategory,trip,step,instructions});
+  },[user?.id,draftOwner,area,pickup,dropoff,vehicleCategory,trip,step,instructions,current?.id]);
+  useEffect(() => {
+    if (user || !draftOwner) return;
+    clearDraft(draftOwner); writePending(draftOwner,null); setDraftOwner("");
+    setPickup(null); setDropoff(null); setInstructions(""); setPendingBooking(false); bookingAttempt.current=null; restoredSelection.current=false;
+  },[user,draftOwner]);
   const choosePickup = (point: Point | null) => {
     setFollowGps(false);
     setPickup(point);
@@ -496,7 +551,10 @@ export default function RiderApp() {
                               </li>
                             ))}
                           </ol>
-                          <div className="booking-stage-heading"><h2>{step === "where" ? "Where are you heading?" : step === "choose" ? "Choose your ride" : "Review your trip"}</h2><p>{step === "where" ? "Set your pickup and destination to get started." : step === "choose" ? "Compare estimated fares for your route." : "Check your route, payment and fare before requesting."}</p></div>
+                          {!online && <p className="booking-recovery" role="status">You are offline. Your trip stays in this tab. Reconnect before requesting a ride.</p>}
+                          {restored && <p className="booking-restored" role="status">Your trip has been restored. Prices are checked again before booking.</p>}
+                          {pendingBooking && <section className="booking-recovery" role="alert"><h3>Confirm your booking outcome</h3><p>Your request may have reached Hop. Retry uses the same request ID to avoid a duplicate booking.</p><button disabled={busy || !online} onClick={() => void book()}>{busy ? "Checking…" : "Retry same booking request"}</button></section>}
+                          <div className="booking-stage-heading"><h2 tabIndex={-1}>{step === "where" ? "Where are you heading?" : step === "choose" ? "Choose your ride" : "Review your trip"}</h2><p>{step === "where" ? "Set your pickup and destination to get started." : step === "choose" ? "Compare estimated fares for your route." : "Check your route, payment and fare before requesting."}</p></div>
                           {step === "where" && (
                             <>
                               <fieldset disabled={busy}>
@@ -700,6 +758,8 @@ export default function RiderApp() {
                           value={vehicleCategory}
                           onChange={setVehicleCategory}
                           nearby={nearby}
+                          availabilityStatus={nearbyStatus}
+                          onRetryAvailability={() => { setNearbyStatus("loading"); setNearbyRetry(n => n+1); }}
                         />
                               </fieldset>
                               <div className="booking-footer booking-footer-row">
@@ -712,16 +772,16 @@ export default function RiderApp() {
                           )}
                           {step === "confirm" && (
                             <>
-                              <button type="button" className="text-button back" onClick={() => changeStep("choose")}>← Change ride</button>
+                              <button type="button" className="text-button back" disabled={busy || pendingBooking} onClick={() => changeStep("choose")}>← Change ride</button>
                               <section className="booking-route-summary" aria-label="Trip summary">
-                                <div><h3>Trip summary</h3><button type="button" className="text-button" onClick={() => changeStep("where")}>Edit route</button></div>
+                                <div><h3>Trip summary</h3><button type="button" className="text-button" disabled={busy || pendingBooking} onClick={() => changeStep("where")}>Edit route</button></div>
                                 {quote && <div className="booking-summary-fare"><strong>{quote.vehicle_name}</strong><span>{(quote.meters / 1000).toFixed(1)} km · {Math.ceil(quote.seconds / 60)} min</span><strong>{money(share && quote.shared_fare_paise ? quote.shared_payable_paise ?? quote.shared_fare_paise : quote.payable_paise ?? quote.fare_paise)}</strong></div>}
                                 <ol><li><span>Pickup</span><strong>{pickup?.label}</strong></li>
                                   {trip.stops.filter(s => s.label).map((s, i) => <li key={i}><span>Stop {i + 1}</span><strong>{s.label}</strong></li>)}
                                   <li><span>{trip.trip_type === "rental" ? "Rental" : "Destination"}</span><strong>{trip.trip_type === "rental" ? `${trip.rental_hours} hours` : dropoff?.label}</strong></li>
                                 </ol>
                               </section>
-                              <fieldset disabled={busy} className="booking-passenger">
+                              <fieldset disabled={busy || pendingBooking} className="booking-passenger">
                                 <legend>Passenger & payment</legend>
                         {gender === "female" && !pink && (new Date().getHours() >= 21 || new Date().getHours() < 5) && (
                           <Alert color="pink" mb="sm" icon={<IconAlertTriangle size={16} />}>Travelling late? Switch on Pink ride to be matched with a verified woman driver.</Alert>
@@ -729,7 +789,8 @@ export default function RiderApp() {
                         <Switch color="pink" mb="sm" checked={pink} disabled={gender !== "female"} onChange={(e) => setPink(e.currentTarget.checked)}
                           label="Pink ride — women drivers only"
                           description={gender === "female" ? "Matched only with verified, pink-certified women drivers." : "Set your gender to female in Profile to use pink rides."} />
-                        <BookingExtras onChange={setExtras} />
+                        <BookingExtras onChange={setExtras} circleEnabled={s.features.hopCircle} circleDisabled={share} />
+                        <label>Pickup instructions (optional)<textarea value={instructions} onChange={e => setInstructions(e.target.value)} maxLength={250} rows={2} placeholder="e.g. Meet at the main entrance" /><small>Shared with your assigned driver. Do not include sensitive information.</small></label>
                         <BookingMoney area={area} payment={payment} onPayment={setPayment} promo={promo} onPromo={setPromo} promoError={promoError} discount={quote?.discount_paise ?? 0} />
                               </fieldset>
                       {trip.trip_type === "city" && pickup && dropoff && (
@@ -825,6 +886,7 @@ export default function RiderApp() {
                             </strong>
                           </div>
                           <details className="booking-advanced"><summary>Sharing & optional fare offer</summary>
+                          <fieldset disabled={busy || pendingBooking}>
                           <ShareToggle quote={quote} value={share} onChange={setShare} />
                           {!share && <label>
                             Your fare offer (₹, optional — drivers can accept or counter)
@@ -844,6 +906,7 @@ export default function RiderApp() {
                               Offer must be between {money(Math.ceil(quote.fare_paise * 0.7))} and {money(Math.floor(quote.fare_paise * 1.5))}.
                             </p>
                           )}
+                          </fieldset>
                           </details>
                           <p className="booking-validity" role="status">
                             {Date.parse(quote.expires_at) <= now ? "Quote expired — refresh to request your ride. " : "Quote valid for "}
@@ -860,7 +923,7 @@ export default function RiderApp() {
                           <button
                             className="full"
                             disabled={
-                              busy || (!share && offerBad) || Date.parse(quote.expires_at) <= now
+                              busy || !online || pendingBooking || (!share && offerBad) || Date.parse(quote.expires_at) <= now
                             }
                             onClick={() => void book()}
                           >
@@ -871,7 +934,7 @@ export default function RiderApp() {
                           </button>
                           <button
                             className="text-button"
-                            disabled={busy}
+                            disabled={busy || pendingBooking}
                             onClick={estimate}
                           >
                             Refresh quote
@@ -1011,7 +1074,7 @@ export default function RiderApp() {
             )}
             {tab === "wallet" && <WalletPanel notify={notify} />}
             {tab === "more" && (
-              <CompanionPanel rides={data.rides} saved={data.saved_locations} notify={notify} />
+              <CompanionPanel circleEnabled={s.features.hopCircle} rides={data.rides} saved={data.saved_locations} notify={notify} />
             )}
           </>
         )}

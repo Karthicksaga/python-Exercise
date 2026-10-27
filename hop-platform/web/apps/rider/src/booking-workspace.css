@@ -60,3 +60,8 @@
 .booking-route-summary .booking-summary-fare { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; border-bottom: 1px solid var(--line); padding: 14px 0; margin-bottom: 14px; }
 .booking-summary-fare span { grid-row: 2; font-size: .75rem; color: var(--muted); }
 .booking-summary-fare strong:last-child { grid-column: 2; grid-row: 1/3; font-size: 1.25rem; }
+.booking-availability, .booking-restored { font-size: .8rem; line-height: 1.5; color: var(--muted); }
+.booking-recovery { padding: 16px; border: 1px solid var(--brand); border-radius: 14px; background: var(--brand-soft); }
+.booking-recovery h3 { margin: 0 0 8px; font-size: 1rem; }
+.booking-recovery p { font-size: .85rem; line-height: 1.6; }
+.booking-panel textarea { width: 100%; resize: vertical; }

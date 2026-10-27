@@ -1,3 +1,4 @@
+import HopCirclePanel from "./HopCirclePanel";
 import { IconBell, IconCar, IconCopy, IconUsers, IconWheelchair, IconEar, IconEye, IconAccessible, IconTypography } from "@tabler/icons-react";
 import "./safety-dashboard.css";
 import { serverURL } from "@hop/shared/platform";
@@ -37,9 +38,11 @@ const toggles: [keyof Prefs, string][] = [
 
 export default function CompanionPanel({
   rides,
+  circleEnabled=false,
   saved,
   notify,
 }: {
+  circleEnabled?: boolean;
   rides: Ride[];
   saved: SavedLocation[];
   notify: (s: string) => void;
@@ -218,6 +221,7 @@ export default function CompanionPanel({
         </form>
       </section>
 
+      {circleEnabled ? <section className="safety-card"><HopCirclePanel rides={rides}/></section> : <>
       <section className="safety-card">
         <p className="eyebrow">FAVORITES</p>
         <h2>Favorite drivers</h2>
@@ -242,6 +246,8 @@ export default function CompanionPanel({
         )}
         <p className="muted">Your favorite drivers are offered your rides first, for a short while.</p>
       </section>
+
+      </>}
 
       <section className="safety-card">
         <p className="eyebrow">SCHEDULED</p>

@@ -1,3 +1,4 @@
+import CaptainCirclePanel from "./CaptainCirclePanel";
 import CaptainOnboarding from "./CaptainOnboarding";
 import { isAndroid, startTracking, stopTracking } from "@hop/shared/platform";
 import { getCSRF } from "@hop/shared/api";
@@ -200,6 +201,7 @@ export default function DriverPanel({
   refresh,
   notify,
   development = false,
+  circleEnabled = false,
   activeTab = "driver",
   onNavigateTab,
 }: {
@@ -208,6 +210,7 @@ export default function DriverPanel({
   development?: boolean;
   refresh: () => Promise<void>;
   notify: (s: string) => void;
+  circleEnabled?: boolean;
   activeTab?: "driver" | "earnings" | "vehicle";
   onNavigateTab?: (tab: string) => void;
 }) {
@@ -795,6 +798,7 @@ export default function DriverPanel({
           </form>
         </section>
 
+        {circleEnabled && <CaptainCirclePanel refresh={refresh}/>}
         <DriverTools d={d} sharing={sharing} pos={myPos} notify={notify} refresh={refresh} />
       </div>
     </>

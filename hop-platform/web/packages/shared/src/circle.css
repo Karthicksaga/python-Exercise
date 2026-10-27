@@ -1,0 +1,19 @@
+.hop-circle { min-width:0; display:grid; gap:14px; color:var(--ink); }
+.hop-circle h2,.hop-circle h3,.hop-circle p {margin:0;}
+.hop-circle p,.hop-circle small {line-height:1.6;}
+.hop-circle .circle-description,.circle-captain p,.circle-captain small {color:var(--muted);font-size:.85rem;}
+.hop-circle :is(button,input,select):focus-visible {outline:2px solid var(--brand);outline-offset:3px;}
+.hop-circle button {min-height:44px; margin:0;}
+.hop-circle .circle-actions {display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.hop-circle .circle-captain {display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--card);min-width:0;}
+.circle-captain > div {flex:1 1 160px; min-width:0;overflow-wrap:anywhere;}
+.circle-captain-icon {display:grid;place-items:center;color:var(--brand);flex:none;}
+.hop-circle label {display:grid;gap:8px;margin:0;}
+.hop-circle label.circle-check {display:flex;align-items:center;gap:10px;min-height:44px;}
+.hop-circle input[type=checkbox] {width:18px;height:18px;accent-color:var(--brand);flex:none;}
+.hop-circle select {width:100%;min-width:0;min-height:44px;box-sizing:border-box;}
+.hop-circle .circle-feedback {font-size:.85rem;line-height:1.6;}
+.hop-circle .circle-invitation {border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:10px;overflow-wrap:anywhere;}
+.hop-circle .circle-list {display:grid;gap:12px;}
+.hop-circle .circle-inline-form {display:grid;gap:10px;}
+@media(max-width:430px){.hop-circle .circle-captain > button{width:100%;}.hop-circle .circle-actions > button{flex:1 1 120px;}}

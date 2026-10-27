@@ -518,10 +518,14 @@ func (s *Server) addFavoriteDriver(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
+	s.addFavoriteDriverForRide(w, r, in.RideID)
+}
+
+func (s *Server) addFavoriteDriverForRide(w http.ResponseWriter, r *http.Request, rideID string) {
 	// Only the driver of the rider's own completed ride can be favorited.
 	tag, e := s.DB.Exec(r.Context(), `INSERT INTO favorite_drivers(rider_id,driver_id)
  SELECT rider_id,driver_id FROM rides WHERE id=$1::uuid AND rider_id=$2::uuid AND status='completed' AND driver_id IS NOT NULL
- ON CONFLICT DO NOTHING`, in.RideID, user(r).Account.ID)
+ ON CONFLICT DO NOTHING`, rideID, user(r).Account.ID)
 	if e != nil {
 		dbError(w, e)
 		return

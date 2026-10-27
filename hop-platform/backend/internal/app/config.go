@@ -9,6 +9,7 @@ import (
 )
 
 type Config struct {
+	Features                                                                                                                                                                               FeatureFlags
 	ProfileBucket, KYCBucket                                                                                                                                                               string
 	FCMServiceAccountFile                                                                                                                                                                  string
 	RiderOrigin, CaptainOrigin, AdminOrigin                                                                                                                                                string
@@ -24,6 +25,7 @@ type Config struct {
 
 func ConfigFromEnv() (Config, error) {
 	c := Config{VAPIDPublic: os.Getenv("VAPID_PUBLIC_KEY"), VAPIDPrivate: os.Getenv("VAPID_PRIVATE_KEY"), VAPIDSubject: os.Getenv("VAPID_SUBJECT"), Address: env("ADDRESS", ":8080"), DatabaseURL: os.Getenv("DATABASE_URL"), ListenURL: os.Getenv("DATABASE_LISTEN_URL"), RedisURL: os.Getenv("REDIS_URL"), PublicOrigin: env("PUBLIC_ORIGIN", "http://localhost:8080"), AllowedOrigins: os.Getenv("ALLOWED_ORIGINS"), Issuer: os.Getenv("OIDC_ISSUER"), ClientID: os.Getenv("OIDC_CLIENT_ID"), ClientSecret: os.Getenv("OIDC_CLIENT_SECRET"), SessionKey: os.Getenv("SESSION_KEY"), RoutingURL: os.Getenv("ROUTING_URL"), GeocodingURL: os.Getenv("GEOCODING_URL"), Development: os.Getenv("APP_ENV") == "development"}
+	c.Features.HopCircle = os.Getenv("FEATURE_HOP_CIRCLE") == "true"
 	c.DevSMS = os.Getenv("DEV_SMS") == "true" || os.Getenv("ENABLE_TEST_SMS") == "true" || c.Development
 	c.DevPayments = os.Getenv("DEV_PAYMENTS") == "true" || os.Getenv("ENABLE_TEST_PAYMENTS") == "true" || c.Development
 	c.RiderOrigin, c.CaptainOrigin, c.AdminOrigin = os.Getenv("RIDER_ORIGIN"), os.Getenv("CAPTAIN_ORIGIN"), os.Getenv("ADMIN_ORIGIN")

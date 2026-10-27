@@ -41,7 +41,7 @@ for (const theme of ['light', 'dark']) for (const width of [320, 768, 1440]) {
     let failBooking = true;
     await page.route('**/api/rides',route => {
       requests.push(route.request().postDataJSON());
-      return route.fulfill(failBooking ? {status:503,json:{error:'Booking temporarily unavailable'}} : {json:{ok:true}});
+      return route.fulfill(failBooking ? {status:400,json:{error:'Booking temporarily unavailable'}} : {json:{ok:true}});
     });
     await page.goto('http://127.0.0.1:5173');
     await page.getByRole('button', { name: 'Test office', exact: false }).first().click();

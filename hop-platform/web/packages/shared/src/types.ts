@@ -145,6 +145,8 @@ export type Ride = {
   bids?: { id: string; amount_paise: number; driver_name: string; vehicle_number: string }[];
   reserved_driver_name?: string;
   reserved_until?: string;
+  circle_invitation?: boolean;
+  pickup_instructions?: string;
   passenger_name?: string;
   passenger_phone?: string;
   my_rating?: number | null;

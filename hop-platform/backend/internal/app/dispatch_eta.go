@@ -132,7 +132,7 @@ func rankCandidates(picks []pick, road map[string]float64, limit int) []pick {
 }
 func (s *Server) offerSeen(w http.ResponseWriter, r *http.Request) {
 	uid, id := user(r).Account.ID, r.PathValue("id")
-	tag, e := s.DB.Exec(r.Context(), `UPDATE ride_offers o SET displayed_at=COALESCE(displayed_at,now()) WHERE o.driver_id=$1 AND o.ride_id=$2 AND outcome IS NULL AND EXISTS(SELECT 1`+offerFrom+` AND r.id=$2)`, uid, id)
+	tag, e := s.DB.Exec(r.Context(), `UPDATE ride_offers o SET displayed_at=COALESCE(displayed_at,now()) WHERE o.driver_id=$1 AND o.ride_id=$2 AND outcome IS NULL AND EXISTS(SELECT 1`+s.circleOfferFrom()+` AND r.id=$2)`, uid, id)
 	if e != nil {
 		dbError(w, e)
 		return

@@ -219,6 +219,7 @@ export default function CaptainApp() {
                 refresh={s.refresh}
                 notify={s.notify}
                 development={s.development}
+                circleEnabled={s.features.hopCircle}
                 activeTab="vehicle"
                 onNavigateTab={navigateTab}
               />

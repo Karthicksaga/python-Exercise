@@ -1,3 +1,4 @@
+import {defaultFeatures,parseFeatures,type FeatureFlags} from "./circle";
 import { isAndroid, mobileApp, stopTracking } from "./platform";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, APIError, setCSRF } from "./api";
@@ -11,6 +12,7 @@ export const emptyState: State = { rides: [], driver: [], offers: [], incidents:
 // Sign-in, live state polling, push and alert polling shared by the rider and captain apps.
 export function useSession() {
   const { lowData } = useMapPrefs();
+  const [features,setFeatures]=useState<FeatureFlags>(defaultFeatures);
   const [user, setUser] = useState<User | null>(null),
     [loading, setLoading] = useState(true),
     [signingOut, setSigningOut] = useState(false),
@@ -54,8 +56,9 @@ export function useSession() {
     let live = true;
     async function init() {
       try {
-        const config = await api<{ areas: Area[]; vehicles: VehiclePricing[]; development: boolean; phone_login?: boolean }>("/api/config");
+        const config = await api<{ areas: Area[]; vehicles: VehiclePricing[]; development: boolean; phone_login?: boolean; features?: Partial<FeatureFlags> }>("/api/config");
         if (!live) return;
+        setFeatures(parseFeatures(config.features));
         setAreas(config.areas);
         setVehicles(config.vehicles);
         setDevelopment(config.development);
@@ -134,7 +137,7 @@ export function useSession() {
       setSigningOut(false);
     }
   }
-  return { user, setUser, loading, signingOut, areas, vehicles, data, notice, setNotice, notify, connection, development, phoneLogin, stateReady, refresh, logout, dark, toggleDark, permission, requestPermission, live, lowData };
+  return { features, user, setUser, loading, signingOut, areas, vehicles, data, notice, setNotice, notify, connection, development, phoneLogin, stateReady, refresh, logout, dark, toggleDark, permission, requestPermission, live, lowData };
 }
 
 // The notification card: icon, title and body split on " — ", auto-dismissing.

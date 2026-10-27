@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
+ "./circle": "./src/circle.ts",
+ "./circle.css": "./src/circle.css",
+ "./CircleCaptainCard": "./src/CircleCaptainCard.tsx",
     "./Icons": "./src/Icons.tsx",
     "./LiveNavMap": "./src/LiveNavMap.tsx",
     "./MapBoundary": "./src/MapBoundary.tsx",

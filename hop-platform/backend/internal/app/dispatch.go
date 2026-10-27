@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -127,7 +128,7 @@ func (s *Server) claimRides(ctx context.Context) ([]openRide, error) {
  AND ((dispatch_stage<$1 AND (dispatch_at IS NULL OR dispatch_at<now()-$2::interval)) OR (dispatch_stage>=$1 AND dispatch_at<now()-interval '5 seconds'))
  AND (dispatch_lease IS NULL OR dispatch_lease<now())
  ORDER BY created_at LIMIT $3 FOR UPDATE SKIP LOCKED)
- RETURNING id::text, dispatch_stage, COALESCE(favorite_first_until>now() OR reserved_until>now(),false)`, len(stageRadius), stageWait, dispatchBatch)
+ RETURNING id::text, dispatch_stage, COALESCE(favorite_first_until>now() OR reserved_until>now() OR ($4::boolean AND circle_until>now()),false)`, len(stageRadius), stageWait, dispatchBatch, s.Config.Features.HopCircle)
 	if e != nil {
 		return nil, e
 	}
@@ -149,7 +150,7 @@ func (s *Server) claimRides(ctx context.Context) ([]openRide, error) {
 func (s *Server) candidates(ctx context.Context, tx candidateQuerier, rideID, area, category string, lat, lng, radius float64, limit int, road map[string]float64) ([]pick, error) {
 	ids, truncated := s.shortlistLive(ctx, area, category, lat, lng, radius)
 	run := func(ids []string) ([]pick, error) {
-		rows, e := tx.Query(ctx, candidateSQL, rideID, radius, radius, max(limit, 24), ids)
+		rows, e := tx.Query(ctx, strings.Replace(candidateSQL, "\n ORDER BY score", s.circleEligibility("d.user_id")+"\n ORDER BY score", 1), rideID, radius, radius, max(limit, 24), ids)
 		if e != nil {
 			return nil, e
 		}
@@ -193,7 +194,8 @@ func (s *Server) dispatchRide(ctx context.Context, ride openRide) error {
 	offer := func(picks []pick, stage int) error {
 		for _, p := range picks {
 			etaSec := int(p.eta)
-			if _, e := tx.Exec(ctx, "INSERT INTO ride_offers(ride_id,driver_id,stage,score,eta_seconds,eta_source) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING", ride.id, p.id, stage, p.score, etaSec, p.source); e != nil {
+			if _, e := tx.Exec(ctx, `INSERT INTO ride_offers(ride_id,driver_id,stage,score,eta_seconds,eta_source,circle_invitation)
+ SELECT $1,$2,$3,$4,$5,$6,($7::boolean AND EXISTS(SELECT 1 FROM rides WHERE id=$1 AND circle_until>now())) ON CONFLICT DO NOTHING`, ride.id, p.id, stage, p.score, etaSec, p.source, s.Config.Features.HopCircle); e != nil {
 				return e
 			}
 		}

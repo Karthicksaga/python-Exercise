@@ -155,6 +155,9 @@ func (s *Server) Handler() http.Handler {
 		"GET /api/operator/analytics": s.operatorAnalytics,
 		"GET /api/admin/drivers":      s.adminDrivers, "POST /api/admin/drivers/{id}": s.adminDecision,
 	}
+	for pattern, handler := range s.circleRoutes() {
+		routes[pattern] = handler
+	}
 	for pattern, handler := range s.companionRoutes() {
 		routes[pattern] = handler
 	}

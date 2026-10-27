@@ -20,7 +20,7 @@ import {
   IconSearch,
   IconX,
 } from "@tabler/icons-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { api } from "@hop/shared/api";
 import type { Point } from "@hop/shared/types";
 import { useReverseGeocode } from "./MapPicker";
@@ -40,6 +40,8 @@ export default function PlaceInput({
   current?: boolean;
   scope?: "india";
 }) {
+  const listId = useId();
+  const [activeOption, setActiveOption] = useState(-1);
   const isMobile = useMediaQuery("(max-width: 820px)");
   const [text, setText] = useState(value?.label || "");
   const [places, setPlaces] = useState<Point[]>([]);
@@ -83,7 +85,7 @@ export default function PlaceInput({
     )
       .then((p) => {
         if (version === request.current) {
-          setPlaces(p);
+          setPlaces(p); setActiveOption(-1);
           setError(p.length ? "" : "No matching addresses inside this service area.");
         }
       })
@@ -176,6 +178,9 @@ export default function PlaceInput({
       <Stack gap={6} className="place-field" mb="sm">
         <TextInput
           label={label}
+          role="combobox" aria-autocomplete="list" aria-expanded={!isMobile && places.length>0}
+          aria-controls={!isMobile && places.length ? listId : undefined}
+          aria-activedescendant={!isMobile && activeOption>=0 ? `${listId}-${activeOption}` : undefined}
           value={text}
           size="md"
           radius="md"
@@ -226,10 +231,14 @@ export default function PlaceInput({
             setError("");
           }}
           onKeyDown={(e) => {
+            if (e.key === "Escape") { setPlaces([]); setActiveOption(-1); return; }
+            if ((e.key === "ArrowDown" || e.key === "ArrowUp") && places.length) {
+              e.preventDefault(); setActiveOption(i => (i + (e.key === "ArrowDown" ? 1 : -1) + places.length)%places.length); return;
+            }
             if (e.key !== "Enter") return;
             e.preventDefault();
             if (places.length) {
-              handleSelectPlace(places[0]);
+              handleSelectPlace(places[Math.max(0,activeOption)]);
             } else {
               submit();
             }
@@ -250,7 +259,7 @@ export default function PlaceInput({
           </Button>
         )}
 
-        {searching && !isMobile && <Text size="xs" c="dimmed">Searching addresses…</Text>}
+        {searching && !isMobile && <Text size="xs" c="dimmed" role="status">Searching addresses…</Text>}
         {error && !isMobile && <Text size="xs" c="red" role="status">{error}</Text>}
 
         {/* Desktop floating dropdown */}
@@ -259,7 +268,7 @@ export default function PlaceInput({
             withBorder
             shadow="lg"
             p={6}
-            className="places-list desktop-dropdown"
+            className="places-list desktop-dropdown" id={listId} role="listbox" aria-label={`${label} suggestions`}
             style={{
               position: "absolute",
               top: "100%",
@@ -273,7 +282,7 @@ export default function PlaceInput({
           >
             {places.map((p, i) => (
               <UnstyledButton
-                key={i}
+                key={i} id={`${listId}-${i}`} role="option" aria-selected={activeOption===i} tabIndex={-1}
                 w="100%"
                 px="sm"
                 py={10}
@@ -281,6 +290,7 @@ export default function PlaceInput({
                 onClick={() => handleSelectPlace(p)}
                 style={{
                   borderRadius: 8,
+                  background: activeOption===i ? "var(--brand-soft)" : undefined,
                   transition: "background 0.15s ease",
                 }}
               >
@@ -343,6 +353,7 @@ export default function PlaceInput({
                 </ActionIcon>
                 <TextInput
                   data-autofocus
+                  aria-label={`Search ${label.toLowerCase()}`}
                   autoFocus
                   style={{ flex: 1 }}
                   size="md"

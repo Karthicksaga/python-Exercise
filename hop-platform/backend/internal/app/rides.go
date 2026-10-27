@@ -9,13 +9,15 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const rideSelect = `SELECT r.id,r.status,r.version,r.payment_method,r.payment_status,r.created_at,r.expires_at,r.cancel_reason,
  q.pickup_label,q.dropoff_label,q.pickup_lat,q.pickup_lng,q.dropoff_lat,q.dropoff_lng,q.meters,q.seconds,COALESCE(r.offered_fare_paise,q.fare_paise) AS fare_paise,q.fare_paise AS quoted_fare_paise,r.offered_fare_paise IS NOT NULL AND r.share_state='none' AND r.wait_charge_paise=0 AS negotiated,r.wait_charge_paise,r.group_id,r.group_leader,r.share_state,r.share_until,q.trip_type,q.stops,q.rental_hours,q.round_trip,q.trip_days,q.breakdown,q.area_id,q.route_geometry AS route,
- q.vehicle_category,q.base_paise,q.per_km_paise,q.minimum_paise,r.passenger_name,r.passenger_phone,
+ q.vehicle_category,q.base_paise,q.per_km_paise,q.minimum_paise,r.passenger_name,r.passenger_phone,CASE WHEN r.rider_id=$1::uuid OR r.driver_id=$1::uuid THEN r.pickup_instructions ELSE '' END AS pickup_instructions,
  r.rider_id=$1::uuid AS mine,r.driver_id=$1::uuid AS driving,
  CASE WHEN r.driver_id IS NOT NULL THEN d.vehicle_number ELSE '' END AS vehicle_number,
  CASE WHEN r.driver_id IS NOT NULL THEN da.name ELSE '' END AS driver_name,
@@ -115,7 +117,7 @@ func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 	}
 	// The SQL proximity filter is an inexpensive candidate filter; acceptance repeats exact distance validation.
 	offers, e := jsonRows(r.Context(), s.DB, `SELECT r.id,r.version,r.group_id,r.share_state,q.pickup_label,q.dropoff_label,q.pickup_lat,q.pickup_lng,q.dropoff_lat,q.dropoff_lng,q.meters,q.seconds,COALESCE(r.offered_fare_paise,q.fare_paise)+`+groupFareExtra+` AS fare_paise,q.fare_paise AS quoted_fare_paise,r.offered_fare_paise IS NOT NULL AND r.share_state='none' AS negotiated,
- (SELECT amount_paise FROM ride_bids b WHERE b.ride_id=r.id AND b.driver_id=$1) AS my_bid_paise,q.trip_type,q.stops,q.rental_hours,q.vehicle_category,q.pink,q.route_geometry AS route,r.payment_method,r.expires_at`+offerFrom+` ORDER BY r.created_at LIMIT 20`, uid)
+ (SELECT amount_paise FROM ride_bids b WHERE b.ride_id=r.id AND b.driver_id=$1) AS my_bid_paise,q.trip_type,q.stops,q.rental_hours,q.vehicle_category,q.pink,q.route_geometry AS route,r.payment_method,r.expires_at,($2::boolean AND r.circle_until>now()) AS circle_invitation`+s.circleOfferFrom()+` ORDER BY r.created_at LIMIT 20`, uid, s.Config.Features.HopCircle)
 	if e != nil {
 		dbError(w, e)
 		return
@@ -146,9 +148,12 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var input struct {
-		QuoteID    string `json:"quote_id"`
-		RequestKey string `json:"request_key"`
-		Payment    string `json:"payment_method"`
+		Circle             bool   `json:"circle"`
+		CircleCaptainID    string `json:"circle_captain_id"`
+		PickupInstructions string `json:"pickup_instructions"`
+		QuoteID            string `json:"quote_id"`
+		RequestKey         string `json:"request_key"`
+		Payment            string `json:"payment_method"`
 		// Optional: ride for someone else, a family member, and favorite-driver-first dispatch.
 		FamilyMemberID string `json:"family_member_id"`
 		PassengerName  string `json:"passenger_name"`
@@ -159,6 +164,11 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 		GoOffline      bool   `json:"go_offline"`
 	}
 	if !decode(w, r, &input) {
+		return
+	}
+	input.PickupInstructions = strings.TrimSpace(input.PickupInstructions)
+	if utf8.RuneCountInString(input.PickupInstructions) > 250 {
+		fail(w, 400, "Pickup instructions must be 250 characters or fewer")
 		return
 	}
 	if input.Payment != "cash" && input.Payment != "upi" && input.Payment != "wallet" {
@@ -209,10 +219,11 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	var existing, oldQuote, oldPayment string
-	e = tx.QueryRow(ctx, "SELECT id,quote_id,payment_method FROM rides WHERE rider_id=$1 AND request_key=$2", uid, input.RequestKey).Scan(&existing, &oldQuote, &oldPayment)
+	var existing, oldQuote, oldPayment, oldCircleCaptain string
+	var oldCircle bool
+	e = tx.QueryRow(ctx, "SELECT id,quote_id,payment_method,circle_requested,COALESCE(circle_captain_id::text,'') FROM rides WHERE rider_id=$1 AND request_key=$2", uid, input.RequestKey).Scan(&existing, &oldQuote, &oldPayment, &oldCircle, &oldCircleCaptain)
 	if e == nil {
-		if oldQuote != input.QuoteID || oldPayment != input.Payment {
+		if oldQuote != input.QuoteID || oldPayment != input.Payment || oldCircle != input.Circle || oldCircleCaptain != input.CircleCaptainID {
 			fail(w, 409, "Request key was already used for a different booking")
 			return
 		}
@@ -222,6 +233,39 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 	if !errors.Is(e, pgx.ErrNoRows) {
 		dbError(w, e)
 		return
+	}
+	// Existing retries are resolved above, including when the feature is disabled.
+	if input.CircleCaptainID != "" && !input.Circle {
+		fail(w, 400, "Choose Hop Circle before selecting a Captain")
+		return
+	}
+	if input.Circle {
+		if !s.Config.Features.HopCircle {
+			fail(w, 404, "Hop Circle is not enabled")
+			return
+		}
+		if input.Share || input.FavoriteFirst {
+			fail(w, 400, "Choose Circle separately from shared rides and legacy favorite-first")
+			return
+		}
+		var parsed pgtype.UUID
+		if input.CircleCaptainID != "" && parsed.Scan(input.CircleCaptainID) != nil {
+			fail(w, 400, "Invalid Captain identifier")
+			return
+		}
+		var eligible bool
+		e = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM favorite_drivers f JOIN drivers d ON d.user_id=f.driver_id
+   JOIN circle_captain_preferences cp ON cp.captain_id=d.user_id AND cp.opted_in
+   WHERE f.rider_id=$1 AND d.status='approved' AND ($2::text='' OR d.user_id=NULLIF($2,'')::uuid)
+   AND NOT EXISTS(SELECT 1 FROM circle_blocks b WHERE b.captain_id=d.user_id AND b.rider_id=$1))`, uid, input.CircleCaptainID).Scan(&eligible)
+		if e != nil {
+			dbError(w, e)
+			return
+		}
+		if !eligible {
+			fail(w, 409, "No participating Circle Captain is available for preferred requests; choose normal matching")
+			return
+		}
 	}
 	var driving, online bool
 	if e = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM rides WHERE driver_id=$1 AND status IN ('accepted','arrived','in_progress')), EXISTS(SELECT 1 FROM drivers WHERE user_id=$1 AND online)", uid).Scan(&driving, &online); e != nil {
@@ -294,10 +338,10 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var id string
-	e = tx.QueryRow(ctx, `INSERT INTO rides(quote_id,rider_id,request_key,payment_method,passenger_name,passenger_phone,offered_fare_paise,favorite_first_until)
- SELECT q.id,q.rider_id,$3,$4,$5,$6,CASE WHEN $8::bigint<>q.fare_paise THEN $8::bigint END,CASE WHEN $7::boolean AND EXISTS(SELECT 1 FROM favorite_drivers WHERE rider_id=$2::uuid) THEN now()+interval '60 seconds' END
+	e = tx.QueryRow(ctx, `INSERT INTO rides(quote_id,rider_id,request_key,payment_method,passenger_name,passenger_phone,offered_fare_paise,favorite_first_until,pickup_instructions,circle_requested,circle_captain_id,circle_until)
+ SELECT q.id,q.rider_id,$3,$4,$5,$6,CASE WHEN $8::bigint<>q.fare_paise THEN $8::bigint END,CASE WHEN $7::boolean AND EXISTS(SELECT 1 FROM favorite_drivers WHERE rider_id=$2::uuid) THEN now()+interval '60 seconds' END,$9,$10,NULLIF($11,'')::uuid,CASE WHEN $10::boolean THEN now()+interval '60 seconds' END
  FROM quotes q JOIN areas a ON a.id=q.area_id WHERE q.id=$1 AND q.rider_id=$2 AND q.expires_at>now() AND a.active RETURNING id`,
-		input.QuoteID, uid, input.RequestKey, input.Payment, input.PassengerName, input.PassengerPhone, input.FavoriteFirst, offerOrQuote(input.OfferPaise, quotedFare)).Scan(&id)
+		input.QuoteID, uid, input.RequestKey, input.Payment, input.PassengerName, input.PassengerPhone, input.FavoriteFirst, offerOrQuote(input.OfferPaise, quotedFare), input.PickupInstructions, input.Circle, input.CircleCaptainID).Scan(&id)
 	if errors.Is(e, pgx.ErrNoRows) {
 		fail(w, 409, "Quote expired or service area unavailable; request a fresh quote")
 		return
@@ -452,6 +496,18 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 		if e != nil || !has || distance(at, pickup) > float64(pickupRadius) {
 			fail(w, 403, "An approved, nearby driver with fresh location is required")
 			return
+		}
+		if s.Config.Features.HopCircle {
+			var eligible bool
+			e = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM rides r WHERE r.id=$1"+s.circleEligibility("$2::uuid")+")", id, uid).Scan(&eligible)
+			if e != nil {
+				dbError(w, e)
+				return
+			}
+			if !eligible {
+				fail(w, 409, "This Circle invitation is no longer available")
+				return
+			}
 		}
 		var reserved bool
 		e = tx.QueryRow(ctx, `SELECT COALESCE(favorite_first_until>now() AND NOT EXISTS(SELECT 1 FROM favorite_drivers WHERE rider_id=rides.rider_id AND driver_id=$2),false)
@@ -841,7 +897,7 @@ func (s *Server) bid(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(ctx)
 	var eligible bool
-	e = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1"+offerFrom+" AND r.id=$2::uuid AND $3::bigint>=d.minimum_fare_paise)", uid, rideID, in.AmountPaise).Scan(&eligible)
+	e = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1"+s.circleOfferFrom()+" AND r.id=$2::uuid AND $3::bigint>=d.minimum_fare_paise)", uid, rideID, in.AmountPaise).Scan(&eligible)
 	if e != nil {
 		dbError(w, e)
 		return
@@ -890,6 +946,23 @@ func (s *Server) acceptBid(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		dbError(w, e)
 		return
+	}
+	if s.Config.Features.HopCircle {
+		var captain string
+		if e = tx.QueryRow(ctx, "SELECT user_id FROM drivers WHERE user_id=$1 FOR UPDATE", driver).Scan(&captain); e != nil {
+			dbError(w, e)
+			return
+		}
+		var eligible bool
+		e = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM rides r WHERE r.id=$1"+s.circleEligibility("$2::uuid")+")", r.PathValue("id"), driver).Scan(&eligible)
+		if e != nil {
+			dbError(w, e)
+			return
+		}
+		if !eligible {
+			fail(w, 409, "This Circle fare offer is no longer eligible")
+			return
+		}
 	}
 	_, e = tx.Exec(ctx, "UPDATE rides SET offered_fare_paise=$2,reserved_driver_id=$3,reserved_until=now()+interval '60 seconds',version=version+1,updated_at=now() WHERE id=$1", r.PathValue("id"), amount, driver)
 	if e == nil {
@@ -980,7 +1053,7 @@ func (s *Server) decline(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(ctx)
 	var ok bool
-	if e = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1"+offerFrom+" AND r.id=$2::uuid)", uid, rideID).Scan(&ok); e != nil {
+	if e = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1"+s.circleOfferFrom()+" AND r.id=$2::uuid)", uid, rideID).Scan(&ok); e != nil {
 		dbError(w, e)
 		return
 	}
