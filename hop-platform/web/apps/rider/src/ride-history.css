@@ -1,0 +1,18 @@
+.rider-history { min-width: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--card); padding: 20px; }
+.rider-history .history-tabs { display: flex; border-bottom: 1px solid var(--line); margin: -4px 0 20px; }
+.rider-history .history-tabs button { flex: 0 1 140px; margin: 0; background: transparent; color: var(--muted); border: 0; border-bottom: 3px solid transparent; border-radius: 0; box-shadow: none; padding: 14px 10px; }
+.rider-history .history-tabs button[aria-selected="true"] { color: var(--brand); border-bottom-color: var(--brand); font-weight: 700; }
+.rider-history .history-empty { display: grid; justify-items: center; text-align: center; padding: clamp(32px,8vw,110px) 8px; }
+.rider-history .history-empty h2 { font-size: 1.2rem; margin: 20px 0 8px; }
+.rider-history .history-empty p { margin: 0 0 24px; color: var(--muted); }
+.rider-history .history-illustration { width: min(100%,280px); display: grid; justify-items: center; background: radial-gradient(ellipse at bottom,var(--brand-soft),transparent 70%); }
+.rider-history .history-illustration span { color: var(--brand); font-size: 32px; line-height: 1; }
+.rider-history .history-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.rider-history .history-empty-actions button { min-width: 150px; margin: 0; }
+.rider-history .history-scheduled { display: grid; gap: 12px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; overflow-wrap: anywhere; }
+.rider-history .history-scheduled p { margin: 0; }
+.rider-history .stat-strip { flex-wrap: wrap; }
+.rider-history :is(button):focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+@media(max-width: 430px) { .rider-history { padding: 14px; } .rider-history .stat-strip { display: grid; grid-template-columns: 1fr; gap: 12px; } .rider-history .history-empty-actions { width: 100%; } .rider-history .history-empty-actions button { width: 100%; } }
+
+.rider-history .history-empty-actions button:not(.ghost) { color: var(--action-ink, #fff); }

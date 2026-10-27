@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-const widths = [320, 360, 390, 430, 768, 1024, 1280, 1440, 1920];
+const widths = [320, 375, 390, 430, 768, 1024, 1280, 1440, 1920];
 const details = { id: 'ui-user', name: 'Responsive Test Rider With A Long Name', email: 'ui@example.invalid', phone: '9092112969', phone_verified: true, phone_login: true, has_photo: false, photo_approved: false, created_at: '2026-01-01T00:00:00Z', gender: '', birth_date: null, avatar_color: 'indigo', default_payment: 'cash', default_vehicle: '', company_name: '', business_gstin: '', cost_centre: '', work_email: '', deletion_requested_at: null };
 const stats = { rides_taken: 0, rides_cancelled: 0, spent_paise: 0, meters: 0, rating_avg: null, rating_count: 0, wallet_paise: 0, reward_points: 0, drives_completed: 0, saved_places: 0 };
 async function fixture(page: Page, captain: boolean) {
@@ -24,7 +24,7 @@ async function fixture(page: Page, captain: boolean) {
   });
 }
 const longAddress = 'Chennai One phase two, Pallavaram - Thoraipakkam Road, Ward 189, Perungudi, A very long apartment address';
-for (const theme of ['light', 'dark']) for (const width of [320, 768, 1440]) {
+for (const theme of ['light', 'dark']) for (const width of widths) {
   test(`booking steps ${theme} ${width}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(theme => localStorage.setItem('hop.theme', theme), theme);
@@ -44,19 +44,20 @@ for (const theme of ['light', 'dark']) for (const width of [320, 768, 1440]) {
       return route.fulfill(failBooking ? {status:503,json:{error:'Booking temporarily unavailable'}} : {json:{ok:true}});
     });
     await page.goto('http://127.0.0.1:5173');
+    await page.screenshot({ path: testInfo.outputPath('where.png'), fullPage: true });
     await page.getByRole('button', { name: 'Test office', exact: false }).first().click();
-    await page.getByRole('button', { name: 'Choose a ride', exact: true }).click();
+    await page.getByRole('button', { name: 'See available rides', exact: true }).click();
     await expect(page.getByRole('radiogroup', { name: 'Choose your ride' })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('choose.png'), fullPage: true });
     await page.getByRole('button', { name: '← Back', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Choose a ride', exact: true })).toBeEnabled();
-    await page.getByRole('button', { name: 'Choose a ride', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'See available rides', exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: 'See available rides', exact: true }).click();
     await expect(page.getByRole('radio', {name: /Auto-rickshaw/})).toHaveAttribute('aria-checked','true');
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page.locator('.quote')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('confirm.png'), fullPage: true });
-    const request = page.getByRole('button',{name:'Request Auto-rickshaw',exact:true});
+    const request = page.getByRole('button',{name:'Confirm & Book',exact:true});
     await page.locator('.booking-advanced summary').click();
     const sharing = page.getByRole('switch', {name: /Share this ride and save/});
     await sharing.check();
@@ -81,7 +82,78 @@ for (const theme of ['light', 'dark']) for (const width of [320, 768, 1440]) {
     failBooking = false;
     await request.click();
     await expect.poll(()=>requests.length).toBe(2);
-    await expect(page.getByRole('button',{name:'Choose a ride',exact:true})).toBeVisible();
+    await expect(page.getByRole('button',{name:'See available rides',exact:true})).toBeVisible();
 
   });
 }
+
+for (const width of widths) test(`ride history tabs ${width}`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 });
+  await fixture(page, false);
+  await page.goto('http://127.0.0.1:5173');
+  await page.getByRole('button', { name: /^(Your rides|Rides)$/ }).first().click();
+  await expect(page.getByRole('heading', { name: 'No active rides' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Upcoming' }).click();
+  await expect(page.getByRole('heading', { name: 'No upcoming rides' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Past', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'No past rides' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('history.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Book a ride', exact: true }).last().click();
+  await expect(page.getByRole('region', { name: 'My rides' })).toHaveCount(0);
+});
+
+test('scheduled history cancellation and load failure', async ({ page }) => {
+  await fixture(page, false);
+  let cancelled = false;
+  let fail = true;
+  await page.route('**/api/companion', route => route.fulfill(fail ? {status: 503, json: { error: 'Schedule unavailable' }} : {json: {scheduled_rides: cancelled ? [] : [{id: 'scheduled-ui', category: 'auto', pickup_label: 'Home', dropoff_label: 'Office', scheduled_for: '2027-01-01T10:00:00Z', status: 'scheduled'}]}}));
+  await page.route('**/api/scheduled-rides/scheduled-ui/cancel', route => {
+    expect(route.request().postDataJSON()).toEqual({});
+    cancelled = true;
+    return route.fulfill({json:{ok:true}});
+  });
+  await page.goto('http://127.0.0.1:5173');
+  await page.getByRole('button', {name:'Your rides', exact:true}).click();
+  await page.getByRole('tab', {name:'Ongoing'}).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('tab', {name:'Upcoming'})).toBeFocused();
+  await expect(page.getByRole('alert')).toContainText('Schedule unavailable', { timeout: 15000 });
+  fail = false;
+  await page.getByRole('button', {name:'Try again',exact:true}).click();
+  await expect(page.locator('.history-scheduled')).toContainText('Home → Office');
+  await page.locator('.history-scheduled').getByRole('button',{name:'Cancel',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'No upcoming rides'})).toBeVisible();
+  expect(cancelled).toBe(true);
+});
+
+test('history keeps active, completed and cancelled ride cards in their tabs', async ({ page }) => {
+  await fixture(page, false);
+  const trip = { id: 'history-active', status: 'accepted', version: 1, pickup_label: 'Active pickup', dropoff_label: 'Active destination', pickup_lat: 13.02, pickup_lng: 80.18, dropoff_lat: 13.04, dropoff_lng: 80.2, meters: 17000, seconds: 3600, fare_paise: 3000, vehicle_category: 'auto', mine: true, payment_method: 'cash', payment_status: 'driver_reported_received', driver_name: 'Test Captain', vehicle_number: 'TN22EB2250', rider_name: 'Test Rider', created_at: '2026-10-26T00:00:00Z', completed_at: '2026-10-26T01:00:00Z', expires_at: '2099-01-01T00:00:00Z', commission_paise: 0 };
+  await page.route('**/api/state', route => route.fulfill({json: {rides: [trip, {...trip, id:'history-completed', status:'completed', pickup_label:'Completed pickup'}, {...trip, id:'history-cancelled', status:'cancelled', pickup_label:'Cancelled pickup'}], driver:[], offers:[], incidents:[], saved_locations:[]}}));
+  await page.goto('http://127.0.0.1:5173');
+  await page.getByRole('button', {name:'Your rides',exact:true}).click();
+  const panel = page.getByRole('tabpanel');
+  await expect(panel.locator('.ride-card')).toHaveCount(1);
+  await expect(panel).toContainText('Active pickup');
+  await page.getByRole('tab',{name:'Past',exact:true}).click();
+  await expect(panel.locator('.ride-card')).toHaveCount(2);
+  await expect(panel).toContainText('Completed pickup');
+  await expect(panel).toContainText('Cancelled pickup');
+  await expect(panel).not.toContainText('Active pickup');
+});
+
+test('leaving a loading upcoming tab keeps past rides accessible', async ({ page }) => {
+  await fixture(page, false);
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/companion', async route => { await pending; await route.fulfill({json:{scheduled_rides:[]}}); });
+  await page.goto('http://127.0.0.1:5173');
+  await page.getByRole('button', {name:'Your rides',exact:true}).click();
+  await page.getByRole('tab',{name:'Upcoming'}).click();
+  await expect(page.getByRole('status').filter({hasText:'Loading scheduled rides'})).toBeVisible();
+  await page.getByRole('tab',{name:'Past',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'No past rides'})).toBeVisible();
+  await expect(page.getByRole('tabpanel')).toHaveAttribute('aria-busy','false');
+  release();
+});

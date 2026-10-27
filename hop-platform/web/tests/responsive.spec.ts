@@ -115,7 +115,7 @@ for (const theme of ['light', 'dark']) for (const width of [320, 768, 1024, 1920
     await page.route('**/api/quotes', r => r.fulfill({ json: { id: 'quote-ui', meters: 2000, seconds: 600, fare_paise: 6000, vehicle_category: 'auto', vehicle_name: 'Auto-rickshaw', commission_paise: 0, route: [], expires_at: '2099-01-01T00:00:00Z', fare_breakdown: { base_paise: 3000, distance_paise: 3000, minimum_adjustment_paise: 0, platform_fee_paise: 0, total_paise: 6000 } } }));
     await page.goto('http://127.0.0.1:5173');
     await page.getByRole('button', { name: 'Test office', exact: false }).first().click();
-    await page.getByRole('button', { name: 'Choose a ride', exact: true }).click();
+    await page.getByRole('button', { name: 'See available rides', exact: true }).click();
     await expect(page.getByRole('radiogroup', { name: 'Choose your ride' })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('choose.png'), fullPage: true });
     await page.getByRole('button', { name: 'Continue', exact: true }).click();

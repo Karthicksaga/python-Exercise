@@ -1,4 +1,5 @@
 import BookingWorkspace from "./BookingWorkspace";
+import RideHistory from "./RideHistory";
 import ResponsiveNav from "@hop/shared/ResponsiveNav";
 import AppHeader from "@hop/shared/AppHeader";
 import { ShareToggle } from "@hop/shared/SharedRide";
@@ -719,7 +720,7 @@ export default function RiderApp() {
                                   disabled={!pickup || (!dropoff && trip.trip_type !== "rental")}
                                   onClick={() => changeStep("choose")}
                                 >
-                                  Choose a ride <span className="arrow" aria-hidden="true" />
+                                  See available rides <span className="arrow" aria-hidden="true" />
                                 </button>
                               </div>
                             </>
@@ -902,7 +903,7 @@ export default function RiderApp() {
                           >
                             {busy
                               ? "Requesting…"
-                              : `Request ${quote.vehicle_name}`}{" "}
+                              : "Confirm & Book"}{" "}
                             <span className="arrow" aria-hidden="true" />
                           </button>
                           <button
@@ -965,29 +966,7 @@ export default function RiderApp() {
               </div>
             )}
             {tab === "history" && (
-              <section>
-                <div className="stat-strip">
-                  <div><strong>{myRides.length}</strong><span>Total rides</span></div>
-                  <div><strong>{myRides.filter((r) => r.status === "completed").length}</strong><span>Completed</span></div>
-                  <div><strong>₹{(myRides.filter((r) => r.status === "completed").reduce((a, r) => a + r.fare_paise, 0) / 100).toFixed(0)}</strong><span>Total fares</span></div>
-                </div>
-                {!myRides.length ? (
-                  <div className="empty">
-                    Your booked rides will appear here.
-                  </div>
-                ) : (
-                  <div className="ride-grid">
-                    {myRides.map((r) => (
-                      <RideCard
-                        key={r.id}
-                        ride={r}
-                        refresh={refresh}
-                        notify={notify}
-                      />
-                    ))}
-                  </div>
-                )}
-              </section>
+              <RideHistory rides={myRides} refresh={refresh} notify={notify} onBook={() => changeTab("ride")} />
             )}
             {tab === "support" && (
               <section className="support-page">
