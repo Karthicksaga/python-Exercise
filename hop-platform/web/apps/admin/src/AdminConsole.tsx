@@ -2,14 +2,15 @@ import { PrivateImage } from "@hop/shared/TrustProfile";
 import ResponsiveTable from "@hop/shared/ResponsiveTable";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert, Badge, Button, Card, Checkbox, Container, Drawer, Group, SimpleGrid, Stack, Switch, Table, Tabs, Text, Textarea,
+  Alert, Badge, Button, Card, Checkbox, Container, Drawer, Group, Select, SimpleGrid, Stack, Switch, Table, Tabs, Text, Textarea,
 } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { api } from "@hop/shared/api";
+import type { Area } from "@hop/shared/types";
 
 type AdminDriver = {
   has_photo: boolean; phone_verified: boolean; documents: string[]; onboarding_version: number; vehicle_make: string; vehicle_model: string; vehicle_color: string;
-  id: string; name: string; email: string; phone: string; gender: string; status: string; online: boolean; area: string;
+  id: string; name: string; email: string; phone: string; gender: string; status: string; online: boolean; area: string; area_id?: string;
   vehicle_category: string; vehicle_number: string; license_reference: string; insurance_reference: string;
   license_expires: string; insurance_expires: string; docs_expired: boolean; review_note: string; pink_certified: boolean;
   identity_ok: boolean; license_ok: boolean; rc_ok: boolean; insurance_ok: boolean; vehicle_ok: boolean; police_ok: boolean; trips: number;
@@ -27,6 +28,8 @@ const statusColor: Record<string, string> = { pending: "yellow", approved: "gree
 
 export default function AdminConsole({ notify }: { notify: (s: string) => void; onExit?: () => void }) {
   const [rows, setRows] = useState<AdminDriver[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [assignedArea, setAssignedArea] = useState<string>("");
   const [tab, setTab] = useState<string | null>("pending");
   const [sel, setSel] = useState<AdminDriver | null>(null);
   const [form, setForm] = useState<Record<string, boolean>>({});
@@ -36,7 +39,12 @@ export default function AdminConsole({ notify }: { notify: (s: string) => void; 
 
   const load = useCallback(async () => {
     try {
-      setRows((await api<{ drivers: AdminDriver[] }>("/api/admin/drivers")).drivers ?? []);
+      const [cfg, driverRes] = await Promise.all([
+        api<{ areas: Area[] }>("/api/config"),
+        api<{ drivers: AdminDriver[] }>("/api/admin/drivers"),
+      ]);
+      setAreas(cfg.areas ?? []);
+      setRows(driverRes.drivers ?? []);
     } catch (e) {
       notify((e as Error).message);
     }
@@ -49,6 +57,7 @@ export default function AdminConsole({ notify }: { notify: (s: string) => void; 
   function open(r: AdminDriver) {
     setSel(r); setDocumentKind("");
     setNote("");
+    setAssignedArea(r.area_id || "");
     setForm(Object.fromEntries([...CHECKS.map(([k]) => [k, Boolean(r[k])]), ["pink_certified", r.pink_certified]]));
   }
   const all = CHECKS.every(([k]) => form[k]);
@@ -57,7 +66,12 @@ export default function AdminConsole({ notify }: { notify: (s: string) => void; 
     if (!sel) return;
     setBusy(true);
     try {
-      await api(`/api/admin/drivers/${sel.id}`, { ...form, status, note });
+      await api(`/api/admin/drivers/${sel.id}`, {
+        ...form,
+        status,
+        note,
+        area_id: assignedArea && assignedArea !== sel.area_id ? assignedArea : undefined,
+      });
       notify(status === "approved" ? "Driver enabled." : status === "suspended" ? "Driver disabled." : "Checklist saved.");
       setSel(null);
       await load();
@@ -114,7 +128,20 @@ export default function AdminConsole({ notify }: { notify: (s: string) => void; 
                 <div><Text size="xs" c="dimmed">Phone {sel.phone_verified ? "(verified)" : "(unverified)"}</Text><Text size="sm">{sel.phone || "—"}</Text></div>
                 <div><Text size="xs" c="dimmed">Gender (profile)</Text><Text size="sm">{sel.gender || "not set"}</Text></div>
                 <div><Text size="xs" c="dimmed">Vehicle</Text><Text size="sm">{sel.vehicle_number} · {sel.vehicle_category}<br/>{sel.vehicle_color} {sel.vehicle_make} {sel.vehicle_model}</Text></div>
-                <div><Text size="xs" c="dimmed">Area · trips</Text><Text size="sm">{sel.area} · {sel.trips}</Text></div>
+                <div>
+                  <Text size="xs" c="dimmed">Area · trips</Text>
+                  <Text size="sm">{sel.area} · {sel.trips}</Text>
+                  {areas.length > 0 && (
+                    <Select
+                      label="Service area"
+                      size="xs"
+                      mt={4}
+                      data={areas.filter((a) => a.active).map((a) => ({ value: a.id, label: `${a.name} (${a.state})` }))}
+                      value={assignedArea}
+                      onChange={(val) => setAssignedArea(val || "")}
+                    />
+                  )}
+                </div>
                 <div><Text size="xs" c="dimmed">Licence ref · expires</Text><Text size="sm">{sel.license_reference} · {sel.license_expires}</Text></div>
                 <div><Text size="xs" c="dimmed">Insurance ref · expires</Text><Text size="sm">{sel.insurance_reference} · {sel.insurance_expires}</Text></div>
               </SimpleGrid>

@@ -1,3 +1,4 @@
+import BookingWorkspace from "./BookingWorkspace";
 import ResponsiveNav from "@hop/shared/ResponsiveNav";
 import AppHeader from "@hop/shared/AppHeader";
 import { ShareToggle } from "@hop/shared/SharedRide";
@@ -459,7 +460,7 @@ export default function RiderApp() {
                     />
                   ) : (
                     <>
-                      <div className="stage">
+                      <BookingWorkspace step={step}>
                         <div className="stage-map">
                       {locState === "ready" && areas.find((item) => item.id === area) && (
                         <MapBoundary>
@@ -486,7 +487,7 @@ export default function RiderApp() {
                         </MapBoundary>
                       )}
                         </div>
-                        <div className="sheet">
+                        <div className="booking-panel">
                           <ol className="steps" aria-label="Booking steps">
                             {(["where", "choose", "confirm"] as const).map((id, i) => (
                               <li key={id} className={(step === id ? "on " : "") + (["where", "choose", "confirm"].indexOf(step) > i ? "done" : "")} aria-current={step === id ? "step" : undefined}>
@@ -495,6 +496,7 @@ export default function RiderApp() {
                               </li>
                             ))}
                           </ol>
+                          <div className="booking-stage-heading"><h2>{step === "where" ? "Where are you heading?" : step === "choose" ? "Choose your ride" : "Review your trip"}</h2><p>{step === "where" ? "Set your pickup and destination to get started." : step === "choose" ? "Compare estimated fares for your route." : "Check your route, payment and fare before requesting."}</p></div>
                           {step === "where" && (
                             <>
                               <fieldset disabled={busy}>
@@ -675,7 +677,7 @@ export default function RiderApp() {
                         </button>
                       </form>
                       </Modal>
-                              <div className="step-footer">
+                              <div className="booking-footer">
                                 <button
                                   className="full"
                                   disabled={!pickup || (!dropoff && trip.trip_type !== "rental")}
@@ -700,9 +702,9 @@ export default function RiderApp() {
                           nearby={nearby}
                         />
                               </fieldset>
-                              <div className="step-actions">
+                              <div className="booking-footer booking-footer-row">
                                 <button type="button" className="ghost" onClick={() => changeStep("where")}>← Back</button>
-                                <button className="grow" disabled={!vehicleCategory} onClick={() => changeStep("confirm")}>
+                                <button className="grow" disabled={busy || !areaVehicles.some(v => v.category === vehicleCategory)} onClick={() => changeStep("confirm")}>
                                   Continue <span className="arrow" aria-hidden="true" />
                                 </button>
                               </div>
@@ -711,7 +713,16 @@ export default function RiderApp() {
                           {step === "confirm" && (
                             <>
                               <button type="button" className="text-button back" onClick={() => changeStep("choose")}>← Change ride</button>
-                              <fieldset disabled={busy}>
+                              <section className="booking-route-summary" aria-label="Trip summary">
+                                <div><h3>Trip summary</h3><button type="button" className="text-button" onClick={() => changeStep("where")}>Edit route</button></div>
+                                {quote && <div className="booking-summary-fare"><strong>{quote.vehicle_name}</strong><span>{(quote.meters / 1000).toFixed(1)} km · {Math.ceil(quote.seconds / 60)} min</span><strong>{money(share && quote.shared_fare_paise ? quote.shared_payable_paise ?? quote.shared_fare_paise : quote.payable_paise ?? quote.fare_paise)}</strong></div>}
+                                <ol><li><span>Pickup</span><strong>{pickup?.label}</strong></li>
+                                  {trip.stops.filter(s => s.label).map((s, i) => <li key={i}><span>Stop {i + 1}</span><strong>{s.label}</strong></li>)}
+                                  <li><span>{trip.trip_type === "rental" ? "Rental" : "Destination"}</span><strong>{trip.trip_type === "rental" ? `${trip.rental_hours} hours` : dropoff?.label}</strong></li>
+                                </ol>
+                              </section>
+                              <fieldset disabled={busy} className="booking-passenger">
+                                <legend>Passenger & payment</legend>
                         {gender === "female" && !pink && (new Date().getHours() >= 21 || new Date().getHours() < 5) && (
                           <Alert color="pink" mb="sm" icon={<IconAlertTriangle size={16} />}>Travelling late? Switch on Pink ride to be matched with a verified woman driver.</Alert>
                         )}
@@ -813,6 +824,7 @@ export default function RiderApp() {
                               {money(share && quote.shared_fare_paise ? quote.shared_payable_paise ?? quote.shared_fare_paise : quote.payable_paise ?? quote.fare_paise)}
                             </strong>
                           </div>
+                          <details className="booking-advanced"><summary>Sharing & optional fare offer</summary>
                           <ShareToggle quote={quote} value={share} onChange={setShare} />
                           {!share && <label>
                             Your fare offer (₹, optional — drivers can accept or counter)
@@ -832,8 +844,9 @@ export default function RiderApp() {
                               Offer must be between {money(Math.ceil(quote.fare_paise * 0.7))} and {money(Math.floor(quote.fare_paise * 1.5))}.
                             </p>
                           )}
-                          <p className="muted">
-                            ₹0 platform fee · Quote valid for{" "}
+                          </details>
+                          <p className="booking-validity" role="status">
+                            {Date.parse(quote.expires_at) <= now ? "Quote expired — refresh to request your ride. " : "Quote valid for "}
                             {Math.max(
                               0,
                               Math.ceil(
@@ -843,7 +856,7 @@ export default function RiderApp() {
                             s
                           </p>
                         </div>
-                          <div className="step-footer">
+                          <div className="booking-footer">
                           <button
                             className="full"
                             disabled={
@@ -866,7 +879,7 @@ export default function RiderApp() {
                           </div>
                         </>
                       ) : (
-                        <div className="step-footer">
+                        <div className="booking-footer">
                           <button
                             className="full"
                             disabled={
@@ -890,7 +903,7 @@ export default function RiderApp() {
                             </>
                           )}
                         </div>
-                      </div>
+                      </BookingWorkspace>
                     </>
                   )}
                 </section>

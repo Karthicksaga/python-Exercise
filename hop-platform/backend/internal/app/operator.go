@@ -31,6 +31,11 @@ func (s *Server) operatorState(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
+	areaChanges, e := jsonRows(ctx, s.DB, `SELECT a.id,a.driver_id,acc.name,d.area_id AS current_area_id,cur_ar.name AS current_area_name,cur_ar.state AS current_area_state,a.area_id AS requested_area_id,req_ar.name AS requested_area_name,req_ar.state AS requested_area_state,a.created_at FROM area_change_requests a JOIN drivers d ON d.user_id=a.driver_id JOIN accounts acc ON acc.id=a.driver_id JOIN areas cur_ar ON cur_ar.id=d.area_id JOIN areas req_ar ON req_ar.id=a.area_id WHERE a.status='pending' ORDER BY a.created_at`)
+	if e != nil {
+		dbError(w, e)
+		return
+	}
 	incidents, e := jsonRows(ctx, s.DB, "SELECT id,ride_id,reporter_id,message,status,resolution,created_at FROM incidents ORDER BY created_at DESC LIMIT 100")
 	if e != nil {
 		dbError(w, e)
@@ -41,7 +46,7 @@ func (s *Server) operatorState(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	write(w, 200, map[string]any{"areas": areas, "pricing": pricing, "drivers": drivers, "vehicle_changes": vehicleChanges, "incidents": incidents, "events": events})
+	write(w, 200, map[string]any{"areas": areas, "pricing": pricing, "drivers": drivers, "vehicle_changes": vehicleChanges, "area_changes": areaChanges, "incidents": incidents, "events": events})
 }
 func (s *Server) saveArea(w http.ResponseWriter, r *http.Request) {
 	if !operator(w, r) {

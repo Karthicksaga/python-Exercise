@@ -16,7 +16,7 @@ func (s *Server) adminDrivers(w http.ResponseWriter, r *http.Request) {
  EXISTS(SELECT 1 FROM verified_phones v WHERE v.account_id=d.user_id AND v.phone=COALESCE(NULLIF(p.phone,''),CASE WHEN a.issuer='phone' THEN a.subject ELSE '' END)) AS phone_verified,
  EXISTS(SELECT 1 FROM profile_photos f WHERE f.account_id=d.user_id) AS has_photo,
  (SELECT COALESCE(json_agg(kind ORDER BY kind),'[]'::json) FROM driver_documents WHERE account_id=d.user_id) AS documents,
- ar.name AS area,d.vehicle_category,d.vehicle_number,d.license_reference,d.insurance_reference,d.license_expires,d.insurance_expires,
+ ar.name AS area,d.area_id AS area_id,d.vehicle_category,d.vehicle_number,d.license_reference,d.insurance_reference,d.license_expires,d.insurance_expires,
  d.license_expires<(now() AT TIME ZONE 'Asia/Kolkata')::date OR d.insurance_expires<(now() AT TIME ZONE 'Asia/Kolkata')::date AS docs_expired,
  d.review_note,d.pink_certified,d.updated_at,
  COALESCE(v.identity_ok,false) AS identity_ok,COALESCE(v.license_ok,false) AS license_ok,COALESCE(v.rc_ok,false) AS rc_ok,
@@ -46,10 +46,12 @@ func (s *Server) adminDecision(w http.ResponseWriter, r *http.Request) {
 		Pink      bool   `json:"pink_certified"`
 		Status    string `json:"status"`
 		Note      string `json:"note"`
+		AreaID    string `json:"area_id"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
+	in.AreaID = strings.TrimSpace(in.AreaID)
 	in.Note = strings.TrimSpace(in.Note)
 	id := r.PathValue("id")
 	if id == user(r).Account.ID {
@@ -125,6 +127,19 @@ func (s *Server) adminDecision(w http.ResponseWriter, r *http.Request) {
 		id, in.Identity, in.License, in.RC, in.Insurance, in.Vehicle, in.Police, user(r).Account.ID)
 	if e == nil && next == "approved" && complete {
 		_, e = tx.Exec(ctx, "UPDATE profile_photos SET approved=true WHERE account_id=$1", id)
+	}
+	if e == nil && in.AreaID != "" {
+		var active bool
+		if e = tx.QueryRow(ctx, "SELECT active FROM areas WHERE id=$1", in.AreaID).Scan(&active); e != nil || !active {
+			fail(w, 400, "Selected service area is invalid or inactive")
+			return
+		}
+		if _, e = tx.Exec(ctx, "UPDATE drivers SET area_id=$2,online=false,updated_at=now() WHERE user_id=$1 AND area_id<>$2", id, in.AreaID); e != nil {
+			dbError(w, e)
+			return
+		}
+		s.dropLive(ctx, id)
+		_, _ = tx.Exec(ctx, "UPDATE area_change_requests SET status='approved',review_note='Area updated directly by operator',reviewed_by=$2,reviewed_at=now() WHERE driver_id=$1 AND status='pending'", id, user(r).Account.ID)
 	}
 	if e == nil {
 		_, e = tx.Exec(ctx, `UPDATE drivers SET status=$2,pink_certified=$3,online=online AND $2='approved',

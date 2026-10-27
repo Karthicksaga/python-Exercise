@@ -103,6 +103,11 @@ func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
+	areaChange, e := jsonRows(r.Context(), s.DB, "SELECT a.id,a.area_id,ar.name AS area_name,ar.state AS area_state,a.status,a.review_note,a.created_at FROM area_change_requests a JOIN areas ar ON ar.id=a.area_id WHERE a.driver_id=$1 ORDER BY a.created_at DESC LIMIT 1", uid)
+	if e != nil {
+		dbError(w, e)
+		return
+	}
 	driver, e := jsonRows(r.Context(), s.DB, `SELECT user_id,area_id,status,vehicle_number,vehicle_category,vehicle_make,vehicle_model,vehicle_color,onboarding_version,upi_id,license_reference,insurance_reference,license_expires,insurance_expires,review_note,online,location_at,pickup_radius_meters,minimum_fare_paise,home_lat,home_lng,home_until,home_uses,home_uses_on,daily_goal_paise,lat,lng FROM drivers WHERE user_id=$1`, uid)
 	if e != nil {
 		dbError(w, e)
@@ -133,7 +138,7 @@ func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	write(w, 200, map[string]any{"rides": list, "driver": driver, "offers": offers, "vehicle_change": vehicleChange, "incidents": incidents, "saved_locations": locations})
+	write(w, 200, map[string]any{"rides": list, "driver": driver, "offers": offers, "vehicle_change": vehicleChange, "area_change": areaChange, "incidents": incidents, "saved_locations": locations})
 }
 func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 	uid := user(r).Account.ID

@@ -201,10 +201,20 @@ export type VehicleChange = {
   review_note: string;
   created_at: string;
 };
+export type AreaChange = {
+  id: string;
+  area_id: string;
+  area_name?: string;
+  area_state?: string;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  review_note: string;
+  created_at: string;
+};
 export type NearbyDriver = { id?: string; category: string; lat: number; lng: number };
 export type Nearby = { category: string; drivers: number; eta_minutes: number };
 export type State = {
   vehicle_change?: VehicleChange[];
+  area_change?: AreaChange[];
   rides: Ride[];
   driver: Driver[];
   offers: Ride[];

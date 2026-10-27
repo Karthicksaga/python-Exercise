@@ -4,7 +4,7 @@ import { getCSRF } from "@hop/shared/api";
 import { driverAlert, goOfflineSound, goOnlineSound } from "@hop/shared/sounds";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@hop/shared/api";
-import { active, money, type Area, type Driver, type State, type VehicleChange as VehicleChangeRequest } from "@hop/shared/types";
+import { active, money, type Area, type Driver, type State, type VehicleChange as VehicleChangeRequest, type AreaChange as AreaChangeRequest } from "@hop/shared/types";
 import RideCard from "@hop/shared/RideCard";
 import RideChat from "@hop/shared/RideChat";
 import DriverMap from "./DriverMap";
@@ -42,6 +42,83 @@ type EarningsRide = {
   rider_name: string;
 };
 type Earnings = { summary: EarningsSummary; rides: EarningsRide[] };
+
+function AreaChange({
+  current,
+  areas,
+  change,
+  busy,
+  onSubmit,
+}: {
+  current: Driver;
+  areas: Area[];
+  change?: AreaChangeRequest;
+  busy: boolean;
+  onSubmit: (areaId: string) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const pending = change?.status === "pending";
+  const currentArea = areas.find((a) => a.id === current.area_id);
+  const requestedArea = change ? areas.find((a) => a.id === change.area_id) : null;
+  const availableAreas = areas.filter((a) => a.id !== current.area_id && a.active);
+
+  return (
+    <section className="panel area-change">
+      <div className="row">
+        <div>
+          <strong>Service area</strong>
+          <p className="muted" style={{ margin: "2px 0 0" }}>
+            Current: <strong>{currentArea?.name ?? "Assigned Area"}</strong> {currentArea?.state ? `(${currentArea.state})` : ""}
+          </p>
+        </div>
+        {!pending && (
+          <button type="button" className="secondary" onClick={() => setOpen(!open)}>
+            {open ? "Close" : "Change area"}
+          </button>
+        )}
+      </div>
+      {pending && (
+        <p className="muted" style={{ marginTop: 8 }}>
+          Waiting for admin approval: <strong>{change.area_name || requestedArea?.name || "New zone"}</strong> {change.area_state || requestedArea?.state ? `(${change.area_state || requestedArea?.state})` : ""}
+        </p>
+      )}
+      {change && !pending && (
+        <p className="muted" style={{ marginTop: 8 }}>
+          Last area request: <strong style={{ textTransform: "capitalize" }}>{change.status}</strong>
+          {change.review_note && ` — ${change.review_note}`}
+        </p>
+      )}
+      {open && !pending && (
+        <form
+          style={{ marginTop: 12 }}
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget);
+            await onSubmit(String(f.get("area_id")));
+            setOpen(false);
+          }}
+        >
+          <label>
+            New service area
+            <select name="area_id" defaultValue={availableAreas[0]?.id}>
+              {availableAreas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.state})
+                </option>
+              ))}
+            </select>
+          </label>
+          <button disabled={busy || availableAreas.length === 0} style={{ marginTop: 8 }}>
+            Request area change
+          </button>
+          <p className="muted" style={{ fontSize: "0.85rem", marginTop: 6 }}>
+            An admin must approve your service area change before it takes effect. Once approved, you will go offline to reconnect in the new zone.
+          </p>
+        </form>
+      )}
+    </section>
+  );
+}
 function VehicleChange({
   current,
   change,
@@ -647,6 +724,25 @@ export default function DriverPanel({
               await api("/api/drivers/vehicle", { vehicle_category: category, vehicle_number: number });
               await refresh();
               notify("Vehicle change sent for operator approval. You keep driving your current vehicle until it is approved.");
+            } catch (e) {
+              notify((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
+
+        <AreaChange
+          current={d}
+          areas={areas}
+          change={data.area_change?.[0]}
+          busy={busy || Boolean(current)}
+          onSubmit={async (areaId) => {
+            setBusy(true);
+            try {
+              await api("/api/drivers/area", { area_id: areaId });
+              await refresh();
+              notify("Service area change request sent for admin approval.");
             } catch (e) {
               notify((e as Error).message);
             } finally {

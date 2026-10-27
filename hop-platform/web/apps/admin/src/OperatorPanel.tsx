@@ -26,6 +26,18 @@ type Operations = {
     vehicle_category: string;
     vehicle_number: string;
   }[];
+  area_changes?: {
+    id: string;
+    driver_id: string;
+    name: string;
+    current_area_id: string;
+    current_area_name: string;
+    current_area_state: string;
+    requested_area_id: string;
+    requested_area_name: string;
+    requested_area_state: string;
+    created_at: string;
+  }[];
   incidents: Incident[];
   events: {
     id: number;
@@ -94,7 +106,7 @@ export default function OperatorPanel({
   async function review(
     e: React.FormEvent<HTMLFormElement>,
     id: string,
-    type: "drivers" | "incidents" | "vehicle-changes",
+    type: "drivers" | "incidents" | "vehicle-changes" | "area-changes",
   ) {
     e.preventDefault();
     setBusy(true);
@@ -333,6 +345,32 @@ export default function OperatorPanel({
                 <label>
                   Note to driver
                   <textarea name="note" required minLength={5} maxLength={1000} placeholder="e.g. RC verified for the new vehicle" />
+                </label>
+                <button disabled={busy}>Save decision</button>
+              </form>
+            </article>
+          ))}
+        </section>}
+        {section === "drivers" && <section>
+          <h3>Service area change requests</h3>
+          {!data.area_changes?.length && <div className="empty">No pending service area changes.</div>}
+          {data.area_changes?.map((a) => (
+            <article className="panel" key={a.id}>
+              <h3>{a.name}</h3>
+              <p className="muted">
+                {a.current_area_name} ({a.current_area_state}) → <strong>{a.requested_area_name} ({a.requested_area_state})</strong>
+              </p>
+              <form onSubmit={(e) => review(e, a.id, "area-changes")}>
+                <label>
+                  Decision
+                  <select name="status" defaultValue="approved">
+                    <option value="approved">Approve</option>
+                    <option value="rejected">Reject</option>
+                  </select>
+                </label>
+                <label>
+                  Note to driver
+                  <textarea name="note" required minLength={5} maxLength={1000} placeholder="e.g. Approved for the new service zone" />
                 </label>
                 <button disabled={busy}>Save decision</button>
               </form>

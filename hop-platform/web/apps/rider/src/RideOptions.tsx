@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@hop/shared/api";
 import { t } from "@hop/shared/i18n";
-import VehicleArt from "@hop/shared/VehicleArt";
+import RideOptionCard from "./RideOptionCard";
 import { money, type Estimate, type Nearby, type Point, type VehiclePricing } from "@hop/shared/types";
 
 const blurb: Record<string, string> = {
@@ -74,29 +74,18 @@ export default function RideOptions({
         const opt = fares.get(v.category);
         const near = nearby?.find((n) => n.category === v.category);
         return (
-          <button
-            key={v.category}
-            type="button"
-            role="radio"
-            aria-checked={value === v.category}
-            className={"ride-row" + (value === v.category ? " selected" : "") + (loading ? " loading" : "")}
-            onClick={() => onChange(v.category)}
-          >
-            <VehicleArt category={v.category} width={72} />
-            <span className="ride-main">
-              <strong>
-                {v.name}
-                {opt?.tag === "cheapest" && <em className="tag">Cheapest</em>}
-                {fastest === v.category && <em className="tag fast">Fastest</em>}
-                {opt?.surge_multiplier && <em className="tag surge" title={t("surge.label")}>⚡ {opt.surge_multiplier}×</em>}
-              </strong>
-              <small>
-                {near ? `${near.eta_minutes} min away` : nearby ? "No drivers nearby" : blurb[v.category]}
-                {near ? ` · ${blurb[v.category] ?? ""}` : ""}
-              </small>
-            </span>
-            <span className="ride-fare">{opt ? money(opt.fare_paise) : <small>from {money(v.minimum_paise)}</small>}</span>
-          </button>
+          <RideOptionCard
+            key={v.category} category={v.category} name={v.name}
+            selected={value === v.category} loading={loading}
+            onSelect={() => onChange(v.category)}
+            availability={near ? `${near.eta_minutes} min away · ${blurb[v.category] ?? ""}` : nearby ? "No drivers nearby" : blurb[v.category] ?? "Availability updates when drivers are nearby"}
+            fare={opt ? `Est. ${money(opt.fare_paise)}` : `From ${money(v.minimum_paise)}`}
+            tags={<>
+              {opt?.tag === "cheapest" && <em className="tag">Cheapest</em>}
+              {fastest === v.category && <em className="tag fast">Fastest</em>}
+              {opt?.surge_multiplier && <em className="tag surge" title={t("surge.label")}>⚡ {opt.surge_multiplier}×</em>}
+            </>}
+          />
         );
       })}
     </div>
