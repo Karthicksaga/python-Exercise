@@ -27,7 +27,10 @@
     "DATABASE_URL": "hop-db-url:1",
     "REDIS_URL": "hop-redis-url:1",
     "SESSION_KEY": "hop-session-key:1",
-    "OIDC_CLIENT_SECRET": "hop-oidc-secret:1"
+    "OIDC_CLIENT_SECRET": "hop-oidc-secret:1",
+    "PAYMENT_KEY_ID": "hop-payment-key-id:1",
+    "PAYMENT_KEY_SECRET": "hop-payment-key-secret:1",
+    "PAYMENT_WEBHOOK_SECRET": "hop-payment-webhook-secret:1"
   },
   "fcm_secret": ""
 }

@@ -1,3 +1,5 @@
+import { IconBell, IconCar, IconCopy, IconUsers, IconWheelchair, IconEar, IconEye, IconAccessible, IconTypography } from "@tabler/icons-react";
+import "./safety-dashboard.css";
 import { serverURL } from "@hop/shared/platform";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@hop/shared/api";
@@ -45,8 +47,9 @@ export default function CompanionPanel({
   useLang();
   const [data, setData] = useState<Companion | null>(null);
   const [shareLink, setShareLink] = useState("");
+  const [loadError, setLoadError] = useState("");
   const load = useCallback(
-    () => api<Companion>("/api/companion").then((d) => { setData(d); setLang(d.preferences.language); applyLargeText(d.preferences.large_text); }).catch((e: Error) => notify(e.message)),
+    () => api<Companion>("/api/companion").then((d) => { setLoadError(""); setData(d); setLang(d.preferences.language); applyLargeText(d.preferences.large_text); }).catch((e: Error) => { setLoadError(e.message); notify(e.message); }),
     [notify],
   );
   useEffect(() => {
@@ -62,7 +65,7 @@ export default function CompanionPanel({
       notify((e as Error).message);
     }
   };
-  if (!data) return <section className="panel">Loading…</section>;
+  if (!data) return <section className="safety-dashboard"><section className="safety-card" role="status">{loadError ? <><p>{loadError}</p><button onClick={load}>Try again</button></> : "Loading your safety settings…"}</section></section>;
 
   const mine = rides.filter((r) => r.mine);
   const activeRide = mine.find((r) => ["accepted", "arrived", "in_progress"].includes(r.status));
@@ -78,9 +81,9 @@ export default function CompanionPanel({
   };
 
   return (
-    <div className="more-grid">
+    <div className="safety-dashboard">
       {activeRide && (
-        <section className="panel" aria-label="Safety">
+        <section className="safety-card safety-wide" aria-label="Safety">
           <p className="eyebrow">SAFETY</p>
           <h2>Active ride safety</h2>
           <p className="muted">
@@ -127,25 +130,25 @@ export default function CompanionPanel({
         </section>
       )}
 
-      <section className="panel">
+      <section className="safety-card safety-inbox">
         <p className="eyebrow">NOTIFICATIONS {unread > 0 && `· ${unread} NEW`}</p>
         <h2>{t("more.inbox")}</h2>
-        {data.notifications.length === 0 && <p className="muted">Nothing yet.</p>}
-        <ul className="plain">
-          {data.notifications.map((n) => (
-            <li key={n.id} style={{ fontWeight: n.read_at ? 400 : 700 }}>
-              {n.title} <span className="muted">— {n.body}</span>
-            </li>
-          ))}
-        </ul>
+        <p className="muted">Ride updates, safety alerts and important account information, all in one place.</p>
+        {data.notifications.length === 0 ? <div className="safety-empty safety-bell"><IconBell size={42} stroke={1.4} aria-hidden="true" /><div><h3>You're all caught up!</h3><p>New notifications will appear here.</p></div></div> : <ul className="plain safety-notifications">
+          {data.notifications.map(n => <li key={n.id} data-unread={!n.read_at}>
+            <span className="safety-read-dot" aria-label={n.read_at ? "Read" : "Unread"} />
+            <div><strong>{n.title}</strong><p>{n.body}</p><time dateTime={n.created_at}>{new Date(n.created_at).toLocaleString()}</time></div>
+          </li>)}
+        </ul>}
         {unread > 0 && <button onClick={() => run("/api/notifications/read", {})}>Mark all read</button>}
-        <p className="muted">Notifications appear in-app; mobile push delivery needs the native apps.</p>
+
       </section>
 
-      <section className="panel narrow">
+      <section className="safety-card">
         <p className="eyebrow">PREFERENCES</p>
         <h2>{t("more.prefs")}</h2>
-        <label>
+        <p className="muted">Make every ride more comfortable. Your preferences stay with your account.</p>
+        <label className="safety-language">
           Language
           <select value={data.preferences.language} onChange={(e) => savePrefs({ language: e.target.value })}>
             {languages.map(([code, name]) => (
@@ -153,25 +156,31 @@ export default function CompanionPanel({
             ))}
           </select>
         </label>
-        {toggles.map(([key, label]) => (
+        <fieldset className="safety-preferences"><legend>Accessibility & notifications</legend>
+        {toggles.map(([key, label], index) => (
           <label key={key} className="check">
             <input type="checkbox" checked={data.preferences[key] as boolean} onChange={(e) => savePrefs({ [key]: e.target.checked })} />
-            {label}
+            <span className="safety-pref-icon" aria-hidden="true">{(() => { const Glyph = [IconWheelchair, IconEar, IconEye, IconAccessible, IconTypography, IconBell][index]; return <Glyph size={19} />; })()}</span>
+            <span>{label}</span>
           </label>
         ))}
-        <p className="muted">Navigation, booking and safety labels are translated into Hindi, Tamil, Telugu, Kannada and Malayalam; other languages show English for now.</p>
+        </fieldset>
+        <p className="muted safety-footnote">Navigation, booking and safety labels are translated into Hindi, Tamil, Telugu, Kannada and Malayalam; other languages show English for now.</p>
       </section>
 
-      <section className="panel narrow">
+      <section className="safety-card">
         <p className="eyebrow">REWARDS</p>
         <h2>Refer & earn</h2>
-        <p>
-          Your code: <strong>{ref?.code}</strong> · {ref?.points ?? 0} points · {ref?.referred ?? 0} friends referred
-        </p>
+        <div className="safety-referral-summary">
+          <div className="safety-code"><span>Your referral code</span><div><strong>{ref?.code || "Unavailable"}</strong><button type="button" aria-label="Copy referral code" disabled={!ref?.code} onClick={async () => {
+            try { await navigator.clipboard.writeText(ref!.code); notify("Referral code copied"); } catch { notify("Could not copy the code. Please select and copy it manually."); }
+          }}><IconCopy size={19} /></button></div></div>
+          <dl><div><dt>Points earned</dt><dd>{ref?.points ?? 0}</dd></div><div><dt>Friends referred</dt><dd>{ref?.referred ?? 0}</dd></div></dl>
+        </div>
         <p className="muted">You and your friend each earn 100 points when they complete their first ride.</p>
         {!ref?.redeemed && (
-          <form className="row" onSubmit={form((f, el) => { run("/api/referrals/redeem", { code: f.get("code") }, "Referral applied"); el.reset(); })}>
-            <input name="code" placeholder="Friend's code" maxLength={8} required />
+          <form className="row" onSubmit={form((f, el) => { void run("/api/referrals/redeem", { code: f.get("code") }, "Referral applied").then(out => { if (out) el.reset(); }); })}>
+            <input aria-label="Friend's referral code" name="code" placeholder="Friend's code" maxLength={8} required />
             <button>Apply</button>
           </form>
         )}
@@ -182,9 +191,11 @@ export default function CompanionPanel({
         </ul>
       </section>
 
-      <section className="panel narrow">
+      <section className="safety-card">
         <p className="eyebrow">FAMILY</p>
         <h2>Family account</h2>
+        <p className="muted">Invite family members to manage rides together.</p>
+        {data.family.length === 0 && <div className="safety-empty"><IconUsers size={32} aria-hidden="true" /><p>Your family starts here. Invite someone you trust.</p></div>}
         <ul className="plain">
           {data.family.map((m) => (
             <li key={m.id}>
@@ -201,15 +212,16 @@ export default function CompanionPanel({
             </li>
           ))}
         </ul>
-        <form className="row" onSubmit={form((f, el) => { run("/api/family/invite", { email: f.get("email") }, "Invitation sent"); el.reset(); })}>
-          <input name="email" type="email" placeholder="Their registered email" required />
+        <form className="row" onSubmit={form((f, el) => { void run("/api/family/invite", { email: f.get("email") }, "Invitation sent").then(out => { if (out) el.reset(); }); })}>
+          <input aria-label="Family member email" name="email" type="email" placeholder="Their registered email" required />
           <button>Invite</button>
         </form>
       </section>
 
-      <section className="panel narrow">
+      <section className="safety-card">
         <p className="eyebrow">FAVORITES</p>
         <h2>Favorite drivers</h2>
+        {data.favorite_drivers.length === 0 && <div className="safety-empty"><IconCar size={36} aria-hidden="true" /><div><h3>No favorite drivers yet</h3><p>Add a driver after a completed ride.</p></div></div>}
         <ul className="plain">
           {data.favorite_drivers.map((d) => (
             <li key={d.id}>
@@ -231,7 +243,7 @@ export default function CompanionPanel({
         <p className="muted">Your favorite drivers are offered your rides first, for a short while.</p>
       </section>
 
-      <section className="panel narrow">
+      <section className="safety-card">
         <p className="eyebrow">SCHEDULED</p>
         <h2>Scheduled rides</h2>
         <ul className="plain">
@@ -281,7 +293,7 @@ export default function CompanionPanel({
         </p>
       </section>
 
-      <section className="panel narrow">
+      <section className="safety-card">
         <p className="eyebrow">LOST ITEM</p>
         <h2>Report a lost item</h2>
         {ended.length === 0 ? (

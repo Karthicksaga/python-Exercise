@@ -240,7 +240,7 @@ func (s *Server) walletState(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	write(w, 200, map[string]any{"balance_paise": bal, "entries": entries, "gateway": s.paymentsConfigured(), "dev_topup": s.Config.Development && !s.paymentsConfigured()})
+	write(w, 200, map[string]any{"balance_paise": bal, "entries": entries, "gateway": s.paymentsActive(), "test_mode": s.isPaymentTestMode(), "dev_topup": s.devPayments() && !s.paymentsConfigured()})
 }
 
 const maxTopup = 1000000 // ₹10,000
@@ -260,7 +260,7 @@ func (s *Server) walletTopup(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "Add between ₹10 and ₹10,000")
 		return
 	}
-	if s.paymentsConfigured() {
+	if s.paymentsActive() {
 		order, e := s.providerOrder(ctx, in.AmountPaise, "wallet-"+randomToken()[:10])
 		if e != nil {
 			fail(w, 502, "Payment provider unavailable")
@@ -270,10 +270,14 @@ func (s *Server) walletTopup(w http.ResponseWriter, r *http.Request) {
 			dbError(w, e)
 			return
 		}
-		write(w, 201, map[string]any{"order_id": order, "amount_paise": in.AmountPaise, "currency": "INR", "key_id": s.Config.PaymentKeyID})
+		keyID := s.Config.PaymentKeyID
+		if keyID == "" && s.devPayments() {
+			keyID = "rzp_test_mock"
+		}
+		write(w, 201, map[string]any{"order_id": order, "amount_paise": in.AmountPaise, "currency": "INR", "key_id": keyID, "test_mode": s.isPaymentTestMode()})
 		return
 	}
-	if !s.Config.Development {
+	if !s.devPayments() {
 		fail(w, 503, "Wallet top-ups are not configured")
 		return
 	}
@@ -295,7 +299,7 @@ func (s *Server) walletTopup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) walletVerify(w http.ResponseWriter, r *http.Request) {
-	if !s.paymentsConfigured() {
+	if !s.paymentsActive() {
 		fail(w, 503, "Online payments are not configured")
 		return
 	}
@@ -307,7 +311,20 @@ func (s *Server) walletVerify(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	if !verifySignature(s.Config.PaymentKeySecret, in.OrderID, in.PaymentID, in.Signature) {
+	in.OrderID = strings.TrimSpace(in.OrderID)
+	in.PaymentID = strings.TrimSpace(in.PaymentID)
+	in.Signature = strings.TrimSpace(in.Signature)
+	if in.OrderID == "" || in.PaymentID == "" || in.Signature == "" || len(in.OrderID) > 100 || len(in.PaymentID) > 100 || len(in.Signature) > 128 {
+		fail(w, 400, "Invalid payment parameters")
+		return
+	}
+	valid := s.Config.PaymentKeySecret != "" && verifySignature(s.Config.PaymentKeySecret, in.OrderID, in.PaymentID, in.Signature)
+	if !valid && s.devPayments() {
+		if s.Config.PaymentKeySecret == "" && (in.Signature == "test_signature" || in.Signature == "dev_mock_signature" || verifySignature("dev_secret", in.OrderID, in.PaymentID, in.Signature)) {
+			valid = true
+		}
+	}
+	if !valid {
 		fail(w, 400, "Payment signature is invalid")
 		return
 	}

@@ -44,6 +44,11 @@ services:
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?Set identity client secret}
       ROUTING_URL: ${ROUTING_URL:?Set real road routing service}
       GEOCODING_URL: ${GEOCODING_URL:?Set Photon-compatible geocoding service}
+      PAYMENT_KEY_ID: ${PAYMENT_KEY_ID:-${RAZORPAY_KEY_ID:-}}
+      PAYMENT_KEY_SECRET: ${PAYMENT_KEY_SECRET:-${RAZORPAY_KEY_SECRET:-}}
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-${RAZORPAY_WEBHOOK_SECRET:-}}
+      PAYMENT_API_URL: ${PAYMENT_API_URL:-${RAZORPAY_API_URL:-}}
+      DEV_PAYMENTS: ${DEV_PAYMENTS:-}
     depends_on:
       migrate: {condition: service_completed_successfully}
       redis: {condition: service_started}

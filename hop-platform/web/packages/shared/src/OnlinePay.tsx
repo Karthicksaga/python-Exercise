@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "./api";
 
-type Order = { order_id: string; amount_paise: number; currency: string; key_id: string };
+type Order = { order_id: string; amount_paise: number; currency: string; key_id: string; test_mode?: boolean };
 type Checkout = { open: () => void; on: (ev: string, cb: () => void) => void };
 declare global {
   interface Window {
@@ -27,6 +27,16 @@ export default function OnlinePay({ rideId, refresh, notify }: { rideId: string;
     setBusy(true);
     try {
       const order = await api<Order>(`/api/rides/${rideId}/pay`, {});
+      if (order.key_id === "rzp_test_mock") {
+        await api(`/api/rides/${rideId}/pay/verify`, {
+          razorpay_order_id: order.order_id,
+          razorpay_payment_id: "pay_test_" + Math.random().toString(36).substring(2, 10),
+          razorpay_signature: "test_signature",
+        });
+        await refresh();
+        notify("Test payment received successfully!");
+        return;
+      }
       await loadCheckout();
       const Checkout = window.Razorpay;
       if (!Checkout) throw new Error("Payment window unavailable");

@@ -1,4 +1,5 @@
 import ResponsiveNav from "@hop/shared/ResponsiveNav";
+import AppHeader from "@hop/shared/AppHeader";
 import { ShareToggle } from "@hop/shared/SharedRide";
 import { useEffect, useRef, useState } from "react";
 import { api, APIError } from "@hop/shared/api";
@@ -369,45 +370,20 @@ export default function RiderApp() {
   if (isOperator) return <PageLoader label="Opening admin…" />;
   return (
     <div className={user ? "shell has-nav" : "shell"}>
-      <header className="topbar floating-pill-bar">
-        <a href="/" className="logo">
-          <span className="logo-mark" aria-hidden="true">h</span>
-          hop
-        </a>
-        <div className="topbar-center">
-          {user && (
-            <span
-              className={"topbar-status-chip " + (live ? "live on" : "connecting")}
-              title={live ? "Real-time updates connected" : "Reconnecting…"}
-            >
-              <span className={"status-dot " + (live ? "live" : "connecting")} />
-              <span>{live ? "Live" : "Connecting"}</span>
-            </span>
-          )}
-        </div>
-        <div className="header-right">
-          <button type="button" className="theme-toggle" onClick={toggleDark} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} title={dark ? "Light mode" : "Dark mode"}>
-            <span className="emoji-keep">{dark ? "☀️" : "🌙"}</span>
-          </button>
-          {user && permission === "default" && (
-            <button type="button" className="alerts-btn" aria-label="Enable alerts" title="Enable alerts" onClick={() => void requestPermission()}>
-              <span aria-hidden="true">🔔</span><span className="alerts-label">Alerts</span>
-            </button>
-          )}
-          {user && (
-            <button
-              type="button"
-              className="avatar-btn"
-              onClick={() => setTab("profile")}
-              title={`${user.name} · View Profile`}
-            >
-              <span className="avatar" style={{ background: avatarColors[avatarColor] }}>
-                {(user.name[0] || "?").toUpperCase()}
-              </span>
-            </button>
-          )}
-        </div>
-      </header>
+      <AppHeader
+        mode="rider"
+        user={user}
+        statusState={live ? "live" : "connecting"}
+        statusLabel={live ? "Live" : "Connecting"}
+        statusTitle={live ? "Real-time updates connected" : "Reconnecting…"}
+        statusPosition="center"
+        dark={dark}
+        onToggleDark={toggleDark}
+        alertsActive={permission === "default"}
+        onAlertsClick={() => void requestPermission()}
+        avatarColor={avatarColors[avatarColor]}
+        onAvatarClick={() => setTab("profile")}
+      />
       <main>
         {development && user && (
           <div className="dev-banner">
@@ -436,6 +412,9 @@ export default function RiderApp() {
               <div>
                 <p className="eyebrow">{pageHeadView.eyebrow}</p>
                 <h1>{pageHeadView.title}</h1>
+                {tab === "wallet" && (
+                  <p className="page-subtitle">Keep your wallet ready for a faster and smoother booking experience.</p>
+                )}
               </div>
               <span className="verified">Verified</span>
             </div>
@@ -599,8 +578,10 @@ export default function RiderApp() {
                           value={trip}
                           onChange={setTrip}
                         />
-                              </fieldset>
-                      <Button variant="light" radius="xl" size="compact-md" onClick={() => setPlacesOpen(true)}>⭐ Manage saved places</Button>
+                      </fieldset>
+                      <div className="manage-places-wrapper">
+                        <Button variant="light" radius="xl" size="compact-md" onClick={() => setPlacesOpen(true)}>⭐ Manage saved places</Button>
+                      </div>
                       <Modal opened={placesOpen} onClose={() => setPlacesOpen(false)} title="⭐ Saved places" centered radius="lg" size="md" scrollAreaComponent={undefined}>
                       {!!data.saved_locations?.length && (
                         <section className="inset">

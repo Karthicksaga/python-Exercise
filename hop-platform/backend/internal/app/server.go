@@ -174,7 +174,7 @@ func (s *Server) Handler() http.Handler {
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "geolocation=(self), camera=(), microphone=()")
 		nonce := randomToken()
-		w.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'self'; script-src 'nonce-%s' 'strict-dynamic' https: 'unsafe-eval' blob:; style-src 'self' 'nonce-%s' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; img-src 'self' https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://*.googleapis.com https://*.gstatic.com *.google.com *.googleusercontent.com data: blob:; connect-src 'self' https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://*.razorpay.com https://*.googleapis.com *.google.com https://*.gstatic.com data: blob:; frame-src *.google.com https://api.razorpay.com; font-src 'self' https://fonts.gstatic.com data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'", nonce, nonce))
+		w.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'self'; script-src 'nonce-%s' 'strict-dynamic' https: 'unsafe-eval' blob:; style-src 'self' 'nonce-%s' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; img-src 'self' https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://*.googleapis.com https://*.gstatic.com *.google.com *.googleusercontent.com data: blob:; connect-src 'self' https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://*.razorpay.com https://*.googleapis.com *.google.com https://*.gstatic.com data: blob:; frame-src *.google.com https://api.razorpay.com https://*.razorpay.com; font-src 'self' https://fonts.gstatic.com data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'", nonce, nonce))
 		w.Header().Set("Cache-Control", "no-store")
 		if !s.Config.Development {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
@@ -293,6 +293,9 @@ func (s *Server) peer(r *http.Request) string {
 var limitScript = redis.NewScript(`local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],ARGV[1]) end; return n`)
 
 func (s *Server) limit(w http.ResponseWriter, r *http.Request, key string, n int64, seconds int) bool {
+	if s.Cache == nil {
+		return true
+	}
 	count, e := limitScript.Run(r.Context(), s.Cache, []string{"limit:" + key}, seconds).Int64()
 	if e != nil {
 		fail(w, 503, "Rate-limit service unavailable")

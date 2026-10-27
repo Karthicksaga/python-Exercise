@@ -14,6 +14,7 @@
     "./OnlinePay": "./src/OnlinePay.tsx",
     "./PaymentSettlementSheet": "./src/PaymentSettlementSheet.tsx",
     "./PageLoader": "./src/PageLoader.tsx",
+    "./AuthCard": "./src/AuthCard.tsx",
     "./PhoneLogin": "./src/PhoneLogin.tsx",
     "./ProfilePanel": "./src/ProfilePanel.tsx",
     "./RealisticVehicleMarker": "./src/RealisticVehicleMarker.tsx",
@@ -47,6 +48,21 @@
     "./ResponsiveNav": "./src/ResponsiveNav.tsx",
     "./ResponsiveTable": "./src/ResponsiveTable.tsx",
     "./TrustProfile": "./src/TrustProfile.tsx",
-    "./TripReceipt": "./src/TripReceipt.tsx"
+    "./TripReceipt": "./src/TripReceipt.tsx",
+    "./MetricCard": "./src/MetricCard.tsx",
+    "./EmptyState": "./src/EmptyState.tsx",
+    "./ResponsiveContainer": "./src/ResponsiveContainer.tsx",
+    "./OnboardingStepper": "./src/OnboardingStepper.tsx",
+    "./CustomUpload": "./src/CustomUpload.tsx",
+    "./ProfileComponents": "./src/ProfileComponents.tsx",
+    "./StatusBadge": "./src/StatusBadge.tsx",
+    "./ThemeToggle": "./src/ThemeToggle.tsx",
+    "./UserAvatar": "./src/UserAvatar.tsx",
+    "./AppHeader": "./src/AppHeader.tsx",
+    "./AppLanding": "./src/AppLanding.tsx",
+    "./AppSidebar": "./src/AppSidebar.tsx",
+    "./MobileNavigation": "./src/MobileNavigation.tsx",
+    "./AppLayout": "./src/AppLayout.tsx",
+    "./DashboardLayout": "./src/DashboardLayout.tsx"
   }
 }

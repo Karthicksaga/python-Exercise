@@ -1,6 +1,6 @@
 .app-sidebar {
   position: fixed;
-  inset: 64px auto 0 0;
+  inset: 60px auto 0 0;
   width: var(--nav-w);
   padding: 20px 12px;
   display: flex;
@@ -138,7 +138,7 @@
     --nav-bottom-h: calc(66px + env(safe-area-inset-bottom, 0px));
   }
   .has-nav main {
-    padding: 20px 14px calc(90px + env(safe-area-inset-bottom, 0px));
+    padding: 20px 14px calc(110px + env(safe-area-inset-bottom, 0px)) !important;
   }
   .has-nav .page-title {
     align-items: center;
@@ -481,6 +481,10 @@ html[data-theme="dark"] .topbar-status-chip.live {
   flex-shrink: 0;
 }
 
+.floating-pill-bar .alerts-btn .alerts-label {
+  display: none !important;
+}
+
 html[data-theme="dark"] .floating-pill-bar .theme-toggle,
 html[data-theme="dark"] .floating-pill-bar .alerts-btn {
   background: rgba(255, 255, 255, 0.08);
@@ -513,3 +517,22 @@ html[data-theme="dark"] .floating-pill-bar .alerts-btn {
   }
 }
 
+
+/* Shell dimensions follow one navigation breakpoint and one content gutter. */
+@media (min-width: 821px) {
+  .has-nav .topbar.floating-pill-bar {
+    max-width: none;
+    width: auto;
+    margin-left: calc(var(--nav-w) + 24px);
+    margin-right: 24px;
+  }
+}
+.floating-pill-bar .header-right { flex: none; gap: 8px; }
+.floating-pill-bar :is(.avatar-btn, .theme-toggle, .alerts-btn) {
+  width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0;
+}
+@media (max-width: 380px) {
+  .floating-pill-bar .logo { font-size: 16px; gap: 4px; }
+  .floating-pill-bar .header-right { gap: 2px; }
+  .topbar-status-chip { padding: 4px 6px; font-size: 11px; gap: 4px; }
+}

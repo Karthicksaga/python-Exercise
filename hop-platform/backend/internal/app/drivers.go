@@ -73,7 +73,7 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	if !hasMobile(r.Context(), s.DB, user(r).Account.ID) {
+	if !hasMobile(r.Context(), s.DB, user(r).Account.ID) && !s.Config.Development {
 		fail(w, 403, mobileRequired)
 		return
 	}
@@ -83,6 +83,16 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 	if !validVehicleCategory(in.Category) {
 		fail(w, 400, "Choose a supported vehicle category")
 		return
+	}
+	if s.Config.Development {
+		if in.Vehicle == "" { in.Vehicle = "TN09AB1234" }
+		if in.License == "" { in.License = "DL-TEST-001" }
+		if in.Insurance == "" { in.Insurance = "INS-TEST-001" }
+		if in.LicenseExpires == "" { in.LicenseExpires = time.Now().AddDate(2, 0, 0).Format("2006-01-02") }
+		if in.InsuranceExpires == "" { in.InsuranceExpires = time.Now().AddDate(2, 0, 0).Format("2006-01-02") }
+		if in.Make == "" { in.Make = "Honda" }
+		if in.Model == "" { in.Model = "Activa" }
+		if in.Color == "" { in.Color = "Black" }
 	}
 	if msg := validateDriverApplication(&in.Area, &in.Vehicle, &in.License, &in.Insurance, &in.UPI, in.LicenseExpires, in.InsuranceExpires); msg != "" {
 		fail(w, 400, msg)
@@ -110,7 +120,7 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	if !mediaReady {
+	if !mediaReady && !s.Config.Development {
 		fail(w, 400, "Upload your profile photo, identity, licence, RC and insurance images before submitting")
 		return
 	}

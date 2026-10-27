@@ -31,6 +31,7 @@ function BookingMap({
   pois,
   summary,
   tools,
+  onPinStart,
 }: {
   tools: MapTools;
   pois?: Poi[];
@@ -56,6 +57,13 @@ function BookingMap({
 
   const fitPoints = (route?.length ? route : [pickup, dropoff].filter((p): p is Point => p !== null)) as RoutePoint[];
   const fitKey = `${pickup?.lat},${pickup?.lng},${dropoff?.lat},${dropoff?.lng},${route?.length ?? 0}`;
+
+  function startPin() {
+    onPinStart?.();
+    setPending(null);
+    setCenter(focus);
+    setPin(true);
+  }
 
   async function place(lat: number, lng: number) {
     setPending({ lat, lng, label: "Finding address…" });
@@ -97,19 +105,19 @@ function BookingMap({
         {pin && <MapPan point={focus} extra={`${target}-${pin}`} />}
         {!pin && <MapFit points={fitPoints} extra={fitKey} />}
         {pickup && (
-          <MapMarker position={pickup} title="Pickup (drag to adjust)" draggable onDragEnd={(lat, lng) => void drag("pickup", lat, lng)}>
+          <MapMarker position={pickup} title="Pickup (drag to adjust)" draggable onDragEnd={(lat, lng) => void drag("pickup", lat, lng)} anchor="center">
             <span className="pin-tag pickup-tag">Pickup</span>
             <span className="map-pin pickup-pin" aria-label="Pickup marker" />
           </MapMarker>
         )}
         {dropoff && (
-          <MapMarker position={dropoff} title="Destination (drag to adjust)" draggable onDragEnd={(lat, lng) => void drag("dropoff", lat, lng)}>
+          <MapMarker position={dropoff} title="Destination (drag to adjust)" draggable onDragEnd={(lat, lng) => void drag("dropoff", lat, lng)} anchor="center">
             <span className="pin-tag drop-tag">Drop</span>
             <span className="map-pin destination-pin" aria-label="Destination marker" />
           </MapMarker>
         )}
         {pending && (
-          <MapMarker position={pending}>
+          <MapMarker position={pending} anchor="center">
             <span className="map-pin pending-pin" aria-label="Selected point" />
           </MapMarker>
         )}
@@ -125,6 +133,27 @@ function BookingMap({
             <NearbyCar key={d.id ?? i} driver={d} />
           ))}
       </MapCanvas>
+      {!pin && (
+        <button
+          type="button"
+          className="pin-fab"
+          onClick={startPin}
+          title={`Set ${target === "pickup" ? "pickup" : "destination"} location with interactive pin`}
+        >
+          📍 Set {target === "pickup" ? "pickup" : "drop"} with pin
+        </button>
+      )}
+      <button
+        type="button"
+        className="recenter"
+        onClick={() => {
+          if (pickup) tools.goTo(pickup);
+          else tools.locate();
+        }}
+        title="Center map on my location or pickup"
+      >
+        {tools.locating ? "Locating…" : "◎ My location"}
+      </button>
       {pin && <PinOverlay moving={moving} />}
       {pin && center && (
         <PinCard area={area.name} target={target} center={center} moving={moving} drivers={drivers?.filter((d) => !vehicleCategory || d.category === vehicleCategory)} reverse={reverse} onConfirm={pinConfirm} onCancel={() => { setPin(false); setMoving(false); }} />

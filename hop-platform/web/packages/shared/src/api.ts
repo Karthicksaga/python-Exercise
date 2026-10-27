@@ -15,6 +15,16 @@ export class APIError extends Error {
     super(message);
   }
 }
+async function parseResponse(res: Response): Promise<any> {
+  const text = await res.text();
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: text.length < 200 ? text.trim() : `Server returned ${res.status} ${res.statusText || ""}`.trim() };
+  }
+}
+
 export async function api<T>(
   path: string,
   body?: unknown,
@@ -31,10 +41,10 @@ export async function api<T>(
     signal,
   });
   let response = await send();
-  let data = await response.json();
+  let data = await parseResponse(response);
   if (response.ok && path === "/api/me") {
-    accountID = data.user.id;
-    csrf = data.csrf;
+    accountID = data.user?.id || "";
+    csrf = data.csrf || "";
   }
   // Another tab may rotate the shared session cookie while this tab retains its old token.
   // The rejected request has not run; retry once only for the same signed-in account.
@@ -42,18 +52,18 @@ export async function api<T>(
       data.error === "Request origin or CSRF token is invalid") {
     const me = await serverFetch("/api/me", { credentials: "same-origin", signal });
     if (me.ok) {
-      const session = await me.json();
-      if (session.user.id !== accountID) {
+      const session = await parseResponse(me);
+      if (session.user && session.user.id !== accountID) {
         throw new APIError("Your signed-in account changed. Reload the page before continuing.", 403);
       }
       if (session.csrf && session.csrf !== csrf) {
         csrf = session.csrf;
         response = await send();
-        data = await response.json();
+        data = await parseResponse(response);
       }
     }
   }
   if (!response.ok)
-    throw new APIError(data.error || "Request failed", response.status, data.code);
+    throw new APIError(data.error || `Request failed (${response.status})`, response.status, data.code);
   return data;
 }

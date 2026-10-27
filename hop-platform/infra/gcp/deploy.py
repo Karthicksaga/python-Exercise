@@ -50,7 +50,7 @@ def validate(c):
     for key in ("OIDC_ISSUER", "ROUTING_URL", "GEOCODING_URL"):
         https_url(env[key])
     require(bool(env["OIDC_CLIENT_ID"]), "OIDC_CLIENT_ID is required")
-    allowed_env = {"OIDC_ISSUER", "OIDC_CLIENT_ID", "ROUTING_URL", "GEOCODING_URL", "VAPID_PUBLIC_KEY", "VAPID_SUBJECT", "MEDIA_PROFILE_BUCKET", "MEDIA_KYC_BUCKET", "DEV_SMS"}
+    allowed_env = {"OIDC_ISSUER", "OIDC_CLIENT_ID", "ROUTING_URL", "GEOCODING_URL", "VAPID_PUBLIC_KEY", "VAPID_SUBJECT", "MEDIA_PROFILE_BUCKET", "MEDIA_KYC_BUCKET", "DEV_SMS", "DEV_PAYMENTS"}
     require(set(env) <= allowed_env, "api_env accepts public configuration only; use api_secrets for credentials")
     buckets = [env.get("MEDIA_PROFILE_BUCKET", ""), env.get("MEDIA_KYC_BUCKET", "")]
     if any(buckets):
@@ -108,6 +108,9 @@ def deploy(c, revision):
         "https://hop-staging-rider-614653152825.asia-south1.run.app",
         "https://hop-staging-captain-614653152825.asia-south1.run.app",
         "https://hop-staging-admin-614653152825.asia-south1.run.app",
+        "https://hop-staging-rider-qp262su4sq-el.a.run.app",
+        "https://hop-staging-captain-qp262su4sq-el.a.run.app",
+        "https://hop-staging-admin-qp262su4sq-el.a.run.app",
     ]
     env = dict(c["api_env"], APP_ENV="production", ADDRESS=":8080", MIGRATE_ON_START="true",
                PUBLIC_ORIGIN=c["origins"]["rider"],

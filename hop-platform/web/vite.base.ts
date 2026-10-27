@@ -3,10 +3,12 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
+import tailwindcss from '@tailwindcss/vite';
+
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   publicDir: path.join(root, 'packages/shared/public'),
   build: {
     rollupOptions: {

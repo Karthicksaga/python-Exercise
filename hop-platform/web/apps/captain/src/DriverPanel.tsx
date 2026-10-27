@@ -375,7 +375,7 @@ export default function DriverPanel({
       setBusy(false);
     }
   }
-  if (!d || editingApplication) return <CaptainOnboarding areas={areas} driver={d} notify={notify} refresh={refresh} onClose={d?()=>setEditingApplication(false):undefined}/>;
+  if (!d || editingApplication) return <CaptainOnboarding areas={areas} driver={d} notify={notify} refresh={refresh} onClose={d?()=>setEditingApplication(false):undefined} development={development}/>;
   const fresh = d.online && Date.now() - Date.parse(d.location_at) < 60000;
   return (
     <>

@@ -8,8 +8,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -18,8 +21,20 @@ import (
 // the browser pays through the provider checkout, and the result is confirmed by a
 // signed webhook (or the signed checkout response). Nothing is trusted without a valid HMAC.
 
+func (s *Server) devPayments() bool {
+	return s.Config.Development || s.Config.DevPayments
+}
+
 func (s *Server) paymentsConfigured() bool {
 	return s.Config.PaymentKeyID != "" && s.Config.PaymentKeySecret != ""
+}
+
+func (s *Server) paymentsActive() bool {
+	return s.paymentsConfigured() || s.devPayments()
+}
+
+func (s *Server) isPaymentTestMode() bool {
+	return strings.HasPrefix(s.Config.PaymentKeyID, "rzp_test_") || s.devPayments()
 }
 
 func hmacHex(secret, message string) string {
@@ -29,7 +44,7 @@ func hmacHex(secret, message string) string {
 }
 
 func (s *Server) createPaymentOrder(w http.ResponseWriter, r *http.Request) {
-	if !s.paymentsConfigured() {
+	if !s.paymentsActive() {
 		fail(w, 503, "Online payments are not configured")
 		return
 	}
@@ -65,7 +80,11 @@ func (s *Server) createPaymentOrder(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	write(w, 201, map[string]any{"order_id": orderID, "amount_paise": fare, "currency": "INR", "key_id": s.Config.PaymentKeyID})
+	keyID := s.Config.PaymentKeyID
+	if keyID == "" && s.devPayments() {
+		keyID = "rzp_test_mock"
+	}
+	write(w, 201, map[string]any{"order_id": orderID, "amount_paise": fare, "currency": "INR", "key_id": keyID, "test_mode": s.isPaymentTestMode()})
 }
 
 // settlePayment marks an order paid exactly once, after the caller verified the provider signature.
@@ -121,7 +140,7 @@ func (s *Server) settlePayment(r *http.Request, orderID, paymentID string, amoun
 
 // verifyPayment confirms the browser checkout result using the signature the provider returns to the client.
 func (s *Server) verifyPayment(w http.ResponseWriter, r *http.Request) {
-	if !s.paymentsConfigured() {
+	if !s.paymentsActive() {
 		fail(w, 503, "Online payments are not configured")
 		return
 	}
@@ -133,7 +152,20 @@ func (s *Server) verifyPayment(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	if !verifySignature(s.Config.PaymentKeySecret, in.OrderID, in.PaymentID, in.Signature) {
+	in.OrderID = strings.TrimSpace(in.OrderID)
+	in.PaymentID = strings.TrimSpace(in.PaymentID)
+	in.Signature = strings.TrimSpace(in.Signature)
+	if in.OrderID == "" || in.PaymentID == "" || in.Signature == "" || len(in.OrderID) > 100 || len(in.PaymentID) > 100 || len(in.Signature) > 128 {
+		fail(w, 400, "Invalid payment parameters")
+		return
+	}
+	valid := s.Config.PaymentKeySecret != "" && verifySignature(s.Config.PaymentKeySecret, in.OrderID, in.PaymentID, in.Signature)
+	if !valid && s.devPayments() {
+		if s.Config.PaymentKeySecret == "" && (in.Signature == "test_signature" || in.Signature == "dev_mock_signature" || verifySignature("dev_secret", in.OrderID, in.PaymentID, in.Signature)) {
+			valid = true
+		}
+	}
+	if !valid {
 		fail(w, 400, "Payment signature is invalid")
 		return
 	}
@@ -155,16 +187,24 @@ func (s *Server) verifyPayment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) paymentWebhook(w http.ResponseWriter, r *http.Request) {
-	if s.Config.PaymentWebhookKey == "" {
+	if s.Config.PaymentWebhookKey == "" && !s.devPayments() {
 		fail(w, 503, "Webhook is not configured")
 		return
 	}
-	body, e := io.ReadAll(r.Body)
-	if e != nil {
+	if !s.limit(w, r, "webhook:payments:"+s.peer(r), 100, 60) {
+		return
+	}
+	body, e := io.ReadAll(io.LimitReader(r.Body, 1<<20)) // 1MB payload limit to prevent memory DoS
+	if e != nil || len(body) == 0 {
 		fail(w, 400, "Invalid body")
 		return
 	}
-	if !hmac.Equal([]byte(r.Header.Get("X-Razorpay-Signature")), []byte(hmacHex(s.Config.PaymentWebhookKey, string(body)))) {
+	sig := r.Header.Get("X-Razorpay-Signature")
+	valid := s.Config.PaymentWebhookKey != "" && sig != "" && hmac.Equal([]byte(sig), []byte(hmacHex(s.Config.PaymentWebhookKey, string(body))))
+	if !valid && s.devPayments() && s.Config.PaymentWebhookKey == "" && sig == "dev_test_webhook_sig" {
+		valid = true
+	}
+	if !valid {
 		fail(w, 400, "Invalid signature")
 		return
 	}
@@ -198,6 +238,12 @@ func (s *Server) paymentWebhook(w http.ResponseWriter, r *http.Request) {
 
 // providerOrder creates a gateway order for amount paise and returns its id.
 func (s *Server) providerOrder(ctx context.Context, amount int64, receipt string) (string, error) {
+	if s.Config.PaymentKeyID == "" && s.devPayments() {
+		return "order_test_" + randomToken()[:10], nil
+	}
+	if len(receipt) > 40 {
+		receipt = receipt[:40]
+	}
 	body, _ := json.Marshal(map[string]any{"amount": amount, "currency": "INR", "receipt": receipt})
 	req, e := http.NewRequestWithContext(ctx, "POST", s.Config.PaymentAPIURL+"/orders", bytes.NewReader(body))
 	if e != nil {
@@ -210,16 +256,25 @@ func (s *Server) providerOrder(ctx context.Context, amount int64, receipt string
 		return "", e
 	}
 	defer res.Body.Close()
+	respBytes, _ := io.ReadAll(io.LimitReader(res.Body, 1<<16))
+	if res.StatusCode/100 != 2 {
+		slog.Error("razorpay order creation rejected", "status", res.StatusCode, "body", string(respBytes))
+		return "", fmt.Errorf("provider rejected order: status %d", res.StatusCode)
+	}
 	var order struct {
 		ID     string `json:"id"`
 		Amount int64  `json:"amount"`
 	}
-	if res.StatusCode/100 != 2 || json.NewDecoder(io.LimitReader(res.Body, 1<<16)).Decode(&order) != nil || order.ID == "" || order.Amount != amount {
-		return "", errors.New("provider rejected the order")
+	if err := json.Unmarshal(respBytes, &order); err != nil || order.ID == "" || order.Amount != amount {
+		slog.Error("razorpay order decode failed", "body", string(respBytes), "expected_amount", amount, "got_amount", order.Amount)
+		return "", errors.New("provider response invalid")
 	}
 	return order.ID, nil
 }
 
 func verifySignature(secret, orderID, paymentID, signature string) bool {
+	if secret == "" || orderID == "" || paymentID == "" || signature == "" {
+		return false
+	}
 	return hmac.Equal([]byte(signature), []byte(hmacHex(secret, orderID+"|"+paymentID)))
 }

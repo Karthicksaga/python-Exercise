@@ -1,3 +1,11 @@
 dump.rdb
 .DS_Store
 hop-platform/web/mobile/*/android/.kotlin/
+
+# Playwright output
+hop-platform/web/test-results*/
+hop-platform/web/playwright-report/
+
+# Editor & Tooling
+.metals/
+*.code-workspace
