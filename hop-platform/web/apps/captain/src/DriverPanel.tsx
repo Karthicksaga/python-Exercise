@@ -60,7 +60,7 @@ function AreaChange({
   const pending = change?.status === "pending";
   const currentArea = areas.find((a) => a.id === current.area_id);
   const requestedArea = change ? areas.find((a) => a.id === change.area_id) : null;
-  const availableAreas = areas.filter((a) => a.id !== current.area_id && a.active);
+  const availableAreas = areas.filter((a) => a.id !== current.area_id && a.active !== false);
 
   return (
     <section className="panel area-change">
@@ -94,26 +94,36 @@ function AreaChange({
           onSubmit={async (e) => {
             e.preventDefault();
             const f = new FormData(e.currentTarget);
-            await onSubmit(String(f.get("area_id")));
+            const targetId = String(f.get("area_id") || "");
+            if (!targetId || targetId === "undefined") return;
+            await onSubmit(targetId);
             setOpen(false);
           }}
         >
-          <label>
-            New service area
-            <select name="area_id" defaultValue={availableAreas[0]?.id}>
-              {availableAreas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} ({a.state})
-                </option>
-              ))}
-            </select>
-          </label>
-          <button disabled={busy || availableAreas.length === 0} style={{ marginTop: 8 }}>
-            Request area change
-          </button>
-          <p className="muted" style={{ fontSize: "0.85rem", marginTop: 6 }}>
-            An admin must approve your service area change before it takes effect. Once approved, you will go offline to reconnect in the new zone.
-          </p>
+          {availableAreas.length > 0 ? (
+            <>
+              <label>
+                New service area
+                <select name="area_id" defaultValue={availableAreas[0]?.id}>
+                  {availableAreas.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} ({a.state})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button disabled={busy} style={{ marginTop: 8 }}>
+                Request area change
+              </button>
+              <p className="muted" style={{ fontSize: "0.85rem", marginTop: 6 }}>
+                An admin must approve your service area change before it takes effect. Once approved, you will go offline to reconnect in the new zone.
+              </p>
+            </>
+          ) : (
+            <p className="muted" style={{ fontSize: "0.9rem", marginTop: 8 }}>
+              No other active service areas available.
+            </p>
+          )}
         </form>
       )}
     </section>

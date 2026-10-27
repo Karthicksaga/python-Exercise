@@ -67,6 +67,13 @@ func TestPhoneOTPLogin(t *testing.T) {
 	require(t, res.StatusCode, 200)
 	code, _, _ = publicPost(t, f, "/auth/otp/verify", map[string]string{"phone": "9876543210", "code": otp}, nil)
 	require(t, code, 400)
+
+	// Verify that test code 123456 works in dev/test mode for another phone number
+	code, _, cookies2 := publicPost(t, f, "/auth/otp/verify", map[string]string{"phone": "9876543211", "code": "123456"}, nil)
+	require(t, code, 200)
+	if len(cookies2) == 0 {
+		t.Fatal("no session cookie from test OTP 123456")
+	}
 }
 
 func TestOnlinePaymentOrderAndSignedConfirmation(t *testing.T) {

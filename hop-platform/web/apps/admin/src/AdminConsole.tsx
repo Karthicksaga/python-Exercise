@@ -136,7 +136,7 @@ export default function AdminConsole({ notify }: { notify: (s: string) => void; 
                       label="Service area"
                       size="xs"
                       mt={4}
-                      data={areas.filter((a) => a.active).map((a) => ({ value: a.id, label: `${a.name} (${a.state})` }))}
+                      data={areas.filter((a) => a.active !== false).map((a) => ({ value: a.id, label: `${a.name} (${a.state})` }))}
                       value={assignedArea}
                       onChange={(val) => setAssignedArea(val || "")}
                     />

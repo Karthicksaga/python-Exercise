@@ -78,7 +78,7 @@ func (a Area) contains(p Point) bool {
 	return p.Lat >= a.MinLat && p.Lat <= a.MaxLat && p.Lng >= a.MinLng && p.Lng <= a.MaxLng
 }
 func (s *Server) publicConfig(w http.ResponseWriter, r *http.Request) {
-	areas, e := jsonRows(r.Context(), s.DB, "SELECT id,name,state,min_lat,max_lat,min_lng,max_lng FROM areas WHERE active ORDER BY state,name")
+	areas, e := jsonRows(r.Context(), s.DB, "SELECT id,name,state,min_lat,max_lat,min_lng,max_lng,active FROM areas WHERE active ORDER BY state,name")
 	if e != nil {
 		dbError(w, e)
 		return

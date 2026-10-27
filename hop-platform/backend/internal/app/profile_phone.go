@@ -71,7 +71,8 @@ func (s *Server) requestProfilePhone(w http.ResponseWriter, r *http.Request) {
 			fail(w, 502, "Could not send SMS; try again later")
 			return
 		}
-	} else {
+	}
+	if !s.smsConfigured() || s.devSMS() {
 		out["dev_code"] = code
 	}
 	write(w, 200, out)

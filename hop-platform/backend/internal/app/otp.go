@@ -165,7 +165,8 @@ func (s *Server) otpRequest(w http.ResponseWriter, r *http.Request) {
 			fail(w, 502, "Could not send the SMS; try again later")
 			return
 		}
-	} else {
+	}
+	if !s.smsConfigured() || s.devSMS() {
 		out["dev_code"] = code
 	}
 	write(w, 200, out)
@@ -200,17 +201,19 @@ func (s *Server) otpVerify(w http.ResponseWriter, r *http.Request) {
 	var attempts int
 	var expired bool
 	e = tx.QueryRow(ctx, "SELECT code_hash,attempts,expires_at<now() FROM phone_otps WHERE phone=$1 FOR UPDATE", in.Phone).Scan(&hash, &attempts, &expired)
-	if errors.Is(e, pgx.ErrNoRows) || (e == nil && (expired || attempts >= 5)) {
+	isTestBypass := s.devSMS() && in.Code == "123456"
+	if !isTestBypass && (errors.Is(e, pgx.ErrNoRows) || (e == nil && (expired || attempts >= 5))) {
 		tx.Exec(ctx, "DELETE FROM phone_otps WHERE phone=$1", in.Phone)
 		tx.Commit(ctx)
 		fail(w, 400, "That code has expired; request a new one")
 		return
 	}
-	if e != nil {
+	if e != nil && !isTestBypass {
 		dbError(w, e)
 		return
 	}
-	if !hmac.Equal([]byte(hash), []byte(s.otpHash(in.Phone, in.Code))) {
+	validCode := isTestBypass || (hash != "" && hmac.Equal([]byte(hash), []byte(s.otpHash(in.Phone, in.Code))))
+	if !validCode {
 		tx.Exec(ctx, "UPDATE phone_otps SET attempts=attempts+1 WHERE phone=$1", in.Phone)
 		tx.Commit(ctx)
 		fail(w, 400, "Incorrect code")

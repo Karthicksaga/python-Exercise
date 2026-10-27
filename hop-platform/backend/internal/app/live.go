@@ -357,7 +357,7 @@ func (s *Server) reviewVehicleChange(w http.ResponseWriter, r *http.Request) {
 	write(w, 200, map[string]bool{"ok": true})
 }
 
-// requestAreaChange lets an approved driver ask to switch their service area; an operator must approve it.
+// requestAreaChange lets an approved or pending driver ask to switch their service area; an operator must approve it.
 func (s *Server) requestAreaChange(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		AreaID string `json:"area_id"`
@@ -380,25 +380,31 @@ func (s *Server) requestAreaChange(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(ctx)
 	var busy bool
 	var status, currentArea string
-	if e = tx.QueryRow(ctx, `SELECT status,area_id,EXISTS(SELECT 1 FROM rides WHERE driver_id=$1 AND status IN ('accepted','arrived','in_progress')) FROM drivers WHERE user_id=$1 FOR UPDATE`, uid).Scan(&status, &currentArea, &busy); e != nil {
-		fail(w, 404, "Driver profile not found")
+	if e = tx.QueryRow(ctx, `SELECT status,area_id::text,EXISTS(SELECT 1 FROM rides WHERE driver_id=$1::uuid AND status IN ('accepted','arrived','in_progress')) FROM drivers WHERE user_id=$1::uuid FOR UPDATE`, uid).Scan(&status, &currentArea, &busy); e != nil {
+		fail(w, 404, "Driver profile not found. Please register as a driver first.")
 		return
 	}
 	var targetActive bool
-	if e = tx.QueryRow(ctx, `SELECT active FROM areas WHERE id=$1`, in.AreaID).Scan(&targetActive); e != nil || !targetActive {
+	if e = tx.QueryRow(ctx, `SELECT active FROM areas WHERE id=$1::uuid`, in.AreaID).Scan(&targetActive); e != nil || !targetActive {
 		fail(w, 400, "Target service area is not active or does not exist")
 		return
 	}
 	switch {
-	case status != "approved":
-		fail(w, 403, "Only approved drivers can change service area")
+	case status == "suspended":
+		fail(w, 403, "Suspended drivers cannot change service area")
+	case status != "approved" && status != "pending":
+		fail(w, 403, "Only active or pending drivers can change service area")
 	case busy:
 		fail(w, 409, "Finish your current trip before changing service area")
 	case currentArea == in.AreaID:
 		fail(w, 400, "That is already your service area")
 	default:
-		if _, e = tx.Exec(ctx, "UPDATE area_change_requests SET status='cancelled' WHERE driver_id=$1 AND status='pending'", uid); e == nil {
-			_, e = tx.Exec(ctx, "INSERT INTO area_change_requests(driver_id,area_id) VALUES($1,$2)", uid, in.AreaID)
+		if _, e = tx.Exec(ctx, "UPDATE area_change_requests SET status='cancelled' WHERE driver_id=$1::uuid AND status='pending'", uid); e == nil {
+			_, e = tx.Exec(ctx, "INSERT INTO area_change_requests(driver_id,area_id) VALUES($1::uuid,$2::uuid)", uid, in.AreaID)
+		}
+		if e == nil && status == "pending" {
+			// Update the driver's registered area directly if initial application is still pending
+			_, e = tx.Exec(ctx, "UPDATE drivers SET area_id=$2::uuid,updated_at=now() WHERE user_id=$1::uuid", uid, in.AreaID)
 		}
 		if e == nil {
 			e = audit(ctx, tx, uid, "", "area_change_requested", map[string]string{"area_id": in.AreaID})
@@ -437,7 +443,7 @@ func (s *Server) reviewAreaChange(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(ctx)
 	var driver, targetArea string
-	e = tx.QueryRow(ctx, `UPDATE area_change_requests SET status=$2,review_note=$3,reviewed_by=$4,reviewed_at=now() WHERE id=$1 AND status='pending' RETURNING driver_id,area_id`,
+	e = tx.QueryRow(ctx, `UPDATE area_change_requests SET status=$2,review_note=$3,reviewed_by=$4::uuid,reviewed_at=now() WHERE id=$1::uuid AND status='pending' RETURNING driver_id::text,area_id::text`,
 		r.PathValue("id"), in.Status, in.Note, user(r).Account.ID).Scan(&driver, &targetArea)
 	if e != nil {
 		fail(w, 404, "No pending area change request found")
@@ -445,7 +451,7 @@ func (s *Server) reviewAreaChange(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Status == "approved" {
 		// Going offline forces the driver to re-register their location under the new service area.
-		if _, e = tx.Exec(ctx, "UPDATE drivers SET area_id=$2,online=false,updated_at=now() WHERE user_id=$1", driver, targetArea); e != nil {
+		if _, e = tx.Exec(ctx, "UPDATE drivers SET area_id=$2::uuid,online=false,updated_at=now() WHERE user_id=$1::uuid", driver, targetArea); e != nil {
 			dbError(w, e)
 			return
 		}

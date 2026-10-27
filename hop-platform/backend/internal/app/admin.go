@@ -130,16 +130,16 @@ func (s *Server) adminDecision(w http.ResponseWriter, r *http.Request) {
 	}
 	if e == nil && in.AreaID != "" {
 		var active bool
-		if e = tx.QueryRow(ctx, "SELECT active FROM areas WHERE id=$1", in.AreaID).Scan(&active); e != nil || !active {
+		if e = tx.QueryRow(ctx, "SELECT active FROM areas WHERE id=$1::uuid", in.AreaID).Scan(&active); e != nil || !active {
 			fail(w, 400, "Selected service area is invalid or inactive")
 			return
 		}
-		if _, e = tx.Exec(ctx, "UPDATE drivers SET area_id=$2,online=false,updated_at=now() WHERE user_id=$1 AND area_id<>$2", id, in.AreaID); e != nil {
+		if _, e = tx.Exec(ctx, "UPDATE drivers SET area_id=$2::uuid,online=false,updated_at=now() WHERE user_id=$1::uuid AND area_id<>$2::uuid", id, in.AreaID); e != nil {
 			dbError(w, e)
 			return
 		}
 		s.dropLive(ctx, id)
-		_, _ = tx.Exec(ctx, "UPDATE area_change_requests SET status='approved',review_note='Area updated directly by operator',reviewed_by=$2,reviewed_at=now() WHERE driver_id=$1 AND status='pending'", id, user(r).Account.ID)
+		_, _ = tx.Exec(ctx, "UPDATE area_change_requests SET status='approved',review_note='Area updated directly by operator',reviewed_by=$2::uuid,reviewed_at=now() WHERE driver_id=$1::uuid AND status='pending'", id, user(r).Account.ID)
 	}
 	if e == nil {
 		_, e = tx.Exec(ctx, `UPDATE drivers SET status=$2,pink_certified=$3,online=online AND $2='approved',
