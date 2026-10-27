@@ -260,7 +260,7 @@ func (s *Server) walletTopup(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "Add between ₹10 and ₹10,000")
 		return
 	}
-	if s.paymentsActive() {
+	if s.paymentsConfigured() {
 		order, e := s.providerOrder(ctx, in.AmountPaise, "wallet-"+randomToken()[:10])
 		if e != nil {
 			fail(w, 502, "Payment provider unavailable")

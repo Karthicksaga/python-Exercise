@@ -83,7 +83,7 @@ func setup(t *testing.T) *fixture {
 		}
 		write(w, 200, map[string]any{"code": "Ok", "routes": routes})
 	}))
-	s := &Server{Media: &memoryMedia{objects: map[string][]byte{}}, Config: Config{PublicOrigin: "https://hop.test", SessionKey: strings.Repeat("test-key", 8), RoutingURL: router.URL, Development: true}, DB: db, Cache: cache, HTTP: &http.Client{Timeout: time.Second}}
+	s := &Server{Events: newEventHub(), Media: &memoryMedia{objects: map[string][]byte{}}, Config: Config{PublicOrigin: "https://hop.test", SessionKey: strings.Repeat("test-key", 8), RoutingURL: router.URL, Development: true}, DB: db, Cache: cache, HTTP: &http.Client{Timeout: time.Second}}
 	httpServer := httptest.NewServer(s.Handler())
 	f := &fixture{s: s, http: httpServer, route: router, t: t}
 	e = db.QueryRow(ctx, `INSERT INTO areas(name,state,min_lat,max_lat,min_lng,max_lng,base_paise,per_km_paise,minimum_paise,active,approval_reference) VALUES('Test area','Test state',12,14,79,81,1500,800,2500,true,'test only') RETURNING id`).Scan(&f.area)
@@ -637,5 +637,74 @@ func (f *fixture) atDestination(driver client, rideID string) {
 	_, e := f.s.DB.Exec(context.Background(), `UPDATE drivers SET lat=q.dropoff_lat,lng=q.dropoff_lng,location_at=now() FROM rides r JOIN quotes q ON q.id=r.quote_id WHERE r.id=$1 AND drivers.user_id=$2`, rideID, driver.id)
 	if e != nil {
 		f.t.Fatal(e)
+	}
+}
+
+func TestUnsettledPaymentEnforcementAndIdempotency(t *testing.T) {
+	f := setup(t)
+	rider := f.actor("rider", false)
+	driver := f.actor("rider", true)
+
+	quote1 := f.quote(rider)
+	ride1 := f.book(rider, quote1)
+
+	// Complete the first ride
+	require(t, f.act(driver, ride1, "accept", 1, ""), 200)
+	require(t, f.act(driver, ride1, "arrive", 2, ""), 200)
+	require(t, f.act(driver, ride1, "start", 3, f.s.pin(ride1)), 200)
+	f.atDestination(driver, ride1)
+	require(t, f.act(driver, ride1, "complete", 4, ""), 200)
+
+	// 1. Idempotent complete: Calling complete on an already completed ride should return 200 OK
+	require(t, f.act(driver, ride1, "complete", 5, ""), 200)
+
+	// 2. Outstanding payment enforcement: Rider should not be able to book another ride until ride1 is settled
+	quote2 := f.quote(rider)
+	reqKey := "22222222-2222-4222-8222-" + strings.ReplaceAll(rider.id, "-", "")[:12]
+	status, body := f.call(rider, "POST", "/api/rides", map[string]any{
+		"quote_id":       quote2,
+		"request_key":    reqKey,
+		"payment_method": "cash",
+	})
+	if status != 402 {
+		t.Fatalf("expected 402 Payment Required for booking with unsettled ride, got %d: %v", status, body)
+	}
+	if body["code"] != "payment_required" || body["ride_id"] != ride1 {
+		t.Fatalf("expected code=payment_required and ride_id=%s, got %v", ride1, body)
+	}
+
+	// 3. Telemetry speed and heading ingestion
+	locStatus, _ := f.call(driver, "POST", "/api/drivers/location", map[string]any{
+		"lat":      13.08,
+		"lng":      80.27,
+		"accuracy": 10,
+		"speed":    42,
+		"heading":  185,
+	})
+	if locStatus != 200 {
+		t.Fatalf("expected 200 for location telemetry, got %d", locStatus)
+	}
+	posStatus, posBody := f.call(rider, "GET", "/api/rides/"+ride1+"/position", nil)
+	if posStatus != 200 {
+		t.Fatalf("expected 200 for ride position, got %d", posStatus)
+	}
+	if int(posBody["speed"].(float64)) != 42 || int(posBody["heading"].(float64)) != 185 {
+		t.Fatalf("expected speed=42 and heading=185, got %v", posBody)
+	}
+
+	// 4. Cash payment confirmation: Driver reports payment received
+	require(t, f.act(driver, ride1, "payment_received", 5, ""), 200)
+
+	// 5. Idempotent payment_received: Calling again on already confirmed ride returns 200 OK
+	require(t, f.act(driver, ride1, "payment_received", 6, ""), 200)
+
+	// 6. Unlocked booking: Now that ride1 is settled, booking the new ride succeeds with 201 Created!
+	status2, body2 := f.call(rider, "POST", "/api/rides", map[string]any{
+		"quote_id":       quote2,
+		"request_key":    reqKey,
+		"payment_method": "cash",
+	})
+	if status2 != 201 {
+		t.Fatalf("expected 201 for booking after settlement, got %d: %v", status2, body2)
 	}
 }

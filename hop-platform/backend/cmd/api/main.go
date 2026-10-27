@@ -63,6 +63,38 @@ func run() error {
 	if e != nil {
 		return e
 	}
+	var logHandler slog.Handler
+	if config.Development {
+		logHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+	} else {
+		logHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelInfo,
+			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+				if a.Key == slog.LevelKey {
+					level, ok := a.Value.Any().(slog.Level)
+					if ok {
+						severity := "INFO"
+						switch {
+						case level >= slog.LevelError:
+							severity = "ERROR"
+						case level >= slog.LevelWarn:
+							severity = "WARNING"
+						case level >= slog.LevelInfo:
+							severity = "INFO"
+						default:
+							severity = "DEBUG"
+						}
+						return slog.String("severity", severity)
+					}
+				}
+				if a.Key == slog.MessageKey {
+					return slog.String("message", a.Value.String())
+				}
+				return a
+			},
+		})
+	}
+	slog.SetDefault(slog.New(logHandler))
 	migrate, e := startupMigrationsEnabled()
 	if e != nil {
 		return e

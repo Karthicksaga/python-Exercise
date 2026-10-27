@@ -80,12 +80,14 @@ export default function LiveNavMap({ ride }: { ride: Ride }) {
   const [heading, setHeading] = useState(0);
   const [speed, setSpeed] = useState(0);
   const [voice, setVoice] = useState(() => localStorage.getItem("hop.voice") === "1");
+  const [fullscreen, setFullscreen] = useState(false);
   const sampled = useRef<{ p: LL; t: number } | undefined>(undefined);
   const [trail, setTrail] = useState<LL[]>([]);
   const last = useRef<LL | undefined>(undefined);
   const status = ride.status;
 
   const [pos, setPos] = useState<LL | undefined>();
+  const [stale, setStale] = useState(false);
   useEffect(() => {
     let live = true;
     setTrail([]);
@@ -100,22 +102,31 @@ export default function LiveNavMap({ ride }: { ride: Ride }) {
         .catch((e: Error) => live && setError(e.message));
     // The car position is polled every second; the route and turn list are recalculated every 3 seconds.
     const track = () =>
-      api<{ lat: number; lng: number }>(`/api/rides/${ride.id}/position`)
+      api<{ lat: number; lng: number; speed?: number; heading?: number; stale?: boolean }>(
+        `/api/rides/${ride.id}/position`
+      )
         .then((p) => {
           if (!live) return;
           const here = { lat: p.lat, lng: p.lng };
           const prev = last.current;
           const now = performance.now();
-          if (sampled.current && now - sampled.current.t > 700) {
+          if (p.speed != null && p.speed >= 0) {
+            setSpeed(Math.round(p.speed));
+          } else if (sampled.current && now - sampled.current.t > 700) {
             const kmh = (metres(sampled.current.p, here) / ((now - sampled.current.t) / 1000)) * 3.6;
             setSpeed((v) => Math.round(v * 0.6 + Math.min(kmh, 140) * 0.4));
           }
           if (!sampled.current || now - sampled.current.t > 700) sampled.current = { p: here, t: now };
-          if (prev && metres(prev, here) > 2) {
+          if (p.heading != null && p.heading >= 0) {
+            setHeading(Math.round(p.heading));
+          } else if (prev && metres(prev, here) > 2) {
             setHeading((h) => h + ((((bearing(prev, here) - h) % 360) + 540) % 360) - 180);
+          }
+          if (prev && metres(prev, here) > 2) {
             setTrail((t) => [...t.slice(-400), here]);
           }
           if (!prev || metres(prev, here) > 2) last.current = here;
+          setStale(Boolean(p.stale));
           setPos(here);
         })
         .catch(() => {});
@@ -132,15 +143,44 @@ export default function LiveNavMap({ ride }: { ride: Ride }) {
 
   const car = useGlide(pos ?? nav?.driver);
   const next = useMemo(() => {
-    if (!nav) return undefined;
-    const step = nav.steps.find((s, i) => i > 0 && metres(pos ?? nav.driver, s) > 15) ?? nav.steps[nav.steps.length - 1];
-    return step && { ...step, away: metres(pos ?? nav.driver, step) };
+    if (!nav || !nav.steps || nav.steps.length === 0) return undefined;
+    const currentPos = pos ?? nav.driver;
+    let upcomingIndex = 0;
+    for (let i = 0; i < nav.steps.length; i++) {
+      const d = metres(currentPos, nav.steps[i]);
+      if (d > 20) {
+        upcomingIndex = i;
+        break;
+      }
+      if (i === nav.steps.length - 1) {
+        upcomingIndex = i;
+      }
+    }
+    const step = nav.steps[upcomingIndex] ?? nav.steps[nav.steps.length - 1];
+    return step ? { ...step, away: metres(currentPos, step) } : undefined;
   }, [nav, pos?.lat, pos?.lng]);
+
+  // Auto-expand to full screen cockpit mode once the ride starts driving (in_progress)
+  useEffect(() => {
+    if (status === "in_progress" && ride.driving) {
+      setFullscreen(true);
+    }
+  }, [status, ride.driving]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && fullscreen) {
+        setFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
 
   useVoice(voice, next);
   if (!nav) {
     return (
-      <section className="live-nav" aria-label="Live navigation">
+      <section className={"live-nav" + (fullscreen ? " live-nav-fullscreen" : "")} aria-label="Live navigation">
         <div className="nav-wait">{error || "Starting live navigation…"}</div>
       </section>
     );
@@ -148,13 +188,40 @@ export default function LiveNavMap({ ride }: { ride: Ride }) {
   const goal = nav.phase === "pickup" ? "pickup" : "destination";
   const eta = new Date(Date.now() + nav.seconds * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   return (
-    <section className="live-nav" aria-label="Live navigation">
+    <section className={"live-nav" + (fullscreen ? " live-nav-fullscreen" : "")} aria-label="Live navigation">
+      {stale && (
+        <div className="nav-stale-banner" role="status" style={{ background: "#fef3c7", color: "#92400e", padding: "6px 12px", fontSize: "12px", fontWeight: 600, textAlign: "center", borderBottom: "1px solid #fde68a" }}>
+          <span>📡 Captain connection weak · Showing last known location</span>
+        </div>
+      )}
       <div className="nav-banner">
         <span className="nav-arrow" key={next?.instruction}>{arrows[next?.maneuver ?? "straight"]}</span>
         <div>
           <strong>{next ? `${next.maneuver === "arrive" ? "" : "In " + dist(next.away) + " · "}${next.instruction}` : "Follow the route"}</strong>
           <small>{ride.driving ? `Heading to ${goal}` : nav.phase === "pickup" ? "Your driver is heading to you" : "Heading to your destination"}</small>
         </div>
+        <button
+          type="button"
+          className="fullscreen-toggle-btn"
+          title={fullscreen ? "Exit full screen cockpit" : "Full screen cockpit view"}
+          onClick={() => setFullscreen((f) => !f)}
+          style={{
+            marginLeft: "auto",
+            background: "rgba(255,255,255,0.2)",
+            border: "1px solid rgba(255,255,255,0.4)",
+            color: "#fff",
+            borderRadius: "10px",
+            padding: "6px 12px",
+            cursor: "pointer",
+            fontWeight: 700,
+            fontSize: "12px",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px"
+          }}
+        >
+          {fullscreen ? "✕ Exit" : "⛶ Fullscreen"}
+        </button>
       </div>
       <div className="live-nav-map">
         <MapCanvas center={pos ?? nav.driver} zoom={16} onUserDrag={() => setFollow(false)}>
@@ -180,6 +247,13 @@ export default function LiveNavMap({ ride }: { ride: Ride }) {
           )}
         </MapCanvas>
         <div className="nav-tools">
+          <button
+            type="button"
+            title={fullscreen ? "Exit full screen" : "Full screen"}
+            onClick={() => setFullscreen((f) => !f)}
+          >
+            {fullscreen ? "✕" : "⛶"}
+          </button>
           <button
             type="button"
             aria-pressed={voice}
@@ -219,9 +293,19 @@ export default function LiveNavMap({ ride }: { ride: Ride }) {
         <div><small>Remaining</small><strong>{dist(nav.meters)}</strong></div>
         <div><small>Time</small><strong>{Math.max(1, Math.round(nav.seconds / 60))} min</strong></div>
         <div><small>Arrive</small><strong>{eta}</strong></div>
-        <button type="button" className="secondary" onClick={() => setFollow((f) => !f)}>
-          {follow ? "Overview" : "Follow"}
-        </button>
+        <div style={{ display: "flex", gap: "6px" }}>
+          <button type="button" className="secondary" onClick={() => setFollow((f) => !f)}>
+            {follow ? "Overview" : "Follow"}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            title={fullscreen ? "Exit full screen mode" : "Full screen mode"}
+            onClick={() => setFullscreen((f) => !f)}
+          >
+            {fullscreen ? "✕" : "⛶"}
+          </button>
+        </div>
       </div>
     </section>
   );

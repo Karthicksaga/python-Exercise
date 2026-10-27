@@ -509,39 +509,109 @@ func stepText(kind, modifier, road string) (string, string) {
 	return "Turn " + dir + onto, arrow
 }
 
+func fallbackSteps(route []RoutePoint, target Point) []navStep {
+	if len(route) < 2 {
+		return []navStep{
+			{Instruction: "Head toward " + target.Label, Maneuver: "straight", Meters: 0, Lat: target.Lat, Lng: target.Lng},
+			{Instruction: "Arrive at " + target.Label, Maneuver: "arrive", Meters: 0, Lat: target.Lat, Lng: target.Lng},
+		}
+	}
+	var steps []navStep
+	steps = append(steps, navStep{
+		Instruction: "Follow the route",
+		Maneuver:    "straight",
+		Meters:      int64(distance(Point{Lat: route[0].Lat, Lng: route[0].Lng}, Point{Lat: route[1].Lat, Lng: route[1].Lng})),
+		Lat:         route[0].Lat,
+		Lng:         route[0].Lng,
+	})
+
+	for i := 1; i < len(route)-1; i++ {
+		pPrev := Point{Lat: route[i-1].Lat, Lng: route[i-1].Lng}
+		pCur := Point{Lat: route[i].Lat, Lng: route[i].Lng}
+		pNext := Point{Lat: route[i+1].Lat, Lng: route[i+1].Lng}
+
+		b1 := bearingDegrees(pPrev, pCur)
+		b2 := bearingDegrees(pCur, pNext)
+		diff := b2 - b1
+		for diff > 180 {
+			diff -= 360
+		}
+		for diff < -180 {
+			diff += 360
+		}
+
+		dMeters := int64(distance(pCur, pNext))
+		if diff < -40 && diff > -135 {
+			steps = append(steps, navStep{Instruction: "Turn left", Maneuver: "left", Meters: dMeters, Lat: pCur.Lat, Lng: pCur.Lng})
+		} else if diff > 40 && diff < 135 {
+			steps = append(steps, navStep{Instruction: "Turn right", Maneuver: "right", Meters: dMeters, Lat: pCur.Lat, Lng: pCur.Lng})
+		} else if diff <= -135 || diff >= 135 {
+			steps = append(steps, navStep{Instruction: "Make a U-turn", Maneuver: "uturn", Meters: dMeters, Lat: pCur.Lat, Lng: pCur.Lng})
+		}
+	}
+	steps = append(steps, navStep{Instruction: "Arrive at destination", Maneuver: "arrive", Meters: 0, Lat: target.Lat, Lng: target.Lng})
+	return steps
+}
+
+func bearingDegrees(a, b Point) float64 {
+	rad := math.Pi / 180.0
+	y := math.Sin((b.Lng-a.Lng)*rad) * math.Cos(b.Lat*rad)
+	x := math.Cos(a.Lat*rad)*math.Sin(b.Lat*rad) - math.Sin(a.Lat*rad)*math.Cos(b.Lat*rad)*math.Cos((b.Lng-a.Lng)*rad)
+	return math.Mod(math.Atan2(y, x)/rad+360.0, 360.0)
+}
+
 // navigate returns the live road route and turn-by-turn steps from the driver's position to the next stop of the trip.
 func (s *Server) navigate(w http.ResponseWriter, r *http.Request) {
 	uid, id := user(r).Account.ID, r.PathValue("id")
 	var status, vehicleCat, tripType string
 	var rider, driver *string
 	var pLat, pLng, dLat, dLng float64
-	var lat, lng *float64
+	var lat, lng, speed, heading *float64
 	var at *time.Time
-	e := s.DB.QueryRow(r.Context(), `SELECT r.status,r.rider_id::text,r.driver_id::text,q.pickup_lat,q.pickup_lng,q.dropoff_lat,q.dropoff_lng,d.lat,d.lng,d.location_at,COALESCE(q.vehicle_category,'car'),COALESCE(q.trip_type,'city')
- FROM rides r JOIN quotes q ON q.id=r.quote_id LEFT JOIN drivers d ON d.user_id=r.driver_id WHERE r.id=$1`, id).Scan(&status, &rider, &driver, &pLat, &pLng, &dLat, &dLng, &lat, &lng, &at, &vehicleCat, &tripType)
+	e := s.DB.QueryRow(r.Context(), `SELECT r.status,r.rider_id::text,r.driver_id::text,q.pickup_lat,q.pickup_lng,q.dropoff_lat,q.dropoff_lng,d.lat,d.lng,d.speed,d.heading,d.location_at,COALESCE(q.vehicle_category,'car'),COALESCE(q.trip_type,'city')
+ FROM rides r JOIN quotes q ON q.id=r.quote_id LEFT JOIN drivers d ON d.user_id=r.driver_id WHERE r.id=$1`, id).Scan(&status, &rider, &driver, &pLat, &pLng, &dLat, &dLng, &lat, &lng, &speed, &heading, &at, &vehicleCat, &tripType)
 	if e != nil || !((rider != nil && *rider == uid) || (driver != nil && *driver == uid)) {
 		fail(w, 404, "Ride not found")
 		return
 	}
 	if driver != nil {
-		if la, ln, t, ok := s.liveDriverPos(r.Context(), *driver); ok {
-			lat, lng, at = &la, &ln, &t
+		if la, ln, spd, hdg, t, ok := s.liveDriverTelemetry(r.Context(), *driver); ok {
+			lat, lng, speed, heading, at = &la, &ln, &spd, &hdg, &t
 		}
 	}
 	if status != "accepted" && status != "arrived" && status != "in_progress" {
 		fail(w, 409, "Navigation is only available during an active trip")
 		return
 	}
-	if lat == nil || lng == nil || at == nil || time.Since(*at) > 2*time.Minute {
-		fail(w, 409, "Waiting for the driver's location")
-		return
+	stale := false
+	if lat == nil || lng == nil {
+		lat, lng = &pLat, &pLng
+		stale = true
+		now := time.Now()
+		at = &now
+	} else if at != nil && time.Since(*at) > 20*time.Second {
+		stale = true
 	}
-	target, phase := Point{Lat: pLat, Lng: pLng}, "pickup"
+	target, phase := Point{Lat: pLat, Lng: pLng, Label: "pickup"}, "pickup"
 	if status == "in_progress" {
-		target, phase = Point{Lat: dLat, Lng: dLng}, "destination"
+		target, phase = Point{Lat: dLat, Lng: dLng, Label: "destination"}, "destination"
 	}
 	from := Point{Lat: *lat, Lng: *lng}
-	out := map[string]any{"phase": phase, "driver": map[string]float64{"lat": *lat, "lng": *lng}, "target": target}
+	var spdVal, hdgVal float64
+	if speed != nil {
+		spdVal = *speed
+	}
+	if heading != nil {
+		hdgVal = *heading
+	}
+	out := map[string]any{
+		"phase":   phase,
+		"driver":  map[string]float64{"lat": *lat, "lng": *lng},
+		"target":  target,
+		"speed":   spdVal,
+		"heading": hdgVal,
+		"stale":   stale,
+	}
 	meters := int64(distance(from, target) * 1.3)
 	seconds := trafficAdjustDuration(float64(meters), 0, vehicleCat, tripType == "outstation")
 	route, steps := []RoutePoint{{Lat: from.Lat, Lng: from.Lng}, {Lat: target.Lat, Lng: target.Lng}}, []navStep{}
@@ -593,6 +663,9 @@ func (s *Server) navigate(w http.ResponseWriter, r *http.Request) {
 		}
 		cancel()
 	}
+	if len(steps) == 0 {
+		steps = fallbackSteps(route, target)
+	}
 	out["route"], out["steps"], out["meters"], out["seconds"] = route, steps, meters, seconds
 	out["eta_at"] = time.Now().Add(time.Duration(seconds) * time.Second).UTC().Format(time.RFC3339)
 	write(w, 200, out)
@@ -630,26 +703,47 @@ func (s *Server) devDriverNearRequest(w http.ResponseWriter, r *http.Request) {
 func (s *Server) ridePosition(w http.ResponseWriter, r *http.Request) {
 	uid, id := user(r).Account.ID, r.PathValue("id")
 	var status string
-	var lat, lng *float64
+	var lat, lng, speed, heading *float64
 	var at *time.Time
 	var driverID *string
-	e := s.DB.QueryRow(r.Context(), `SELECT r.status,r.driver_id::text,d.lat,d.lng,d.location_at FROM rides r LEFT JOIN drivers d ON d.user_id=r.driver_id
- WHERE r.id=$1 AND (r.rider_id=$2::uuid OR r.driver_id=$2::uuid)`, id, uid).Scan(&status, &driverID, &lat, &lng, &at)
+	var pLat, pLng float64
+	e := s.DB.QueryRow(r.Context(), `SELECT r.status,r.driver_id::text,d.lat,d.lng,d.speed,d.heading,d.location_at,q.pickup_lat,q.pickup_lng FROM rides r JOIN quotes q ON q.id=r.quote_id LEFT JOIN drivers d ON d.user_id=r.driver_id
+ WHERE r.id=$1 AND (r.rider_id=$2::uuid OR r.driver_id=$2::uuid)`, id, uid).Scan(&status, &driverID, &lat, &lng, &speed, &heading, &at, &pLat, &pLng)
 	if e != nil {
 		fail(w, 404, "Ride not found")
 		return
 	}
 	if driverID != nil {
-		if la, ln, t, ok := s.liveDriverPos(r.Context(), *driverID); ok {
-			lat, lng, at = &la, &ln, &t
+		if la, ln, spd, hdg, t, ok := s.liveDriverTelemetry(r.Context(), *driverID); ok {
+			lat, lng, speed, heading, at = &la, &ln, &spd, &hdg, &t
 		}
 	}
-	if lat == nil || lng == nil || at == nil {
-		fail(w, 409, "Waiting for the driver's location")
-		return
+	isStale := false
+	if lat == nil || lng == nil {
+		lat, lng = &pLat, &pLng
+		isStale = true
+		now := time.Now()
+		at = &now
+	} else if at != nil && time.Since(*at) > 20*time.Second {
+		isStale = true
+	}
+	var spdVal, hdgVal float64
+	if speed != nil {
+		spdVal = *speed
+	}
+	if heading != nil {
+		hdgVal = *heading
 	}
 	w.Header().Set("Cache-Control", "no-store")
-	write(w, 200, map[string]any{"status": status, "lat": *lat, "lng": *lng, "at": at.UTC().Format(time.RFC3339Nano)})
+	write(w, 200, map[string]any{
+		"status":  status,
+		"lat":     *lat,
+		"lng":     *lng,
+		"speed":   spdVal,
+		"heading": hdgVal,
+		"at":      at.UTC().Format(time.RFC3339Nano),
+		"stale":   isStale,
+	})
 }
 
 // nearbyFromHits builds the /api/nearby payload from Redis GEO results (sorted by distance).

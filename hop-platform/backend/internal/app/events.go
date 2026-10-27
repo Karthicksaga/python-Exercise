@@ -48,6 +48,12 @@ func (h *eventHub) wake(uid string) {
 	h.mu.RUnlock()
 }
 
+func (s *Server) wake(uid string) {
+	if s != nil && s.Events != nil && uid != "" {
+		s.Events.wake(uid)
+	}
+}
+
 func (h *eventHub) wakeAll() {
 	h.mu.RLock()
 	for _, set := range h.subs {

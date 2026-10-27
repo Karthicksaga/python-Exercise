@@ -340,31 +340,56 @@ export default function DriverPanel({
   useEffect(() => {
     if (!sharing) return;
     let cancelled = false;
-    async function heartbeat() {
-      if (inFlight.current || document.visibilityState !== "visible") return;
+    let watchId: number | null = null;
+    let lastUpload = 0;
+    let lastCoords: { lat: number; lng: number } | null = null;
+
+    const onPos = async (pos: {
+      coords: {
+        latitude: number;
+        longitude: number;
+        accuracy: number;
+        speed?: number | null;
+        heading?: number | null;
+      };
+    }) => {
+      if (cancelled) return;
+      const now = Date.now();
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const accuracy = Math.max(1, pos.coords.accuracy || 10);
+      const rawSpeed = pos.coords.speed;
+      const speed = rawSpeed != null && rawSpeed >= 0 ? Math.round(rawSpeed * 3.6) : 0;
+      const heading =
+        pos.coords.heading != null && !isNaN(pos.coords.heading) && pos.coords.heading >= 0
+          ? Math.round(pos.coords.heading)
+          : 0;
+
+      setMyPos({ lat, lng });
+
+      // Throttle uploads to at least 1500ms apart unless moved > 10m
+      const movedMeters = lastCoords
+        ? Math.hypot((lat - lastCoords.lat) * 111320, (lng - lastCoords.lng) * 111320 * Math.cos((lat * Math.PI) / 180))
+        : 999;
+
+      if (now - lastUpload < 1500 && movedMeters < 10) {
+        return;
+      }
+      if (inFlight.current) return;
       inFlight.current = true;
+      lastUpload = now;
+      lastCoords = { lat, lng };
+
       try {
-        const fake = simRef.current ?? (autoDrive ? driveRef.current : null);
-        const pos = fake
-          ? { coords: { latitude: fake.lat, longitude: fake.lng, accuracy: 10 } }
-          : await new Promise<GeolocationPosition>((resolve, reject) =>
-              navigator.geolocation.getCurrentPosition(resolve, reject, {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 12000,
-              }),
-            );
-        if (cancelled) return;
-        setMyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         await api("/api/drivers/location", {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: Math.max(1, pos.coords.accuracy),
+          lat,
+          lng,
+          accuracy,
+          speed,
+          heading,
         });
         if (!cancelled) {
-          setLocationStatus(
-            "Location updated. You can receive nearby requests.",
-          );
+          setLocationStatus("Location updated. You can receive nearby requests.");
           if (Date.now() - lastRefresh.current > 5000) {
             lastRefresh.current = Date.now();
             await refresh();
@@ -372,19 +397,72 @@ export default function DriverPanel({
         }
       } catch (e) {
         if (!cancelled) {
-          setLocationStatus((e as Error).message);
-          setSharing(false);
-          void api("/api/drivers/offline", {}).catch(() => {});
+          // Do NOT set sharing(false) or take driver offline on network blip
+          setLocationStatus("Network connection weak — retrying location sync...");
         }
       } finally {
         inFlight.current = false;
       }
+    };
+
+    const onError = (e: GeolocationPositionError) => {
+      if (!cancelled) {
+        // Do NOT set sharing(false) or call /offline on temporary GPS glitch
+        setLocationStatus(`GPS searching: ${e.message}`);
+      }
+    };
+
+    let simTimer: any = null;
+    const fake = simRef.current ?? (autoDrive ? driveRef.current : null);
+    if (fake || typeof navigator === "undefined" || !navigator.geolocation) {
+      simTimer = setInterval(() => {
+        const curFake = simRef.current ?? (autoDrive ? driveRef.current : null);
+        if (curFake) {
+          void onPos({
+            coords: {
+              latitude: curFake.lat,
+              longitude: curFake.lng,
+              accuracy: 10,
+              speed: 25,
+              heading: 0,
+            },
+          });
+        }
+      }, 2000);
+    } else {
+      watchId = navigator.geolocation.watchPosition(
+        (p) => void onPos(p),
+        onError,
+        {
+          enableHighAccuracy: true,
+          maximumAge: 1000,
+          timeout: 10000,
+        }
+      );
     }
-    void heartbeat();
-    const timer = setInterval(heartbeat, 2000);
+
+    const onOnline = () => {
+      if (!cancelled) {
+        setLocationStatus("Network restored. Syncing location...");
+        if (lastCoords) {
+          void api("/api/drivers/location", {
+            lat: lastCoords.lat,
+            lng: lastCoords.lng,
+            accuracy: 10,
+          }).catch(() => {});
+        }
+        void refresh();
+      }
+    };
+    window.addEventListener("online", onOnline);
+
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      if (watchId != null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      if (simTimer) clearInterval(simTimer);
+      window.removeEventListener("online", onOnline);
     };
   }, [sharing, refresh, autoDrive]);
   // Development only: the simulated driver starts ~1.6 km from the pickup and drives to it, then along the trip route.
@@ -432,8 +510,14 @@ export default function DriverPanel({
         setSimLat(next.lat.toFixed(5));
         setSimLng(next.lng.toFixed(5));
       }
-      setMyPos(next);
-      void api("/api/drivers/location", { lat: next.lat, lng: next.lng, accuracy: 10 }).catch(() => {});
+      const heading = d > 0 ? (Math.atan2(target.lng - from.lng, target.lat - from.lat) * 180 / Math.PI + 360) % 360 : 0;
+      void api("/api/drivers/location", {
+        lat: next.lat,
+        lng: next.lng,
+        accuracy: 10,
+        speed: 40,
+        heading: Math.round(heading),
+      }).catch(() => {});
     }, 1000);
     return () => clearInterval(timer);
   }, [sharing, development, simulate, autoDrive]);

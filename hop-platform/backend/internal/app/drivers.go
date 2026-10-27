@@ -73,7 +73,7 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	if !hasMobile(r.Context(), s.DB, user(r).Account.ID) && !s.Config.Development {
+	if !hasMobile(r.Context(), s.DB, user(r).Account.ID) {
 		fail(w, 403, mobileRequired)
 		return
 	}
@@ -166,6 +166,8 @@ func (s *Server) location(w http.ResponseWriter, r *http.Request) {
 		Lat      float64 `json:"lat"`
 		Lng      float64 `json:"lng"`
 		Accuracy float64 `json:"accuracy"`
+		Speed    float64 `json:"speed"`
+		Heading  float64 `json:"heading"`
 	}
 	if !decode(w, r, &in) {
 		return
@@ -173,6 +175,12 @@ func (s *Server) location(w http.ResponseWriter, r *http.Request) {
 	if math.IsNaN(in.Lat) || math.IsNaN(in.Lng) || in.Accuracy < 1 || in.Accuracy > 100 {
 		fail(w, 400, "Location accuracy must be within 100 metres")
 		return
+	}
+	if in.Speed < 0 || math.IsNaN(in.Speed) {
+		in.Speed = 0
+	}
+	if in.Heading < 0 || in.Heading >= 360 || math.IsNaN(in.Heading) {
+		in.Heading = 0
 	}
 	ctx, uid := r.Context(), user(r).Account.ID
 	tx, e := s.DB.Begin(ctx)
@@ -195,25 +203,40 @@ func (s *Server) location(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
+	// Check if this driver currently has an active trip (accepted, arrived, in_progress).
+	var activeRideID, riderID string
+	_ = tx.QueryRow(ctx, "SELECT id::text, rider_id::text FROM rides WHERE driver_id=$1 AND status IN ('accepted','arrived','in_progress') LIMIT 1", uid).Scan(&activeRideID, &riderID)
+
 	if !online || riding {
-		s.dropLive(ctx, uid)
-		fail(w, 403, "You are offline. Finish your rider trip, then go online in Captain to share location")
-		return
+		// Only reject if not on an active trip; an active trip must preserve location streaming.
+		if activeRideID == "" {
+			s.dropLive(ctx, uid)
+			fail(w, 403, "You are offline. Finish your rider trip, then go online in Captain to share location")
+			return
+		}
 	}
+
 	// Fast path: a recently validated driver only updates Redis; the database is checkpointed every few seconds.
 	if meta, ok := s.liveMetaFor(ctx, uid); ok && !s.shouldFlush(ctx, uid) {
-		if s.putLive(ctx, uid, meta, in.Lat, in.Lng, in.Accuracy) == nil {
+		if s.putLiveTelemetry(ctx, uid, meta, in.Lat, in.Lng, in.Accuracy, in.Speed, in.Heading) == nil {
 			if e = tx.Commit(ctx); e != nil {
 				dbError(w, e)
 				return
 			}
+			s.wake(riderID)
 			write(w, 200, map[string]any{"online": true, "fresh_for_seconds": 60})
 			return
 		}
 	}
+
 	var area, category string
 	var radius int
-	e = tx.QueryRow(ctx, `UPDATE drivers d SET lat=$2,lng=$3,accuracy=$4,location_at=now(),updated_at=now() FROM areas a WHERE d.user_id=$1 AND d.online AND d.area_id=a.id AND d.status='approved' AND d.license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND d.insurance_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND a.active AND $2 BETWEEN a.min_lat AND a.max_lat AND $3 BETWEEN a.min_lng AND a.max_lng RETURNING d.area_id::text, d.vehicle_category, d.pickup_radius_meters`, uid, in.Lat, in.Lng, in.Accuracy).Scan(&area, &category, &radius)
+	if activeRideID != "" {
+		// Active ride allows traveling outside dispatch boundary (e.g., towards dropoff).
+		e = tx.QueryRow(ctx, `UPDATE drivers SET lat=$2,lng=$3,accuracy=$4,speed=$5,heading=$6,location_at=now(),updated_at=now() WHERE user_id=$1 RETURNING area_id::text, vehicle_category, pickup_radius_meters`, uid, in.Lat, in.Lng, in.Accuracy, in.Speed, in.Heading).Scan(&area, &category, &radius)
+	} else {
+		e = tx.QueryRow(ctx, `UPDATE drivers d SET lat=$2,lng=$3,accuracy=$4,speed=$5,heading=$6,location_at=now(),updated_at=now() FROM areas a WHERE d.user_id=$1 AND d.online AND d.area_id=a.id AND d.status='approved' AND d.license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND d.insurance_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND a.active AND $2 BETWEEN a.min_lat AND a.max_lat AND $3 BETWEEN a.min_lng AND a.max_lng RETURNING d.area_id::text, d.vehicle_category, d.pickup_radius_meters`, uid, in.Lat, in.Lng, in.Accuracy, in.Speed, in.Heading).Scan(&area, &category, &radius)
+	}
 	if errors.Is(e, pgx.ErrNoRows) {
 		s.dropLive(ctx, uid)
 		fail(w, 403, "Approval, valid documents and a location inside your active area are required")
@@ -223,11 +246,12 @@ func (s *Server) location(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	_ = s.putLive(ctx, uid, liveMeta{Area: area, Category: category, Radius: radius}, in.Lat, in.Lng, in.Accuracy)
+	_ = s.putLiveTelemetry(ctx, uid, liveMeta{Area: area, Category: category, Radius: radius}, in.Lat, in.Lng, in.Accuracy, in.Speed, in.Heading)
 	if e = tx.Commit(ctx); e != nil {
 		dbError(w, e)
 		return
 	}
+	s.wake(riderID)
 	write(w, 200, map[string]any{"online": true, "fresh_for_seconds": 60})
 }
 

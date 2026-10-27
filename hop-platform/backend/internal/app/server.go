@@ -164,10 +164,23 @@ func (s *Server) Handler() http.Handler {
 	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fail(w, http.StatusNotFound, "Not found") })
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		lrw := &loggingResponseWriter{ResponseWriter: w, status: 200}
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				slog.Error("request panic", "method", r.Method)
+				slog.Error("request panic", "method", r.Method, "path", r.URL.Path, "panic", fmt.Sprint(recovered))
 				fail(w, 500, "Internal server error")
+			}
+			duration := time.Since(start)
+			if lrw.status >= 400 {
+				slog.Warn("http request error",
+					"method", r.Method,
+					"path", r.URL.Path,
+					"status", lrw.status,
+					"duration_ms", duration.Milliseconds(),
+					"ip", r.RemoteAddr,
+					"user_agent", r.UserAgent(),
+				)
 			}
 		}()
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -191,9 +204,36 @@ func (s *Server) Handler() http.Handler {
 		}
 		defer cancel()
 		ctx = context.WithValue(ctx, nonceKey, nonce)
-		mux.ServeHTTP(w, r.WithContext(ctx))
+		mux.ServeHTTP(lrw, r.WithContext(ctx))
 	})
 }
+
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	status int
+	bytes  int64
+}
+
+func (w *loggingResponseWriter) WriteHeader(status int) {
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *loggingResponseWriter) Write(b []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	n, err := w.ResponseWriter.Write(b)
+	w.bytes += int64(n)
+	return n, err
+}
+
+func (w *loggingResponseWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
@@ -209,6 +249,9 @@ func write(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 func fail(w http.ResponseWriter, status int, message string) {
+	if status >= 400 {
+		slog.Warn("request rejected", "status", status, "reason", message)
+	}
 	write(w, status, map[string]string{"error": message})
 }
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
@@ -244,7 +287,7 @@ func dbError(w http.ResponseWriter, e error) {
 		fail(w, 404, "Record not found")
 		return
 	}
-	slog.Error("database operation failed", "type", fmt.Sprintf("%T", e))
+	slog.Error("database operation failed", "error", e.Error(), "type", fmt.Sprintf("%T", e))
 	fail(w, 503, "Service unavailable; retry shortly")
 }
 func randomToken() string {

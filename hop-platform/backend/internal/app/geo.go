@@ -43,12 +43,20 @@ type liveMeta struct {
 
 // putLive stores the latest ping in Redis.
 func (s *Server) putLive(ctx context.Context, uid string, m liveMeta, lat, lng, accuracy float64) error {
-	return s.putLiveAt(ctx, uid, m, lat, lng, accuracy, time.Now())
+	return s.putLiveTelemetryAt(ctx, uid, m, lat, lng, accuracy, 0, 0, time.Now())
 }
 
 func (s *Server) putLiveAt(ctx context.Context, uid string, m liveMeta, lat, lng, accuracy float64, at time.Time) error {
+	return s.putLiveTelemetryAt(ctx, uid, m, lat, lng, accuracy, 0, 0, at)
+}
+
+func (s *Server) putLiveTelemetry(ctx context.Context, uid string, m liveMeta, lat, lng, accuracy, speed, heading float64) error {
+	return s.putLiveTelemetryAt(ctx, uid, m, lat, lng, accuracy, speed, heading, time.Now())
+}
+
+func (s *Server) putLiveTelemetryAt(ctx context.Context, uid string, m liveMeta, lat, lng, accuracy, speed, heading float64, at time.Time) error {
 	pipe := s.Cache.Pipeline()
-	pipe.HSet(ctx, locKey(uid), "lat", lat, "lng", lng, "acc", accuracy, "at", at.UnixMilli(), "cat", m.Category, "area", m.Area)
+	pipe.HSet(ctx, locKey(uid), "lat", lat, "lng", lng, "acc", accuracy, "spd", speed, "hdg", heading, "at", at.UnixMilli(), "cat", m.Category, "area", m.Area)
 	pipe.Expire(ctx, locKey(uid), liveLocTTL)
 	pipe.GeoAdd(ctx, geoKey(m.Area, m.Category), &redis.GeoLocation{Name: uid, Longitude: lng, Latitude: lat})
 	pipe.HSet(ctx, metaKey(uid), "cat", m.Category, "area", m.Area, "radius", m.Radius)
@@ -91,6 +99,12 @@ func (s *Server) shouldFlush(ctx context.Context, uid string) bool {
 
 // liveDriverPos returns a fresh Redis position for a driver.
 func (s *Server) liveDriverPos(ctx context.Context, uid string) (lat, lng float64, at time.Time, ok bool) {
+	lat, lng, _, _, at, ok = s.liveDriverTelemetry(ctx, uid)
+	return
+}
+
+// liveDriverTelemetry returns full Redis telemetry for a driver including speed and heading.
+func (s *Server) liveDriverTelemetry(ctx context.Context, uid string) (lat, lng, speed, heading float64, at time.Time, ok bool) {
 	v, e := s.Cache.HGetAll(ctx, locKey(uid)).Result()
 	if e != nil || v["at"] == "" {
 		return
@@ -98,18 +112,20 @@ func (s *Server) liveDriverPos(ctx context.Context, uid string) (lat, lng float6
 	ms, _ := strconv.ParseInt(v["at"], 10, 64)
 	lat, _ = strconv.ParseFloat(v["lat"], 64)
 	lng, _ = strconv.ParseFloat(v["lng"], 64)
+	speed, _ = strconv.ParseFloat(v["spd"], 64)
+	heading, _ = strconv.ParseFloat(v["hdg"], 64)
 	at = time.UnixMilli(ms)
-	return lat, lng, at, time.Since(at) < liveFresh
+	return lat, lng, speed, heading, at, time.Since(at) < liveFresh
 }
 
 // syncDriverLocation persists the newest Redis position to PostgreSQL. Call it before logic that compares
 // the driver's position with a pickup (accept, arrive, start) so those checks never see a stale checkpoint.
 func (s *Server) syncDriverLocation(ctx context.Context, uid string) {
-	lat, lng, at, ok := s.liveDriverPos(ctx, uid)
+	lat, lng, speed, heading, at, ok := s.liveDriverTelemetry(ctx, uid)
 	if !ok {
 		return
 	}
-	_, _ = s.DB.Exec(ctx, "UPDATE drivers SET lat=$2,lng=$3,location_at=$4 WHERE user_id=$1 AND location_at<$4", uid, lat, lng, at)
+	_, _ = s.DB.Exec(ctx, "UPDATE drivers SET lat=$2,lng=$3,speed=$4,heading=$5,location_at=$6 WHERE user_id=$1 AND location_at<$6", uid, lat, lng, speed, heading, at)
 }
 
 type liveHit struct {

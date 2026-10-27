@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -236,6 +237,30 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 		write(w, 409, map[string]string{"error": "Go offline in Captain before booking a ride", "code": "driver_online"})
 		return
 	}
+
+	// Issue 6: Payment enforcement. A Rider with an outstanding payment obligation for a completed ride
+	// must not be allowed to book another ride until payment has been settled.
+	var unpaidRideID string
+	var unpaidFare int64
+	e = tx.QueryRow(ctx, `SELECT r.id::text, GREATEST(0, COALESCE(r.offered_fare_paise, q.fare_paise) - q.discount_paise)
+ FROM rides r JOIN quotes q ON q.id=r.quote_id
+ WHERE r.rider_id=$1 AND r.status='completed' AND r.payment_status NOT IN ('paid_online','driver_reported_received')
+ ORDER BY r.completed_at DESC LIMIT 1`, uid).Scan(&unpaidRideID, &unpaidFare)
+	if e == nil && unpaidRideID != "" {
+		slog.Warn("booking rejected due to outstanding payment obligation", "rider_id", uid, "unpaid_ride_id", unpaidRideID, "fare_paise", unpaidFare)
+		write(w, 402, map[string]any{
+			"error":      "You have an outstanding payment obligation from a previous ride. Please settle payment before booking a new ride.",
+			"code":       "payment_required",
+			"ride_id":    unpaidRideID,
+			"fare_paise": unpaidFare,
+		})
+		return
+	}
+	if e != nil && !errors.Is(e, pgx.ErrNoRows) {
+		dbError(w, e)
+		return
+	}
+
 	if _, e = tx.Exec(ctx, "UPDATE drivers SET online=false,updated_at=now() WHERE user_id=$1 AND online", uid); e != nil {
 		dbError(w, e)
 		return
@@ -528,6 +553,11 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 		}
 		next = "in_progress"
 	case "complete":
+		if uid == driver && status == "completed" {
+			slog.Info("ride complete called idempotently", "ride_id", id, "driver_id", uid)
+			write(w, 200, map[string]bool{"ok": true})
+			return
+		}
 		if uid == driver && status == "in_progress" {
 			next = "completed"
 			adjusted, covered, remaining, early, e := earlyFinishQuote(ctx, tx, id, uid)
@@ -633,6 +663,11 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 			next = "cancelled"
 		}
 	case "payment_received", "payment_disputed":
+		if input.Action == "payment_received" && uid == driver && (payStatus == "driver_reported_received" || payStatus == "paid_online") {
+			slog.Info("payment_received called idempotently", "ride_id", id, "driver_id", uid, "payment_status", payStatus)
+			write(w, 200, map[string]bool{"ok": true})
+			return
+		}
 		if status != "completed" || (input.Action == "payment_received" && uid != driver) || (input.Action == "payment_disputed" && uid != rider) {
 			break
 		}
@@ -651,6 +686,9 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 		}
 		if input.Action == "payment_received" {
 			e = creditPromoSubsidy(ctx, tx, id)
+			if e == nil && rider != "" {
+				_ = notify(ctx, tx, rider, "payment", "Payment Confirmed", "Your Captain confirmed cash payment.")
+			}
 		}
 		if e == nil {
 			e = audit(ctx, tx, uid, id, event, map[string]string{})
@@ -662,6 +700,9 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 			dbError(w, e)
 			return
 		}
+		s.wake(rider)
+		s.wake(driver)
+		slog.Info("payment status updated", "ride_id", id, "payment_status", reported, "actor_id", uid)
 		write(w, 200, map[string]bool{"ok": true})
 		return
 	case "change_payment_method":
@@ -756,6 +797,9 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
+	s.wake(rider)
+	s.wake(driver)
+	slog.Info("ride status transitioned", "ride_id", id, "status", next, "actor_id", uid)
 	write(w, 200, map[string]bool{"ok": true})
 }
 

@@ -170,6 +170,13 @@ export default function RiderApp() {
   const areaVehicles = vehicles.filter((item) => item.area_id === area);
   const myRides = data.rides.filter((r) => r.mine);
   const current = myRides.find((r) => active(r));
+  const unpaidRide = myRides.find(
+    (r) =>
+      r.status === "completed" &&
+      r.payment_status !== "paid_online" &&
+      r.payment_status !== "driver_reported_received"
+  );
+  const activeOrUnsettled = current ?? unpaidRide;
   const drivingTrip = data.rides.find((r) => r.driving && active(r));
   useEffect(() => setRouteIndex(0), [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
   const prevRide = useRef<{ id: string; status: string } | null>(null);
@@ -215,6 +222,10 @@ export default function RiderApp() {
     !!offer && !!quote && (!(offerPaise > 0) || offerPaise < quote.fare_paise * 0.7 || offerPaise > quote.fare_paise * 1.5);
   async function book(goOffline = false) {
     if (!quote) return;
+    if (unpaidRide) {
+      notify("Please settle payment for your previous ride before booking a new one.");
+      return;
+    }
     if (drivingTrip) {
       notify("Finish or cancel your driver trip in Captain before booking a ride.");
       return;
@@ -420,17 +431,42 @@ export default function RiderApp() {
               <span className="verified">Verified</span>
             </div>
             {tab === "ride" && (
-              <div className={"booking-grid" + (!current && locState === "ready" ? " staged" : "")}>
-                <section className={"panel" + (!current && locState === "ready" ? " stage-panel" : "")}>
-                  <p className="eyebrow">Book a ride</p>
-                  <h2>Where to?</h2>
-                  {current ? (
+              <div className={"booking-grid" + (!activeOrUnsettled && locState === "ready" ? " staged" : "")}>
+                <section className={"panel" + (!activeOrUnsettled && locState === "ready" ? " stage-panel" : "")}>
+                  <p className="eyebrow">{unpaidRide ? "Payment Required" : "Book a ride"}</p>
+                  <h2>{unpaidRide ? "Settle Your Previous Ride" : "Where to?"}</h2>
+                  {activeOrUnsettled ? (
                     <>
-                      {current.mine && ["accepted", "arrived", "in_progress"].includes(current.status) && (
-                        <TripHero ride={current} notify={notify} />
+                      {unpaidRide && (
+                        <div
+                          className="alert alert-payment-warning mb-3"
+                          role="alert"
+                          style={{
+                            background: "#fef3c7",
+                            border: "1px solid #f59e0b",
+                            padding: "12px 16px",
+                            borderRadius: "8px",
+                            color: "#92400e",
+                            marginBottom: "16px",
+                          }}
+                        >
+                          <strong>⚠️ Outstanding Payment</strong>
+                          <p style={{ margin: "4px 0 0", fontSize: "14px" }}>
+                            Please complete payment of{" "}
+                            {money(
+                              unpaidRide.payable_paise ??
+                                Math.max(0, unpaidRide.fare_paise - (unpaidRide.discount_paise ?? 0))
+                            )}{" "}
+                            before booking another ride.
+                          </p>
+                        </div>
                       )}
+                      {activeOrUnsettled.mine &&
+                        ["accepted", "arrived", "in_progress"].includes(activeOrUnsettled.status) && (
+                          <TripHero ride={activeOrUnsettled} notify={notify} />
+                        )}
                       <RideCard
-                        ride={current}
+                        ride={activeOrUnsettled}
                         refresh={refresh}
                         notify={notify}
                       />
@@ -907,10 +943,10 @@ export default function RiderApp() {
                     </>
                   )}
                 </section>
-                {!current && locState === "ready" && (
+                {!activeOrUnsettled && locState === "ready" && (
                   <RightRail rides={data.rides} saved={data.saved_locations ?? []} onPick={setDropoff} />
                 )}
-                {!current && step === "where" && (
+                {!activeOrUnsettled && step === "where" && (
                   <aside className="side-info">
                     <div className="info-card">
                       <h3>How it works</h3>

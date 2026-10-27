@@ -586,6 +586,42 @@ main>*:nth-child(1){animation-delay:.02s}main>*:nth-child(2){animation-delay:.07
 .nav-foot strong{font-size:17px}
 @media (max-width:760px){.live-nav-map{height:320px}}
 
+/* Fullscreen cockpit navigation mode */
+.live-nav.live-nav-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  z-index: 99999 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: #0f172a !important;
+}
+.live-nav.live-nav-fullscreen .live-nav-map {
+  flex: 1 1 auto !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+.live-nav.live-nav-fullscreen .live-nav-map .booking-map {
+  height: 100% !important;
+}
+.live-nav.live-nav-fullscreen .nav-banner {
+  flex: 0 0 auto !important;
+  padding: max(14px, env(safe-area-inset-top)) 16px 14px !important;
+  z-index: 10 !important;
+}
+.live-nav.live-nav-fullscreen .nav-foot {
+  flex: 0 0 auto !important;
+  padding: 12px 16px max(14px, env(safe-area-inset-bottom)) !important;
+  background: var(--card) !important;
+  z-index: 10 !important;
+  border-top: 1px solid var(--line) !important;
+}
+
 /* driver duty switch */
 .duty{display:grid;gap:6px;justify-items:start}
 button.duty-switch, .duty-switch{position:relative;display:flex;align-items:center;width:168px;height:52px;padding:0 18px 0 62px;border-radius:999px;background:#e2e8f0 !important;color:#475569 !important;font-weight:800;letter-spacing:.08em;border:1px solid rgba(0,0,0,.08) !important;box-shadow:inset 0 2px 4px rgba(0,0,0,.06) !important;transition:background .35s,color .35s,box-shadow .35s}
