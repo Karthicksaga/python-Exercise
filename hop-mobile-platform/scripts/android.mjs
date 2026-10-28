@@ -38,7 +38,7 @@ run(cap, ['sync', 'android'], mobile);
 
 // 3. Optional Gradle compilation
 if (release) {
-  run('./gradlew', ['bundleRelease'], path.join(mobile, 'android'));
+  run('./gradlew', process.argv.includes('--apk') ? ['assembleRelease', 'bundleRelease'] : ['bundleRelease'], path.join(mobile, 'android'));
 } else if (process.argv.includes('--apk')) {
   run('./gradlew', ['assembleDebug'], path.join(mobile, 'android'));
 }

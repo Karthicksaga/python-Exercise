@@ -1,13 +1,16 @@
 import type { Coordinate, MapData, MapView } from "./types";
 import { vehicleCategory } from "./types";
+
 declare global {
   interface Window {
     hopGoogleReady?: () => void;
     gm_authFailure?: () => void;
   }
 }
+
 let loading: Promise<void> | undefined;
 let authFailed = false;
+
 export function loadGoogle(key: string): Promise<void> {
   if (authFailed)
     return Promise.reject(new Error("Google Maps authentication failed"));
@@ -43,12 +46,47 @@ export function loadGoogle(key: string): Promise<void> {
   });
   return loading;
 }
+
+const pickupSvg = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+<svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M16 1C7.716 1 1 7.716 1 16c0 11.5 15 25 15 25s15-13.5 15-25c0-8.284-6.716-15-15-15Z" fill="#167b5b" stroke="#ffffff" stroke-width="2"/>
+  <circle cx="16" cy="16" r="6" fill="#ffffff"/>
+  <text x="16" y="19.5" font-family="'Outfit', 'Inter', -apple-system, sans-serif" font-weight="700" font-size="10" fill="#167b5b" text-anchor="middle">P</text>
+</svg>
+`)}`;
+
+const dropoffSvg = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+<svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M16 1C7.716 1 1 7.716 1 16c0 11.5 15 25 15 25s15-13.5 15-25c0-8.284-6.716-15-15-15Z" fill="#e54d36" stroke="#ffffff" stroke-width="2"/>
+  <circle cx="16" cy="16" r="6" fill="#ffffff"/>
+  <circle cx="16" cy="16" r="3" fill="#e54d36"/>
+</svg>
+`)}`;
+
+function currentSvg(heading?: number) {
+  const hasHeading = heading != null && !Number.isNaN(heading);
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+<svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="22" cy="22" r="18" fill="#2677df" fill-opacity="0.2"/>
+  <circle cx="22" cy="22" r="12" fill="#2677df" fill-opacity="0.3"/>
+  <circle cx="22" cy="22" r="7" fill="#2677df" stroke="#ffffff" stroke-width="2.5"/>
+  ${hasHeading ? `
+  <g transform="rotate(${heading} 22 22)">
+    <polygon points="22,2 16,14 28,14" fill="#2677df"/>
+  </g>` : ""}
+</svg>
+`)}`;
+}
+
 export class GoogleMapView implements MapView {
   private map: google.maps.Map;
   private vehicles = new Map<string, google.maps.Marker>();
-  private pins: google.maps.Marker[] = [];
+  private pickupMarker?: google.maps.Marker;
+  private dropoffMarker?: google.maps.Marker;
+  private currentMarker?: google.maps.Marker;
   private route: google.maps.Polyline;
   private tileTimeout?: ReturnType<typeof setTimeout>;
+
   constructor(host: HTMLElement, center: Coordinate, failed: () => void) {
     this.map = new google.maps.Map(host, {
       center,
@@ -75,15 +113,33 @@ export class GoogleMapView implements MapView {
       map: this.map,
       strokeColor: "#167b5b",
       strokeWeight: 5,
+      strokeOpacity: 0.95,
+      icons: [
+        {
+          icon: {
+            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            scale: 2.5,
+            strokeColor: "#ffffff",
+            fillColor: "#ffffff",
+            fillOpacity: 1,
+            strokeWeight: 1,
+          },
+          offset: "30px",
+          repeat: "70px",
+        },
+      ],
     });
   }
+
   update(data: MapData) {
+    // 1. Vehicles
     const ids = new Set(data.vehicles.map((v) => v.id));
-    for (const [id, marker] of this.vehicles)
+    for (const [id, marker] of this.vehicles) {
       if (!ids.has(id)) {
         marker.setMap(null);
         this.vehicles.delete(id);
       }
+    }
     for (const v of data.vehicles) {
       let marker = this.vehicles.get(v.id);
       if (!marker) {
@@ -95,50 +151,114 @@ export class GoogleMapView implements MapView {
             scaledSize: new google.maps.Size(42, 30),
             anchor: new google.maps.Point(21, 15),
           },
+          zIndex: 900,
         });
         this.vehicles.set(v.id, marker);
       }
-      // Only measured server positions are displayed. No idle wandering or extrapolation.
       marker.setPosition({ lat: v.lat, lng: v.lng });
     }
-    this.pins.forEach((p) => p.setMap(null));
-    this.pins = [];
-    for (const [point, title, color] of [
-      [data.pickup, "Pickup", "#167b5b"],
-      [data.dropoff, "Destination", "#e54d36"],
-      [data.current, "Current location", "#2677df"],
-    ] as const)
-      if (point)
-        this.pins.push(
-          new google.maps.Marker({
-            map: this.map,
-            position: point,
-            title,
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: color,
-              fillOpacity: 1,
-              strokeColor: "#fff",
-              strokeWeight: 3,
-            },
-          }),
-        );
+
+    // 2. Pickup Marker
+    if (data.pickup) {
+      if (!this.pickupMarker) {
+        this.pickupMarker = new google.maps.Marker({
+          map: this.map,
+          position: data.pickup,
+          title: "Pickup",
+          icon: {
+            url: pickupSvg,
+            scaledSize: new google.maps.Size(32, 42),
+            anchor: new google.maps.Point(16, 42),
+          },
+          zIndex: 1000,
+        });
+      } else {
+        this.pickupMarker.setPosition(data.pickup);
+        this.pickupMarker.setMap(this.map);
+      }
+    } else if (this.pickupMarker) {
+      this.pickupMarker.setMap(null);
+      this.pickupMarker = undefined;
+    }
+
+    // 3. Dropoff Marker
+    if (data.dropoff) {
+      if (!this.dropoffMarker) {
+        this.dropoffMarker = new google.maps.Marker({
+          map: this.map,
+          position: data.dropoff,
+          title: "Destination",
+          icon: {
+            url: dropoffSvg,
+            scaledSize: new google.maps.Size(32, 42),
+            anchor: new google.maps.Point(16, 42),
+          },
+          zIndex: 1000,
+        });
+      } else {
+        this.dropoffMarker.setPosition(data.dropoff);
+        this.dropoffMarker.setMap(this.map);
+      }
+    } else if (this.dropoffMarker) {
+      this.dropoffMarker.setMap(null);
+      this.dropoffMarker = undefined;
+    }
+
+    // 4. Current Location Marker
+    if (data.current) {
+      const heading = data.current.heading;
+      if (!this.currentMarker) {
+        this.currentMarker = new google.maps.Marker({
+          map: this.map,
+          position: data.current,
+          title: "Your location",
+          icon: {
+            url: currentSvg(heading),
+            scaledSize: new google.maps.Size(44, 44),
+            anchor: new google.maps.Point(22, 22),
+          },
+          zIndex: 850,
+        });
+      } else {
+        this.currentMarker.setPosition(data.current);
+        this.currentMarker.setIcon({
+          url: currentSvg(heading),
+          scaledSize: new google.maps.Size(44, 44),
+          anchor: new google.maps.Point(22, 22),
+        });
+        this.currentMarker.setMap(this.map);
+      }
+    } else if (this.currentMarker) {
+      this.currentMarker.setMap(null);
+      this.currentMarker = undefined;
+    }
+
+    // 5. Route
     this.route.setPath(data.route || []);
   }
+
   center(point: Coordinate) {
     this.map.panTo(point);
   }
+
   fit(points: Coordinate[]) {
     if (!points.length) return;
+    if (points.length === 1) {
+      this.map.panTo(points[0]);
+      if (this.map.getZoom()! < 15) this.map.setZoom(15);
+      return;
+    }
     const bounds = new google.maps.LatLngBounds();
     points.forEach((p) => bounds.extend(p));
-    this.map.fitBounds(bounds, 35);
+    this.map.fitBounds(bounds, 45);
   }
+
   destroy() {
     clearTimeout(this.tileTimeout);
     this.vehicles.forEach((m) => m.setMap(null));
-    this.pins.forEach((m) => m.setMap(null));
+    this.pickupMarker?.setMap(null);
+    this.dropoffMarker?.setMap(null);
+    this.currentMarker?.setMap(null);
     this.route.setMap(null);
     google.maps.event.clearInstanceListeners(this.map);
   }

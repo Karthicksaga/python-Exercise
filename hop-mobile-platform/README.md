@@ -1,6 +1,6 @@
 # Hop mobile: approved prototype with live journey adapters
 
-Rider and Captain share the approved renderer, Outfit/Inter fonts, tokens, assets, sheets and navigation from `../hop-platform/prototypes/mobile-first/`. No production application UI is reused. Backend services remain unchanged.
+Rider and Captain share the approved renderer, Outfit/Inter fonts, tokens, assets, sheets and navigation from `../hop-platform/prototypes/mobile-first/`. Normal app entry points mount only the mobile screen; review controls are isolated to reference mode. Backend services remain unchanged.
 
 ## Run locally
 
@@ -51,7 +51,7 @@ npm run build
 npm run test:design
 ```
 
-The suite starts an isolated canonical reference on 5290 and reuses/starts the mobile previews. Reference-mode screenshots compare every listed Rider/Captain screen against the original renderer with zero RGB differences, using consistent fallback fonts for deterministic results. Live integration tests separately cover search/route/booking, provider fallback, Follow me, stale telemetry, GPS sharing, backend OTP validation, notifications and chat. Do not update visual expectations to hide design drift.
+The suite starts an isolated canonical reference on 5290 and reuses/starts the mobile previews. Reference-mode screenshots compare every listed Rider/Captain screen against the original renderer with bundled fonts loaded. Card geometry and computed styles must match exactly; screenshots allow only one RGB channel value of browser edge raster rounding. Live integration tests separately cover search/route/booking, provider fallback, Follow me, stale telemetry, GPS sharing, backend OTP validation, notifications and chat. Do not update visual expectations to hide design drift.
 
 ## Login, payment and recovery design previews
 
@@ -77,3 +77,20 @@ The approved payment layout is connected to completed ride entries via Payment &
 Quote expiry, lost connection, no-Captain expiry, unavailable location, unavailable alerts and cancellation-confirmed recovery dialogs use the approved state design. Sign-in errors appear inline. Commute remains disabled.
 
 Payment integration tests use controlled provider/API fixtures and perform no actual charges. Native checkout handoff, UPI app switching, push delivery and live provider settlement require device/provider sandbox verification before release. Refund timelines remain design-only because no rider refund-status contract is exposed by the current backend; live disputed payments enter backend review instead of displaying a simulated refund.
+
+## Android CI builds and distribution
+
+The **Hop Mobile Android** workflow (`.github/workflows/hop-mobile.yml`) validates both clients and runs browser regressions. Pushes to main/master/codex branches build debug APKs; pull requests validate without signing/deployment secrets. Manual **Run workflow** supports selecting Rider, Captain or both, debug or signed release, and GitHub artifact downloads. Changes to the canonical prototype also trigger CI.
+
+Configure GitHub repository **Settings → Secrets and variables → Actions**:
+
+- Variable `HOP_API_URL`: the existing backend's phone-accessible HTTPS origin, e.g. `https://api.example.com`. No `/api` suffix. Localhost and emulator addresses are rejected. Backend authentication, OTP and routing providers must be operational.
+- Secret `HOP_GOOGLE_MAPS_API_KEY`: the client Maps JavaScript key used by the WebView. This is bundled into the app; apply Google API/application restrictions compatible with the Capacitor WebView. A native Android Maps SDK key is not interchangeable with this JavaScript integration. If absent or rejected, OSM is used.
+- Optional secrets `HOP_RIDER_GOOGLE_SERVICES_JSON_BASE64` and `HOP_CAPTAIN_GOOGLE_SERVICES_JSON_BASE64`: base64 of the respective Firebase `google-services.json`, matching `com.hop.rider` / `com.hop.captain`. Required for native push delivery, separate from location/maps.
+- For **release**: secrets `HOP_ANDROID_KEYSTORE_BASE64`, `HOP_ANDROID_STORE_PASSWORD`, `HOP_ANDROID_KEY_ALIAS`, `HOP_ANDROID_KEY_PASSWORD`. Use the same securely stored signing key for subsequent updates. Missing credentials stop the build. Release produces a signed APK for direct testing and an AAB for store distribution.
+
+Each successful build uploads its APK (plus release AAB), `SHA256SUMS` and `build.json` as a GitHub Actions artifact for 30 days. CI assigns an increasing version code from the workflow run number. Existing store releases with higher version codes require adjusting that sequence before publishing.
+
+To test: open **Actions → Hop Mobile Android → Run workflow**, choose **debug / all**, then download and extract each artifact. Transfer the APKs to your Android phone (Android 7/API 24 or later) and open them, allowing installation from that download source if Android prompts. Install the `.apk`, not the `.aab` or artifact ZIP. Debug signing keys are generated per runner, so installing a different debug run may require uninstalling the previous test app (which clears its local data); signed release builds allow updates with the same key. The workflow must be committed/pushed before GitHub can execute it; manual dispatch appears when the workflow exists on the default branch.
+
+Location access is requested on first use of current location, Follow me or Captain sharing, not on installation. Choose precise location and while using the app for accurate testing. Denial shows recovery UI. Google Maps needs no Google account sign-in. Notifications have a separate opt-in and Android permission; Firebase configuration is needed for delivery. Current Captain telemetry is foreground-only; this build does not enable background tracking.

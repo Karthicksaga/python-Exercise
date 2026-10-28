@@ -1,0 +1,437 @@
+/**
+ * Hop Mobile Platform - Mobile Animations & Micro-interactions
+ * Smooth, GPU-accelerated (transform/opacity, 60fps) mobile animations
+ * Preserves exact visual parity with canonical approved designs and test baselines.
+ */
+
+/* ==========================================================================
+   1. Pin Drop & Placement Animation
+   ========================================================================== */
+
+@keyframes pinDrop {
+  0% {
+    transform: translateY(-30px) scale(0.7);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(2px) scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes mapPinDrop {
+  0% {
+    transform: translateY(-30px) rotate(-45deg) scale(0.7);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(2px) rotate(-45deg) scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) rotate(-45deg) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Live Leaflet map pins drop into place with sleek bounce */
+.hop-marker-pin,
+.pin-drop {
+  animation: pinDrop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.hop-dropoff-pin {
+  animation-delay: 0.1s;
+}
+
+.map-pin.pin-drop {
+  animation: mapPinDrop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* ==========================================================================
+   2. Concentric Radar Pulse (Matching & Search)
+   ========================================================================== */
+
+.radar-wave {
+  animation: radar-expand 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.radar-wave.delay-1 {
+  animation-delay: 0.8s;
+}
+
+.radar-wave.delay-2 {
+  animation-delay: 1.6s;
+}
+
+@keyframes radar-expand {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.95;
+    box-shadow: 0 0 10px rgba(52, 116, 92, 0.5);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 22px rgba(52, 116, 92, 0.3);
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+    box-shadow: 0 0 34px rgba(52, 116, 92, 0);
+  }
+}
+
+.app.dark .radar-wave {
+  border-color: rgba(92, 184, 138, 0.85);
+  background: rgba(92, 184, 138, 0.18);
+}
+
+/* ==========================================================================
+   3. Captain Incoming Offer Countdown & Glow
+   ========================================================================== */
+
+.incoming-card {
+  position: relative;
+  border: 1.5px solid #f59e0b;
+  animation: incoming-amber-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes incoming-amber-glow {
+  0%, 100% {
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.22), 0 0 0 0 rgba(245, 158, 11, 0.4);
+    border-color: #f59e0b;
+  }
+  50% {
+    box-shadow: 0 12px 30px rgba(245, 158, 11, 0.38), 0 0 0 8px rgba(245, 158, 11, 0);
+    border-color: #fbbf24;
+  }
+}
+
+.app.dark .incoming-card {
+  border-color: #d97706;
+}
+
+.heads-up-timer,
+.timer-pulse {
+  animation: timer-pulse-glow 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.timer-fill {
+  animation: timer-drain 15s linear forwards;
+}
+
+/* Circular countdown ring for offer timers */
+.countdown-ring circle {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  animation: countdown-circle 15s linear forwards;
+}
+
+@keyframes countdown-circle {
+  to {
+    stroke-dashoffset: 100;
+  }
+}
+
+/* ==========================================================================
+   4. Tactile Bottom Sheets & Modals
+   ========================================================================== */
+
+.sheet,
+.modal-sheet {
+  transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.sheet.slide-up,
+.sheet-enter {
+  animation: sheetSlideUp 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.sheet-overlay {
+  animation: backdropFade 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes sheetSlideUp {
+  0% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes backdropFade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@starting-style {
+  .modal-sheet {
+    transform: translateY(100%);
+  }
+  .sheet-overlay {
+    opacity: 0;
+  }
+}
+
+/* ==========================================================================
+   5. Interactive Vehicle Card Selection
+   ========================================================================== */
+
+.vehicle,
+.vehicle-card,
+.vehicle-item,
+.product-chip {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.vehicle:active,
+.vehicle-card:active,
+.vehicle-item:active,
+.product-chip:active {
+  transform: scale(0.98);
+}
+
+/* ==========================================================================
+   6. Success & Completion Micro-animations
+   ========================================================================== */
+
+.payment-state-symbol.success svg,
+.badge.success svg {
+  animation: checkmark-pop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+@keyframes checkmark-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.star-btn:active,
+[data-star]:active,
+.rating-stars button:active {
+  transform: scale(1.25);
+  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Subtle celebration shimmer */
+.payment-state-symbol.success.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.payment-state-symbol.success.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: -100%;
+  background: linear-gradient(
+    45deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 60%
+  );
+  animation: celebration-shimmer 2.2s infinite;
+}
+
+@keyframes celebration-shimmer {
+  0% {
+    transform: translateX(-100%) translateY(-100%);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%);
+  }
+}
+
+/* ==========================================================================
+   7. Shimmer Skeleton Loading
+   ========================================================================== */
+
+.skeleton,
+.skeleton-shimmer,
+.loading-shimmer,
+.fare-skeleton,
+.loading-quote {
+  position: relative;
+  overflow: hidden;
+  background: #eef2ea;
+  border-radius: 8px;
+}
+
+.skeleton::after,
+.skeleton-shimmer::after,
+.loading-shimmer::after,
+.fare-skeleton::after,
+.loading-quote::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.65) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: skeleton-sweep 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes skeleton-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.app.dark .skeleton,
+.app.dark .skeleton-shimmer,
+.app.dark .loading-shimmer,
+.app.dark .fare-skeleton,
+.app.dark .loading-quote {
+  background: #233123;
+}
+
+.app.dark .skeleton::after,
+.app.dark .skeleton-shimmer::after,
+.app.dark .loading-shimmer::after,
+.app.dark .fare-skeleton::after,
+.app.dark .loading-quote::after {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.radar-spinner {
+  animation: spinner-rotate 0.9s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+}
+
+@keyframes spinner-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================================================
+   8. Live GPS Pulse (Radiating Beacon Aura)
+   ========================================================================== */
+
+.hop-current-pulse {
+  animation: gps-beacon-aura 2.2s cubic-bezier(0.1, 0.7, 0.1, 1) infinite;
+}
+
+@keyframes gps-beacon-aura {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.95;
+  }
+  60% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.gps-beacon-aura,
+.location-beacon::before {
+  content: "";
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(38, 119, 223, 0.65);
+  background: rgba(38, 119, 223, 0.18);
+  animation: gps-beacon-aura 2.2s cubic-bezier(0.1, 0.7, 0.1, 1) infinite;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Accessibility: Reduced Motion
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .modal-sheet,
+  .sheet.slide-up,
+  .sheet-enter {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .sheet-overlay {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .hop-marker-pin,
+  .pin-drop,
+  .map-pin.pin-drop {
+    animation: none !important;
+  }
+
+  .radar-wave {
+    animation: none !important;
+  }
+
+  .incoming-card,
+  .heads-up-timer,
+  .timer-pulse,
+  .timer-fill,
+  .countdown-ring circle {
+    animation: none !important;
+  }
+
+  .vehicle,
+  .vehicle-card,
+  .vehicle-item,
+  .product-chip {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .payment-state-symbol.success svg,
+  .badge.success svg,
+  .payment-state-symbol.success.shimmer::after {
+    animation: none !important;
+  }
+
+  .skeleton::after,
+  .skeleton-shimmer::after,
+  .loading-shimmer::after,
+  .fare-skeleton::after,
+  .loading-quote::after,
+  .radar-spinner {
+    animation: none !important;
+  }
+
+  .hop-current-pulse,
+  .gps-beacon-aura,
+  .location-beacon::before {
+    animation: none !important;
+  }
+}

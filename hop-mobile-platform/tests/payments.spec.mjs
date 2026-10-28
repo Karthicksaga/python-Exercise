@@ -114,7 +114,7 @@ test("Captain payment receipt is a backend report, not an online verification", 
   });
   await openPayment(page, "captain");
   await page.getByRole("button", { name: "Record payment received" }).click();
-  await page.getByRole("button", {name:"Yes, payment received"}).click();
+  await page.getByRole("button", { name: "Yes, payment received" }).click();
   await expect(
     page.getByRole("heading", { name: "Payment handover recorded." }),
   ).toBeVisible();
@@ -219,4 +219,29 @@ test("approved Outfit and Inter fonts are served locally", async ({ page }) => {
       .evaluate((el) => getComputedStyle(el).fontFamily),
   ).toContain("Inter");
   expect(external).toEqual([]);
+});
+test("direct UPI QR uses only the assigned Captain’s backend account and does not settle locally", async ({
+  page,
+}) => {
+  const ride = {
+    ...completed,
+    payment_method: "upi",
+    driver_upi: "assigned.captain@bank",
+    driver_name: "Assigned Captain",
+  };
+  await setup(page, () => ride);
+  await openPayment(page);
+  await page
+    .getByRole("button", { name: "Direct UPI QR", exact: true })
+    .click();
+  await expect(
+    page.getByRole("img", { name: "UPI payment QR for the assigned Captain" }),
+  ).toHaveAttribute("src", /^data:image\/png/);
+  const link = page.getByRole("link", { name: "Open UPI app" });
+  const uri = new URL(await link.getAttribute("href"));
+  expect(uri.searchParams.get("pa")).toBe("assigned.captain@bank");
+  expect(uri.searchParams.get("am")).toBe("268.00");
+  await expect(page.getByRole("heading", { name: "All settled." })).toHaveCount(
+    0,
+  );
 });

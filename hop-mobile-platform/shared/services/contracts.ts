@@ -2,6 +2,7 @@ export type Point = { lat: number; lng: number; label: string };
 export type Area = {
   id: string;
   name: string;
+  state?: string;
   min_lat: number;
   max_lat: number;
   min_lng: number;
@@ -24,8 +25,9 @@ export type Ride = {
   payable_paise?: number;
   vehicle_category: string;
   payment_method: string;
-  payment_status?:string;
+  payment_status?: string;
   driver_name?: string;
+  driver_upi?: string;
   vehicle_number?: string;
   pickup_code?: string;
   driver_lat?: number;
@@ -36,7 +38,17 @@ export type State = {
   saved_locations?: (Point & { kind: string; place_label: string })[];
   rides: Ride[];
   offers: Ride[];
-  driver: { online: boolean; status: string; lat?: number; lng?: number }[];
+  driver: {
+    online: boolean;
+    status: string;
+    area_id?: string;
+    state?: string;
+    review_note?: string;
+    license_expires?: string;
+    insurance_expires?: string;
+    lat?: number;
+    lng?: number;
+  }[];
 };
 export type Config = {
   areas: Area[];

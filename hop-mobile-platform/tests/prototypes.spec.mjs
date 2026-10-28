@@ -181,9 +181,9 @@ test("destination search uses Chennai rather than the first configured area and 
   await expect(page.locator(".search-feedback")).toContainText(
     "temporarily unavailable",
   );
-  await page.locator("#screen-select").evaluate((el) => {
-    el.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  // Trigger the same live-state refresh used in production, without requiring
+  // review-only screen controls in the standalone app.
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('hop-live-state',{detail:{rides:[],offers:[],driver:[]}})));
   await expect(page.locator(".search-feedback")).toContainText(
     "temporarily unavailable",
   );

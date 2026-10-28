@@ -1,3 +1,4 @@
+import { goOnlineSound, goOfflineSound } from "../sounds";
 import { GoogleMapView, loadGoogle } from "./google";
 import { OSMMapView } from "./osm";
 import { LiveFeed } from "./liveFeed";
@@ -6,6 +7,30 @@ import type { Coordinate, MapData, MapView } from "./types";
 import { api } from "../services/client";
 import { ForegroundTracking } from "./foregroundTracking";
 import { currentLocation } from "../platform/transport";
+
+function computeBearing(from: Coordinate, to: Coordinate): number {
+  const lat1 = (from.lat * Math.PI) / 180;
+  const lat2 = (to.lat * Math.PI) / 180;
+  const dLng = ((to.lng - from.lng) * Math.PI) / 180;
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x =
+    Math.cos(lat1) * Math.sin(lat2) -
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  const brng = (Math.atan2(y, x) * 180) / Math.PI;
+  return (brng + 360) % 360;
+}
+
+function computeDistanceMeters(a: Coordinate, b: Coordinate): number {
+  const R = 6371e3;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const x =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
 
 /** Replaces only the sample map canvas. The approved surrounding UI is untouched. */
 export class PrototypeMap {
@@ -25,33 +50,40 @@ export class PrototypeMap {
   private locationStop?: () => void;
   private locationGeneration = 0;
   private revision = 0;
-  private display() {
+
+  private display(): MapData {
     return {
       ...(this.data.pickup
         ? this.data
         : { ...this.data, ...this.planned, vehicles: this.data.vehicles }),
       current: this.current,
+      following: this.following,
     };
   }
+
   private paint() {
     this.view?.update(this.display());
     if (this.following && this.current) this.view?.center(this.current);
   }
+
   private plan = (event: Event) => {
     this.planned = (event as CustomEvent<MapData>).detail;
     this.paint();
     const points =
       this.planned.route ||
       [this.planned.pickup!, this.planned.dropoff!].filter(Boolean);
-    if (points.length) this.view?.fit(points);
-    else this.view?.center(this.planned.center);
+    if (points.length > 1) this.view?.fit(points);
+    else if (points.length === 1) this.view?.center(points[0]);
+    else if (this.planned.center) this.view?.center(this.planned.center);
   };
+
   private dragged = () => {
     this.following = false;
     this.app
       .querySelector("[data-follow]")
       ?.setAttribute("aria-pressed", "false");
   };
+
   private centered = false;
   private observer: MutationObserver;
   private resize?: ResizeObserver;
@@ -60,6 +92,7 @@ export class PrototypeMap {
     this.message = message;
     this.label();
   });
+
   constructor(
     private app: HTMLElement,
     private role: "rider" | "captain",
@@ -87,7 +120,7 @@ export class PrototypeMap {
         const button = this.app.querySelector<HTMLElement>(
           '[data-action="online"]',
         );
-        if (button?.firstChild)
+        if (button?.firstChild && !button.hasAttribute("data-live-onboard"))
           button.firstChild.textContent = online
             ? "Take a break · Go offline"
             : "Go online";
@@ -102,6 +135,7 @@ export class PrototypeMap {
     void this.attach();
     void this.feed.start();
   }
+
   private click = (event: Event) => {
     const control = (event.target as Element)?.closest<HTMLElement>(
       "[data-follow],[data-route-fit]",
@@ -112,22 +146,45 @@ export class PrototypeMap {
       if (control.hasAttribute("data-route-fit")) {
         this.dragged();
         const data = this.display();
-        this.view?.fit(
-          data.route || [data.pickup!, data.dropoff!].filter(Boolean),
-        );
+        const points =
+          data.route || [data.pickup!, data.dropoff!].filter(Boolean);
+        if (points.length > 1) this.view?.fit(points);
+        else if (points.length === 1) this.view?.center(points[0]);
         return;
       }
       this.following = !this.following;
       control.setAttribute("aria-pressed", String(this.following));
       if (this.following) {
+        if (this.current) {
+          this.view?.center(this.current);
+        }
         const generation = ++this.locationGeneration;
         this.locationStop?.();
         void watchLocation(
           (point) => {
             if (generation !== this.locationGeneration) return;
-            this.current = point;
+            let heading = point.heading;
+            if (heading == null && this.current) {
+              const dist = computeDistanceMeters(this.current, point);
+              if (dist >= 1.5) {
+                heading = computeBearing(this.current, point);
+              } else {
+                heading = this.current.heading;
+              }
+            }
+            if (heading == null) {
+              const target =
+                this.planned?.route?.[1] ||
+                this.planned?.dropoff ||
+                this.planned?.pickup;
+              if (target) {
+                heading = computeBearing(point, target);
+              }
+            }
+            this.current = { ...point, heading };
             this.feed.setLocation(point);
             this.paint();
+            if (this.following) this.view?.center(point);
           },
           () => {
             this.following = false;
@@ -162,7 +219,13 @@ export class PrototypeMap {
         await api.session();
         const state = await api.state();
         const next = !state.driver?.[0]?.online;
+        if (next && state.driver?.[0]?.status !== "approved")
+          throw new Error(
+            "Complete Captain onboarding and wait for operator approval before going online.",
+          );
         await api.online(next);
+        if (next) goOnlineSound();
+        else goOfflineSound();
         if (!next) this.tracking.stop();
         this.message = next
           ? "Online · tap GPS sharing to send your location"
@@ -203,7 +266,13 @@ export class PrototypeMap {
     event.stopImmediatePropagation();
     void currentLocation()
       .then((coords) => {
-        const point = { lat: coords.latitude, lng: coords.longitude };
+        let heading: number | undefined;
+        if (coords.heading != null && !Number.isNaN(coords.heading)) {
+          heading = coords.heading;
+        } else if (this.current) {
+          heading = this.current.heading;
+        }
+        const point = { lat: coords.latitude, lng: coords.longitude, heading };
         this.current = point;
         this.paint();
         this.feed.setLocation(point);
@@ -218,13 +287,16 @@ export class PrototypeMap {
         window.dispatchEvent(new Event("hop-location-denied"));
       });
   };
+
   private authFailure = () => {
     void this.fallback(this.revision);
   };
+
   private label() {
     if (this.status)
       this.status.textContent = `${this.provider || "Loading map"} · ${this.message}`;
   }
+
   private size = () => {
     if (!this.root || !this.canvas) return;
     const body = this.root.parentElement!,
@@ -239,6 +311,7 @@ export class PrototypeMap {
       .querySelector(".map-controls")
       ?.classList.toggle("hop-compact-controls", height < 230);
   };
+
   private async attach() {
     const root = this.app.querySelector<HTMLElement>(".map-art");
     if (root === this.root) return;
@@ -268,15 +341,17 @@ export class PrototypeMap {
           "M3 9V3h6m6 0h6v6m0 6v6h-6M9 21H3v-6",
         ],
       ]) {
-        const control = document.createElement("button");
-        control.className = "icon-button";
-        control.setAttribute(attribute, "");
-        control.setAttribute("aria-label", label);
-        control.title = label;
-        if (attribute === "data-follow")
-          control.setAttribute("aria-pressed", String(this.following));
-        control.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="${path}"/></svg>`;
-        mapControls.append(control);
+        if (!mapControls.querySelector(`[${attribute}]`)) {
+          const control = document.createElement("button");
+          control.className = "icon-button";
+          control.setAttribute(attribute, "");
+          control.setAttribute("aria-label", label);
+          control.title = label;
+          if (attribute === "data-follow")
+            control.setAttribute("aria-pressed", String(this.following));
+          control.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="${path}"/></svg>`;
+          mapControls.append(control);
+        }
       }
     }
     if (this.role === "captain") {
@@ -316,12 +391,17 @@ export class PrototypeMap {
       });
       this.provider = "Google Maps";
       this.paint();
-      if (this.planned?.route) this.view.fit(this.planned.route);
+      const points =
+        this.planned?.route ||
+        [this.planned?.pickup!, this.planned?.dropoff!].filter(Boolean);
+      if (points.length > 1) this.view.fit(points);
+      else if (points.length === 1) this.view.center(points[0]);
       this.label();
     } catch {
       await this.fallback(revision);
     }
   }
+
   private async fallback(revision: number) {
     if (
       revision !== this.revision ||
@@ -341,9 +421,14 @@ export class PrototypeMap {
     );
     this.provider = "OpenStreetMap";
     this.paint();
-    if (this.planned?.route) this.view.fit(this.planned.route);
+    const points =
+      this.planned?.route ||
+      [this.planned?.pickup!, this.planned?.dropoff!].filter(Boolean);
+    if (points.length > 1) this.view.fit(points);
+    else if (points.length === 1) this.view.center(points[0]);
     this.label();
   }
+
   destroy() {
     this.revision++;
     this.locationGeneration++;

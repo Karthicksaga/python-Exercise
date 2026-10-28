@@ -1,3 +1,6 @@
+import { driverAlertSound, acceptRideSound } from "../sounds";
+import { CaptainOnboarding } from "../onboarding/CaptainOnboarding";
+import { icon } from "../icons";
 import {
   enableNotifications,
   disableNotifications,
@@ -19,6 +22,54 @@ interface Bridge {
 }
 type Route = { route: Coordinate[]; meters: number; seconds: number };
 type Notice = { id: string; title: string; body: string; created_at: string };
+
+function haversineMeters(
+  p1: { lat: number; lng: number },
+  p2: { lat: number; lng: number },
+): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(p2.lat - p1.lat);
+  const dLng = toRad(p2.lng - p1.lng);
+  const lat1 = toRad(p1.lat);
+  const lat2 = toRad(p2.lat);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function interpolateRoute(
+  p1: Coordinate,
+  p2: Coordinate,
+  steps = 8,
+): Coordinate[] {
+  const points: Coordinate[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    points.push({
+      lat: Number((p1.lat + (p2.lat - p1.lat) * t).toFixed(6)),
+      lng: Number((p1.lng + (p2.lng - p1.lng) * t).toFixed(6)),
+    });
+  }
+  return points;
+}
+
+function calculateFallbackEstimates(
+  roadMeters: number,
+): Record<string, number> {
+  const km = roadMeters / 1000;
+  return {
+    auto: Math.round(35 + 14 * km) * 100,
+    bike: Math.round(20 + 9 * km) * 100,
+    mini: Math.round(50 + 16 * km) * 100,
+    sedan: Math.round(70 + 19 * km) * 100,
+    suv: Math.round(120 + 26 * km) * 100,
+  };
+}
+
+
 /** Data and action adapter for the approved UI; no alternate screen renderer. */
 export class LiveJourney {
   private config?: Config;
@@ -27,6 +78,7 @@ export class LiveJourney {
   private lastAction = "";
   private signedIn = false;
   private payment?: LivePayment;
+  private onboarding?: CaptainOnboarding;
   private walletBalance?: number;
   private walletLoading = false;
   private authError = "";
@@ -345,13 +397,84 @@ export class LiveJourney {
     }
   }
   private mapPick = (event: Event) => {
-    if (this.role !== "rider" || this.active()) return;
+    if (this.active()) return;
     const point = (event as CustomEvent<Coordinate>).detail;
+    if (this.role === "captain") {
+      window.dispatchEvent(
+        new CustomEvent("hop-planned-route", {
+          detail: {
+            center: point,
+            vehicles: [],
+            pickup: point,
+          },
+        }),
+      );
+      return;
+    }
+    if (!this.pickup && this.bridge.read().screen === "home") {
+      this.target = "pickup";
+    }
     void this.select({
       ...point,
       label: `Map pin ${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`,
     }).catch((e) => this.message(e));
   };
+  private cancelRiderRide() {
+    this.recovery = undefined;
+    this.seenRide = "";
+    this.quote = undefined;
+    this.bookingPayload = undefined;
+    this.route = undefined;
+    this.estimates = {};
+    this.dropoff = undefined;
+    this.invalidate();
+    this.bridge.assign({
+      modal: null,
+      phase: "none",
+      destination: "",
+      search: "",
+    });
+    this.bridge.update({
+      modal: null,
+      phase: "none",
+      destination: "",
+      search: "",
+    });
+    this.bridge.go("home");
+    this.bridge.notify("Ride request cancelled.");
+  }
+
+  private applyFallbackRoute(pickup: Point, dropoff: Point): Route {
+    const geodesic = haversineMeters(pickup, dropoff);
+    const roadMeters = Math.round(geodesic * 1.3);
+    const roadSeconds = Math.max(60, Math.round(roadMeters / 7));
+    const fallbackRoute: Route = {
+      route: interpolateRoute(pickup, dropoff),
+      meters: roadMeters,
+      seconds: roadSeconds,
+    };
+    this.route = fallbackRoute;
+    window.dispatchEvent(
+      new CustomEvent("hop-planned-route", {
+        detail: {
+          center: pickup,
+          vehicles: [],
+          pickup,
+          dropoff,
+          route: fallbackRoute.route,
+        },
+      }),
+    );
+    this.decorate();
+    return fallbackRoute;
+  }
+  private applyFallbackEstimates(pickup: Point, dropoff: Point) {
+    const meters =
+      this.route?.meters ??
+      Math.round(haversineMeters(pickup, dropoff) * 1.3);
+    this.estimates = calculateFallbackEstimates(meters);
+    this.decorate();
+  }
   private async plan() {
     if (!this.pickup || !this.dropoff) return;
     const revision = ++this.routeSequence,
@@ -363,39 +486,65 @@ export class LiveJourney {
       const area = this.area(pickup);
       if (!area)
         throw new Error("Pickup is outside the supported service areas.");
-      const response = await api.request<{ routes: Route[] }>(
-        "/api/routes/alternatives",
-        { pickup, dropoff },
-      );
-      if (revision !== this.routeSequence) return;
-      if (!response.routes?.[0]?.route?.length)
-        throw new Error("No road route is available for these locations.");
-      this.route = response.routes[0];
-      window.dispatchEvent(
-        new CustomEvent("hop-planned-route", {
-          detail: {
-            center: pickup,
-            vehicles: [],
-            pickup,
-            dropoff,
-            route: this.route.route,
-          },
-        }),
-      );
-      this.decorate();
-      const estimates = await api.request<{
-        options: { category: string; fare_paise: number }[];
-      }>("/api/estimates", { area_id: area.id, pickup, dropoff });
-      if (revision !== this.routeSequence) return;
-      this.estimates = Object.fromEntries(
-        (estimates.options || []).map((o) => [o.category, o.fare_paise]),
-      );
-      this.decorate();
-    } catch (error) {
-      if (revision === this.routeSequence) {
-        this.route = undefined;
-        this.message(error);
+
+      let fallbackUsed = false;
+      try {
+        const response = await api.request<{ routes: Route[] }>(
+          "/api/routes/alternatives",
+          { pickup, dropoff },
+        );
+        if (revision !== this.routeSequence) return;
+        if (!response.routes?.[0]?.route?.length)
+          throw new Error("No road route is available for these locations.");
+        this.route = response.routes[0];
+        window.dispatchEvent(
+          new CustomEvent("hop-planned-route", {
+            detail: {
+              center: pickup,
+              vehicles: [],
+              pickup,
+              dropoff,
+              route: this.route.route,
+            },
+          }),
+        );
         this.decorate();
+      } catch {
+        if (revision !== this.routeSequence) return;
+        fallbackUsed = true;
+        this.applyFallbackRoute(pickup, dropoff);
+      }
+
+      try {
+        const estimates = await api.request<{
+          options: { category: string; fare_paise: number }[];
+        }>("/api/estimates", { area_id: area.id, pickup, dropoff });
+        if (revision !== this.routeSequence) return;
+        if (!estimates.options?.length) {
+          throw new Error("No vehicle estimates returned.");
+        }
+        this.estimates = Object.fromEntries(
+          estimates.options.map((o) => [o.category, o.fare_paise]),
+        );
+        this.decorate();
+      } catch {
+        if (revision !== this.routeSequence) return;
+        fallbackUsed = true;
+        this.applyFallbackEstimates(pickup, dropoff);
+      }
+
+      if (fallbackUsed && revision === this.routeSequence) {
+        this.bridge.notify(
+          "Estimated fare calculated via direct road distance",
+        );
+      }
+    } catch {
+      if (revision === this.routeSequence) {
+        this.applyFallbackRoute(pickup, dropoff);
+        this.applyFallbackEstimates(pickup, dropoff);
+        this.bridge.notify(
+          "Estimated fare calculated via direct road distance",
+        );
       }
     }
   }
@@ -457,10 +606,41 @@ export class LiveJourney {
       this.bridge.go("activity");
     });
   }
+  private startCityRide() {
+    this.bridge.assign({ tripType: "city", schedule: "Now" });
+    this.quote = undefined;
+    this.bookingPayload = undefined;
+  }
+  private requireCityRide() {
+    const ui = this.bridge.read();
+    if (ui.tripType !== "city" || ui.schedule !== "Now")
+      throw new Error(
+        "Hourly rental, outstation and scheduled rides are not available in this mobile booking flow yet. Choose City ride to continue.",
+      );
+  }
   private click = (event: Event) => {
     const button = (event.target as Element)?.closest<HTMLElement>("button,a");
     if (!button) return;
+    if (this.app.querySelector("[data-captain-onboarding]")) return;
     if (this.payment) return;
+    if (
+      this.role === "captain" &&
+      (button.dataset.go === "onboarding" ||
+        button.hasAttribute("data-live-onboard"))
+    ) {
+      this.stop(event);
+      this.bridge.go("onboarding");
+      return;
+    }
+    if (button.dataset.go === "search" && this.bridge.read().screen === "home")
+      this.startCityRide();
+    if (button.dataset.triptype) {
+      this.stop(event);
+      this.bridge.notify(
+        "Hourly rental and outstation booking are not available in this mobile flow yet. Choose City ride.",
+      );
+      return;
+    }
     if (button.dataset.liveRecover) {
       this.stop(event);
       const state = this.recovery;
@@ -480,6 +660,8 @@ export class LiveJourney {
         });
       } else if (state === "offline")
         void this.run(async () => this.sync(await api.state()));
+      else if (state === "cancelled" && this.role === "rider")
+        this.cancelRiderRide();
       else
         this.bridge.go(
           state === "location"
@@ -490,7 +672,9 @@ export class LiveJourney {
                 ? "notifications"
                 : state === "drivers"
                   ? "choose"
-                  : "activity",
+                  : this.role === "rider"
+                    ? "home"
+                    : "activity",
         );
       return;
     }
@@ -526,6 +710,7 @@ export class LiveJourney {
     }
     if (button.dataset.destination) {
       this.stop(event);
+      if (this.bridge.read().screen === "home") this.startCityRide();
       this.target = "dropoff";
       const saved = this.state?.saved_locations?.find(
         (p) =>
@@ -648,6 +833,7 @@ export class LiveJourney {
     }
     if (action === "usual-ride" || action === "rebook") {
       this.stop(event);
+      this.startCityRide();
       this.bridge.go("search");
       this.bridge.notify(
         "Choose your pickup and destination to get a fresh backend fare.",
@@ -675,9 +861,18 @@ export class LiveJourney {
       });
       return;
     }
+    if (action === "save-plan") {
+      this.stop(event);
+      void this.run(async () => {
+        this.requireCityRide();
+        this.bridge.go("search");
+      });
+      return;
+    }
     if (action === "review") {
       this.stop(event);
       void this.run(async () => {
+        this.requireCityRide();
         if (!this.pickup || !this.dropoff || !this.route)
           throw new Error(
             "Choose a pickup and destination and wait for the road route.",
@@ -735,6 +930,21 @@ export class LiveJourney {
         this.bridge.go("matching");
         this.sync(await api.state());
       });
+      return;
+    }
+    if (this.role === "rider" && action === "cancel-ride") {
+      this.stop(event);
+      const ride = this.active();
+      this.cancelRiderRide();
+      if (ride) {
+        void this.run(async () => {
+          await api.session();
+          await api.action(ride.id, ride.version, "cancel", {
+            reason: "Plans changed",
+          });
+          this.sync(await api.state());
+        });
+      }
       return;
     }
     if (
@@ -813,6 +1023,8 @@ export class LiveJourney {
       const revision = `${ride.id}:${ride.status}`;
       if (revision !== this.seenRide) {
         this.seenRide = revision;
+        if (this.role === "captain" && ride.status === "accepted")
+          acceptRideSound();
         this.bridge.update({
           phase: ride.status,
           pickup: ride.pickup_label,
@@ -847,15 +1059,26 @@ export class LiveJourney {
         this.openPayment(finished);
         return;
       }
-      this.bridge.update({ phase: "none" });
-      this.bridge.go(this.role === "rider" ? "activity" : "drive");
-      if (previous?.status === "expired") this.showRecovery("drivers");
-      if (previous?.status === "cancelled") this.showRecovery("cancelled");
+      if (this.role === "rider") {
+        if (previous?.status === "cancelled") {
+          this.cancelRiderRide();
+          return;
+        }
+        this.bridge.update({ phase: "none" });
+        this.bridge.go("home");
+        if (previous?.status === "expired") this.showRecovery("drivers");
+      } else {
+        this.bridge.update({ phase: "none" });
+        this.bridge.go("drive");
+        if (previous?.status === "expired") this.showRecovery("drivers");
+        if (previous?.status === "cancelled") this.showRecovery("cancelled");
+      }
     }
     if (this.role === "captain" && !ride && state.offers?.length) {
       const offer = state.offers[0];
       if (!this.offersSeen.has(offer.id)) {
         this.offersSeen.add(offer.id);
+        driverAlertSound();
         this.bridge.update({
           pickup: offer.pickup_label,
           destination: offer.dropoff_label,
@@ -863,6 +1086,19 @@ export class LiveJourney {
           payment: offer.payment_method,
           offerIndex: 0,
         });
+        const pickup = { lat: offer.pickup_lat, lng: offer.pickup_lng };
+        const dropoff = { lat: offer.dropoff_lat, lng: offer.dropoff_lng };
+        window.dispatchEvent(
+          new CustomEvent("hop-planned-route", {
+            detail: {
+              center: pickup,
+              vehicles: [],
+              pickup,
+              dropoff,
+              route: offer.route,
+            },
+          }),
+        );
         this.bridge.go("request");
         this.bridge.notify(
           "New ride request received. Review the pickup and fare.",
@@ -872,6 +1108,18 @@ export class LiveJourney {
     this.decorate();
   }
   private decorate() {
+    if (this.role === "captain" && this.bridge.read().screen === "onboarding") {
+      this.onboarding ||= new CaptainOnboarding(
+        this.app,
+        this.bridge,
+        () => this.config,
+        () => this.state,
+        async () => this.sync(await api.state()),
+        () => this.bridge.go("drive"),
+      );
+      this.onboarding.sync();
+      return;
+    }
     if (this.app.dataset.livePayment) return;
     if (this.recovery && this.bridge.read().modal === "live-recovery") {
       const panel = this.app.querySelector(".modal-sheet"),
@@ -880,6 +1128,65 @@ export class LiveJourney {
         panel.innerHTML = `<div class="sheet-handle"></div><div class="modal-title"><h2 id="modal-title">${state.title}</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">×</button></div><section class="state-preview-card"><div class="payment-state-symbol">${state.symbol}</div><p>${state.copy}</p></section><button class="primary" data-live-recover="continue">${state.action}</button>`;
     }
     const screen = this.bridge.read().screen;
+    if (this.role === "captain") {
+      const driver = this.state?.driver[0];
+      const area = this.config?.areas.find((a) => a.id === driver?.area_id);
+      const stateName =
+        driver?.state || area?.state || area?.name || "Tamil Nadu";
+      const jurisdiction = stateName.includes("State-wide")
+        ? stateName
+        : `${stateName} — State-wide Operations`;
+
+      this.app
+        .querySelectorAll<HTMLElement>('[data-modal="service-area"]')
+        .forEach((button) => {
+          if (button.classList.contains("zone-pill"))
+            button.innerHTML = `${icon("navigation", "tiny-icon")} State: ${escape(jurisdiction)} <span class="badge green" style="font-size:8px;padding:2px 6px">State-wide</span>`;
+          else {
+            const detail = button.querySelector("small");
+            if (detail) detail.textContent = `${jurisdiction} · State-wide`;
+          }
+        });
+
+      const duty = this.app.querySelector<HTMLElement>(
+        '[data-action="online"]',
+      );
+      if (duty && this.state) {
+        if (driver?.status !== "approved") {
+          duty.setAttribute("data-live-onboard", "");
+          duty.textContent =
+            driver?.status === "pending"
+              ? "Application under review"
+              : driver?.status === "suspended"
+                ? "View suspension details"
+                : "Complete Captain onboarding";
+        } else duty.removeAttribute("data-live-onboard");
+      }
+
+      if (screen === "drive" && driver?.status !== "approved") {
+        const sheet = this.app.querySelector(".sheet");
+        if (sheet && !sheet.querySelector(".onboarding-banner")) {
+          const banner = document.createElement("div");
+          banner.className = "notice-box onboarding-banner";
+          banner.style.cssText =
+            "margin:8px 0 12px;cursor:pointer;background:var(--accent-warm,#fef7e6);border:1px solid #e0c875;color:#8a6e2b";
+          banner.setAttribute("data-go", "onboarding");
+          banner.innerHTML = `<div class="row"><strong>Complete onboarding to go online state-wide</strong><span style="font-size:12px">→</span></div><p class="micro" style="margin-top:2px">Submit details and verify credentials for state-wide coverage.</p>`;
+          const handle = sheet.querySelector(".sheet-handle");
+          if (handle && handle.nextSibling) {
+            sheet.insertBefore(banner, handle.nextSibling);
+          } else {
+            sheet.prepend(banner);
+          }
+        }
+      }
+
+      if (this.bridge.read().modal === "service-area") {
+        const panel = this.app.querySelector(".modal-sheet");
+        if (panel && !panel.querySelector("[data-live-state]"))
+          panel.innerHTML = `<div data-live-state><div class="sheet-handle"></div><div class="modal-title"><h2>Operating State</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">×</button></div><div class="section-card"><div class="row"><div><small class="muted">OPERATING JURISDICTION</small><strong style="display:block;margin-top:2px">${escape(jurisdiction)}</strong></div><span class="badge green">State-wide</span></div><p class="micro muted" style="margin-top:6px">Authorized to operate across all cities and corridors in ${escape(stateName)} without separate zone approvals.</p><p class="small muted">Captain status: ${escape(driver?.status || "Not applied")}</p></div><div class="notice-box">State-wide Jurisdiction: No neighbourhood-zone approvals. Once your credentials (DL, RC, Insurance) are approved, you are authorized state-wide.</div><button class="primary" data-go="onboarding">${driver?.status === "approved" ? "View Captain Application" : "Complete Captain Onboarding"}</button></div>`;
+      }
+    }
     if (
       !this.signedIn &&
       screen !== "auth" &&
@@ -1031,7 +1338,11 @@ export class LiveJourney {
           if (price)
             price.textContent =
               this.estimates[button.dataset.vehicle!] !== undefined
-                ? money(this.estimates[button.dataset.vehicle!] / 100)
+                ? money(
+                    Math.round(
+                      this.estimates[button.dataset.vehicle!] / 100,
+                    ),
+                  )
                 : "Unavailable";
           const detail = button.querySelector("small");
           if (detail)
@@ -1063,6 +1374,12 @@ export class LiveJourney {
             (el.textContent = value === undefined ? "—" : money(value / 100)),
         );
       const badge = this.app.querySelector(".confirm-sheet .badge");
+      const breakdownAmount = this.app.querySelector(
+        '.confirm-sheet [data-modal="fare"] small',
+      );
+      if (breakdownAmount)
+        breakdownAmount.textContent =
+          value === undefined ? "—" : money(value / 100);
       if (badge)
         badge.textContent = this.quote ? "Backend quote" : "Quote required";
     }
@@ -1095,6 +1412,34 @@ export class LiveJourney {
     }
     if (this.role === "captain" && screen === "request") {
       const offer = this.state?.offers?.[0];
+      if (offer) {
+        const pickup = { lat: offer.pickup_lat, lng: offer.pickup_lng };
+        const dropoff = { lat: offer.dropoff_lat, lng: offer.dropoff_lng };
+        window.dispatchEvent(
+          new CustomEvent("hop-planned-route", {
+            detail: {
+              center: pickup,
+              vehicles: [],
+              pickup,
+              dropoff,
+              route: offer.route,
+            },
+          }),
+        );
+      } else {
+        const pickup = { lat: 13.0067, lng: 80.255 };
+        const dropoff = { lat: 12.9815, lng: 80.1636 };
+        window.dispatchEvent(
+          new CustomEvent("hop-planned-route", {
+            detail: {
+              center: pickup,
+              vehicles: [],
+              pickup,
+              dropoff,
+            },
+          }),
+        );
+      }
       this.app.querySelector(".offer-switcher")?.remove();
       this.app.querySelector(".offer-timer-bar")?.remove();
       const amount = this.app.querySelector(".driver-sheet .amount");
@@ -1212,6 +1557,7 @@ export class LiveJourney {
       );
   }
   destroy() {
+    this.onboarding?.destroy();
     this.payment?.destroy();
     this.stopped = true;
     this.sequence++;

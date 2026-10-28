@@ -4,7 +4,7 @@ export default defineConfig({
   timeout: 120000,
   workers: 1,
   reporter: "list",
-  outputDir: "/private/tmp/hop-mobile-replica-results",
+  outputDir: "test-results",
   webServer: [
     {
       command:

@@ -20,3 +20,6 @@ body {
   border-radius: 0;
   box-shadow: none;
 }
+/* Input is enabled only after the live adapters have registered their handlers. */
+#app[inert]{visibility:hidden}
+.phone:has(#app[inert])::after{content:"hop";position:absolute;inset:0;display:grid;place-items:center;color:#e54d36;font:750 42px Outfit,sans-serif;letter-spacing:-2px;background:white}

@@ -6,6 +6,8 @@ import { checkout, type Order, type Verification } from "./checkout";
 /** Approved payment layout with server-owned amounts and settlement states. */
 export class LivePayment {
   private lastRendered = "";
+  private qr = "";
+  private directUpi = false;
   private ride: Ride;
   private selected: string;
   private busy = false;
@@ -120,6 +122,28 @@ export class LivePayment {
             this.verification,
           );
         await this.refresh();
+      });
+      return;
+    }
+    if (action === "direct-upi") {
+      const vpa = this.ride.driver_upi;
+      if (!vpa || !/^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+$/.test(vpa)) return;
+      void this.run(async () => {
+        const { toDataURL } = await import("qrcode");
+        const parameters = new URLSearchParams({
+          pa: vpa,
+          pn: this.ride.driver_name || "Hop Captain",
+          am: ((this.ride.payable_paise ?? this.ride.fare_paise) / 100).toFixed(
+            2,
+          ),
+          cu: "INR",
+          tn: `Hop ride ${this.ride.id.slice(0, 8)}`,
+        });
+        this.qr = await toDataURL(`upi://pay?${parameters}`, {
+          width: 210,
+          margin: 2,
+        });
+        this.directUpi = true;
       });
       return;
     }
@@ -284,6 +308,8 @@ export class LivePayment {
       this.error,
       this.balance,
       this.pending,
+      this.directUpi,
+      this.qr,
       this.confirmReceipt,
       this.cashChosen,
     ]);
@@ -314,6 +340,24 @@ export class LivePayment {
         '<div class="payment-hint">No additional payment is requested here. Check back for the backend’s updated status.</div>';
       actions =
         this.button("Check status", "refresh") +
+        this.button("Back to rides", "close", true);
+    } else if (this.directUpi) {
+      title = "Pay your Captain directly.";
+      copy =
+        "Scan with your UPI app. Hop does not treat opening the app as payment confirmation.";
+      const parameters = new URLSearchParams({
+        pa: this.ride.driver_upi || "",
+        pn: this.ride.driver_name || "Hop Captain",
+        am: (amount / 100).toFixed(2),
+        cu: "INR",
+        tn: `Hop ride ${this.ride.id.slice(0, 8)}`,
+      });
+      content =
+        summary +
+        `<div style="text-align:center"><img src="${this.qr}" width="210" height="210" alt="UPI payment QR for the assigned Captain"/><p class="small">${escape(this.ride.driver_upi || "")}</p></div><div class="payment-hint">Your Captain must confirm receiving a direct UPI payment. A QR scan alone does not settle the ride.</div>`;
+      actions =
+        `<a class="primary" href="upi://pay?${escape(parameters.toString())}">Open UPI app</a>` +
+        this.button("Check payment status", "refresh") +
         this.button("Back to rides", "close", true);
     } else if (this.pending) {
       title = "We’re checking.";
@@ -387,6 +431,14 @@ export class LivePayment {
         this.button("Check payment status", "refresh", true) +
         this.button("Back to rides", "close", true);
     }
+    if (
+      this.role === "rider" &&
+      !this.pending &&
+      !this.directUpi &&
+      status === "unconfirmed" &&
+      this.ride.driver_upi
+    )
+      actions += this.button("Direct UPI QR", "direct-upi", true);
     this.app.className = `app ${this.role} payment-prototype`;
     this.app.dataset.livePayment = this.ride.id;
     this.app.innerHTML = `<div class="status-bar"><span>9:41</span><span aria-hidden="true">▂▅▇</span></div><header class="app-head"><div class="brand">hop<span class="role-tag">${this.role.toUpperCase()}</span></div><span class="badge neutral">Ride payment</span></header><div class="screen-body"><section class="payment-intro"><span>THE LAST LITTLE STEP</span><h1>${escape(title)}</h1><p>${escape(copy)}</p></section><div class="payment-content">${this.error ? `<div class="payment-hint payment-error" role="alert">${escape(this.error)}</div>` : ""}${content}</div></div><footer class="action-bar payment-actions">${actions}<p class="fineprint">Status comes from your Hop account · ${this.busy ? "Updating…" : "Secure payment handling"}</p></footer>`;
