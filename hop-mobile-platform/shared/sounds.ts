@@ -49,3 +49,4 @@ export const driverAlertSound = () => {
 export const goOnlineSound = () => play([[523, 0, 0.12], [659, 0.1, 0.12], [784, 0.2, 0.25]]);
 export const goOfflineSound = () => play([[784, 0, 0.12], [659, 0.1, 0.12], [440, 0.2, 0.3]]);
 export const acceptRideSound = () => play([[659, 0, 0.1], [880, 0.09, 0.1], [1175, 0.18, 0.3]]);
+
