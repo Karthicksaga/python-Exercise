@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@hop/shared/api";
 import { active, money, type Area, type Driver, type State, type VehicleChange as VehicleChangeRequest, type AreaChange as AreaChangeRequest } from "@hop/shared/types";
 import RideCard from "@hop/shared/RideCard";
+import OfferSwitcher from "@hop/shared/OfferSwitcher";
 import RideChat from "@hop/shared/RideChat";
 import DriverMap from "./DriverMap";
 import DriverTools from "./DriverTools";
@@ -216,6 +217,7 @@ export default function DriverPanel({
     currents = data.rides.filter((r) => r.driving && active(r)),
     current = currents[0];
   const [editingApplication,setEditingApplication]=useState(false);
+  const [activeOfferId, setActiveOfferId] = useState<string>("");
   const [chatOpen, setChatOpen] = useState(false),
     [sharing, setSharing] = useState(false),
     [burst, setBurst] = useState(""),
@@ -552,6 +554,29 @@ export default function DriverPanel({
     <>
       {/* 1. DRIVE SCREEN */}
       <div hidden={activeTab !== "driver"} className="captain-subview">
+        {sharing && data.offers.length > 0 && !current && (
+          <div
+            className="captain-heads-up"
+            role="alert"
+            tabIndex={0}
+            onClick={() => {
+              const el = document.getElementById("captain-ride-requests");
+              el?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            <div className="heads-up-head">
+              <span className="app-badge"><b>h</b> Hop Captain</span>
+              <span className="heads-up-timer">15s</span>
+            </div>
+            <div className="heads-up-body">
+              <strong>New Ride Request Nearby!</strong>
+              <p>Pickup: {data.offers[0].pickup_label.split(",")[0]} · {money(data.offers[0].fare_paise)}</p>
+            </div>
+            <div className="heads-up-cta">
+              Tap to review & accept ({data.offers.length} {data.offers.length === 1 ? "offer" : "offers"} available) →
+            </div>
+          </div>
+        )}
         <section className="panel driver-heading">
           <div>
             <p className="eyebrow">CAPTAIN COCKPIT</p>
@@ -700,8 +725,20 @@ export default function DriverPanel({
             ))}
           </>
         ) : (
-          <section>
+          <section id="captain-ride-requests">
             <h3>Ride requests{data.offers.length ? ` (${data.offers.length})` : ""}</h3>
+            {data.offers.length > 1 && (
+              <OfferSwitcher
+                offers={data.offers.map((o, idx) => ({
+                  id: o.id,
+                  title: `Offer ${idx + 1}`,
+                  subtitle: `${o.pickup_label.split(",")[0]} (${(o.meters / 1000).toFixed(1)} km)`,
+                  fareFormatted: money(o.fare_paise),
+                }))}
+                selectedIndex={Math.max(0, data.offers.findIndex((o) => o.id === activeOfferId))}
+                onSelect={(idx) => setActiveOfferId(data.offers[idx]?.id || "")}
+              />
+            )}
             {data.offers.length ? (
               <div className="ride-grid">
                 {data.offers.map((r) => (
@@ -775,6 +812,29 @@ export default function DriverPanel({
               ))}
             </div>
             <DriverInsights refreshKey={earnings} />
+            {!!earnings.rides?.length && (
+              <div className="earnings-rides" style={{ marginTop: 20 }}>
+                <h3>Recent Completed Trips ({earnings.rides.length})</h3>
+                <div className="rides-list" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+                  {earnings.rides.slice(0, 10).map((ride) => (
+                    <article key={ride.id} className="panel" style={{ padding: 12, border: "1px solid var(--border)" }}>
+                      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <strong>{ride.pickup_label.split(",")[0]} → {ride.dropoff_label.split(",")[0]}</strong>
+                          <p className="muted" style={{ margin: "2px 0 0", fontSize: "0.85rem" }}>
+                            {new Date(ride.completed_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })} · {(ride.meters / 1000).toFixed(1)} km · {ride.payment_method.toUpperCase()}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <strong style={{ color: "var(--brand, #198754)" }}>{money(ride.fare_paise)}</strong>
+                          <span className="badge" style={{ display: "block", fontSize: "0.75rem", marginTop: 2 }}>{ride.payment_status}</span>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         )}
       </div>

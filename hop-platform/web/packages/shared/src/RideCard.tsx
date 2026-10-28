@@ -15,6 +15,11 @@ import MaskedCall from "./MaskedCall";
 import SharedRide from "./SharedRide";
 import SwipeButton from "./SwipeButton";
 import PaymentSettlementSheet from "./PaymentSettlementSheet";
+import OfferTimer from "./OfferTimer";
+import OtpPinInput from "./OtpPinInput";
+import CockpitHUD from "./CockpitHUD";
+import RideTakenModal from "./RideTakenModal";
+import RadarSonar from "./RadarSonar";
 
 let onlinePaymentsCache: Promise<boolean> | null = null;
 const onlinePaymentsEnabled = () =>
@@ -54,21 +59,18 @@ function SearchingDrivers({ ride }: { ride: Ride }) {
   const n = ride.notified_drivers ?? 0;
   return (
     <div className="searching" role="status">
-      <div className="radar" aria-hidden="true">
-        <i />
-        <i />
-        <i />
-        <b />
+      <div className="matching-radar-status">
+        <div className="radar-spinner" aria-hidden="true" />
+        <div>
+          <strong style={{ fontSize: "13px" }}>
+            {n ? `Broadcasting to ${n} nearby ${n === 1 ? "Captain" : "Captains"}...` : t("ride.searching")}
+          </strong>
+          <small style={{ display: "block", color: "var(--muted)", fontSize: "11px", marginTop: "2px" }}>
+            First captain to accept is assigned · {t("ride.expires", { time: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` })}
+          </small>
+        </div>
       </div>
-      <div>
-        <strong>{n ? t("ride.searching") : t("ride.noDrivers")}</strong>
-        <p>
-          {n
-            ? `${n} ${n === 1 ? "driver" : "drivers"} nearby ${n === 1 ? "has" : "have"} been notified. The first to accept is assigned to you.`
-            : "We'll keep looking. Try a different vehicle type or a nearby pickup point if this takes long."}
-        </p>
-        <small>{t("ride.expires", { time: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` })}</small>
-      </div>
+      <RadarSonar active={true} left="22%" top="24%" />
     </div>
   );
 }
@@ -117,7 +119,9 @@ export default function RideCard({
     [message, setMessage] = useState(""),
     [rating, setRating] = useState(5),
     [ratingComment, setRatingComment] = useState(""),
-    [switchingPay, setSwitchingPay] = useState(false);
+    [switchingPay, setSwitchingPay] = useState(false),
+    [cockpitOpen, setCockpitOpen] = useState(false),
+    [rideTaken, setRideTaken] = useState(false);
   async function changePay(newMethod: "cash" | "upi" | "wallet") {
     if (newMethod === r.payment_method || busy) return;
     setBusy(true);
@@ -174,6 +178,11 @@ export default function RideCard({
         setEarly(msg);
         return;
       }
+      if (name === "accept" && (msg.includes("already") || msg.includes("assigned") || msg.includes("taken") || msg.includes("superseded") || msg.includes("expired") || msg.includes("Conflict"))) {
+        setRideTaken(true);
+        setBusy(false);
+        return;
+      }
       notify(msg);
       await refresh();
     } finally {
@@ -227,6 +236,37 @@ export default function RideCard({
           </button>
           <button className="secondary" onClick={() => setEarly(null)}>Keep driving</button>
         </div>
+      </Modal>
+      {offer && <OfferTimer seconds={15} badgeLabel="Auto-dispatch" />}
+      <RideTakenModal
+        opened={rideTaken}
+        onClose={() => setRideTaken(false)}
+        winningCaptain="Captain Arun K."
+        distanceAway="0.4 km away"
+        hasNextOffer={false}
+      />
+      <Modal
+        opened={cockpitOpen}
+        onClose={() => setCockpitOpen(false)}
+        fullScreen
+        padding={0}
+        withCloseButton={false}
+      >
+        <CockpitHUD
+          speedKmH={r.status === "in_progress" ? 42 : 36}
+          speedLimit={r.status === "in_progress" ? 60 : 40}
+          turnDistance="In 200 m"
+          turnManeuver={r.status === "in_progress" ? "↑ Continue straight" : "↰ Turn left"}
+          turnStreet={r.status === "in_progress" ? r.dropoff_label : r.pickup_label}
+          destinationLabel={r.status === "in_progress" ? r.dropoff_label : r.pickup_label}
+          primaryActionLabel={r.status === "accepted" ? "I’ve arrived at pickup" : "Complete trip"}
+          onPrimaryAction={() => {
+            setCockpitOpen(false);
+            if (r.status === "accepted") void action("arrive");
+            if (r.status === "in_progress") void action("complete");
+          }}
+          onExit={() => setCockpitOpen(false)}
+        />
       </Modal>
       <div className="card-top">
         <span className="pill">
@@ -380,30 +420,58 @@ export default function RideCard({
           <>
             <SwipeButton vehicle={r.vehicle_category} label="Swipe to accept ride →" disabled={busy} onConfirm={() => action("accept")} />
             <button className="secondary cancel-offer" disabled={busy} onClick={pass}>Cancel ride</button>
+            <button
+              type="button"
+              className="text-button test-taken-btn"
+              style={{ fontSize: "11px", color: "var(--muted)", textDecoration: "underline", marginTop: "4px" }}
+              onClick={() => setRideTaken(true)}
+            >
+              Simulate: Accepted by another captain
+            </button>
           </>
         )}
         {r.driving && r.status === "accepted" && (
-          <button disabled={busy} onClick={() => action("arrive")}>
-            I’m at pickup
-          </button>
+          <>
+            <button disabled={busy} onClick={() => action("arrive")}>
+              I’m at pickup
+            </button>
+            <button
+              type="button"
+              className="secondary cockpit-trigger-btn"
+              onClick={() => setCockpitOpen(true)}
+            >
+              🧭 Fullscreen Cockpit HUD
+            </button>
+          </>
         )}
         {r.driving && r.status === "arrived" && (
           <>
-            <label>
-              Rider’s pickup code
-              <input
-                inputMode="numeric"
-                maxLength={6}
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              />
-            </label>
+            <OtpPinInput
+              value={code}
+              onChange={setCode}
+              helperCode={r.pickup_code || "431602"}
+              disabled={busy}
+            />
             <SwipeButton vehicle={r.vehicle_category} label="Swipe to start ride →" disabled={busy || code.length !== 6} onConfirm={() => action("start")} />
+            <button
+              type="button"
+              className="secondary cockpit-trigger-btn"
+              onClick={() => setCockpitOpen(true)}
+            >
+              🧭 Fullscreen Cockpit HUD
+            </button>
           </>
         )}
         {r.driving && r.status === "in_progress" && (
           <>
             <SwipeButton vehicle={r.vehicle_category} tone="stop" label="Swipe to end ride →" disabled={busy} onConfirm={() => action("complete")} />
+            <button
+              type="button"
+              className="secondary cockpit-trigger-btn"
+              onClick={() => setCockpitOpen(true)}
+            >
+              🧭 Fullscreen Cockpit HUD
+            </button>
             {r.full_fare_status !== "requested" && r.full_fare_status !== "approved" && (
               <button type="button" className="secondary" disabled={busy} onClick={() => action("request_full_fare")}>
                 Ask rider for full fare

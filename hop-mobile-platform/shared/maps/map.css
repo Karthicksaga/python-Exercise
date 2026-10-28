@@ -1,0 +1,62 @@
+/* Provider canvas only; surrounding prototype components keep their source CSS. */
+.hop-map-canvas {
+  width: 100%;
+  position: absolute;
+  inset: 0 auto auto 0;
+  background: #e5ebdf;
+  isolation: isolate;
+}
+.hop-map-status {
+  position: absolute;
+  top: 65px;
+  left: 12px;
+  max-width: calc(100% - 74px);
+  padding: 6px 9px;
+  border-radius: 9px;
+  background: #fffffff0;
+  color: #556550;
+  font:
+    500 10px/1.4 "Inter",
+    sans-serif;
+  box-shadow: 0 2px 8px #223a2512;
+  pointer-events: none;
+  z-index: 401;
+}
+.hop-map-canvas .leaflet-control-attribution {
+  font-size: 9px;
+  background: #fffffff0;
+}
+.hop-map-canvas .leaflet-marker-icon {
+  object-fit: contain;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.app.dark .hop-map-status {
+  background: #243021ed;
+  color: #d7e1ce;
+}
+
+.hop-map-canvas svg {
+  width: revert;
+  height: revert;
+  object-fit: initial;
+}
+.map-controls [aria-pressed="true"] {
+  outline: 2px solid var(--accent);
+  background: var(--accent-soft);
+}
+.map-screen .map-controls.hop-compact-controls {
+  grid-template-columns: repeat(3, 37px);
+  grid-auto-flow: row;
+  gap: 5px;
+}
+.route-alt-row[hidden] {
+  display: none;
+}
+/* Keep live map controls reachable above the approved, internally scrolling sheet. */
+.map-screen:has(.hop-map-canvas) > .sheet {
+  max-height: calc(100% - 180px);
+}
+/* Do not flash sample cars/geometry while live adapters load asynchronously. */
+.hop-live .mini-car,.hop-live .map-pin,.hop-live .map-bubble,.hop-live .radar-pulse-wrap,.hop-live .map-art > svg{display:none}

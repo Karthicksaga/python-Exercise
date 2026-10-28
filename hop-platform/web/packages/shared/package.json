@@ -63,6 +63,12 @@
     "./AppSidebar": "./src/AppSidebar.tsx",
     "./MobileNavigation": "./src/MobileNavigation.tsx",
     "./AppLayout": "./src/AppLayout.tsx",
-    "./DashboardLayout": "./src/DashboardLayout.tsx"
+    "./DashboardLayout": "./src/DashboardLayout.tsx",
+    "./RadarSonar": "./src/RadarSonar.tsx",
+    "./OfferTimer": "./src/OfferTimer.tsx",
+    "./OfferSwitcher": "./src/OfferSwitcher.tsx",
+    "./RideTakenModal": "./src/RideTakenModal.tsx",
+    "./OtpPinInput": "./src/OtpPinInput.tsx",
+    "./CockpitHUD": "./src/CockpitHUD.tsx"
   }
 }

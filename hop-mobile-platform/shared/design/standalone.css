@@ -1,0 +1,22 @@
+/* Only the experience-lab frame is removed. Do not restyle its app components. */
+[data-prototype-review] {
+  display: none !important;
+}
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+body {
+  display: grid;
+  place-items: center;
+}
+#phone.phone {
+  width: 100%;
+  max-width: 500px;
+  height: 100dvh;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}

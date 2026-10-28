@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Hop — Mobile strategy & feature coverage</title>
+    <link rel="stylesheet" href="./style.css" />
+    <style>
+      .strategy {
+        max-width: 1100px;
+        margin: auto;
+        padding: 48px 5vw 80px;
+      }
+      .strategy .wordmark {
+        margin-bottom: 45px;
+      }
+      .strategy h1 {
+        font-size: clamp(30px, 5vw, 53px);
+        letter-spacing: -2px;
+        max-width: 760px;
+        line-height: 1.15;
+      }
+      .strategy .lead {
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.8;
+        max-width: 700px;
+        margin: 22px 0 40px;
+      }
+      .architecture {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 14px;
+        padding: 25px 0;
+        border-block: 1px solid #dbdfd5;
+      }
+      .architecture > div {
+        padding: 10px 0;
+      }
+      .architecture small,
+      .strategy .kicker {
+        font-size: 9px;
+        letter-spacing: 1.4px;
+        color: var(--muted);
+        font-weight: 650;
+      }
+      .architecture h2 {
+        font-size: 20px;
+        margin: 10px 0;
+      }
+      .architecture p {
+        font-size: 12px;
+        line-height: 1.7;
+        color: var(--muted);
+      }
+      .strategy section {
+        margin: 42px 0;
+      }
+      .strategy section > h2 {
+        font-size: 23px;
+        letter-spacing: -0.6px;
+        margin-bottom: 13px;
+      }
+      .strategy section > p {
+        font-size: 14px;
+        line-height: 1.9;
+        color: var(--muted);
+        max-width: 760px;
+      }
+      .principles {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 28px 40px;
+        margin-top: 25px;
+      }
+      .principles h3 {
+        font-size: 14px;
+        margin-bottom: 8px;
+      }
+      .principles p {
+        font-size: 12px;
+        line-height: 1.9;
+        color: var(--muted);
+      }
+      .coverage {
+        margin-top: 24px;
+      }
+      .coverage details {
+        border-bottom: 1px solid #dbdfd5;
+        padding: 17px 0;
+      }
+      .coverage summary {
+        font-size: 14px;
+        font-weight: 650;
+        cursor: pointer;
+        min-height: 35px;
+      }
+      .coverage p {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.8;
+        margin: 9px 0;
+      }
+      .coverage ul {
+        padding-left: 20px;
+        font-size: 12px;
+        line-height: 2;
+        color: #58665a;
+      }
+      .coverage .label {
+        font-size: 10px;
+        font-weight: 650;
+        color: #287354;
+        display: block;
+        margin-top: 10px;
+      }
+      .steps {
+        counter-reset: step;
+        display: grid;
+        gap: 24px;
+        margin-top: 28px;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: 32px 1fr;
+        gap: 16px;
+      }
+      .step::before {
+        counter-increment: step;
+        content: "0" counter(step);
+        font-size: 11px;
+        color: var(--accent);
+        padding-top: 4px;
+      }
+      .step h3 {
+        font-size: 15px;
+        margin-bottom: 7px;
+      }
+      .step p {
+        font-size: 12px;
+        line-height: 1.9;
+        color: var(--muted);
+      }
+      .strategy .back-link {
+        font-size: 12px;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+      }
+      .decision {
+        background: #e9ede2;
+        padding: 24px;
+        border-radius: 16px;
+        margin-top: 25px;
+      }
+      .decision h3 {
+        font-size: 16px;
+        margin-bottom: 10px;
+      }
+      .decision p {
+        font-size: 12px;
+        line-height: 1.9;
+        color: #64725e;
+      }
+      .strategy footer {
+        font-size: 11px;
+        color: var(--muted);
+        padding-top: 24px;
+        border-top: 1px solid #dbdfd5;
+      }
+      @media (max-width: 650px) {
+        .strategy {
+          padding-top: 25px;
+        }
+        .architecture {
+          grid-template-columns: 1fr;
+        }
+        .principles {
+          grid-template-columns: 1fr;
+        }
+        .strategy h1 {
+          letter-spacing: -1px;
+        }
+        .strategy .wordmark {
+          margin-bottom: 30px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="strategy">
+      <a class="wordmark" href="./"
+        ><b>h</b> hop <span>MOBILE EXPLORATION</span></a
+      >
+      <p class="eyebrow">THE DIRECTION · FOR REVIEW</p>
+      <h1>The same capabilities.<br />A different way through them.</h1>
+      <p class="lead">
+        Rider and Captain become focused mobile products. The Go API, database,
+        pricing, dispatch and payment rules stay in place. Admin stays on the
+        web.
+      </p>
+      <a href="./" class="back-link">← Explore the interactive prototype</a>
+      <section class="architecture">
+        <div>
+          <small>RIDER</small>
+          <h2>One journey at a time.</h2>
+          <p>
+            Native mobile screens. Map-led booking, focused search and compact
+            trip sheets. A clear home for every secondary feature.
+          </p>
+        </div>
+        <div>
+          <small>CAPTAIN</small>
+          <h2>Built around the next task.</h2>
+          <p>
+            Explicit online status. Focused request, pickup, verification and
+            trip states. Earnings and tools have their own destinations.
+          </p>
+        </div>
+        <div>
+          <small>BACKEND & ADMIN</small>
+          <h2>Keep the foundation.</h2>
+          <p>
+            Existing Go services and data contracts. Server-authoritative fares,
+            sessions, trip transitions and payments. Existing React Admin.
+          </p>
+        </div>
+      </section>
+      <section>
+        <h2>What changes in the experience</h2>
+        <div class="principles">
+          <div>
+            <h3>Focused screens replace long forms.</h3>
+            <p>
+              Search is separate from vehicle selection. Confirmation gives
+              optional controls their own sheets. No functionality has to live
+              on the same page to remain available.
+            </p>
+          </div>
+          <div>
+            <h3>The action stays within reach.</h3>
+            <p>
+              App navigation and primary actions have dedicated space. On small
+              screens or with large text, one content region may scroll; the
+              page never becomes a stack of unrelated panels.
+            </p>
+          </div>
+          <div>
+            <h3>The trip determines the screen.</h3>
+            <p>
+              Requested, accepted, arrived, in-progress and completed states
+              each show the next useful action. Unavailable actions stay
+              unavailable under the current backend rules.
+            </p>
+          </div>
+          <div>
+            <h3>Design and device behaviour are separate gates.</h3>
+            <p>
+              A good screenshot does not prove native GPS, keyboard, background
+              location or payment behaviour. Each needs an on-device acceptance
+              check before cutover.
+            </p>
+          </div>
+        </div>
+      </section>
+      <section>
+        <h2>Feature coverage — nothing silently disappears</h2>
+        <p>
+          This inventory combines the current source and project feature
+          documentation. The interactive prototype demonstrates navigation and
+          sample interactions. It is not a claim that native API integration or
+          production provider verification is complete.
+        </p>
+        <div class="coverage">
+          <details open>
+            <summary>Rider booking & trip products</summary>
+            <p>
+              New home: Ride → search → choose → review. Planning and optional
+              features have dedicated screens or sheets.
+            </p>
+            <ul>
+              <li>
+                GPS, Places search, pickup/destination pins, saved places,
+                recent destinations, airport/rail hubs and voice entry.
+              </li>
+              <li>
+                Bike, auto, mini, sedan, SUV; quote expiry/refresh, route
+                alternatives (Fastest vs. Toll-free OMR), surge, fare breakdown and promo codes.
+              </li>
+              <li>
+                Hop Commute corridor carpooling (office routes, recurring departure windows, verified co-riders, shared expense contributions).
+              </li>
+              <li>
+                Multi-stop, rental hours, outstation/return trips and scheduled
+                rides.
+              </li>
+              <li>
+                Fare negotiation/counter-offers, shared rides, women-driver
+                eligibility, favourite-captain priority and booking for
+                others/family.
+              </li>
+            </ul>
+            <span class="label"
+              >Prototype: booking, sample search, selection, route alternatives, Hop Commute corridors, options, planning, matching and counter-offer previews.</span
+            >
+            <p>
+              Native gate: exact request serialization, current quote rules, map
+              SDK, native speech/location and server validation.
+            </p>
+          </details>
+          <details>
+            <summary>Rider live trip & completion</summary>
+            <ul>
+              <li>
+                Animated radar matching sonar, live dispatch broadcast, captain/vehicle details, nearby drivers, pickup code, two-way chat,
+                masked contact, route progress and ETA.
+              </li>
+              <li>
+                Proactive RideCheck™ anomaly detection (unexpected delay/stop monitoring).
+              </li>
+              <li>
+                Trip sharing/revocation, safety, cancellation rules, matching
+                transitions, reconnect recovery.
+              </li>
+              <li>
+                Cash, direct UPI, wallet and online payments; receipts, business
+                snapshots, rating, rebooking and reporting.
+              </li>
+            </ul>
+            <span class="label"
+              >Prototype: radar matching, tracking, two-way chat, RideCheck safety, payment selection, receipt and
+              rating previews.</span
+            >
+            <p>
+              Native gate: participant access, real-time transport, idempotency,
+              payment verification and lifecycle transitions.
+            </p>
+          </details>
+          <details>
+            <summary>Rider account, money & companion features</summary>
+            <ul>
+              <li>
+                Phone/OIDC sign-in, exact-number verification, profile/portrait,
+                business fields and private media.
+              </li>
+              <li>
+                Wallet top-up, history, refunds/transaction states and offers.
+              </li>
+              <li>
+                Family invitations, favourites, referrals/rewards,
+                notifications, language, low-data and accessibility.
+              </li>
+              <li>
+                Emergency contacts, support, complaints, lost items, data export
+                and account-deletion recovery rules.
+              </li>
+            </ul>
+            <span class="label"
+              >Prototype: all destination screens; local-only form, inbox and
+              balance interactions.</span
+            >
+            <p>
+              Native gate: existing auth exchange/cookies/CSRF, ownership,
+              consent, private media and provider configuration.
+            </p>
+          </details>
+          <details>
+            <summary>Captain onboarding & account</summary>
+            <ul>
+              <li>
+                Verified mobile, portrait, vehicle details,
+                identity/licence/RC/insurance evidence.
+              </li>
+              <li>
+                Four-step server-side draft, corrections, operator review,
+                expiry and re-review restrictions.
+              </li>
+              <li>
+                Vehicle-change request, private documents, profile, account and
+                preferences.
+              </li>
+            </ul>
+            <span class="label"
+              >Prototype: four-step application and pending-review preview;
+              vehicle/document screens.</span
+            >
+            <p>
+              Native gate: private file handling, persisted drafts, validations
+              and operator approval. No client self-approval.
+            </p>
+          </details>
+          <details>
+            <summary>Captain dispatch, driving & productivity</summary>
+            <ul>
+              <li>
+                Online/offline, accurate/fresh location, background service, heads-up
+                request notifications, and multi-offer candidate switching.
+              </li>
+              <li>
+                Expiring offer countdown timer (15s dispatch window), offer display acknowledgement, accept/decline, counter-offer.
+              </li>
+              <li>
+                First-accept-wins race condition handling (superseded offer notices with non-punitive ranking protection).
+              </li>
+              <li>
+                Pickup arrival, 6-digit code verification (with test autofill), start/complete.
+              </li>
+              <li>
+                Fullscreen Cockpit Navigation HUD (turn maneuvers, speed telemetry, heading compass, lane indicators).
+              </li>
+              <li>
+                Navigation, voice/traffic/map options, waiting charges,
+                chat/contact and safety.
+              </li>
+              <li>
+                Operating Service Area selection and operator approval change requests.
+              </li>
+              <li>
+                Radius/minimum fare, go-home mode/usage limits, daily goal,
+                break reminder and demand zones.
+              </li>
+            </ul>
+            <span class="label"
+              >Prototype: offline → heads-up request (15s timer, multi-offer, race condition) → pickup → verify (autofill) → trip (Cockpit HUD) → settle,
+              plus service area and tools/settings.</span
+            >
+            <p>
+              Native gate: physical-device location/power behaviour, atomic
+              acceptance, push/reconnect, code attempts and server transitions.
+            </p>
+          </details>
+          <details>
+            <summary>Captain money, history & insights</summary>
+            <ul>
+              <li>
+                Dynamic daily/weekly/monthly earnings period switcher with real-time charts and metrics.
+              </li>
+              <li>
+                Ledger, payout eligibility, pending requests and operator approval.
+              </li>
+              <li>
+                Fare/time/payment summaries, safety score, trips, receipts,
+                ratings, support and lost items.
+              </li>
+            </ul>
+            <span class="label"
+              >Prototype: dynamic earnings periods, payout preview, ledger, insights and
+              trip-history screens.</span
+            >
+            <p>
+              Native gate: preserve integer-paise amounts, immutable snapshots
+              and distinct cash reports/provider confirmations.
+            </p>
+          </details>
+          <details>
+            <summary>Admin & backend</summary>
+            <p>
+              The existing Admin website and all backend services remain
+              untouched. No migrations, new endpoints, matching changes,
+              provider substitutions, pricing rewrites or database changes are
+              part of this exploration.
+            </p>
+            <span class="label"
+              >Prototype: deliberately isolated. No business API requests are
+              made.</span
+            >
+          </details>
+        </div>
+      </section>
+      <section>
+        <h2>A controlled migration, if you approve the direction</h2>
+        <div class="steps">
+          <div class="step">
+            <div>
+              <h3>Approve the product journeys.</h3>
+              <p>
+                Review Rider and Captain, including secondary screens. Check
+                compact phones, large text, keyboard states and language
+                wrapping. Capture feature gaps before choosing the final
+                implementation scope.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div>
+              <h3>Prove the native foundation.</h3>
+              <p>
+                Proposed starting point: React Native + Expo development builds.
+                Validate the existing native authentication exchange, session
+                cookies/CSRF, Google Maps, push and Captain location service
+                against the unchanged backend. Reassess Flutter if a required
+                capability fails this proof.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div>
+              <h3>Implement complete vertical slices.</h3>
+              <p>
+                Rider search-to-book and Captain request-to-settlement come
+                first. Then history/money, account/companion, safety/support and
+                onboarding/documents. Move pure TypeScript into shared domain
+                packages; replace DOM, CSS, browser maps and browser-only
+                effects with platform adapters.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div>
+              <h3>Cut over only after feature parity.</h3>
+              <p>
+                Every existing feature needs its API mapping and acceptance
+                evidence. Test real phones, denied permissions, app
+                background/kill/reopen, poor network, quote expiry, duplicate
+                actions and payment status. Keep the existing apps available
+                until the mobile clients pass the parity gates.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="decision">
+          <h3>The decision now is the experience.</h3>
+          <p>
+            This prototype is a review tool, built with isolated
+            HTML/CSS/JavaScript so it is easy to open and change. It is not a
+            native app, a live backend client, or the final architecture.
+            Approval of this direction does not imply approval to remove any
+            existing feature.
+          </p>
+        </div>
+      </section>
+      <footer>
+        Branch: codex/mobile-first-prototype · Existing backend and production
+        application files unchanged by this exploration.<br /><a
+          class="back-link"
+          href="./"
+          style="display: inline-block; margin-top: 15px"
+          >Return to the mobile experience →</a
+        >
+      </footer>
+    </main>
+  </body>
+</html>

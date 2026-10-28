@@ -1,0 +1,191 @@
+name: Hop Mobile Applications CI/CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build Type'
+        required: true
+        type: choice
+        options:
+          - debug
+          - release
+        default: debug
+      target_app:
+        description: 'Target Application'
+        required: true
+        type: choice
+        options:
+          - all
+          - rider
+          - captain
+        default: all
+  push:
+    branches:
+      - master
+      - main
+      - 'codex/**'
+    paths:
+      - 'hop-mobile-platform/**'
+      - '.github/workflows/hop-mobile.yml'
+  pull_request:
+    branches:
+      - master
+      - main
+    paths:
+      - 'hop-mobile-platform/**'
+      - '.github/workflows/hop-mobile.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-build:
+    name: Typecheck & Build Web Bundles
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hop-mobile-platform
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: hop-mobile-platform/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Build Rider and Captain bundles
+        run: npm run build
+
+      - name: Verify build outputs
+        run: |
+          test -f dist/rider/index.html || { echo "Rider dist missing"; exit 1; }
+          test -f dist/captain/index.html || { echo "Captain dist missing"; exit 1; }
+          echo "Web distributions built successfully!"
+
+  android-build:
+    name: Build Android Mobile Applications
+    needs: validate-and-build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hop-mobile-platform
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: hop-mobile-platform/package-lock.json
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
+          chmod +x mobile/rider/android/gradlew mobile/captain/android/gradlew
+
+      - name: Cache Gradle Packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('hop-mobile-platform/mobile/*/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Rider Android Debug APK
+        if: ${{ inputs.target_app == 'all' || inputs.target_app == 'rider' || github.event_name != 'workflow_dispatch' }}
+        env:
+          VITE_MOBILE_API_URL: ${{ vars.HOP_API_URL || 'http://10.0.2.2:8080' }}
+        run: node scripts/android.mjs rider --apk
+
+      - name: Build Captain Android Debug APK
+        if: ${{ inputs.target_app == 'all' || inputs.target_app == 'captain' || github.event_name != 'workflow_dispatch' }}
+        env:
+          VITE_MOBILE_API_URL: ${{ vars.HOP_API_URL || 'http://10.0.2.2:8080' }}
+        run: node scripts/android.mjs captain --apk
+
+      - name: Stage Android APK Artifacts
+        run: |
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          
+          if [ -f "mobile/rider/android/app/build/outputs/apk/debug/app-debug.apk" ]; then
+            cp mobile/rider/android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/artifacts/hop-rider-debug.apk"
+          fi
+
+          if [ -f "mobile/captain/android/app/build/outputs/apk/debug/app-debug.apk" ]; then
+            cp mobile/captain/android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/artifacts/hop-captain-debug.apk"
+          fi
+
+          {
+            echo "# 📱 Hop Mobile Applications — Build Summary"
+            echo ""
+            echo "Both independent native mobile applications have been compiled and synced successfully."
+            echo ""
+            echo "| Application | Package ID | Output File | Status |"
+            echo "|---|---|---|---|"
+            if [ -f "$RUNNER_TEMP/artifacts/hop-rider-debug.apk" ]; then
+              RIDER_SIZE=$(ls -lh "$RUNNER_TEMP/artifacts/hop-rider-debug.apk" | awk '{print $5}')
+              echo "| 🚗 **Hop Rider** | \`com.hop.rider\` | \`hop-rider-debug.apk\` ($RIDER_SIZE) | ✅ Built |"
+            fi
+            if [ -f "$RUNNER_TEMP/artifacts/hop-captain-debug.apk" ]; then
+              CAPTAIN_SIZE=$(ls -lh "$RUNNER_TEMP/artifacts/hop-captain-debug.apk" | awk '{print $5}')
+              echo "| 🚕 **Hop Captain** | \`com.hop.captain\` | \`hop-captain-debug.apk\` ($CAPTAIN_SIZE) | ✅ Built |"
+            fi
+            echo ""
+            echo "### 🚀 Installation via ADB"
+            echo "\`\`\`bash"
+            echo "# Install Rider app"
+            echo "adb install -r hop-rider-debug.apk"
+            echo ""
+            echo "# Install Captain app"
+            echo "adb install -r hop-captain-debug.apk"
+            echo "\`\`\`"
+            echo ""
+            echo "Download the compiled APK binaries directly from the **Artifacts** section below."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Archive Hop Rider APK
+        if: ${{ hashFiles(format('{0}/artifacts/hop-rider-debug.apk', runner.temp)) != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hop-rider-debug-apk
+          path: ${{ runner.temp }}/artifacts/hop-rider-debug.apk
+          if-no-files-found: warn
+
+      - name: Archive Hop Captain APK
+        if: ${{ hashFiles(format('{0}/artifacts/hop-captain-debug.apk', runner.temp)) != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hop-captain-debug-apk
+          path: ${{ runner.temp }}/artifacts/hop-captain-debug.apk
+          if-no-files-found: warn
+
+      - name: Archive Combined Mobile APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: hop-mobile-applications-apks
+          path: ${{ runner.temp }}/artifacts/*.apk
+          if-no-files-found: error

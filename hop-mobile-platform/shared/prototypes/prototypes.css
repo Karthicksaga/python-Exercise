@@ -1,0 +1,312 @@
+.login-preview-tools {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+.login-preview-tools button {
+  font-size: 9px;
+}
+.search-city {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  font-size: 10px;
+}
+.search-city select {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+}
+.search-feedback {
+  padding: 20px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.search-feedback button {
+  margin-top: 15px;
+}
+.payment-intro {
+  padding: 24px 22px 18px;
+  background: #f5f6f0;
+}
+.payment-intro > span {
+  font-size: 8px;
+  letter-spacing: 1.6px;
+  color: #687961;
+  font-weight: 700;
+}
+.payment-intro h1 {
+  font-size: 29px;
+  letter-spacing: -1.2px;
+  line-height: 1.2;
+  margin-top: 8px;
+}
+.payment-intro p {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin-top: 9px;
+  max-width: 310px;
+}
+.payment-content {
+  padding: 21px 22px 26px;
+}
+.payment-amount {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 10px 0 22px;
+  gap: 8px;
+}
+.payment-amount > span {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  font-weight: 650;
+}
+.payment-amount > strong {
+  font-family: Outfit, sans-serif;
+  font-size: 44px;
+  letter-spacing: -2.5px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+.payment-amount > strong > span {
+  font-size: 24px;
+  color: var(--muted);
+  letter-spacing: -1px;
+}
+.payment-amount small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.payment-section-label {
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  font-weight: 700;
+  margin: 4px 0 11px;
+}
+.payment-methods {
+  display: grid;
+  gap: 9px;
+}
+.payment-method {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  min-height: 72px;
+  padding: 13px;
+  background: #fff;
+  text-align: left;
+  width: 100%;
+}
+.payment-method.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.payment-method-symbol {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: #f2f4ed;
+  border-radius: 12px;
+  font-size: 19px;
+  color: #446144;
+}
+.payment-method > span:nth-child(2) {
+  flex: 1;
+}
+.payment-method strong {
+  display: block;
+  font-size: 12px;
+}
+.payment-method small {
+  display: block;
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.payment-breakdown {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding: 15px 0;
+  font-size: 11px;
+}
+.payment-breakdown summary {
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.payment-breakdown p {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  margin-top: 12px;
+  font-size: 10px;
+}
+.payment-hint {
+  background: #f4f6ef;
+  border-radius: 13px;
+  padding: 13px;
+  margin: 13px 0;
+  color: #60715b;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.payment-secure {
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.payment-actions {
+  display: grid;
+  gap: 8px;
+}
+.payment-actions button {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  align-items: center;
+}
+.payment-state-symbol {
+  width: 70px;
+  height: 70px;
+  border-radius: 24px;
+  background: #f0f3e9;
+  color: #57754b;
+  display: grid;
+  place-items: center;
+  margin: 4px auto 18px;
+  font-size: 35px;
+}
+.payment-state-symbol.success {
+  background: #e7f2e8;
+  color: #167b5b;
+  animation: payment-settle 450ms ease-out both;
+}
+.payment-state-symbol.failure {
+  background: #fff0eb;
+  color: #ca5137;
+}
+.payment-state-symbol.checking {
+  animation: payment-check 3s ease-in-out infinite;
+}
+.payment-status-label {
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-bottom: 15px;
+}
+.payment-demo-controls {
+  display: grid;
+  gap: 9px;
+  margin-top: 18px;
+}
+.payment-demo-controls > span {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.payment-demo-controls button {
+  font-size: 11px;
+}
+.payment-receipt {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  font-size: 10px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+}
+.payment-receipt > span {
+  color: var(--muted);
+}
+.payment-receipt strong {
+  text-align: right;
+  font-size: 10px;
+}
+.payment-timeline {
+  padding: 0 0 0 25px;
+  display: grid;
+  gap: 25px;
+  color: #48683e;
+  font-size: 12px;
+}
+.payment-timeline small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 6px;
+}
+.payment-timeline .pending {
+  color: var(--muted);
+}
+@keyframes payment-check {
+  0%,
+  100% {
+    transform: rotate(-15deg);
+  }
+  50% {
+    transform: rotate(20deg);
+  }
+}
+@keyframes payment-settle {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .payment-state-symbol {
+    animation: none !important;
+  }
+}
+.prototype-state-tabs {
+  display: flex;
+  gap: 7px;
+  padding: 17px 20px;
+  flex-wrap: wrap;
+}
+.prototype-state-tabs button {
+  font-size: 10px;
+  padding: 8px 11px;
+}
+.state-preview-card {
+  padding: 22px;
+  text-align: center;
+}
+.state-preview-card h2 {
+  font-size: 25px;
+  letter-spacing: -0.9px;
+  line-height: 1.2;
+  max-width: 280px;
+  margin: auto;
+}
+.state-preview-card > p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin: 15px auto 25px;
+  max-width: 300px;
+}
+.state-preview-card > label {
+  text-align: left;
+}
+.payment-method.selected .radio-dot {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 4px var(--accent);
+}
+.payment-error{background:#fff0eb;color:#b23d2d;border:1px solid #f2c7bc}.payment-amount strong{font-variant-numeric:tabular-nums}.payment-method-symbol .icon{width:19px;height:19px;stroke-width:1.7}.payment-actions button:disabled{opacity:.55;cursor:wait}
