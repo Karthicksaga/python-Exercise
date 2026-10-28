@@ -1,6 +1,7 @@
 import { icon } from "@shared/icons";
 import { escape, money, img, mapArt, notify } from "@shared/helpers";
 import { DriverOffer, EarningsPeriodData } from "@shared/types";
+import { driverAlertSound, goOnlineSound, goOfflineSound, acceptRideSound } from "@shared/sounds";
 
 
 export interface CaptainState {
@@ -1102,19 +1103,25 @@ export class CaptainApp {
 
       case "toggle-online":
         this.state.online = !this.state.online;
-
+        if (this.state.online) {
+          goOnlineSound();
+        } else {
+          goOfflineSound();
+        }
         this.render();
         notify(this.state.online ? "You are online and ready for requests!" : "You are offline.");
         break;
 
       case "simulate-dispatch-alert":
         this.state.phase = "requested";
+        driverAlertSound();
         this.go("request");
         notify("Incoming ride request! 15s to accept.");
         break;
 
       case "accept":
         this.state.phase = "accepted";
+        acceptRideSound();
         this.go("pickup");
         notify("Ride accepted! Head to pickup at Adyar (1.2 km away).");
         break;

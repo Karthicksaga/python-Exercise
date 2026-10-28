@@ -189,3 +189,4 @@ jobs:
           name: hop-mobile-applications-apks
           path: ${{ runner.temp }}/artifacts/*.apk
           if-no-files-found: error
+
