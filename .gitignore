@@ -9,3 +9,13 @@ hop-platform/web/playwright-report/
 # Editor & Tooling
 .metals/
 *.code-workspace
+.agents/
+.cursor/
+
+# Hop Mobile Platform
+hop-mobile-platform/dist/
+hop-mobile-platform/node_modules/
+hop-mobile-platform/mobile/*/android/.gradle/
+hop-mobile-platform/mobile/*/android/**/build/
+hop-mobile-platform/mobile/*/android/local.properties
+

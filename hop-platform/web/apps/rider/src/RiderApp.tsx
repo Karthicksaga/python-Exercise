@@ -604,6 +604,46 @@ export default function RiderApp() {
                         {trip.trip_type !== "rental" && (
                           <QuickPlaces saved={data.saved_locations ?? []} rides={data.rides} onPick={setDropoff} area={areas.find((a) => a.id === area)?.name} />
                         )}
+                        {trip.trip_type === "city" && (
+                          <div className="commute-hero" style={{ marginTop: 14, padding: "12px", background: "var(--card-bg, #f8fafc)", borderRadius: "12px", border: "1px solid var(--border)" }}>
+                            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", display: "flex" }}>
+                              <div>
+                                <span className="home-greeting" style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.5px", color: "var(--muted)" }}>OFFICE CORRIDORS</span>
+                                <h3 style={{ margin: "2px 0 0", fontSize: "1rem" }}>Hop Commute</h3>
+                              </div>
+                              <span className="badge" style={{ background: "#eaf5ec", color: "#236e3d", fontWeight: 600 }}>Shared Ride</span>
+                            </div>
+                            <p className="muted" style={{ fontSize: "12px", margin: "4px 0 10px" }}>
+                              Share your daily route along major office corridors. Zero surge, guaranteed seats.
+                            </p>
+                            <div className="commute-corridor-chips" style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px" }}>
+                              {[
+                                { id: "omr", name: "OMR IT Corridor", route: "Tidel Park ⇄ Siruseri SIPCOT", fare: 45, pickup: { lat: 12.989, lng: 80.248, label: "Tidel Park, Tharamani" }, dropoff: { lat: 12.825, lng: 80.219, label: "SIPCOT IT Park, Siruseri" } },
+                                { id: "guindy", name: "Guindy Tech Corridor", route: "Guindy ⇄ DLF IT Park", fare: 55, pickup: { lat: 13.006, lng: 80.202, label: "Guindy Metro Station" }, dropoff: { lat: 13.028, lng: 80.174, label: "DLF Cybercity, Manapakkam" } },
+                                { id: "ambattur", name: "Ambattur Corridor", route: "Ambattur OT ⇄ One Indiabulls", fare: 40, pickup: { lat: 13.114, lng: 80.154, label: "Ambattur Industrial Estate" }, dropoff: { lat: 13.088, lng: 80.178, label: "One Indiabulls Park" } },
+                              ].map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  className="product-chip"
+                                  style={{ flexShrink: 0, padding: "8px 12px", textAlign: "left", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--surface, #fff)", cursor: "pointer" }}
+                                  onClick={() => {
+                                    choosePickup(c.pickup);
+                                    setDropoff(c.dropoff);
+                                    setShare(true);
+                                    changeStep("choose");
+                                  }}
+                                >
+                                  <div style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
+                                    <strong style={{ fontSize: "12px" }}>{c.name}</strong>
+                                    <span style={{ fontWeight: 700, color: "var(--brand, #198754)" }}>₹{c.fare}</span>
+                                  </div>
+                                  <small className="muted" style={{ display: "block", fontSize: "10px", marginTop: "2px" }}>{c.route}</small>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <div className="booking-location-tools">
                         <VoiceBooking
                           area={area}

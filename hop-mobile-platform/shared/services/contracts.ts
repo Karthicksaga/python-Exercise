@@ -1,0 +1,55 @@
+export type Point = { lat: number; lng: number; label: string };
+export type Area = {
+  id: string;
+  name: string;
+  min_lat: number;
+  max_lat: number;
+  min_lng: number;
+  max_lng: number;
+};
+export type RoutePoint = { lat: number; lng: number };
+export type Ride = {
+  id: string;
+  version: number;
+  status: string;
+  mine?: boolean;
+  driving?: boolean;
+  pickup_label: string;
+  dropoff_label: string;
+  pickup_lat: number;
+  pickup_lng: number;
+  dropoff_lat: number;
+  dropoff_lng: number;
+  fare_paise: number;
+  payable_paise?: number;
+  vehicle_category: string;
+  payment_method: string;
+  payment_status?:string;
+  driver_name?: string;
+  vehicle_number?: string;
+  pickup_code?: string;
+  driver_lat?: number;
+  driver_lng?: number;
+  route?: RoutePoint[];
+};
+export type State = {
+  saved_locations?: (Point & { kind: string; place_label: string })[];
+  rides: Ride[];
+  offers: Ride[];
+  driver: { online: boolean; status: string; lat?: number; lng?: number }[];
+};
+export type Config = {
+  areas: Area[];
+  vehicles: { area_id: string; category: string; name: string }[];
+  development: boolean;
+  routing_configured: boolean;
+  phone_login: boolean;
+};
+export type Quote = {
+  id: string;
+  fare_paise: number;
+  discount_paise?: number;
+  route?: RoutePoint[];
+  meters: number;
+  seconds: number;
+};

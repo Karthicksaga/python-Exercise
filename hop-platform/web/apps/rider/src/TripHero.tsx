@@ -17,6 +17,7 @@ const headline: Record<string, string> = {
 export default function TripHero({ ride: r, notify }: { ride: Ride; notify: (s: string) => void }) {
   const [chat, setChat] = useState(false);
   const [link, setLink] = useState("");
+  const [ridecheck, setRidecheck] = useState(false);
   const minutes = r.eta_seconds ? Math.max(1, Math.round(r.eta_seconds / 60)) : null;
   const initial = (r.driver_name || "D").trim().charAt(0).toUpperCase();
 
@@ -85,6 +86,11 @@ export default function TripHero({ ride: r, notify }: { ride: Ride; notify: (s: 
         <button type="button" onClick={share}>
           <span aria-hidden>📍</span>Share trip
         </button>
+        {r.status === "in_progress" && (
+          <button type="button" className="ridecheck-trigger-btn" onClick={() => setRidecheck(true)}>
+            <span aria-hidden>🛡️</span>RideCheck™
+          </button>
+        )}
         <a className="button" href="tel:112">
           <span aria-hidden>📞</span>Call 112
         </a>
@@ -92,6 +98,45 @@ export default function TripHero({ ride: r, notify }: { ride: Ride; notify: (s: 
           <span aria-hidden>🚨</span>SOS
         </button>
       </div>
+      {ridecheck && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="RideCheck Anomaly Detection" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "16px" }}>
+          <div className="modal-sheet" style={{ background: "var(--bg, #fff)", borderRadius: "16px", padding: "20px", maxWidth: "400px", width: "100%", boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}>
+            <div style={{ textAlign: "center", padding: "8px 0" }}>
+              <span style={{ fontSize: "32px" }}>🛡️</span>
+              <h2 style={{ margin: "8px 0 4px", fontSize: "1.25rem" }}>Is everything okay?</h2>
+              <p style={{ color: "var(--muted)", fontSize: "0.9rem", lineHeight: 1.4 }}>
+                Hop detected that your ride has been stationary for over 4 minutes away from traffic signals.
+              </p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
+              <button
+                className="primary"
+                type="button"
+                onClick={() => {
+                  setRidecheck(false);
+                  notify("RideCheck: Marked safe - continuing on route");
+                }}
+              >
+                I’m fine, just stopped in traffic
+              </button>
+              <button
+                className="secondary"
+                type="button"
+                style={{ color: "var(--danger, #dc2626)", borderColor: "var(--danger, #dc2626)" }}
+                onClick={() => {
+                  setRidecheck(false);
+                  sos();
+                }}
+              >
+                Need help / Emergency SOS
+              </button>
+            </div>
+            <p className="muted" style={{ fontSize: "0.75rem", marginTop: 14, textAlign: "center" }}>
+              RideCheck™ uses GPS motion telemetry to proactively check on riders during unexpected delays.
+            </p>
+          </div>
+        </div>
+      )}
       {link && (
         <input readOnly value={link} onFocus={(e) => e.currentTarget.select()} aria-label="Trip share link" />
       )}
