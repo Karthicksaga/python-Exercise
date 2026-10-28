@@ -8,6 +8,7 @@ on:
         options: [staging, production]
         default: staging
   push:
+    # Strictly mobile & backend: hop-platform/web is deprecated and not built.
     paths: ['hop-platform/**', 'hop-mobile-platform/**', '.github/workflows/hop.yml']
   pull_request:
     paths: ['hop-platform/**', 'hop-mobile-platform/**', '.github/workflows/hop.yml']
@@ -48,32 +49,39 @@ jobs:
       - run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
       - run: govulncheck ./...
       - run: govulncheck -mode=binary "$RUNNER_TEMP/hop-api"
-  web:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: hop-platform/web
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: hop-platform/web/package-lock.json
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run build
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:responsive
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: responsive-browser-results
-          path: |
-            hop-platform/web/playwright-report/
-            hop-platform/web/test-results/
-          retention-days: 14
-      - run: npm audit --omit=dev --audit-level=high
+  # ---------------------------------------------------------------------------
+  # NOTE: The web-based application is NO LONGER USED.
+  # Strictly mobile application support only:
+  # - Hop Rider (com.hop.rider) and Hop Captain (com.hop.captain) are maintained
+  #   and compiled exclusively from hop-mobile-platform/.
+  # - The legacy hop-platform/web job below is commented out / deactivated.
+  # ---------------------------------------------------------------------------
+  # web:
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: hop-platform/web
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '24'
+  #         cache: npm
+  #         cache-dependency-path: hop-platform/web/package-lock.json
+  #     - run: npm ci
+  #     - run: npm run typecheck
+  #     - run: npm run build
+  #     - run: npx playwright install --with-deps chromium
+  #     - run: npm run test:responsive
+  #     - uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: responsive-browser-results
+  #         path: |
+  #           hop-platform/web/playwright-report/
+  #           hop-platform/web/test-results/
+  #         retention-days: 14
+  #     - run: npm audit --omit=dev --audit-level=high
   android:
     runs-on: ubuntu-latest
     defaults:
@@ -165,7 +173,8 @@ jobs:
           python-version: '3.12'
       - run: python -m unittest discover -s hop-platform/infra/gcp -p 'test_*.py'
   deploy:
-    needs: [api, web, android, deployment-config]
+    # 'web' job removed: web-based application is deprecated in favor of hop-mobile-platform
+    needs: [api, android, deployment-config]
     if: >-
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
       (github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.HOP_AUTO_DEPLOY == 'true')

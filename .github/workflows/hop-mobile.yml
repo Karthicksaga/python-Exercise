@@ -41,7 +41,9 @@ permissions:
 
 jobs:
   validate-and-build:
-    name: Typecheck & Build Web Bundles
+    # NOTE: Strictly mobile platform only (no web application support).
+    # Builds mobile client assets directly packaging into Capacitor native Android shells.
+    name: Typecheck & Build Mobile App Assets
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -63,14 +65,14 @@ jobs:
       - name: TypeScript typecheck
         run: npm run typecheck
 
-      - name: Build Rider and Captain bundles
+      - name: Build Rider and Captain mobile assets
         run: npm run build
 
       - name: Verify build outputs
         run: |
           test -f dist/rider/index.html || { echo "Rider dist missing"; exit 1; }
           test -f dist/captain/index.html || { echo "Captain dist missing"; exit 1; }
-          echo "Web distributions built successfully!"
+          echo "Mobile application assets compiled successfully for Capacitor Android containers!"
 
   android-build:
     name: Build Android Mobile Applications
