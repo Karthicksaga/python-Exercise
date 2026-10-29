@@ -190,7 +190,7 @@ test("follow me pins current GPS without changing selected route endpoints", asy
   await follow.click();
   await expect(follow).toHaveAttribute("aria-pressed", "false");
 });
-test("route and estimates failure falls back to direct road distance calculation", async ({
+test("route failure clears prices and geometry and blocks booking", async ({
   page,
 }) => {
   await setup(page);
@@ -213,16 +213,19 @@ test("route and estimates failure falls back to direct road distance calculation
     .getByRole("textbox", { name: "Search destination" })
     .fill("Airport");
   await page.locator("[data-live-place]").click();
-  await expect(page.locator(".choose-sheet .subline")).toContainText("7.4 km");
-  await expect(page.locator('[data-vehicle="auto"] .vehicle-price')).toHaveText(
-    "₹138",
+  await expect(page.getByRole("alert")).toContainText(
+    "Road routing unavailable",
   );
+  await expect(page.locator('[data-vehicle="auto"] .vehicle-price')).toHaveText(
+    "Unavailable",
+  );
+  await expect(page.locator('[data-action="review"]')).toBeDisabled();
   await expect(
     page.locator('.leaflet-overlay-pane path[fill="none"]'),
-  ).toHaveCount(1);
-  await expect(page.locator(".toast")).toContainText(
-    "Estimated fare calculated via direct road distance",
-  );
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Retry route and fares" }),
+  ).toBeVisible();
 });
 test("rider cancellation immediately returns to home screen and resets phase and closes modal", async ({
   page,

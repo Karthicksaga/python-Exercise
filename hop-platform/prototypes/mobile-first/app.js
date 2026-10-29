@@ -165,7 +165,7 @@ const state = {
   usual: { destination: "Work", vehicle: "auto", payment: "Wallet" },
   quoteRefreshed: false,
   cockpitMode: false,
-  serviceArea: "Tamil Nadu — State-wide Operations",
+  serviceArea: "Chennai",
   serviceAreaRequest: null,
   driverApproved: false,
   driverStatus: "pending",
@@ -354,14 +354,6 @@ const screens = {
       "More ways to go.",
       "City rides, hourly rental, outstation, return trips and scheduling have a focused planning screen.",
       "All vehicle eligibility, limits and pricing stay on the existing backend.",
-    ],
-    [
-      "commute",
-      "Hop Commute",
-      "OFFICE CORRIDORS",
-      "Share your daily route.",
-      "Corridor carpooling for recurring office commutes. Verified colleagues, reserved seats, and shared fuel contribution.",
-      "Hop Commute connects professionals along major office routes (OMR, Guindy, Ambattur) to share existing rides without commercial surge.",
     ],
     [
       "auth",
@@ -783,7 +775,7 @@ function riderView() {
         brand: true,
         map: true,
         nav: "home",
-        body: `${mapArt()}<div class="map-bubble" style="left:18px;top:19px;display:flex;align-items:center;gap:6px">${icon("pin", "tiny-icon")} Chennai <span class="muted">⌄</span></div><div class="sheet home-sheet"><div class="sheet-handle"></div><div class="home-heading"><span class="home-greeting">A LITTLE CLOSER, WITH HOP</span><h2>Where to next?</h2></div><p class="subline">Your city. Your people. Your way.</p><button class="destination-search" data-go="search">${icon("search")}<span style="flex:1">Where are you going?</span><span class="round">${icon("arrow")}</span></button><div class="shortcut-grid"><button class="shortcut" data-destination="Home">${icon("home")}<span><strong>Home</strong><small>2nd Cross Street</small></span></button><button class="shortcut" data-destination="Work">${icon("briefcase")}<span><strong>Work</strong><small>Olympia Tech Park</small></span></button></div><div class="product-row"><button class="product-chip active" data-go="search">City ride</button><button class="product-chip" disabled aria-disabled="true" title="Hop Commute is currently unavailable">Commute · Coming later</button><button class="product-chip" data-triptype="rental">Hourly rental</button><button class="product-chip" data-triptype="outstation">Outstation</button></div><button class="usual-ride" data-action="usual-ride"><span class="usual-mark">${icon("refresh")}</span><span><small>MY USUAL RIDE</small><strong>${escape(state.usual.destination)}</strong><span>${vehicleData.find(item => item.id === state.usual.vehicle).name} · ${state.usual.payment}</span></span><span class="usual-arrow">${icon("arrow")}</span></button></div>`,
+        body: `${mapArt()}<div class="map-bubble" style="left:18px;top:19px;display:flex;align-items:center;gap:6px">${icon("pin", "tiny-icon")} Chennai <span class="muted">⌄</span></div><div class="sheet home-sheet"><div class="sheet-handle"></div><div class="home-heading"><span class="home-greeting">A LITTLE CLOSER, WITH HOP</span><h2>Where to next?</h2></div><p class="subline">Your city. Your people. Your way.</p><button class="destination-search" data-go="search">${icon("search")}<span style="flex:1">Where are you going?</span><span class="round">${icon("arrow")}</span></button><div class="shortcut-grid"><button class="shortcut" data-destination="Home">${icon("home")}<span><strong>Home</strong><small>2nd Cross Street</small></span></button><button class="shortcut" data-destination="Work">${icon("briefcase")}<span><strong>Work</strong><small>Olympia Tech Park</small></span></button></div><div class="product-row"><button class="product-chip active" data-go="search">City ride</button><button class="product-chip" data-triptype="rental">Hourly rental</button><button class="product-chip" data-triptype="outstation">Outstation</button></div><button class="usual-ride" data-action="usual-ride"><span class="usual-mark">${icon("refresh")}</span><span><small>MY USUAL RIDE</small><strong>${escape(state.usual.destination)}</strong><span>${vehicleData.find(item => item.id === state.usual.vehicle).name} · ${state.usual.payment}</span></span><span class="usual-arrow">${icon("arrow")}</span></button></div>`,
       };
     case "search":
       return {
@@ -856,7 +848,7 @@ function captainView() {
         brand: true,
         map: true,
         nav: "drive",
-        body: `${headsUpAlert}${mapArt(false, true)}<div class="online-pill ${state.online ? "online" : ""}"><i></i>${state.online ? "You’re online" : "You’re offline"}</div><button class="earnings-mini" data-go="earnings">Today’s earnings<strong>₹1,260</strong></button><div class="sheet"><div class="sheet-handle"></div><div class="zone-pill-row"><button class="zone-pill" data-modal="service-area">${icon("navigation", "tiny-icon")} State: ${escape(state.serviceArea)} <span class="badge green" style="font-size:8px;padding:2px 6px">State-wide</span></button></div>${!state.driverApproved ? `<div class="notice-box onboarding-banner" style="margin:8px 0 12px;cursor:pointer;background:var(--accent-warm,#fef7e6);border:1px solid #e0c875;color:#8a6e2b" data-go="onboarding"><div class="row"><strong>Complete onboarding to go online state-wide</strong>${icon("chevron", "tiny-icon")}</div><p class="micro" style="margin-top:2px">Submit details and verify credentials for state-wide coverage.</p></div>` : ""}<h2>${state.online ? "Your next ride awaits." : "Your day, at your pace."}</h2><p class="subline">${state.online ? "You’ll receive requests near your current location." : "Go online when you’re ready for your next trip."}</p><div class="row small"><span class="muted">Daily goal</span><strong>₹1,260 <span class="muted">/ ${money(state.goal)}</span></strong></div><div class="progress-track"><i style="width:${Math.min(100, (1260 / state.goal) * 100)}%"></i></div><div class="row" style="margin:12px 0 16px"><span class="small muted">6 trips today</span><button class="text-button" style="font-size:10px;min-height:24px;padding:0" data-go="tools">Driver tools ${icon("chevron", "tiny-icon")}</button></div></div>`,
+        body: `${headsUpAlert}${mapArt(false, true)}<div class="online-pill ${state.online ? "online" : ""}"><i></i>${state.online ? "You’re online" : "You’re offline"}</div><button class="earnings-mini" data-go="earnings">Today’s earnings<strong>₹1,260</strong></button><div class="sheet"><div class="sheet-handle"></div><div class="zone-pill-row"><button class="zone-pill" data-modal="service-area">${icon("navigation", "tiny-icon")} City: ${escape(state.serviceArea)} <span class="badge green" style="font-size:8px;padding:2px 6px">City service</span></button></div>${!state.driverApproved ? `<div class="notice-box onboarding-banner" style="margin:8px 0 12px;cursor:pointer;background:var(--accent-warm,#fef7e6);border:1px solid #e0c875;color:#8a6e2b" data-go="onboarding"><div class="row"><strong>Complete onboarding to go online in your operating city</strong>${icon("chevron", "tiny-icon")}</div><p class="micro" style="margin-top:2px">Submit details and verify credentials for in your operating city coverage.</p></div>` : ""}<h2>${state.online ? "Your next ride awaits." : "Your day, at your pace."}</h2><p class="subline">${state.online ? "You’ll receive requests near your current location." : "Go online when you’re ready for your next trip."}</p><div class="row small"><span class="muted">Daily goal</span><strong>₹1,260 <span class="muted">/ ${money(state.goal)}</span></strong></div><div class="progress-track"><i style="width:${Math.min(100, (1260 / state.goal) * 100)}%"></i></div><div class="row" style="margin:12px 0 16px"><span class="small muted">6 trips today</span><button class="text-button" style="font-size:10px;min-height:24px;padding:0" data-go="tools">Driver tools ${icon("chevron", "tiny-icon")}</button></div></div>`,
         action: `${primary(state.online ? "Take a break · Go offline" : state.driverApproved ? "Go online" : "Complete onboarding to go online", "online", state.online ? "dark" : "")}<p class="fineprint">${state.online ? "Location sharing is on while you’re online." : "Location is shared only while you’re online."}</p>`,
       };
     case "request":
@@ -987,7 +979,7 @@ function captainView() {
       return {
         title: "Driver tools",
         back: true,
-        body: `<div class="screen-padding"><div class="section-label">A good workday starts here.</div><div class="section-card"><div class="row"><strong class="small">Daily earnings goal</strong><button class="text-button" data-modal="goal">Edit</button></div><p class="small muted">₹1,260 of ${money(state.goal)}</p><div class="progress-track"><i style="width:${Math.min(100, (1260 / state.goal) * 100)}%"></i></div></div><div class="section-card" style="margin-top:14px"><button class="toggle-row" data-action="home-mode" role="switch" aria-checked="${state.homeMode}"><span><strong>Head towards home</strong><small>${state.homeMode ? "On · sample 90-minute window" : "Prefer trips heading towards home"}</small></span><span class="switch ${state.homeMode ? "on" : ""}"></span></button><p class="small muted">Existing daily usage limits will still apply.</p></div>${modalRow("Operating Jurisdiction", `${state.serviceArea} · State-wide`, "navigation", "service-area")}${row("Demand nearby", "View sample busy pickup areas", "layers", "demand")}${row("Pickup & fare preferences", "Radius and minimum fare", "settings", "preferences")}${modalRow("Break reminder", "A pause after four hours online", "clock", "break")}${row("Your safety score", "Feedback and driving record", "shield", "insights")}</div>`,
+        body: `<div class="screen-padding"><div class="section-label">A good workday starts here.</div><div class="section-card"><div class="row"><strong class="small">Daily earnings goal</strong><button class="text-button" data-modal="goal">Edit</button></div><p class="small muted">₹1,260 of ${money(state.goal)}</p><div class="progress-track"><i style="width:${Math.min(100, (1260 / state.goal) * 100)}%"></i></div></div><div class="section-card" style="margin-top:14px"><button class="toggle-row" data-action="home-mode" role="switch" aria-checked="${state.homeMode}"><span><strong>Head towards home</strong><small>${state.homeMode ? "On · sample 90-minute window" : "Prefer trips heading towards home"}</small></span><span class="switch ${state.homeMode ? "on" : ""}"></span></button><p class="small muted">Existing daily usage limits will still apply.</p></div>${modalRow("Operating city", `${state.serviceArea} · City service`, "navigation", "service-area")}${row("Demand nearby", "View sample busy pickup areas", "layers", "demand")}${row("Pickup & fare preferences", "Radius and minimum fare", "settings", "preferences")}${modalRow("Break reminder", "A pause after four hours online", "clock", "break")}${row("Your safety score", "Feedback and driving record", "shield", "insights")}</div>`,
       };
     case "vehicle":
       return {
@@ -1030,17 +1022,17 @@ function onboarding() {
   ];
   return `<div class="screen-padding"><div class="onboarding-steps">${[0, 1, 2, 3].map((i) => `<span class="${i <= state.onboard ? "active" : ""}"></span>`).join("")}</div><p class="eyebrow">STEP ${state.onboard + 1} OF 4</p><h2 style="font-size:23px;letter-spacing:-.7px">${headings[state.onboard]}</h2>${
     state.onboard === 0
-      ? `<label class="field-label" for="onboard-name">Your legal name</label><input class="text-input" id="onboard-name" value="${escape(state.name || "Demo Captain")}"/><label class="field-label" for="onboard-phone">Mobile number</label><input class="text-input" id="onboard-phone" value="${escape(state.phone || "+91 98765 43210")}" readonly/><button class="upload" data-action="demo-verify">${icon("shield")}<span>Verify mobile<small>Phone verified · ready</small></span></button><button class="upload" data-action="portrait">${icon("camera")}<span>Profile photo<small>Sample portrait verified</small></span></button><label class="field-label" for="onboard-state" style="margin-top:14px">Operating State Jurisdiction</label><select class="text-input" id="onboard-state"><option value="Tamil Nadu — State-wide Operations" ${state.serviceArea.startsWith("Tamil Nadu") ? "selected" : ""}>Tamil Nadu — State-wide Operations</option><option value="Karnataka — State-wide Operations" ${state.serviceArea.startsWith("Karnataka") ? "selected" : ""}>Karnataka — State-wide Operations</option><option value="Telangana — State-wide Operations" ${state.serviceArea.startsWith("Telangana") ? "selected" : ""}>Telangana — State-wide Operations</option><option value="Maharashtra — State-wide Operations" ${state.serviceArea.startsWith("Maharashtra") ? "selected" : ""}>Maharashtra — State-wide Operations</option><option value="Delhi NCR — State-wide Operations" ${state.serviceArea.startsWith("Delhi") ? "selected" : ""}>Delhi NCR — State-wide Operations</option></select><p class="micro muted" style="margin-top:4px">State-wide Permit: No neighbourhood-zone approvals. Once approved, you are authorized to operate across the entire State.</p>`
+      ? `<label class="field-label" for="onboard-name">Your legal name</label><input class="text-input" id="onboard-name" value="${escape(state.name || "Demo Captain")}"/><label class="field-label" for="onboard-phone">Mobile number</label><input class="text-input" id="onboard-phone" value="${escape(state.phone || "+91 98765 43210")}" readonly/><button class="upload" data-action="demo-verify">${icon("shield")}<span>Verify mobile<small>Phone verified · ready</small></span></button><button class="upload" data-action="portrait">${icon("camera")}<span>Profile photo<small>Sample portrait verified</small></span></button><label class="field-label" for="onboard-state" style="margin-top:14px">Operating city</label><select class="text-input" id="onboard-state"><option value="Chennai" ${state.serviceArea.startsWith("Tamil Nadu") ? "selected" : ""}>Chennai</option><option value="Bengaluru" ${state.serviceArea.startsWith("Karnataka") ? "selected" : ""}>Bengaluru</option><option value="Hyderabad" ${state.serviceArea.startsWith("Telangana") ? "selected" : ""}>Hyderabad</option><option value="Mumbai" ${state.serviceArea.startsWith("Maharashtra") ? "selected" : ""}>Mumbai</option><option value="Delhi NCR" ${state.serviceArea.startsWith("Delhi") ? "selected" : ""}>Delhi NCR</option></select><p class="micro muted" style="margin-top:4px">City service Permit: No neighbourhood-zone approvals. Once approved, you are authorized to operate in the selected operating city.</p>`
       : state.onboard === 1
-        ? `<label class="field-label" for="vehicle-category">Vehicle category</label><select class="text-input" id="vehicle-category">${vehicleData.map((item) => `<option value="${item.id}" ${item.id === state.vehicle ? "selected" : ""}>${item.name} (${item.seats} seats)</option>`).join("")}</select><label class="field-label" for="vehicle-number">Vehicle registration number</label><input class="text-input" id="vehicle-number" value="${escape(state.vehicleNumber || "TN 09 AB 1234")}"/><label class="field-label" for="vehicle-model">Make & model</label><input class="text-input" id="vehicle-model" value="${escape(state.vehicleModel || "Bajaj RE")}"/><label class="field-label" for="vehicle-colour">Vehicle colour</label><input class="text-input" id="vehicle-colour" value="${escape(state.vehicleColour || "Yellow & black")}"/><p class="micro muted" style="margin-top:6px">Commercial permit and registration details for state-wide operations.</p>`
+        ? `<label class="field-label" for="vehicle-category">Vehicle category</label><select class="text-input" id="vehicle-category">${vehicleData.map((item) => `<option value="${item.id}" ${item.id === state.vehicle ? "selected" : ""}>${item.name} (${item.seats} seats)</option>`).join("")}</select><label class="field-label" for="vehicle-number">Vehicle registration number</label><input class="text-input" id="vehicle-number" value="${escape(state.vehicleNumber || "TN 09 AB 1234")}"/><label class="field-label" for="vehicle-model">Make & model</label><input class="text-input" id="vehicle-model" value="${escape(state.vehicleModel || "Bajaj RE")}"/><label class="field-label" for="vehicle-colour">Vehicle colour</label><input class="text-input" id="vehicle-colour" value="${escape(state.vehicleColour || "Yellow & black")}"/><p class="micro muted" style="margin-top:6px">Commercial permit and registration details for in your operating city operations.</p>`
         : state.onboard === 2
-          ? `<p class="small muted" style="margin:12px 0 18px">Private evidence is shared only with authorised reviewers. State-wide permit granted upon document approval.</p>${[
+          ? `<p class="small muted" style="margin:12px 0 18px">Private evidence is shared only with authorised reviewers. City service permit granted upon document approval.</p>${[
               ["Licence", "Driving Licence (DL)", "Government driving licence with commercial endorsement"],
               ["Registration", "Registration Certificate (RC)", "Valid state vehicle registration certificate"],
               ["Insurance", "Vehicle Insurance Policy", "Commercial or private passenger vehicle insurance"],
               ["Identity", "Government Identity Document", "Aadhaar, Voter ID or Passport (confidential)"]
             ].map(([docId, title, sub]) => `<button class="upload" data-document="${docId}">${icon(state.docs.includes(docId) ? "check" : "download")}<span>${title}<small>${state.docs.includes(docId) ? "Document attached & verified" : sub}</small></span></button>`).join("")}`
-          : `<div class="section-card" style="margin-top:22px"><div class="row"><strong>${escape(state.name || "Demo Captain")}</strong><span class="badge ${state.driverApproved ? "green" : "warn"}">${state.driverApproved ? "Approved" : "Ready for review"}</span></div><p class="small muted" style="margin-top:10px">${escape(state.serviceArea || "Tamil Nadu — State-wide Operations")}</p><p class="small muted" style="margin-top:4px">${v().name} · ${escape(state.vehicleNumber || "TN 09 AB 1234")} · ${escape(state.vehicleModel || "Bajaj RE")}</p><p class="small muted" style="margin-top:4px">Licence, RC and Insurance documents uploaded (${state.docs.length || 0}/4 verified).</p></div><div class="notice-box" style="margin-top:14px">State-wide Jurisdiction: No neighbourhood-zone approvals. Once approved by operator or demo staging, you are authorized to accept rides across the entire State.</div><label class="toggle-row" style="margin-top:12px"><span><strong>Confirm declaration</strong><small>I declare these documents are genuine and valid.</small></span><input type="checkbox" id="onboard-confirm" checked aria-label="Confirm application"/></label><div style="margin-top:16px"><button class="secondary" style="width:100%;font-weight:600" data-action="instant-approve-captain">⚡ Approve Application (Demo/Staging)</button><p class="micro muted" style="text-align:center;margin-top:5px">Immediately grants state-wide privileges to test going online.</p></div>`
+          : `<div class="section-card" style="margin-top:22px"><div class="row"><strong>${escape(state.name || "Demo Captain")}</strong><span class="badge ${state.driverApproved ? "green" : "warn"}">${state.driverApproved ? "Approved" : "Ready for review"}</span></div><p class="small muted" style="margin-top:10px">${escape(state.serviceArea || "Chennai")}</p><p class="small muted" style="margin-top:4px">${v().name} · ${escape(state.vehicleNumber || "TN 09 AB 1234")} · ${escape(state.vehicleModel || "Bajaj RE")}</p><p class="small muted" style="margin-top:4px">Licence, RC and Insurance documents uploaded (${state.docs.length || 0}/4 verified).</p></div><div class="notice-box" style="margin-top:14px">City service Jurisdiction: No neighbourhood-zone approvals. Once approved by an operator, you are authorized to accept rides in the selected operating city.</div><label class="toggle-row" style="margin-top:12px"><span><strong>Confirm declaration</strong><small>I declare these documents are genuine and valid.</small></span><input type="checkbox" id="onboard-confirm" checked aria-label="Confirm application"/></label>`
   }</div>`;
 }
 function loginScreen(captain) {
@@ -1079,7 +1071,7 @@ function commonView() {
       return {
         title: "Account",
         nav: "account",
-        body: `<div class="screen-padding"><div class="account-hero"><span class="avatar">${captain ? "A" : "D"}</span><div><h2>Demo ${captain ? "Captain" : "Rider"}</h2><p>${captain ? "Professional captain · sample account" : "Your everyday companion"}</p></div></div>${captain ? `<div class="section-card" style="margin-bottom:14px;border:1px solid var(--accent,#dfb82d)"><div class="row"><div><strong class="small">Join as Captain / Onboarding Application</strong><p class="micro muted" style="margin-top:2px">${state.driverApproved ? "Approved · State-wide Operations Active" : "Complete onboarding to go online state-wide"}</p></div><button class="primary small" data-go="onboarding" style="padding:6px 12px;font-size:11px">${state.driverApproved ? "View Application" : "Start Application"}</button></div></div>` : ""}<div class="account-group">${row("Personal details", "Profile, mobile & business details", "user", "personal")}${row(captain ? "Vehicle & documents" : "Saved places", captain ? "Vehicle, expiry & private evidence" : "Home, Work and your favourites", captain ? "car" : "book", captain ? "vehicle" : "saved")}${row(captain ? "Driver preferences" : "Family & favourite captains", captain ? "Pickup radius, minimum fare & more" : "Book for your people", captain ? "settings" : "heart", captain ? "preferences" : "family")}</div><div class="account-group">${row(captain ? "Driver tools" : "Ride preferences", captain ? "Goals, go-home mode & reminders" : "Language, accessibility & defaults", "settings", captain ? "tools" : "preferences")}${row("Safety centre", "Emergency contacts & trip sharing", "shield", "safety")}${row("Notifications", "Ride and account updates", "bell", "notifications")}</div><div class="account-group">${row("Help & support", "We’re here when you need us", "help", "support")}${captain ? row("Join as Captain / Onboarding", "State-wide operating application & documents", "file", "onboarding") : row("Rewards & referrals", "Good journeys add up", "gift", "rewards")}${row("Privacy & account", "Data, deletion & sign out", "lock", "privacy")}</div><p class="fineprint">Hop experience prototype · mobile exploration 01</p></div>`,
+        body: `<div class="screen-padding"><div class="account-hero"><span class="avatar">${captain ? "A" : "D"}</span><div><h2>Demo ${captain ? "Captain" : "Rider"}</h2><p>${captain ? "Professional captain · sample account" : "Your everyday companion"}</p></div></div>${captain ? `<div class="section-card" style="margin-bottom:14px;border:1px solid var(--accent,#dfb82d)"><div class="row"><div><strong class="small">Join as Captain / Onboarding Application</strong><p class="micro muted" style="margin-top:2px">${state.driverApproved ? "Approved · City service Operations Active" : "Complete onboarding to go online in your operating city"}</p></div><button class="primary small" data-go="onboarding" style="padding:6px 12px;font-size:11px">${state.driverApproved ? "View Application" : "Start Application"}</button></div></div>` : ""}<div class="account-group">${row("Personal details", "Profile, mobile & business details", "user", "personal")}${row(captain ? "Vehicle & documents" : "Saved places", captain ? "Vehicle, expiry & private evidence" : "Home, Work and your favourites", captain ? "car" : "book", captain ? "vehicle" : "saved")}${row(captain ? "Driver preferences" : "Family & favourite captains", captain ? "Pickup radius, minimum fare & more" : "Book for your people", captain ? "settings" : "heart", captain ? "preferences" : "family")}</div><div class="account-group">${row(captain ? "Driver tools" : "Ride preferences", captain ? "Goals, go-home mode & reminders" : "Language, accessibility & defaults", "settings", captain ? "tools" : "preferences")}${row("Safety centre", "Emergency contacts & trip sharing", "shield", "safety")}${row("Notifications", "Ride and account updates", "bell", "notifications")}</div><div class="account-group">${row("Help & support", "We’re here when you need us", "help", "support")}${captain ? row("Join as Captain / Onboarding", "City service operating application & documents", "file", "onboarding") : row("Rewards & referrals", "Good journeys add up", "gift", "rewards")}${row("Privacy & account", "Data, deletion & sign out", "lock", "privacy")}</div><p class="fineprint">Hop experience prototype · mobile exploration 01</p></div>`,
       };
     case "saved":
       return {
@@ -1411,15 +1403,15 @@ function modalContent(name) {
       ];
     case "service-area":
       const states = [
-        "Tamil Nadu — State-wide Operations",
-        "Karnataka — State-wide Operations",
-        "Telangana — State-wide Operations",
-        "Maharashtra — State-wide Operations",
-        "Delhi NCR — State-wide Operations",
+        "Chennai",
+        "Bengaluru",
+        "Hyderabad",
+        "Mumbai",
+        "Delhi NCR",
       ];
       return [
-        "Operating State",
-        `<p>Authorized jurisdiction for state-wide operations.</p><div class="section-card" style="margin:12px 0"><div class="row"><div><small class="muted">OPERATING JURISDICTION</small><strong style="display:block;margin-top:2px">${escape(state.serviceArea)}</strong></div><span class="badge green">State-wide</span></div><p class="micro muted" style="margin-top:6px">Authorized to operate across all cities and corridors in this state without separate zone approvals.</p></div><label class="field-label" for="target-area">Select Operating State</label><select id="target-area" class="text-input">${states.map((s) => `<option ${s === state.serviceArea || s.startsWith(state.serviceArea) ? "selected" : ""}>${s}</option>`).join("")}</select><div class="notice-box" style="margin-top:12px">State-wide Jurisdiction: No neighbourhood-zone approvals. Initial document verification (DL, RC, Insurance) authorizes state-wide service.</div>${primary("Save Operating State", "submit-service-area")}`,
+        "Operating city",
+        `<p>Authorized jurisdiction for in your operating city operations.</p><div class="section-card" style="margin:12px 0"><div class="row"><div><small class="muted">OPERATING CITY</small><strong style="display:block;margin-top:2px">${escape(state.serviceArea)}</strong></div><span class="badge green">City service</span></div><p class="micro muted" style="margin-top:6px">Authorized to operate within the configured city service area without separate zone approvals.</p></div><label class="field-label" for="target-area">Select Operating city</label><select id="target-area" class="text-input">${states.map((s) => `<option ${s === state.serviceArea || s.startsWith(state.serviceArea) ? "selected" : ""}>${s}</option>`).join("")}</select><div class="notice-box" style="margin-top:12px">City service Jurisdiction: No neighbourhood-zone approvals. Initial document verification (DL, RC, Insurance) authorizes in your operating city service.</div>${primary("Save Operating city", "submit-service-area")}`,
       ];
     case "ridecheck":
       return [
@@ -1689,14 +1681,14 @@ const actions = {
   online: () => {
     if (!state.driverApproved) {
       go("onboarding");
-      notify("Complete onboarding to go online state-wide.");
+      notify("Complete onboarding to go online in your operating city.");
       return;
     }
     state.online = !state.online;
     render();
     if (state.online)
       notify(
-        "You’re online state-wide! Receiving requests across the operating area.",
+        "You’re online in your operating city! Receiving requests across the operating area.",
       );
   },
   accept: () => {
@@ -1911,18 +1903,6 @@ const actions = {
       render();
     }
   },
-  "instant-approve-captain": () => {
-    state.driverApproved = true;
-    state.driverStatus = "approved";
-    state.docs = ["Licence", "Registration", "Insurance", "Identity"];
-    const st = $("#onboard-state")?.value;
-    if (st) state.serviceArea = st;
-    if (!state.serviceArea || state.serviceArea === "Chennai") {
-      state.serviceArea = "Tamil Nadu — State-wide Operations";
-    }
-    go("drive");
-    notify("Captain Approved! Authorized to operate state-wide in " + state.serviceArea + ".");
-  },
   "vehicle-change-submit": () =>
     saveNotice(
       "Sample vehicle change is pending review. No real request was submitted.",
@@ -1957,11 +1937,11 @@ const actions = {
     );
   },
   "submit-service-area": () => {
-    state.serviceArea = read("target-area") || "Tamil Nadu — State-wide Operations";
+    state.serviceArea = read("target-area") || "Chennai";
     state.serviceAreaRequest = null;
     state.modal = null;
     render();
-    notify("Operating state updated to " + state.serviceArea + ". State-wide authorization active.");
+    notify("Operating state updated to " + state.serviceArea + ". City service authorization active.");
   },
   "ridecheck-ok": () => {
     state.modal = null;

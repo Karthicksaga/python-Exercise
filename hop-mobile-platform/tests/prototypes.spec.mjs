@@ -188,9 +188,20 @@ test("destination search uses Chennai rather than the first configured area and 
     "temporarily unavailable",
   );
 });
-test("Hop Commute is disabled in the mobile app", async ({ page }) => {
-  await page.goto("http://127.0.0.1:5183/?map=reference");
-  await expect(
-    page.getByRole("button", { name: "Commute · Coming later" }),
-  ).toBeDisabled();
-});
+for (const mode of ["", "?map=reference"]) {
+  test(`Hop Commute is hidden in ${mode ? "reference" : "live"} mobile UI`, async ({ page }) => {
+    await page.goto(`http://127.0.0.1:5183/${mode}`);
+    await expect(page.locator("#app[data-ready='true']")).toBeVisible();
+    await expect(page.getByRole("button", { name: /commute/i })).toHaveCount(0);
+    await expect(page.locator('[data-go="commute"], [data-review-go="commute"], option[value="commute"]')).toHaveCount(0);
+    if (mode) {
+      await page.locator("#screen-select").evaluate(el => {
+        el.add(new Option("Old commute link", "commute"));
+        el.value = "commute";
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await expect(page.getByRole("heading", { name: "Where to next?" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Hop Commute" })).toHaveCount(0);
+    }
+  });
+}

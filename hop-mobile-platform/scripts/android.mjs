@@ -17,6 +17,17 @@ if (!['rider', 'captain'].includes(app)) {
 const mobile = path.join(root, 'mobile', app);
 const env = loadEnv('android', path.join(root, 'apps', app), 'VITE_');
 const apiUrl = process.env.VITE_MOBILE_API_URL || env.VITE_MOBILE_API_URL || 'http://10.0.2.2:8080';
+if (release || process.argv.includes('--apk')) {
+  let valid = false;
+  try {
+    const url = new URL(apiUrl);
+    valid = url.protocol === 'https:' && url.pathname === '/' && !url.search && !url.hash && !url.username && !url.password && !/^(localhost|127\.|10\.0\.2\.2$|\[::1\]$)/i.test(url.hostname);
+  } catch {}
+  if (!valid) {
+    console.error('Set VITE_MOBILE_API_URL to a phone-accessible HTTPS backend origin before building an APK or release. No emulator fallback is used for phone builds.');
+    process.exit(1);
+  }
+}
 process.env.VITE_MOBILE_API_URL = apiUrl;
 
 function run(cmd, args, cwd = root) {

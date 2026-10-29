@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
           prefix,
           {
             target: env.BACKEND_URL || "http://localhost:8080",
+            changeOrigin: true,
             headers: { "X-Hop-App": "rider" },
           },
         ]),

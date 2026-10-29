@@ -65,19 +65,27 @@ export class HopAPI {
     vehicle_category: string,
     pickup: Point,
     dropoff: Point,
+    options: Record<string, unknown> = {},
   ) {
     return this.request<Quote>("/api/quotes", {
       area_id,
       vehicle_category,
       pickup,
       dropoff,
+      ...options,
     });
   }
-  bookRide(quote_id: string, request_key: string, payment_method: string) {
+  bookRide(
+    quote_id: string,
+    request_key: string,
+    payment_method: string,
+    options: Record<string, unknown> = {},
+  ) {
     return this.request<{ id: string }>("/api/rides", {
       quote_id,
       request_key,
       payment_method,
+      ...options,
     });
   }
   action(

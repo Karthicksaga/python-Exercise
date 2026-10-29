@@ -63,7 +63,7 @@ The suite starts an isolated canonical reference on 5290 and reuses/starts the m
 
 These explicit preview URLs never mount the live adapters, send SMS, charge money or change device permissions. Login previews include phone/code/error/success states with short, reduced-motion-aware entrance animations. Payment previews distinguish UPI/wallet verification from Captain-reported cash receipt, with insufficient balance, pending, failure, success and refund states. Recovery previews cover location denied, no search results, no Captains, expired fare, offline request status, offer already taken, cancellation and notification permission.
 
-Hop Commute is disabled in the home UI and navigation guard. It remains unavailable until explicitly re-enabled.
+Hop Commute is hidden from home and review navigation; its navigation guard still blocks old links. It remains unavailable until explicitly re-enabled.
 
 Destination search now defaults to the service area containing the initial Chennai map rather than the backend's first configured city (Delhi NCR). A visible Search city selector allows changing the area; selected pickup coordinates determine the area once available. Loading, sign-in-required and backend error messages persist through re-renders instead of silently reverting to a generic heading. Search still requires a valid backend session and a working configured geocoder.
 
@@ -94,3 +94,9 @@ Each successful build uploads its APK (plus release AAB), `SHA256SUMS` and `buil
 To test: open **Actions → Hop Mobile Android → Run workflow**, choose **debug / all**, then download and extract each artifact. Transfer the APKs to your Android phone (Android 7/API 24 or later) and open them, allowing installation from that download source if Android prompts. Install the `.apk`, not the `.aab` or artifact ZIP. Debug signing keys are generated per runner, so installing a different debug run may require uninstalling the previous test app (which clears its local data); signed release builds allow updates with the same key. The workflow must be committed/pushed before GitHub can execute it; manual dispatch appears when the workflow exists on the default branch.
 
 Location access is requested on first use of current location, Follow me or Captain sharing, not on installation. Choose precise location and while using the app for accurate testing. Denial shows recovery UI. Google Maps needs no Google account sign-in. Notifications have a separate opt-in and Android permission; Firebase configuration is needed for delivery. Current Captain telemetry is foreground-only; this build does not enable background tracking.
+
+### Captain onboarding
+
+The connected Captain flow resumes private server drafts, selects configured operating cities, verifies phone ownership, uploads real portrait/document images, and submits credentials for operator review. There are no neighbourhood-zone approvals in the mobile flow. Existing backend service-area restrictions still apply.
+
+When `/api/config` enables `development`, **Testing mode** defaults to optional fields, documents and declaration so incomplete drafts can move through all four screens. Turn the toggle off to exercise required-field validation. This setting does not fabricate documents, credentials, approval or successful submissions: final submission and going online remain subject to backend checks. Production keeps required onboarding validation.

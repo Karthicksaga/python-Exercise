@@ -14,7 +14,7 @@ Applies to all files inside hop-mobile-platform, for every model and agent.
 - Preserve accessibility, mobile safe areas, large text, dark mode, keyboard access, anchored actions and bounded content scrolling.
 - Run `npm run typecheck`, `npm run build`, and `npm run test:design` from this folder after changes.
 - Never update visual expectations to accept drift. Correct the implementation against the canonical source.
-- Hop Commute is intentionally disabled by user request. Keep its home control disabled and its navigation guard active until explicitly asked to enable it.
+- Hop Commute is intentionally disabled by user request. Keep its home control and review-navigation entries hidden and its navigation guard active until explicitly asked to enable it.
 - The login, payment and recovery designs are user-approved. Live implementations use shared/payments and shared/journey adapters; isolated design-only review links remain at `?prototype=login`, `?prototype=payment`, and `?prototype=states`; these review URLs must never mount live adapters, send SMS, charge money, or change device permissions.
 - Search must use the selected service area (initially the Chennai map area), not the first entry returned by `/api/config`. Preserve loading/auth/error results across re-renders.
 
