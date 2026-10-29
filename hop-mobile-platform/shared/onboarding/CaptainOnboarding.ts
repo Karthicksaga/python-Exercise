@@ -57,7 +57,8 @@ export class CaptainOnboarding {
   private busy = false;
   private error = "";
   private sent = false;
-  private testingOptional = true;
+  private submitted = false;
+  private lastStatus = "";
   private retryAt = 0;
   private preview?: { image: string; endpoint: string };
 
@@ -81,7 +82,11 @@ export class CaptainOnboarding {
   sync() {
     if (this.bridge.read().screen !== "onboarding") return;
     if (!this.attempted && !this.loading) void this.load();
-    if (!this.app.querySelector("[data-captain-onboarding]")) this.render();
+    const status = this.state()?.driver?.[0]?.status || "";
+    if (!this.app.querySelector("[data-captain-onboarding]") || status !== this.lastStatus) {
+      this.lastStatus = status;
+      this.render();
+    }
   }
 
   destroy() {
@@ -136,6 +141,13 @@ export class CaptainOnboarding {
     const step = this.draft.step;
     const driver = this.state()?.driver?.[0];
     const areas = this.config()?.areas || [];
+    const pending = driver?.status === "pending" || (!driver?.status && this.submitted);
+    const actions = this.app.querySelector<HTMLElement>(".action-bar");
+    if (actions) actions.style.display = pending ? "none" : "";
+    if (pending) {
+      host.innerHTML = `<div class="section-card"><span class="badge warn">Under review</span><h2>Application submitted</h2><p>Your documents and details are awaiting operator approval. Drive, earnings, trips and account will unlock after approval.</p>${driver?.review_note ? `<p class="notice-box">${escape(driver.review_note)}</p>` : ""}<button class="secondary" data-captain-action="check-approval">Check approval status</button>${this.error ? `<p role="alert">${escape(this.error)}</p>` : ""}</div>`;
+      return;
+    }
 
     const upload = (kind: string, label: string, saved: boolean, iconName = "file") =>
       `<div class="upload-card ${saved ? "uploaded" : ""}">` +
@@ -182,7 +194,7 @@ export class CaptainOnboarding {
           </div>
           <div class="form-field full-width">
             <label class="field-label" for="captain-phone">Mobile number</label>
-            <input class="text-input" id="captain-phone" data-captain-field="phone" type="tel" value="${escape(this.phone)}" placeholder="10-digit mobile number"/>
+            <input class="text-input" id="captain-phone" data-captain-field="phone" ${this.evidence.phone_verified ? "readonly" : ""} type="tel" value="${escape(this.phone)}" placeholder="10-digit mobile number"/>
           </div>
           <div class="phone-status-row">
             ${this.evidence.phone_verified
@@ -436,15 +448,6 @@ export class CaptainOnboarding {
       <p class="eyebrow">STEP ${step + 1} OF 4</p>
       <h2>${["First, your account.", "Tell us about your vehicle.", "Keep your documents ready.", "Ready for review."][step]}</h2>
       ${driver?.review_note ? `<p class="notice-box">${escape(driver.review_note)}</p>` : ""}
-      ${this.config()?.development ? `
-        <label class="toggle-row onboarding-card" style="margin: 12px 0 14px;">
-          <span>
-            <strong>Testing mode</strong>
-            <small>Make onboarding fields and documents optional. Server approval is still required to drive.</small>
-          </span>
-          <input type="checkbox" data-captain-testing ${this.testingOptional ? "checked" : ""} aria-label="Optional onboarding for testing"/>
-        </label>
-      ` : ""}
       ${body}
       ${this.error ? `<p class="notice-box message-error" role="alert">${escape(this.error)}</p>` : ""}
     `;
@@ -473,10 +476,6 @@ export class CaptainOnboarding {
     if (el.dataset.captainField === "vehicle_category") {
       this.draft.vehicle_category = el.value;
       this.render();
-      return;
-    }
-    if (el.hasAttribute("data-captain-testing")) {
-      this.testingOptional = el.checked;
       return;
     }
     if (el.dataset.captainUpload && el.files?.[0]) {
@@ -530,7 +529,7 @@ export class CaptainOnboarding {
   };
 
   private problem(step: number) {
-    if (this.config()?.development && this.testingOptional) return;
+
     if (
       step === 0 &&
       (!this.evidence?.phone_verified ||
@@ -597,6 +596,7 @@ export class CaptainOnboarding {
       !action ||
       ![
         "reload",
+        "check-approval",
         "send",
         "verify",
         "upload",
@@ -613,6 +613,7 @@ export class CaptainOnboarding {
       "[data-captain-consent]",
     )?.checked;
     void this.run(async () => {
+      if (action === "check-approval") return this.refresh();
       if (action === "reload") return this.load();
       if (action === "instant-approve-captain")
         throw new Error("Only an operator can approve a Captain.");
@@ -658,10 +659,11 @@ export class CaptainOnboarding {
           await api.request("/api/profile", { name: this.name.trim() });
         if (step === 3) {
           for (let s = 0; s < 3; s++) this.problem(s);
-          if (!consent && !(this.config()?.development && this.testingOptional))
+          if (!consent)
             throw new Error("Confirm the declaration before submitting.");
           const { step: _step, code: _code, ...payload } = this.draft;
           await api.request("/api/drivers/apply", payload);
+          this.submitted = true;
           this.bridge.assign({
             driverApproved: false,
             driverStatus: "pending",
@@ -669,7 +671,7 @@ export class CaptainOnboarding {
           this.bridge.notify(
             "Application submitted. Operator approval is required before driving.",
           );
-          this.bridge.go("drive");
+          this.render();
           await this.refresh();
           return;
         }

@@ -16,7 +16,9 @@ export type MapData = {
   route?: Coordinate[];
   following?: boolean;
 };
+export type MapPreferences = { traffic: boolean; satellite: boolean; lowdata: boolean; night: boolean };
 export interface MapView {
+  setPreferences(preferences: MapPreferences): void;
   update(data: MapData): void;
   center(point: Coordinate): void;
   fit(points: Coordinate[]): void;

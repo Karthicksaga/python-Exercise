@@ -61,7 +61,7 @@ async function setup(
     await r.fulfill({ json });
   });
   await page.goto("http://127.0.0.1:5184");
-  await page.locator('[data-action="online"]').click();
+  await expect(page.locator(".map-art, .bottom-nav")).toHaveCount(0);
   if (step === 0) await expect(page.getByLabel("Your legal name")).toHaveValue("Real Captain");
   else await expect(page.locator("[data-captain-onboarding]")).toContainText("Real Captain");
   return calls;
@@ -106,25 +106,58 @@ test("successful Captain submission waits for operator approval", async ({
   const calls = await setup(page, { step: 3 });
   await page.getByLabel("Confirm application").check();
   await page.locator('[data-action="onboarding-next"]').click();
-  await expect(page.locator('[data-action="online"]')).toHaveText(
-    /Complete Captain onboarding|Application under review/,
-  );
+  await expect(page.getByRole("heading", { name: "Application submitted", exact: true })).toBeVisible();
+  await expect(page.locator(".map-art, .bottom-nav")).toHaveCount(0);
   expect(calls.filter((c) => c.path.endsWith("/apply"))).toHaveLength(1);
   expect(calls.some((c) => c.path.endsWith("/online"))).toBe(false);
 });
 
-test("development testing mode makes empty onboarding fields optional", async ({
-  page,
-}) => {
+test("development mode still requires complete Captain onboarding", async ({ page }) => {
   await setup(page);
-  await expect(
-    page.getByLabel("Optional onboarding for testing"),
-  ).toBeChecked();
+  await expect(page.getByLabel("Optional onboarding for testing")).toHaveCount(0);
   await page.getByLabel("Your legal name").fill("");
-  await page.getByLabel("Operating city").selectOption("");
   await page.locator('[data-action="onboarding-next"]').click();
-  await expect(page.locator(".eyebrow")).toContainText("STEP 2 OF 4");
-  await page.getByLabel("Vehicle registration number").fill("");
-  await page.locator('[data-action="onboarding-next"]').click();
-  await expect(page.locator(".eyebrow")).toContainText("STEP 3 OF 4");
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator(".eyebrow")).toContainText("STEP 1 OF 4");
 });
+
+test("pending Captain sees only review status until backend approval unlocks navigation", async ({ page }) => {
+  let approved = false;
+  await page.route("https://**", r => r.abort());
+  await page.route("**/api/**", r => r.fulfill({ json: {} }));
+  await page.route("**/api/me", r => r.fulfill({ json: { user: { id: "captain" }, csrf: "csrf" } }));
+  await page.route("**/api/config", r => r.fulfill({ json: { areas: [], vehicles: [], development: true } }));
+  await page.route("**/api/state", r => r.fulfill({ json: { rides: [], offers: [], driver: [{ status: approved ? "approved" : "pending" }] } }));
+  await page.route("**/api/profile", r => r.fulfill({ json: { details: [{ name: "Captain" }] } }));
+  await page.route("**/api/drivers/onboarding", r => r.fulfill({ json: { draft: { step: 3 }, documents: [], has_photo: false, phone_verified: true } }));
+  await page.goto("http://127.0.0.1:5184");
+  await expect(page.getByRole("heading", { name: "Application submitted", exact: true })).toBeVisible();
+  await expect(page.locator(".map-art, .bottom-nav")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Back", exact: true })).not.toBeVisible();
+  await page.getByRole("button", { name: "Check approval status", exact: true }).click();
+  await expect(page.locator(".map-art, .bottom-nav")).toHaveCount(0);
+  approved = true;
+  await page.getByRole("button", { name: "Check approval status", exact: true }).click();
+  await expect(page.locator(".map-art")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toBeVisible();
+  await expect(page.locator(".bottom-nav")).toContainText("Earnings");
+});
+
+for (const width of [320, 390, 768]) {
+  test(`verified phone layout stays aligned at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await setup(page);
+    await expect(page.locator('#captain-phone')).toHaveAttribute('readonly', '');
+    const badge = page.locator('[data-captain-onboarding] .status-pill.success');
+    await expect(badge).toBeVisible();
+    const layout = await badge.evaluate(el => {
+      const icon = el.querySelector('svg').getBoundingClientRect();
+      const text = el.querySelector('span').getBoundingClientRect();
+      return { gap: text.left - icon.right, overflow: el.scrollWidth > el.clientWidth };
+    });
+    expect(layout.gap).toBeGreaterThanOrEqual(0);
+    expect(layout.gap).toBeLessThanOrEqual(12);
+    expect(layout.overflow).toBe(false);
+    if (width === 390) await page.screenshot({ path: '/tmp/hop-captain-phone-layout.png', fullPage: true });
+  });
+}

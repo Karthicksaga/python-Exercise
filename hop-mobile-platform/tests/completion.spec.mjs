@@ -20,7 +20,7 @@ const past = {
   vehicle_number: "TN01TEST",
   created_at: "2026-10-28T10:00:00Z",
 };
-async function fixture(page, { rides = [], rejectProfile = false } = {}) {
+async function fixture(page, { rides = [], driver = [], rejectProfile = false } = {}) {
   const posts = [];
   let profile = {
     name: "Actual Rider",
@@ -62,7 +62,7 @@ async function fixture(page, { rides = [], rejectProfile = false } = {}) {
         development: true,
       };
     if (p === "/api/me") json = { user: { id: "rider" }, csrf: "csrf" };
-    if (p === "/api/state") json = { rides, offers: [], driver: [] };
+    if (p === "/api/state") json = { rides, offers: [], driver };
     if (p === "/api/profile") {
       if (body && rejectProfile)
         return r.fulfill({
@@ -342,7 +342,7 @@ test("outstation parameters and India-wide destination search use existing API f
   await page.locator('[data-go="plan"]').click();
   await page.locator("#trip-type").selectOption("outstation");
   await page.getByLabel("Trip days (1–10)").fill("3");
-  await page.getByLabel("Round trip", { exact: true }).check();
+  await page.getByLabel("Include a return trip", { exact: true }).check();
   await page.getByRole("button", { name: "Save trip plan" }).click();
   await review(page);
   expect(
@@ -437,7 +437,7 @@ test("Captain cockpit displays server guidance and no synthetic speed or speed l
     driving: true,
     status: "accepted",
   };
-  await fixture(page, { rides: [trip] });
+  await fixture(page, { rides: [trip], driver: [{ status: "approved" }] });
   await page.goto("http://127.0.0.1:5184");
   await expect(page.locator('[data-action="toggle-cockpit"]')).toBeVisible();
   await page.locator('[data-action="toggle-cockpit"]').click();
@@ -584,4 +584,20 @@ test("canonical wallet screen preserves prototype layout and top-up modal update
   await expect(modalSheet).not.toBeVisible();
   expect(topupPayload).toEqual({ amount_paise: 100000 });
   await expect(hero.locator(".amount")).toContainText("₹1,350");
+});
+
+test("empty wallet history remains empty without duplicating payment notices on updates", async ({ page }) => {
+  await fixture(page);
+  await page.route("**/api/wallet", r => r.fulfill({ json: { balance_paise: 0, entries: [] } }));
+  await page.locator('[data-go="wallet"]').first().click();
+  const empty = page.getByText("No transactions yet. Top-ups and ride payments will appear here.", { exact: true });
+  await expect(empty).toHaveCount(1);
+  for (let i = 0; i < 3; i++) {
+    // Exercise the same decorator notification as a root renderer update.
+    await page.locator("#app").evaluate(el => { const marker = document.createElement("span"); el.append(marker); marker.remove(); });
+    await expect(empty).toHaveCount(1);
+    await expect(page.locator('[data-wallet-payment-notice]')).toHaveCount(1);
+    await expect(page.getByText("Cash, direct UPI and online payment options remain available at trip confirmation.", { exact: true })).toHaveCount(1);
+  }
+  await expect(page.locator('.screen-padding > .list-row')).toHaveCount(0);
 });

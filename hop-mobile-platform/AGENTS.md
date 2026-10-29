@@ -19,3 +19,6 @@ Applies to all files inside hop-mobile-platform, for every model and agent.
 - Search must use the selected service area (initially the Chennai map area), not the first entry returned by `/api/config`. Preserve loading/auth/error results across re-renders.
 
 - Approved typography: Outfit for headings/amounts and Inter for body/controls. Variable fonts and licences are bundled locally; do not restore DM Sans/Manrope or add a runtime Google Fonts dependency.
+
+- Local browser testing defaults to the local development backend at `http://127.0.0.1:8081` for both Rider and Captain. Keep browser API calls on the Vite proxy and show backend-issued development OTPs; do not switch local UI testing to staging unless the user asks. Android staging/release configuration remains separate.
+- Captain onboarding is mandatory, including development mode. Before backend status `approved`, keep Captains on onboarding or pending review without map or main navigation. This supersedes the earlier optional-onboarding testing behavior. Only backend/operator approval unlocks Drive, Earnings, Trips and Account.

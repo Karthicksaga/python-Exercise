@@ -39,6 +39,7 @@ export class PrototypeMap {
   private status?: HTMLElement;
   private root?: HTMLElement;
   private provider = "";
+  private preferences = { traffic: false, satellite: false, lowdata: false, night: false };
   private message = "Connecting to Hop for live locations";
   private data: MapData = {
     center: { lat: 13.0067, lng: 80.2206 },
@@ -137,6 +138,21 @@ export class PrototypeMap {
   }
 
   private click = (event: Event) => {
+    const preference = (event.target as Element)?.closest<HTMLElement>("[data-map-pref]");
+    if (preference) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const key = preference.dataset.mapPref as keyof typeof this.preferences;
+      if (!(key in this.preferences) || preference.hasAttribute("disabled")) return;
+      this.preferences[key] = !this.preferences[key];
+      if (key === "lowdata" && this.preferences.lowdata) {
+        this.preferences.traffic = false; this.preferences.satellite = false;
+      } else if ((key === "traffic" || key === "satellite") && this.preferences[key]) this.preferences.lowdata = false;
+      if (key === "satellite" && this.preferences.satellite) this.preferences.night = false;
+      if (key === "night" && this.preferences.night) this.preferences.satellite = false;
+      this.view?.setPreferences(this.preferences);
+      this.decoratePreferences(); this.label();
+      return;
+    }
     const control = (event.target as Element)?.closest<HTMLElement>(
       "[data-follow],[data-route-fit]",
     );
@@ -312,7 +328,29 @@ export class PrototypeMap {
       ?.classList.toggle("hop-compact-controls", height < 230);
   };
 
+  private decoratePreferences() {
+    const descriptions: Record<string, [string, string]> = {
+      traffic: ["Traffic layer", this.provider === "Google Maps" ? "Live traffic from Google Maps" : "Requires Google Maps; unavailable on the current map"],
+      satellite: ["Satellite view", this.provider === "Google Maps" ? "Aerial imagery with road labels" : "Requires Google Maps; unavailable on the current map"],
+      lowdata: ["Low-data map", "Limit extra map tiles and layers; data savings vary"],
+      night: ["Night map", "Darker map colours for low-light viewing"],
+    };
+    for (const key of Object.keys(descriptions) as (keyof typeof this.preferences)[]) {
+      const button = this.app.querySelector<HTMLButtonElement>(`[data-toggle="${key}"], [data-map-pref="${key}"]`);
+      if (!button || !button.closest(".modal-sheet")) continue;
+      button.removeAttribute("data-toggle"); button.dataset.mapPref = key;
+      const unavailable = !this.view || ((key === "traffic" || key === "satellite") && this.provider !== "Google Maps");
+      button.disabled = unavailable;
+      button.setAttribute("aria-checked", String(!unavailable && this.preferences[key]));
+      const strong = button.querySelector("strong"), small = button.querySelector("small");
+      if (strong) strong.textContent = descriptions[key][0];
+      if (small) small.textContent = descriptions[key][1];
+      button.querySelector(".switch")?.classList.toggle("on", !unavailable && this.preferences[key]);
+    }
+  }
+
   private async attach() {
+    this.decoratePreferences();
     const root = this.app.querySelector<HTMLElement>(".map-art");
     if (root === this.root) return;
     this.revision++;
@@ -390,6 +428,8 @@ export class PrototypeMap {
         void this.fallback(revision);
       });
       this.provider = "Google Maps";
+      this.view.setPreferences(this.preferences);
+      this.decoratePreferences();
       this.paint();
       const points =
         this.planned?.route ||
@@ -420,6 +460,9 @@ export class PrototypeMap {
       },
     );
     this.provider = "OpenStreetMap";
+    this.preferences.traffic = false; this.preferences.satellite = false;
+    this.view.setPreferences(this.preferences);
+    this.decoratePreferences();
     this.paint();
     const points =
       this.planned?.route ||

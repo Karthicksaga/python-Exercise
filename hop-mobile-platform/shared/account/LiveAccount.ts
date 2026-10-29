@@ -95,10 +95,12 @@ export class LiveAccount {
       }
     }
 
-    const notice = this.app.querySelector<HTMLElement>(
-      ".screen-padding > .notice-box",
-    );
+    // The empty-history message also uses notice-box. Keep the payment footer
+    // identifiable so subsequent updates never mistake an empty state for it.
+    const notice = this.app.querySelector<HTMLElement>("[data-wallet-payment-notice]") ||
+      Array.from(this.app.querySelectorAll<HTMLElement>(".screen-padding > .notice-box")).at(-1);
     if (notice) {
+      notice.dataset.walletPaymentNotice = "true";
       notice.textContent =
         "Cash, direct UPI and online payment options remain available at trip confirmation.";
     }

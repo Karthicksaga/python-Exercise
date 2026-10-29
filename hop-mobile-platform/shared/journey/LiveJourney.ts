@@ -24,7 +24,7 @@ interface Bridge {
   notify(message: string): void;
 }
 type Route = { route: Coordinate[]; meters: number; seconds: number };
-type Notice = { id: string; title: string; body: string; created_at: string };
+type Notice = { id: string; title: string; body: string; created_at?: string; read_at?: string | null; kind?: string };
 
 /** Data and action adapter for the approved UI; no alternate screen renderer. */
 export class LiveJourney {
@@ -50,7 +50,7 @@ export class LiveJourney {
   private pickup?: Point;
   private dropoff?: Point;
   private selectedArea = "";
-  private searchLabel = "SEARCH REAL PLACES";
+  private searchLabel = "Type at least three characters to search places.";
   private searchNeedsSignIn = false;
   private target: "pickup" | "dropoff" = "dropoff";
   private results: Point[] = [];
@@ -68,6 +68,9 @@ export class LiveJourney {
   private seenRide = "";
   private offersSeen = new Set<string>();
   private notices: Notice[] = [];
+  private noticeFilter = "all";
+  private noticesLoading = false;
+  private noticesError = "";
   private chat: { body: string; mine: boolean; sent_at: string }[] = [];
   private chatAt = 0;
   private chatLoading = false;
@@ -139,6 +142,9 @@ export class LiveJourney {
     private role: "rider" | "captain",
     private bridge: Bridge,
   ) {
+    // The shared renderer starts with review-only addresses. A live journey
+    // has no pickup or destination until the user explicitly selects one.
+    bridge.assign({ pickup: "", destination: "", search: "" });
     this.account = new LiveAccount(
       app,
       role,
@@ -198,10 +204,11 @@ export class LiveJourney {
       })
       .catch(() => {});
     this.ready = api.session()
-      .then(session => {
+      .then(async session => {
         if (!session.user?.id) throw new APIError("Sign in to your Hop account.", 401);
         this.signedIn = true;
         this.sessionChecked = true;
+        if (this.role === "captain") this.sync(await api.state());
         if (this.bridge.read().screen === "auth") this.bridge.go(this.role === "rider" ? "home" : "drive");
         this.decorate();
       })
@@ -371,7 +378,7 @@ export class LiveJourney {
           .join("") ||
         `<div class="search-feedback" role="status"><p>${escape(label)}</p>${this.searchNeedsSignIn ? '<button class="secondary" data-live-login>Sign in to search places</button>' : ""}</div>`;
     const heading = this.app.querySelector("#results-label");
-    if (heading) heading.textContent = label;
+    if (heading) heading.textContent = results.length ? "SEARCH RESULTS" : "PLACES";
   }
   private async select(point: Point) {
     this.sequence++;
@@ -815,7 +822,19 @@ export class LiveJourney {
       }, 0);
       return;
     }
+    if (button.dataset.noticeFilter) {
+      this.stop(event);
+      this.noticeFilter = button.dataset.noticeFilter;
+      this.renderNotices();
+      this.app.querySelector<HTMLButtonElement>(`[data-notice-filter="${this.noticeFilter}"]`)?.focus();
+      return;
+    }
     const action = button.dataset.action;
+    if (action === "retry-notifications") {
+      this.stop(event);
+      void this.loadNotices();
+      return;
+    }
     if (action === "online" && this.role === "captain") {
       this.stop(event);
       void this.run(async () => {
@@ -917,6 +936,7 @@ export class LiveJourney {
           await api.verifyOtp(this.phone, this.otp);
           this.signedIn = true;
           this.devCode = "";
+          if (this.role === "captain") this.sync(await api.state());
           this.bridge.go(this.role === "rider" ? "home" : "drive");
         }
       });
@@ -1160,6 +1180,8 @@ export class LiveJourney {
       this.stop(event);
       void this.run(async () => {
         await api.request("/api/notifications/read", {});
+        this.notices = this.notices.map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() }));
+        this.renderNotices();
         this.bridge.notify("Notifications marked as read.");
       });
       return;
@@ -1191,7 +1213,9 @@ export class LiveJourney {
       return;
     }
     this.signedIn = true;
+    const wasApproved = this.state?.driver?.[0]?.status === "approved";
     this.state = state;
+    if (this.role === "captain" && !wasApproved && state.driver?.[0]?.status === "approved" && this.bridge.read().screen === "onboarding") this.bridge.go("drive");
     const ride = this.active();
     if (ride) {
       const revision = `${ride.id}:${ride.status}`;
@@ -1285,6 +1309,13 @@ export class LiveJourney {
     if (this.sessionChecked && !this.signedIn && this.bridge.read().screen !== "auth") {
       this.bridge.go("auth");
       return;
+    }
+    if (this.role === "captain" && this.signedIn && this.state?.driver?.[0]?.status !== "approved") {
+      if (this.bridge.read().screen !== "onboarding") {
+        this.bridge.go("onboarding");
+        return;
+      }
+      this.app.querySelectorAll<HTMLElement>('.bottom-nav, header button[aria-label="Back"]').forEach(el => { el.remove(); });
     }
     this.booking?.render();
     this.account?.render();
@@ -1480,8 +1511,13 @@ export class LiveJourney {
       }
     }
     if (screen === "search") {
+      const pickupField = this.app.querySelector<HTMLInputElement>("#pickup-input");
+      if (pickupField) {
+        pickupField.placeholder = "Search a place or address";
+        pickupField.autocomplete = "off";
+      }
       const fields = this.app.querySelector(".route-fields");
-      if (fields && !this.app.querySelector("#live-search-area")) {
+      if (this.role !== "rider" && fields && !this.app.querySelector("#live-search-area")) {
         const wrapper = document.createElement("label");
         wrapper.className = "field-label search-city";
         wrapper.textContent = "Search city";
@@ -1840,21 +1876,42 @@ export class LiveJourney {
       );
   }
   private async loadNotices() {
+    if (this.noticesLoading) return;
+    this.noticesLoading = true;
+    this.noticesError = "";
+    this.renderNotices();
     try {
       const data = await api.request<{ notifications: Notice[] }>(
         "/api/companion",
       );
       this.notices = data.notifications || [];
-      this.renderNotices();
     } catch (error) {
-      this.message(error);
+      this.noticesError = error instanceof Error ? error.message : "Notifications could not be loaded.";
+    } finally {
+      this.noticesLoading = false;
+      this.renderNotices();
     }
   }
   private renderNotices() {
     if (this.bridge.read().screen !== "notifications") return;
     const body = this.app.querySelector(".screen-padding");
-    if (body)
-      body.innerHTML = `<div class="section-label">YOUR NOTIFICATIONS</div>${this.notices.map((n) => `<article class="section-card"><strong>${escape(n.title)}</strong><p class="small muted">${escape(n.body)}</p><small>${escape(n.created_at)}</small></article>`).join("") || '<p class="muted">No notifications yet.</p>'}<button class="secondary" data-action="enable-device-notifications">Enable device notifications</button><button class="text-button" data-action="read-all">Mark all as read</button>`;
+    if (!body) return;
+    const key = JSON.stringify([this.notices, this.noticeFilter, this.noticesLoading, this.noticesError, this.busy]);
+    if (body.getAttribute("data-notices") === key) return;
+    body.setAttribute("data-notices", key);
+    const unread = this.notices.filter(n => !n.read_at).length;
+    const shown = this.notices.filter(n => this.noticeFilter !== "unread" || !n.read_at);
+    const dateLabel = (value?: string) => {
+      if (!value) return "Recent update";
+      const date = new Date(value);
+      if (!Number.isFinite(date.getTime())) return "Recent update";
+      const today = new Date();
+      const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+      const day = date.toDateString() === today.toDateString() ? "Today" : date.toDateString() === yesterday.toDateString() ? "Yesterday" : date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+      return `${day} · ${date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+    };
+    const list = shown.map(n => `<article class="notice-card ${!n.read_at ? "is-unread" : ""}"><span class="notice-symbol" aria-hidden="true">${icon(n.kind === "chat" ? "chat" : n.kind?.includes("payment") || n.kind?.includes("payout") ? "wallet" : n.kind?.includes("ride") || n.kind?.includes("trip") ? "car" : "bell")}</span><div class="notice-copy"><div class="notice-title"><h2>${escape(n.title)}</h2>${!n.read_at ? '<span class="notice-unread-dot" aria-label="Unread"></span>' : ""}</div><p>${escape(n.body)}</p><time ${n.created_at ? `datetime="${escape(n.created_at)}"` : ""}>${escape(dateLabel(n.created_at))}</time></div></article>`).join("");
+    body.innerHTML = `<div class="notice-toolbar"><div class="tabs" aria-label="Filter notifications"><button data-notice-filter="all" aria-pressed="${this.noticeFilter === "all"}" class="${this.noticeFilter === "all" ? "active" : ""}">All</button><button data-notice-filter="unread" aria-pressed="${this.noticeFilter === "unread"}" class="${this.noticeFilter === "unread" ? "active" : ""}">Unread${unread ? ` (${unread})` : ""}</button></div><button class="text-button" data-action="read-all" ${!unread || this.busy ? "disabled" : ""}>Mark all as read</button></div><section class="notice-list" aria-label="Notifications">${this.noticesLoading ? '<p class="notice-empty" role="status">Loading notifications…</p>' : this.noticesError ? `<div class="notice-empty" role="alert"><p>${escape(this.noticesError)}</p><button class="secondary" data-action="retry-notifications">Try again</button></div>` : list || `<div class="notice-empty">${icon("bell")}<h2>${this.noticeFilter === "unread" ? "You’re all caught up" : "No notifications yet"}</h2><p>Ride updates and account messages will appear here.</p></div>`}</section><div class="notice-device"><span class="list-icon" aria-hidden="true">${icon("bell")}</span><div><strong>Stay updated</strong><p class="small muted">Get trip alerts on this device.</p><button class="text-button" data-action="enable-device-notifications">Enable device notifications</button></div></div>`;
   }
   private async notifications() {
     try {

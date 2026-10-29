@@ -167,8 +167,15 @@ export class LiveBooking {
     if (!force && host.dataset.liveBooking === (plan ? "plan" : modal)) return;
     host.dataset.liveBooking = plan ? "plan" : modal;
     let body = "";
-    if (plan)
-      body = `<label class="field-label" for="trip-type">Trip type</label><select class="text-input" id="trip-type" data-booking-field="tripType">${["city", "rental", "outstation"].map((t) => `<option ${t === this.tripType ? "selected" : ""}>${t}</option>`).join("")}</select>${this.tripType === "rental" ? this.field("rentalHours", "Rental hours (1–12)", this.rentalHours, "number") : ""}${this.tripType === "outstation" ? this.field("tripDays", "Trip days (1–10)", this.tripDays, "number") + this.toggle("roundTrip", "Round trip", this.roundTrip) : ""}${this.field("scheduleAt", "Pickup time (leave empty for now)", this.scheduleAt, "datetime-local")}<p class="notice-box">Scheduling supports city rides with Cash or UPI. Product availability and prices come from the backend.</p><button class="primary" data-booking-action="save">Save trip plan</button>`;
+    if (plan) {
+      const descriptions: Record<string, [string, string, string]> = {
+        city: ["car", "Across the city", "Everyday trips, planned around you."],
+        rental: ["clock", "A few hours, all yours", "Keep a ride for errands, meetings and more."],
+        outstation: ["navigation", "Beyond the city", "Plan a one-way or return journey."],
+      };
+      const [symbol, title, subtitle] = descriptions[this.tripType] || descriptions.city;
+      body = `<div class="plan-intro"><span class="plan-symbol">${icon(symbol)}</span><div><h2>${title}</h2><p>${subtitle}</p></div></div><section class="section-card plan-card"><div class="section-label">YOUR JOURNEY</div><label class="field-label" for="trip-type">Trip type</label><select class="text-input" id="trip-type" data-booking-field="tripType">${[["city", "City ride"], ["rental", "Hourly rental"], ["outstation", "Outstation"]].map(([value, label]) => `<option value="${value}" ${value === this.tripType ? "selected" : ""}>${label}</option>`).join("")}</select>${this.tripType === "rental" ? this.field("rentalHours", "Rental hours (1–12)", this.rentalHours, "number") : ""}${this.tripType === "outstation" ? this.field("tripDays", "Trip days (1–10)", this.tripDays, "number") + this.toggle("roundTrip", "Include a return trip", this.roundTrip) : ""}</section><section class="section-card plan-card"><div class="section-label">PICKUP TIME</div>${this.field("scheduleAt", "Pickup date & time (optional)", this.scheduleAt, "datetime-local")}<p class="small muted">Leave this empty to ride now. Scheduling is available for city rides.</p></section><div class="plan-info">${icon("help")}<p>Scheduled city rides support Cash or UPI. Choose your pickup and destination next to check availability and fares.</p></div>`;
+    }
     if (modal === "stops")
       body = `<p>Up to three stops. Select an address returned by the server.</p>${this.stops.map((p, i) => `<div class="list-row"><strong>${escape(p.label)}</strong><button class="text-button" data-booking-remove="${i}">Remove</button></div>`).join("")}${this.stops.length < 3 ? this.field("stopQuery", "Stop address", this.stopQuery) + '<button class="secondary" data-booking-action="search-stop">Search addresses</button>' : ""}${this.places.map((p, i) => `<button class="list-row" data-booking-place="${i}">${escape(p.label)}</button>`).join("")}<button class="primary" data-booking-action="save">Done</button>`;
     if (modal === "promo")
@@ -242,10 +249,13 @@ export class LiveBooking {
         : `<div class="sheet-handle"></div><div class="modal-title"><h2>${({ stops: "Stops", promo: "Promo code", options: "Ride options", passenger: "Who's riding?", voice: "Speak your trip" } as Record<string, string>)[modal]}</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">${icon("close")}</button></div>`) +
       body +
       `<p role="status" class="small muted">${escape(this.status)}</p>`;
-    if (plan)
-      this.app
-        .querySelector<HTMLElement>(".action-bar")
-        ?.setAttribute("hidden", "");
+    if (plan) {
+      const actionBar = this.app.querySelector<HTMLElement>(".action-bar");
+      if (actionBar) {
+        actionBar.removeAttribute("hidden");
+        actionBar.innerHTML = `<button class="primary" data-booking-action="save">Save trip plan${icon("arrow")}</button><p class="fineprint">Review your route and fare before booking.</p>`;
+      }
+    }
   }
   private input = (e: Event) => {
     const el = e.target as HTMLInputElement;

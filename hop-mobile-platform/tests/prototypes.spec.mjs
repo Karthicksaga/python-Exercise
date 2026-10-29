@@ -164,10 +164,7 @@ test("destination search uses Chennai rather than the first configured area and 
   });
   await page.goto("http://127.0.0.1:5183");
   await page.getByRole("button", { name: "Where are you going?" }).click();
-  await expect(page.getByRole("combobox", { name: "Search city" })).toHaveValue(
-    "chennai",
-  );
-  await page
+  await expect(page.getByRole("combobox", { name: "Search city" })).toHaveCount(0);  await page
     .getByRole("textbox", { name: "Search destination" })
     .fill("Airport");
   await expect(page.locator("[data-live-place]")).toContainText(

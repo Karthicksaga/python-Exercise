@@ -1,4 +1,4 @@
-import type { Coordinate, MapData, MapView } from "./types";
+import type { Coordinate, MapData, MapView, MapPreferences } from "./types";
 import { vehicleCategory } from "./types";
 
 declare global {
@@ -80,6 +80,7 @@ function currentSvg(heading?: number) {
 
 export class GoogleMapView implements MapView {
   private map: google.maps.Map;
+  private traffic?: google.maps.TrafficLayer;
   private vehicles = new Map<string, google.maps.Marker>();
   private pickupMarker?: google.maps.Marker;
   private dropoffMarker?: google.maps.Marker;
@@ -129,6 +130,24 @@ export class GoogleMapView implements MapView {
         },
       ],
     });
+  }
+
+  setPreferences(preferences: MapPreferences) {
+    this.map.setMapTypeId(preferences.satellite && !preferences.lowdata ? "hybrid" : "roadmap");
+    if (preferences.traffic && !preferences.lowdata) {
+      this.traffic ||= new google.maps.TrafficLayer();
+      this.traffic.setMap(this.map);
+    } else this.traffic?.setMap(null);
+    const styles: google.maps.MapTypeStyle[] = [];
+    if (preferences.lowdata) styles.push({ featureType: "poi", stylers: [{ visibility: "off" }] }, { featureType: "transit", stylers: [{ visibility: "off" }] });
+    if (preferences.night) styles.push(
+      { elementType: "geometry", stylers: [{ color: "#24312d" }] },
+      { elementType: "labels.text.fill", stylers: [{ color: "#dce5df" }] },
+      { elementType: "labels.text.stroke", stylers: [{ color: "#24312d" }] },
+      { featureType: "road", elementType: "geometry", stylers: [{ color: "#45554b" }] },
+      { featureType: "water", elementType: "geometry", stylers: [{ color: "#142d3b" }] },
+    );
+    this.map.setOptions({ styles });
   }
 
   update(data: MapData) {
@@ -260,6 +279,7 @@ export class GoogleMapView implements MapView {
     this.dropoffMarker?.setMap(null);
     this.currentMarker?.setMap(null);
     this.route.setMap(null);
+    this.traffic?.setMap(null);
     google.maps.event.clearInstanceListeners(this.map);
   }
 }

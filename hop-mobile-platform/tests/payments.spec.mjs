@@ -30,7 +30,7 @@ async function setup(page, ride, wallet = () => 12800) {
     r.fulfill({ json: { areas: [], vehicles: [], development: true } }),
   );
   await page.route("**/api/state", (r) =>
-    r.fulfill({ json: { rides: [ride()], offers: [], driver: [] } }),
+    r.fulfill({ json: { rides: [ride()], offers: [], driver: [{ status: "approved" }] } }),
   );
   await page.route("**/api/wallet", (r) =>
     r.fulfill({ json: { balance_paise: wallet(), dev_topup: true } }),

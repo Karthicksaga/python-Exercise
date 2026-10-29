@@ -38,7 +38,7 @@ for (const [role, port] of [
       r.fulfill({ json: { user: { id: "account" }, csrf: "csrf" } }),
     );
     await page.route("**/api/state", (r) =>
-      r.fulfill({ json: { rides: [], offers: [], driver: [] } }),
+      r.fulfill({ json: { rides: [], offers: [], driver: role === "captain" ? [{ status: "approved" }] : [] } }),
     );
     await page.goto(`http://127.0.0.1:${port}/`);
     await expect(page.locator('#app[data-ready="true"]')).toBeVisible();
@@ -46,6 +46,16 @@ for (const [role, port] of [
     await expect(
       page.locator(role === "rider" ? ".home-sheet" : ".earnings-mini"),
     ).toBeVisible();
+    if (role === "rider") {
+      await page.getByRole("button", { name: "Where are you going?", exact: true }).click();
+      await expect(page.getByLabel("Pickup location", { exact: true })).toHaveValue("");
+      await expect(page.getByLabel("Pickup location", { exact: true })).toHaveAttribute("placeholder", "Search a place or address");
+      await expect(page.getByLabel("Search destination", { exact: true })).toHaveValue("");
+      await expect(page.getByText("Type at least three characters to search places.", { exact: true })).toHaveCount(1);
+      await page.getByLabel("Pickup location", { exact: true }).fill("My pickup query");
+      await page.locator('[data-modal="stops"]').click();
+      await expect(page.getByLabel("Pickup location", { exact: true })).toHaveValue("My pickup query");
+    }
   });
   test(`${role}: launch stays gated during session check and handles unavailable backend`, async ({
     page,

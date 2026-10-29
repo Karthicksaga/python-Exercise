@@ -1,6 +1,6 @@
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { Coordinate, MapData, MapView } from "./types";
+import type { Coordinate, MapData, MapView, MapPreferences } from "./types";
 import { vehicleCategory } from "./types";
 
 function computeBearing(from: Coordinate, to: Coordinate): number {
@@ -93,6 +93,8 @@ function createVehicleIcon(category: string, heading?: number): L.DivIcon {
 
 export class OSMMapView implements MapView {
   private map: L.Map;
+  private tiles: L.TileLayer;
+  private host: HTMLElement;
   private vehicles = new Map<string, L.Marker>();
   private pickupMarker?: L.Marker;
   private dropoffMarker?: L.Marker;
@@ -108,11 +110,12 @@ export class OSMMapView implements MapView {
     center: Coordinate,
     status: (message: string) => void,
   ) {
+    this.host = host;
     this.map = L.map(host, { zoomControl: false }).setView(
       [center.lat, center.lng],
       14,
     );
-    L.tileLayer(
+    this.tiles = L.tileLayer(
       import.meta.env.VITE_MAP_TILE_URL ||
         "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
@@ -139,6 +142,14 @@ export class OSMMapView implements MapView {
     );
     this.resize = new ResizeObserver(() => this.map.invalidateSize());
     this.resize.observe(host);
+  }
+
+  setPreferences(preferences: MapPreferences) {
+    this.tiles.options.keepBuffer = preferences.lowdata ? 0 : 2;
+    this.tiles.options.updateWhenIdle = preferences.lowdata;
+    this.tiles.options.updateWhenZooming = !preferences.lowdata;
+    this.host.classList.toggle("hop-night-tiles", preferences.night);
+    this.host.dataset.lowData = String(preferences.lowdata);
   }
 
   update(data: MapData) {

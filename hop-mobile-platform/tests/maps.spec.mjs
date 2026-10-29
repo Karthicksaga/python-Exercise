@@ -162,3 +162,47 @@ test("Captain sends measured foreground GPS only after sharing is explicitly ena
     "GPS sharing off",
   );
 });
+
+test('live map preferences change fallback rendering and explain unavailable provider layers', async ({page}) => {
+ await fallback(page);
+ await page.route(`${base}/api/**`,r=>r.fulfill({json:{}}));
+ await page.route('**/api/me',r=>r.fulfill({json:{user:{id:'rider'},csrf:'csrf'}}));
+ await page.route('**/api/state',r=>r.fulfill({json:{rides:[],offers:[],driver:[]}}));
+ await page.route('**/api/config',r=>r.fulfill({json:{areas:[],vehicles:[],development:true}}));
+ await page.goto(base);
+ await expect(page.locator('.hop-map-status')).toContainText('OpenStreetMap');
+ await page.getByRole('button',{name:'Map layers',exact:true}).click();
+ await expect(page.locator('[data-map-pref="traffic"]')).toBeDisabled();
+ await expect(page.locator('[data-map-pref="satellite"]')).toBeDisabled();
+ await expect(page.locator('[data-map-pref="satellite"]')).toContainText('unavailable on the current map');
+ await expect(page.getByText('Sample visual option',{exact:true})).toHaveCount(0);
+ await page.locator('[data-map-pref="lowdata"]').click();
+ await expect(page.locator('[data-map-pref="lowdata"]')).toHaveAttribute('aria-checked','true');
+ await expect(page.locator('.hop-map-canvas')).toHaveAttribute('data-low-data','true');
+ await page.locator('[data-map-pref="night"]').click();
+ await expect(page.locator('.hop-night-tiles')).toHaveCount(1);
+ await page.getByRole('button',{name:'Done',exact:true}).click();
+ await page.getByRole('button',{name:'Map layers',exact:true}).click();
+ await expect(page.locator('[data-map-pref="night"]')).toHaveAttribute('aria-checked','true');
+ await page.locator('[data-map-pref="lowdata"]').click();
+ await expect(page.locator('.hop-map-canvas')).toHaveAttribute('data-low-data','false');
+});
+
+test('Google preferences select provider imagery and traffic while low-data removes extra layers', async ({page}) => {
+ await page.goto(`${base}/?prototype=login`);
+ const modulePath = `/@fs${new URL('../shared/maps/google.ts',import.meta.url).pathname}`;
+ const result=await page.evaluate(async modulePath=>{
+  const {GoogleMapView}=await import(modulePath);
+  const types=[], traffic=[], styles=[];
+  window.google={maps:{TrafficLayer:class {setMap(map){traffic.push(Boolean(map));}}}};
+  const view=Object.create(GoogleMapView.prototype);
+  view.map={setMapTypeId(value){types.push(value);},setOptions(options){styles.push(options.styles);}};
+  view.setPreferences({traffic:true,satellite:true,lowdata:false,night:false});
+  view.setPreferences({traffic:false,satellite:false,lowdata:true,night:true});
+  return {types,traffic,styles};
+ },modulePath);
+ expect(result.types).toEqual(['hybrid','roadmap']);
+ expect(result.traffic).toEqual([true,false]);
+ expect(result.styles[1]).toContainEqual({featureType:'poi',stylers:[{visibility:'off'}]});
+ expect(result.styles[1].some(style=>style.elementType==='geometry')).toBe(true);
+});

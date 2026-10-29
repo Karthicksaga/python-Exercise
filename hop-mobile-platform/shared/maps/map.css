@@ -207,3 +207,7 @@
 }
 /* Do not flash sample cars/geometry while live adapters load asynchronously. */
 .hop-live .mini-car,.hop-live .map-pin,.hop-live .map-bubble,.hop-live .radar-pulse-wrap,.hop-live .map-art > svg{display:none}
+
+/* Darken only raster tiles; live markers, route and provider credits stay clear. */
+.hop-night-tiles .leaflet-tile-pane { filter: invert(0.9) hue-rotate(180deg) brightness(0.8) saturate(0.65); }
+.hop-live .toggle-row[data-map-pref]:disabled { opacity:0.55; cursor:not-allowed; }
