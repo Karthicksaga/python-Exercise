@@ -80,9 +80,7 @@ jobs:
     env:
       APP: ${{ matrix.app }}
       BUILD_TYPE: ${{ inputs.build_type || 'debug' }}
-      # Debug builds work against staging without repository variables. Release
-      # builds still require an explicitly configured backend origin.
-      VITE_MOBILE_API_URL: ${{ (matrix.app == 'rider' && vars.HOP_RIDER_API_URL || matrix.app == 'captain' && vars.HOP_CAPTAIN_API_URL) || vars.HOP_API_URL || (inputs.build_type != 'release' && (matrix.app == 'rider' && 'https://hop-staging-rider-qp262su4sq-el.a.run.app' || 'https://hop-staging-captain-qp262su4sq-el.a.run.app')) || '' }}
+      VITE_MOBILE_API_URL: ${{ (matrix.app == 'rider' && vars.HOP_RIDER_API_URL || matrix.app == 'captain' && vars.HOP_CAPTAIN_API_URL) || vars.HOP_API_URL || (matrix.app == 'rider' && 'https://hop-staging-rider-qp262su4sq-el.a.run.app' || 'https://hop-staging-captain-qp262su4sq-el.a.run.app') }}
       VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.HOP_GOOGLE_MAPS_API_KEY }}
       HOP_VERSION_CODE: ${{ github.run_number }}
       HOP_VERSION_NAME: 1.0.${{ github.run_number }}
