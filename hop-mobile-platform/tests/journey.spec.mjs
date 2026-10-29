@@ -385,7 +385,7 @@ test("phone sign-in uses backend OTP and never creates a demo session", async ({
     return r.fulfill({ json: { ok: true, csrf: "real-csrf" } });
   });
   await page.goto("http://127.0.0.1:5183");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.locator(".login-screen")).toBeVisible();
   await page.locator("#demo-phone").fill("9876543210");
   await page
     .getByRole("button", { name: "Send sign-in code", exact: true })

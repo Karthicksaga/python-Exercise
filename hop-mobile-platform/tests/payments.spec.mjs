@@ -44,6 +44,7 @@ async function openPayment(page, role = "rider") {
       exact: true,
     })
     .click();
+  await page.getByRole("tab", { name: "Past", exact: true }).click();
   await page
     .getByRole("button", { name: "Payment & receipt", exact: false })
     .click();

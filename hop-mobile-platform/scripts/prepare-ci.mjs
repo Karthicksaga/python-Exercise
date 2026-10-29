@@ -4,8 +4,8 @@ import path from 'node:path';
 const { APP, BUILD_TYPE, VITE_MOBILE_API_URL, RUNNER_TEMP } = process.env;
 if (!['rider', 'captain'].includes(APP) || !['debug', 'release'].includes(BUILD_TYPE)) throw new Error('Invalid app/build type');
 let api;
-try { api = new URL(VITE_MOBILE_API_URL); } catch { throw new Error('Set repository variable HOP_API_URL to the phone-accessible HTTPS backend origin'); }
-if (api.protocol !== 'https:' || api.pathname !== '/' || api.search || api.hash || api.username || api.password || ['localhost', '127.0.0.1', '[::1]', '10.0.2.2'].includes(api.hostname)) throw new Error('HOP_API_URL must be a device-accessible HTTPS origin, without path or credentials');
+try { api = new URL(VITE_MOBILE_API_URL); } catch { throw new Error('Set HOP_RIDER_API_URL / HOP_CAPTAIN_API_URL (or HOP_API_URL for a shared API) to the phone-accessible HTTPS origin'); }
+if (api.protocol !== 'https:' || api.pathname !== '/' || api.search || api.hash || api.username || api.password || ['localhost', '127.0.0.1', '[::1]', '10.0.2.2'].includes(api.hostname)) throw new Error('The mobile API URL must be a device-accessible HTTPS origin, without path or credentials');
 if (!process.env.VITE_GOOGLE_MAPS_API_KEY) console.warn('Google Maps key absent: this build will use the OpenStreetMap fallback.');
 const firebase = process.env[`${APP.toUpperCase()}_GOOGLE_SERVICES`];
 if (firebase) {

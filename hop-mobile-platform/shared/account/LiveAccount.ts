@@ -2,13 +2,24 @@ import { downloadJSON } from "../platform/download";
 import { checkout, type Order } from "../payments/checkout";
 import { api } from "../services/client";
 import { escape, money } from "../helpers";
+import { icon } from "../icons";
 import type { State, Config } from "../services/contracts";
 import type { OnboardingBridge as Bridge } from "../onboarding/CaptainOnboarding";
 type Data = Record<string, any>;
 export class LiveAccount {
   private drafts = new Map<string, { value: string; checked: boolean }>();
+  private topupAmount = 500;
+  private statusError = false;
   private input = (e: Event) => {
     const el = e.target as HTMLInputElement;
+    if (el.id === "topup-amount") {
+      const val = Number(el.value);
+      this.topupAmount = Number.isFinite(val) && val > 0 ? val : 0;
+      this.app.querySelectorAll<HTMLElement>("[data-topup-chip]").forEach((c) => {
+        c.classList.toggle("active", c.dataset.topupChip === String(val));
+      });
+      return;
+    }
     if (!el.id.startsWith("account-")) return;
     const ui = this.bridge.read();
     this.drafts.set(`${ui.modal || ui.screen}:${el.id}`, {
@@ -53,6 +64,8 @@ export class LiveAccount {
     this.photo = "";
     this.selectedRide = undefined;
     this.phoneSent = false;
+    this.topupAmount = 500;
+    this.statusError = false;
   }
   private field(
     key: string,
@@ -62,11 +75,176 @@ export class LiveAccount {
   ) {
     return `<label class="field-label" for="account-${key}">${label}</label><input class="text-input" id="account-${key}" type="${type}" value="${escape(value)}"/>`;
   }
-  private action(id: string, label: string) {
-    return `<button class="secondary" data-account-action="${id}" ${this.busy ? "disabled" : ""}>${label}</button>`;
+  private action(id: string, label: string, kind: "primary" | "secondary" = "primary") {
+    return `<button class="${kind}" data-account-action="${id}" ${this.busy ? "disabled" : ""}>${label}</button>`;
   }
   private select(key: string, label: string, items: string[], value: string) {
     return `<label class="field-label" for="account-${key}">${label}</label><select class="text-input" id="account-${key}">${items.map((v) => `<option ${value === v ? "selected" : ""}>${escape(v)}</option>`).join("")}</select>`;
+  }
+  private decorateWallet() {
+    const data = this.get("/api/wallet");
+    const hero = this.app.querySelector<HTMLElement>(".wallet-hero");
+    if (hero) {
+      const small = hero.querySelector("small");
+      if (small) small.textContent = "YOUR HOP WALLET";
+      const amountEl = hero.querySelector(".amount");
+      if (amountEl && data && Number.isSafeInteger(data.balance_paise)) {
+        const balance = data.balance_paise / 100;
+        this.bridge.assign({ balance });
+        amountEl.innerHTML = `${money(balance)}<span style="font-size:19px;opacity:.5">.00</span>`;
+      }
+    }
+
+    const notice = this.app.querySelector<HTMLElement>(
+      ".screen-padding > .notice-box",
+    );
+    if (notice) {
+      notice.textContent =
+        "Cash, direct UPI and online payment options remain available at trip confirmation.";
+    }
+
+    const label = this.app.querySelector<HTMLElement>(
+      ".screen-padding > .section-label",
+    );
+    if (label && notice && data) {
+      const entries: Data[] = data.entries || data.ledger || [];
+      let next = label.nextElementSibling;
+      while (next && next !== notice) {
+        const toRemove = next;
+        next = next.nextElementSibling;
+        toRemove.remove();
+      }
+      if (entries.length > 0) {
+        const rowsHtml = entries
+          .slice(0, 10)
+          .map((entry) => this.formatWalletEntry(entry))
+          .join("");
+        label.insertAdjacentHTML("afterend", rowsHtml);
+      } else {
+        label.insertAdjacentHTML(
+          "afterend",
+          `<div class="notice-box" style="margin:10px 0;background:var(--surface);border:1px dashed var(--line);text-align:center;color:var(--muted)">No transactions yet. Top-ups and ride payments will appear here.</div>`,
+        );
+      }
+    }
+
+    let statusEl = this.app.querySelector<HTMLElement>(
+      ".screen-padding > [role='status']",
+    );
+    if (this.status) {
+      if (!statusEl) {
+        statusEl = document.createElement("p");
+        statusEl.setAttribute("role", "status");
+        statusEl.className = "small muted";
+        statusEl.style.marginTop = "12px";
+        this.app.querySelector(".screen-padding")?.appendChild(statusEl);
+      }
+      statusEl.textContent = this.status;
+      statusEl.style.display = "";
+    } else if (statusEl) {
+      statusEl.style.display = "none";
+    }
+  }
+
+  private renderTopupModal() {
+    const sheet = this.app.querySelector<HTMLElement>(".modal-sheet");
+    if (!sheet) return;
+
+    sheet.innerHTML = `<div class="sheet-handle"></div><div class="modal-title"><h2 id="modal-title">Add to your wallet.</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">${icon("close")}</button></div><p class="muted small" style="margin:4px 0 0">Choose an amount or enter custom amount.</p><div class="product-row" style="margin:18px 0">${[100, 200, 500, 1000].map((n) => `<button type="button" class="product-chip ${this.topupAmount === n ? "active" : ""}" data-topup-chip="${n}">${money(n)}</button>`).join("")}</div><label class="field-label" for="topup-amount">Amount (₹)</label><input id="topup-amount" class="text-input" aria-label="Add money (₹)" inputmode="numeric" pattern="[0-9]*" value="${this.topupAmount || ""}" placeholder="Enter amount"/><div id="modal-error" class="message-error" role="alert" style="${this.status && this.statusError ? "" : "display:none"}">${escape(this.status)}</div>${this.status ? `<p role="status" class="small muted">${escape(this.status)}</p>` : ""}<button class="primary" data-account-action="topup" style="margin-top:14px" ${this.busy ? "disabled" : ""}>${this.busy ? "Processing…" : "Add money with provider checkout"}${icon("arrow")}</button>`;
+
+    sheet.focus({ preventScroll: true });
+  }
+
+  private decorateLedger() {
+    const path = this.role === "captain" ? "/api/drivers/wallet" : "/api/wallet";
+    const data = this.get(path);
+    const host = this.app.querySelector<HTMLElement>(".screen-padding");
+    if (!host) return;
+
+    const entries: Data[] = data?.entries || data?.ledger || [];
+    let html = "";
+
+    if (this.role === "captain") {
+      html += `<div class="section-card" style="margin-bottom:14px"><div class="row"><div><small class="muted">AVAILABLE BALANCE</small><strong style="display:block;font-size:24px;margin-top:2px">${money((data?.balance_paise || 0) / 100)}</strong></div><button class="primary small" data-modal="payout" style="padding:8px 14px;font-size:11px">Request payout</button></div></div>`;
+    }
+
+    if (data && Array.isArray(entries)) {
+      if (entries.length > 0) {
+        html += entries.map((e) => this.formatWalletEntry(e)).join("");
+      } else {
+        html += `<p class="micro muted" style="margin:16px 4px">No transactions recorded yet.</p>`;
+      }
+    } else {
+      html += `<p class="micro muted" style="margin:16px 4px">Loading transactions…</p>`;
+    }
+
+    if (this.role === "captain" && (data?.payouts || []).length > 0) {
+      html += `<div class="section-label" style="margin-top:20px">Payout requests</div>`;
+      html += ((data?.payouts || []) as Data[])
+        .map(
+          (p: Data) =>
+            `<div class="section-card" style="margin-bottom:8px"><div class="row"><strong>${money(p.amount_paise / 100)}</strong><span class="badge ${p.status === "paid" ? "green" : "neutral"}">${escape(p.status)}</span></div><small class="muted">${escape(p.reference || "")}</small></div>`,
+        )
+        .join("");
+    }
+
+    html += `<div class="notice-box" style="margin-top:20px">${this.role === "captain" ? "Ledger entries and payout processing are managed by the operator." : "Ledger entries and payment verification are managed by the server."}</div>`;
+
+    if (this.status) {
+      html += `<p role="status" class="small muted" style="margin-top:12px">${escape(this.status)}</p>`;
+    }
+
+    host.innerHTML = html;
+  }
+
+  private formatWalletEntry(entry: Data): string {
+    const kind = String(entry.kind || "transaction");
+    let title = "Transaction";
+    let ico = "wallet";
+    let go = "ledger";
+    if (kind === "topup") {
+      title = "Added to wallet";
+      ico = "plus";
+      go = "ledger";
+    } else if (kind === "ride_payment") {
+      title = "Ride payment";
+      ico = "car";
+      go = "receipt";
+    } else if (kind === "refund") {
+      title = "Refund received";
+      ico = "refresh";
+      go = "ledger";
+    } else if (kind === "adjustment") {
+      title = "Wallet adjustment";
+      ico = "plus";
+      go = "ledger";
+    } else {
+      title = kind.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    let dateStr = "Recent";
+    if (entry.created_at) {
+      try {
+        const d = new Date(entry.created_at);
+        const now = new Date();
+        if (d.toDateString() === now.toDateString()) {
+          dateStr = "Today";
+        } else {
+          dateStr = d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        }
+      } catch {}
+    }
+    const note = entry.note ? ` · ${entry.note}` : "";
+    const detail = `${dateStr}${note}`;
+
+    const paise = Number(entry.amount_paise || 0);
+    const isPositive = paise >= 0;
+    const amountFormatted = money(Math.abs(paise) / 100);
+    const right = isPositive
+      ? `<strong style="color:#357451">+${amountFormatted}</strong>`
+      : `<strong>−${amountFormatted}</strong>`;
+
+    return `<button class="list-row" data-go="${go}"><span class="list-icon">${icon(ico)}</span><span class="list-text"><strong>${escape(title)}</strong>${detail ? `<small>${escape(detail)}</small>` : ""}</span><span class="right">${right}</span></button>`;
   }
   private async load(path: string) {
     if (this.loading.has(path)) return;
@@ -124,8 +302,6 @@ export class LiveAccount {
       personal: "/api/profile",
       preferences: "/api/companion",
       earnings: "/api/drivers/earnings",
-      ledger: this.role === "captain" ? "/api/drivers/wallet" : "/api/wallet",
-      wallet: "/api/wallet",
       rewards: "/api/companion",
       family: "/api/companion",
       saved: "state",
@@ -216,6 +392,18 @@ export class LiveAccount {
           )
             el.textContent = "Captain application and document approval";
         });
+      return;
+    }
+    if (!modal && screen === "wallet") {
+      this.decorateWallet();
+      return;
+    }
+    if (modal === "topup") {
+      this.renderTopupModal();
+      return;
+    }
+    if (!modal && screen === "ledger") {
+      this.decorateLedger();
       return;
     }
     const path = modal ? modalPaths[modal] : screenPaths[screen];
@@ -335,8 +523,6 @@ export class LiveAccount {
     } else if (key === "earnings") {
       const sum = data?.summary || {};
       body = `<div class="wallet-hero"><small>TODAY'S COMPLETED FARES</small><div class="amount">${money((sum.today_fare_paise || 0) / 100)}</div><p>${Number(sum.today_completed_trips || 0)} completed trips</p></div><div class="section-card"><p>Week ${money((sum.week_fare_paise || 0) / 100)}</p><p>Month ${money((sum.month_fare_paise || 0) / 100)}</p><p>All time ${money((sum.all_time_fare_paise || 0) / 100)}</p><p class="micro">Reported receipt is distinct from provider settlement.</p></div>${(data?.rides || []).map((r: Data) => `<div class="list-row"><span>${escape(r.pickup_label)} → ${escape(r.dropoff_label)}</span><strong>${money(r.fare_paise / 100)}</strong></div>`).join("")}<button class="secondary" data-go="ledger">Ledger & payouts</button>`;
-    } else if (key === "ledger" || key === "wallet") {
-      body = `<div class="wallet-hero"><small>SERVER BALANCE</small><div class="amount">${money((data?.balance_paise || 0) / 100)}</div></div>${(data?.entries || data?.ledger || []).map((r: Data) => `<div class="list-row"><span>${escape(r.kind)}<small>${escape(r.note || "")} · ${escape(r.created_at || "")}</small></span><strong>${money(r.amount_paise / 100)}</strong></div>`).join("")}${this.role === "captain" ? `<button class="secondary" data-modal="payout">Request payout</button>${(data?.payouts || []).map((r: Data) => `<p>${money(r.amount_paise / 100)} · ${escape(r.status)} · ${escape(r.reference || "")}</p>`).join("")}` : this.field("topup-amount", "Add money (₹)", "", "number") + btn("topup", "Add money with provider checkout")}`;
     } else if (key === "payout")
       body =
         `<p>Available: ${money((data?.balance_paise || 0) / 100)} · Minimum: ${money((data?.min_payout_paise || 0) / 100)}</p>` +
@@ -462,10 +648,10 @@ export class LiveAccount {
         .join("")}</dl>`;
     host.innerHTML =
       (modal
-        ? `<div class="sheet-handle"></div><div class="modal-title"><h2>${escape(key.replaceAll("-", " "))}</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">×</button></div>`
+        ? `<div class="sheet-handle"></div><div class="modal-title"><h2>${escape(key.replaceAll("-", " "))}</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">${icon("close")}</button></div>`
         : "") +
       body +
-      `<p role="status" class="small muted">${escape(this.status)}</p>`;
+      (this.status ? `<p role="status" class="small muted" style="margin-top:12px">${escape(this.status)}</p>` : "");
     for (const el of host.querySelectorAll<HTMLInputElement>(
       "[id^=account-]",
     )) {
@@ -532,6 +718,31 @@ export class LiveAccount {
     });
   };
   private click = (e: Event) => {
+    const topupBtn = (e.target as Element).closest<HTMLElement>('[data-modal="topup"]');
+    if (topupBtn) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      this.topupAmount = 500;
+      this.status = "";
+      this.statusError = false;
+      this.bridge.update({ modal: "topup", amount: 500 });
+      return;
+    }
+
+    const chip = (e.target as Element).closest<HTMLElement>("[data-topup-chip]");
+    if (chip) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const val = Number(chip.dataset.topupChip);
+      this.topupAmount = val;
+      const input = this.app.querySelector<HTMLInputElement>("#topup-amount");
+      if (input) input.value = String(val);
+      this.app.querySelectorAll<HTMLElement>("[data-topup-chip]").forEach((c) => {
+        c.classList.toggle("active", c.dataset.topupChip === String(val));
+      });
+      return;
+    }
+
     const b = (e.target as Element).closest<HTMLElement>("button");
     if (!b || !Object.keys(b.dataset).some((k) => k.startsWith("account")))
       return;
@@ -553,6 +764,7 @@ export class LiveAccount {
     const value = (k: string) => String(values[k] || "");
     this.busy = true;
     this.status = "";
+    this.statusError = false;
     void (async () => {
       if (a === "retry") {
         this.errors.clear();
@@ -782,13 +994,15 @@ export class LiveAccount {
         this.cache.delete("/api/profile");
       }
       if (a === "topup") {
+        const input = this.app.querySelector<HTMLInputElement>("#topup-amount");
+        const valStr = input?.value.trim() || v("topup-amount") || String(this.topupAmount || "");
+        const amount = Math.round(Number(valStr) * 100);
+        if (!Number.isSafeInteger(amount) || amount < 1000 || amount > 10000000)
+          throw new Error("Choose an amount from ₹10 to ₹100,000.");
         const account =
           this.cache.get("/api/profile")?.details?.[0]?.id ||
           (await api.session()).user.id;
         const key = `hop.wallet.account.pending:${account}`;
-        const amount = Math.round(Number(v("topup-amount")) * 100);
-        if (!Number.isSafeInteger(amount) || amount < 1000 || amount > 10000000)
-          throw new Error("Choose an amount from ₹10 to ₹100,000.");
         const cached = sessionStorage.getItem(key);
         let order: Order | { balance_paise: number };
         if (cached) {
@@ -810,6 +1024,10 @@ export class LiveAccount {
           this.cache.delete("/api/wallet");
           this.status =
             "Development credit recorded by the backend. No real money charged.";
+          this.statusError = false;
+          this.bridge.update({ modal: null, balance: order.balance_paise / 100 });
+          this.bridge.notify(`Added ₹${(amount / 100).toLocaleString("en-IN")} to your wallet.`);
+          await this.load("/api/wallet");
           return;
         }
         sessionStorage.setItem(key, JSON.stringify(order));
@@ -818,6 +1036,10 @@ export class LiveAccount {
         sessionStorage.removeItem(key);
         this.cache.delete("/api/wallet");
         this.status = "Top-up verified by the backend.";
+        this.statusError = false;
+        this.bridge.update({ modal: null });
+        this.bridge.notify("Top-up verified by the backend.");
+        await this.load("/api/wallet");
         return;
       }
       if (a === "wallet-payment") {
@@ -831,6 +1053,7 @@ export class LiveAccount {
     })()
       .catch((err) => {
         this.status = err.message;
+        this.statusError = true;
         this.bridge.notify(this.status);
       })
       .finally(() => {

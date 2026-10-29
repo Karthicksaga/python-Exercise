@@ -1,5 +1,7 @@
 # Hop requirements review — 29 October 2026
 
+This is the review baseline. Implementation has since progressed; see [current implementation status](IMPLEMENTATION-STATUS-2026-10-29.md) for the follow-up.
+
 ## Outcome
 
 The mobile implementation is suitable for further controlled testing, but the full requirements are **not complete**. Browser regression success does not establish feature completeness or production readiness.

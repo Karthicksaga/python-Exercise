@@ -49,3 +49,13 @@ test('release staging requires both APK and AAB and hashes their exact bytes', (
   rmSync(path.join(outputs, 'bundle/release/app-release.aab'));
   assert.notEqual(run('stage-android.mjs', dir, env).status, 0);
 }));
+test('local phone APK builds stop before compilation for an emulator backend', () => fixture(dir => {
+  for (const app of ['rider', 'captain']) {
+    const result = spawnSync(process.execPath, [path.join(scripts, 'android.mjs'), app, '--apk'], {
+      cwd: dir, env: { PATH: process.env.PATH, VITE_MOBILE_API_URL: 'http://10.0.2.2:8080' }, encoding: 'utf8',
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /phone-accessible HTTPS backend origin/);
+    assert.doesNotMatch(result.stdout, /build:rider|build:captain/);
+  }
+}));

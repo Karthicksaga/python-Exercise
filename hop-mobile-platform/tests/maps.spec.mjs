@@ -30,11 +30,11 @@ test("Google load failure falls back to OSM and never renders sample cars", asyn
 }) => {
   await fallback(page);
   await page.route("**/api/me", (route) =>
-    route.fulfill({ status: 401, json: { error: "Sign in" } }),
+    route.fulfill({ json: { user: { id: "rider" }, csrf: "csrf" } }),
   );
   await page.goto(base);
   await expect(page.locator(".hop-map-status")).toContainText("OpenStreetMap");
-  await expect(page.locator(".hop-map-status")).toContainText("Sign in");
+  await expect(page.locator(".login-screen")).toHaveCount(0);
   await expect(page.locator(".mini-car,.map-pin,.map-bubble")).toHaveCount(0);
   await expect(page.locator(".leaflet-marker-icon")).toHaveCount(0);
   await expect(

@@ -476,13 +476,112 @@ test("uncertain account top-up creation is not retried as a new payment", async 
     return r.abort("failed");
   });
   await page.locator('[data-go="wallet"]').first().click();
+  await page.locator('[data-modal="topup"]').click();
   await page.getByLabel("Add money (₹)").fill("100");
   await page.locator('[data-account-action="topup"]').click();
   await expect.poll(() => attempts).toBe(1);
-  await expect(page.locator('.screen-padding [role="status"]')).not.toBeEmpty();
+  await expect(page.locator('#modal-error')).not.toBeEmpty();
   await page.locator('[data-account-action="topup"]').click();
-  await expect(page.locator('.screen-padding [role="status"]')).toContainText(
+  await expect(page.locator('#modal-error')).toContainText(
     "uncertain",
   );
   expect(attempts).toBe(1);
+});
+
+test('server route alternatives preserve their index and use a fresh backend quote',async({page})=>{
+ const posts=await fixture(page);const alternative=[pickup,{lat:13.01,lng:80.18},dropoff];
+ await page.route('**/api/routes/alternatives',r=>r.fulfill({json:{routes:[{route,meters:9000,seconds:1500},{route:alternative,meters:11000,seconds:1800}]}}));
+ await page.route('**/api/quotes',r=>{const body=r.request().postDataJSON();posts.push({path:'/api/quotes',body});return r.fulfill({json:{id:'alternative-quote',fare_paise:30000,route:alternative,meters:11000,seconds:1800}});});
+ await chooseRoute(page);await page.locator('[data-live-route-index="1"]').click();await expect(page.locator('.choose-sheet .subline')).toContainText('11.0 km');await expect(page.locator('[data-vehicle="auto"] .vehicle-price')).toHaveText('₹300');await review(page);expect(posts.filter(p=>p.path==='/api/quotes').at(-1).body.route_index).toBe(1);
+});
+
+test("canonical wallet screen preserves prototype layout and top-up modal updates balance", async ({
+  page,
+}) => {
+  let balancePaise = 35000;
+  let topupPayload;
+  await fixture(page);
+  await page.route("**/api/wallet", (r) =>
+    r.fulfill({
+      json: {
+        balance_paise: balancePaise,
+        entries: [
+          {
+            id: "entry-1",
+            kind: "topup",
+            amount_paise: 50000,
+            note: "Bank UPI credit",
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: "entry-2",
+            kind: "ride_payment",
+            amount_paise: -15000,
+            note: "Auto ride",
+            created_at: new Date(Date.now() - 86400000).toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/wallet/topup", (r) => {
+    topupPayload = r.request().postDataJSON();
+    balancePaise += topupPayload.amount_paise;
+    return r.fulfill({ json: { balance_paise: balancePaise } });
+  });
+
+  await page.locator('[data-go="wallet"]').first().click();
+
+  await expect(page.locator("header h1")).toHaveText("Wallet & offers");
+  const hero = page.locator(".wallet-hero");
+  await expect(hero).toBeVisible();
+  await expect(hero.locator("small")).toHaveText("YOUR HOP WALLET");
+  await expect(hero.locator(".amount")).toContainText("₹350");
+  await expect(hero.locator(".icon")).toBeVisible();
+  const addMoneyBtn = hero.locator('button[data-modal="topup"]');
+  await expect(addMoneyBtn).toHaveText("+ Add money");
+
+  const offerCard = page.locator(".offer-card");
+  await expect(offerCard).toBeVisible();
+  await expect(offerCard.locator("strong")).toContainText("A little off your next ride");
+  await expect(offerCard.locator('button[data-action="apply-promo"]')).toBeVisible();
+
+  await expect(page.locator(".screen-padding > .section-label")).toContainText("Recent transactions");
+  const rows = page.locator(".screen-padding .list-row");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.first()).toContainText("Added to wallet");
+  await expect(rows.first()).toContainText("+₹500");
+  await expect(rows.nth(1)).toContainText("Ride payment");
+  await expect(rows.nth(1)).toContainText("−₹150");
+
+  await expect(page.locator(".screen-padding > .notice-box")).toContainText(
+    "Cash, direct UPI and online payment options remain available at trip confirmation.",
+  );
+
+  await addMoneyBtn.click();
+  const modalSheet = page.locator(".modal-sheet");
+  await expect(modalSheet).toBeVisible();
+  await expect(modalSheet.locator("#modal-title")).toHaveText("Add to your wallet.");
+  await expect(modalSheet.locator("p.muted").first()).toHaveText(
+    "Choose an amount or enter custom amount.",
+  );
+
+  const chips = modalSheet.locator(".product-chip");
+  await expect(chips).toHaveCount(4);
+  await expect(modalSheet.locator('.product-chip[data-topup-chip="500"]')).toHaveClass(/active/);
+  await expect(modalSheet.locator("#topup-amount")).toHaveValue("500");
+
+  await modalSheet.locator('.product-chip[data-topup-chip="1000"]').click();
+  await expect(modalSheet.locator('.product-chip[data-topup-chip="1000"]')).toHaveClass(/active/);
+  await expect(modalSheet.locator("#topup-amount")).toHaveValue("1000");
+
+  const submitBtn = modalSheet.locator('button[data-account-action="topup"]');
+  await expect(submitBtn).toHaveClass(/primary/);
+  await expect(submitBtn).toContainText("Add money with provider checkout");
+
+  await submitBtn.click();
+
+  await expect(modalSheet).not.toBeVisible();
+  expect(topupPayload).toEqual({ amount_paise: 100000 });
+  await expect(hero.locator(".amount")).toContainText("₹1,350");
 });

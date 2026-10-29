@@ -36,6 +36,8 @@ export class LiveJourney {
   private recovery?: RecoveryState;
   private lastAction = "";
   private signedIn = false;
+  private sessionChecked = false;
+  readonly ready: Promise<void>;
   private payment?: LivePayment;
   private onboarding?: CaptainOnboarding;
   private walletBalance?: number;
@@ -195,13 +197,23 @@ export class LiveJourney {
         this.decorate();
       })
       .catch(() => {});
-    void api
-      .session()
-      .then(() => {
+    this.ready = api.session()
+      .then(session => {
+        if (!session.user?.id) throw new APIError("Sign in to your Hop account.", 401);
         this.signedIn = true;
+        this.sessionChecked = true;
+        if (this.bridge.read().screen === "auth") this.bridge.go(this.role === "rider" ? "home" : "drive");
         this.decorate();
       })
-      .catch(() => this.decorate());
+      .catch(error => {
+        this.signedIn = false;
+        this.sessionChecked = true;
+        this.authError = error instanceof APIError && error.status === 401
+          ? ""
+          : "We could not check your saved session. Please sign in to continue.";
+        this.bridge.go("auth");
+        this.decorate();
+      });
     void this.notifications();
     this.decorate();
   }
@@ -766,7 +778,12 @@ export class LiveJourney {
       return;
     }
     if (button.dataset.liveRouteIndex !== undefined) {
-      this.stop(event);this.booking.routeIndex=Number(button.dataset.liveRouteIndex);this.quote=undefined;this.bookingPayload=undefined;void this.plan();return;
+      this.stop(event);
+      this.booking.routeIndex = Number(button.dataset.liveRouteIndex);
+      this.quote = undefined;
+      this.bookingPayload = undefined;
+      void this.plan();
+      return;
     }
     if (button.dataset.routeAlt) {
       this.stop(event);
@@ -823,7 +840,6 @@ export class LiveJourney {
         "switch-to-captain-pickup",
         "autofill-otp",
         "view-next-offer",
-        "toggle-cockpit",
       ].includes(action)
     ) {
       this.stop(event);
@@ -1266,6 +1282,10 @@ export class LiveJourney {
     this.decorate();
   }
   private decorate() {
+    if (this.sessionChecked && !this.signedIn && this.bridge.read().screen !== "auth") {
+      this.bridge.go("auth");
+      return;
+    }
     this.booking?.render();
     this.account?.render();
     if (this.role === "captain" && this.bridge.read().screen === "onboarding") {
@@ -1523,11 +1543,18 @@ export class LiveJourney {
           if (detail)
             detail.textContent = "Availability confirmed during matching";
         });
-      const alternatives=this.app.querySelector<HTMLElement>(".route-alt-row");
-      if(alternatives){
-        alternatives.hidden=this.routes.length<2;
-        const content=this.routes.map((r,i)=>`<button class="route-alt-chip ${i===this.booking.routeIndex?"active":""}" role="radio" aria-checked="${i===this.booking.routeIndex}" data-live-route-index="${i}"><span>Route ${i+1}</span><strong>${Math.ceil(r.seconds/60)} min</strong><small>${(r.meters/1000).toFixed(1)} km</small></button>`).join("");
-        if(alternatives.innerHTML!==content)alternatives.innerHTML=content;
+      const alternatives =
+        this.app.querySelector<HTMLElement>(".route-alt-row");
+      if (alternatives) {
+        alternatives.hidden = this.routes.length < 2;
+        const content = this.routes
+          .map(
+            (r, i) =>
+              `<button class="route-alt-chip ${i === this.booking.routeIndex ? "active" : ""}" role="radio" aria-checked="${i === this.booking.routeIndex}" data-live-route-index="${i}"><span>Route ${i + 1}</span><strong>${Math.ceil(r.seconds / 60)} min</strong><small>${(r.meters / 1000).toFixed(1)} km</small></button>`,
+          )
+          .join("");
+        if (alternatives.innerHTML !== content)
+          alternatives.innerHTML = content;
       }
       const sheet = this.app.querySelector(".choose-sheet");
       sheet?.querySelector("[data-live-plan-error]")?.remove();

@@ -551,6 +551,7 @@ function currentMeta() {
 }
 function go(screen, replace = false) {
   if(screen === "commute"){notify("Hop Commute is currently disabled.");return;}
+  if (screen !== state.screen) $("#app").dataset.motionDirection = replace ? "back" : "forward";
   if (!replace && screen !== state.screen) state.back.push(state.screen);
   state.screen = screen;
   state.last[state.role] = screen;
@@ -1436,6 +1437,9 @@ function render() {
   render.lastScreen = `${state.role}:${state.screen}`;
   const view = state.role === "rider" ? riderView() : captainView();
   const meta = currentMeta();
+  $("#app").dataset.motionRole = state.role;
+  $("#app").dataset.motionScreen = state.screen;
+  $("#app").dataset.motionModal = state.modal || "";
   $("#app").className =
     `app ${state.role} ${state.toggled.dark ? "dark" : ""} ${state.toggled["large-text"] ? "large-text" : ""}`;
   $("#app").innerHTML =

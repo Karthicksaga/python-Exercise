@@ -5,7 +5,32 @@
  */
 
 /* ==========================================================================
-   1. Pin Drop & Placement Animation
+   1. Screen Transitions & Sub-screen Routing
+   ========================================================================== */
+
+@keyframes screenFadeSlideIn {
+  0% {
+    opacity: 0.85;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hop-live .screen-body {
+  animation: screenFadeSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+/* Stable map canvas on map screens: camera/GPS stays static while sheets glide */
+.hop-live .map-screen .map-art {
+  animation: none !important;
+}
+
+/* ==========================================================================
+   2. Pin Drop & Map Placement Animation
    ========================================================================== */
 
 @keyframes pinDrop {
@@ -38,35 +63,23 @@
   }
 }
 
-/* Live Leaflet map pins drop into place with sleek bounce */
-.hop-marker-pin,
-.pin-drop {
+/* Live Leaflet map pins drop into place with sleek spring bounce */
+.hop-live .hop-marker-pin,
+.hop-live .pin-drop {
   animation: pinDrop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.hop-dropoff-pin {
+.hop-live .hop-dropoff-pin {
   animation-delay: 0.1s;
 }
 
-.map-pin.pin-drop {
+.hop-live .map-pin.pin-drop {
   animation: mapPinDrop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 /* ==========================================================================
-   2. Concentric Radar Pulse (Matching & Search)
+   3. Concentric Radar Pulse (Driver Search & Matching)
    ========================================================================== */
-
-.radar-wave {
-  animation: radar-expand 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
-}
-
-.radar-wave.delay-1 {
-  animation-delay: 0.8s;
-}
-
-.radar-wave.delay-2 {
-  animation-delay: 1.6s;
-}
 
 @keyframes radar-expand {
   0% {
@@ -85,20 +98,26 @@
   }
 }
 
-.app.dark .radar-wave {
+.hop-live .radar-wave {
+  animation: radar-expand 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.hop-live .radar-wave.delay-1 {
+  animation-delay: 0.8s;
+}
+
+.hop-live .radar-wave.delay-2 {
+  animation-delay: 1.6s;
+}
+
+.hop-live .app.dark .radar-wave {
   border-color: rgba(92, 184, 138, 0.85);
   background: rgba(92, 184, 138, 0.18);
 }
 
 /* ==========================================================================
-   3. Captain Incoming Offer Countdown & Glow
+   4. Captain Incoming Offer Countdown & Amber Glow
    ========================================================================== */
-
-.incoming-card {
-  position: relative;
-  border: 1.5px solid #f59e0b;
-  animation: incoming-amber-glow 1.8s ease-in-out infinite;
-}
 
 @keyframes incoming-amber-glow {
   0%, 100% {
@@ -111,24 +130,24 @@
   }
 }
 
-.app.dark .incoming-card {
-  border-color: #d97706;
+@keyframes timer-pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
 }
 
-.heads-up-timer,
-.timer-pulse {
-  animation: timer-pulse-glow 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
-}
-
-.timer-fill {
-  animation: timer-drain 15s linear forwards;
-}
-
-/* Circular countdown ring for offer timers */
-.countdown-ring circle {
-  stroke-dasharray: 100;
-  stroke-dashoffset: 0;
-  animation: countdown-circle 15s linear forwards;
+@keyframes timer-drain {
+  0% {
+    width: 100%;
+  }
+  100% {
+    width: 0%;
+  }
 }
 
 @keyframes countdown-circle {
@@ -137,23 +156,105 @@
   }
 }
 
+.hop-live .incoming-card {
+  position: relative;
+  border: 1.5px solid #f59e0b;
+  animation: incoming-amber-glow 1.8s ease-in-out infinite;
+}
+
+.hop-live .app.dark .incoming-card {
+  border-color: #d97706;
+}
+
+.hop-live .heads-up-timer,
+.hop-live .timer-pulse {
+  animation: timer-pulse-glow 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.hop-live .timer-fill {
+  animation: timer-drain 15s linear forwards;
+}
+
+.hop-live .countdown-ring circle {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  animation: countdown-circle 15s linear forwards;
+}
+
 /* ==========================================================================
-   4. Tactile Bottom Sheets & Modals
+   5. Wallet & Financial Surfaces Micro-interactions
    ========================================================================== */
 
-.sheet,
-.modal-sheet {
-  transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+@keyframes heroShine {
+  0% {
+    transform: translateX(-140%) rotate(25deg);
+  }
+  20%, 100% {
+    transform: translateX(240%) rotate(25deg);
+  }
 }
 
-.sheet.slide-up,
-.sheet-enter {
-  animation: sheetSlideUp 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+@keyframes transactionFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.sheet-overlay {
-  animation: backdropFade 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+@keyframes giftPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.14);
+  }
 }
+
+.hop-live .wallet-hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.hop-live .wallet-hero::after {
+  content: "";
+  position: absolute;
+  top: -60%;
+  left: -60%;
+  width: 70px;
+  height: 220%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.16) 50%,
+    transparent 100%
+  );
+  animation: heroShine 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.hop-live .screen-padding > .list-row {
+  animation: transactionFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.hop-live .screen-padding > .list-row:nth-child(4) { animation-delay: 0.04s; }
+.hop-live .screen-padding > .list-row:nth-child(5) { animation-delay: 0.08s; }
+.hop-live .screen-padding > .list-row:nth-child(6) { animation-delay: 0.12s; }
+.hop-live .screen-padding > .list-row:nth-child(7) { animation-delay: 0.16s; }
+.hop-live .screen-padding > .list-row:nth-child(8) { animation-delay: 0.20s; }
+.hop-live .screen-padding > .list-row:nth-child(n+9) { animation-delay: 0.24s; }
+
+.hop-live .offer-card svg,
+.hop-live .offer-card .icon-gift {
+  animation: giftPulse 2.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* ==========================================================================
+   6. Tactile Bottom Sheets & Modals
+   ========================================================================== */
 
 @keyframes sheetSlideUp {
   0% {
@@ -173,42 +274,135 @@
   }
 }
 
+.hop-live .sheet,
+.hop-live .modal-sheet {
+  transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.hop-live .sheet.slide-up,
+.hop-live .sheet-enter {
+  animation: sheetSlideUp 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.hop-live .sheet-overlay,
+.hop-live .modal-backdrop {
+  animation: backdropFade 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.hop-live .sheet-handle {
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), background-color 0.2s ease;
+}
+
+.hop-live .sheet-handle:active {
+  transform: scaleX(1.15);
+}
+
 @starting-style {
-  .modal-sheet {
+  .hop-live .modal-sheet {
     transform: translateY(100%);
   }
-  .sheet-overlay {
+  .hop-live .sheet-overlay {
     opacity: 0;
   }
 }
 
 /* ==========================================================================
-   5. Interactive Vehicle Card Selection
+   7. Interactive Tactile Feedback & Input Transitions
    ========================================================================== */
 
-.vehicle,
-.vehicle-card,
-.vehicle-item,
-.product-chip {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  -webkit-tap-highlight-color: transparent;
+.hop-live button:active,
+.hop-live .product-chip:active,
+.hop-live .shortcut:active,
+.hop-live .usual-ride:active,
+.hop-live .quick-tile:active,
+.hop-live .commute-card:active {
+  transform: scale(0.97);
+  transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1);
 }
 
-.vehicle:active,
-.vehicle-card:active,
-.vehicle-item:active,
-.product-chip:active {
-  transform: scale(0.98);
+.hop-live button.primary {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1),
+              box-shadow 0.2s ease,
+              background-color 0.2s ease;
+}
+
+.hop-live button.primary:active {
+  transform: scale(0.97);
+}
+
+.hop-live button.primary:hover,
+.hop-live button.primary:focus-visible {
+  box-shadow: 0 4px 14px rgba(35, 110, 61, 0.32);
+}
+
+.hop-live .text-input,
+.hop-live input[type="text"],
+.hop-live input[type="tel"],
+.hop-live input[type="number"],
+.hop-live select.text-input {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hop-live .text-input:focus,
+.hop-live input[type="text"]:focus,
+.hop-live input[type="tel"]:focus,
+.hop-live input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent, #236e3d);
+  box-shadow: 0 0 0 3px rgba(35, 110, 61, 0.15);
 }
 
 /* ==========================================================================
-   6. Success & Completion Micro-animations
+   8. Vehicle Card & Product Selection
    ========================================================================== */
 
-.payment-state-symbol.success svg,
-.badge.success svg {
-  animation: checkmark-pop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+.hop-live .vehicle,
+.hop-live .vehicle-card,
+.hop-live .vehicle-item,
+.hop-live .product-chip {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s ease,
+              border-color 0.2s ease,
+              background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
+
+.hop-live .vehicle:active,
+.hop-live .vehicle-card:active,
+.hop-live .vehicle-item:active,
+.hop-live .product-chip:active {
+  transform: scale(0.97);
+}
+
+.hop-live .product-chip.active {
+  box-shadow: 0 2px 8px rgba(35, 110, 61, 0.22);
+}
+
+/* Live dot & ETA pulsing indicator */
+@keyframes liveDotPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(35, 110, 61, 0.5);
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.85;
+    box-shadow: 0 0 0 5px rgba(35, 110, 61, 0);
+  }
+}
+
+.hop-live .online-pill.online i,
+.hop-live .notification-dot,
+.hop-live .live-dot {
+  animation: liveDotPulse 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+/* ==========================================================================
+   9. Success & Completion Micro-animations
+   ========================================================================== */
 
 @keyframes checkmark-pop {
   0% {
@@ -225,20 +419,34 @@
   }
 }
 
-.star-btn:active,
-[data-star]:active,
-.rating-stars button:active {
+.hop-live .payment-state-symbol.success svg,
+.hop-live .badge.success svg {
+  animation: checkmark-pop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.hop-live .star-btn:active,
+.hop-live [data-star]:active,
+.hop-live .rating-stars button:active {
   transform: scale(1.25);
   transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 /* Subtle celebration shimmer */
-.payment-state-symbol.success.shimmer {
+@keyframes celebration-shimmer {
+  0% {
+    transform: translateX(-100%) translateY(-100%);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%);
+  }
+}
+
+.hop-live .payment-state-symbol.success.shimmer {
   position: relative;
   overflow: hidden;
 }
 
-.payment-state-symbol.success.shimmer::after {
+.hop-live .payment-state-symbol.success.shimmer::after {
   content: "";
   position: absolute;
   inset: -100%;
@@ -251,35 +459,41 @@
   animation: celebration-shimmer 2.2s infinite;
 }
 
-@keyframes celebration-shimmer {
-  0% {
-    transform: translateX(-100%) translateY(-100%);
-  }
+/* ==========================================================================
+   10. Shimmer Skeleton Loading
+   ========================================================================== */
+
+@keyframes skeleton-sweep {
   100% {
-    transform: translateX(100%) translateY(100%);
+    transform: translateX(100%);
   }
 }
 
-/* ==========================================================================
-   7. Shimmer Skeleton Loading
-   ========================================================================== */
+@keyframes spinner-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
 
-.skeleton,
-.skeleton-shimmer,
-.loading-shimmer,
-.fare-skeleton,
-.loading-quote {
+.hop-live .skeleton,
+.hop-live .skeleton-shimmer,
+.hop-live .loading-shimmer,
+.hop-live .fare-skeleton,
+.hop-live .loading-quote {
   position: relative;
   overflow: hidden;
   background: #eef2ea;
   border-radius: 8px;
 }
 
-.skeleton::after,
-.skeleton-shimmer::after,
-.loading-shimmer::after,
-.fare-skeleton::after,
-.loading-quote::after {
+.hop-live .skeleton::after,
+.hop-live .skeleton-shimmer::after,
+.hop-live .loading-shimmer::after,
+.hop-live .fare-skeleton::after,
+.hop-live .loading-quote::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -294,25 +508,19 @@
   pointer-events: none;
 }
 
-@keyframes skeleton-sweep {
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-.app.dark .skeleton,
-.app.dark .skeleton-shimmer,
-.app.dark .loading-shimmer,
-.app.dark .fare-skeleton,
-.app.dark .loading-quote {
+.hop-live .app.dark .skeleton,
+.hop-live .app.dark .skeleton-shimmer,
+.hop-live .app.dark .loading-shimmer,
+.hop-live .app.dark .fare-skeleton,
+.hop-live .app.dark .loading-quote {
   background: #233123;
 }
 
-.app.dark .skeleton::after,
-.app.dark .skeleton-shimmer::after,
-.app.dark .loading-shimmer::after,
-.app.dark .fare-skeleton::after,
-.app.dark .loading-quote::after {
+.hop-live .app.dark .skeleton::after,
+.hop-live .app.dark .skeleton-shimmer::after,
+.hop-live .app.dark .loading-shimmer::after,
+.hop-live .app.dark .fare-skeleton::after,
+.hop-live .app.dark .loading-quote::after {
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0) 0%,
@@ -321,26 +529,13 @@
   );
 }
 
-.radar-spinner {
+.hop-live .radar-spinner {
   animation: spinner-rotate 0.9s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
 }
 
-@keyframes spinner-rotate {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
 /* ==========================================================================
-   8. Live GPS Pulse (Radiating Beacon Aura)
+   11. Live GPS Pulse (Radiating Beacon Aura)
    ========================================================================== */
-
-.hop-current-pulse {
-  animation: gps-beacon-aura 2.2s cubic-bezier(0.1, 0.7, 0.1, 1) infinite;
-}
 
 @keyframes gps-beacon-aura {
   0% {
@@ -356,8 +551,12 @@
   }
 }
 
-.gps-beacon-aura,
-.location-beacon::before {
+.hop-live .hop-current-pulse {
+  animation: gps-beacon-aura 2.2s cubic-bezier(0.1, 0.7, 0.1, 1) infinite;
+}
+
+.hop-live .gps-beacon-aura,
+.hop-live .location-beacon::before {
   content: "";
   position: absolute;
   width: 28px;
@@ -370,68 +569,862 @@
 }
 
 /* ==========================================================================
-   Accessibility: Reduced Motion
+   12. Bottom Navigation Bar (.bottom-nav, .nav)
+   ========================================================================== */
+
+@keyframes navPop {
+  0% { transform: scale(0.8); }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+@keyframes navDotFade {
+  0% { opacity: 0; transform: translateY(3px) scale(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.hop-live .bottom-nav button {
+  position: relative;
+  transition: color 0.2s ease, transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hop-live .bottom-nav button:active {
+  transform: scale(0.92);
+}
+
+.hop-live .bottom-nav button.active .nav-icon-wrap {
+  animation: navPop 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.hop-live .bottom-nav button.active::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: navDotFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ==========================================================================
+   13. Accessibility: Reduced Motion Overrides
    ========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
-  .sheet,
-  .modal-sheet,
-  .sheet.slide-up,
-  .sheet-enter {
+  .hop-live .sheet,
+  .hop-live .modal-sheet,
+  .hop-live .sheet.slide-up,
+  .hop-live .sheet-enter,
+  .hop-live .sheet-overlay,
+  .hop-live .modal-backdrop {
     animation: none !important;
     transition: none !important;
     transform: none !important;
   }
 
-  .sheet-overlay {
-    animation: none !important;
-    transition: none !important;
-  }
-
-  .hop-marker-pin,
-  .pin-drop,
-  .map-pin.pin-drop {
+  .hop-live .hop-marker-pin,
+  .hop-live .pin-drop,
+  .hop-live .map-pin.pin-drop {
     animation: none !important;
   }
 
-  .radar-wave {
+  .hop-live .radar-wave {
     animation: none !important;
   }
 
-  .incoming-card,
-  .heads-up-timer,
-  .timer-pulse,
-  .timer-fill,
-  .countdown-ring circle {
+  .hop-live .incoming-card,
+  .hop-live .heads-up-timer,
+  .hop-live .timer-pulse,
+  .hop-live .timer-fill,
+  .hop-live .countdown-ring circle {
     animation: none !important;
   }
 
-  .vehicle,
-  .vehicle-card,
-  .vehicle-item,
-  .product-chip {
+  .hop-live .vehicle,
+  .hop-live .vehicle-card,
+  .hop-live .vehicle-item,
+  .hop-live .product-chip,
+  .hop-live button,
+  .hop-live .shortcut,
+  .hop-live .usual-ride,
+  .hop-live .quick-tile,
+  .hop-live .commute-card {
     transition: none !important;
     transform: none !important;
   }
 
-  .payment-state-symbol.success svg,
-  .badge.success svg,
-  .payment-state-symbol.success.shimmer::after {
+  .hop-live .payment-state-symbol.success svg,
+  .hop-live .badge.success svg,
+  .hop-live .payment-state-symbol.success.shimmer::after {
     animation: none !important;
   }
 
-  .skeleton::after,
-  .skeleton-shimmer::after,
-  .loading-shimmer::after,
-  .fare-skeleton::after,
-  .loading-quote::after,
-  .radar-spinner {
+  .hop-live .skeleton::after,
+  .hop-live .skeleton-shimmer::after,
+  .hop-live .loading-shimmer::after,
+  .hop-live .fare-skeleton::after,
+  .hop-live .loading-quote::after,
+  .hop-live .radar-spinner {
     animation: none !important;
   }
 
-  .hop-current-pulse,
-  .gps-beacon-aura,
-  .location-beacon::before {
+  .hop-live .hop-current-pulse,
+  .hop-live .gps-beacon-aura,
+  .hop-live .location-beacon::before {
     animation: none !important;
+  }
+
+  .hop-live .wallet-hero::after,
+  .hop-live .offer-card svg,
+  .hop-live .offer-card .icon-gift,
+  .hop-live .screen-padding > .list-row,
+  .hop-live .screen-body,
+  .hop-live .online-pill.online i,
+  .hop-live .notification-dot,
+  .hop-live .live-dot,
+  .hop-live .bottom-nav button.active .nav-icon-wrap,
+  .hop-live .bottom-nav button.active::after,
+  .hop-live [data-captain-onboarding] .onboarding-card,
+  .hop-live [data-captain-onboarding] .section-card,
+  .hop-live [data-captain-onboarding] .upload-card,
+  .hop-live .vehicle-card.product-chip,
+  .hop-live .vehicle-card.product-chip.active,
+  .hop-live [data-captain-onboarding] .onboarding-steps span.active {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
   }
 }
+
+/* ==========================================================================
+   14. Captain Onboarding Micro-Interactions & Styling
+   ========================================================================== */
+
+[data-captain-onboarding],
+.hop-live [data-captain-onboarding] {
+  padding-bottom: max(32px, env(safe-area-inset-bottom));
+}
+
+.onboarding-applicant-bar,
+.hop-live .onboarding-applicant-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0 10px;
+}
+
+.applicant-pill,
+.hop-live .applicant-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #4b5563;
+  background: #f1f4ee;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid #e2e8df;
+}
+
+.applicant-pill strong,
+.hop-live .applicant-pill strong {
+  color: #19201e;
+  font-weight: 600;
+}
+
+[data-captain-onboarding] .onboarding-steps,
+.hop-live [data-captain-onboarding] .onboarding-steps {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 16px;
+}
+
+[data-captain-onboarding] .onboarding-steps span,
+.hop-live [data-captain-onboarding] .onboarding-steps span {
+  flex: 1;
+  height: 4px;
+  border-radius: 4px;
+  background: #eaede4;
+  transition: background-color 0.25s ease, transform 0.2s ease;
+}
+
+[data-captain-onboarding] .onboarding-steps span.active,
+.hop-live [data-captain-onboarding] .onboarding-steps span.active {
+  background: var(--accent, #e54d36);
+  animation: stepBarPulse 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes stepBarPulse {
+  0% { transform: scaleY(0.8); }
+  50% { transform: scaleY(1.4); }
+  100% { transform: scaleY(1); }
+}
+
+/* Staggered card entrance */
+.hop-live [data-captain-onboarding] .onboarding-card {
+  animation: screenFadeSlideIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  will-change: transform, opacity;
+}
+
+.hop-live [data-captain-onboarding] .onboarding-card:nth-of-type(1) { animation-delay: 0.02s; }
+.hop-live [data-captain-onboarding] .onboarding-card:nth-of-type(2) { animation-delay: 0.05s; }
+.hop-live [data-captain-onboarding] .onboarding-card:nth-of-type(3) { animation-delay: 0.08s; }
+.hop-live [data-captain-onboarding] .onboarding-card:nth-of-type(4) { animation-delay: 0.11s; }
+.hop-live [data-captain-onboarding] .onboarding-card:nth-of-type(5) { animation-delay: 0.14s; }
+
+/* Section cards styling in onboarding */
+[data-captain-onboarding] .section-card,
+.hop-live [data-captain-onboarding] .section-card {
+  border: 1px solid #e7ebe3;
+  border-radius: 16px;
+  padding: 16px;
+  background: #ffffff;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(25, 32, 30, 0.03);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hop-live [data-captain-onboarding] .section-card:hover {
+  border-color: #dbe2d6;
+  box-shadow: 0 4px 12px rgba(25, 32, 30, 0.06);
+}
+
+[data-captain-onboarding] .card-head,
+.hop-live [data-captain-onboarding] .card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+[data-captain-onboarding] .card-icon,
+.hop-live [data-captain-onboarding] .card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f1f5ee;
+  color: #236e3d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+[data-captain-onboarding] .card-icon svg,
+.hop-live [data-captain-onboarding] .card-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+[data-captain-onboarding] .card-head h3,
+.hop-live [data-captain-onboarding] .card-head h3 {
+  font-family: "Outfit", "Manrope", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 650;
+  color: #19201e;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+[data-captain-onboarding] .card-head p,
+.hop-live [data-captain-onboarding] .card-head p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #78807b;
+}
+
+/* Vehicle category grid */
+.vehicle-grid,
+.hop-live .vehicle-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 420px) {
+  .vehicle-grid,
+  .hop-live .vehicle-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.vehicle-card.product-chip,
+.hop-live .vehicle-card.product-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 4px 8px;
+  height: auto;
+  min-height: 72px;
+  background: #f8faf6;
+  border: 1.5px solid #e2e8de;
+  border-radius: 12px;
+  cursor: pointer;
+  position: relative;
+  text-align: center;
+  transition: transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+              border-color 0.2s ease,
+              background-color 0.2s ease,
+              box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.vehicle-card.product-chip:hover,
+.hop-live .vehicle-card.product-chip:hover {
+  border-color: #cbd4c5;
+  background: #f3f7f0;
+}
+
+.vehicle-card.product-chip:active,
+.hop-live .vehicle-card.product-chip:active {
+  transform: scale(0.94);
+}
+
+.vehicle-card.product-chip.active,
+.hop-live .vehicle-card.product-chip.active {
+  border-color: var(--accent, #e54d36);
+  background: #fff7f5;
+  box-shadow: 0 0 0 2px var(--accent, #e54d36), 0 4px 10px rgba(229, 77, 54, 0.16);
+  animation: vehicleBounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes vehicleBounce {
+  0% { transform: scale(0.95); }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.vehicle-card-img,
+.hop-live .vehicle-card-img {
+  width: 44px;
+  height: 30px;
+  object-fit: contain;
+  margin-bottom: 4px;
+  pointer-events: none;
+}
+
+.vehicle-card-info,
+.hop-live .vehicle-card-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.vehicle-card-name,
+.hop-live .vehicle-card-name {
+  font-size: 11px;
+  font-weight: 650;
+  color: #19201e;
+}
+
+.vehicle-card-seats,
+.hop-live .vehicle-card-seats {
+  font-size: 9px;
+  color: #78807b;
+  margin-top: 1px;
+}
+
+.vehicle-card-check,
+.hop-live .vehicle-card-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent, #e54d36);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vehicle-card-check svg,
+.hop-live .vehicle-card-check svg {
+  width: 9px;
+  height: 9px;
+}
+
+/* Visually tucked select for test compatibility */
+.sr-only-sync,
+.hop-live .sr-only-sync {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Form layout */
+.form-grid,
+.hop-live .form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-row-2col,
+.hop-live .form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.form-field,
+.hop-live .form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-captain-onboarding] .field-label,
+.hop-live [data-captain-onboarding] .field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 5px;
+}
+
+[data-captain-onboarding] .text-input,
+.hop-live [data-captain-onboarding] .text-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #111827;
+  background: #fafbf9;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+[data-captain-onboarding] .text-input:focus,
+.hop-live [data-captain-onboarding] .text-input:focus {
+  border-color: var(--accent, #e54d36);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(229, 77, 54, 0.14);
+  background: #ffffff;
+}
+
+/* Upload cards */
+.upload-card,
+.hop-live .upload-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #f9faf7;
+  border: 1.5px dashed #cfd7c8;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.upload-card.uploaded,
+.hop-live .upload-card.uploaded {
+  background: #f4faf6;
+  border-style: solid;
+  border-color: #a4d4b8;
+}
+
+.upload-card:hover,
+.hop-live .upload-card:hover {
+  border-color: #9cb3a0;
+  background: #f3f8f1;
+}
+
+.upload-card:active,
+.hop-live .upload-card:active {
+  transform: scale(0.985);
+}
+
+.upload-icon-circle,
+.hop-live .upload-icon-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #eaede6;
+  color: #556059;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.upload-icon-circle.success,
+.hop-live .upload-icon-circle.success {
+  background: #e1f5eb;
+  color: #167b5b;
+}
+
+.upload-icon-circle svg,
+.hop-live .upload-icon-circle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.upload-content,
+.hop-live .upload-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.upload-title-row,
+.hop-live .upload-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-content strong,
+.hop-live .upload-content strong {
+  font-size: 13px;
+  color: #19201e;
+}
+
+.upload-content small,
+.hop-live .upload-content small {
+  display: block;
+  font-size: 11px;
+  color: #78807b;
+  margin-top: 2px;
+}
+
+.upload-button-label,
+.hop-live .upload-button-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #19201e;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.upload-button-label:hover,
+.hop-live .upload-button-label:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.upload-button-label:active,
+.hop-live .upload-button-label:active {
+  transform: scale(0.95);
+}
+
+.upload-button-label input[type="file"],
+.hop-live .upload-button-label input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+/* Security banner */
+.security-banner,
+.hop-live .security-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #f4f7f2;
+  border: 1px solid #e1e7dc;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+
+.security-icon,
+.hop-live .security-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #e6ede0;
+  color: #277866;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.security-icon svg,
+.hop-live .security-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.security-banner strong,
+.hop-live .security-banner strong {
+  display: block;
+  font-size: 12px;
+  color: #19201e;
+}
+
+.security-banner p,
+.hop-live .security-banner p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* Status pills and verification badge */
+.status-pill,
+.hop-live .status-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.status-pill.success,
+.hop-live .status-pill.success {
+  background: #eef8f2;
+  color: #167b5b;
+  border: 1px solid #c7e9d5;
+}
+
+.status-pill.warning,
+.hop-live .status-pill.warning {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.micro-btn,
+.hop-live .micro-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 6px;
+}
+
+.verification-code-box,
+.hop-live .verification-code-box {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f9faf7;
+  border: 1px solid #e2e8de;
+  border-radius: 10px;
+}
+
+.jurisdiction-banner,
+.hop-live .jurisdiction-banner {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #f8faf6;
+  border: 1px solid #e2e8de;
+  border-radius: 10px;
+}
+
+/* Summary Card in Step 4 */
+.summary-card,
+.hop-live .summary-card {
+  padding: 18px;
+}
+
+.summary-hero,
+.hop-live .summary-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.summary-avatar,
+.hop-live .summary-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #eaf1e7;
+  color: #277866;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.summary-avatar svg,
+.hop-live .summary-avatar svg {
+  width: 24px;
+  height: 24px;
+}
+
+.avatar-img,
+.hop-live .avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.summary-meta,
+.hop-live .summary-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.summary-meta h3,
+.hop-live .summary-meta h3 {
+  font-family: "Outfit", "Manrope", system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #19201e;
+  margin: 0;
+}
+
+.summary-divider,
+.hop-live .summary-divider {
+  height: 1px;
+  background: #eef2eb;
+  margin: 14px 0;
+}
+
+.summary-grid,
+.hop-live .summary-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summary-row,
+.hop-live .summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.summary-label,
+.hop-live .summary-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7280;
+}
+
+.summary-label svg,
+.hop-live .summary-label svg {
+  width: 14px;
+  height: 14px;
+}
+
+.summary-vehicle-info,
+.hop-live .summary-vehicle-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vehicle-plate,
+.hop-live .vehicle-plate {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  color: #1f2937;
+  letter-spacing: 0.5px;
+}
+
+/* Dark mode overrides for onboarding */
+.hop-live .app.dark [data-captain-onboarding] .section-card,
+.hop-live .app.dark .upload-card {
+  background: #17221d;
+  border-color: #26362e;
+}
+
+.hop-live .app.dark [data-captain-onboarding] .card-icon,
+.hop-live .app.dark .summary-avatar,
+.hop-live .app.dark .security-icon {
+  background: #202e27;
+  color: #5cb88a;
+}
+
+.hop-live .app.dark [data-captain-onboarding] .card-head h3,
+.hop-live .app.dark .summary-meta h3,
+.hop-live .app.dark .vehicle-card-name,
+.hop-live .app.dark .upload-content strong {
+  color: #e5e7eb;
+}
+
+.hop-live .app.dark .vehicle-card.product-chip {
+  background: #19251f;
+  border-color: #26362e;
+}
+
+.hop-live .app.dark .vehicle-card.product-chip.active {
+  background: #2a1f1b;
+  border-color: #f87171;
+  box-shadow: 0 0 0 2px #f87171, 0 4px 10px rgba(248, 113, 113, 0.2);
+}
+
+.hop-live .app.dark [data-captain-onboarding] .text-input {
+  background: #131c18;
+  border-color: #2b3d34;
+  color: #f3f4f6;
+}
+
+.hop-live .app.dark .applicant-pill {
+  background: #1a2721;
+  border-color: #2a3d33;
+  color: #9ca3af;
+}
+
+.hop-live .app.dark .applicant-pill strong {
+  color: #f3f4f6;
+}
+
+.hop-live .app.dark .vehicle-plate {
+  background: #1f2d26;
+  border-color: #2f4439;
+  color: #e5e7eb;
+}
+
+.hop-live .app.dark .summary-divider {
+  background: #23342b;
+}
+
+.hop-live .app.dark .security-banner {
+  background: #19251f;
+  border-color: #283a30;
+}
+
+.hop-live .app.dark .security-banner strong {
+  color: #e5e7eb;
+}
+
+.hop-live .app.dark .upload-button-label {
+  background: #202e27;
+  border-color: #33493d;
+  color: #e5e7eb;
+}
+

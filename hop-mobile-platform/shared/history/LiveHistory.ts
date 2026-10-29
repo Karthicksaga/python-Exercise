@@ -19,6 +19,11 @@ export class LiveHistory {
   private loading = false;
   private busy = false;
   private report?: Ride;
+  private reportDraft = "";
+  private input = (e: Event) => {
+    const field = e.target as HTMLTextAreaElement;
+    if (field.id === "history-report") this.reportDraft = field.value;
+  };
   private cancel?: Ride;
   constructor(
     private app: HTMLElement,
@@ -29,10 +34,12 @@ export class LiveHistory {
     private rebook: (r: Ride) => Promise<void>,
     private pay: (r: Ride) => void,
   ) {
+    app.addEventListener("input", this.input, true);
     app.addEventListener("click", this.click, true);
     app.addEventListener("keydown", this.keydown, true);
   }
   destroy() {
+    this.app.removeEventListener("input", this.input, true);
     this.app.removeEventListener("click", this.click, true);
     this.app.removeEventListener("keydown", this.keydown, true);
   }
@@ -67,7 +74,7 @@ export class LiveHistory {
         return `<article class="activity-card"><div class="row"><span class="badge neutral">${escape(ride.status)}</span><strong>${money((ride.payable_paise ?? ride.fare_paise) / 100)}</strong></div><p class="small muted">${escape(date(ride.created_at))} · ${escape(ride.vehicle_category)} · ${escape(ride.trip_type || "city")}</p><div class="route-line"><i class="location-dot"></i><strong>${escape(ride.pickup_label)}</strong></div><div class="route-line"><i class="location-dot destination"></i><strong>${escape(ride.dropoff_label)}</strong></div>${ride.driver_name ? `<p class="small">Captain: ${escape(ride.driver_name)} · ${escape(ride.vehicle_number || "")}</p>` : ""}<div class="product-row">${active(ride) ? `<button class="secondary" data-history-track="${escape(ride.id)}">Track ride</button>${ride.mine ? `<button class="text-button" data-history-cancel="${escape(ride.id)}">Cancel ride</button>` : ""}` : this.role === "rider" ? `<button class="secondary" data-history-rebook="${escape(ride.id)}">Book again</button>` : ""}${["in_progress", "completed"].includes(ride.status) ? `<button class="text-button" data-history-pay="${escape(ride.id)}">Payment & receipt</button>` : ""}<button class="text-button" data-history-report="${escape(ride.id)}">Report an issue</button>${ride.status === "completed" ? `<button class="text-button" data-history-receipt="${escape(ride.id)}">Download statement</button>` : ""}</div></article>`;
       })
       .join("");
-    const content = `<div class="tabs" role="tablist" aria-label="Ride history">${["Ongoing", ...(this.role === "rider" ? ["Upcoming"] : []), "Past"].map((t) => `<button role="tab" aria-selected="${t === this.tab}" data-history-tab="${t}" class="${t === this.tab ? "active" : ""}">${t}</button>`).join("")}</div>${this.error ? `<div role="alert" class="notice-box">${escape(this.error)}<button class="text-button" data-history-retry>Retry</button></div>` : ""}${this.loading ? '<p role="status">Loading upcoming rides…</p>' : cards || `<div class="empty-state"><h2>${this.tab === "Ongoing" ? "No active rides" : this.tab === "Upcoming" ? "No upcoming rides" : "No past rides"}</h2><button class="primary" data-history-book>Book a ride</button>${this.tab !== "Past" ? '<button class="text-button" data-history-tab="Past">View past rides</button>' : ""}</div>`}${items.length > 10 ? `<div class="row"><button class="secondary" data-history-page="-1" ${this.page === 0 ? "disabled" : ""}>Previous</button><span>Page ${this.page + 1} of ${Math.ceil(items.length / 10)}</span><button class="secondary" data-history-page="1" ${(this.page + 1) * 10 >= items.length ? "disabled" : ""}>Next</button></div>` : ""}<p class="micro muted">Latest 50 participant trips supplied by the server. Older archive search is not available.</p>${this.report ? `<div class="section-card"><label class="field-label" for="history-report">Issue for ${escape(this.report.pickup_label)} → ${escape(this.report.dropoff_label)}</label><textarea class="text-input" id="history-report" maxlength="2000"></textarea><button class="primary" data-history-send-report>Submit report</button><button class="text-button" data-history-dismiss>Close</button></div>` : ""}${this.cancel ? `<div class="notice-box"><p>Cancel this ride? The server applies the cancellation policy.</p><button class="primary" data-history-confirm-cancel>Confirm cancellation</button><button class="secondary" data-history-dismiss>Keep ride</button></div>` : ""}`;
+    const content = `<div class="tabs" role="tablist" aria-label="Ride history">${["Ongoing", ...(this.role === "rider" ? ["Upcoming"] : []), "Past"].map((t) => `<button role="tab" aria-selected="${t === this.tab}" data-history-tab="${t}" class="${t === this.tab ? "active" : ""}">${t}</button>`).join("")}</div>${this.error ? `<div role="alert" class="notice-box">${escape(this.error)}<button class="text-button" data-history-retry>Retry</button></div>` : ""}${this.loading ? '<p role="status">Loading upcoming rides…</p>' : cards || `<div class="empty-state"><h2>${this.tab === "Ongoing" ? "No active rides" : this.tab === "Upcoming" ? "No upcoming rides" : "No past rides"}</h2><button class="primary" data-history-book>Book a ride</button>${this.tab !== "Past" ? '<button class="text-button" data-history-tab="Past">View past rides</button>' : ""}</div>`}${items.length > 10 ? `<div class="row"><button class="secondary" data-history-page="-1" ${this.page === 0 ? "disabled" : ""}>Previous</button><span>Page ${this.page + 1} of ${Math.ceil(items.length / 10)}</span><button class="secondary" data-history-page="1" ${(this.page + 1) * 10 >= items.length ? "disabled" : ""}>Next</button></div>` : ""}<p class="micro muted">Latest 50 participant trips supplied by the server. Older archive search is not available.</p>${this.report ? `<div class="section-card"><label class="field-label" for="history-report">Issue for ${escape(this.report.pickup_label)} → ${escape(this.report.dropoff_label)}</label><textarea class="text-input" id="history-report" maxlength="2000">${escape(this.reportDraft)}</textarea><button class="primary" data-history-send-report>Submit report</button><button class="text-button" data-history-dismiss>Close</button></div>` : ""}${this.cancel ? `<div class="notice-box"><p>Cancel this ride? The server applies the cancellation policy.</p><button class="primary" data-history-confirm-cancel>Confirm cancellation</button><button class="secondary" data-history-dismiss>Keep ride</button></div>` : ""}`;
     if (this.lastHost !== host || this.lastContent !== content) {
       host.innerHTML = content;
       this.lastHost = host;

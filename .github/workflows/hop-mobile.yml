@@ -80,7 +80,7 @@ jobs:
     env:
       APP: ${{ matrix.app }}
       BUILD_TYPE: ${{ inputs.build_type || 'debug' }}
-      VITE_MOBILE_API_URL: ${{ vars.HOP_API_URL }}
+      VITE_MOBILE_API_URL: ${{ (matrix.app == 'rider' && vars.HOP_RIDER_API_URL || matrix.app == 'captain' && vars.HOP_CAPTAIN_API_URL) || vars.HOP_API_URL }}
       VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.HOP_GOOGLE_MAPS_API_KEY }}
       HOP_VERSION_CODE: ${{ github.run_number }}
       HOP_VERSION_NAME: 1.0.${{ github.run_number }}

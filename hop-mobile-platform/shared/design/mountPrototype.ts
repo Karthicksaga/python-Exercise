@@ -10,6 +10,8 @@ export async function mountPrototype(role: "rider" | "captain") {
   );
   const referenceMode =
     new URLSearchParams(location.search).get("map") === "reference";
+  // Reference mode compares the canonical paint without live-only animation layers.
+  if (!referenceMode) await import("./animations.css");
   document.body.innerHTML = `${
     referenceMode
       ? `
@@ -68,6 +70,9 @@ export async function mountPrototype(role: "rider" | "captain") {
   }
   // Explicit reference mode exists for pixel comparison only. Normal apps use live maps.
   if (new URLSearchParams(location.search).get("map") !== "reference") {
+    // Keep Home hidden until the saved session is checked. Login is the
+    // default live launch screen; design/reference previews remain isolated.
+    prototypeBridge.go("auth");
     const { LiveJourney } = await import("../journey/LiveJourney");
     const journey = new LiveJourney(
       document.querySelector<HTMLElement>("#app")!,
@@ -77,12 +82,16 @@ export async function mountPrototype(role: "rider" | "captain") {
     window.addEventListener("pagehide", () => journey.destroy(), {
       once: true,
     });
+    await journey.ready;
     const { PrototypeMap } = await import("../maps/PrototypeMap");
     const map = new PrototypeMap(
       document.querySelector<HTMLElement>("#app")!,
       role,
     );
     window.addEventListener("pagehide", () => map.destroy(), { once: true });
+    const { MotionController } = await import("./MotionController");
+    const motion = new MotionController(host);
+    window.addEventListener("pagehide", () => motion.destroy(), { once: true });
   }
   ready();
   document.title = `Hop ${role === "rider" ? "Rider" : "Captain"} — prototype replica`;

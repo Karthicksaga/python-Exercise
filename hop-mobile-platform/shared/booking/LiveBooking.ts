@@ -1,5 +1,6 @@
 import { api } from "../services/client";
 import { escape } from "../helpers";
+import { icon } from "../icons";
 import type { Point, Quote } from "../services/contracts";
 import type { OnboardingBridge as Bridge } from "../onboarding/CaptainOnboarding";
 type Recognition = {
@@ -122,7 +123,12 @@ export class LiveBooking {
     return out;
   }
   advanced() {
-    return this.tripType !== "city" || !!this.promo || this.pink || this.routeIndex > 0;
+    return (
+      this.tripType !== "city" ||
+      !!this.promo ||
+      this.pink ||
+      this.routeIndex > 0
+    );
   }
   private field(key: string, label: string, value: unknown, type = "text") {
     const id =
@@ -233,7 +239,7 @@ export class LiveBooking {
     host.innerHTML =
       (plan
         ? ""
-        : `<div class="sheet-handle"></div><div class="modal-title"><h2>${({ stops: "Stops", promo: "Promo code", options: "Ride options", passenger: "Who's riding?", voice: "Speak your trip" } as Record<string, string>)[modal]}</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">×</button></div>`) +
+        : `<div class="sheet-handle"></div><div class="modal-title"><h2>${({ stops: "Stops", promo: "Promo code", options: "Ride options", passenger: "Who's riding?", voice: "Speak your trip" } as Record<string, string>)[modal]}</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">${icon("close")}</button></div>`) +
       body +
       `<p role="status" class="small muted">${escape(this.status)}</p>`;
     if (plan)

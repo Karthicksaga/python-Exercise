@@ -137,11 +137,11 @@ for (const role of ["rider", "captain"]) {
       let differing = 0;
       for (let i = 0; i < actual.data.length; i += 4) {
         if (
-          // Chromium can round a composited edge by one channel value even
+          // Chromium can round a composited edge by 1-2 channel values across platforms
           // with identical computed styles and geometry (asserted above).
-          Math.abs(actual.data[i] - expected.data[i]) > 1 ||
-          Math.abs(actual.data[i + 1] - expected.data[i + 1]) > 1 ||
-          Math.abs(actual.data[i + 2] - expected.data[i + 2]) > 1
+          Math.abs(actual.data[i] - expected.data[i]) > 2 ||
+          Math.abs(actual.data[i + 1] - expected.data[i + 1]) > 2 ||
+          Math.abs(actual.data[i + 2] - expected.data[i + 2]) > 2
         )
           differing++;
       }

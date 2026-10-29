@@ -26,7 +26,11 @@ Open Rider at http://localhost:5183/ and Captain at http://localhost:5184/. Exis
 
 ## Remaining migration/device work
 
-The applications are not a full production replacement yet. Scheduled, shared, rental and outstation booking options, extra stops, fare offers/promos/passenger overrides, payments/settlement, complete profile/onboarding/wallet/history/safety integrations and the full cockpit HUD remain to be ported. Unsupported options are rejected in the connected immediate city-booking path. Other legacy prototype screens can still contain clearly labelled sample content.
+The mobile adapters now support backend-priced city/rental/outstation quotes, resolved stops, promo validation, shared/favourite-first dispatch, fare offers, named/family passengers and city scheduling. Product availability remains controlled by the backend. Scheduled city rides accept Cash/UPI and cannot carry extras the scheduling API does not support. Voice destination search uses SpeechRecognition when available and otherwise asks the user to type. No synthetic route or frontend fare is substituted when the APIs fail.
+
+History has Ongoing/Upcoming/Past views, ten-item local pages over the server's latest 50 trips, tracking, cancellation, fresh rebooking, reports, payment links and private trip-statement downloads. Profile/business fields, phone verification, portrait uploads, preferences, emergency contacts, incident/lost-item reports, revocable trip links, family/referrals/saved places, wallet top-ups, Captain earnings/ledger/payout requests and goals use the existing backend. Other unsupported prototype actions are blocked instead of reporting fabricated success.
+
+The cockpit uses backend navigation instructions and trip distance/time; unavailable speed, speed limits, lane and compass telemetry remain blank rather than displaying simulated measurements. Statement/account downloads use the OS share sheet on native devices. The source remains a tested integration foundation, not an accepted production release. Backend archive pagination, background location, full translation, emergency-service escalation, provider refunds/reconciliation and some advanced operations need separate implementation or release verification.
 
 Real road testing requires authenticated Rider/Captain accounts, an approved online Captain, location permission and a configured backend routing provider. Native background tracking, push delivery, Firebase configuration, key restrictions and release builds require separate physical-device verification. The automated tests use controlled API/GPS fixtures and do not prove live two-device delivery.
 
@@ -84,7 +88,7 @@ The **Hop Mobile Android** workflow (`.github/workflows/hop-mobile.yml`) validat
 
 Configure GitHub repository **Settings → Secrets and variables → Actions**:
 
-- Variable `HOP_API_URL`: the existing backend's phone-accessible HTTPS origin, e.g. `https://api.example.com`. No `/api` suffix. Localhost and emulator addresses are rejected. Backend authentication, OTP and routing providers must be operational.
+- Variables `HOP_RIDER_API_URL` and `HOP_CAPTAIN_API_URL`: each app's phone-accessible HTTPS gateway origin. A legacy `HOP_API_URL` fallback is supported only for a shared API that preserves `X-Hop-App`; never point Captain at the Rider gateway. For example, e.g. `https://api.example.com`. No `/api` suffix. Localhost and emulator addresses are rejected. Backend authentication, OTP and routing providers must be operational.
 - Secret `HOP_GOOGLE_MAPS_API_KEY`: the client Maps JavaScript key used by the WebView. This is bundled into the app; apply Google API/application restrictions compatible with the Capacitor WebView. A native Android Maps SDK key is not interchangeable with this JavaScript integration. If absent or rejected, OSM is used.
 - Optional secrets `HOP_RIDER_GOOGLE_SERVICES_JSON_BASE64` and `HOP_CAPTAIN_GOOGLE_SERVICES_JSON_BASE64`: base64 of the respective Firebase `google-services.json`, matching `com.hop.rider` / `com.hop.captain`. Required for native push delivery, separate from location/maps.
 - For **release**: secrets `HOP_ANDROID_KEYSTORE_BASE64`, `HOP_ANDROID_STORE_PASSWORD`, `HOP_ANDROID_KEY_ALIAS`, `HOP_ANDROID_KEY_PASSWORD`. Use the same securely stored signing key for subsequent updates. Missing credentials stop the build. Release produces a signed APK for direct testing and an AAB for store distribution.
@@ -100,3 +104,13 @@ Location access is requested on first use of current location, Follow me or Capt
 The connected Captain flow resumes private server drafts, selects configured operating cities, verifies phone ownership, uploads real portrait/document images, and submits credentials for operator review. There are no neighbourhood-zone approvals in the mobile flow. Existing backend service-area restrictions still apply.
 
 When `/api/config` enables `development`, **Testing mode** defaults to optional fields, documents and declaration so incomplete drafts can move through all four screens. Turn the toggle off to exercise required-field validation. This setting does not fabricate documents, credentials, approval or successful submissions: final submission and going online remain subject to backend checks. Production keeps required onboarding validation.
+
+## Completion follow-up — 29 October 2026
+
+See `docs/IMPLEMENTATION-STATUS-2026-10-29.md` for completed adapters, test evidence and remaining external acceptance gates. The earlier requirements review is preserved as the baseline, not the current completion status. Local APK/release builds now reject missing, emulator or insecure backend origins before building. Configure the actual phone-accessible HTTPS backend rather than using an emulator address.
+
+### Verified staging phone builds
+
+Rider uses `https://hop-staging-rider-qp262su4sq-el.a.run.app`; Captain uses its separately verified gateway `https://hop-staging-captain-qp262su4sq-el.a.run.app`. Both `/api/config` endpoints returned HTTP 200 with two areas, ten vehicle configurations and `development: false` on 29 October 2026. Local ignored `.env.android.local` files contain the respective `VITE_MOBILE_API_URL`/`BACKEND_URL` values. These are production-mode staging services: development-only optional onboarding is not enabled by these builds.
+
+Both debug APKs were compiled with Java 21 and their APK signatures verified. They still require physical-device testing; no phone was connected during this build. CI must have the separate per-role variables configured to reproduce these gateway selections.
