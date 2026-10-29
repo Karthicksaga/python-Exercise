@@ -112,13 +112,20 @@ test("successful Captain submission waits for operator approval", async ({
   expect(calls.some((c) => c.path.endsWith("/online"))).toBe(false);
 });
 
-test("development mode still requires complete Captain onboarding", async ({ page }) => {
+test("development testing mode makes empty onboarding fields optional", async ({
+  page,
+}) => {
   await setup(page);
-  await expect(page.getByLabel("Optional onboarding for testing")).toHaveCount(0);
+  await expect(
+    page.getByLabel("Optional onboarding for testing"),
+  ).toBeChecked();
   await page.getByLabel("Your legal name").fill("");
+  await page.getByLabel("Operating city").selectOption("");
   await page.locator('[data-action="onboarding-next"]').click();
-  await expect(page.getByRole("alert")).toBeVisible();
-  await expect(page.locator(".eyebrow")).toContainText("STEP 1 OF 4");
+  await expect(page.locator(".eyebrow")).toContainText("STEP 2 OF 4");
+  await page.getByLabel("Vehicle registration number").fill("");
+  await page.locator('[data-action="onboarding-next"]').click();
+  await expect(page.locator(".eyebrow")).toContainText("STEP 3 OF 4");
 });
 
 test("pending Captain sees only review status until backend approval unlocks navigation", async ({ page }) => {
