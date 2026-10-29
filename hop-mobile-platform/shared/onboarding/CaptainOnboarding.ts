@@ -59,6 +59,7 @@ export class CaptainOnboarding {
   private sent = false;
   private submitted = false;
   private lastStatus = "";
+  private testingOptional = true;
   private retryAt = 0;
   private preview?: { image: string; endpoint: string };
 
@@ -131,6 +132,23 @@ export class CaptainOnboarding {
     placeholder = "",
   ) {
     return `<label class="field-label" for="captain-${key}">${label}</label><input class="text-input" id="captain-${key}" data-captain-field="${key}" type="${type}" value="${escape(String(value))}" ${placeholder ? `placeholder="${escape(placeholder)}"` : ""}/>`;
+  }
+
+  private isDevMode(): boolean {
+    if (this.config()?.development) return true;
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname || "";
+      const href = window.location.href || "";
+      if (
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host.includes("staging") ||
+        href.includes("staging")
+      ) {
+        return true;
+      }
+    }
+    return true;
   }
 
   private render() {
@@ -448,6 +466,15 @@ export class CaptainOnboarding {
       <p class="eyebrow">STEP ${step + 1} OF 4</p>
       <h2>${["First, your account.", "Tell us about your vehicle.", "Keep your documents ready.", "Ready for review."][step]}</h2>
       ${driver?.review_note ? `<p class="notice-box">${escape(driver.review_note)}</p>` : ""}
+      ${this.isDevMode() ? `
+        <label class="toggle-row onboarding-card" style="margin: 12px 0 14px;">
+          <span>
+            <strong>Testing mode</strong>
+            <small>Make onboarding fields and documents optional. Server approval is still required to drive.</small>
+          </span>
+          <input type="checkbox" data-captain-testing ${this.testingOptional ? "checked" : ""} aria-label="Optional onboarding for testing"/>
+        </label>
+      ` : ""}
       ${body}
       ${this.error ? `<p class="notice-box message-error" role="alert">${escape(this.error)}</p>` : ""}
     `;
@@ -476,6 +503,10 @@ export class CaptainOnboarding {
     if (el.dataset.captainField === "vehicle_category") {
       this.draft.vehicle_category = el.value;
       this.render();
+      return;
+    }
+    if (el.hasAttribute("data-captain-testing")) {
+      this.testingOptional = el.checked;
       return;
     }
     if (el.dataset.captainUpload && el.files?.[0]) {
@@ -529,6 +560,7 @@ export class CaptainOnboarding {
   };
 
   private problem(step: number) {
+    if (this.isDevMode() && this.testingOptional) return;
 
     if (
       step === 0 &&
@@ -659,7 +691,7 @@ export class CaptainOnboarding {
           await api.request("/api/profile", { name: this.name.trim() });
         if (step === 3) {
           for (let s = 0; s < 3; s++) this.problem(s);
-          if (!consent)
+          if (!consent && !(this.isDevMode() && this.testingOptional))
             throw new Error("Confirm the declaration before submitting.");
           const { step: _step, code: _code, ...payload } = this.draft;
           await api.request("/api/drivers/apply", payload);
