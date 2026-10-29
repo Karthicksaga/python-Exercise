@@ -1,8 +1,11 @@
-export type Coordinate = { lat: number; lng: number };
+export type Coordinate = {
+  lat: number;
+  lng: number;
+  heading?: number;
+};
 export type Vehicle = Coordinate & {
   id: string;
   category: string;
-  heading?: number;
 };
 export type MapData = {
   center: Coordinate;
@@ -11,8 +14,11 @@ export type MapData = {
   pickup?: Coordinate;
   dropoff?: Coordinate;
   route?: Coordinate[];
+  following?: boolean;
 };
+export type MapPreferences = { traffic: boolean; satellite: boolean; lowdata: boolean; night: boolean };
 export interface MapView {
+  setPreferences(preferences: MapPreferences): void;
   update(data: MapData): void;
   center(point: Coordinate): void;
   fit(points: Coordinate[]): void;

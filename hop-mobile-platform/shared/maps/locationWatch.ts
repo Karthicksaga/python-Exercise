@@ -14,7 +14,14 @@ export async function watchLocation(
       (p, error) => {
         if (error) onError();
         else if (p)
-          onPoint({ lat: p.coords.latitude, lng: p.coords.longitude });
+          onPoint({
+            lat: p.coords.latitude,
+            lng: p.coords.longitude,
+            heading:
+              p.coords.heading != null && !Number.isNaN(p.coords.heading)
+                ? p.coords.heading
+                : undefined,
+          });
       },
     );
     return () => {
@@ -22,7 +29,15 @@ export async function watchLocation(
     };
   }
   const id = navigator.geolocation.watchPosition(
-    (p) => onPoint({ lat: p.coords.latitude, lng: p.coords.longitude }),
+    (p) =>
+      onPoint({
+        lat: p.coords.latitude,
+        lng: p.coords.longitude,
+        heading:
+          p.coords.heading != null && !Number.isNaN(p.coords.heading)
+            ? p.coords.heading
+            : undefined,
+      }),
     onError,
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
   );

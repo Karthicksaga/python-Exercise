@@ -2000,6 +2000,7 @@ h3,
   --muted: #a0ad9b;
   --line: #33412f;
   --accent-soft: #402e28;
+  --surface: #1c271c;
   background: #182118;
   color: var(--ink);
 }
@@ -2017,7 +2018,8 @@ h3,
     .quick-tile,
     .account-group,
     .vehicle,
-    .secondary
+    .secondary,
+    .upload
   ) {
   background: #1c271c;
   color: var(--ink);
@@ -2740,3 +2742,9 @@ h3,
 
 /* Approved typography: Outfit display, Inter reading text. */
 .amount,.payment-amount,.footer-price strong,.vehicle-price{font-variant-numeric:tabular-nums}
+
+/* Private image pickers keep the approved upload-card layout and keyboard access. */
+.upload:has(input[type="file"]) { position: relative; }
+.upload input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.upload:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+[data-captain-onboarding] img, [data-live-account] img { max-width: 100%; }

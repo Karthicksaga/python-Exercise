@@ -1,0 +1,23 @@
+// Shared CI versioning and release signing for both independently installed apps.
+def buildCode = System.getenv('HOP_VERSION_CODE') ?: '1'
+if (!(buildCode ==~ /[0-9]+/) || buildCode.toLong() < 1 || buildCode.toLong() > 2100000000L) {
+    throw new GradleException('HOP_VERSION_CODE must be an Android version code between 1 and 2100000000')
+}
+android.defaultConfig.versionCode = buildCode.toInteger()
+android.defaultConfig.versionName = System.getenv('HOP_VERSION_NAME') ?: '1.0-local'
+
+def signingPath = System.getenv('HOP_ANDROID_KEYSTORE')
+def releaseRequested = gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }
+if (releaseRequested) {
+    ['HOP_ANDROID_KEYSTORE', 'HOP_ANDROID_STORE_PASSWORD', 'HOP_ANDROID_KEY_ALIAS', 'HOP_ANDROID_KEY_PASSWORD'].each {
+        if (!System.getenv(it)) throw new GradleException("Missing release signing configuration: ${it}")
+    }
+    if (!file(signingPath).isFile()) throw new GradleException('Release keystore file is missing')
+    android.signingConfigs.create('hopRelease') {
+        storeFile file(signingPath)
+        storePassword System.getenv('HOP_ANDROID_STORE_PASSWORD')
+        keyAlias System.getenv('HOP_ANDROID_KEY_ALIAS')
+        keyPassword System.getenv('HOP_ANDROID_KEY_PASSWORD')
+    }
+    android.buildTypes.release.signingConfig = android.signingConfigs.hopRelease
+}

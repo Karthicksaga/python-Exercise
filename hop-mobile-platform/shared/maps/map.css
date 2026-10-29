@@ -32,6 +32,153 @@
   background: none;
   box-shadow: none;
 }
+.hop-map-canvas .leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Prominent SVG Teardrop Pins (Pickup & Dropoff) */
+.hop-marker-pin {
+  position: relative;
+  width: 32px;
+  height: 42px;
+  cursor: pointer;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.hop-marker-pin:hover {
+  transform: scale(1.08);
+}
+.hop-marker-pin .hop-pin-svg {
+  display: block;
+  width: 32px;
+  height: 42px;
+}
+.hop-pin-badge {
+  position: absolute;
+  top: -19px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font: 700 9px/1.2 "Inter", -apple-system, sans-serif;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+}
+.hop-pickup-badge {
+  background: #167b5b;
+  color: #ffffff;
+}
+.hop-dropoff-badge {
+  background: #e54d36;
+  color: #ffffff;
+}
+
+/* Current Location Pulsing Marker & Directional Heading Beam */
+.hop-current-marker {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.hop-current-dot {
+  position: relative;
+  z-index: 4;
+  width: 14px;
+  height: 14px;
+  background: #2677df;
+  border: 2.5px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(38, 119, 223, 0.45);
+}
+.hop-current-halo {
+  position: absolute;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  background: rgba(38, 119, 223, 0.22);
+  border-radius: 50%;
+}
+.hop-current-pulse {
+  position: absolute;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(38, 119, 223, 0.6);
+  background: rgba(38, 119, 223, 0.15);
+  animation: hop-pulse-expand 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+@keyframes hop-pulse-expand {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+.hop-heading-cone {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  transition: transform 0.2s linear;
+}
+.hop-heading-beam {
+  position: absolute;
+  top: -38px;
+  left: -14px;
+  width: 28px;
+  height: 38px;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  background: linear-gradient(180deg, rgba(38, 119, 223, 0.55) 0%, rgba(38, 119, 223, 0) 100%);
+}
+
+/* Vehicle Marker */
+.hop-vehicle-marker {
+  width: 42px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s ease-out;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+}
+.hop-vehicle-icon {
+  width: 42px;
+  height: 30px;
+  object-fit: contain;
+}
+
+/* Route Polyline Direction Arrows */
+.hop-route-arrow {
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.hop-arrow-div {
+  background: transparent !important;
+  border: none !important;
+}
+
+.app.dark .hop-current-dot {
+  border-color: #d7e1ce;
+}
+.app.dark .hop-marker-pin {
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+}
 .app.dark .hop-map-status {
   background: #243021ed;
   color: #d7e1ce;
@@ -60,3 +207,7 @@
 }
 /* Do not flash sample cars/geometry while live adapters load asynchronously. */
 .hop-live .mini-car,.hop-live .map-pin,.hop-live .map-bubble,.hop-live .radar-pulse-wrap,.hop-live .map-art > svg{display:none}
+
+/* Darken only raster tiles; live markers, route and provider credits stay clear. */
+.hop-night-tiles .leaflet-tile-pane { filter: invert(0.9) hue-rotate(180deg) brightness(0.8) saturate(0.65); }
+.hop-live .toggle-row[data-map-pref]:disabled { opacity:0.55; cursor:not-allowed; }

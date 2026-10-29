@@ -14,8 +14,11 @@ Applies to all files inside hop-mobile-platform, for every model and agent.
 - Preserve accessibility, mobile safe areas, large text, dark mode, keyboard access, anchored actions and bounded content scrolling.
 - Run `npm run typecheck`, `npm run build`, and `npm run test:design` from this folder after changes.
 - Never update visual expectations to accept drift. Correct the implementation against the canonical source.
-- Hop Commute is intentionally disabled by user request. Keep its home control disabled and its navigation guard active until explicitly asked to enable it.
+- Hop Commute is intentionally disabled by user request. Keep its home control and review-navigation entries hidden and its navigation guard active until explicitly asked to enable it.
 - The login, payment and recovery designs are user-approved. Live implementations use shared/payments and shared/journey adapters; isolated design-only review links remain at `?prototype=login`, `?prototype=payment`, and `?prototype=states`; these review URLs must never mount live adapters, send SMS, charge money, or change device permissions.
 - Search must use the selected service area (initially the Chennai map area), not the first entry returned by `/api/config`. Preserve loading/auth/error results across re-renders.
 
 - Approved typography: Outfit for headings/amounts and Inter for body/controls. Variable fonts and licences are bundled locally; do not restore DM Sans/Manrope or add a runtime Google Fonts dependency.
+
+- Local browser testing defaults to the local development backend at `http://127.0.0.1:8081` for both Rider and Captain. Keep browser API calls on the Vite proxy and show backend-issued development OTPs; do not switch local UI testing to staging unless the user asks. Android staging/release configuration remains separate.
+- Captain onboarding is mandatory, including development mode. Before backend status `approved`, keep Captains on onboarding or pending review without map or main navigation. This supersedes the earlier optional-onboarding testing behavior. Only backend/operator approval unlocks Drive, Earnings, Trips and Account.

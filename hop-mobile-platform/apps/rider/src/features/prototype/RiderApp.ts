@@ -1232,12 +1232,46 @@ export class RiderApp {
              <button class="list-row" data-payment="${m}">
                <span class="list-icon">${icon(m === "Cash" ? "wallet" : m === "UPI" ? "phone" : "card")}</span>
                <span class="list-text"><strong>${m}</strong><small>${
-                 m === "Wallet" ? `Balance ${money(this.state.balance)}` : m === "Cash" ? "Pay captain at drop-off" : "Direct payment"
+                 m === "Wallet" ? `Balance ${money(this.state.balance)}` : m === "Cash" ? "Pay captain at drop-off" : m === "UPI" ? "Scan QR / UPI Intent at drop-off" : "Direct payment"
                }</small></span>
                ${this.state.payment === m ? icon("check") : icon("chevron")}
              </button>`
              )
              .join("")}`,
+        ];
+
+      case "upi-qr":
+        return [
+          "Direct UPI Payment",
+          `
+          <div class="empty-state" style="padding:16px 10px">
+            <div style="background:#fff;padding:12px;border-radius:12px;display:inline-block;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:12px">
+              <svg width="180" height="180" viewBox="0 0 180 180" fill="none">
+                <rect width="180" height="180" fill="white"/>
+                <rect x="15" y="15" width="45" height="45" rx="6" fill="#1b1c1d"/>
+                <rect x="23" y="23" width="29" height="29" rx="3" fill="white"/>
+                <rect x="29" y="29" width="17" height="17" rx="2" fill="#1b1c1d"/>
+                <rect x="120" y="15" width="45" height="45" rx="6" fill="#1b1c1d"/>
+                <rect x="128" y="23" width="29" height="29" rx="3" fill="white"/>
+                <rect x="134" y="29" width="17" height="17" rx="2" fill="#1b1c1d"/>
+                <rect x="15" y="120" width="45" height="45" rx="6" fill="#1b1c1d"/>
+                <rect x="23" y="128" width="29" height="29" rx="3" fill="white"/>
+                <rect x="29" y="134" width="17" height="17" rx="2" fill="#1b1c1d"/>
+                <circle cx="90" cy="90" r="14" fill="#dfb82d"/>
+                <text x="85" y="95" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1b1c1d">h</text>
+                <path d="M70 20h20M75 35h15M70 50h30M20 75h30M70 70h40M125 75h35M90 105v40M110 115h30M115 135h40M75 145h25" stroke="#1b1c1d" stroke-width="4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h2>Scan to Pay ${money(this.calculatedPrice)}</h2>
+            <p style="margin-top:4px">Captain UPI ID: <strong>suresh@oksbi</strong></p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+            <a href="upi://pay?pa=suresh@oksbi&pn=Captain Suresh&am=${this.calculatedPrice}&cu=INR&tn=HopRide" class="primary" style="text-align:center;display:block">
+              Open UPI App (GPay / PhonePe) ↗
+            </a>
+            <button class="secondary" data-action="close-modal">Done / Paid</button>
+          </div>
+          `,
         ];
 
       case "promo":

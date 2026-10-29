@@ -1,6 +1,7 @@
 import { icon } from "@shared/icons";
 import { escape, money, img, mapArt, notify } from "@shared/helpers";
 import { DriverOffer, EarningsPeriodData } from "@shared/types";
+import { driverAlertSound, goOnlineSound, goOfflineSound, acceptRideSound } from "@shared/sounds";
 
 
 export interface CaptainState {
@@ -118,7 +119,7 @@ export class CaptainApp {
       earningsPeriod: "Today",
       offerIndex: 0,
       cockpitMode: false,
-      serviceArea: "Chennai South (OMR & Velachery)",
+      serviceArea: "Tamil Nadu — State-wide Operations",
       serviceAreaRequest: null,
       homeMode: false,
       onboardStep: 0,
@@ -351,9 +352,9 @@ export class CaptainApp {
               <div class="sheet-handle"></div>
               <div class="zone-pill-row">
                 <button class="zone-pill" data-modal="service-area">
-                  ${icon("navigation", "tiny-icon")} Zone: ${escape(this.state.serviceArea)} 
-                  <span class="badge ${this.state.serviceAreaRequest ? "warn" : "green"}" style="font-size:9px;padding:2px 6px">
-                    ${this.state.serviceAreaRequest ? "Pending" : "Active"}
+                  ${icon("navigation", "tiny-icon")} State: ${escape(this.state.serviceArea)} 
+                  <span class="badge green" style="font-size:9px;padding:2px 6px">
+                    State-wide
                   </span>
                 </button>
               </div>
@@ -725,7 +726,7 @@ export class CaptainApp {
                 </div>
               </div>
 
-              ${this.modalRow("Operating service area", `Zone: ${this.state.serviceArea}`, "navigation", "service-area")}
+              ${this.modalRow("Operating Jurisdiction", `${this.state.serviceArea} · State-wide`, "navigation", "service-area")}
               ${this.modalRow("Break reminder", "Automatic 15-min pause", "clock", "break")}
             </div>
           `,
@@ -907,32 +908,35 @@ export class CaptainApp {
         ];
 
       case "service-area":
-        const areas = [
-          "Chennai South (OMR & Velachery)",
-          "Chennai Central & T. Nagar Hub",
-          "Chennai Airport & Guindy Corridor",
-          "Chennai North & Port Zone",
+        const states = [
+          "Tamil Nadu — State-wide Operations",
+          "Karnataka — State-wide Operations",
+          "Telangana — State-wide Operations",
+          "Maharashtra — State-wide Operations",
+          "Delhi NCR — State-wide Operations",
         ];
         return [
-          "Operating Service Area",
+          "Operating State",
           `
-          <p>Choose your primary dispatch corridor.</p>
+          <p>Authorized jurisdiction for state-wide operations.</p>
           <div class="section-card" style="margin:12px 0">
             <div class="row">
               <div>
-                <small class="muted">CURRENT ACTIVE CORRIDOR</small>
+                <small class="muted">OPERATING JURISDICTION</small>
                 <strong style="display:block;margin-top:2px">${escape(this.state.serviceArea)}</strong>
               </div>
-              <span class="badge ${this.state.serviceAreaRequest ? "warn" : "green"}">
-                ${this.state.serviceAreaRequest ? "Pending review" : "Active"}
+              <span class="badge green">
+                State-wide
               </span>
             </div>
+            <p class="micro muted" style="margin-top:6px">Authorized to operate across all cities and corridors in this state.</p>
           </div>
-          <label class="field-label" for="target-area">Request corridor change</label>
+          <label class="field-label" for="target-area">Select Operating State</label>
           <select id="target-area" class="text-input">
-            ${areas.map((a) => `<option value="${a}" ${a === this.state.serviceArea ? "disabled" : ""}>${a}</option>`).join("")}
+            ${states.map((a) => `<option value="${a}" ${a === this.state.serviceArea ? "selected" : ""}>${a}</option>`).join("")}
           </select>
-          ${this.primary("Submit corridor update", "submit-service-area")}
+          <div class="notice-box" style="margin-top:12px">State-wide Jurisdiction: No neighbourhood-zone approvals. Initial document verification (DL, RC, Insurance) authorizes state-wide service.</div>
+          ${this.primary("Save Operating State", "submit-service-area")}
           `,
         ];
 
@@ -1102,19 +1106,25 @@ export class CaptainApp {
 
       case "toggle-online":
         this.state.online = !this.state.online;
-
+        if (this.state.online) {
+          goOnlineSound();
+        } else {
+          goOfflineSound();
+        }
         this.render();
         notify(this.state.online ? "You are online and ready for requests!" : "You are offline.");
         break;
 
       case "simulate-dispatch-alert":
         this.state.phase = "requested";
+        driverAlertSound();
         this.go("request");
         notify("Incoming ride request! 15s to accept.");
         break;
 
       case "accept":
         this.state.phase = "accepted";
+        acceptRideSound();
         this.go("pickup");
         notify("Ride accepted! Head to pickup at Adyar (1.2 km away).");
         break;
@@ -1176,10 +1186,10 @@ export class CaptainApp {
         const select = document.getElementById("target-area") as HTMLSelectElement;
         if (select) {
           this.state.serviceArea = select.value;
-          this.state.serviceAreaRequest = { area: select.value, reason: "Corridor peak alignment", time: "Just now" };
+          this.state.serviceAreaRequest = null;
         }
         this.closeModal();
-        notify(`Operating area updated to: ${this.state.serviceArea}`);
+        notify(`Operating State updated to: ${this.state.serviceArea}. State-wide authorization active.`);
         break;
 
       case "payout-submit":

@@ -122,6 +122,11 @@ test("rider searches actual places, draws road route, obtains quote and submits 
     return r.fulfill({ json: { id: "new-ride" } });
   });
   await page.goto("http://127.0.0.1:5183");
+  // Returning from rental planning must not relabel a new city booking.
+  await page.getByRole("button", { name: "Plan a ride", exact: true }).click();
+  await page.locator("#trip-type").selectOption("rental");
+  await expect(page.locator("#rental-hours")).toBeVisible();
+  await page.getByRole("button", { name: "Back", exact: true }).click();
   await selectRoute(page);
   await expect(
     page.locator('.leaflet-overlay-pane path[fill="none"]'),
@@ -130,6 +135,13 @@ test("rider searches actual places, draws road route, obtains quote and submits 
   await expect(page.locator(".confirm-sheet .badge")).toHaveText(
     "Backend quote",
   );
+  await expect(page.locator(".confirm-route")).toContainText(dropoff.label);
+  await expect(page.locator(".confirm-route")).not.toContainText(
+    "Hourly rental",
+  );
+  await expect(
+    page.locator('.confirm-sheet [data-modal="fare"] small'),
+  ).toHaveText("₹237");
   await page
     .getByRole("button", { name: "Request a ride", exact: true })
     .click();
@@ -178,10 +190,18 @@ test("follow me pins current GPS without changing selected route endpoints", asy
   await follow.click();
   await expect(follow).toHaveAttribute("aria-pressed", "false");
 });
-test("route failure prevents a sample quote or booking", async ({ page }) => {
+test("route failure clears prices and geometry and blocks booking", async ({
+  page,
+}) => {
   await setup(page);
   await page.route("**/api/routes/alternatives", (r) =>
     r.fulfill({ status: 503, json: { error: "Road routing unavailable" } }),
+  );
+  await page.route("**/api/estimates", (r) =>
+    r.fulfill({
+      status: 503,
+      json: { error: "A road quote is unavailable. Please try again later" },
+    }),
   );
   await page.goto("http://127.0.0.1:5183");
   await page.getByRole("button", { name: "Where are you going?" }).click();
@@ -193,9 +213,59 @@ test("route failure prevents a sample quote or booking", async ({ page }) => {
     .getByRole("textbox", { name: "Search destination" })
     .fill("Airport");
   await page.locator("[data-live-place]").click();
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.locator(".confirm-sheet")).toHaveCount(0);
-  await expect(page.locator(".footer-price strong")).toHaveText("—");
+  await expect(page.getByRole("alert")).toContainText(
+    "Road routing unavailable",
+  );
+  await expect(page.locator('[data-vehicle="auto"] .vehicle-price')).toHaveText(
+    "Unavailable",
+  );
+  await expect(page.locator('[data-action="review"]')).toBeDisabled();
+  await expect(
+    page.locator('.leaflet-overlay-pane path[fill="none"]'),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Retry route and fares" }),
+  ).toBeVisible();
+});
+test("rider cancellation immediately returns to home screen and resets phase and closes modal", async ({
+  page,
+}) => {
+  let cancelled = false;
+  const active = {
+    id: "ride-cancel-test",
+    version: 1,
+    status: "requested",
+    mine: true,
+    pickup_lat: pickup.lat,
+    pickup_lng: pickup.lng,
+    dropoff_lat: dropoff.lat,
+    dropoff_lng: dropoff.lng,
+    pickup_label: pickup.label,
+    dropoff_label: dropoff.label,
+    vehicle_category: "auto",
+    payment_method: "wallet",
+    fare_paise: 23700,
+  };
+  await setup(page, () => ({
+    rides: cancelled ? [] : [active],
+    offers: [],
+    driver: [],
+  }));
+  await page.route("**/api/rides/ride-cancel-test/actions", (r) => {
+    cancelled = true;
+    return r.fulfill({ json: { ok: true } });
+  });
+  await page.goto("http://127.0.0.1:5183");
+  await expect(
+    page.getByRole("heading", { name: "Finding your Captain" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Cancel request" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: "Confirm cancellation" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Where to next?" }),
+  ).toBeVisible();
 });
 test("captain receives real offer, accepts with version, then sees pickup navigation", async ({
   page,
@@ -315,7 +385,7 @@ test("phone sign-in uses backend OTP and never creates a demo session", async ({
     return r.fulfill({ json: { ok: true, csrf: "real-csrf" } });
   });
   await page.goto("http://127.0.0.1:5183");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.locator(".login-screen")).toBeVisible();
   await page.locator("#demo-phone").fill("9876543210");
   await page
     .getByRole("button", { name: "Send sign-in code", exact: true })
@@ -489,10 +559,45 @@ test("saved Home uses backend coordinates and can be combined with a newly selec
   );
   await expect(page.locator(".choose-sheet .subline")).toContainText("9.0 km");
 });
-test('expired quote uses the approved recovery dialog and refresh does not book automatically',async({page})=>{
- await setup(page);let quotes=0,bookings=0;
- await page.route('**/api/quotes',r=>{quotes++;return r.fulfill({json:{id:`quote-${quotes}`,fare_paise:23700,meters:9000,seconds:1500,route:road}});});
- await page.route('**/api/rides',r=>{bookings++;return r.fulfill({status:409,json:{error:'Quote expired. Please get a new quote.'}});});
- await page.goto('http://127.0.0.1:5183');await selectRoute(page);await page.getByRole('button',{name:'Continue',exact:true}).click();await page.getByRole('button',{name:'Request a ride',exact:true}).click();
- await expect(page.getByRole('dialog')).toContainText('Let’s refresh your fare.');await page.getByRole('button',{name:'Refresh fare',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page.locator('.confirm-sheet .badge')).toHaveText('Backend quote');expect(quotes).toBe(2);expect(bookings).toBe(1);
+test("expired quote uses the approved recovery dialog and refresh does not book automatically", async ({
+  page,
+}) => {
+  await setup(page);
+  let quotes = 0,
+    bookings = 0;
+  await page.route("**/api/quotes", (r) => {
+    quotes++;
+    return r.fulfill({
+      json: {
+        id: `quote-${quotes}`,
+        fare_paise: 23700,
+        meters: 9000,
+        seconds: 1500,
+        route: road,
+      },
+    });
+  });
+  await page.route("**/api/rides", (r) => {
+    bookings++;
+    return r.fulfill({
+      status: 409,
+      json: { error: "Quote expired. Please get a new quote." },
+    });
+  });
+  await page.goto("http://127.0.0.1:5183");
+  await selectRoute(page);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Request a ride", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "Let’s refresh your fare.",
+  );
+  await page.getByRole("button", { name: "Refresh fare", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".confirm-sheet .badge")).toHaveText(
+    "Backend quote",
+  );
+  expect(quotes).toBe(2);
+  expect(bookings).toBe(1);
 });

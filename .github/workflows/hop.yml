@@ -8,9 +8,10 @@ on:
         options: [staging, production]
         default: staging
   push:
-    paths: ['hop-platform/**', '.github/workflows/hop.yml']
+    # Strictly mobile & backend: hop-platform/web is deprecated and not built.
+    paths: ['hop-platform/**', 'hop-mobile-platform/**', '.github/workflows/hop.yml']
   pull_request:
-    paths: ['hop-platform/**', '.github/workflows/hop.yml']
+    paths: ['hop-platform/**', 'hop-mobile-platform/**', '.github/workflows/hop.yml']
 permissions:
   contents: read
 jobs:
@@ -48,44 +49,51 @@ jobs:
       - run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
       - run: govulncheck ./...
       - run: govulncheck -mode=binary "$RUNNER_TEMP/hop-api"
-  web:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: hop-platform/web
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: hop-platform/web/package-lock.json
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run build
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:responsive
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: responsive-browser-results
-          path: |
-            hop-platform/web/playwright-report/
-            hop-platform/web/test-results/
-          retention-days: 14
-      - run: npm audit --omit=dev --audit-level=high
+  # ---------------------------------------------------------------------------
+  # NOTE: The web-based application is NO LONGER USED.
+  # Strictly mobile application support only:
+  # - Hop Rider (com.hop.rider) and Hop Captain (com.hop.captain) are maintained
+  #   and compiled exclusively from hop-mobile-platform/.
+  # - The legacy hop-platform/web job below is commented out / deactivated.
+  # ---------------------------------------------------------------------------
+  # web:
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: hop-platform/web
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '24'
+  #         cache: npm
+  #         cache-dependency-path: hop-platform/web/package-lock.json
+  #     - run: npm ci
+  #     - run: npm run typecheck
+  #     - run: npm run build
+  #     - run: npx playwright install --with-deps chromium
+  #     - run: npm run test:responsive
+  #     - uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: responsive-browser-results
+  #         path: |
+  #           hop-platform/web/playwright-report/
+  #           hop-platform/web/test-results/
+  #         retention-days: 14
+  #     - run: npm audit --omit=dev --audit-level=high
   android:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: hop-platform/web
+        working-directory: hop-mobile-platform
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: hop-platform/web/package-lock.json
+          cache-dependency-path: hop-mobile-platform/package-lock.json
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -95,16 +103,27 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
           chmod +x mobile/rider/android/gradlew mobile/captain/android/gradlew
+      - name: Cache Gradle Packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('hop-mobile-platform/mobile/*/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
       - name: Install dependencies
         run: npm ci
       - name: Build Rider Android debug APK
         env:
+          VITE_MOBILE_API_URL: ${{ vars.HOP_RIDER_API_URL || vars.HOP_API_URL || 'https://hop-staging-rider-qp262su4sq-el.a.run.app' }}
           VITE_MAP_PROVIDER: ${{ vars.RIDER_GOOGLE_MAPS_API_KEY != '' && 'google' || 'osm' }}
           VITE_GOOGLE_MAPS_API_KEY: ${{ vars.RIDER_GOOGLE_MAPS_API_KEY }}
           VITE_GOOGLE_MAP_ID: ${{ vars.RIDER_GOOGLE_MAP_ID }}
         run: node scripts/android.mjs rider --apk
       - name: Build Captain Android debug APK
         env:
+          VITE_MOBILE_API_URL: ${{ vars.HOP_CAPTAIN_API_URL || vars.HOP_API_URL || 'https://hop-staging-captain-qp262su4sq-el.a.run.app' }}
           VITE_MAP_PROVIDER: ${{ vars.CAPTAIN_GOOGLE_MAPS_API_KEY != '' && 'google' || 'osm' }}
           VITE_GOOGLE_MAPS_API_KEY: ${{ vars.CAPTAIN_GOOGLE_MAPS_API_KEY }}
           VITE_GOOGLE_MAP_ID: ${{ vars.CAPTAIN_GOOGLE_MAP_ID }}
@@ -115,7 +134,7 @@ jobs:
           cp mobile/rider/android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/artifacts/hop-rider-debug.apk"
           cp mobile/captain/android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/artifacts/hop-captain-debug.apk"
           {
-            echo "### 📱 Android Debug Applications"
+            echo "### 📱 Android Debug Applications (hop-mobile-platform)"
             echo ""
             echo "| Application | File | Artifact |"
             echo "|---|---|---|"
@@ -154,7 +173,8 @@ jobs:
           python-version: '3.12'
       - run: python -m unittest discover -s hop-platform/infra/gcp -p 'test_*.py'
   deploy:
-    needs: [api, web, android, deployment-config]
+    # 'web' job removed: web-based application is deprecated in favor of hop-mobile-platform
+    needs: [api, android, deployment-config]
     if: >-
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
       (github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.HOP_AUTO_DEPLOY == 'true')

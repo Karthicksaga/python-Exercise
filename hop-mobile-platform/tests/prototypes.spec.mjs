@@ -164,10 +164,7 @@ test("destination search uses Chennai rather than the first configured area and 
   });
   await page.goto("http://127.0.0.1:5183");
   await page.getByRole("button", { name: "Where are you going?" }).click();
-  await expect(page.getByRole("combobox", { name: "Search city" })).toHaveValue(
-    "chennai",
-  );
-  await page
+  await expect(page.getByRole("combobox", { name: "Search city" })).toHaveCount(0);  await page
     .getByRole("textbox", { name: "Search destination" })
     .fill("Airport");
   await expect(page.locator("[data-live-place]")).toContainText(
@@ -181,16 +178,27 @@ test("destination search uses Chennai rather than the first configured area and 
   await expect(page.locator(".search-feedback")).toContainText(
     "temporarily unavailable",
   );
-  await page.locator("#screen-select").evaluate((el) => {
-    el.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  // Trigger the same live-state refresh used in production, without requiring
+  // review-only screen controls in the standalone app.
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('hop-live-state',{detail:{rides:[],offers:[],driver:[]}})));
   await expect(page.locator(".search-feedback")).toContainText(
     "temporarily unavailable",
   );
 });
-test("Hop Commute is disabled in the mobile app", async ({ page }) => {
-  await page.goto("http://127.0.0.1:5183/?map=reference");
-  await expect(
-    page.getByRole("button", { name: "Commute · Coming later" }),
-  ).toBeDisabled();
-});
+for (const mode of ["", "?map=reference"]) {
+  test(`Hop Commute is hidden in ${mode ? "reference" : "live"} mobile UI`, async ({ page }) => {
+    await page.goto(`http://127.0.0.1:5183/${mode}`);
+    await expect(page.locator("#app[data-ready='true']")).toBeVisible();
+    await expect(page.getByRole("button", { name: /commute/i })).toHaveCount(0);
+    await expect(page.locator('[data-go="commute"], [data-review-go="commute"], option[value="commute"]')).toHaveCount(0);
+    if (mode) {
+      await page.locator("#screen-select").evaluate(el => {
+        el.add(new Option("Old commute link", "commute"));
+        el.value = "commute";
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await expect(page.getByRole("heading", { name: "Where to next?" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Hop Commute" })).toHaveCount(0);
+    }
+  });
+}
