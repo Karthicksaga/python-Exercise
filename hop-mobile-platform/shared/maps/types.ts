@@ -15,6 +15,7 @@ export type MapData = {
   dropoff?: Coordinate;
   route?: Coordinate[];
   following?: boolean;
+  editable?: boolean;
 };
 export type MapPreferences = { traffic: boolean; satellite: boolean; lowdata: boolean; night: boolean };
 export interface MapView {
@@ -22,6 +23,8 @@ export interface MapView {
   update(data: MapData): void;
   center(point: Coordinate): void;
   fit(points: Coordinate[]): void;
+  camera(): { center: Coordinate; zoom: number };
+  restore(camera: { center: Coordinate; zoom: number }): void;
   destroy(): void;
 }
 export const validCoordinate = (p: Coordinate) =>

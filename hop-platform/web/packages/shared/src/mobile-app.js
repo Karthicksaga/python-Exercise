@@ -561,7 +561,21 @@ function go(screen, replace = false) {
   render();
 }
 function back() {
-  go(state.back.pop() || (state.role === "rider" ? "home" : "drive"), true);
+  if (state.modal) {
+    state.modal = null;
+    render();
+    return;
+  }
+  if (state.screen === "onboarding" && state.onboard > 0) {
+    // let onboarding handle step back
+    return;
+  }
+  const prev = state.back.pop();
+  if (prev === "auth" || !prev) {
+    go(state.role === "rider" ? "home" : "drive", true);
+  } else {
+    go(prev, true);
+  }
 }
 function role(next) {
   state.last[state.role] = state.screen;
@@ -632,7 +646,10 @@ function nav(active) {
   return `<nav class="bottom-nav" aria-label="Mobile navigation">${items.map(([screen, ico, label]) => `<button data-go="${screen}" class="${active === screen ? "active" : ""}"><span class="nav-icon-wrap">${icon(ico)}</span>${label}</button>`).join("")}</nav>`;
 }
 function header(title = "", backButton = false, brand = false) {
-  return `<div class="status-bar"><span>9:41</span><span class="status-icons" aria-hidden="true">▂▅▇ ◉ ▰</span></div><header class="app-head"><div class="head-title">${backButton ? `<button class="icon-button flat" aria-label="Back" data-action="back">${icon("back")}</button>` : ""}${brand ? `<div class="brand">hop<span class="role-tag">${state.role === "rider" ? "RIDER" : "CAPTAIN"}</span></div>` : `<h1>${title}</h1>`}</div>${brand ? `<div class="head-tools">${state.role === "rider" ? `<button class="icon-button" aria-label="Plan a ride" data-go="plan">${icon("calendar")}</button>` : ""}<button class="icon-button" aria-label="Notifications" data-go="notifications">${icon("bell")}<i class="notification-dot"></i></button></div>` : state.screen === "tracking" || state.screen === "pickup" || state.screen === "trip" ? `<button class="icon-button" aria-label="Safety centre" data-go="safety">${icon("shield")}</button>` : '<span class="badge neutral">Preview</span>'}</header>`;
+  const isLive = typeof document !== "undefined" && (document.documentElement.classList.contains("hop-live") || document.body?.classList.contains("is-native-mobile"));
+  const statusBar = isLive ? "" : '<div class="status-bar"><span>9:41</span><span class="status-icons" aria-hidden="true">▂▅▇ ◉ ▰</span></div>';
+  const previewBadge = isLive ? "" : '<span class="badge neutral">Preview</span>';
+  return `${statusBar}<header class="app-head"><div class="head-title">${backButton ? `<button class="icon-button flat" aria-label="Back" data-action="back">${icon("back")}</button>` : ""}${brand ? `<div class="brand">hop<span class="role-tag">${state.role === "rider" ? "RIDER" : "CAPTAIN"}</span></div>` : `<h1>${title}</h1>`}</div>${brand ? `<div class="head-tools">${state.role === "rider" ? `<button class="icon-button" aria-label="Plan a ride" data-go="plan">${icon("calendar")}</button>` : ""}<button class="icon-button" aria-label="Notifications" data-go="notifications">${icon("bell")}<i class="notification-dot"></i></button></div>` : state.screen === "tracking" || state.screen === "pickup" || state.screen === "trip" ? `<button class="icon-button" aria-label="Safety centre" data-go="safety">${icon("shield")}</button>` : previewBadge}</header>`;
 }
 function fareBreakdown() {
   return `<div class="breakdown"><div class="row"><span>Base fare</span><span>${money(40)}</span></div><div class="row"><span>Distance charge</span><span>${money(v().price - 40)}</span></div><div class="row"><span>Platform fee</span><span>₹0</span></div>${state.promo ? '<div class="row"><span>HOP50 discount</span><span>−₹50</span></div>' : ""}<div class="row"><span>Estimated total</span><span>${money(price())}</span></div></div>`;
@@ -1850,7 +1867,10 @@ const actions = {
     state.phase = "none";
     go("auth");
   },
-  "demo-login": () => go(state.role === "rider" ? "home" : "drive"),
+  "demo-login": () => {
+    go(state.role === "rider" ? "home" : "drive");
+    state.back = [];
+  },
   "onboarding-next": () => {
     if (state.onboard < 3) {
       state.onboard++;

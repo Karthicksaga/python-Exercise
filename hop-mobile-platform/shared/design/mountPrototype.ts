@@ -39,8 +39,32 @@ export async function mountPrototype(role: "rider" | "captain") {
   const { prototypeBridge } = await import("@prototype/app.js");
   if (role === "captain") prototypeBridge.role("captain");
   if ((window as any).Capacitor?.isNativePlatform?.()) {
+    document.body.classList.add("is-native-mobile");
     const { App } = await import("@capacitor/app");
-    await App.addListener("backButton", () => prototypeBridge.back());
+    await App.addListener("backButton", () => {
+      const modalClose = document.querySelector<HTMLButtonElement>(
+        '[data-action="close-modal"], [data-modal-close], .modal button[aria-label*="Close"], .modal-sheet button[aria-label*="Close"]',
+      );
+      if (modalClose) {
+        modalClose.click();
+        return;
+      }
+      const st = prototypeBridge.read();
+      if (st.modal) {
+        prototypeBridge.update({ modal: null });
+        return;
+      }
+      if (st.screen === "onboarding" && st.onboard > 0) {
+        const backBtn = document.querySelector<HTMLButtonElement>(
+          'header button[data-action="back"], [data-action="onboarding-back"]',
+        );
+        if (backBtn) {
+          backBtn.click();
+          return;
+        }
+      }
+      prototypeBridge.back();
+    });
   }
   const preview = new URLSearchParams(location.search).get("prototype");
   if (preview === "login") {

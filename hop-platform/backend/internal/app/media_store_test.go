@@ -62,3 +62,76 @@ func TestCloudMediaRequiresPrivateBucketsAndUsesOpaqueObjects(t *testing.T) {
 		t.Fatal("deletion retry failed", e)
 	}
 }
+
+func TestMediaStoreMemoryStore(t *testing.T) {
+	ctx := context.Background()
+	m := &memoryMedia{}
+	if err := m.Put(ctx, "kyc", "doc1.jpg", []byte("sample-data")); err != nil {
+		t.Fatalf("memoryMedia.Put failed: %v", err)
+	}
+	data, err := m.Get(ctx, "kyc", "doc1.jpg")
+	if err != nil || string(data) != "sample-data" {
+		t.Fatalf("memoryMedia.Get failed: %v, data: %s", err, string(data))
+	}
+	if _, err := m.Get(ctx, "kyc", "nonexistent.jpg"); err == nil {
+		t.Fatal("expected error getting nonexistent key")
+	}
+	if err := m.Delete(ctx, "kyc", "doc1.jpg"); err != nil {
+		t.Fatalf("memoryMedia.Delete failed: %v", err)
+	}
+	if _, err := m.Get(ctx, "kyc", "doc1.jpg"); err == nil {
+		t.Fatal("expected error getting deleted key")
+	}
+}
+
+func TestMediaStoreLocalStore(t *testing.T) {
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	l := &localMedia{baseDir: tempDir}
+	if err := l.Put(ctx, "portrait", "user1.jpg", []byte("photo-data")); err != nil {
+		t.Fatalf("localMedia.Put failed: %v", err)
+	}
+	data, err := l.Get(ctx, "portrait", "user1.jpg")
+	if err != nil || string(data) != "photo-data" {
+		t.Fatalf("localMedia.Get failed: %v, data: %s", err, string(data))
+	}
+	if _, err := l.Get(ctx, "portrait", "missing.jpg"); err == nil {
+		t.Fatal("expected error getting missing key")
+	}
+	if err := l.Delete(ctx, "portrait", "user1.jpg"); err != nil {
+		t.Fatalf("localMedia.Delete failed: %v", err)
+	}
+	if _, err := l.Get(ctx, "portrait", "user1.jpg"); err == nil {
+		t.Fatal("expected error getting deleted key")
+	}
+}
+
+func TestConfigureMediaProvisionsStoreWhenBucketsEmpty(t *testing.T) {
+	ctx := context.Background()
+
+	// Default without buckets: should provision memoryMedia even if Development=false
+	s := &Server{Config: Config{Development: false}}
+	if err := s.configureMedia(ctx); err != nil {
+		t.Fatalf("configureMedia failed: %v", err)
+	}
+	if s.Media == nil {
+		t.Fatal("s.Media must not be nil when buckets are empty")
+	}
+	if _, ok := s.Media.(*memoryMedia); !ok {
+		t.Fatalf("expected *memoryMedia, got %T", s.Media)
+	}
+
+	// With MEDIA_LOCAL_DIR: should provision localMedia
+	localDir := t.TempDir()
+	t.Setenv("MEDIA_LOCAL_DIR", localDir)
+	sLocal := &Server{Config: Config{Development: false}}
+	if err := sLocal.configureMedia(ctx); err != nil {
+		t.Fatalf("configureMedia failed: %v", err)
+	}
+	if sLocal.Media == nil {
+		t.Fatal("sLocal.Media must not be nil")
+	}
+	if _, ok := sLocal.Media.(*localMedia); !ok {
+		t.Fatalf("expected *localMedia, got %T", sLocal.Media)
+	}
+}

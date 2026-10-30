@@ -209,7 +209,10 @@ export class LiveJourney {
         this.signedIn = true;
         this.sessionChecked = true;
         if (this.role === "captain") this.sync(await api.state());
-        if (this.bridge.read().screen === "auth") this.bridge.go(this.role === "rider" ? "home" : "drive");
+        if (this.bridge.read().screen === "auth") {
+          this.bridge.go(this.role === "rider" ? "home" : "drive");
+          this.bridge.assign({ back: [] });
+        }
         this.decorate();
       })
       .catch(error => {
@@ -415,7 +418,8 @@ export class LiveJourney {
   }
   private mapPick = (event: Event) => {
     if (this.active()) return;
-    const point = (event as CustomEvent<Coordinate>).detail;
+    const point = (event as CustomEvent<Coordinate & { target?: "pickup" | "dropoff" }>).detail;
+    if (point.target) this.target = point.target;
     if (this.role === "captain") {
       window.dispatchEvent(
         new CustomEvent("hop-planned-route", {
@@ -944,6 +948,7 @@ export class LiveJourney {
           this.devCode = "";
           if (this.role === "captain") this.sync(await api.state());
           this.bridge.go(this.role === "rider" ? "home" : "drive");
+          this.bridge.assign({ back: [] });
         }
       });
       return;
@@ -990,6 +995,9 @@ export class LiveJourney {
       this.stop(event);
       void this.run(async () => {
         const coords = await currentLocation();
+        window.dispatchEvent(new CustomEvent("hop-current-location", { detail: {
+          lat: coords.latitude, lng: coords.longitude, heading: coords.heading ?? undefined,
+        } }));
         this.target = "pickup";
         let label = "Current location";
         try {
@@ -1321,7 +1329,10 @@ export class LiveJourney {
         this.bridge.go("onboarding");
         return;
       }
-      this.app.querySelectorAll<HTMLElement>('.bottom-nav, header button[aria-label="Back"]').forEach(el => { el.remove(); });
+      this.app.querySelectorAll<HTMLElement>('.bottom-nav').forEach(el => { el.remove(); });
+      if (this.state?.driver?.[0]?.status === "pending") {
+        this.app.querySelectorAll<HTMLElement>('header button[aria-label="Back"]').forEach(el => { el.remove(); });
+      }
     }
     this.booking?.render();
     this.account?.render();

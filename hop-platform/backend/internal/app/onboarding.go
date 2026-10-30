@@ -209,10 +209,12 @@ func (s *Server) onboardingState(w http.ResponseWriter, r *http.Request) {
 	mode := "unavailable"
 	if _, ok := s.Media.(*memoryMedia); ok {
 		mode = "development_memory"
+	} else if _, ok := s.Media.(*localMedia); ok {
+		mode = "local_storage"
 	} else if s.Media != nil {
 		mode = "private_cloud"
 	}
-	write(w, 200, map[string]any{"draft": draft, "documents": docs, "has_photo": photo, "photo_approved": approved, "storage_mode": mode, "phone_verified": hasMobile(ctx, s.DB, uid)})
+	write(w, 200, map[string]any{"draft": draft, "documents": docs, "has_photo": photo, "photo_approved": approved, "storage_mode": mode, "phone_verified": hasMobile(ctx, s.DB, uid), "documents_required": !s.Config.Development, "testing_mode": s.Config.Development})
 }
 func (s *Server) saveOnboarding(w http.ResponseWriter, r *http.Request) {
 	var in applicationDraft

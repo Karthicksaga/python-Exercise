@@ -206,3 +206,47 @@ test('Google preferences select provider imagery and traffic while low-data remo
  expect(result.styles[1]).toContainEqual({featureType:'poi',stylers:[{visibility:'off'}]});
  expect(result.styles[1].some(style=>style.elementType==='geometry')).toBe(true);
 });
+
+test('rider opens at measured GPS and keeps the camera and stationary pins after rerender', async ({page, context}) => {
+  await fallback(page);
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({latitude:13.041,longitude:80.251,accuracy:10});
+  await page.route(`${base}/api/**`, r=>r.fulfill({json:{}}));
+  await page.route('**/api/me',r=>r.fulfill({json:{user:{id:'rider'},csrf:'test'}}));
+  await page.route('**/api/state',r=>r.fulfill({json:{rides:[],offers:[],driver:[]}}));
+  await page.route('**/api/config',r=>r.fulfill({json:{areas:[],vehicles:[]}}));
+  await page.goto(base);
+  await expect(page.locator('.hop-map-status')).toContainText('OpenStreetMap', {timeout:20000});
+  await expect(page.locator('.leaflet-marker-icon[title="Your location"]')).toHaveCount(1);
+  await expect(page.locator('.hop-map-status')).toContainText('OpenStreetMap');
+  const modulePath = `/@fs${new URL('../shared/maps/osm.ts',import.meta.url).pathname}`;
+  const result = await page.evaluate(async modulePath => {
+    const {OSMMapView} = await import(modulePath);
+    const host=document.createElement('div');
+    host.style.cssText='width:350px;height:300px';document.body.append(host);
+    let view=new OSMMapView(host,{lat:13.041,lng:80.251},()=>{});
+    const camera={center:{lat:13.06,lng:80.29},zoom:17};
+    view.restore(camera);
+    const before=view.camera(); view.destroy();
+    view=new OSMMapView(host,{lat:13,lng:80},()=>{});view.restore(before);
+    view.update({center:before.center,vehicles:[],pickup:before.center,dropoff:{lat:13.07,lng:80.3},editable:true});
+    const picked=[];
+    const onPick=event=>picked.push(event.detail);
+    window.addEventListener('hop-map-pick',onPick);
+    view.dropoffMarker.setLatLng([13.08,80.31]);
+    view.dropoffMarker.fire('dragend');
+    const draggable=view.dropoffMarker.dragging.enabled();
+    view.update({center:before.center,vehicles:[],pickup:before.center,dropoff:{lat:13.08,lng:80.31},editable:false});
+    const locked=!view.dropoffMarker.dragging.enabled();
+    window.removeEventListener('hop-map-pick',onPick);
+    const after=view.camera();
+    const animation=getComputedStyle(host.querySelector('.hop-marker-pin')).animationName;
+    view.destroy();host.remove();return {before,after,animation,picked,draggable,locked};
+  },modulePath);
+  expect(result.after).toEqual(result.before);
+  expect(result.after.zoom).toBe(17);
+  expect(result.animation).toBe('none');
+  expect(result.picked).toEqual([{lat:13.08,lng:80.31,target:'dropoff'}]);
+  expect(result.draggable).toBe(true);
+  expect(result.locked).toBe(true);
+});

@@ -23,3 +23,405 @@ body {
 /* Input is enabled only after the live adapters have registered their handlers. */
 #app[inert]{visibility:hidden}
 .phone:has(#app[inert])::after{content:"hop";position:absolute;inset:0;display:grid;place-items:center;color:#e54d36;font:750 42px Outfit,sans-serif;letter-spacing:-2px;background:white}
+
+/* In live mobile mode, hide the fake status bar that duplicates native system status bar */
+html.hop-live .status-bar,
+body.is-native-mobile .status-bar,
+html.hop-live .phone .status-bar {
+  display: none !important;
+}
+
+/* In live mobile mode, hide the "Preview" badge and prototype notices */
+html.hop-live .app-head .badge.neutral:not([data-keep]),
+body.is-native-mobile .app-head .badge.neutral:not([data-keep]),
+html.hop-live .prototype-notice,
+body.is-native-mobile .prototype-notice {
+  display: none !important;
+}
+
+/* Document Upload Thumbnails & Actions */
+.upload-thumbnail-wrap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 1.5px solid var(--line, #cfd7c8);
+  background: var(--surface, #ffffff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.upload-thumbnail-wrap:hover {
+  transform: scale(1.06);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+.upload-thumbnail-wrap:active {
+  transform: scale(0.96);
+}
+.doc-thumbnail {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+.doc-thumbnail-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #167b5b;
+  background: #e1f5eb;
+}
+.upload-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.camera-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink, #19201e);
+  background: var(--surface, #ffffff);
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+}
+.camera-button:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+.camera-button:active {
+  transform: scale(0.95);
+}
+.camera-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Invalid Field & Upload Error States */
+.text-input.invalid,
+.text-input.has-error,
+.text-input[aria-invalid="true"] {
+  border-color: #e54d36 !important;
+  box-shadow: 0 0 0 1px #e54d36 !important;
+  background-color: #fff8f7 !important;
+}
+.upload-card.invalid-card {
+  border-color: #e54d36 !important;
+  background-color: #fff8f7 !important;
+}
+.badge.red {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Enlarged Document Preview Modal */
+.doc-preview-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: modalBackdropFade 0.2s ease-out;
+}
+@keyframes modalBackdropFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.doc-preview-card {
+  background: var(--surface, #ffffff);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 380px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+}
+.modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal-title-wrap h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink, #19201e);
+}
+.icon-button.close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--muted, #64748b);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.icon-button.close-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink, #19201e);
+}
+.doc-preview-body {
+  padding: 16px;
+  background: #0f1412;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+}
+.enlarged-doc-img {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  object-fit: contain;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.doc-preview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line, #e2e8f0);
+  background: var(--surface, #ffffff);
+}
+
+/* Camera Viewfinder Modal */
+.camera-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: modalBackdropFade 0.2s ease-out;
+}
+.camera-viewfinder-card {
+  width: 100%;
+  max-width: 380px;
+  background: #0f1412;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+.camera-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  color: #ffffff;
+}
+.camera-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.camera-header small {
+  display: block;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+.camera-viewport-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #000000;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#captain-camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.camera-guide {
+  position: absolute;
+  pointer-events: none;
+  border: 2px dashed rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
+}
+.camera-guide.doc-guide {
+  width: 82%;
+  height: 72%;
+  border-radius: 12px;
+}
+.camera-guide.portrait-guide {
+  width: 58%;
+  height: 78%;
+  border-radius: 50%;
+}
+.camera-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: #0f1412;
+}
+.camera-switch-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s ease;
+}
+.camera-switch-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+.camera-capture-trigger {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 4px solid #ffffff;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s ease;
+}
+.camera-capture-trigger:active {
+  transform: scale(0.92);
+}
+.camera-capture-inner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e54d36;
+}
+.cancel-camera-btn {
+  color: #94a3b8 !important;
+  font-size: 13px;
+  cursor: pointer;
+}
+.cancel-camera-btn:hover {
+  color: #ffffff !important;
+}
+
+/* Permission Modal */
+.permission-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: modalBackdropFade 0.2s ease-out;
+}
+.permission-card {
+  background: var(--surface, #ffffff);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 320px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+.permission-icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+}
+.permission-icon-circle.warn {
+  background: #fef3c7;
+  color: #d97706;
+}
+.permission-icon-circle svg {
+  width: 26px;
+  height: 26px;
+}
+.permission-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  color: var(--ink, #19201e);
+}
+.permission-card .modal-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted, #64748b);
+  margin: 0 0 18px;
+}
+.permission-card .modal-actions button {
+  width: 100%;
+}
+
+/* Dark theme overrides */
+.app.dark .upload-thumbnail-wrap {
+  border-color: #334155;
+  background: #1e293b;
+}
+.app.dark .camera-button {
+  background: #1e293b;
+  color: #f1f5f9;
+  border-color: #334155;
+}
+.app.dark .camera-button:hover {
+  background: #334155;
+}
+.app.dark .doc-preview-card,
+.app.dark .permission-card {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+.app.dark .modal-header,
+.app.dark .doc-preview-actions {
+  border-color: #334155;
+  background: #1e293b;
+}
+.app.dark .modal-title-wrap h3,
+.app.dark .permission-card h3 {
+  color: #f1f5f9;
+}
+.app.dark .doc-thumbnail-placeholder {
+  background: #064e3b;
+  color: #34d399;
+}

@@ -233,3 +233,69 @@ func TestUnreferencedMediaCleanupPreservesEvidence(t *testing.T) {
 	code, _ := f.call(r, "GET", "/api/drivers/documents/"+r.id+"/identity", nil)
 	require(t, code, 200)
 }
+
+func TestTestingModeDriverApplicationWithoutDocuments(t *testing.T) {
+	f := setup(t)
+	applicant := f.actor("rider", false)
+	op := f.actor("operator", false)
+
+	// In non-development mode without testing flag, missing documents fails
+	f.s.Config.Development = false
+	form := map[string]any{
+		"area_id":             f.area,
+		"vehicle_category":    "bike",
+		"vehicle_number":      "TN01AB1234",
+		"vehicle_make":        "Honda",
+		"vehicle_model":       "Shine",
+		"vehicle_color":       "Black",
+		"license_reference":   "DL-12345",
+		"insurance_reference": "INS-12345",
+		"license_expires":     time.Now().AddDate(1, 0, 0).Format("2006-01-02"),
+		"insurance_expires":   time.Now().AddDate(1, 0, 0).Format("2006-01-02"),
+	}
+	code, resp := f.call(applicant, "POST", "/api/drivers/apply", form)
+	require(t, code, 400)
+	if !strings.Contains(resp["error"].(string), "Upload your profile photo") {
+		t.Fatalf("expected document requirement error, got %v", resp)
+	}
+
+	// With testing flag in request, applying succeeds even with no documents
+	form["testing"] = true
+	code, _ = f.call(applicant, "POST", "/api/drivers/apply", form)
+	require(t, code, 201)
+
+	// In development mode (Development=true), applying succeeds even with empty vehicle fields and no documents
+	applicant2 := f.actor("rider", false)
+	f.s.Config.Development = true
+	code, _ = f.call(applicant2, "POST", "/api/drivers/apply", map[string]any{"area_id": f.area})
+	require(t, code, 201)
+
+	// Documents can still be uploaded and retrieved without 503 errors
+	f.uploadEvidence(applicant2)
+	code, doc := f.call(applicant2, "GET", "/api/drivers/documents/"+applicant2.id+"/identity", nil)
+	require(t, code, 200)
+	if doc["content_type"] != "image/jpeg" || doc["image"] == "" {
+		t.Fatalf("unexpected document payload %v", doc)
+	}
+
+	// Profile photo can be retrieved
+	code, photo := f.call(applicant2, "GET", "/api/profile/photo/"+applicant2.id, nil)
+	require(t, code, 200)
+	if photo["content_type"] != "image/jpeg" || photo["image"] == "" {
+		t.Fatalf("unexpected photo payload %v", photo)
+	}
+
+	// Operator review and approval succeeds for the testing mode driver
+	checks := map[string]any{
+		"identity_ok":  true,
+		"license_ok":   true,
+		"rc_ok":        true,
+		"insurance_ok": true,
+		"vehicle_ok":   true,
+		"police_ok":    true,
+		"status":       "approved",
+		"note":         "Approved in test mode",
+	}
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+applicant.id, checks)
+	require(t, code, 200)
+}

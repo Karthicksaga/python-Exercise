@@ -12,6 +12,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -30,21 +32,35 @@ type cloudMedia struct {
 
 func (s *Server) configureMedia(ctx context.Context) error {
 	if s.Config.ProfileBucket == "" && s.Config.KYCBucket == "" {
-		if s.Config.Development {
-			s.Media = &memoryMedia{objects: map[string][]byte{}}
+		if dir := os.Getenv("MEDIA_LOCAL_DIR"); dir != "" {
+			if err := os.MkdirAll(dir, 0700); err == nil {
+				s.Media = &localMedia{baseDir: dir}
+				return nil
+			}
 		}
-		return nil // Uploads fail closed until private storage is provisioned.
+		s.Media = &memoryMedia{objects: make(map[string][]byte)}
+		return nil
 	}
 	if s.Config.ProfileBucket == "" || s.Config.KYCBucket == "" || s.Config.ProfileBucket == s.Config.KYCBucket {
 		return errors.New("configure distinct MEDIA_PROFILE_BUCKET and MEDIA_KYC_BUCKET")
 	}
 	client, e := google.DefaultClient(ctx, "https://www.googleapis.com/auth/devstorage.read_write")
 	if e != nil {
+		if s.Config.Development {
+			slog.Warn("falling back to in-memory media store: GCP credentials not found")
+			s.Media = &memoryMedia{objects: make(map[string][]byte)}
+			return nil
+		}
 		return errors.New("private media requires application default credentials")
 	}
 	client.Timeout = 8 * time.Second
 	store := &cloudMedia{client: client, portraits: s.Config.ProfileBucket, kyc: s.Config.KYCBucket}
 	if e = store.validatePrivacy(ctx); e != nil {
+		if s.Config.Development {
+			slog.Warn("falling back to in-memory media store: private bucket validation failed in development", "err", e)
+			s.Media = &memoryMedia{objects: make(map[string][]byte)}
+			return nil
+		}
 		return e
 	}
 	s.Media = store
@@ -143,12 +159,18 @@ type memoryMedia struct {
 func (m *memoryMedia) Put(_ context.Context, kind, key string, b []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.objects == nil {
+		m.objects = make(map[string][]byte)
+	}
 	m.objects[kind+":"+key] = bytes.Clone(b)
 	return nil
 }
 func (m *memoryMedia) Get(_ context.Context, kind, key string) ([]byte, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+	if m.objects == nil {
+		return nil, errors.New("demo image expired; upload again")
+	}
 	b, ok := m.objects[kind+":"+key]
 	if !ok {
 		return nil, errors.New("demo image expired; upload again")
@@ -158,7 +180,50 @@ func (m *memoryMedia) Get(_ context.Context, kind, key string) ([]byte, error) {
 func (m *memoryMedia) Delete(_ context.Context, kind, key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.objects, kind+":"+key)
+	if m.objects != nil {
+		delete(m.objects, kind+":"+key)
+	}
+	return nil
+}
+
+// Local filesystem adapter for environments where persistent directory is configured
+// or for local testing/development without GCP Cloud Storage credentials.
+type localMedia struct {
+	baseDir string
+	mu      sync.RWMutex
+}
+
+func (l *localMedia) Put(_ context.Context, kind, key string, b []byte) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	dir := filepath.Join(l.baseDir, kind)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	safeKey := filepath.Base(key)
+	return os.WriteFile(filepath.Join(dir, safeKey), b, 0600)
+}
+
+func (l *localMedia) Get(_ context.Context, kind, key string) ([]byte, error) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	safeKey := filepath.Base(key)
+	path := filepath.Join(l.baseDir, kind, safeKey)
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, errors.New("private file unavailable")
+	}
+	return b, nil
+}
+
+func (l *localMedia) Delete(_ context.Context, kind, key string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	safeKey := filepath.Base(key)
+	path := filepath.Join(l.baseDir, kind, safeKey)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return errors.New("private file deletion failed")
+	}
 	return nil
 }
 

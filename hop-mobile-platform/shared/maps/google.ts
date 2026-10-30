@@ -184,12 +184,18 @@ export class GoogleMapView implements MapView {
           map: this.map,
           position: data.pickup,
           title: "Pickup",
+          draggable: Boolean(data.editable),
           icon: {
             url: pickupSvg,
             scaledSize: new google.maps.Size(32, 42),
             anchor: new google.maps.Point(16, 42),
           },
           zIndex: 1000,
+        });
+        this.pickupMarker.addListener("dragend", (event: google.maps.MapMouseEvent) => {
+          if (event.latLng) window.dispatchEvent(new CustomEvent("hop-map-pick", {
+            detail: { ...event.latLng.toJSON(), target: "pickup" },
+          }));
         });
       } else {
         this.pickupMarker.setPosition(data.pickup);
@@ -207,12 +213,18 @@ export class GoogleMapView implements MapView {
           map: this.map,
           position: data.dropoff,
           title: "Destination",
+          draggable: Boolean(data.editable),
           icon: {
             url: dropoffSvg,
             scaledSize: new google.maps.Size(32, 42),
             anchor: new google.maps.Point(16, 42),
           },
           zIndex: 1000,
+        });
+        this.dropoffMarker.addListener("dragend", (event: google.maps.MapMouseEvent) => {
+          if (event.latLng) window.dispatchEvent(new CustomEvent("hop-map-pick", {
+            detail: { ...event.latLng.toJSON(), target: "dropoff" },
+          }));
         });
       } else {
         this.dropoffMarker.setPosition(data.dropoff);
@@ -222,6 +234,9 @@ export class GoogleMapView implements MapView {
       this.dropoffMarker.setMap(null);
       this.dropoffMarker = undefined;
     }
+
+    this.pickupMarker?.setDraggable(Boolean(data.editable));
+    this.dropoffMarker?.setDraggable(Boolean(data.editable));
 
     // 4. Current Location Marker
     if (data.current) {
@@ -272,6 +287,12 @@ export class GoogleMapView implements MapView {
     this.map.fitBounds(bounds, 45);
   }
 
+  camera() {
+    return { center: this.map.getCenter()!.toJSON(), zoom: this.map.getZoom()! };
+  }
+  restore(camera: { center: Coordinate; zoom: number }) {
+    this.map.setOptions({ center: camera.center, zoom: camera.zoom });
+  }
   destroy() {
     clearTimeout(this.tileTimeout);
     this.vehicles.forEach((m) => m.setMap(null));

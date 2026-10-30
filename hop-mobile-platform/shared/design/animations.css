@@ -66,7 +66,7 @@
 /* Live Leaflet map pins drop into place with sleek spring bounce */
 .hop-live .hop-marker-pin,
 .hop-live .pin-drop {
-  animation: pinDrop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: none;
 }
 
 .hop-live .hop-dropoff-pin {
@@ -1480,3 +1480,6 @@
 .hop-live .plan-info { display:flex; gap:10px; padding:4px 2px 16px; color:var(--muted); }
 .hop-live .plan-info > svg { width:18px; height:18px; flex-shrink:0; margin-top:2px; }
 .hop-live .plan-info p { margin:0; font-size:11px; line-height:1.7; }
+
+/* Animate sheets without moving the provider canvas. */
+.hop-live .screen-body.map-screen { animation: none; will-change: auto; }

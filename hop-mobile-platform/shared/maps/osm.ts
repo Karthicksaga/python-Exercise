@@ -184,9 +184,16 @@ export class OSMMapView implements MapView {
       if (!this.pickupMarker) {
         this.pickupMarker = L.marker([data.pickup.lat, data.pickup.lng], {
           title: "Pickup location",
+          draggable: Boolean(data.editable),
           icon: createPickupIcon(),
           zIndexOffset: 1000,
         }).addTo(this.map);
+        this.pickupMarker.on("dragend", () => {
+          const point = this.pickupMarker!.getLatLng();
+          window.dispatchEvent(new CustomEvent("hop-map-pick", {
+            detail: { lat: point.lat, lng: point.lng, target: "pickup" },
+          }));
+        });
       } else {
         this.pickupMarker.setLatLng([data.pickup.lat, data.pickup.lng]);
         if (!this.map.hasLayer(this.pickupMarker)) {
@@ -203,9 +210,16 @@ export class OSMMapView implements MapView {
       if (!this.dropoffMarker) {
         this.dropoffMarker = L.marker([data.dropoff.lat, data.dropoff.lng], {
           title: "Dropoff destination",
+          draggable: Boolean(data.editable),
           icon: createDropoffIcon(),
           zIndexOffset: 1000,
         }).addTo(this.map);
+        this.dropoffMarker.on("dragend", () => {
+          const point = this.dropoffMarker!.getLatLng();
+          window.dispatchEvent(new CustomEvent("hop-map-pick", {
+            detail: { lat: point.lat, lng: point.lng, target: "dropoff" },
+          }));
+        });
       } else {
         this.dropoffMarker.setLatLng([data.dropoff.lat, data.dropoff.lng]);
         if (!this.map.hasLayer(this.dropoffMarker)) {
@@ -215,6 +229,11 @@ export class OSMMapView implements MapView {
     } else if (this.dropoffMarker) {
       this.dropoffMarker.remove();
       this.dropoffMarker = undefined;
+    }
+
+    for (const marker of [this.pickupMarker, this.dropoffMarker]) {
+      if (data.editable) marker?.dragging?.enable();
+      else marker?.dragging?.disable();
     }
 
     // 4. Current Location Marker
@@ -348,6 +367,13 @@ export class OSMMapView implements MapView {
     );
   }
 
+  camera() {
+    const center = this.map.getCenter();
+    return { center: { lat: center.lat, lng: center.lng }, zoom: this.map.getZoom() };
+  }
+  restore(camera: { center: Coordinate; zoom: number }) {
+    this.map.setView([camera.center.lat, camera.center.lng], camera.zoom, { animate: false });
+  }
   destroy() {
     this.resize.disconnect();
     this.vehicles.forEach((m) => m.remove());

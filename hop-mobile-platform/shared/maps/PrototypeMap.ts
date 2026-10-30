@@ -51,12 +51,34 @@ export class PrototypeMap {
   private locationStop?: () => void;
   private locationGeneration = 0;
   private revision = 0;
+  private locationRequested = false;
+  private camera?: { center: Coordinate; zoom: number };
+  private located = (event: Event) => {
+    this.current = (event as CustomEvent<Coordinate>).detail;
+    this.centered = true;
+    this.feed.setLocation(this.current);
+    this.paint();
+    if (!this.planned?.pickup && !this.data.pickup) this.view?.center(this.current);
+  };
+  private async locate() {
+    try {
+      const coords = await currentLocation();
+      this.located(new CustomEvent("hop-current-location", { detail: {
+        lat: coords.latitude, lng: coords.longitude, heading: coords.heading ?? undefined,
+      } }));
+      this.message = "Location found · fetching live vehicles";
+    } catch {
+      this.message = "Allow location access to find your position · you can still choose a map pin";
+    }
+    this.label();
+  }
 
   private display(): MapData {
     return {
       ...(this.data.pickup
         ? this.data
         : { ...this.data, ...this.planned, vehicles: this.data.vehicles }),
+      editable: this.role === "rider" && !this.data.pickup,
       current: this.current,
       following: this.following,
     };
@@ -68,7 +90,11 @@ export class PrototypeMap {
   }
 
   private plan = (event: Event) => {
-    this.planned = (event as CustomEvent<MapData>).detail;
+    const next = (event as CustomEvent<MapData>).detail;
+    const changed = JSON.stringify([next.center, next.pickup, next.dropoff, next.route]) !== JSON.stringify([this.planned?.center, this.planned?.pickup, this.planned?.dropoff, this.planned?.route]);
+    this.planned = next;
+    if (!changed) return;
+    this.camera = undefined;
     this.paint();
     const points =
       this.planned.route ||
@@ -80,6 +106,7 @@ export class PrototypeMap {
 
   private dragged = () => {
     this.following = false;
+    this.centered = true;
     this.app
       .querySelector("[data-follow]")
       ?.setAttribute("aria-pressed", "false");
@@ -133,6 +160,7 @@ export class PrototypeMap {
     window.addEventListener("hop-map-auth-failed", this.authFailure);
     window.addEventListener("hop-planned-route", this.plan);
     window.addEventListener("hop-map-drag", this.dragged);
+    window.addEventListener("hop-current-location", this.located);
     void this.attach();
     void this.feed.start();
   }
@@ -354,12 +382,17 @@ export class PrototypeMap {
     const root = this.app.querySelector<HTMLElement>(".map-art");
     if (root === this.root) return;
     this.revision++;
+    if (this.view) this.camera = this.view.camera();
     this.view?.destroy();
     this.view = undefined;
     this.resize?.disconnect();
     this.root = root || undefined;
     if (!root) return;
     const revision = this.revision;
+    if (this.role === "rider" && !this.locationRequested) {
+      this.locationRequested = true;
+      void this.locate();
+    }
     root
       .parentElement!.querySelectorAll(
         ".mini-car,.map-pin,.map-bubble,.radar-pulse-wrap",
@@ -424,7 +457,7 @@ export class PrototypeMap {
     try {
       await loadGoogle(import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "");
       if (revision !== this.revision) return;
-      this.view = new GoogleMapView(this.canvas, this.display().center, () => {
+      this.view = new GoogleMapView(this.canvas, this.camera?.center || this.current || this.display().center, () => {
         void this.fallback(revision);
       });
       this.provider = "Google Maps";
@@ -434,7 +467,8 @@ export class PrototypeMap {
       const points =
         this.planned?.route ||
         [this.planned?.pickup!, this.planned?.dropoff!].filter(Boolean);
-      if (points.length > 1) this.view.fit(points);
+      if (this.camera) this.view.restore(this.camera);
+      else if (points.length > 1) this.view.fit(points);
       else if (points.length === 1) this.view.center(points[0]);
       this.label();
     } catch {
@@ -453,7 +487,7 @@ export class PrototypeMap {
     this.canvas.replaceChildren();
     this.view = new OSMMapView(
       this.canvas,
-      this.display().center,
+      this.camera?.center || this.current || this.display().center,
       (message) => {
         this.message = message;
         this.label();
@@ -467,7 +501,8 @@ export class PrototypeMap {
     const points =
       this.planned?.route ||
       [this.planned?.pickup!, this.planned?.dropoff!].filter(Boolean);
-    if (points.length > 1) this.view.fit(points);
+    if (this.camera) this.view.restore(this.camera);
+    else if (points.length > 1) this.view.fit(points);
     else if (points.length === 1) this.view.center(points[0]);
     this.label();
   }
@@ -478,6 +513,7 @@ export class PrototypeMap {
     this.locationStop?.();
     window.removeEventListener("hop-planned-route", this.plan);
     window.removeEventListener("hop-map-drag", this.dragged);
+    window.removeEventListener("hop-current-location", this.located);
     this.feed.stop();
     this.tracking.stop();
     this.observer.disconnect();

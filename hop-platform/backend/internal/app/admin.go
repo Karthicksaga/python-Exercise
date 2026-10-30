@@ -105,7 +105,7 @@ func (s *Server) adminDecision(w http.ResponseWriter, r *http.Request) {
 			dbError(w, e)
 			return
 		}
-		if !ready || !hasMobile(ctx, tx, id) {
+		if (!ready && !s.Config.Development) || !hasMobile(ctx, tx, id) {
 			fail(w, 400, "Verified mobile, photo and all onboarding documents are required before approval")
 			return
 		}
