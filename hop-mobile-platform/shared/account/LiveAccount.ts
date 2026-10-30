@@ -571,8 +571,7 @@ export class LiveAccount {
               "number",
             )
           : "") +
-        `<button class="text-button" data-modal="appearance">Appearance</button>` +
-        btn("preferences", "Save preferences");
+        `<div style="margin-top:16px"><button type="button" class="list-row" data-modal="appearance" style="width:100%;display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;font-weight:600"><span>Appearance theme</span><span class="muted" style="font-size:12px">Auto / Dark →</span></button></div>`;
     } else if (key === "tools") {
       body = `<div class="section-card"><strong>Today's completed fares</strong><p>${money((data?.summary?.today_fare_paise || 0) / 100)}</p><button class="text-button" data-modal="goal">Edit daily goal</button></div><button class="toggle-row" data-action="home-mode"><span>Head towards home using my current location</span></button><button class="list-row" data-modal="service-area">Operating city</button><button class="list-row" data-go="demand">Demand nearby</button><button class="list-row" data-go="preferences">Pickup and fare preferences</button><button class="list-row" data-go="insights">Driving insights</button><button class="secondary" data-action="take-break">Go offline for a break</button>`;
     } else if (key === "earnings") {
@@ -1070,14 +1069,19 @@ export class LiveAccount {
       }
     }
     if (!modal) {
-      if (key === "personal") {
+      if (key === "personal" || key === "preferences") {
         let bar = this.app.querySelector<HTMLElement>(".action-bar");
+        const actionName =
+          key === "personal" ? "save-personal" : "save-preferences";
+        const accountAct = key === "personal" ? "profile" : "preferences";
+        const labelText =
+          key === "personal" ? "Save details" : "Save preferences";
         if (!bar) {
           const bodyEl = this.app.querySelector<HTMLElement>(".screen-body");
           if (bodyEl) {
             bodyEl.insertAdjacentHTML(
               "afterend",
-              `<footer class="action-bar"><button class="primary" data-action="save-personal" data-account-action="profile">${this.busy ? "Saving…" : "Save details"}${icon("arrow")}</button></footer>`,
+              `<footer class="action-bar"><button class="primary" data-action="${actionName}" data-account-action="${accountAct}">${this.busy ? "Saving…" : labelText}${icon("arrow")}</button></footer>`,
             );
             bar = this.app.querySelector<HTMLElement>(".action-bar");
           }
@@ -1087,16 +1091,20 @@ export class LiveAccount {
           bar.style.display = "";
           let actionBtn = bar.querySelector<HTMLButtonElement>("button");
           if (!actionBtn) {
-            bar.innerHTML = `<button class="primary" data-action="save-personal" data-account-action="profile">${this.busy ? "Saving…" : "Save details"}${icon("arrow")}</button>`;
+            bar.innerHTML = `<button class="primary" data-action="${actionName}" data-account-action="${accountAct}">${this.busy ? "Saving…" : labelText}${icon("arrow")}</button>`;
           } else {
-            actionBtn.dataset.action = "save-personal";
-            actionBtn.dataset.accountAction = "profile";
+            actionBtn.dataset.action = actionName;
+            actionBtn.dataset.accountAction = accountAct;
             actionBtn.disabled = this.busy;
-            actionBtn.innerHTML = `${this.busy ? "Saving…" : "Save details"}${icon("arrow")}`;
+            actionBtn.innerHTML = `${this.busy ? "Saving…" : labelText}${icon("arrow")}`;
           }
         }
       } else {
-        this.app.querySelector(".action-bar")?.setAttribute("hidden", "");
+        const bar = this.app.querySelector<HTMLElement>(".action-bar");
+        if (bar) {
+          bar.setAttribute("hidden", "");
+          bar.style.display = "none";
+        }
       }
     }
   }
@@ -1366,7 +1374,7 @@ export class LiveAccount {
         await this.refresh();
         return;
       }
-      if (a === "preferences") {
+      if (a === "preferences" || a === "save-preferences") {
         const prefs: Data = { language: v("language") };
         for (const key of [
           "wheelchair_access",

@@ -213,3 +213,88 @@
 .hop-live .toggle-row[data-map-pref]:disabled { opacity:0.55; cursor:not-allowed; }
 
 .hop-map-canvas { touch-action: none; }
+
+/* Route Preview Animation Controls & Overlays */
+.route-preview-badge {
+  position: absolute;
+  top: 98px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line, #e2e8df);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  color: var(--ink, #1a2218);
+  font: 600 11px/1.2 "Inter", -apple-system, sans-serif;
+  cursor: pointer;
+  z-index: 402;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.route-preview-badge:active {
+  transform: scale(0.96);
+}
+.route-preview-badge.animating {
+  background: var(--accent-soft, #fdf8e6);
+  border-color: var(--accent, #dfb82d);
+  color: #5c4500;
+}
+.app.dark .route-preview-badge {
+  background: rgba(36, 49, 33, 0.92);
+  border-color: #3b4e38;
+  color: #dce5df;
+}
+
+.hop-preview-vehicle-overlay {
+  position: absolute;
+  width: 44px;
+  height: 30px;
+  pointer-events: none;
+  z-index: 1050;
+  will-change: transform, left, top;
+}
+.hop-preview-vehicle-overlay img {
+  width: 44px;
+  height: 30px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
+  transition: transform 0.1s linear;
+}
+
+.hop-destination-pulse-halo {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  pointer-events: none;
+  z-index: 990;
+}
+.hop-destination-pulse-ring {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid #e54d36;
+  background: rgba(229, 77, 54, 0.2);
+  animation: hop-destination-pulse 1.4s ease-out infinite;
+}
+
+.hop-marker-pin.pulse {
+  animation: hop-destination-pulse 1.4s ease-out infinite;
+}
+@keyframes hop-destination-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+

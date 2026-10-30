@@ -25,6 +25,9 @@ export interface MapView {
   fit(points: Coordinate[]): void;
   camera(): { center: Coordinate; zoom: number };
   restore(camera: { center: Coordinate; zoom: number }): void;
+  setRouteProgress?(points: Coordinate[]): void;
+  setPreviewVehicle?(position: Coordinate | null, heading?: number): void;
+  pulseDestination?(active: boolean): void;
   destroy(): void;
 }
 export const validCoordinate = (p: Coordinate) =>

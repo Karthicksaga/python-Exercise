@@ -37,6 +37,7 @@ export async function mountPrototype(role: "rider" | "captain") {
   // Normal apps are standalone: review controls exist only in explicit
   // reference mode for screenshot comparisons.
   const { prototypeBridge } = await import("@prototype/app.js");
+  (window as any).prototypeBridge = prototypeBridge;
   if (role === "captain") prototypeBridge.role("captain");
   if ((window as any).Capacitor?.isNativePlatform?.()) {
     document.body.classList.add("is-native-mobile");

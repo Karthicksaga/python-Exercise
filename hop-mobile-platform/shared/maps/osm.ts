@@ -103,6 +103,7 @@ export class OSMMapView implements MapView {
   private currentHeading?: number;
   private routeLine?: L.Polyline;
   private arrowMarkers: L.Marker[] = [];
+  private previewMarker?: L.Marker;
   private resize: ResizeObserver;
 
   constructor(
@@ -347,6 +348,46 @@ export class OSMMapView implements MapView {
     }
   }
 
+  setRouteProgress(points: Coordinate[]) {
+    if (!this.routeLine) {
+      this.routeLine = L.polyline(
+        points.map((p) => [p.lat, p.lng] as L.LatLngTuple),
+        { color: "#167b5b", weight: 5, opacity: 0.95 },
+      ).addTo(this.map);
+    } else {
+      this.routeLine.setLatLngs(
+        points.map((p) => [p.lat, p.lng] as L.LatLngTuple),
+      );
+    }
+  }
+
+  setPreviewVehicle(pos: Coordinate | null, heading = 0) {
+    if (!pos) {
+      if (this.previewMarker) {
+        this.previewMarker.remove();
+        this.previewMarker = undefined;
+      }
+      return;
+    }
+    if (!this.previewMarker) {
+      this.previewMarker = L.marker([pos.lat, pos.lng], {
+        icon: createVehicleIcon("sedan", heading),
+        zIndexOffset: 1200,
+        interactive: false,
+      }).addTo(this.map);
+    } else {
+      this.previewMarker.setLatLng([pos.lat, pos.lng]);
+      this.previewMarker.setIcon(createVehicleIcon("sedan", heading));
+    }
+  }
+
+  pulseDestination(active: boolean) {
+    const el = this.dropoffMarker?.getElement();
+    if (el) {
+      el.querySelector(".hop-marker-pin")?.classList.toggle("pulse", active);
+    }
+  }
+
   center(point: Coordinate) {
     this.map.panTo([point.lat, point.lng], { animate: true });
   }
@@ -376,6 +417,7 @@ export class OSMMapView implements MapView {
   }
   destroy() {
     this.resize.disconnect();
+    this.previewMarker?.remove();
     this.vehicles.forEach((m) => m.remove());
     this.vehicles.clear();
     this.pickupMarker?.remove();

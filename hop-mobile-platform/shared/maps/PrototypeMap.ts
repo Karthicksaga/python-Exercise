@@ -7,6 +7,7 @@ import type { Coordinate, MapData, MapView } from "./types";
 import { api } from "../services/client";
 import { ForegroundTracking } from "./foregroundTracking";
 import { currentLocation } from "../platform/transport";
+import { RoutePreviewController } from "./RoutePreview";
 
 function computeBearing(from: Coordinate, to: Coordinate): number {
   const lat1 = (from.lat * Math.PI) / 180;
@@ -53,6 +54,11 @@ export class PrototypeMap {
   private revision = 0;
   private locationRequested = false;
   private camera?: { center: Coordinate; zoom: number };
+  private routePreview?: RoutePreviewController;
+  private previewBadge?: HTMLButtonElement;
+  private previewActiveRoute = "";
+  private previewCompleted = false;
+  private previewCameraFollow = true;
   private located = (event: Event) => {
     this.current = (event as CustomEvent<Coordinate>).detail;
     this.centered = true;
@@ -73,11 +79,24 @@ export class PrototypeMap {
     this.label();
   }
 
+  private isConfirmScreen(): boolean {
+    return (
+      this.role === "rider" && Boolean(this.app.querySelector(".confirm-sheet"))
+    );
+  }
+
   private display(): MapData {
+    const isPreviewing =
+      this.routePreview?.isRunning() && this.isConfirmScreen();
     return {
       ...(this.data.pickup
         ? this.data
-        : { ...this.data, ...this.planned, vehicles: this.data.vehicles }),
+        : {
+            ...this.data,
+            ...this.planned,
+            route: isPreviewing ? [] : this.planned?.route,
+            vehicles: this.data.vehicles,
+          }),
       editable: this.role === "rider" && !this.data.pickup,
       current: this.current,
       following: this.following,
@@ -102,11 +121,18 @@ export class PrototypeMap {
     if (points.length > 1) this.view?.fit(points);
     else if (points.length === 1) this.view?.center(points[0]);
     else if (this.planned.center) this.view?.center(this.planned.center);
+
+    if (this.isConfirmScreen()) {
+      this.startRoutePreview();
+    } else {
+      this.stopRoutePreview();
+    }
   };
 
   private dragged = () => {
     this.following = false;
     this.centered = true;
+    this.previewCameraFollow = false;
     this.app
       .querySelector("[data-follow]")
       ?.setAttribute("aria-pressed", "false");
@@ -166,6 +192,19 @@ export class PrototypeMap {
   }
 
   private click = (event: Event) => {
+    const previewAction = (event.target as Element)?.closest<HTMLElement>(
+      '[data-action="skip-preview"], [data-action="replay-preview"]',
+    );
+    if (previewAction) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (previewAction.dataset.action === "skip-preview") {
+        this.routePreview?.skip();
+      } else {
+        this.startRoutePreview(true);
+      }
+      return;
+    }
     const preference = (event.target as Element)?.closest<HTMLElement>("[data-map-pref]");
     if (preference) {
       event.preventDefault(); event.stopImmediatePropagation();
@@ -383,6 +422,7 @@ export class PrototypeMap {
     if (root === this.root) return;
     this.revision++;
     if (this.view) this.camera = this.view.camera();
+    this.stopRoutePreview();
     this.view?.destroy();
     this.view = undefined;
     this.resize?.disconnect();
@@ -471,6 +511,11 @@ export class PrototypeMap {
       else if (points.length > 1) this.view.fit(points);
       else if (points.length === 1) this.view.center(points[0]);
       this.label();
+      if (this.isConfirmScreen()) {
+        this.startRoutePreview(true);
+      } else {
+        this.stopRoutePreview();
+      }
     } catch {
       await this.fallback(revision);
     }
@@ -505,9 +550,121 @@ export class PrototypeMap {
     else if (points.length > 1) this.view.fit(points);
     else if (points.length === 1) this.view.center(points[0]);
     this.label();
+    if (this.isConfirmScreen()) {
+      this.startRoutePreview(true);
+    } else {
+      this.stopRoutePreview();
+    }
+  }
+
+  private startRoutePreview(force = false) {
+    if (!this.isConfirmScreen() || !this.view) {
+      this.stopRoutePreview();
+      return;
+    }
+    const route = this.planned?.route;
+    if (!route || route.length < 2) {
+      this.stopRoutePreview();
+      return;
+    }
+
+    const routeKey = JSON.stringify([
+      this.planned?.pickup,
+      this.planned?.dropoff,
+      route.length,
+    ]);
+    if (
+      !force &&
+      this.previewActiveRoute === routeKey &&
+      (this.routePreview?.isRunning() || this.previewCompleted)
+    ) {
+      return;
+    }
+
+    this.previewActiveRoute = routeKey;
+    this.previewCompleted = false;
+    this.previewCameraFollow = true;
+
+    // 1. Initial overview framing
+    this.view.fit(route);
+    this.renderPreviewBadge(true);
+
+    this.routePreview?.stop();
+    this.routePreview = new RoutePreviewController(route, {
+      onProgress: (subRoute, vehiclePos, heading) => {
+        this.view?.setRouteProgress?.(subRoute);
+        this.view?.setPreviewVehicle?.(vehiclePos, heading);
+      },
+      onCamera: (pos) => {
+        if (this.previewCameraFollow) {
+          this.view?.center(pos);
+        }
+      },
+      onComplete: () => {
+        this.previewCompleted = true;
+        this.renderPreviewBadge(false);
+        if (this.previewCameraFollow && route) {
+          this.view?.fit(route);
+        }
+        this.view?.pulseDestination?.(true);
+        setTimeout(() => {
+          if (this.previewCompleted) {
+            this.view?.setPreviewVehicle?.(null);
+            this.view?.pulseDestination?.(false);
+          }
+        }, 2200);
+      },
+    });
+
+    this.routePreview.start();
+  }
+
+  private stopRoutePreview() {
+    this.routePreview?.stop();
+    this.routePreview = undefined;
+    this.previewActiveRoute = "";
+    this.previewCompleted = false;
+    this.view?.setPreviewVehicle?.(null);
+    this.view?.pulseDestination?.(false);
+    this.previewBadge?.remove();
+    this.previewBadge = undefined;
+    if (this.planned?.route && this.view) {
+      this.view.setRouteProgress?.(this.planned.route);
+    }
+  }
+
+  private renderPreviewBadge(animating: boolean) {
+    if (!this.root || !this.isConfirmScreen()) {
+      this.previewBadge?.remove();
+      this.previewBadge = undefined;
+      return;
+    }
+    if (!this.previewBadge) {
+      this.previewBadge = document.createElement("button");
+      this.previewBadge.type = "button";
+      this.previewBadge.className = "route-preview-badge";
+      this.root.append(this.previewBadge);
+    }
+    this.previewBadge.className = `route-preview-badge ${animating ? "animating" : ""}`;
+    if (animating) {
+      this.previewBadge.dataset.action = "skip-preview";
+      this.previewBadge.setAttribute(
+        "aria-label",
+        "Skip route preview animation",
+      );
+      this.previewBadge.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg><span>Skip</span>`;
+    } else {
+      this.previewBadge.dataset.action = "replay-preview";
+      this.previewBadge.setAttribute(
+        "aria-label",
+        "Replay route preview animation",
+      );
+      this.previewBadge.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M1 4v6h6"></path><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg><span>Replay route</span>`;
+    }
   }
 
   destroy() {
+    this.stopRoutePreview();
     this.revision++;
     this.locationGeneration++;
     this.locationStop?.();

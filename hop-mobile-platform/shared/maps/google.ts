@@ -78,6 +78,78 @@ function currentSvg(heading?: number) {
 `)}`;
 }
 
+let GooglePreviewVehicleOverlayClass: any;
+let DestinationPulseOverlayClass: any;
+
+function getPreviewVehicleOverlayClass() {
+  if (!GooglePreviewVehicleOverlayClass && typeof google !== "undefined" && google.maps?.OverlayView) {
+    GooglePreviewVehicleOverlayClass = class extends google.maps.OverlayView {
+      private div: HTMLElement;
+      constructor(
+        private position: google.maps.LatLng,
+        private heading: number,
+      ) {
+        super();
+        this.div = document.createElement("div");
+        this.div.className = "hop-preview-vehicle-overlay";
+        this.div.innerHTML = `<img src="./assets/sedan.png" alt="Preview vehicle" style="transform: rotate(${heading}deg);" />`;
+      }
+      onAdd() {
+        this.getPanes()?.overlayMouseTarget.appendChild(this.div);
+      }
+      draw() {
+        const projection = this.getProjection();
+        if (!projection) return;
+        const point = projection.fromLatLngToDivPixel(this.position);
+        if (point) {
+          this.div.style.left = `${point.x - 22}px`;
+          this.div.style.top = `${point.y - 15}px`;
+        }
+      }
+      update(pos: Coordinate, heading: number) {
+        this.position = new google.maps.LatLng(pos.lat, pos.lng);
+        const img = this.div.querySelector<HTMLImageElement>("img");
+        if (img) img.style.transform = `rotate(${heading}deg)`;
+        this.draw();
+      }
+      onRemove() {
+        this.div.remove();
+      }
+    };
+  }
+  return GooglePreviewVehicleOverlayClass;
+}
+
+function getDestinationPulseOverlayClass() {
+  if (!DestinationPulseOverlayClass && typeof google !== "undefined" && google.maps?.OverlayView) {
+    DestinationPulseOverlayClass = class extends google.maps.OverlayView {
+      private div: HTMLElement;
+      constructor(private position: google.maps.LatLng) {
+        super();
+        this.div = document.createElement("div");
+        this.div.className = "hop-destination-pulse-halo";
+        this.div.innerHTML = `<div class="hop-destination-pulse-ring"></div>`;
+      }
+      onAdd() {
+        this.getPanes()?.overlayLayer.appendChild(this.div);
+      }
+      draw() {
+        const projection = this.getProjection();
+        if (!projection) return;
+        const point = projection.fromLatLngToDivPixel(this.position);
+        if (point) {
+          this.div.style.left = `${point.x - 24}px`;
+          this.div.style.top = `${point.y - 24}px`;
+        }
+      }
+      onRemove() {
+        this.div.remove();
+      }
+    };
+  }
+  return DestinationPulseOverlayClass;
+}
+
 export class GoogleMapView implements MapView {
   private map: google.maps.Map;
   private traffic?: google.maps.TrafficLayer;
@@ -86,6 +158,9 @@ export class GoogleMapView implements MapView {
   private dropoffMarker?: google.maps.Marker;
   private currentMarker?: google.maps.Marker;
   private route: google.maps.Polyline;
+  private previewOverlay?: any;
+  private destinationPulse?: any;
+  private lastDropoffPos?: Coordinate;
   private tileTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(host: HTMLElement, center: Coordinate, failed: () => void) {
@@ -208,6 +283,7 @@ export class GoogleMapView implements MapView {
 
     // 3. Dropoff Marker
     if (data.dropoff) {
+      this.lastDropoffPos = data.dropoff;
       if (!this.dropoffMarker) {
         this.dropoffMarker = new google.maps.Marker({
           map: this.map,
@@ -271,6 +347,49 @@ export class GoogleMapView implements MapView {
     this.route.setPath(data.route || []);
   }
 
+  setRouteProgress(points: Coordinate[]) {
+    this.route.setPath(points || []);
+  }
+
+  setPreviewVehicle(pos: Coordinate | null, heading = 0) {
+    if (!pos) {
+      if (this.previewOverlay) {
+        this.previewOverlay.setMap(null);
+        this.previewOverlay = undefined;
+      }
+      return;
+    }
+    const OverlayClass = getPreviewVehicleOverlayClass();
+    if (!OverlayClass) return;
+    if (!this.previewOverlay) {
+      this.previewOverlay = new OverlayClass(
+        new google.maps.LatLng(pos.lat, pos.lng),
+        heading,
+      );
+      this.previewOverlay.setMap(this.map);
+    } else {
+      this.previewOverlay.update(pos, heading);
+    }
+  }
+
+  pulseDestination(active: boolean) {
+    if (!active || !this.lastDropoffPos) {
+      if (this.destinationPulse) {
+        this.destinationPulse.setMap(null);
+        this.destinationPulse = undefined;
+      }
+      return;
+    }
+    const PulseClass = getDestinationPulseOverlayClass();
+    if (!PulseClass) return;
+    if (!this.destinationPulse) {
+      this.destinationPulse = new PulseClass(
+        new google.maps.LatLng(this.lastDropoffPos.lat, this.lastDropoffPos.lng),
+      );
+      this.destinationPulse.setMap(this.map);
+    }
+  }
+
   center(point: Coordinate) {
     this.map.panTo(point);
   }
@@ -295,6 +414,8 @@ export class GoogleMapView implements MapView {
   }
   destroy() {
     clearTimeout(this.tileTimeout);
+    this.previewOverlay?.setMap(null);
+    this.destinationPulse?.setMap(null);
     this.vehicles.forEach((m) => m.setMap(null));
     this.pickupMarker?.setMap(null);
     this.dropoffMarker?.setMap(null);
