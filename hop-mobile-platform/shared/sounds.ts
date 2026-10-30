@@ -26,7 +26,12 @@ if (typeof document !== "undefined") {
 function play(notes: Note[], volume = 0.16) {
   try {
     const ctx = audioContext();
-    if (!ctx || ctx.state !== "running") return;
+    if (!ctx || document.hidden) return;
+    if (ctx.state === "suspended") {
+      void ctx.resume().then(() => { if (ctx.state === "running") play(notes, volume); }).catch(() => {});
+      return;
+    }
+    if (ctx.state !== "running") return;
     const compressor = ctx.createDynamicsCompressor();
     compressor.threshold.value = -18;
     compressor.knee.value = 12;
@@ -74,3 +79,16 @@ export const driverAlertSound = () => {
 export const goOnlineSound = () => play([[523.25, 0, 0.4], [783.99, 0.16, 0.55]], 0.12);
 export const goOfflineSound = () => play([[659.25, 0, 0.4], [440, 0.18, 0.55]], 0.1);
 export const acceptRideSound = () => play([[783.99, 0, 0.4], [1046.5, 0.18, 0.65]], 0.14);
+
+export const notificationSound = () => play([[659.25, 0, 0.4], [880, 0.18, 0.55]], 0.12);
+let searchTimer: ReturnType<typeof setInterval> | undefined;
+export function startSearchingSound() {
+  if (searchTimer) return;
+  const pulse = () => play([[523.25, 0, 0.35], [659.25, 0.22, 0.45]], 0.09);
+  pulse();
+  searchTimer = setInterval(pulse, 5000);
+}
+export function stopSearchingSound() {
+  clearInterval(searchTimer);
+  searchTimer = undefined;
+}

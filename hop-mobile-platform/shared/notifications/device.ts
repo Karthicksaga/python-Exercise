@@ -1,10 +1,12 @@
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { api } from "../services/client";
+const pushGuard = registerPlugin<{ prepare(): Promise<void> }>("HopPushGuard");
 let nativeToken = "";
 export async function enableNotifications(): Promise<void> {
   await api.session();
   if (Capacitor.isNativePlatform()) {
+    await pushGuard.prepare();
     const permission = await PushNotifications.requestPermissions();
     if (permission.receive !== "granted")
       throw new Error(
@@ -14,6 +16,8 @@ export async function enableNotifications(): Promise<void> {
       id: "hop-rides",
       name: "Hop rides",
       importance: 4,
+      sound: "hop_rides.wav",
+      vibration: true,
     });
     await new Promise<void>((resolve, reject) => {
       const handles: { remove: () => Promise<void> }[] = [];
@@ -91,6 +95,7 @@ export async function enableNotifications(): Promise<void> {
 }
 export async function disableNotifications() {
   if (Capacitor.isNativePlatform()) {
+    await pushGuard.prepare();
     if (nativeToken)
       await api.request("/api/android/push/unsubscribe", {
         token: nativeToken,

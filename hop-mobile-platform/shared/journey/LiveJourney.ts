@@ -1,7 +1,7 @@
 import { LiveAccount } from "../account/LiveAccount";
 import { LiveBooking } from "../booking/LiveBooking";
 import { LiveHistory } from "../history/LiveHistory";
-import { driverAlertSound, acceptRideSound } from "../sounds";
+import { driverAlertSound, acceptRideSound, notificationSound, startSearchingSound, stopSearchingSound } from "../sounds";
 import { CaptainOnboarding } from "../onboarding/CaptainOnboarding";
 import { icon } from "../icons";
 import {
@@ -461,6 +461,7 @@ export class LiveJourney {
       destination: "",
       search: "",
     });
+    stopSearchingSound();
     this.bridge.go("home");
     this.bridge.notify("Ride request cancelled.");
   }
@@ -1231,6 +1232,8 @@ export class LiveJourney {
     this.state = state;
     if (this.role === "captain" && !wasApproved && state.driver?.[0]?.status === "approved" && this.bridge.read().screen === "onboarding") this.bridge.go("drive");
     const ride = this.active();
+    if (this.role === "rider" && ride?.status === "requested") startSearchingSound();
+    else stopSearchingSound();
     if (ride) {
       const revision = `${ride.id}:${ride.status}`;
       if (revision !== this.seenRide) {
@@ -1945,11 +1948,14 @@ export class LiveJourney {
       const data = await api.request<{ notifications: Notice[] }>(
         "/api/notifications/new",
       );
+      let received = false;
       for (const notice of data.notifications || [])
         if (!this.notices.some((n) => n.id === notice.id)) {
+          received = true;
           this.notices.unshift(notice);
           this.bridge.notify(`${notice.title}: ${notice.body}`);
         }
+      if (received) notificationSound();
       this.renderNotices();
     } catch {}
     if (!this.stopped)
@@ -1959,6 +1965,7 @@ export class LiveJourney {
       );
   }
   destroy() {
+    stopSearchingSound();
     this.onboarding?.destroy();
     this.history?.destroy();
     this.booking.destroy();

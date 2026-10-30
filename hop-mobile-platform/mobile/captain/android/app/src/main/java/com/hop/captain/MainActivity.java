@@ -4,6 +4,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override public void onCreate(Bundle state) {
         registerPlugin(HopTrackingPlugin.class);
+        registerPlugin(HopPushGuardPlugin.class);
         super.onCreate(state);
         try {
             Class<?> cls = Class.forName("com.google.firebase.FirebaseApp");
