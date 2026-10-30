@@ -209,7 +209,11 @@ export class LiveJourney {
         if (!session.user?.id) throw new APIError("Sign in to your Hop account.", 401);
         this.signedIn = true;
         this.sessionChecked = true;
-        if (this.role === "captain") this.sync(await api.state());
+        try {
+          this.sync(await api.state());
+        } catch {
+          // Gracefully continue if initial state fetch fails
+        }
         if (this.bridge.read().screen === "auth") {
           this.bridge.go(this.role === "rider" ? "home" : "drive");
           this.bridge.assign({ back: [] });
@@ -857,7 +861,11 @@ export class LiveJourney {
           throw new Error("Operator approval is required before driving.");
         }
         await api.online(!driver.online);
-        this.sync(await api.state());
+        try {
+          this.sync(await api.state());
+        } catch {
+          // Gracefully continue if initial state fetch fails
+        }
       });
       return;
     }
@@ -905,7 +913,11 @@ export class LiveJourney {
             lng: point.longitude,
           });
         }
-        this.sync(await api.state());
+        try {
+          this.sync(await api.state());
+        } catch {
+          // Gracefully continue if initial state fetch fails
+        }
       });
       return;
     }
@@ -913,7 +925,11 @@ export class LiveJourney {
       this.stop(event);
       void this.run(async () => {
         await api.online(false);
-        this.sync(await api.state());
+        try {
+          this.sync(await api.state());
+        } catch {
+          // Gracefully continue if initial state fetch fails
+        }
       });
       return;
     }
@@ -950,7 +966,11 @@ export class LiveJourney {
           await api.verifyOtp(this.phone, this.otp);
           this.signedIn = true;
           this.devCode = "";
-          if (this.role === "captain") this.sync(await api.state());
+          try {
+          this.sync(await api.state());
+        } catch {
+          // Gracefully continue if initial state fetch fails
+        }
           this.bridge.go(this.role === "rider" ? "home" : "drive");
           this.bridge.assign({ back: [] });
         }
@@ -1125,7 +1145,11 @@ export class LiveJourney {
         await api.bookRide(payload.quote, this.requestKey, payment, options);
         this.bridge.update({ phase: "requested" });
         this.bridge.go("matching");
-        this.sync(await api.state());
+        try {
+          this.sync(await api.state());
+        } catch {
+          // Gracefully continue if initial state fetch fails
+        }
       });
       return;
     }
@@ -1139,7 +1163,11 @@ export class LiveJourney {
             reason: "Plans changed",
           });
           this.cancelRiderRide();
+          try {
           this.sync(await api.state());
+        } catch {
+          // Gracefully continue if initial state fetch fails
+        }
         });
       }
       return;
@@ -1190,7 +1218,11 @@ export class LiveJourney {
             ...(name === "cancel" ? { reason: "Plans changed" } : {}),
           });
         }
-        this.sync(await api.state());
+        try {
+          this.sync(await api.state());
+        } catch {
+          // Gracefully continue if initial state fetch fails
+        }
       });
       return;
     }

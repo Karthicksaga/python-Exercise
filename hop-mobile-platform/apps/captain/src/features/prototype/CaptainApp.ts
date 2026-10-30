@@ -873,6 +873,46 @@ export class CaptainApp {
           `,
         };
 
+      case "safety":
+        return {
+          title: "Safety Centre",
+          back: true,
+          body: `
+            <div class="screen-padding">
+              <div class="safety-hero">
+                ${icon("shield")}
+                <div>
+                  <h2>A little peace of mind.</h2>
+                  <p>Your safety matters on every journey.</p>
+                </div>
+              </div>
+
+              <div class="quick-grid">
+                <button class="quick-tile quick-tile-emergency" data-modal="sos" aria-label="Emergency Help: Quick incident alert to Hop operator">
+                  <div class="quick-tile-icon-badge">${icon("phone")}</div>
+                  <strong>Emergency Help</strong>
+                  <small>Quick incident alert to Hop operator</small>
+                </button>
+                <button class="quick-tile" data-modal="share" aria-label="Share Your Trip: Let trusted people follow your live ride">
+                  <div class="quick-tile-icon-badge normal">${icon("location")}</div>
+                  <strong>Share Your Trip</strong>
+                  <small>Let trusted people follow your live ride</small>
+                </button>
+              </div>
+
+              <div class="section-label" style="margin-top:20px">Your safety toolkit</div>
+              ${this.modalRow("Emergency contacts", "Manage trusted contacts", "user", "contacts")}
+              ${this.modalRow("Report a safety concern", "Tell us about an incident or driver", "shield", "report")}
+              ${this.modalRow("RideCheck™ Safety Monitor", "Anomaly & unexpected stop detection", "shield", "ridecheck")}
+              ${this.modalRow("Safety guidance", "Verify your vehicle and pickup code", "book", "safety-guidance")}
+
+              <div class="notice-box" style="margin-top:20px">
+                An app SOS creates an operator incident. It does not contact emergency services. For immediate help, use your phone's emergency calling function.
+              </div>
+            </div>
+          `,
+        };
+
       default:
         return {
           title: "Hop Captain",
@@ -981,6 +1021,18 @@ export class CaptainApp {
           </div>
           ${this.primary("Start 15-min break", "take-break")}
           `,
+        ];
+
+      case "ridecheck":
+        return [
+          "RideCheck™ Safety Monitor",
+          `<div class="empty-state" style="padding:16px 10px">${icon("shield")}<h2>Is everything okay?</h2><p>Hop detected that your ride has been stationary for over 4 minutes away from traffic signals.</p></div><div style="display:flex;flex-direction:column;gap:10px;margin-top:14px"><button class="primary" data-action="close-modal">I’m fine, just stopped in traffic</button><button class="secondary" data-modal="sos">Need help / Emergency options</button></div><div class="notice-box" style="margin-top:16px">RideCheck uses GPS motion telemetry to proactively check on drivers and riders during unexpected delays.</div>`,
+        ];
+
+      case "safety-guidance":
+        return [
+          "Safety Guidance",
+          `<p class="muted small" style="margin:4px 0 14px">Follow these verification steps to protect yourself and your passengers on every journey.</p><div class="section-card" style="margin-bottom:14px"><div class="row"><strong>Meet at a safe point</strong><small class="muted">Safe pickup spots</small></div><p class="micro muted" style="margin-top:4px">Ensure hazard lights are on and park in a safe, legal stopping zone.</p></div><div class="section-card" style="margin-bottom:14px"><div class="row"><strong>Verify passenger name</strong><small class="muted">Identity check</small></div><p class="micro muted" style="margin-top:4px">Confirm the rider's name matches your dispatch booking.</p></div><div class="section-card"><div class="row"><strong>Collect 4-digit PIN</strong><small class="muted">Start code</small></div><p class="micro muted" style="margin-top:4px">Enter the rider's start PIN before beginning the trip route.</p></div>${this.primary("Got it", "close-modal")}`,
         ];
 
       default:

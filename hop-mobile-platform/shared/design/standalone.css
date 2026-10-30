@@ -31,6 +31,12 @@ html.hop-live .phone .status-bar {
   display: none !important;
 }
 
+/* Ensure proper safe-area insets at the top for headers in live/native mode */
+html.hop-live .app-head,
+body.is-native-mobile .app-head {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
 /* In live mobile mode, hide the "Preview" badge and prototype notices */
 html.hop-live .app-head .badge.neutral:not([data-keep]),
 body.is-native-mobile .app-head .badge.neutral:not([data-keep]),

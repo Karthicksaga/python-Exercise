@@ -1094,27 +1094,40 @@ export class RiderApp {
 
       case "safety":
         return {
-          title: "Safety centre",
+          title: "Safety Centre",
           back: true,
           body: `
             <div class="screen-padding">
               <div class="safety-hero">
                 ${icon("shield")}
                 <div>
-                  <h2>Protected every mile.</h2>
-                  <p>Hop 24/7 Safety & Response</p>
+                  <h2>A little peace of mind.</h2>
+                  <p>Your safety matters on every journey.</p>
                 </div>
               </div>
 
-              <div class="stat-grid" style="margin:16px 0">
-                <div class="stat"><strong>24/7</strong><small>Safety helpline</small></div>
-                <div class="stat"><strong>GPS</strong><small>Monitored route</small></div>
+              <div class="quick-grid">
+                <button class="quick-tile quick-tile-emergency" data-modal="sos" aria-label="Emergency Help: Quick incident alert to Hop operator">
+                  <div class="quick-tile-icon-badge">${icon("phone")}</div>
+                  <strong>Emergency Help</strong>
+                  <small>Quick incident alert to Hop operator</small>
+                </button>
+                <button class="quick-tile" data-modal="share" aria-label="Share Your Trip: Let trusted people follow your live ride">
+                  <div class="quick-tile-icon-badge normal">${icon("location")}</div>
+                  <strong>Share Your Trip</strong>
+                  <small>Let trusted people follow your live ride</small>
+                </button>
               </div>
 
-              ${this.modalRow("Emergency SOS", "Immediate alert to Hop response center", "phone", "sos")}
-              ${this.modalRow("Trusted emergency contacts", "Share live trip automatically", "user", "contacts")}
-              ${this.modalRow("RideCheck™ Anomaly Alert", "Stationary vehicle monitoring", "shield", "ridecheck")}
-              ${this.modalRow("Safety guidelines", "Pickup checks and verification tips", "book", "safety-guidance")}
+              <div class="section-label" style="margin-top:20px">Your safety toolkit</div>
+              ${this.modalRow("Emergency contacts", "Manage trusted contacts", "user", "contacts")}
+              ${this.modalRow("Report a safety concern", "Tell us about an incident or driver", "shield", "report")}
+              ${this.modalRow("RideCheck™ Safety Monitor", "Anomaly & unexpected stop detection", "shield", "ridecheck")}
+              ${this.modalRow("Safety guidance", "Verify your vehicle and pickup code", "book", "safety-guidance")}
+
+              <div class="notice-box" style="margin-top:20px">
+                An app SOS creates an operator incident. It does not contact emergency services. For immediate help, use your phone's emergency calling function.
+              </div>
             </div>
           `,
         };
@@ -1386,6 +1399,18 @@ export class RiderApp {
           `${field("place-name", "Place name", "", "Gym, Yoga class...")}
            ${field("place-address", "Address", "", "Full street address")}
            ${this.primary("Save place", "save-place")}`,
+        ];
+
+      case "ridecheck":
+        return [
+          "RideCheck™ Safety Monitor",
+          `<div class="empty-state" style="padding:16px 10px">${icon("shield")}<h2>Is everything okay?</h2><p>Hop detected that your ride has been stationary for over 4 minutes away from traffic signals.</p></div><div style="display:flex;flex-direction:column;gap:10px;margin-top:14px"><button class="primary" data-action="close-modal">I’m fine, just stopped in traffic</button><button class="secondary" data-modal="sos">Need help / Emergency options</button></div><div class="notice-box" style="margin-top:16px">RideCheck uses GPS motion telemetry to proactively check on riders during unexpected delays.</div>`,
+        ];
+
+      case "safety-guidance":
+        return [
+          "Safety Guidance",
+          `<p class="muted small" style="margin:4px 0 14px">Follow these verification steps to protect yourself on every journey.</p><div class="section-card" style="margin-bottom:14px"><div class="row"><strong>Meet at a safe point</strong><small class="muted">Well-lit pickup spots</small></div><p class="micro muted" style="margin-top:4px">Verify the vehicle licence plate and model before opening the door.</p></div><div class="section-card" style="margin-bottom:14px"><div class="row"><strong>Confirm Captain identity</strong><small class="muted">Name check</small></div><p class="micro muted" style="margin-top:4px">Ask the driver who they are picking up before entering.</p></div><div class="section-card"><div class="row"><strong>Share 4-digit PIN</strong><small class="muted">Trip verification</small></div><p class="micro muted" style="margin-top:4px">Share your ride start code only after you are safely seated.</p></div>${this.primary("Got it", "close-modal")}`,
         ];
 
       default:
