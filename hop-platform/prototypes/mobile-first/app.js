@@ -567,7 +567,8 @@ function back() {
     return;
   }
   if (state.screen === "onboarding" && state.onboard > 0) {
-    // let onboarding handle step back
+    state.onboard--;
+    render();
     return;
   }
   const prev = state.back.pop();
@@ -1925,6 +1926,8 @@ const actions = {
     if (state.onboard > 0) {
       state.onboard--;
       render();
+    } else {
+      back();
     }
   },
   "vehicle-change-submit": () =>

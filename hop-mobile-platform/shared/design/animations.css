@@ -10,18 +10,16 @@
 
 @keyframes screenFadeSlideIn {
   0% {
-    opacity: 0.85;
-    transform: translateY(6px);
+    opacity: 0.95;
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .hop-live .screen-body {
-  animation: screenFadeSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
+  animation: none;
+  will-change: auto;
 }
 
 /* Stable map canvas on map screens: camera/GPS stays static while sheets glide */
@@ -196,12 +194,10 @@
 
 @keyframes transactionFadeIn {
   0% {
-    opacity: 0;
-    transform: translateY(8px);
+    opacity: 0.85;
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -290,11 +286,11 @@
 }
 
 .hop-live .sheet-handle {
-  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), background-color 0.2s ease;
+  transition: transform 0.15s ease, background-color 0.2s ease;
 }
 
 .hop-live .sheet-handle:active {
-  transform: scaleX(1.15);
+  transform: scaleX(1.06);
 }
 
 @starting-style {
@@ -316,20 +312,22 @@
 .hop-live .usual-ride:active,
 .hop-live .quick-tile:active,
 .hop-live .commute-card:active {
-  transform: scale(0.97);
-  transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1);
+  transform: scale(0.988);
+  opacity: 0.92;
+  transition: transform 0.06s ease, opacity 0.06s ease;
 }
 
 .hop-live button.primary {
   position: relative;
   overflow: hidden;
-  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1),
+  transition: transform 0.08s ease,
               box-shadow 0.2s ease,
               background-color 0.2s ease;
 }
 
 .hop-live button.primary:active {
-  transform: scale(0.97);
+  transform: scale(0.988);
+  opacity: 0.94;
 }
 
 .hop-live button.primary:hover,
@@ -362,7 +360,7 @@
 .hop-live .vehicle-card,
 .hop-live .vehicle-item,
 .hop-live .product-chip {
-  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+  transition: transform 0.08s ease,
               box-shadow 0.2s ease,
               border-color 0.2s ease,
               background-color 0.2s ease;
@@ -373,7 +371,8 @@
 .hop-live .vehicle-card:active,
 .hop-live .vehicle-item:active,
 .hop-live .product-chip:active {
-  transform: scale(0.97);
+  transform: scale(0.988);
+  opacity: 0.92;
 }
 
 .hop-live .product-chip.active {
@@ -427,8 +426,8 @@
 .hop-live .star-btn:active,
 .hop-live [data-star]:active,
 .hop-live .rating-stars button:active {
-  transform: scale(1.25);
-  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform: scale(1.08);
+  transition: transform 0.08s ease;
 }
 
 /* Subtle celebration shimmer */
@@ -573,29 +572,29 @@
    ========================================================================== */
 
 @keyframes navPop {
-  0% { transform: scale(0.8); }
-  60% { transform: scale(1.18); }
-  100% { transform: scale(1); }
+  0% { transform: scale(0.96); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes navDotFade {
-  0% { opacity: 0; transform: translateY(3px) scale(0); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+  0% { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 .hop-live .bottom-nav button {
   position: relative;
-  transition: color 0.2s ease, transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+  transition: color 0.15s ease, opacity 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
 .hop-live .bottom-nav button:active {
-  transform: scale(0.92);
+  transform: scale(0.98);
+  opacity: 0.85;
 }
 
 .hop-live .bottom-nav button.active .nav-icon-wrap {
-  animation: navPop 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  animation: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .hop-live .bottom-nav button.active::after {
@@ -606,7 +605,7 @@
   height: 4px;
   border-radius: 50%;
   background: var(--accent);
-  animation: navDotFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: navDotFade 0.2s ease forwards;
 }
 
 /* ==========================================================================
@@ -755,26 +754,19 @@
 [data-captain-onboarding] .onboarding-steps span.active,
 .hop-live [data-captain-onboarding] .onboarding-steps span.active {
   background: var(--accent, #e54d36);
-  animation: stepBarPulse 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: none;
 }
 
 @keyframes stepBarPulse {
-  0% { transform: scaleY(0.8); }
-  50% { transform: scaleY(1.4); }
+  0% { transform: scaleY(1); }
   100% { transform: scaleY(1); }
 }
 
 /* Staggered card entrance */
 .hop-live [data-captain-onboarding] .onboarding-card {
-  animation: screenFadeSlideIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-  will-change: transform, opacity;
+  animation: none;
+  will-change: auto;
 }
-
-.hop-live [data-captain-onboarding] .onboarding-card:nth-of-type(1) { animation-delay: 0.02s; }
-.hop-live [data-captain-onboarding] .onboarding-card:nth-of-type(2) { animation-delay: 0.05s; }
-.hop-live [data-captain-onboarding] .onboarding-card:nth-of-type(3) { animation-delay: 0.08s; }
-.hop-live [data-captain-onboarding] .onboarding-card:nth-of-type(4) { animation-delay: 0.11s; }
-.hop-live [data-captain-onboarding] .onboarding-card:nth-of-type(5) { animation-delay: 0.14s; }
 
 /* Section cards styling in onboarding */
 [data-captain-onboarding] .section-card,
@@ -884,7 +876,8 @@
 
 .vehicle-card.product-chip:active,
 .hop-live .vehicle-card.product-chip:active {
-  transform: scale(0.94);
+  transform: scale(0.988);
+  opacity: 0.92;
 }
 
 .vehicle-card.product-chip.active,
@@ -892,12 +885,11 @@
   border-color: var(--accent, #e54d36);
   background: #fff7f5;
   box-shadow: 0 0 0 2px var(--accent, #e54d36), 0 4px 10px rgba(229, 77, 54, 0.16);
-  animation: vehicleBounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: none;
 }
 
 @keyframes vehicleBounce {
-  0% { transform: scale(0.95); }
-  60% { transform: scale(1.05); }
+  0% { transform: scale(1); }
   100% { transform: scale(1); }
 }
 
@@ -1132,7 +1124,8 @@
 
 .upload-button-label:active,
 .hop-live .upload-button-label:active {
-  transform: scale(0.95);
+  transform: scale(0.988);
+  opacity: 0.9;
 }
 
 .upload-button-label input[type="file"],

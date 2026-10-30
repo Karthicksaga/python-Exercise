@@ -40,6 +40,7 @@ export class LiveJourney {
   readonly ready: Promise<void>;
   private payment?: LivePayment;
   private onboarding?: CaptainOnboarding;
+  private onboardingDismissed = false;
   private walletBalance?: number;
   private walletLoading = false;
   private authError = "";
@@ -670,6 +671,7 @@ export class LiveJourney {
         button.hasAttribute("data-live-onboard"))
     ) {
       this.stop(event);
+      this.onboardingDismissed = false;
       this.bridge.go("onboarding");
       return;
     }
@@ -850,6 +852,7 @@ export class LiveJourney {
         const driver = current.driver[0];
         if (driver?.status !== "approved") {
           this.sync(current);
+          this.onboardingDismissed = false;
           this.bridge.go("onboarding");
           throw new Error("Operator approval is required before driving.");
         }
@@ -1329,12 +1332,15 @@ export class LiveJourney {
     }
     if (this.role === "captain" && this.signedIn && this.state?.driver?.[0]?.status !== "approved") {
       if (this.bridge.read().screen !== "onboarding") {
-        this.bridge.go("onboarding");
-        return;
-      }
-      this.app.querySelectorAll<HTMLElement>('.bottom-nav').forEach(el => { el.remove(); });
-      if (this.state?.driver?.[0]?.status === "pending") {
-        this.app.querySelectorAll<HTMLElement>('header button[aria-label="Back"]').forEach(el => { el.remove(); });
+        if (!this.onboardingDismissed) {
+          this.bridge.go("onboarding");
+          return;
+        }
+      } else {
+        this.app.querySelectorAll<HTMLElement>('.bottom-nav').forEach(el => { el.remove(); });
+        if (this.state?.driver?.[0]?.status === "pending") {
+          this.app.querySelectorAll<HTMLElement>('header button[aria-label="Back"]').forEach(el => { el.remove(); });
+        }
       }
     }
     this.booking?.render();
@@ -1346,7 +1352,10 @@ export class LiveJourney {
         () => this.config,
         () => this.state,
         async () => this.sync(await api.state()),
-        () => this.bridge.go("drive"),
+        () => {
+          this.onboardingDismissed = true;
+          this.bridge.go("drive");
+        },
       );
       this.onboarding.sync();
       return;

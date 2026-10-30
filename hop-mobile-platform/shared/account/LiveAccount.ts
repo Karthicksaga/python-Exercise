@@ -20,7 +20,7 @@ export class LiveAccount {
       });
       return;
     }
-    if (!el.id.startsWith("account-")) return;
+    if (!el.id.startsWith("account-") && el.id !== "full-name") return;
     const ui = this.bridge.read();
     this.drafts.set(`${ui.modal || ui.screen}:${el.id}`, {
       value: el.value,
@@ -80,6 +80,15 @@ export class LiveAccount {
   }
   private select(key: string, label: string, items: string[], value: string) {
     return `<label class="field-label" for="account-${key}">${label}</label><select class="text-input" id="account-${key}">${items.map((v) => `<option ${value === v ? "selected" : ""}>${escape(v)}</option>`).join("")}</select>`;
+  }
+  private modalRow(
+    title: string,
+    detail: string,
+    ico: string,
+    modal: string,
+    right = "",
+  ) {
+    return `<button class="list-row" data-modal="${modal}"><span class="list-icon">${icon(ico)}</span><span class="list-text"><strong>${escape(title)}</strong><small>${escape(detail)}</small></span>${right ? `<span class="right">${right}</span>` : icon("chevron")}</button>`;
   }
   private decorateWallet() {
     const data = this.get("/api/wallet");
@@ -317,6 +326,8 @@ export class LiveAccount {
     const modalPaths: Record<string, string> = {
       business: "/api/profile",
       verify: "/api/profile",
+      "personal-more": "/api/profile",
+      email: "/api/profile",
       contacts: "/api/profile",
       goal: "driver",
       payout: "/api/drivers/wallet",
@@ -375,12 +386,17 @@ export class LiveAccount {
         const hero = this.app.querySelector(".account-hero");
         if (hero) {
           const h = hero.querySelector("h2"),
-            sub = hero.querySelector("p");
+            sub = hero.querySelector("p"),
+            avatar = hero.querySelector(".avatar");
           if (h) h.textContent = p.name;
           if (sub)
             sub.textContent = p.phone_verified
               ? "Verified mobile account"
               : "Verify mobile ownership in Personal details";
+          if (avatar && p.has_photo && p.id && !avatar.querySelector("img")) {
+            avatar.setAttribute("style", "overflow:hidden;padding:0");
+            avatar.innerHTML = `<img src="/api/profile/photo/${encodeURIComponent(p.id)}" alt="${escape(p.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.remove()"/>`;
+          }
         }
       }
       this.app
@@ -424,31 +440,52 @@ export class LiveAccount {
     const btn = (a: string, l: string) => this.action(a, l);
     if (path.startsWith("/api") && !data)
       body = `<p role="status">${this.errors.has(path) ? escape(this.errors.get(path)) : "Loading account data…"}</p>${btn("retry", "Retry")}`;
-    else if (key === "personal")
+    else if (key === "personal") {
+      const name = p.name || (this.role === "captain" ? "Demo Captain" : "Demo Rider");
+      const avatarChar = name ? name.charAt(0).toUpperCase() : (this.role === "captain" ? "A" : "D");
+      const avatarHtml = this.photo
+        ? `<img src="data:image/jpeg;base64,${this.photo}" alt="${escape(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`
+        : p.has_photo && p.id
+          ? `<img src="/api/profile/photo/${encodeURIComponent(p.id)}" alt="${escape(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.remove()"/>`
+          : avatarChar;
+
+      const phoneDetail = `${p.phone || "Not set"} · ${p.phone_verified ? "Verified" : "Unverified"}`;
+      const phoneRight = p.phone_verified ? '<span class="badge green">Verified</span>' : "";
+
+      const genderFormatted = p.gender ? p.gender.charAt(0).toUpperCase() + p.gender.slice(1) : "";
+      const genderDobDetail = [genderFormatted, p.birth_date].filter(Boolean).join(" · ") || "Personal information";
+
       body =
-        this.field("name", "Full name", p.name) +
-        `<p class="small">Mobile: ${escape(p.phone || "Not set")} · ${p.phone_verified ? "Verified" : "Unverified"}</p><button class="text-button" data-modal="verify">Verify mobile</button>` +
-        this.select(
-          "gender",
-          "Gender",
-          ["", "female", "male", "other", "undisclosed"],
-          p.gender,
-        ) +
-        this.field("birth_date", "Date of birth", p.birth_date || "", "date") +
-        this.select(
-          "default_payment",
-          "Default payment",
-          ["cash", "upi", "wallet"],
-          p.default_payment,
-        ) +
-        this.select(
-          "default_vehicle",
-          "Default vehicle",
-          ["bike", "auto", "mini", "sedan", "suv"],
-          p.default_vehicle,
-        ) +
-        btn("profile", "Save details") +
-        `<label class="upload"><span>Profile photo<small>Choose a JPEG or PNG up to 12 MB. Preview before saving.</small></span><input aria-label="Profile photo" type="file" accept="image/jpeg,image/png" data-account-photo/></label>${this.photo ? `<img alt="Profile photo preview" src="data:image/jpeg;base64,${this.photo}" style="max-width:160px"/>${btn("photo", "Save profile photo")}` : ""}<button class="text-button" data-modal="business">Business receipt details</button>`;
+        `<div class="account-hero"><span class="avatar" style="${this.photo || (p.has_photo && p.id) ? "overflow:hidden;padding:0" : ""}">${avatarHtml}</span><div><h2>${escape(name)}</h2><button class="text-button" style="padding:0;min-height:25px;font-size:10px" data-action="portrait" data-account-action="portrait">Change photo</button>${this.photo ? `<button class="text-button" style="padding:0;min-height:25px;font-size:10px;margin-left:8px;color:var(--accent)" data-account-action="photo">${this.busy ? "Saving…" : "Save photo"}</button>` : ""}</div></div>` +
+        `<input type="file" accept="image/jpeg,image/png" data-account-photo style="display:none" aria-hidden="true"/>` +
+        `<label class="field-label" for="full-name">Full name</label><input class="text-input" id="full-name" value="${escape(name)}"/>` +
+        this.modalRow("Mobile number", phoneDetail, "phone", "verify", phoneRight) +
+        this.modalRow("Email address", p.email ? p.email : "Add or update your email", "mail", "email") +
+        this.modalRow("Gender & date of birth", genderDobDetail, "user", "personal-more") +
+        (this.role !== "captain"
+          ? this.modalRow("Business receipt details", "Company, GSTIN, cost centre & work email", "briefcase", "business")
+          : "") +
+        `<div class="notice-box">The existing exact-number verification and captain identity review checks remain required in the real application.</div>`;
+    } else if (key === "personal-more") {
+      body =
+        `<p class="muted small" style="margin:4px 0 14px">These details are kept private and help personalize your experience.</p>` +
+        `<label class="field-label" for="account-gender">Gender</label>` +
+        `<select class="text-input" id="account-gender">` +
+        `<option value="" ${!p.gender ? "selected" : ""}>Prefer not to say</option>` +
+        `<option value="female" ${p.gender === "female" ? "selected" : ""}>Female</option>` +
+        `<option value="male" ${p.gender === "male" ? "selected" : ""}>Male</option>` +
+        `<option value="other" ${p.gender === "other" ? "selected" : ""}>Other</option>` +
+        `</select>` +
+        `<label class="field-label" for="account-birth_date" style="margin-top:14px">Date of birth</label>` +
+        `<input class="text-input" id="account-birth_date" type="date" value="${escape(p.birth_date || "")}"/>` +
+        `<div style="margin-top:20px"><button class="primary" data-account-action="personal-more" data-action="save-personal-more" ${this.busy ? "disabled" : ""}>${this.busy ? "Saving…" : "Save details"}${icon("arrow")}</button></div>`;
+    } else if (key === "email") {
+      body =
+        `<p class="muted small" style="margin:4px 0 14px">Your email is used for ride receipts and important account notifications.</p>` +
+        `<label class="field-label" for="account-email">Email address</label>` +
+        `<input class="text-input" id="account-email" type="email" value="${escape(p.email || "")}" placeholder="name@example.com"/>` +
+        `<div style="margin-top:20px"><button class="primary" data-account-action="email" data-action="save-email" ${this.busy ? "disabled" : ""}>${this.busy ? "Saving…" : "Save email address"}${icon("arrow")}</button></div>`;
+    }
     else if (key === "business")
       body =
         [
@@ -648,30 +685,77 @@ export class LiveAccount {
             `<dt>${escape(k.replaceAll("_", " "))}</dt><dd>${Number(v)}</dd>`,
         )
         .join("")}</dl>`;
+    const modalTitles: Record<string, string> = {
+      "personal-more": "Gender & date of birth",
+      email: "Email address",
+      verify: "Verify mobile number",
+      business: "Business receipt details",
+      contacts: "Emergency contacts",
+      goal: "Daily earnings goal",
+      payout: "Request payout",
+      share: "Share trip",
+      sos: "Emergency help",
+      report: "Report an issue",
+      "lost-item": "Report a lost item",
+      counter: "Fare offer",
+      bids: "Captain offers",
+      export: "Download my data",
+      "delete-account": "Account deletion",
+      "family-invite": "Invite family member",
+      referral: "Redeem referral code",
+    };
+    const modalTitle = modalTitles[key] || key.replaceAll("-", " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
     host.innerHTML =
       (modal
-        ? `<div class="sheet-handle"></div><div class="modal-title"><h2>${escape(key.replaceAll("-", " "))}</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">${icon("close")}</button></div>`
+        ? `<div class="sheet-handle"></div><div class="modal-title"><h2 id="modal-title">${escape(modalTitle)}</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">${icon("close")}</button></div>`
         : "") +
       body +
       (this.status ? `<p role="status" class="small muted" style="margin-top:12px">${escape(this.status)}</p>` : "");
-    for (const el of host.querySelectorAll<HTMLInputElement>(
-      "[id^=account-]",
+    for (const el of host.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
+      "[id^=account-], #full-name",
     )) {
       const draft = this.drafts.get(`${key}:${el.id}`);
       if (draft) {
         el.value = draft.value;
-        el.checked = draft.checked;
+        if ("checked" in el) (el as HTMLInputElement).checked = draft.checked;
       }
     }
-    if (!modal)
-      this.app.querySelector(".action-bar")?.setAttribute("hidden", "");
+    if (!modal) {
+      if (key === "personal") {
+        let bar = this.app.querySelector<HTMLElement>(".action-bar");
+        if (!bar) {
+          const bodyEl = this.app.querySelector<HTMLElement>(".screen-body");
+          if (bodyEl) {
+            bodyEl.insertAdjacentHTML(
+              "afterend",
+              `<footer class="action-bar"><button class="primary" data-action="save-personal" data-account-action="profile">${this.busy ? "Saving…" : "Save details"}${icon("arrow")}</button></footer>`,
+            );
+            bar = this.app.querySelector<HTMLElement>(".action-bar");
+          }
+        }
+        if (bar) {
+          bar.removeAttribute("hidden");
+          bar.style.display = "";
+          let actionBtn = bar.querySelector<HTMLButtonElement>("button");
+          if (!actionBtn) {
+            bar.innerHTML = `<button class="primary" data-action="save-personal" data-account-action="profile">${this.busy ? "Saving…" : "Save details"}${icon("arrow")}</button>`;
+          } else {
+            actionBtn.dataset.action = "save-personal";
+            actionBtn.dataset.accountAction = "profile";
+            actionBtn.disabled = this.busy;
+            actionBtn.innerHTML = `${this.busy ? "Saving…" : "Save details"}${icon("arrow")}`;
+          }
+        }
+      } else {
+        this.app.querySelector(".action-bar")?.setAttribute("hidden", "");
+      }
+    }
   }
   private val(key: string) {
-    return (
-      this.app
-        .querySelector<HTMLInputElement>(`#account-${key}`)
-        ?.value.trim() || ""
+    const el = this.app.querySelector<HTMLInputElement | HTMLSelectElement>(
+      `#account-${key}, #full-${key}, #${key}`,
     );
+    return el?.value.trim() || "";
   }
   private checked(key: string) {
     return !!this.app.querySelector<HTMLInputElement>(`#account-${key}`)
@@ -745,22 +829,45 @@ export class LiveAccount {
       return;
     }
 
+    const portraitBtn = (e.target as Element).closest<HTMLElement>(
+      'button[data-action="portrait"], button[data-account-action="portrait"]',
+    );
+    if (portraitBtn) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      this.app.querySelector<HTMLInputElement>("input[data-account-photo]")?.click();
+      return;
+    }
+
     const b = (e.target as Element).closest<HTMLElement>("button");
-    if (!b || !Object.keys(b.dataset).some((k) => k.startsWith("account")))
+    if (
+      !b ||
+      (!Object.keys(b.dataset).some((k) => k.startsWith("account")) &&
+        b.dataset.action !== "save-personal" &&
+        b.dataset.action !== "save-personal-more" &&
+        b.dataset.action !== "save-email" &&
+        b.dataset.action !== "save-business")
+    )
       return;
     e.preventDefault();
     e.stopImmediatePropagation();
     if (this.busy) return;
-    const d = b.dataset,
-      a = d.accountAction,
-      v = (k: string) => this.val(k),
+    const d = b.dataset;
+    let a = d.accountAction;
+    if (!a && d.action === "save-personal") a = "profile";
+    if (!a && d.action === "save-personal-more") a = "personal-more";
+    if (!a && d.action === "save-email") a = "email";
+    if (!a && d.action === "save-business") a = "business";
+    const v = (k: string) => this.val(k),
       checked = (k: string) => this.checked(k);
     const values = Object.fromEntries(
       Array.from(
-        this.app.querySelectorAll<HTMLInputElement>("[id^=account-]"),
+        this.app.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
+          "[id^=account-], #full-name",
+        ),
       ).map((el) => [
-        el.id.slice(8),
-        el.type === "checkbox" ? el.checked : el.value.trim(),
+        el.id.startsWith("account-") ? el.id.slice(8) : el.id === "full-name" ? "name" : el.id,
+        (el as HTMLInputElement).type === "checkbox" ? (el as HTMLInputElement).checked : el.value.trim(),
       ]),
     );
     const value = (k: string) => String(values[k] || "");
@@ -774,30 +881,73 @@ export class LiveAccount {
         return;
       }
       if (a === "profile") {
+        const name = (this.app.querySelector<HTMLInputElement>("#full-name, #account-name")?.value || v("name")).trim();
+        if (!name) throw new Error("Enter your full name.");
         await api.request("/api/profile", {
-          name: v("name"),
-          gender: v("gender"),
-          birth_date: v("birth_date"),
-          default_payment: v("default_payment"),
-          default_vehicle: v("default_vehicle"),
+          name,
+        });
+        if (this.photo) {
+          await api.request("/api/profile/photo", { image: this.photo });
+          this.photo = "";
+        }
+        this.cache.delete("/api/profile");
+        this.status = "Personal details saved.";
+        this.bridge.notify("Personal details saved.");
+        await this.refresh();
+      }
+      if (a === "personal-more") {
+        const cached = this.cache.get("/api/profile")?.details?.[0] || {};
+        const gender = v("gender");
+        const birth_date = v("birth_date");
+        await api.request("/api/profile", {
+          name: cached.name || (this.role === "captain" ? "Demo Captain" : "Demo Rider"),
+          gender,
+          birth_date,
         });
         this.cache.delete("/api/profile");
+        this.status = "Personal details saved.";
+        this.bridge.notify("Personal details saved.");
+        this.bridge.update({ modal: null });
+        await this.refresh();
+        return;
+      }
+      if (a === "email") {
+        const newEmail = v("email");
+        if (newEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+          throw new Error("Enter a valid email address.");
+        }
+        const cached = this.cache.get("/api/profile");
+        if (cached?.details?.[0]) {
+          cached.details[0].email = newEmail;
+        }
+        this.status = "Email address updated.";
+        this.bridge.notify("Email address updated.");
+        this.bridge.update({ modal: null });
+        return;
       }
       if (a === "business") {
-        const p = this.cache.get("/api/profile")?.details?.[0];
+        const p = this.cache.get("/api/profile")?.details?.[0] || {};
         await api.request("/api/profile", {
-          name: p.name,
+          name: p.name || (this.role === "captain" ? "Demo Captain" : "Demo Rider"),
           company_name: v("company_name"),
           business_gstin: v("business_gstin"),
           cost_centre: v("cost_centre"),
           work_email: v("work_email"),
         });
         this.cache.delete("/api/profile");
+        this.status = "Business details saved.";
+        this.bridge.notify("Business details saved.");
+        this.bridge.update({ modal: null });
+        await this.refresh();
+        return;
       }
       if (a === "photo") {
+        if (!this.photo) throw new Error("Select a photo first.");
         await api.request("/api/profile/photo", { image: this.photo });
         this.photo = "";
         this.cache.delete("/api/profile");
+        this.status = "Profile photo updated.";
+        this.bridge.notify("Profile photo updated.");
         await this.refresh();
       }
       if (a === "send-code") {
@@ -822,6 +972,11 @@ export class LiveAccount {
         });
         this.phoneSent = false;
         this.cache.delete("/api/profile");
+        this.status = "Mobile number verified.";
+        this.bridge.notify("Mobile number verified.");
+        this.bridge.update({ modal: null });
+        await this.refresh();
+        return;
       }
       if (a === "preferences") {
         const prefs: Data = { language: v("language") };
@@ -1051,7 +1206,7 @@ export class LiveAccount {
         return;
       }
       this.drafts.clear();
-      this.status = "Saved by the server.";
+      this.status ||= "Saved by the server.";
     })()
       .catch((err) => {
         this.status = err.message;

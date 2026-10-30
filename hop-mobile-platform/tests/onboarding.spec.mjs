@@ -271,6 +271,108 @@ test("development testing mode makes empty onboarding fields optional", async ({
   await expect(page.locator(".eyebrow")).toContainText("STEP 3 OF 4");
 });
 
+test("header and bottom back buttons decrement steps (3->2->1->0->exit) without redirect trap", async ({
+  page,
+}) => {
+  await setup(page, { step: 3 });
+  await expect(page.locator(".eyebrow")).toContainText("STEP 4 OF 4");
+
+  // Bottom back button: Step 3 -> Step 2
+  const bottomBack = page.locator('[data-action="onboarding-back"]');
+  await expect(bottomBack).toBeVisible();
+  await bottomBack.click();
+  await expect(page.locator(".eyebrow")).toContainText("STEP 3 OF 4");
+
+  // Header back button: Step 2 -> Step 1
+  const headerBack = page.locator('header [data-action="back"]');
+  await expect(headerBack).toBeVisible();
+  await headerBack.click();
+  await expect(page.locator(".eyebrow")).toContainText("STEP 2 OF 4");
+
+  // Bottom back button: Step 1 -> Step 0
+  await page.locator('[data-action="onboarding-back"]').click();
+  await expect(page.locator(".eyebrow")).toContainText("STEP 1 OF 4");
+
+  // On Step 0, bottom back button is not shown; clicking header back exits to drive
+  await expect(page.locator('[data-action="onboarding-back"]')).toHaveCount(0);
+  await headerBack.click();
+
+  // Exited onboarding cleanly to drive screen
+  await expect(page.locator("[data-captain-onboarding]")).toHaveCount(0);
+  await expect(page.locator(".onboarding-banner")).toBeVisible();
+  await expect(page.locator('[data-action="online"]')).toBeVisible();
+
+  // Verify we are not immediately redirect-trapped back to onboarding
+  await page.waitForTimeout(500);
+  await expect(page.locator("[data-captain-onboarding]")).toHaveCount(0);
+  await expect(page.locator(".onboarding-banner")).toBeVisible();
+
+  // Re-opening onboarding from banner works
+  await page.locator(".onboarding-banner").click();
+  await expect(page.locator("[data-captain-onboarding]")).toBeVisible();
+});
+
+test("test/dev mode allows submission with no documents and unconfirmed consent", async ({
+  page,
+}) => {
+  const calls = [];
+  await page.route("https://**", (r) => r.abort());
+  await page.route("**/api/**", async (r) => {
+    const path = new URL(r.request().url()).pathname;
+    const body =
+      r.request().method() === "POST" ? r.request().postDataJSON() : undefined;
+    if (body) calls.push({ path, body });
+    let json = {};
+    if (path === "/api/config")
+      json = {
+        areas: [{ id: "bengaluru", name: "Bengaluru", min_lat: 12, max_lat: 14, min_lng: 77, max_lng: 81 }],
+        vehicles: [],
+        development: true,
+      };
+    if (path === "/api/me") json = { user: { id: "captain" }, csrf: "test" };
+    if (path === "/api/state") json = { driver: [], rides: [], offers: [] };
+    if (path === "/api/profile")
+      json = { details: [{ name: "Test Captain", phone: "9876543210" }] };
+    if (path === "/api/drivers/onboarding") {
+      json = {
+        draft: { step: 0, area_id: "bengaluru", vehicle_category: "bike" },
+        phone_verified: true,
+        has_photo: false,
+        documents: [],
+      };
+    }
+    if (path === "/api/drivers/apply") {
+      json = { ok: true };
+    }
+    await r.fulfill({ json });
+  });
+  await page.goto("http://127.0.0.1:5184");
+  await expect(page.locator(".eyebrow")).toContainText("STEP 1 OF 4");
+
+  // Testing mode is enabled by default in dev mode
+  await expect(page.getByLabel("Optional onboarding for testing")).toBeChecked();
+
+  // Step 0 -> Step 1
+  await page.locator('[data-action="onboarding-next"]').click();
+  await expect(page.locator(".eyebrow")).toContainText("STEP 2 OF 4");
+
+  // Step 1 -> Step 2
+  await page.locator('[data-action="onboarding-next"]').click();
+  await expect(page.locator(".eyebrow")).toContainText("STEP 3 OF 4");
+
+  // Step 2 -> Step 3 (even with 0 documents)
+  await page.locator('[data-action="onboarding-next"]').click();
+  await expect(page.locator(".eyebrow")).toContainText("STEP 4 OF 4");
+
+  // Step 3 -> Submit for review without checking consent declaration
+  await page.locator('[data-action="onboarding-next"]').click();
+  await expect(page.getByRole("heading", { name: "Application submitted", exact: true })).toBeVisible();
+
+  const applyCall = calls.find((c) => c.path.endsWith("/apply"));
+  expect(applyCall).toBeDefined();
+  expect(applyCall.body.testing).toBe(true);
+});
+
 test("header back button steps back across onboarding steps", async ({
   page,
 }) => {
