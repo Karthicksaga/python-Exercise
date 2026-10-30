@@ -229,6 +229,9 @@ export class LiveJourney {
     if (id === "pickup-input") this.target = "pickup";
     if (id === "destination-input") this.target = "dropoff";
   };
+  private isDevMode(): boolean {
+    return api.isDevEnvironment(this.config);
+  }
   private showRecovery(state: RecoveryState) {
     this.recovery = state;
     this.bridge.update({ modal: "live-recovery" });
@@ -928,7 +931,10 @@ export class LiveJourney {
             throw new Error("Enter a valid 10-digit Indian mobile number.");
           const result = await api.requestOtp(this.phone);
           this.codeSent = true;
-          this.devCode = this.config?.development ? result.dev_code || "" : "";
+          this.devCode = result.dev_code || (this.isDevMode() ? "123456" : "");
+          if (this.devCode) {
+            this.otp = this.devCode;
+          }
           this.bridge.update({});
         } else {
           if (!/^\d{6}$/.test(this.otp))
@@ -1427,7 +1433,10 @@ export class LiveJourney {
       this.app.querySelector("[data-live-login]")?.remove();
     const statusBadge = this.app.querySelector(".app-head > .badge");
     if (statusBadge)
-      statusBadge.textContent = screen === "auth" ? "Secure sign-in" : "Live";
+      statusBadge.textContent =
+        screen === "auth"
+          ? (this.isDevMode() ? "Development" : "Secure sign-in")
+          : (this.isDevMode() ? "Live (Dev)" : "Live");
     this.app
       .querySelectorAll<HTMLElement>(".shortcut[data-destination]")
       .forEach((button) => {
@@ -1456,6 +1465,11 @@ export class LiveJourney {
         code.maxLength = 6;
         code.value = this.otp;
         (phone?.closest(".login-phone") || phone)?.after(label, code);
+      } else if (this.app.querySelector<HTMLInputElement>("#live-login-code")) {
+        const code = this.app.querySelector<HTMLInputElement>("#live-login-code")!;
+        if (!code.value && this.otp) {
+          code.value = this.otp;
+        }
       }
       const notice = this.app.querySelector(".notice-box");
       if (notice) {
@@ -1470,7 +1484,9 @@ export class LiveJourney {
             ? `Development SMS code: ${this.devCode}`
             : this.codeSent
               ? "Enter the code sent to your mobile number."
-              : "Sign in securely to your existing Hop account.");
+              : this.isDevMode()
+                ? "Development mode · Enter your mobile number to sign in."
+                : "Sign in securely to your existing Hop account.");
       const action = this.app.querySelector<HTMLButtonElement>(
         '[data-action="demo-login"]',
       );

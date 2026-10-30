@@ -29,6 +29,7 @@ if (release || process.argv.includes('--apk')) {
   }
 }
 process.env.VITE_MOBILE_API_URL = apiUrl;
+process.env.VITE_DEV_MODE = release ? 'false' : 'true';
 
 function run(cmd, args, cwd = root) {
   console.log(`> [${cwd}] ${cmd} ${args.join(' ')}`);

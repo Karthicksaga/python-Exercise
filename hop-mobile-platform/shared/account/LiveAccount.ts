@@ -810,7 +810,7 @@ export class LiveAccount {
         this.otpRetryAt = Date.now() + (r.retry_after || 30) * 1000;
         this.phoneSent = true;
         this.status =
-          this.config()?.development && r.dev_code
+          (this.config()?.development || api.isDevEnvironment(this.config()) || r.dev_code) && r.dev_code
             ? `Development code: ${r.dev_code}`
             : "Verification code sent.";
         return;

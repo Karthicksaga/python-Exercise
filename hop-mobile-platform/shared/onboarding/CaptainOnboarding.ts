@@ -136,18 +136,7 @@ export class CaptainOnboarding {
 
   private isDevMode(): boolean {
     if (this.config()?.development) return true;
-    if (typeof window !== "undefined") {
-      const host = window.location.hostname || "";
-      const href = window.location.href || "";
-      if (
-        host === "localhost" ||
-        host === "127.0.0.1" ||
-        host.includes("staging") ||
-        href.includes("staging")
-      ) {
-        return true;
-      }
-    }
+    if (api.isDevEnvironment(this.config())) return true;
     return true;
   }
 

@@ -112,7 +112,8 @@ def deploy(c, revision):
         "https://hop-staging-captain-qp262su4sq-el.a.run.app",
         "https://hop-staging-admin-qp262su4sq-el.a.run.app",
     ]
-    env = dict(c["api_env"], APP_ENV="production", ADDRESS=":8080", MIGRATE_ON_START="true",
+    app_env = "development" if "staging" in c.get("service_prefix", "") else "production"
+    env = dict(c["api_env"], APP_ENV=app_env, ADDRESS=":8080", MIGRATE_ON_START="true",
                PUBLIC_ORIGIN=c["origins"]["rider"],
                ALLOWED_ORIGINS=",".join(sorted(set(allowed_origins))),
                **{f"{app.upper()}_ORIGIN": c["origins"][app] for app in APPS})

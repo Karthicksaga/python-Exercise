@@ -39,8 +39,34 @@ export class HopAPI {
     if (data.csrf) this.csrf = data.csrf;
     return data as T;
   }
-  config() {
-    return this.request<Config>("/api/config");
+  async config() {
+    const config = await this.request<Config>("/api/config");
+    if (this.isDevEnvironment(config)) {
+      config.development = true;
+    }
+    return config;
+  }
+  isDevEnvironment(config?: Partial<Config>): boolean {
+    if (config?.development) return true;
+    if (typeof import.meta !== "undefined" && import.meta.env) {
+      if (import.meta.env.DEV || import.meta.env.VITE_DEV_MODE === "true") return true;
+      const apiUrl = import.meta.env.VITE_MOBILE_API_URL;
+      if (
+        typeof apiUrl === "string" &&
+        (apiUrl.includes("staging") ||
+          apiUrl.includes("10.0.2.2") ||
+          apiUrl.includes("localhost"))
+      )
+        return true;
+    }
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname || "";
+      const href = window.location.href || "";
+      if (host.includes("staging") || href.includes("staging")) {
+        return true;
+      }
+    }
+    return false;
   }
   session() {
     return this.request<{ user: { id: string; name: string }; csrf: string }>(
