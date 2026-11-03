@@ -48,6 +48,7 @@ export class LiveFeed {
     center: { lat: 13.0067, lng: 80.2206 },
     vehicles: [],
   };
+  private lastPositionAt = 0;
   constructor(
     private role: "rider" | "captain",
     private update: (data: MapData, message: string) => void,
@@ -131,6 +132,13 @@ export class LiveFeed {
     const position = await api.request<Telemetry>(
       `/api/rides/${encodeURIComponent(ride.id)}/position`,
     );
+    const positionAt = Date.parse(position.at);
+    if (!Number.isFinite(positionAt) || positionAt <= this.lastPositionAt) {
+      this.data = { ...this.data, vehicles: [] };
+      this.update(this.data, "Waiting for a fresh captain GPS update");
+      return;
+    }
+    this.lastPositionAt = positionAt;
     const vehicles = measuredVehicle(position, ride.vehicle_category);
     let road = ride.route?.filter(validCoordinate);
     if (this.role === "captain" && vehicles.length) {

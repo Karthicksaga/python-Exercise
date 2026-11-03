@@ -96,6 +96,7 @@ export class OSMMapView implements MapView {
   private tiles: L.TileLayer;
   private host: HTMLElement;
   private vehicles = new Map<string, L.Marker>();
+  private vehicleFrames = new Map<string, number>();
   private pickupMarker?: L.Marker;
   private dropoffMarker?: L.Marker;
   private currentMarker?: L.Marker;
@@ -158,6 +159,9 @@ export class OSMMapView implements MapView {
     const ids = new Set(data.vehicles.map((v) => v.id));
     for (const [id, marker] of this.vehicles) {
       if (!ids.has(id)) {
+        const frame = this.vehicleFrames.get(id);
+        if (frame != null) cancelAnimationFrame(frame);
+        this.vehicleFrames.delete(id);
         marker.remove();
         this.vehicles.delete(id);
       }
@@ -172,7 +176,31 @@ export class OSMMapView implements MapView {
         }).addTo(this.map);
         this.vehicles.set(v.id, marker);
       } else {
-        marker.setLatLng([v.lat, v.lng]);
+        const activeMarker = marker;
+        const start = marker.getLatLng();
+        const fromHeading = Number((marker as any).__heading || v.heading || 0);
+        const toHeading = v.heading ?? fromHeading;
+        const delta = ((toHeading - fromHeading + 540) % 360) - 180;
+        const distance = computeDistanceMeters({ lat: start.lat, lng: start.lng }, v);
+        const duration = Math.min(1800, Math.max(350, distance / 18 * 1000));
+        const previous = this.vehicleFrames.get(v.id);
+        if (previous != null) cancelAnimationFrame(previous);
+        if (distance > 1500) {
+          marker.setLatLng([v.lat, v.lng]);
+        } else {
+          const started = performance.now();
+          const animate = (now: number) => {
+            const t = Math.min(1, (now - started) / duration);
+            const eased = t * t * (3 - 2 * t);
+            activeMarker.setLatLng([start.lat + (v.lat - start.lat) * eased, start.lng + (v.lng - start.lng) * eased]);
+            const heading = (fromHeading + delta * eased + 360) % 360;
+            const el = activeMarker.getElement()?.querySelector<HTMLElement>(".hop-vehicle-marker");
+            if (el) el.style.transform = `rotate(${heading}deg)`;
+            if (t < 1) this.vehicleFrames.set(v.id, requestAnimationFrame(animate));
+            else { this.vehicleFrames.delete(v.id); (activeMarker as any).__heading = toHeading; }
+          };
+          this.vehicleFrames.set(v.id, requestAnimationFrame(animate));
+        }
         const el = marker.getElement()?.querySelector<HTMLElement>(".hop-vehicle-marker");
         if (el && v.heading != null && !Number.isNaN(v.heading)) {
           el.style.transform = `rotate(${v.heading}deg)`;
@@ -416,6 +444,8 @@ export class OSMMapView implements MapView {
     this.map.setView([camera.center.lat, camera.center.lng], camera.zoom, { animate: false });
   }
   destroy() {
+    for (const frame of this.vehicleFrames.values()) cancelAnimationFrame(frame);
+    this.vehicleFrames.clear();
     this.resize.disconnect();
     this.previewMarker?.remove();
     this.vehicles.forEach((m) => m.remove());

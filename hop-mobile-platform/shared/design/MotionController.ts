@@ -7,7 +7,12 @@ export class MotionController {
   private modal = "";
   private toast = "";
   private disposed = false;
-  private ease = "cubic-bezier(.22,1,.36,1)";
+  private readonly timing = {
+    quick: 160,
+    control: 200,
+    screen: 240,
+    ease: "cubic-bezier(.22,1,.36,1)",
+  } as const;
   constructor(private app: HTMLElement) {
     this.observer = new MutationObserver(() => this.update());
     this.observer.observe(app, {
@@ -41,7 +46,7 @@ export class MotionController {
     const animation = node.animate(frames, {
       duration,
       delay,
-      easing: this.ease,
+      easing: this.timing.ease,
       fill: "both",
     });
     animation.id = `hop-${label}`;
@@ -80,7 +85,7 @@ export class MotionController {
           },
           { opacity: 1, transform: "translate3d(0,0,0)" },
         ],
-        240,
+        this.timing.screen,
         "screen-entry",
       );
       this.play(
@@ -89,7 +94,7 @@ export class MotionController {
           { opacity: 0, transform: "translateY(5px)" },
           { opacity: 1, transform: "translateY(0)" },
         ],
-        200,
+        this.timing.control,
         "action-entry",
         40,
       );
