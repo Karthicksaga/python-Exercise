@@ -136,7 +136,7 @@ func (s *Server) Handler() http.Handler {
 		"GET /api/push/key": s.pushKey, "POST /api/push/subscribe": s.pushSubscribe, "POST /api/push/unsubscribe": s.pushUnsubscribe,
 		"GET /api/nearby": s.nearby, "GET /api/stream": s.stream, "POST /api/operator/vehicle-changes/{id}": s.reviewVehicleChange, "POST /api/operator/area-changes/{id}": s.reviewAreaChange,
 		"GET /api/drivers/earnings": s.driverEarnings, "GET /api/drivers/demand": s.driverDemand, "POST /api/drivers/go-home": s.goHome, "POST /api/drivers/goal": s.saveGoal, "GET /api/drivers/insights": s.driverInsights,
-		"POST /api/incidents": s.incident, "GET /api/operator": s.operatorState,
+		"POST /api/incidents": s.incident, "GET /api/operator": s.operatorState, "GET /api/operator/regions": s.operatorRegions,
 		"POST /api/operator/areas": s.saveArea, "POST /api/operator/drivers/{id}": s.reviewDriver,
 		"POST /api/operator/pricing":        s.saveVehiclePricing,
 		"POST /api/operator/incidents/{id}": s.reviewIncident,
@@ -154,6 +154,8 @@ func (s *Server) Handler() http.Handler {
 		"GET /api/operator/lost-items": s.operatorLostItems, "POST /api/operator/lost-items/{id}": s.operatorUpdateLostItem,
 		"GET /api/operator/analytics": s.operatorAnalytics,
 		"GET /api/admin/drivers":      s.adminDrivers, "POST /api/admin/drivers/{id}": s.adminDecision,
+		"POST /api/admin/drivers/{id}/claim": s.adminClaim, "GET /api/admin/drivers/{id}/documents": s.adminDocumentVersions,
+		"GET /api/admin/document-versions/{version}": s.adminDocumentVersion,
 	}
 	for pattern, handler := range s.companionRoutes() {
 		routes[pattern] = handler

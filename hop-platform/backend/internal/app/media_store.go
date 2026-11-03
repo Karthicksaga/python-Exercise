@@ -36,8 +36,15 @@ func (s *Server) configureMedia(ctx context.Context) error {
 			if err := os.MkdirAll(dir, 0700); err == nil {
 				s.Media = &localMedia{baseDir: dir}
 				return nil
+			} else if !s.Config.Development {
+				return fmt.Errorf("MEDIA_LOCAL_DIR is not writable: %w", err)
 			}
 		}
+		// Memory storage loses identity documents on restart and is not shared between instances.
+		if !s.Config.Development {
+			return errors.New("production needs private media storage: set MEDIA_PROFILE_BUCKET and MEDIA_KYC_BUCKET, or MEDIA_LOCAL_DIR on a persistent volume")
+		}
+		slog.Warn("media stored in memory: uploads are lost on restart and not shared between instances (development only)")
 		s.Media = &memoryMedia{objects: make(map[string][]byte)}
 		return nil
 	}
@@ -277,12 +284,25 @@ func (s *Server) CleanupMedia(ctx context.Context) error {
 	if _, e = s.DB.Exec(ctx, `DELETE FROM driver_application_drafts a WHERE a.updated_at<now()-interval '30 days' AND NOT EXISTS(SELECT 1 FROM drivers WHERE user_id=a.account_id)`); e != nil {
 		return e
 	}
+	// Abandoned applications: every stored version goes with the draft.
+	if _, e = s.DB.Exec(ctx, `DELETE FROM driver_document_versions v WHERE v.uploaded_at<now()-interval '30 days'
+      AND NOT EXISTS(SELECT 1 FROM drivers WHERE user_id=v.account_id)
+      AND NOT EXISTS(SELECT 1 FROM driver_documents d WHERE d.object_key=v.object_key)
+      AND NOT EXISTS(SELECT 1 FROM driver_application_drafts a WHERE a.account_id=v.account_id AND a.updated_at>now()-interval '30 days')`); e != nil {
+		return e
+	}
+	// Replaced evidence is retained for audit (3 years), and indefinitely while an approval cites it.
+	if _, e = s.DB.Exec(ctx, `DELETE FROM driver_document_versions v WHERE v.superseded_at<now()-interval '3 years'
+      AND NOT EXISTS(SELECT 1 FROM driver_verifications x WHERE x.evidence->'documents' @> jsonb_build_object(v.kind, v.object_key))`); e != nil {
+		return e
+	}
 	if s.Media == nil {
 		return nil
 	}
 	rows, e := s.DB.Query(ctx, `SELECT object_key,kind FROM media_objects m WHERE created_at<now()-interval '24 hours'
  AND NOT EXISTS(SELECT 1 FROM profile_photos p WHERE p.object_key=m.object_key)
- AND NOT EXISTS(SELECT 1 FROM driver_documents d WHERE d.object_key=m.object_key) LIMIT 50`)
+ AND NOT EXISTS(SELECT 1 FROM driver_documents d WHERE d.object_key=m.object_key)
+ AND NOT EXISTS(SELECT 1 FROM driver_document_versions v WHERE v.object_key=m.object_key) LIMIT 50`)
 	if e != nil {
 		return e
 	}

@@ -42,6 +42,8 @@ type Area struct {
 	Version  int     `json:"pricing_version"`
 	Active   bool    `json:"active"`
 	Approval string  `json:"approval_reference"`
+	// CatalogID links a zone to a district in region_catalog (optional, one zone per district).
+	CatalogID string `json:"catalog_id,omitempty"`
 }
 
 type VehiclePricing struct {

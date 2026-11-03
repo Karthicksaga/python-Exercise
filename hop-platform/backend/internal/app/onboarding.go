@@ -37,13 +37,7 @@ func normalizedPhoto(encoded string, maxBytes int) ([]byte, error) {
 		width = max(1, int(float64(width)*ratio))
 		height = max(1, int(float64(height)*ratio))
 	}
-	dst := image.NewRGBA(image.Rect(0, 0, width, height))
-	bounds := img.Bounds()
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			dst.Set(x, y, img.At(bounds.Min.X+x*cfg.Width/width, bounds.Min.Y+y*cfg.Height/height))
-		}
-	}
+	dst := areaResize(img, width, height)
 	var out bytes.Buffer
 	if e = jpeg.Encode(&out, dst, &jpeg.Options{Quality: 82}); e != nil {
 		return nil, e
@@ -195,7 +189,7 @@ func (s *Server) onboardingState(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	docs, e := jsonRows(ctx, s.DB, "SELECT kind,updated_at FROM driver_documents WHERE account_id=$1 ORDER BY kind", uid)
+	docs, e := jsonRows(ctx, s.DB, "SELECT kind,updated_at,review_status,review_reason FROM driver_documents WHERE account_id=$1 ORDER BY kind", uid)
 	if e != nil {
 		dbError(w, e)
 		return
@@ -214,7 +208,7 @@ func (s *Server) onboardingState(w http.ResponseWriter, r *http.Request) {
 	} else if s.Media != nil {
 		mode = "private_cloud"
 	}
-	write(w, 200, map[string]any{"draft": draft, "documents": docs, "has_photo": photo, "photo_approved": approved, "storage_mode": mode, "phone_verified": hasMobile(ctx, s.DB, uid), "documents_required": !s.Config.Development, "testing_mode": s.Config.Development})
+	write(w, 200, map[string]any{"draft": draft, "documents": docs, "has_photo": photo, "photo_approved": approved, "storage_mode": mode, "phone_verified": hasMobile(ctx, s.DB, uid), "documents_required": !s.Config.Development, "testing_mode": s.Config.Development, "required_documents": requiredDocumentKinds, "optional_documents": optionalDocumentKinds})
 }
 func (s *Server) saveOnboarding(w http.ResponseWriter, r *http.Request) {
 	var in applicationDraft
@@ -238,9 +232,6 @@ func (s *Server) saveOnboarding(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, 200, map[string]bool{"ok": true})
-}
-func documentKind(kind string) bool {
-	return kind == "identity" || kind == "license" || kind == "rc" || kind == "insurance"
 }
 func (s *Server) uploadDriverDocument(w http.ResponseWriter, r *http.Request) {
 	kind, uid, ctx := r.PathValue("kind"), user(r).Account.ID, r.Context()
@@ -286,7 +277,11 @@ func (s *Server) uploadDriverDocument(w http.ResponseWriter, r *http.Request) {
 		fail(w, 503, "Private document storage is unavailable. Try again later.")
 		return
 	}
-	_, e = tx.Exec(ctx, `INSERT INTO driver_documents(account_id,kind,object_key,content_type) VALUES($1,$2,$3,'image/jpeg') ON CONFLICT(account_id,kind) DO UPDATE SET object_key=$3,content_type='image/jpeg',updated_at=now()`, uid, kind, key)
+	_, e = tx.Exec(ctx, `INSERT INTO driver_documents(account_id,kind,object_key,content_type) VALUES($1,$2,$3,'image/jpeg')
+ ON CONFLICT(account_id,kind) DO UPDATE SET object_key=$3,content_type='image/jpeg',updated_at=now(),review_status='pending',review_reason='',reviewed_by=NULL,reviewed_at=NULL`, uid, kind, key)
+	if e == nil {
+		e = recordDocumentVersion(ctx, tx, uid, kind, key)
+	}
 	if e == nil {
 		_, e = tx.Exec(ctx, "UPDATE drivers SET status='pending',online=false,pink_certified=false,review_note='Documents updated. Awaiting operator review.',updated_at=now() WHERE user_id=$1 AND status='approved'", uid)
 	}
@@ -333,4 +328,28 @@ func (s *Server) driverDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, 200, map[string]string{"image": base64.StdEncoding.EncodeToString(content), "content_type": ct})
+}
+
+// areaResize downsamples by averaging every source pixel each output pixel covers, which keeps
+// small print on licences and RCs legible (nearest-neighbour sampling drops detail).
+func areaResize(src image.Image, width, height int) *image.RGBA {
+	b := src.Bounds()
+	sw, sh := b.Dx(), b.Dy()
+	dst := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := 0; y < height; y++ {
+		y0, y1 := y*sh/height, max((y+1)*sh/height, y*sh/height+1)
+		for x := 0; x < width; x++ {
+			x0, x1 := x*sw/width, max((x+1)*sw/width, x*sw/width+1)
+			var r, g, bl, a, n uint64
+			for sy := y0; sy < y1; sy++ {
+				for sx := x0; sx < x1; sx++ {
+					cr, cg, cb, ca := src.At(b.Min.X+sx, b.Min.Y+sy).RGBA()
+					r, g, bl, a, n = r+uint64(cr), g+uint64(cg), bl+uint64(cb), a+uint64(ca), n+1
+				}
+			}
+			i := dst.PixOffset(x, y)
+			dst.Pix[i], dst.Pix[i+1], dst.Pix[i+2], dst.Pix[i+3] = uint8(r/n>>8), uint8(g/n>>8), uint8(bl/n>>8), uint8(a/n>>8)
+		}
+	}
+	return dst
 }

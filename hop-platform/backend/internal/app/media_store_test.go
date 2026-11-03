@@ -109,8 +109,14 @@ func TestMediaStoreLocalStore(t *testing.T) {
 func TestConfigureMediaProvisionsStoreWhenBucketsEmpty(t *testing.T) {
 	ctx := context.Background()
 
-	// Default without buckets: should provision memoryMedia even if Development=false
-	s := &Server{Config: Config{Development: false}}
+	// Production without buckets or a persistent directory must refuse to start:
+	// memory storage would lose identity documents on restart.
+	t.Setenv("MEDIA_LOCAL_DIR", "")
+	if err := (&Server{Config: Config{Development: false}}).configureMedia(ctx); err == nil {
+		t.Fatal("production accepted in-memory media storage")
+	}
+	// Development falls back to memory storage.
+	s := &Server{Config: Config{Development: true}}
 	if err := s.configureMedia(ctx); err != nil {
 		t.Fatalf("configureMedia failed: %v", err)
 	}

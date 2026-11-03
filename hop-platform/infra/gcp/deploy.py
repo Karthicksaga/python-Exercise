@@ -50,9 +50,17 @@ def validate(c):
     for key in ("OIDC_ISSUER", "ROUTING_URL", "GEOCODING_URL"):
         https_url(env[key])
     require(bool(env["OIDC_CLIENT_ID"]), "OIDC_CLIENT_ID is required")
-    allowed_env = {"OIDC_ISSUER", "OIDC_CLIENT_ID", "ROUTING_URL", "GEOCODING_URL", "VAPID_PUBLIC_KEY", "VAPID_SUBJECT", "MEDIA_PROFILE_BUCKET", "MEDIA_KYC_BUCKET", "DEV_SMS", "DEV_PAYMENTS"}
+    allowed_env = {"OIDC_ISSUER", "OIDC_CLIENT_ID", "ROUTING_URL", "GEOCODING_URL", "VAPID_PUBLIC_KEY", "VAPID_SUBJECT", "MEDIA_PROFILE_BUCKET", "MEDIA_KYC_BUCKET", "DEV_SMS", "DEV_PAYMENTS", "DEMO_LOGIN"}
     require(set(env) <= allowed_env, "api_env accepts public configuration only; use api_secrets for credentials")
+    staging = "staging" in c.get("service_prefix", "")
     buckets = [env.get("MEDIA_PROFILE_BUCKET", ""), env.get("MEDIA_KYC_BUCKET", "")]
+    if not staging:
+        # Production: identity documents need durable private storage, and demo accounts must not exist.
+        require(all(buckets), "Production needs MEDIA_PROFILE_BUCKET and MEDIA_KYC_BUCKET (private buckets)")
+        require(not env.get("DEMO_LOGIN"), "DEMO_LOGIN is not allowed in production")
+        require(env.get("DEV_SMS") != "true" and env.get("DEV_PAYMENTS") != "true", "DEV_SMS/DEV_PAYMENTS are not allowed in production")
+    elif not all(buckets):
+        print("WARNING: staging has no media buckets; Cloud Run keeps uploads in memory, so documents vanish on restart.")
     if any(buckets):
         require(all(re.fullmatch(r"[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]", b) for b in buckets)
                 and len(set(buckets)) == 2, "Configure two distinct valid private media bucket names")
