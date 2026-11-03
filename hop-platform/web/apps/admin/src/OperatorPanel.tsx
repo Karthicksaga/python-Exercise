@@ -6,6 +6,19 @@ export type OpsSection = "pricing" | "areas" | "drivers" | "incidents" | "audit"
 import TripPricingForm from "./TripPricingForm";
 import AdminConsole from "./AdminConsole";
 import type { Area, Driver, Incident } from "@hop/shared/types";
+type Region = {
+  id: string;
+  state: string;
+  district: string;
+  min_lat: number;
+  max_lat: number;
+  min_lng: number;
+  max_lng: number;
+  source: string;
+  area_id: string | null;
+  area_name: string | null;
+  area_active: boolean;
+};
 type Operations = {
   areas: Area[];
   pricing: {
@@ -56,7 +69,9 @@ export default function OperatorPanel({
   const [data, setData] = useState<Operations | null>(null),
     [busy, setBusy] = useState(false),
     [selected, setSelected] = useState<Area | null>(null),
-    [pricingArea, setPricingArea] = useState("");
+    [pricingArea, setPricingArea] = useState(""),
+    [regions, setRegions] = useState<Region[]>([]),
+    [regionState, setRegionState] = useState("Tamil Nadu");
   const load = useCallback(async () => {
     try {
       const next = await api<Operations>("/api/operator");
@@ -69,12 +84,45 @@ export default function OperatorPanel({
   useEffect(() => {
     void load();
   }, [load]);
+  const loadRegions = useCallback(async () => {
+    try {
+      const next = await api<{ regions: Region[] }>("/api/operator/regions");
+      setRegions(next.regions ?? []);
+    } catch (e) {
+      notify((e as Error).message);
+    }
+  }, [notify]);
+  useEffect(() => {
+    if (section === "areas") void loadRegions();
+  }, [section, loadRegions]);
+  // Starting a zone from a district fills its bounds; fares copy an existing zone in the same state.
+  function startFromRegion(id: string) {
+    const region = regions.find((r) => r.id === id);
+    if (!region || !data) return;
+    const sibling = data.areas.find((a) => a.state === region.state && a.active) ?? data.areas.find((a) => a.state === region.state);
+    setSelected({
+      id: "",
+      catalog_id: region.id,
+      name: region.district,
+      state: region.state,
+      min_lat: region.min_lat,
+      max_lat: region.max_lat,
+      min_lng: region.min_lng,
+      max_lng: region.max_lng,
+      base_paise: sibling?.base_paise ?? 2500,
+      per_km_paise: sibling?.per_km_paise ?? 1200,
+      minimum_paise: sibling?.minimum_paise ?? 3000,
+      active: false,
+      approval_reference: "",
+    });
+  }
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     const f = new FormData(e.currentTarget);
     const fields: Record<string, unknown> = {
       id: selected?.id || "",
+      catalog_id: selected?.catalog_id || "",
       name: f.get("name"),
       state: f.get("state"),
       active: f.get("active") === "on",
@@ -93,7 +141,7 @@ export default function OperatorPanel({
     try {
       await api("/api/operator/areas", fields);
       setSelected(null);
-      await load();
+      await Promise.all([load(), loadRegions()]);
       notify(
         "Service area saved. Existing quotes retain their original price until expiry.",
       );
@@ -247,8 +295,48 @@ export default function OperatorPanel({
               </button>
             </div>
           ))}
-          <h3>{selected ? "Edit area" : "New service area"}</h3>
-          <form key={selected?.id || "new"} onSubmit={save}>
+          {(() => {
+            const states = [...new Set(regions.map((r) => r.state))];
+            const list = regions.filter((r) => r.state === regionState);
+            const covered = list.filter((r) => r.area_id);
+            if (!regions.length) return null;
+            return (
+              <div className="region-picker">
+                <h3>Start a zone from a district</h3>
+                <p className="muted">
+                  {covered.length} of {list.length} districts in {regionState} have a zone
+                  ({covered.filter((r) => r.area_active).length} active). New zones start inactive until you set fares and an approval reference.
+                </p>
+                <div className="form-grid">
+                  {states.length > 1 && (
+                    <label>
+                      State
+                      <select value={regionState} onChange={(e) => setRegionState(e.target.value)}>
+                        {states.map((st) => <option key={st}>{st}</option>)}
+                      </select>
+                    </label>
+                  )}
+                  <label>
+                    District
+                    <select
+                      value={selected?.catalog_id && !selected.id ? selected.catalog_id : ""}
+                      onChange={(e) => startFromRegion(e.target.value)}
+                    >
+                      <option value="">Choose a district…</option>
+                      {list.map((r) => (
+                        <option key={r.id} value={r.id} disabled={Boolean(r.area_id)}>
+                          {r.district}{r.area_id ? ` (zone: ${r.area_name}${r.area_active ? ", active" : ", inactive"})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <small className="muted">District bounds: {list[0]?.source}. Bounds are a rectangle around the district; shrink them to serve only the city.</small>
+              </div>
+            );
+          })()}
+          <h3>{selected?.id ? "Edit area" : selected?.catalog_id ? `New zone: ${selected.name}` : "New service area"}</h3>
+          <form key={selected?.id || selected?.catalog_id || "new"} onSubmit={save}>
             <div className="form-grid">
               <label>
                 Area name

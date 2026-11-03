@@ -347,3 +347,10 @@ html[data-theme="dark"] .ad-mobile-navigation button.on {
     flex-wrap: wrap;
   }
 }
+
+/* District picker on Service areas */
+.region-picker { margin: 8px 0 18px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
+.region-picker h3 { margin-top: 0; }
+.region-picker select { width: 100%; }
+.ad-content .operator-grid > section > .region-picker,
+.ad-content .operator-grid > section > form { grid-column: 1 / -1; max-width: 880px; }
