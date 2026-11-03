@@ -18,7 +18,7 @@ type Draft = Record<string, string | number> & { step: number };
 
 type Evidence = {
   draft: Partial<Draft>;
-  documents: { kind: string; url?: string }[];
+  documents: { kind: string; url?: string; review_status?: "pending" | "accepted" | "rejected"; review_reason?: string }[];
   has_photo: boolean;
   phone_verified: boolean;
 };
@@ -31,11 +31,16 @@ const vehicleCategories = [
   { id: "suv", name: "SUV", seats: "6 seats", image: "./assets/suv.png" },
 ];
 
-const documents = [
-  { kind: "license", label: "Driving licence", icon: "file" },
-  { kind: "rc", label: "Registration certificate", icon: "file" },
+// Matches the backend's required/optional lists (backend/internal/app/documents.go).
+const documents: { kind: string; label: string; icon: string; optional?: boolean }[] = [
+  { kind: "license", label: "Driving licence · front", icon: "file" },
+  { kind: "license_back", label: "Driving licence · back", icon: "file" },
+  { kind: "rc", label: "Registration certificate · front", icon: "file" },
+  { kind: "rc_back", label: "Registration certificate · back", icon: "file" },
   { kind: "insurance", label: "Insurance policy", icon: "shield" },
-  { kind: "identity", label: "Government identity", icon: "lock" },
+  { kind: "identity", label: "Government ID · front", icon: "lock" },
+  { kind: "identity_back", label: "Government ID · back", icon: "lock" },
+  { kind: "police", label: "Police clearance certificate", icon: "shield", optional: true },
 ];
 
 const fields = [
@@ -64,13 +69,17 @@ export class CaptainOnboarding {
   private error = "";
   private sent = false;
   private submitted = false;
+  // A pending captain with rejected documents can reopen the documents step to fix them.
+  private fixing = false;
   private lastStatus = "";
-  private testingOptional = true;
+  private testingOptional = false; // Required fields are enforced unless a developer opts in.
   private retryAt = 0;
   private preview?: { image: string; endpoint: string; kind?: string };
 
   // Previews, camera capture, modal and validation tracking
   private previews: Record<string, string> = {};
+  // Documents re-uploaded this session show "In review" until the server reports a new decision.
+  private freshUploads = new Set<string>();
   private invalidFields = new Set<string>();
   private viewingDoc?: { kind: string; label: string; image: string };
   private cameraActive?: {
@@ -443,6 +452,7 @@ export class CaptainOnboarding {
         ? "/api/profile/photo"
         : `/api/drivers/documents/${kind}`;
       await api.request(endpoint, { image: compressedBase64 });
+      this.freshUploads.add(kind);
       this.evidence = await api.request<Evidence>("/api/drivers/onboarding");
       this.invalidFields.delete(kind);
       this.bridge.notify(`${label} saved privately.`);
@@ -458,13 +468,16 @@ export class CaptainOnboarding {
     const driver = this.state()?.driver?.[0];
     const areas = this.config()?.areas || [];
     const pending =
-      driver?.status === "pending" || (!driver?.status && this.submitted);
+      (driver?.status === "pending" || (!driver?.status && this.submitted)) && !this.fixing;
+    const rejectedDocs = (this.evidence?.documents || []).filter((d) => d.review_status === "rejected");
     const actions = this.app.querySelector<HTMLElement>(".action-bar");
     if (actions) actions.style.display = pending ? "none" : "";
     const headerBack = this.app.querySelector<HTMLElement>('header button[aria-label="Back"]');
     if (headerBack) headerBack.style.display = pending ? "none" : "";
     if (pending) {
-      host.innerHTML = `<div class="section-card"><span class="badge warn">Under review</span><h2>Application submitted</h2><p>Your documents and details are awaiting operator approval. Drive, earnings, trips and account will unlock after approval.</p>${driver?.review_note ? `<p class="notice-box">${escape(driver.review_note)}</p>` : ""}<button class="secondary" data-captain-action="check-approval">Check approval status</button>${this.error ? `<p role="alert">${escape(this.error)}</p>` : ""}</div>`;
+      host.innerHTML = rejectedDocs.length
+        ? `<div class="section-card"><span class="badge red">Action needed</span><h2>Some documents need another look</h2><p>Hop operations reviewed your application. Upload these again so we can finish your approval:</p><ul class="rejected-docs">${rejectedDocs.map((d) => `<li><strong>${escape(documents.find((x) => x.kind === d.kind)?.label || d.kind)}</strong><br><small>${escape(d.review_reason || "Please upload this document again.")}</small></li>`).join("")}</ul><button class="primary" data-captain-action="fix-documents">Fix documents</button>${this.error ? `<p role="alert">${escape(this.error)}</p>` : ""}</div>`
+        : `<div class="section-card"><span class="badge warn">Under review</span><h2>Application submitted</h2><p>Your documents and details are awaiting operator approval. Drive, earnings, trips and account will unlock after approval.</p>${driver?.review_note ? `<p class="notice-box">${escape(driver.review_note)}</p>` : ""}<button class="secondary" data-captain-action="check-approval">Check approval status</button>${this.error ? `<p role="alert">${escape(this.error)}</p>` : ""}</div>`;
       return;
     }
 
@@ -478,6 +491,23 @@ export class CaptainOnboarding {
       const hasPreview = Boolean(previewData);
       const isVerifiedOrSaved = saved || hasPreview;
       const isMissing = this.invalidFields.has(kind);
+      const review = this.evidence?.documents?.find((d) => d.kind === kind);
+      const optional = documents.some((d) => d.kind === kind && d.optional);
+      // A fresh local upload replaces any earlier review until the operator looks again.
+      const reviewStatus = hasPreview && this.freshUploads.has(kind) ? "pending" : review?.review_status || "pending";
+      const rejected = isVerifiedOrSaved && reviewStatus === "rejected";
+      const statusBadge = !isVerifiedOrSaved
+        ? (this.isTestingBypass() || optional ? `<span class="badge neutral">Optional</span>` : `<span class="badge ${isMissing ? "red" : "warn"}">Required</span>`)
+        : reviewStatus === "accepted"
+          ? `<span class="badge green">${icon("check", "tiny-icon")} Verified</span>`
+          : rejected
+            ? `<span class="badge red">Re-upload needed</span>`
+            : `<span class="badge neutral">In review</span>`;
+      const statusText = !isVerifiedOrSaved
+        ? (this.isTestingBypass() ? "Optional for testing · upload or continue" : optional ? "Optional · speeds up your approval" : "Choose a clear JPEG or PNG (up to 12 MB)")
+        : rejected
+          ? escape(review?.review_reason || "Please upload this document again.")
+          : reviewStatus === "accepted" ? "Checked by Hop operations" : "Uploaded privately · awaiting review";
 
       const previewSrc = hasPreview
         ? (previewData.startsWith("data:")
@@ -486,14 +516,14 @@ export class CaptainOnboarding {
         : (saved ? placeholderDocSvg : "");
 
       return (
-        `<div class="upload-card ${isVerifiedOrSaved ? "uploaded" : ""} ${isMissing ? "invalid-card" : ""}" data-upload-kind="${kind}">` +
+        `<div class="upload-card ${isVerifiedOrSaved ? "uploaded" : ""} ${isMissing || rejected ? "invalid-card" : ""}" data-upload-kind="${kind}">` +
         `<div class="upload-icon-circle ${isVerifiedOrSaved ? "success" : ""}">${icon(isVerifiedOrSaved ? "check" : iconName)}</div>` +
         `<div class="upload-content">` +
         `<div class="upload-title-row">` +
         `<strong>${label}</strong>` +
-        `${isVerifiedOrSaved ? `<span class="badge green">${icon("check", "tiny-icon")} Verified</span>` : this.isTestingBypass() ? `<span class="badge neutral">Optional</span>` : `<span class="badge ${isMissing ? "red" : "warn"}">Required</span>`}` +
+        statusBadge +
         `</div>` +
-        `<small>${isVerifiedOrSaved ? "Uploaded privately · awaiting review" : this.isTestingBypass() ? "Optional for testing · upload or continue" : "Choose a clear JPEG or PNG (up to 12 MB)"}</small>` +
+        `<small ${rejected ? 'class="upload-rejection" role="note"' : ""}>${statusText}</small>` +
         `</div>` +
         `${
           previewSrc
@@ -736,7 +766,7 @@ export class CaptainOnboarding {
               }
             </div>
             <div class="summary-meta">
-              <h3>${escape(this.name || "Real Captain")}</h3>
+              <h3>${escape(this.name || "New Captain")}</h3>
               <span class="micro muted">${escape(this.phone || "")} · Verified phone</span>
             </div>
             <span class="badge ${driver?.status === "approved" ? "green" : "warn"}">
@@ -897,7 +927,7 @@ export class CaptainOnboarding {
 
     host.innerHTML = `
       <div class="onboarding-applicant-bar">
-        <span class="applicant-pill">${icon("user", "tiny-icon")} Captain: <strong>${escape(this.name || "Real Captain")}</strong></span>
+        <span class="applicant-pill">${icon("user", "tiny-icon")} Captain: <strong>${escape(this.name || "New Captain")}</strong></span>
       </div>
       <div class="onboarding-steps">${[0, 1, 2, 3].map((i) => `<span class="${i <= step ? "active" : ""}"></span>`).join("")}</div>
       <p class="eyebrow">STEP ${step + 1} OF 4</p>
@@ -1022,6 +1052,7 @@ export class CaptainOnboarding {
             ? "/api/profile/photo"
             : `/api/drivers/documents/${kind}`;
           await api.request(endpoint, { image: compressed });
+          this.freshUploads.add(kind);
           this.evidence = await api.request<Evidence>("/api/drivers/onboarding");
           this.invalidFields.delete(kind);
           if (this.viewingDoc && this.viewingDoc.kind === kind) {
@@ -1128,18 +1159,24 @@ export class CaptainOnboarding {
         missing.push("Captain portrait");
         this.invalidFields.add("portrait");
       }
+      const needsRedo: string[] = [];
       for (const doc of documents) {
-        const hasDoc = Boolean(
-          this.evidence?.documents?.some((d) => d.kind === doc.kind) ||
-          this.previews[doc.kind],
-        );
-        if (!hasDoc) {
+        const saved = this.evidence?.documents?.find((d) => d.kind === doc.kind);
+        const hasDoc = Boolean(saved || this.previews[doc.kind]);
+        if (!hasDoc && !doc.optional) {
           missing.push(doc.label);
+          this.invalidFields.add(doc.kind);
+        }
+        if (saved?.review_status === "rejected" && !this.freshUploads.has(doc.kind)) {
+          needsRedo.push(doc.label);
           this.invalidFields.add(doc.kind);
         }
       }
       if (missing.length > 0) {
         throw new Error(`Missing required documents: ${missing.join(", ")}.`);
+      }
+      if (needsRedo.length > 0) {
+        throw new Error(`Upload again: ${needsRedo.join(", ")}. See the reason under each document.`);
       }
     }
 
@@ -1273,6 +1310,7 @@ export class CaptainOnboarding {
       ![
         "reload",
         "check-approval",
+        "fix-documents",
         "send",
         "verify",
         "upload",
@@ -1325,6 +1363,12 @@ export class CaptainOnboarding {
         return;
       }
       if (action === "check-approval") return this.refresh();
+      if (action === "fix-documents") {
+        this.fixing = true;
+        this.draft.step = 2;
+        this.render();
+        return;
+      }
       if (action === "reload") return this.load();
       if (action === "instant-approve-captain")
         throw new Error("Only an operator can approve a Captain.");
@@ -1393,6 +1437,7 @@ export class CaptainOnboarding {
           }
           await api.request("/api/drivers/apply", payload);
           this.submitted = true;
+          this.fixing = false;
           this.bridge.assign({
             driverApproved: false,
             driverStatus: "pending",

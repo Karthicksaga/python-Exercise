@@ -15,6 +15,19 @@ for (const [role, port] of [
   test(`${role}: login has coordinated motion and settles without layout drift`, async ({
     page,
   }) => {
+    // Observe animation creation as well as settlement: a short animation can
+    // finish before the first polling round on a busy local test machine.
+    await page.addInitScript(() => {
+      window.__hopMotionIds = [];
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (...args) {
+        const animation = animate.apply(this, args);
+        queueMicrotask(() => {
+          if (animation.id.startsWith("hop-")) window.__hopMotionIds.push(animation.id);
+        });
+        return animation;
+      };
+    });
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await setup(page);
     await page.goto(`http://127.0.0.1:${port}/`);
@@ -22,10 +35,7 @@ for (const [role, port] of [
     await expect
       .poll(() =>
         page.evaluate(() =>
-          document
-            .getAnimations()
-            .filter((a) => a.id.startsWith("hop-"))
-            .map((a) => a.id),
+          window.__hopMotionIds,
         ),
       )
       .toContain("hop-login-form");

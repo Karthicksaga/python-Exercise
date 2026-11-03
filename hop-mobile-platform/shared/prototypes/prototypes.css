@@ -30,12 +30,12 @@
 }
 .payment-intro {
   padding: 24px 22px 18px;
-  background: #f5f6f0;
+  background: #f0f0f6;
 }
 .payment-intro > span {
   font-size: 8px;
   letter-spacing: 1.6px;
-  color: #687961;
+  color: #616279;
   font-weight: 700;
 }
 .payment-intro h1 {
@@ -68,7 +68,7 @@
   font-weight: 650;
 }
 .payment-amount > strong {
-  font-family: Outfit, sans-serif;
+  font-family: "Plus Jakarta Sans", sans-serif;
   font-size: 44px;
   letter-spacing: -2.5px;
   font-weight: 800;
@@ -115,10 +115,10 @@
   height: 36px;
   display: grid;
   place-items: center;
-  background: #f2f4ed;
+  background: #ededf4;
   border-radius: 12px;
   font-size: 19px;
-  color: #446144;
+  color: #454660;
 }
 .payment-method > span:nth-child(2) {
   flex: 1;
@@ -152,11 +152,11 @@
   font-size: 10px;
 }
 .payment-hint {
-  background: #f4f6ef;
+  background: #efeff6;
   border-radius: 13px;
   padding: 13px;
   margin: 13px 0;
-  color: #60715b;
+  color: #5b5c71;
   font-size: 11px;
   line-height: 1.7;
 }
@@ -179,21 +179,21 @@
   width: 70px;
   height: 70px;
   border-radius: 24px;
-  background: #f0f3e9;
-  color: #57754b;
+  background: #e9e9f3;
+  color: #51526f;
   display: grid;
   place-items: center;
   margin: 4px auto 18px;
   font-size: 35px;
 }
 .payment-state-symbol.success {
-  background: #e7f2e8;
+  background: #e7e7f2;
   color: #167b5b;
   animation: payment-settle 450ms ease-out both;
 }
 .payment-state-symbol.failure {
-  background: #fff0eb;
-  color: #ca5137;
+  background: #ecebfd;
+  color: #3f34bd;
 }
 .payment-state-symbol.checking {
   animation: payment-check 3s ease-in-out infinite;
@@ -238,7 +238,7 @@
   padding: 0 0 0 25px;
   display: grid;
   gap: 25px;
-  color: #48683e;
+  color: #464760;
   font-size: 12px;
 }
 .payment-timeline small {
@@ -309,4 +309,4 @@
   border-color: var(--accent);
   box-shadow: inset 0 0 0 4px var(--accent);
 }
-.payment-error{background:#fff0eb;color:#b23d2d;border:1px solid #f2c7bc}.payment-amount strong{font-variant-numeric:tabular-nums}.payment-method-symbol .icon{width:19px;height:19px;stroke-width:1.7}.payment-actions button:disabled{opacity:.55;cursor:wait}
+.payment-error{background:#ecebfd;color:#b23d2d;border:1px solid #c9c5f7}.payment-amount strong{font-variant-numeric:tabular-nums}.payment-method-symbol .icon{width:19px;height:19px;stroke-width:1.7}.payment-actions button:disabled{opacity:.55;cursor:wait}

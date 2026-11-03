@@ -789,7 +789,7 @@ export class LiveJourney {
       void this.run(() => this.sendChat(button.dataset.message!));
       return;
     }
-    if (button.dataset.vehicle) {
+    if (button.dataset.vehicle && this.bridge.read().screen === "choose") {
       if (this.estimates[button.dataset.vehicle] === undefined) {
         this.stop(event);
         return;
@@ -1449,7 +1449,7 @@ export class LiveJourney {
           const banner = document.createElement("div");
           banner.className = "notice-box onboarding-banner";
           banner.style.cssText =
-            "margin:8px 0 12px;cursor:pointer;background:var(--accent-warm,#fef7e6);border:1px solid #e0c875;color:#8a6e2b";
+            "margin:8px 0 12px;cursor:pointer;background:var(--accent-warm,#fef7e6);border:1px solid #c9c5f7;color:#8a6e2b";
           banner.setAttribute("data-go", "onboarding");
           banner.innerHTML = `<div class="row"><strong>Complete onboarding to go online</strong><span style="font-size:12px">→</span></div><p class="micro" style="margin-top:2px">Submit your documents for operator approval.</p>`;
           const handle = sheet.querySelector(".sheet-handle");
@@ -1884,8 +1884,16 @@ export class LiveJourney {
             ? `${(nav.meters / 1000).toFixed(1)} km remaining`
             : "Navigation updating";
     }
+    if (this.role === "captain" && ["pickup", "otp", "trip"].includes(screen)) {
+      const rider = this.app.querySelector(".driver-card .driver-text > strong");
+      if (rider) rider.textContent = "Your rider";
+      const avatar = this.app.querySelector(".driver-card .avatar");
+      if (avatar && !avatar.querySelector("img")) avatar.textContent = "R";
+    }
     if (screen === "otp") {
       this.app.querySelector(".otp-actions-row")?.remove();
+      const notice = this.app.querySelector(".screen-padding > .notice-box");
+      if (notice) notice.textContent = "Confirm the code with your rider. Start the trip only when they are safely on board.";
       this.app.querySelectorAll(".fineprint").forEach((el) => {
         if (el.textContent?.includes("431602"))
           el.textContent =

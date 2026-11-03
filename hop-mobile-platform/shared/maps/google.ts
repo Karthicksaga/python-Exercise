@@ -49,17 +49,17 @@ export function loadGoogle(key: string): Promise<void> {
 
 const pickupSvg = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
 <svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M16 1C7.716 1 1 7.716 1 16c0 11.5 15 25 15 25s15-13.5 15-25c0-8.284-6.716-15-15-15Z" fill="#167b5b" stroke="#ffffff" stroke-width="2"/>
+  <path d="M16 1C7.716 1 1 7.716 1 16c0 11.5 15 25 15 25s15-13.5 15-25c0-8.284-6.716-15-15-15Z" fill="#4b3fd1" stroke="#ffffff" stroke-width="2"/>
   <circle cx="16" cy="16" r="6" fill="#ffffff"/>
-  <text x="16" y="19.5" font-family="'Outfit', 'Inter', -apple-system, sans-serif" font-weight="700" font-size="10" fill="#167b5b" text-anchor="middle">P</text>
+  <text x="16" y="19.5" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-weight="700" font-size="10" fill="#4b3fd1" text-anchor="middle">P</text>
 </svg>
 `)}`;
 
 const dropoffSvg = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
 <svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M16 1C7.716 1 1 7.716 1 16c0 11.5 15 25 15 25s15-13.5 15-25c0-8.284-6.716-15-15-15Z" fill="#e54d36" stroke="#ffffff" stroke-width="2"/>
+  <path d="M16 1C7.716 1 1 7.716 1 16c0 11.5 15 25 15 25s15-13.5 15-25c0-8.284-6.716-15-15-15Z" fill="#14151f" stroke="#ffffff" stroke-width="2"/>
   <circle cx="16" cy="16" r="6" fill="#ffffff"/>
-  <circle cx="16" cy="16" r="3" fill="#e54d36"/>
+  <circle cx="16" cy="16" r="3" fill="#14151f"/>
 </svg>
 `)}`;
 
@@ -92,7 +92,7 @@ function getPreviewVehicleOverlayClass() {
         super();
         this.div = document.createElement("div");
         this.div.className = "hop-preview-vehicle-overlay";
-        this.div.innerHTML = `<img src="./assets/sedan.png" alt="Preview vehicle" style="transform: rotate(${heading}deg);" />`;
+        this.div.innerHTML = `<img src="./assets/sedan.png" alt="Preview vehicle" draggable="false" style="transform: rotate(${heading}deg);" />`;
       }
       onAdd() {
         this.getPanes()?.overlayMouseTarget.appendChild(this.div);
@@ -187,7 +187,7 @@ export class GoogleMapView implements MapView {
     );
     this.route = new google.maps.Polyline({
       map: this.map,
-      strokeColor: "#167b5b",
+      strokeColor: "#4b3fd1",
       strokeWeight: 5,
       strokeOpacity: 0.95,
       icons: [
@@ -215,12 +215,25 @@ export class GoogleMapView implements MapView {
     } else this.traffic?.setMap(null);
     const styles: google.maps.MapTypeStyle[] = [];
     if (preferences.lowdata) styles.push({ featureType: "poi", stylers: [{ visibility: "off" }] }, { featureType: "transit", stylers: [{ visibility: "off" }] });
+    // Muted base map so Hop's indigo route and markers carry the colour (design 03).
     if (preferences.night) styles.push(
-      { elementType: "geometry", stylers: [{ color: "#24312d" }] },
-      { elementType: "labels.text.fill", stylers: [{ color: "#dce5df" }] },
-      { elementType: "labels.text.stroke", stylers: [{ color: "#24312d" }] },
-      { featureType: "road", elementType: "geometry", stylers: [{ color: "#45554b" }] },
-      { featureType: "water", elementType: "geometry", stylers: [{ color: "#142d3b" }] },
+      { elementType: "geometry", stylers: [{ color: "#1a1c26" }] },
+      { elementType: "labels.text.fill", stylers: [{ color: "#9a9eb2" }] },
+      { elementType: "labels.text.stroke", stylers: [{ color: "#1a1c26" }] },
+      { featureType: "road", elementType: "geometry", stylers: [{ color: "#2e3244" }] },
+      { featureType: "water", elementType: "geometry", stylers: [{ color: "#16243b" }] },
+      { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#1c2e25" }] },
+    );
+    else if (!preferences.satellite) styles.push(
+      { elementType: "geometry", stylers: [{ color: "#eef0f4" }] },
+      { elementType: "labels.text.fill", stylers: [{ color: "#6b6f80" }] },
+      { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
+      { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+      { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#e3e5ed" }] },
+      { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#d9dce6" }] },
+      { featureType: "water", elementType: "geometry", stylers: [{ color: "#cde0f5" }] },
+      { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#d6ecd8" }] },
+      { featureType: "poi.business", stylers: [{ visibility: "off" }] },
     );
     this.map.setOptions({ styles });
   }
@@ -240,6 +253,7 @@ export class GoogleMapView implements MapView {
         marker = new google.maps.Marker({
           map: this.map,
           title: "Live captain",
+          clickable: false,
           icon: {
             url: `./assets/${vehicleCategory(v.category)}.png`,
             scaledSize: new google.maps.Size(42, 30),

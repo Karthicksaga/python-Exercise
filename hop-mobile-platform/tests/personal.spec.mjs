@@ -122,7 +122,7 @@ test("Personal details screen renders canonical prototype layout with modalRow c
 
   // Verify notice box
   await expect(page.locator(".screen-padding > .notice-box")).toContainText(
-    "The existing exact-number verification and captain identity review checks remain required in the real application.",
+    "Keep your contact details up to date so we can reach you about your rides.",
   );
 
   // Verify bottom action bar has Save details

@@ -27,6 +27,10 @@ export async function mountPrototype(role: "rider" | "captain") {
   }
     <main class="phone" id="phone"><div class="app" id="app"></div></main>`;
   const host = document.querySelector<HTMLElement>("#app")!;
+  // No image (vehicles, icons) can be dragged out of place; CSS user-drag is WebKit-only.
+  host.addEventListener("dragstart", (event) => {
+    if (event.target instanceof HTMLImageElement) event.preventDefault();
+  });
   if (!referenceMode) {
     const { ViewportController } = await import("./ViewportController");
     const viewport = new ViewportController(
@@ -126,7 +130,7 @@ export async function mountPrototype(role: "rider" | "captain") {
     window.addEventListener("pagehide", () => motion.destroy(), { once: true });
   }
   ready();
-  document.title = `Hop ${role === "rider" ? "Rider" : "Captain"} — prototype replica`;
+  document.title = `Hop ${role === "rider" ? "Rider" : "Captain"}${referenceMode ? " — design reference" : ""}`;
 }
 
 export const mountMobileApp = mountPrototype;

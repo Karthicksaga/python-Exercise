@@ -110,7 +110,7 @@ export class LiveFeed {
           this.data = { center: this.data.center, vehicles: [] };
           this.update(
             this.data,
-            "Tap Centre map to find live vehicles near you",
+            "Turn on location to see vehicles near you",
           );
         }
       }

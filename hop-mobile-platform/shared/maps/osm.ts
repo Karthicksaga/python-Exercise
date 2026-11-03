@@ -34,9 +34,9 @@ function createPickupIcon(): L.DivIcon {
       <div class="hop-marker-pin hop-pickup-pin">
         <div class="hop-pin-badge hop-pickup-badge">PICKUP</div>
         <svg class="hop-pin-svg" width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M16 1C7.716 1 1 7.716 1 16c0 11.5 15 25 15 25s15-13.5 15-25c0-8.284-6.716-15-15-15Z" fill="#167b5b" stroke="#ffffff" stroke-width="2"/>
+          <path d="M16 1C7.716 1 1 7.716 1 16c0 11.5 15 25 15 25s15-13.5 15-25c0-8.284-6.716-15-15-15Z" fill="#4b3fd1" stroke="#ffffff" stroke-width="2"/>
           <circle cx="16" cy="16" r="6" fill="#ffffff"/>
-          <text x="16" y="19.5" font-family="'Outfit', 'Inter', -apple-system, sans-serif" font-weight="700" font-size="10" fill="#167b5b" text-anchor="middle">P</text>
+          <text x="16" y="19.5" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-weight="700" font-size="10" fill="#4b3fd1" text-anchor="middle">P</text>
         </svg>
       </div>`,
     iconSize: [32, 42],
@@ -51,9 +51,9 @@ function createDropoffIcon(): L.DivIcon {
       <div class="hop-marker-pin hop-dropoff-pin">
         <div class="hop-pin-badge hop-dropoff-badge">DROPOFF</div>
         <svg class="hop-pin-svg" width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M16 1C7.716 1 1 7.716 1 16c0 11.5 15 25 15 25s15-13.5 15-25c0-8.284-6.716-15-15-15Z" fill="#e54d36" stroke="#ffffff" stroke-width="2"/>
+          <path d="M16 1C7.716 1 1 7.716 1 16c0 11.5 15 25 15 25s15-13.5 15-25c0-8.284-6.716-15-15-15Z" fill="#14151f" stroke="#ffffff" stroke-width="2"/>
           <circle cx="16" cy="16" r="6" fill="#ffffff"/>
-          <circle cx="16" cy="16" r="3" fill="#e54d36"/>
+          <circle cx="16" cy="16" r="3" fill="#14151f"/>
         </svg>
       </div>`,
     iconSize: [32, 42],
@@ -84,7 +84,7 @@ function createVehicleIcon(category: string, heading?: number): L.DivIcon {
     className: "hop-vehicle-div-icon",
     html: `
       <div class="hop-vehicle-marker" style="transform: rotate(${h}deg);">
-        <img src="./assets/${vehicleCategory(category)}.png" alt="Vehicle" class="hop-vehicle-icon" />
+        <img src="./assets/${vehicleCategory(category)}.png" alt="Vehicle" class="hop-vehicle-icon" draggable="false" />
       </div>`,
     iconSize: [42, 30],
     iconAnchor: [21, 15],
@@ -173,6 +173,8 @@ export class OSMMapView implements MapView {
           title: "Live captain",
           icon: createVehicleIcon(v.category, v.heading),
           zIndexOffset: 900,
+          interactive: false,
+          keyboard: false,
         }).addTo(this.map);
         this.vehicles.set(v.id, marker);
       } else {
@@ -185,7 +187,7 @@ export class OSMMapView implements MapView {
         const duration = Math.min(1800, Math.max(350, distance / 18 * 1000));
         const previous = this.vehicleFrames.get(v.id);
         if (previous != null) cancelAnimationFrame(previous);
-        if (distance > 1500) {
+        if (distance > 1500 || matchMedia("(prefers-reduced-motion: reduce)").matches || document.hidden) {
           marker.setLatLng([v.lat, v.lng]);
         } else {
           const started = performance.now();
@@ -290,6 +292,8 @@ export class OSMMapView implements MapView {
           title: "Your location",
           icon: createCurrentIcon(heading),
           zIndexOffset: 850,
+          interactive: false,
+          keyboard: false,
         }).addTo(this.map);
       } else {
         this.currentMarker.setLatLng([data.current.lat, data.current.lng]);
@@ -326,7 +330,7 @@ export class OSMMapView implements MapView {
       const latLngs = data.route.map((p) => [p.lat, p.lng] as L.LatLngTuple);
       if (!this.routeLine) {
         this.routeLine = L.polyline(latLngs, {
-          color: "#167b5b",
+          color: "#4b3fd1",
           weight: 5,
           opacity: 0.95,
           lineCap: "round",
@@ -380,7 +384,7 @@ export class OSMMapView implements MapView {
     if (!this.routeLine) {
       this.routeLine = L.polyline(
         points.map((p) => [p.lat, p.lng] as L.LatLngTuple),
-        { color: "#167b5b", weight: 5, opacity: 0.95 },
+        { color: "#4b3fd1", weight: 5, opacity: 0.95 },
       ).addTo(this.map);
     } else {
       this.routeLine.setLatLngs(

@@ -386,10 +386,14 @@ export class PrototypeMap {
       sheet = body.querySelector<HTMLElement>(".sheet");
     const top = body.getBoundingClientRect().top;
     // Keep provider attribution above the approved sheet instead of hiding it underneath.
-    const height = sheet
+    const sideSheet = sheet && body.clientWidth >= 700 && sheet.getBoundingClientRect().width < body.clientWidth * 0.7;
+    const inset = sideSheet ? sheet.getBoundingClientRect().right - body.getBoundingClientRect().left + 20 : 0;
+    const height = sheet && !sideSheet
       ? Math.max(100, sheet.getBoundingClientRect().top - top)
       : body.clientHeight;
     this.canvas.style.height = `${height}px`;
+    this.canvas.style.left = `${inset}px`;
+    this.canvas.style.width = inset ? `calc(100% - ${inset}px)` : "100%";
     body
       .querySelector(".map-controls")
       ?.classList.toggle("hop-compact-controls", height < 230);
@@ -494,6 +498,11 @@ export class PrototypeMap {
     const sheet = root.parentElement!.querySelector(".sheet");
     if (sheet) this.resize.observe(sheet);
     this.size();
+    // VITE_MAP_PROVIDER=osm selects OpenStreetMap directly instead of trying Google first.
+    if (/^(osm|openstreetmap)$/i.test(import.meta.env.VITE_MAP_PROVIDER || "")) {
+      await this.fallback(revision);
+      return;
+    }
     try {
       await loadGoogle(import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "");
       if (revision !== this.revision) return;

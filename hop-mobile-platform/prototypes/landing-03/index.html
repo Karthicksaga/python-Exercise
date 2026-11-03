@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hop — Landing concepts</title>
+<style>
+@font-face{font-family:Outfit;src:url(assets/fonts/outfit-latin.woff2) format('woff2');font-weight:100 900}
+@font-face{font-family:Inter;src:url(assets/fonts/inter-latin.woff2) format('woff2');font-weight:100 900}
+:root{--primary:#4b3fd1;--primary-2:#6d5ff0;--ink:#14151f;--muted:#6b6f80;--paper:#f4f4f9;--line:#e6e6ef;--soft:#ecebfd}
+*{box-sizing:border-box}body{margin:0;background:#e9e9f1;color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif}
+button,input{font:inherit}
+header{max-width:1320px;margin:auto;padding:22px 20px 6px;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center}
+header b{font:800 28px Outfit;letter-spacing:-1.2px}header small{color:var(--muted);margin-left:10px}
+.note{font-size:12px;color:var(--muted)}
+.wrap{max-width:1320px;margin:auto;padding:10px 16px 40px;display:flex;flex-direction:column;gap:34px}
+.concept h2{font:700 20px Outfit;margin:0 0 4px}.concept p.d{margin:0 0 14px;color:var(--muted);max-width:70ch}
+.pair{display:flex;flex-wrap:wrap;gap:28px}
+.phone{position:relative;width:min(360px,100%);height:740px;border-radius:40px;overflow:hidden;background:#fff;border:7px solid #fff;box-shadow:0 0 0 1px var(--line),0 30px 60px -30px rgba(30,30,90,.35);isolation:isolate}
+.cap{font-size:12px;font-weight:600;color:var(--muted);margin:0 0 8px 6px}
+
+/* shared form sheet */
+.pair>div{width:min(360px,100%)}
+.sheet{color:var(--ink);position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:28px 28px 0 0;padding:22px 20px 20px;z-index:3;box-shadow:0 -14px 40px -16px rgba(20,20,60,.3)}
+.eyebrow{font-size:10px;font-weight:700;letter-spacing:1.4px;color:var(--muted)}
+.sheet h3{font:700 22px/1.15 Outfit;margin:6px 0 4px;letter-spacing:-.4px}
+.sheet .lead{margin:0 0 14px;color:var(--muted);font-size:13px}
+.field{display:flex;align-items:center;height:54px;border-radius:16px;background:#f5f5fa;border:1.5px solid transparent;padding:0 14px;gap:12px}
+.field:focus-within{border-color:var(--primary);background:#fff}
+.field span{font-weight:600;padding-right:12px;border-right:1px solid var(--line)}
+.field input{border:0;background:none;outline:none;flex:1;font-size:15px;min-width:0}
+.cta{margin-top:12px;width:100%;height:54px;border:0;border-radius:16px;background:var(--primary);color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:space-between;padding:0 18px}
+.fine{margin-top:12px;font-size:11px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.wordmark{font:800 30px/1 Outfit;letter-spacing:-1.4px;display:flex;align-items:center;gap:8px}
+.wordmark i{font:700 9px Inter;font-style:normal;letter-spacing:1.4px;padding:4px 8px;border-radius:99px}
+
+/* ===== A · Indigo glow ===== */
+.a{background:linear-gradient(165deg,#5a4de6 0%,#3f33c4 55%,#2b2390 100%);color:#fff}
+.a.cap-role{background:linear-gradient(165deg,#1d1e2c 0%,#15162a 50%,#2b2390 130%)}
+.a .orb{position:absolute;border-radius:50%;filter:blur(30px);opacity:.55;animation:float 9s ease-in-out infinite}
+.a .o1{width:220px;height:220px;background:#8f86ff;top:-40px;right:-60px}
+.a .o2{width:180px;height:180px;background:#2fd5c4;top:220px;left:-70px;opacity:.35;animation-delay:-3s}
+.a .o3{width:140px;height:140px;background:#ff9bd2;top:120px;right:40px;opacity:.25;animation-delay:-6s}
+@keyframes float{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(18px,24px) scale(1.12)}}
+.a .top{position:relative;z-index:2;padding:26px 24px 0;display:flex;justify-content:space-between;align-items:center}
+.a .wordmark i{background:rgba(255,255,255,.16)}
+.a .city{font-size:10px;font-weight:700;letter-spacing:1.6px;opacity:.8}
+.a .pin{position:absolute;z-index:2;left:50%;top:205px;transform:translateX(-50%);width:0;height:0}
+.a .ring{position:absolute;left:-60px;top:-60px;width:120px;height:120px;border-radius:50%;border:1.5px solid rgba(255,255,255,.55);animation:ripple 3s ease-out infinite}
+.a .ring:nth-child(2){animation-delay:1s}.a .ring:nth-child(3){animation-delay:2s}
+@keyframes ripple{from{transform:scale(.2);opacity:.9}to{transform:scale(2.2);opacity:0}}
+.a .dot{position:absolute;left:-22px;top:-22px;width:44px;height:44px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 10px 30px rgba(0,0,0,.25);animation:bob 3s ease-in-out infinite}
+.a .dot::after{content:"";width:14px;height:14px;border-radius:50%;background:var(--primary)}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.a .chip{position:absolute;z-index:2;background:rgba(255,255,255,.14);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.25);border-radius:99px;padding:7px 12px;font-size:11px;font-weight:600;animation:chip 6s ease-in-out infinite}
+.a .c1{left:22px;top:150px}.a .c2{right:22px;top:250px;animation-delay:-3s}
+@keyframes chip{0%,100%{transform:translateY(0);opacity:.85}50%{transform:translateY(-8px);opacity:1}}
+.a .copy{position:absolute;z-index:2;left:24px;right:24px;top:300px}
+.a h1{font:800 34px/1.02 Outfit;letter-spacing:-1.5px;margin:0}
+.a .copy p{margin:10px 0 0;opacity:.82;font-size:13px;max-width:30ch}
+
+/* ===== B · City network ===== */
+.b{background:#101120;color:#fff}
+.b svg.net{position:absolute;inset:0;width:100%;height:62%}
+.b .edge{stroke:#4b3fd1;stroke-width:1.4;stroke-dasharray:4 6;opacity:.0;animation:edge 6s ease-in-out infinite}
+.b .node{fill:#2b2d48}
+.b .node.on{fill:#8f86ff;animation:node 6s ease-in-out infinite}
+.b .halo{fill:#8f86ff;opacity:0;transform-box:fill-box;transform-origin:center;animation:halo 6s ease-out infinite}
+@keyframes edge{0%,10%{opacity:0;stroke-dashoffset:40}30%,80%{opacity:.9;stroke-dashoffset:0}100%{opacity:0}}
+@keyframes node{0%,10%{fill:#2b2d48}25%,85%{fill:#a59eff}100%{fill:#2b2d48}}
+@keyframes halo{0%,15%{opacity:0;transform:scale(.3)}30%{opacity:.35}60%{opacity:0;transform:scale(2.4)}100%{opacity:0}}
+.b .top{position:relative;z-index:2;padding:26px 24px 0;display:flex;justify-content:space-between;align-items:center}
+.b .wordmark i{background:#23244a;color:#a59eff}
+.b .live{font-size:11px;font-weight:600;display:flex;gap:6px;align-items:center;color:#c9cbe0}
+.b .live::before{content:"";width:8px;height:8px;border-radius:50%;background:#3ddc97;box-shadow:0 0 0 4px rgba(61,220,151,.18);animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.4}}
+.b .copy{position:absolute;z-index:2;left:24px;right:24px;top:288px}
+.b h1{font:800 32px/1.04 Outfit;letter-spacing:-1.4px;margin:0}
+.b h1 em{font-style:normal;background:linear-gradient(90deg,#a59eff,#6ee7d8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.b .copy p{margin:10px 0 0;color:#b9bccb;font-size:13px}
+.b .stats{display:flex;gap:8px;margin-top:14px}
+.b .stats span{font-size:11px;padding:6px 10px;border-radius:99px;background:#1c1d33;color:#d6d7e6}
+
+/* ===== C · Kinetic type ===== */
+.c{background:#fff}
+.c .top{padding:26px 24px 0;display:flex;justify-content:space-between;align-items:center}
+.c .wordmark i{background:var(--soft);color:var(--primary)}
+.c .city{font-size:10px;font-weight:700;letter-spacing:1.6px;color:var(--muted)}
+.c .copy{padding:54px 24px 0}
+.c .kick{font-size:10px;font-weight:700;letter-spacing:1.4px;color:var(--primary)}
+.c h1{font:800 46px/1 Outfit;letter-spacing:-2.2px;margin:12px 0 0}
+.c .rot{display:block;height:48px;overflow:hidden;position:relative}
+.c .rot span{display:block;color:var(--primary);animation:rot 8s cubic-bezier(.7,0,.2,1) infinite}
+@keyframes rot{0%,20%{transform:translateY(0)}25%,45%{transform:translateY(-100%)}50%,70%{transform:translateY(-200%)}75%,95%{transform:translateY(-300%)}100%{transform:translateY(-400%)}}
+.c .bar{height:8px;border-radius:9px;background:var(--soft);margin-top:14px;overflow:hidden;width:180px}
+.c .bar i{display:block;height:100%;width:40%;border-radius:9px;background:var(--primary);animation:slide 2s ease-in-out infinite alternate}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(150%)}}
+.c .copy p{margin:16px 0 0;color:var(--muted);max-width:30ch}
+.c .dots{position:absolute;right:-30px;top:110px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,var(--soft) 2px,transparent 2.5px) 0 0/16px 16px;opacity:.9;animation:spin 40s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.c .sheet{box-shadow:none;border-top:1px solid var(--line)}
+.c.cap-role{background:#14151f;color:#fff}.c.cap-role .copy p,.c.cap-role .city{color:#b9bccb}.c.cap-role .rot span,.c.cap-role .kick{color:#a59eff}.c.cap-role .bar{background:#26244a}.c.cap-role .bar i{background:#8f86ff}.c.cap-role .wordmark i{background:#26244a;color:#a59eff}.c.cap-role .dots{background:radial-gradient(circle,#26244a 2px,transparent 2.5px) 0 0/16px 16px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<header><div><b>hop</b><small>Landing concepts · pick one</small></div><span class="note">Design preview · no sign-in actions · animation respects reduced-motion</span></header>
+<main class="wrap" id="wrap"></main>
+<script>
+const form=(cap)=>`<div class="sheet"><span class="eyebrow">${cap?'YOUR WORKDAY STARTS HERE':'LET’S GET YOU GOING'}</span><h3>${cap?'Ready when you are.':'Where shall we start?'}</h3><p class="lead">${cap?'New here or coming back? Start with your number.':'We’ll text a code to sign you in.'}</p><label class="field"><span>+91</span><input inputmode="tel" maxlength="10" placeholder="Your 10-digit number" aria-label="Mobile number"></label><button class="cta">${cap?'Continue as Captain':'Send sign-in code'}<span>→</span></button><div class="fine">🔒 ${cap?'One secure sign-in. Your account, your control.':'Your number stays private.'}</div></div>`;
+const mark=(cap)=>`<span class="wordmark">hop<i>${cap?'CAPTAIN':'RIDER'}</i></span>`;
+const A=(cap)=>`<div class="phone a ${cap?'cap-role':''}"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i><div class="top">${mark(cap)}<span class="city">CHENNAI</span></div><span class="chip c1">${cap?'High demand · Guindy':'Home · 8 min'}</span><span class="chip c2">${cap?'₹1,240 today':'Airport · 22 min'}</span><div class="pin"><i class="ring"></i><i class="ring"></i><i class="ring"></i><i class="dot"></i></div><div class="copy"><h1>${cap?'Move your city.<br>On your terms.':'Your city.<br>One little hop.'}</h1><p>${cap?'A familiar road. A fresh start.':'Work days. Beach days. Just-because days.'}</p></div>${form(cap)}</div>`;
+function net(){const pts=[[40,90],[110,60],[190,110],[270,70],[330,130],[70,190],[150,170],[230,200],[310,230],[100,260],[200,280],[290,300]];
+ const edges=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,2],[6,7],[7,8],[4,8],[5,9],[9,10],[10,7],[10,11],[8,11]];
+ let s='<svg class="net" viewBox="0 0 360 340" preserveAspectRatio="xMidYMid slice" aria-hidden="true">';
+ edges.forEach(([a,b],i)=>s+=`<line class="edge" x1="${pts[a][0]}" y1="${pts[a][1]}" x2="${pts[b][0]}" y2="${pts[b][1]}" style="animation-delay:${(i%6)*.5}s"/>`);
+ pts.forEach(([x,y],i)=>{const on=i%3!==1;s+=`${on?`<circle class="halo" cx="${x}" cy="${y}" r="10" style="animation-delay:${(i%6)*.5}s"/>`:''}<circle class="node ${on?'on':''}" cx="${x}" cy="${y}" r="${on?4.5:3}" style="animation-delay:${(i%6)*.5}s"/>`;});
+ return s+'</svg>';}
+const B=(cap)=>`<div class="phone b">${net()}<div class="top">${mark(cap)}<span class="live">${cap?'312 Captains online':'Live in Chennai'}</span></div><div class="copy"><h1>${cap?'Every road is<br><em>an opportunity.</em>':'The city,<br><em>connected.</em>'}</h1><p>${cap?'Rides come to you. Earnings stay with you.':'Rides across Chennai, a few taps away.'}</p><div class="stats">${cap?'<span>Daily payouts</span><span>You choose hours</span>':'<span>Auto · Bike · Cab</span><span>Pay by UPI or cash</span>'}</div></div>${form(cap)}</div>`;
+const words=cap=>cap?['your hours.','your city.','your pace.','your terms.','your hours.']:['work.','the beach.','home.','anywhere.','work.'];
+const C=(cap)=>`<div class="phone c ${cap?'cap-role':''}"><i class="dots"></i><div class="top">${mark(cap)}<span class="city">CHENNAI</span></div><div class="copy"><span class="kick">${cap?'GOOD JOURNEYS START WITH YOU':'A LITTLE CLOSER, WITH HOP'}</span><h1>${cap?'Drive on':'Hop to'}<span class="rot">${words(cap).map(w=>`<span>${w}</span>`).join('')}</span></h1><div class="bar"><i></i></div><p>${cap?'A focused space for your rides, earnings and time.':'Everyday rides for wherever life takes you.'}</p></div>${form(cap)}</div>`;
+const concepts=[['A · Indigo glow','Full indigo gradient, soft drifting light, a pulsing location pin and floating trip chips. Bold and warm; the white sheet keeps sign-in simple.',A],
+['B · City network','Dark hero where pickup points across the city light up and connect. Feels live and techy; good contrast for both apps.',B],
+['C · Kinetic type','Minimal and confident: a large headline whose last word keeps changing, with a sliding indigo bar. Lightest to load, very clean.',C]];
+document.getElementById('wrap').innerHTML=concepts.map(([t,d,f])=>`<section class="concept"><h2>${t}</h2><p class="d">${d}</p><div class="pair"><div><p class="cap">Rider</p>${f(false)}</div><div><p class="cap">Captain</p>${f(true)}</div></div></section>`).join('');
+</script>
+</body>
+</html>

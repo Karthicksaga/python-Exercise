@@ -19,13 +19,13 @@ export class LiveMap {
   update(pickup?: Point, dropoff?: Point, route?: RoutePoint[], driver?: RoutePoint, fit = false) {
     this.markers.clearLayers();
     const points: L.LatLngTuple[] = [];
-    for (const [point, label, color] of [[pickup, 'Pickup', '#227659'], [dropoff, 'Destination', '#e73f31'], [driver, 'Captain', '#315bde']] as const) {
+    for (const [point, label, color] of [[pickup, 'Pickup', '#4b3fd1'], [dropoff, 'Destination', '#14151f'], [driver, 'Captain', '#315bde']] as const) {
       if (!point || !Number.isFinite(point.lat) || !Number.isFinite(point.lng)) continue;
       const xy: L.LatLngTuple = [point.lat, point.lng]; points.push(xy);
       const text = document.createElement('span'); text.textContent = label;
       L.circleMarker(xy, { radius: 9, color: '#fff', weight: 3, fillColor: color, fillOpacity: 1 }).bindTooltip(text).addTo(this.markers);
     }
-    if (route?.length) L.polyline(route.map(p => [p.lat, p.lng] as L.LatLngTuple), { color: '#227659', weight: 5 }).addTo(this.markers);
+    if (route?.length) L.polyline(route.map(p => [p.lat, p.lng] as L.LatLngTuple), { color: '#4b3fd1', weight: 5 }).addTo(this.markers);
     if (fit && points.length) this.map.fitBounds(L.latLngBounds(points), { padding: [36, 36], maxZoom: 15 });
   }
   destroy() { this.resize.disconnect(); this.map.remove(); }

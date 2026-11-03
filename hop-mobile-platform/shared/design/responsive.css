@@ -1,0 +1,131 @@
+/* Live Rider/Captain foundations. The approved reference renderer stays isolated. */
+html.hop-live {
+  --hop-space: 20px;
+  --hop-control: 44px;
+  --hop-focus: #4b3fd1;
+  --hop-duration: 180ms;
+  --hop-ease: cubic-bezier(.22,1,.36,1);
+}
+.hop-live #app { isolation: isolate; }
+.hop-live :is(button,input,select,textarea,a) { -webkit-tap-highlight-color: transparent; }
+.hop-live button { min-width: var(--hop-control); min-height: var(--hop-control); touch-action: manipulation; }
+.hop-live :is(.icon-button,.text-button,.camera-button,.zone-pill) { min-height: var(--hop-control) !important; min-width: var(--hop-control); }
+.hop-live :is(button,a,input,select,textarea):focus-visible { outline: 3px solid var(--hop-focus); outline-offset: 2px; }
+.hop-live .icon-button { flex-shrink: 0; }
+.hop-live :is(.row,.list-row,.compact-row,.driver-card,.account-hero,.modal-title) { min-width: 0; }
+.hop-live :is(.list-text,.driver-text,.account-hero > div,.modal-title h2,.live-vehicle-card > div:last-child) { min-width: 0; overflow-wrap: anywhere; }
+.hop-live :is(.text-input,select,textarea) { max-width: 100%; min-width: 0; font-size: calc(14px + var(--font-step,0px)); }
+.hop-live :is(.primary,.secondary) { font-size: calc(14px + var(--font-step,0px)); line-height: 1.35; white-space: normal; }
+.hop-live :is(.list-row,.compact-row) strong { font-size: calc(14px + var(--font-step,0px)); }
+.hop-live :is(.list-row,.compact-row) small { font-size: calc(12px + var(--font-step,0px)); line-height: 1.4; }
+.hop-live :is(.tabs,.notice-toolbar) button { font-size: calc(12px + var(--font-step,0px)); }
+.hop-live .screen-body { scroll-padding: 16px; }
+.hop-live .screen-padding { padding-inline: var(--hop-space); }
+.hop-live .screen-body:not(.map-screen) .screen-padding { padding-top: 12px; }
+.hop-live .screen-body:has(+ .action-bar) .screen-padding { padding-bottom: 24px; }
+.hop-live :is(.live-preferences-page,.live-tools-page,.live-vehicle-page,.live-rewards-page) { padding-top: 0; }
+.hop-live .live-page-intro { margin: 0 0 18px; }
+.hop-live .list-row { gap: 12px; }
+.hop-live .live-card-group > .list-row { padding-inline: 20px; }
+.hop-live .live-card-group .list-row > .list-icon { flex: 0 0 42px; }
+.hop-live .live-setting-toggle strong { font-size: calc(13px + var(--font-step,0px)); line-height: 1.4; }
+.hop-live .live-card-group .live-setting-toggle > input[type=checkbox] { width:100%;height:100%; }
+.hop-live .live-preferences-page .live-card-group > [data-modal=appearance] { margin-top:0; }
+.hop-live .live-preferences-page .live-input-with-unit > span { min-width: 42px; }
+.hop-live .empty-state { padding: 32px 16px; max-width: 440px; margin: 0 auto; }
+.hop-live .empty-state h2 { margin-bottom: 12px; font-size: calc(20px + var(--font-step,0px)); }
+.hop-live .empty-state .text-button { margin-top: 8px; }
+.hop-live .notice-box { line-height: 1.55; overflow-wrap: anywhere; }
+.hop-live :is([role=alert],[role=status]) { overflow-wrap: anywhere; }
+.hop-live .login-hero { padding: 18px 22px 44px; border-radius: 0; }
+.hop-live .login-illustration { height: 132px; margin-block: 6px 0; }
+.hop-live .login-hero h2 { font-size: clamp(25px,7vw,30px); }
+.hop-live .login-hero-copy { max-width: 36ch; margin-top: 8px; font-size: 12px; line-height: 1.5; }
+.hop-live .login-form { padding: 20px 22px 12px; }
+.hop-live .login-form-copy { font-size: 13px; margin-block: 10px 16px; }
+.hop-live .login-phone:focus-within { border-color: var(--hop-focus); box-shadow: 0 0 0 2px color-mix(in srgb,var(--hop-focus) 18%,transparent); }
+.hop-live .login-phone input { width: 100%; }
+.hop-live .login-assurance { font-size: 11px; gap: 10px 16px; }
+.hop-live .login-feedback { font-size: 12px; }
+.hop-live .modal-sheet { max-height: calc(var(--hop-viewport-height,100dvh) - max(12px,env(safe-area-inset-top)) - 12px); overflow-y:auto; overscroll-behavior:contain; scroll-padding:20px; padding-bottom:max(24px,env(safe-area-inset-bottom)); }
+.hop-live .modal-title { gap: 12px; align-items: flex-start; }
+.hop-live .modal-title h2 { line-height: 1.25; }
+.hop-live .map-controls .icon-button { width:44px;height:44px; }
+.hop-live .map-controls.hop-compact-controls { grid-template-columns:repeat(3,44px); }
+.hop-live .map-controls { gap:6px; }
+.hop-live .bottom-nav { padding-bottom:max(10px,env(safe-area-inset-bottom)); }
+.hop-live .bottom-nav button { min-height:48px; }
+.hop-live .app.dark :is(.live-card-group,.section-card,.notice-empty) { background:var(--surface); color:var(--ink); }
+.hop-live .app.dark .screen-padding :is(.text-input,select,textarea) { background:#262735; color:var(--ink); border-color:var(--line); }
+.hop-live .app.dark .screen-padding > .notice-box { background:#262735; color:var(--muted); }
+.hop-live .app.dark .payment-method { background:var(--surface); color:var(--ink); }
+.hop-live .app.dark .payment-method.selected { background:var(--accent-soft); }
+/* Continuous decorative shine/glow distracts from balances and incoming details. */
+.hop-live .wallet-hero::after { display:none; }
+.hop-live .offer-card svg { animation:none; }
+.hop-live :is(.vehicle,.product-chip,.payment-method) { transition:background-color var(--hop-duration) var(--hop-ease),border-color var(--hop-duration) var(--hop-ease),transform var(--hop-duration) var(--hop-ease); }
+.hop-live :is(.vehicle,.product-chip,.payment-method):active { transform:scale(.985); }
+@media (max-width:360px) {
+  html.hop-live { --hop-space:16px; }
+  .hop-live .compact-row { flex-wrap:wrap; column-gap:8px; }
+  .hop-live .compact-row > small { margin-left:auto; }
+  .hop-live .login-illustration { height:72px; }
+  .hop-live .login-chip { display:none; }
+  .hop-live .login-form { padding-inline:16px; }
+}
+/* Mobile-only layout (user request, Nov 2026): tablets and desktops show the same phone layout,
+   centred at phone width, instead of a widened desktop shell. */
+.hop-live body { background: #e9e9f1; }
+@media (min-width:480px) {
+  .hop-live #phone.phone { max-width:430px; box-shadow:0 0 0 1px var(--line,#e6e6ef),0 24px 60px -24px rgba(30,30,80,.28); }
+}
+@media (max-height:600px) {
+  .hop-live .login-illustration { display:none; }
+  .hop-live .login-hero-copy { display:none; }
+  .hop-live .login-hero { padding-block:12px; }
+  .hop-live .login-form { padding-top:12px; }
+  .hop-live .login-form-copy { margin-block:6px 10px; }
+  .hop-live .map-screen:has(.hop-map-canvas) > .sheet { max-height:calc(100% - 112px); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .hop-live *, .hop-live *::before, .hop-live *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+}
+.hop-live .route-field input { min-height:44px; }
+.hop-live [data-captain-onboarding] input[type=checkbox] { width:24px;height:24px;flex-shrink:0; }
+.hop-live [data-captain-onboarding] label:has(input[type=checkbox]) { min-height:44px;align-items:center; }
+.hop-live .app.dark .screen-padding :is(.section-card,.notice-box)[style*="background"] { background:var(--surface) !important;color:var(--ink); }
+/* The outer screen owns the top inset; nested live pages must not add it twice. */
+.hop-live .screen-padding[data-live-account] > :is(.live-preferences-page,.live-tools-page,.live-vehicle-page,.live-rewards-page) { padding-top:0; }
+.hop-live .live-insight-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; }
+.hop-live .live-insight-stat { padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--surface);min-width:0; }
+.hop-live .live-insight-stat span { display:block;color:var(--muted);font-size:12px;line-height:1.4; }
+.hop-live .live-insight-stat strong { display:block;font:700 calc(22px + var(--font-step,0px))/1.3 "Plus Jakarta Sans",sans-serif;margin-top:8px;overflow-wrap:anywhere; }
+.hop-live .live-insight-row { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px; }
+.hop-live .live-insight-row > span { min-width:0;overflow-wrap:anywhere; }
+.hop-live .live-insight-row small { display:block;color:var(--muted);margin-top:4px; }
+/* Keep the vehicle inside the compact illustration, including native WebViews. */
+.hop-live .pin-entry { gap:4px; }
+.hop-live .pin-entry input { width:44px;min-width:44px;flex:0 0 44px; }
+/* Design 03: the landing hero carries the brand, so the live app hides the plain title bar there. */
+.hop-live .app:has(.login-screen) > .app-head { display: none; }
+.hop-live .upload-actions { flex-shrink: 1; flex-wrap: wrap; min-width: 0; justify-content: flex-end; }
+/* One phone field: the inner input is borderless and transparent; the wrapper shows the indigo focus ring. */
+.hop-live .login-phone { background: var(--surface,#fff); border: 1.5px solid var(--line); border-radius: 16px; }
+.hop-live .login-phone > span { align-self: stretch; display: flex; align-items: center; font-size: 14px; }
+.hop-live .login-phone .text-input,
+.hop-live .screen-body:not(.map-screen) .login-phone .text-input { border: 0; background: transparent; box-shadow: none; border-radius: 0; min-height: 52px; font-size: 16px; letter-spacing: .5px; }
+.hop-live .login-phone .text-input:focus-visible { outline: none; }
+.hop-live .login-phone:focus-within { border-color: var(--hop-focus); box-shadow: 0 0 0 3px color-mix(in srgb,var(--hop-focus) 16%,transparent); }
+/* Captain onboarding: upload rows wrap so titles never squeeze; actions sit on their own line when narrow. */
+.hop-live [data-captain-onboarding] .upload-card { flex-wrap: wrap; row-gap: 10px; }
+.hop-live [data-captain-onboarding] .upload-content { flex: 1 1 140px; min-width: 0; }
+.hop-live [data-captain-onboarding] .upload-title-row { flex-wrap: wrap; row-gap: 4px; }
+@media (max-width: 480px) { .hop-live [data-captain-onboarding] .upload-actions { flex: 1 1 100%; justify-content: flex-end; } }
+/* Invalid required fields stay red even while focused, so the error is never hidden by the focus ring. */
+.hop-live :is(.text-input, select)[aria-invalid="true"], .hop-live :is(.text-input, select):is(.invalid, .has-error) { border-color: #c62f2f !important; box-shadow: 0 0 0 3px rgba(198, 47, 47, .14) !important; }
+.hop-live [data-captain-onboarding] .upload-rejection { color: #c62f2f; font-weight: 500; }
+.hop-live [data-captain-onboarding] .rejected-docs { margin: 12px 0 16px; padding-left: 18px; display: grid; gap: 10px; }
+.hop-live [data-captain-onboarding] .rejected-docs small { color: #c62f2f; }
+
+/* Images are never draggable: a long-press or mouse drag must not lift vehicles or icons off the screen. */
+.hop-live img { -webkit-user-drag: none; user-select: none; -webkit-touch-callout: none; }

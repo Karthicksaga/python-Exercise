@@ -201,7 +201,7 @@ test("uncertain order creation cannot silently create a duplicate payment", asyn
     0,
   );
 });
-test("approved Outfit and Inter fonts are served locally", async ({ page }) => {
+test("approved Plus Jakarta Sans font is served locally", async ({ page }) => {
   const external = [];
   page.on("request", (r) => {
     if (/fonts\.(googleapis|gstatic)\.com/.test(r.url()))
@@ -213,12 +213,12 @@ test("approved Outfit and Inter fonts are served locally", async ({ page }) => {
     await page
       .locator(".login-hero h2")
       .evaluate((el) => getComputedStyle(el).fontFamily),
-  ).toContain("Outfit");
+  ).toContain("Plus Jakarta Sans");
   expect(
     await page
       .locator(".login-form-copy")
       .evaluate((el) => getComputedStyle(el).fontFamily),
-  ).toContain("Inter");
+  ).toContain("Plus Jakarta Sans");
   expect(external).toEqual([]);
 });
 test("direct UPI QR uses only the assigned Captain’s backend account and does not settle locally", async ({
