@@ -79,7 +79,7 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 	isTesting := s.Config.Development || in.Testing || in.TestMode || in.TestBypass ||
 		r.Header.Get("X-Testing-Mode") == "true" || r.Header.Get("X-Test-Mode") == "true" ||
 		r.URL.Query().Get("testing") == "true" || r.URL.Query().Get("test_mode") == "true"
-	if !isTesting && !hasMobile(r.Context(), s.DB, user(r).Account.ID) {
+	if !hasMobile(r.Context(), s.DB, user(r).Account.ID) {
 		fail(w, 403, mobileRequired)
 		return
 	}

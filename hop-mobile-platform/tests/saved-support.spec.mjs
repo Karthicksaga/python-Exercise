@@ -292,3 +292,14 @@ test("Lost item and report modal sheets preserve selectors, structure, and touch
   const reportBox = await reportSubmit.boundingBox();
   expect(reportBox.height).toBeGreaterThanOrEqual(44);
 });
+
+test("Your people shows bounded empty states and keeps invite available", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await setupFixture(page, { role: "rider" });
+  await page.locator('[data-go="account"]').first().click();
+  await page.locator('[data-go="family"]').click();
+  await expect(page.getByText("Your people, all in one place")).toBeVisible();
+  await expect(page.getByText("No favourites yet")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Invite family member" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

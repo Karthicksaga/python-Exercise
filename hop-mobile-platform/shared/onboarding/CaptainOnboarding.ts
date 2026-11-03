@@ -10,6 +10,7 @@ export type OnboardingBridge = {
   assign: (patch: Record<string, any>) => void;
   update: (patch: Record<string, any>) => void;
   go: (screen: string) => void;
+  back: () => void;
   notify: (message: string) => void;
 };
 
@@ -490,9 +491,9 @@ export class CaptainOnboarding {
         `<div class="upload-content">` +
         `<div class="upload-title-row">` +
         `<strong>${label}</strong>` +
-        `${isVerifiedOrSaved ? `<span class="badge green">${icon("check", "tiny-icon")} Verified</span>` : `<span class="badge ${isMissing ? "red" : "warn"}">Required</span>`}` +
+        `${isVerifiedOrSaved ? `<span class="badge green">${icon("check", "tiny-icon")} Verified</span>` : this.isTestingBypass() ? `<span class="badge neutral">Optional</span>` : `<span class="badge ${isMissing ? "red" : "warn"}">Required</span>`}` +
         `</div>` +
-        `<small>${isVerifiedOrSaved ? "Uploaded privately · awaiting review" : "Choose a clear JPEG or PNG (up to 12 MB)"}</small>` +
+        `<small>${isVerifiedOrSaved ? "Uploaded privately · awaiting review" : this.isTestingBypass() ? "Optional for testing · upload or continue" : "Choose a clear JPEG or PNG (up to 12 MB)"}</small>` +
         `</div>` +
         `${
           previewSrc
@@ -1278,9 +1279,9 @@ export class CaptainOnboarding {
         "discard",
         "close-preview-modal",
         "close-permission-alert",
+        "back",
         "onboarding-next",
         "onboarding-back",
-        "back",
         "instant-approve-captain",
       ].includes(action)
     )

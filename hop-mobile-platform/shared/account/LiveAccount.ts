@@ -321,7 +321,7 @@ export class LiveAccount {
       support: "support",
       demand: "/api/drivers/demand",
       insights: "/api/drivers/insights",
-      tools: "/api/drivers/earnings",
+      tools: "driver",
     };
     const modalPaths: Record<string, string> = {
       business: "/api/profile",
@@ -535,45 +535,25 @@ export class LiveAccount {
     }
     else if (key === "preferences") {
       const prefs = data?.preferences || {};
-      body =
-        this.select(
-          "language",
-          "Language",
-          ["en", "hi", "ta", "te", "kn", "ml", "bn", "mr", "gu", "pa"],
-          prefs.language || "en",
-        ) +
-        (
-          [
+      const uiState = this.bridge.read() as Data;
+      const vehicleLabel = String(uiState.vehicle || "auto").replace(/^./, (m) => m.toUpperCase());
+      const paymentLabel = String(uiState.payment || "Cash");
+      const accessSettings = ([
             ["wheelchair_access", "Wheelchair access"],
             ["hearing_impaired", "Hearing assistance"],
             ["visually_impaired", "Low vision assistance"],
             ["extra_assistance", "Boarding assistance"],
             ["large_text", "Larger text"],
             ["notifications_enabled", "Trip notifications"],
-          ] as string[][]
-        )
+          ] as string[][])
           .map(
             ([k, l]) =>
               `<label class="toggle-row"><span>${l}</span><input type="checkbox" id="account-${k}" ${prefs[k] ? "checked" : ""}/></label>`,
           )
-          .join("") +
-        (this.role === "captain"
-          ? this.field(
-              "pickup_radius_meters",
-              "Pickup radius (metres)",
-              driver?.pickup_radius_meters || 3000,
-              "number",
-            ) +
-            this.field(
-              "minimum_fare",
-              "Minimum fare (₹)",
-              (driver?.minimum_fare_paise || 0) / 100,
-              "number",
-            )
-          : "") +
-        `<div style="margin-top:16px"><button type="button" class="list-row" data-modal="appearance" style="width:100%;display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;font-weight:600"><span>Appearance theme</span><span class="muted" style="font-size:12px">Auto / Dark →</span></button></div>`;
+          .join("");
+      body = `<div class="live-preferences-page">${this.role === "captain" ? `<div class="live-page-intro"><span class="live-eyebrow">DRIVING</span><h2>Set the trips that work for you.</h2><p>Choose your pickup range and minimum fare. These settings guide trip matching.</p></div><section class="live-card-group"><div class="live-field-block"><label class="field-label" for="account-pickup_radius_meters">Pickup radius</label><div class="live-field-hint">How far away trip requests can be</div><div class="live-input-with-unit"><input class="text-input" id="account-pickup_radius_meters" type="number" value="${escape(driver?.pickup_radius_meters || 3000)}"/><span>metres</span></div></div><div class="live-field-block"><label class="field-label" for="account-minimum_fare">Minimum fare</label><div class="live-field-hint">Skip requests below this amount</div><div class="live-input-with-unit"><input class="text-input" id="account-minimum_fare" type="number" value="${escape((driver?.minimum_fare_paise || 0) / 100)}"/><span>₹</span></div></div></section>` : `<div class="live-page-intro"><span class="live-eyebrow">MAKE IT YOURS</span><h2>Your ride, your way.</h2><p>Set your usual ride options and accessibility preferences.</p></div><section class="live-card-group">${this.modalRow("Default vehicle", vehicleLabel, "car", "vehicle-default")}${this.modalRow("Default payment", paymentLabel, "wallet", "payment")}</section>`}<div class="live-section-heading">App settings</div><section class="live-card-group">${this.select("language", "Language", ["en", "hi", "ta", "te", "kn", "ml", "bn", "mr", "gu", "pa"], prefs.language || "en")}${accessSettings}<button type="button" class="live-preference-row" data-modal="appearance"><span class="list-icon">${icon("moon")}</span><span><strong>Appearance</strong><small>Choose light or dark theme</small></span><span class="live-row-chevron">›</span></button></section></div>`;
     } else if (key === "tools") {
-      body = `<div class="section-card"><strong>Today's completed fares</strong><p>${money((data?.summary?.today_fare_paise || 0) / 100)}</p><button class="text-button" data-modal="goal">Edit daily goal</button></div><button class="toggle-row" data-action="home-mode"><span>Head towards home using my current location</span></button><button class="list-row" data-modal="service-area">Operating city</button><button class="list-row" data-go="demand">Demand nearby</button><button class="list-row" data-go="preferences">Pickup and fare preferences</button><button class="list-row" data-go="insights">Driving insights</button><button class="secondary" data-action="take-break">Go offline for a break</button>`;
+      body = `<div class="live-tools-page"><div class="live-page-intro"><span class="live-eyebrow">CAPTAIN TOOLKIT</span><h2>Make your day work for you.</h2><p>Keep an eye on your goal, trip settings and breaks.</p></div><div class="live-section-heading">Your workday</div><section class="live-card-group"><div class="live-tool-goal"><span class="list-icon">${icon("chart")}</span><div><strong>Daily earnings goal</strong><small>Today’s completed fares</small><b>${money((data?.summary?.today_fare_paise || 0) / 100)}</b></div><button class="text-button" data-modal="goal">Edit</button></div><button class="live-tool-action" data-action="home-mode"><span class="list-icon">${icon("navigation")}</span><span><strong>Head towards home</strong><small>Prefer trips in the direction of home</small></span><span class="live-row-chevron">›</span></button></section><div class="live-section-heading">On the road</div><section class="live-card-group"><button class="live-tool-action" data-modal="service-area"><span class="list-icon">${icon("pin")}</span><span><strong>Operating city</strong><small>View your service area</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="demand"><span class="list-icon">${icon("layers")}</span><span><strong>Demand nearby</strong><small>Explore active pickup areas</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="preferences"><span class="list-icon">${icon("settings")}</span><span><strong>Driving preferences</strong><small>Pickup radius and minimum fare</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="insights"><span class="list-icon">${icon("shield")}</span><span><strong>Driving insights</strong><small>Your trip activity and feedback</small></span><span class="live-row-chevron">›</span></button></section><button class="live-break-action secondary" data-action="take-break">Take a break</button></div>`;
     } else if (key === "earnings") {
       const sum = data?.summary || {};
       body = `<div class="wallet-hero"><small>TODAY'S COMPLETED FARES</small><div class="amount">${money((sum.today_fare_paise || 0) / 100)}</div><p>${Number(sum.today_completed_trips || 0)} completed trips</p></div><div class="section-card"><p>Week ${money((sum.week_fare_paise || 0) / 100)}</p><p>Month ${money((sum.month_fare_paise || 0) / 100)}</p><p>All time ${money((sum.all_time_fare_paise || 0) / 100)}</p><p class="micro">Reported receipt is distinct from provider settlement.</p></div>${(data?.rides || []).map((r: Data) => `<div class="list-row"><span>${escape(r.pickup_label)} → ${escape(r.dropoff_label)}</span><strong>${money(r.fare_paise / 100)}</strong></div>`).join("")}<button class="secondary" data-go="ledger">Ledger & payouts</button>`;
@@ -591,16 +571,26 @@ export class LiveAccount {
           (driver?.daily_goal_paise || 0) / 100,
           "number",
         ) + btn("goal", "Save goal");
-    else if (key === "vehicle")
-      body = `<div class="section-card"><p>Captain status: ${escape(driver?.status || "Not applied")}</p><p>${escape(driver?.vehicle_number || "")} · ${escape(driver?.vehicle_make || "")} ${escape(driver?.vehicle_model || "")}</p><p>Licence expiry: ${escape(driver?.license_expires?.slice(0, 10) || "Not supplied")}</p><p>Insurance expiry: ${escape(driver?.insurance_expires?.slice(0, 10) || "Not supplied")}</p></div><button class="primary" data-go="onboarding">View application & private documents</button><p class="micro">Approved vehicle changes require operator review.</p>`;
-    else if (key === "rewards")
-      body = `<div class="wallet-hero"><small>REWARD POINTS</small><div class="amount">${Number(data?.referral?.[0]?.points || 0)}</div></div><p>Referral code: ${escape(data?.referral?.[0]?.code || "Unavailable")}</p><button class="secondary" data-modal="referral">Redeem a friend's code</button>${(data?.rewards || []).map((r: Data) => `<p>${Number(r.points)} · ${escape(r.reason)}</p>`).join("")}`;
+    else if (key === "vehicle") {
+      const vehicleName = [driver?.vehicle_make, driver?.vehicle_model].filter(Boolean).join(" ") || "Vehicle details pending";
+      const vehicleNumber = driver?.vehicle_number || "Registration not supplied";
+      const status = driver?.status || "Not applied";
+      const documentRow = (title: string, detail: string, ico: string) => `<div class="live-document-row"><span class="list-icon">${icon(ico)}</span><span><strong>${title}</strong><small>${escape(detail)}</small></span><span class="live-row-chevron">›</span></div>`;
+      body = `<div class="live-vehicle-page"><section class="live-vehicle-card"><div class="live-vehicle-art">${icon("car")}</div><div><span class="live-eyebrow">YOUR VEHICLE</span><h2>${escape(vehicleName)}</h2><span class="live-vehicle-plate">${escape(vehicleNumber)}</span></div></section><div class="live-status-card"><span><small>APPLICATION STATUS</small><strong>${escape(status.replaceAll("_", " "))}</strong></span><span class="badge ${status === "approved" ? "green" : "neutral"}">${escape(status.replaceAll("_", " "))}</span></div><div class="live-page-intro live-doc-intro"><h2>Vehicle & documents</h2><p>Review your submitted information and private documents.</p></div><section class="live-card-group">${documentRow("Driving licence", driver?.license_expires ? `Expires ${escape(driver.license_expires.slice(0, 10))}` : "Expiry date not supplied", "file")}${documentRow("Registration certificate", driver?.vehicle_number ? "Submitted with your application" : "Not supplied", "file")}${documentRow("Vehicle insurance", driver?.insurance_expires ? `Expires ${escape(driver.insurance_expires.slice(0, 10))}` : "Expiry date not supplied", "shield")}</section><button class="live-vehicle-action primary" data-go="onboarding">View application & private documents</button><p class="live-page-note">Vehicle changes and document approvals are reviewed by the operator.</p></div>`;
+    }
+    else if (key === "rewards") {
+      const referral = data?.referral?.[0] || {};
+      body = `<div class="live-rewards-page"><div class="live-page-intro"><span class="live-eyebrow">HOP REWARDS</span><h2>Good rides bring good things.</h2><p>Invite friends and keep track of the points you’ve earned.</p></div><section class="live-points-card"><span>YOUR REWARD POINTS</span><strong>${Number(referral.points || 0)}</strong><small>Points collected from eligible rides</small></section><div class="live-section-heading">Invite a friend</div><section class="live-referral-card"><span class="live-eyebrow">YOUR REFERRAL CODE</span><div class="live-referral-code">${escape(referral.code || "Unavailable")}</div><p>Share your code with a friend when they join Hop.</p><button class="secondary" data-action="copy-code">${icon("copy", "tiny-icon")} Copy code</button></section><button class="live-referral-redeem" data-modal="referral"><span class="list-icon">${icon("gift")}</span><span><strong>Have a referral code?</strong><small>Enter a code shared with you</small></span><span class="live-row-chevron">›</span></button>${(data?.rewards || []).length ? `<div class="live-section-heading">Your rewards activity</div><section class="live-card-group">${(data?.rewards || []).map((r: Data) => `<div class="live-reward-row"><strong>${Number(r.points)} points</strong><span>${escape(r.reason)}</span></div>`).join("")}</section>` : `<p class="live-page-note">Your reward activity will appear here when you earn points.</p>`}</div>`;
+    }
     else if (key === "referral")
       body =
         this.field("referral", "Referral code") +
         btn("referral", "Redeem code");
     else if (key === "family")
       body =
+        ((data?.family || []).length === 0
+          ? `<div class="family-empty-card"><span class="family-empty-icon">${icon("heart")}</span><strong>Your people, all in one place</strong><p>Invite a family member to make planning rides together easier.</p></div>`
+          : "") +
         (data?.family || [])
           .map(
             (m: Data) =>
@@ -608,6 +598,9 @@ export class LiveAccount {
           )
           .join("") +
         `<button class="secondary" data-modal="family-invite">Invite family member</button><div class="section-label">Favourite captains</div>` +
+        ((data?.favorite_drivers || []).length === 0
+          ? `<div class="family-empty-card compact"><span class="family-empty-icon">${icon("car")}</span><strong>No favourites yet</strong><p>Captains you save after a ride will appear here.</p></div>`
+          : "") +
         (data?.favorite_drivers || [])
           .map(
             (f: Data) =>

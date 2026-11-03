@@ -27,6 +27,13 @@ export async function mountPrototype(role: "rider" | "captain") {
   }
     <main class="phone" id="phone"><div class="app" id="app"></div></main>`;
   const host = document.querySelector<HTMLElement>("#app")!;
+  if (!referenceMode) {
+    const { ViewportController } = await import("./ViewportController");
+    const viewport = new ViewportController(
+      document.querySelector<HTMLElement>("#phone")!,
+    );
+    window.addEventListener("pagehide", () => viewport.destroy(), { once: true });
+  }
   host.inert = true;
   host.setAttribute("aria-busy", "true");
   const ready = () => {
@@ -55,7 +62,7 @@ export async function mountPrototype(role: "rider" | "captain") {
         prototypeBridge.update({ modal: null });
         return;
       }
-      if (st.screen === "onboarding" && st.onboard > 0) {
+      if (st.screen === "onboarding") {
         const backBtn = document.querySelector<HTMLButtonElement>(
           'header button[data-action="back"], [data-action="onboarding-back"]',
         );

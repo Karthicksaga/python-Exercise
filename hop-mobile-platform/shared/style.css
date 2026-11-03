@@ -1271,15 +1271,23 @@ h3,
   margin-top: 14px;
 }
 .activity-card .product-row .secondary {
-  width: auto;
-  min-height: 40px;
-  padding: 8px 16px;
+  flex: 1 1 auto;
+  min-height: 42px;
+  padding: 9px 18px;
+  border-radius: 12px;
   font-size: calc(12px + var(--font-step, 0px));
+  font-weight: 650;
+  text-align: center;
+  white-space: nowrap;
 }
 .activity-card .product-row .text-button {
-  padding: 8px 10px;
-  min-height: 40px;
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  min-height: 42px;
+  border-radius: 12px;
   font-size: calc(12px + var(--font-step, 0px));
+  font-weight: 600;
+  white-space: nowrap;
 }
 .activity-card button {
   background: transparent;
@@ -2869,3 +2877,53 @@ h3,
 }
 
 @media(max-width:360px) { .journey-ribbon { padding-inline:15px; } .journey-ribbon li { font-size:calc(8px + var(--font-step,0px)); } .usual-ride { margin-top:9px; min-height:60px; } .home-heading h2 { font-size:calc(24px + var(--font-step,0px)); } }
+
+/* Live Captain account pages follow the Safety Centre's grouped card treatment. */
+.live-preferences-page,.live-tools-page,.live-vehicle-page { padding: 18px 0 30px; }
+.live-page-intro { margin: 2px 4px 18px; }
+.live-page-intro h2 { margin: 5px 0 5px; font-size: calc(22px + var(--font-step,0px)); line-height: 1.2; }
+.live-page-intro p { margin: 0; color: var(--muted); font-size: calc(13px + var(--font-step,0px)); line-height: 1.45; }
+.live-eyebrow { color: #77837a; font-size: 10px; font-weight: 700; letter-spacing: .09em; }
+.live-section-heading { margin: 22px 4px 8px; font-size: calc(15px + var(--font-step,0px)); font-weight: 700; }
+.live-card-group { overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: 0 7px 22px rgba(24,38,27,.035); }
+.live-card-group > .list-row,.live-card-group > .live-preference-row,.live-card-group > .live-tool-action,.live-card-group > .live-document-row { margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.live-card-group > :not(:first-child) { border-top: 1px solid var(--line); }
+.live-field-block { padding: 14px 16px; }
+.live-field-block + .live-field-block { border-top: 1px solid var(--line); }
+.live-field-block .field-label { margin: 0 0 4px; font-size: calc(13px + var(--font-step,0px)); font-weight: 700; }
+.live-field-hint { margin-bottom: 10px; color: var(--muted); font-size: 12px; }
+.live-input-with-unit { display:flex; align-items:center; gap:10px; }
+.live-input-with-unit .text-input { min-width:0; min-height:46px; margin:0; flex:1; border-radius:14px; background:#f5f7f3; }
+.live-input-with-unit > span { min-width:64px; color:var(--muted); font-size:12px; }
+.live-preferences-page > .live-card-group .field-label { display:block; padding:14px 16px 0; }
+.live-preferences-page > .live-card-group .text-input { margin: 4px 16px 14px; width:calc(100% - 32px); }
+.live-preference-row,.live-tool-action,.live-document-row { display:flex; width:100%; min-height:66px; align-items:center; gap:12px; padding:11px 15px; text-align:left; background:transparent; color:var(--ink); }
+.live-preference-row > span:nth-child(2),.live-tool-action > span:nth-child(2),.live-document-row > span:nth-child(2) { min-width:0; flex:1; }
+.live-preference-row strong,.live-tool-action strong,.live-document-row strong { display:block; font-size:calc(14px + var(--font-step,0px)); }
+.live-preference-row small,.live-tool-action small,.live-document-row small { display:block; margin-top:3px; color:var(--muted); font-size:12px; line-height:1.35; }
+.live-row-chevron { color:#c4ccc4; font-size:24px; font-weight:300; line-height:1; }
+.live-card-group .list-icon { display:grid; width:42px; height:42px; flex:0 0 42px; place-items:center; border-radius:14px; background:#edf4ec; color:#41634c; }
+.live-tool-goal { display:flex; align-items:center; gap:12px; padding:15px; }
+.live-tool-goal > div { min-width:0; flex:1; }
+.live-tool-goal strong,.live-tool-goal small,.live-tool-goal b { display:block; }
+.live-tool-goal small { margin-top:4px; color:var(--muted); font-size:12px; }
+.live-tool-goal b { margin-top:7px; font-size:17px; }
+.live-break-action { margin-top:18px; min-height:50px; border-radius:16px; }
+.live-vehicle-card { display:flex; align-items:center; gap:15px; padding:16px; border:1px solid var(--line); border-radius:22px; background:var(--surface); box-shadow:0 7px 22px rgba(24,38,27,.035); }
+.live-vehicle-art { display:grid; width:88px; height:82px; flex:0 0 88px; place-items:center; border-radius:18px; background:#edf4ec; color:#41634c; }
+.live-vehicle-art .icon { width:34px; height:34px; }
+.live-vehicle-card h2 { margin:5px 0 7px; font-size:calc(18px + var(--font-step,0px)); }
+.live-vehicle-plate { display:inline-block; padding:5px 8px; border:1px solid var(--line); border-radius:8px; color:var(--muted); font-size:11px; }
+.live-status-card { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; padding:14px 16px; border:1px solid var(--line); border-radius:18px; background:var(--surface); }
+.live-status-card small,.live-status-card strong { display:block; }
+.live-status-card small { margin-bottom:4px; color:var(--muted); font-size:10px; font-weight:700; letter-spacing:.06em; }
+.live-status-card strong { text-transform:capitalize; }
+.live-doc-intro { margin-top:22px; margin-bottom:10px; }
+.live-doc-intro h2 { font-size:calc(18px + var(--font-step,0px)); }
+.live-document-row { min-height:66px; }
+.live-vehicle-action { margin-top:18px; min-height:52px; border-radius:16px; }
+.live-page-note { margin:13px 4px; color:var(--muted); font-size:12px; line-height:1.45; }
+.app.dark .live-card-group,.app.dark .live-vehicle-card,.app.dark .live-status-card { background:var(--surface); border-color:var(--line); box-shadow:none; }
+.app.dark .live-card-group .list-icon,.app.dark .live-vehicle-art { background:#2a3d2d; color:#d9e7d9; }
+.app.dark .live-input-with-unit .text-input { background:#26352b; }
+@media(max-width:360px) { .live-vehicle-card { gap:10px; padding:12px; } .live-vehicle-art { width:70px; height:70px; flex-basis:70px; } .live-tool-goal { gap:8px; padding:12px; } }

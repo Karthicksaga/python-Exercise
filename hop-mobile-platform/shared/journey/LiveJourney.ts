@@ -21,6 +21,7 @@ interface Bridge {
   read(): any;
   update(patch: Record<string, unknown>): void;
   go(screen: string): void;
+  back(): void;
   notify(message: string): void;
 }
 type Route = { route: Coordinate[]; meters: number; seconds: number };
@@ -1370,9 +1371,6 @@ export class LiveJourney {
         }
       } else {
         this.app.querySelectorAll<HTMLElement>('.bottom-nav').forEach(el => { el.remove(); });
-        if (this.state?.driver?.[0]?.status === "pending") {
-          this.app.querySelectorAll<HTMLElement>('header button[aria-label="Back"]').forEach(el => { el.remove(); });
-        }
       }
     }
     this.booking?.render();
@@ -1386,7 +1384,7 @@ export class LiveJourney {
         async () => this.sync(await api.state()),
         () => {
           this.onboardingDismissed = true;
-          this.bridge.go("drive");
+          this.bridge.back();
         },
       );
       this.onboarding.sync();

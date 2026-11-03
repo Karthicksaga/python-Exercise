@@ -12,9 +12,10 @@ body {
   place-items: center;
 }
 #phone.phone {
+  align-self: start;
   width: 100%;
   max-width: 500px;
-  height: 100dvh;
+  height: var(--hop-viewport-height, 100dvh);
   min-height: 0;
   border: 0;
   border-radius: 0;
