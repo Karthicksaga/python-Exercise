@@ -52,6 +52,25 @@ docker compose up -d --no-build
 
 Use the architecture appropriate to your runtime. The runtime Dockerfile copies only the compiled application, migrations and trusted CA bundle. It does not disable TLS or dependency verification. Keep build artifacts tied to the source commit and dependency lockfiles.
 
+## Private document storage (required in production)
+
+Production refuses to start without durable private media storage. Configure **two distinct private buckets** (`MEDIA_PROFILE_BUCKET`, `MEDIA_KYC_BUCKET`), or `MEDIA_LOCAL_DIR` on a persistent volume for single-host Docker deployments. In-memory storage exists only for `APP_ENV=development`. On Cloud Run it loses uploads on every restart and isn't shared between instances.
+
+```sh
+# One-time setup (replace PROJECT and REGION; names must be globally unique)
+gcloud storage buckets create gs://PROJECT-hop-portraits --location=REGION --uniform-bucket-level-access --public-access-prevention
+gcloud storage buckets create gs://PROJECT-hop-kyc       --location=REGION --uniform-bucket-level-access --public-access-prevention
+# Grant only the API service account object access
+gcloud storage buckets add-iam-policy-binding gs://PROJECT-hop-kyc --member=serviceAccount:API_SA --role=roles/storage.objectAdmin
+gcloud storage buckets add-iam-policy-binding gs://PROJECT-hop-portraits --member=serviceAccount:API_SA --role=roles/storage.objectAdmin
+```
+Then set both names in `api_env` of the deploy config. `infra/gcp/deploy.py` rejects a production deploy without them, and also rejects `DEMO_LOGIN`, `DEV_SMS` or `DEV_PAYMENTS` in production.
+
+**Operators:**
+- Real operators sign in through OIDC (enforce MFA at the identity provider).
+- After their first sign-in, promote them with `./api promote-operator <account UUID>`.
+- Demo accounts exist only with `APP_ENV=development DEMO_LOGIN=true`. Never enable that on a server reachable from the internet with real data.
+
 ## First operator and activation
 
 1. Sign in through the configured identity provider. A rider account is provisioned from the verified issuer/subject pair.

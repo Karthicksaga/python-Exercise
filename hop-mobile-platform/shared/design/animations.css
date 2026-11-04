@@ -83,16 +83,16 @@
   0% {
     transform: scale(0.2);
     opacity: 0.95;
-    box-shadow: 0 0 10px rgba(52, 116, 92, 0.5);
+    box-shadow: 0 0 10px rgba(71, 71, 97, 0.5);
   }
   50% {
     opacity: 0.6;
-    box-shadow: 0 0 22px rgba(52, 116, 92, 0.3);
+    box-shadow: 0 0 22px rgba(71, 71, 97, 0.3);
   }
   100% {
     transform: scale(2.8);
     opacity: 0;
-    box-shadow: 0 0 34px rgba(52, 116, 92, 0);
+    box-shadow: 0 0 34px rgba(71, 71, 97, 0);
   }
 }
 
@@ -109,8 +109,8 @@
 }
 
 .hop-live .app.dark .radar-wave {
-  border-color: rgba(92, 184, 138, 0.85);
-  background: rgba(92, 184, 138, 0.18);
+  border-color: rgba(119, 121, 157, 0.85);
+  background: rgba(119, 121, 157, 0.18);
 }
 
 /* ==========================================================================
@@ -348,7 +348,7 @@
 .hop-live input[type="tel"]:focus,
 .hop-live input[type="number"]:focus {
   outline: none;
-  border-color: var(--accent, #236e3d);
+  border-color: var(--accent, #4b3fd1);
   box-shadow: 0 0 0 3px rgba(35, 110, 61, 0.15);
 }
 
@@ -484,7 +484,7 @@
 .hop-live .loading-quote {
   position: relative;
   overflow: hidden;
-  background: #eef2ea;
+  background: #eaeaf2;
   border-radius: 8px;
 }
 
@@ -512,7 +512,7 @@
 .hop-live .app.dark .loading-shimmer,
 .hop-live .app.dark .fare-skeleton,
 .hop-live .app.dark .loading-quote {
-  background: #233123;
+  background: #232431;
 }
 
 .hop-live .app.dark .skeleton::after,
@@ -597,15 +597,9 @@
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
+/* Design 03: the filled indigo icon pill marks the active tab; the old dot overlapped the label. */
 .hop-live .bottom-nav button.active::after {
-  content: "";
-  position: absolute;
-  bottom: 2px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: navDotFade 0.2s ease forwards;
+  content: none;
 }
 
 /* ==========================================================================
@@ -723,15 +717,15 @@
   font-size: 11px;
   font-weight: 500;
   color: #4b5563;
-  background: #f1f4ee;
+  background: #eeeef4;
   padding: 4px 10px;
   border-radius: 20px;
-  border: 1px solid #e2e8df;
+  border: 1px solid #dfdfe8;
 }
 
 .applicant-pill strong,
 .hop-live .applicant-pill strong {
-  color: #19201e;
+  color: #14151f;
   font-weight: 600;
 }
 
@@ -747,13 +741,13 @@
   flex: 1;
   height: 4px;
   border-radius: 4px;
-  background: #eaede4;
+  background: #e4e4ed;
   transition: background-color 0.25s ease, transform 0.2s ease;
 }
 
 [data-captain-onboarding] .onboarding-steps span.active,
 .hop-live [data-captain-onboarding] .onboarding-steps span.active {
-  background: var(--accent, #e54d36);
+  background: var(--accent, #4b3fd1);
   animation: none;
 }
 
@@ -771,18 +765,18 @@
 /* Section cards styling in onboarding */
 [data-captain-onboarding] .section-card,
 .hop-live [data-captain-onboarding] .section-card {
-  border: 1px solid #e7ebe3;
+  border: 1px solid #e3e3eb;
   border-radius: 16px;
   padding: 16px;
   background: #ffffff;
   margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(25, 32, 30, 0.03);
+  box-shadow: 0 2px 8px rgba(25, 25, 32, 0.03);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .hop-live [data-captain-onboarding] .section-card:hover {
-  border-color: #dbe2d6;
-  box-shadow: 0 4px 12px rgba(25, 32, 30, 0.06);
+  border-color: #d6d7e2;
+  box-shadow: 0 4px 12px rgba(25, 25, 32, 0.06);
 }
 
 [data-captain-onboarding] .card-head,
@@ -798,8 +792,8 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: #f1f5ee;
-  color: #236e3d;
+  background: #ecebfd;
+  color: #4b3fd1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -815,10 +809,10 @@
 
 [data-captain-onboarding] .card-head h3,
 .hop-live [data-captain-onboarding] .card-head h3 {
-  font-family: "Outfit", "Manrope", system-ui, sans-serif;
+  font-family: "Plus Jakarta Sans", "Manrope", system-ui, sans-serif;
   font-size: 15px;
   font-weight: 650;
-  color: #19201e;
+  color: #14151f;
   margin: 0;
   letter-spacing: -0.2px;
 }
@@ -827,7 +821,7 @@
 .hop-live [data-captain-onboarding] .card-head p {
   margin: 2px 0 0;
   font-size: 11px;
-  color: #78807b;
+  color: #6b6f80;
 }
 
 /* Vehicle category grid */
@@ -855,8 +849,8 @@
   padding: 10px 4px 8px;
   height: auto;
   min-height: 72px;
-  background: #f8faf6;
-  border: 1.5px solid #e2e8de;
+  background: #f6f6fa;
+  border: 1.5px solid #dedee8;
   border-radius: 12px;
   cursor: pointer;
   position: relative;
@@ -870,8 +864,8 @@
 
 .vehicle-card.product-chip:hover,
 .hop-live .vehicle-card.product-chip:hover {
-  border-color: #cbd4c5;
-  background: #f3f7f0;
+  border-color: #c5c6d4;
+  background: #f0f0f7;
 }
 
 .vehicle-card.product-chip:active,
@@ -882,9 +876,9 @@
 
 .vehicle-card.product-chip.active,
 .hop-live .vehicle-card.product-chip.active {
-  border-color: var(--accent, #e54d36);
-  background: #fff7f5;
-  box-shadow: 0 0 0 2px var(--accent, #e54d36), 0 4px 10px rgba(229, 77, 54, 0.16);
+  border-color: var(--accent, #4b3fd1);
+  background: #f7f7fe;
+  box-shadow: 0 0 0 2px var(--accent, #4b3fd1), 0 4px 10px rgba(75, 63, 209, 0.16);
   animation: none;
 }
 
@@ -915,13 +909,13 @@
 .hop-live .vehicle-card-name {
   font-size: 11px;
   font-weight: 650;
-  color: #19201e;
+  color: #14151f;
 }
 
 .vehicle-card-seats,
 .hop-live .vehicle-card-seats {
   font-size: 9px;
-  color: #78807b;
+  color: #6b6f80;
   margin-top: 1px;
 }
 
@@ -933,7 +927,7 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--accent, #e54d36);
+  background: var(--accent, #4b3fd1);
   color: white;
   display: flex;
   align-items: center;
@@ -1000,15 +994,15 @@
   border-radius: 10px;
   font-size: 13px;
   color: #111827;
-  background: #fafbf9;
+  background: #f9f9fb;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
 [data-captain-onboarding] .text-input:focus,
 .hop-live [data-captain-onboarding] .text-input:focus {
-  border-color: var(--accent, #e54d36);
+  border-color: var(--accent, #4b3fd1);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(229, 77, 54, 0.14);
+  box-shadow: 0 0 0 3px rgba(75, 63, 209, 0.14);
   background: #ffffff;
 }
 
@@ -1019,8 +1013,8 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: #f9faf7;
-  border: 1.5px dashed #cfd7c8;
+  background: #f7f7fa;
+  border: 1.5px dashed #c8c8d7;
   border-radius: 12px;
   margin-bottom: 10px;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1029,15 +1023,15 @@
 
 .upload-card.uploaded,
 .hop-live .upload-card.uploaded {
-  background: #f4faf6;
+  background: #f5f5f9;
   border-style: solid;
-  border-color: #a4d4b8;
+  border-color: #b1b2c7;
 }
 
 .upload-card:hover,
 .hop-live .upload-card:hover {
-  border-color: #9cb3a0;
-  background: #f3f8f1;
+  border-color: #9c9db3;
+  background: #f1f2f8;
 }
 
 .upload-card:active,
@@ -1050,8 +1044,8 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #eaede6;
-  color: #556059;
+  background: #e6e6ed;
+  color: #555560;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1086,14 +1080,14 @@
 .upload-content strong,
 .hop-live .upload-content strong {
   font-size: 13px;
-  color: #19201e;
+  color: #14151f;
 }
 
 .upload-content small,
 .hop-live .upload-content small {
   display: block;
   font-size: 11px;
-  color: #78807b;
+  color: #6b6f80;
   margin-top: 2px;
 }
 
@@ -1105,7 +1099,7 @@
   padding: 6px 12px;
   font-size: 11px;
   font-weight: 600;
-  color: #19201e;
+  color: #14151f;
   background: #ffffff;
   border: 1px solid #d1d5db;
   border-radius: 8px;
@@ -1145,8 +1139,8 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: #f4f7f2;
-  border: 1px solid #e1e7dc;
+  background: #f2f2f7;
+  border: 1px solid #dcdce7;
   border-radius: 12px;
   margin-bottom: 14px;
 }
@@ -1156,8 +1150,8 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: #e6ede0;
-  color: #277866;
+  background: #e0e0ed;
+  color: #4b3fd1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1174,7 +1168,7 @@
 .hop-live .security-banner strong {
   display: block;
   font-size: 12px;
-  color: #19201e;
+  color: #14151f;
 }
 
 .security-banner p,
@@ -1199,7 +1193,7 @@
 
 .status-pill.success,
 .hop-live .status-pill.success {
-  background: #eef8f2;
+  background: #eff0f7;
   color: #167b5b;
   border: 1px solid #c7e9d5;
 }
@@ -1222,8 +1216,8 @@
 .hop-live .verification-code-box {
   margin-top: 12px;
   padding: 12px;
-  background: #f9faf7;
-  border: 1px solid #e2e8de;
+  background: #f7f7fa;
+  border: 1px solid #dedee8;
   border-radius: 10px;
 }
 
@@ -1231,8 +1225,8 @@
 .hop-live .jurisdiction-banner {
   margin-top: 10px;
   padding: 10px 12px;
-  background: #f8faf6;
-  border: 1px solid #e2e8de;
+  background: #f6f6fa;
+  border: 1px solid #dedee8;
   border-radius: 10px;
 }
 
@@ -1254,8 +1248,8 @@
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  background: #eaf1e7;
-  color: #277866;
+  background: #e7e7f1;
+  color: #4b3fd1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1286,17 +1280,17 @@
 
 .summary-meta h3,
 .hop-live .summary-meta h3 {
-  font-family: "Outfit", "Manrope", system-ui, sans-serif;
+  font-family: "Plus Jakarta Sans", "Manrope", system-ui, sans-serif;
   font-size: 17px;
   font-weight: 700;
-  color: #19201e;
+  color: #14151f;
   margin: 0;
 }
 
 .summary-divider,
 .hop-live .summary-divider {
   height: 1px;
-  background: #eef2eb;
+  background: #ebebf2;
   margin: 14px 0;
 }
 
@@ -1351,15 +1345,15 @@
 /* Dark mode overrides for onboarding */
 .hop-live .app.dark [data-captain-onboarding] .section-card,
 .hop-live .app.dark .upload-card {
-  background: #17221d;
-  border-color: #26362e;
+  background: #181821;
+  border-color: #272735;
 }
 
 .hop-live .app.dark [data-captain-onboarding] .card-icon,
 .hop-live .app.dark .summary-avatar,
 .hop-live .app.dark .security-icon {
-  background: #202e27;
-  color: #5cb88a;
+  background: #21212d;
+  color: #77799d;
 }
 
 .hop-live .app.dark [data-captain-onboarding] .card-head h3,
@@ -1370,8 +1364,8 @@
 }
 
 .hop-live .app.dark .vehicle-card.product-chip {
-  background: #19251f;
-  border-color: #26362e;
+  background: #1a1a24;
+  border-color: #272735;
 }
 
 .hop-live .app.dark .vehicle-card.product-chip.active {
@@ -1381,14 +1375,14 @@
 }
 
 .hop-live .app.dark [data-captain-onboarding] .text-input {
-  background: #131c18;
-  border-color: #2b3d34;
+  background: #14141b;
+  border-color: #2c2c3c;
   color: #f3f4f6;
 }
 
 .hop-live .app.dark .applicant-pill {
-  background: #1a2721;
-  border-color: #2a3d33;
+  background: #1b1c26;
+  border-color: #2b2c3c;
   color: #9ca3af;
 }
 
@@ -1397,18 +1391,18 @@
 }
 
 .hop-live .app.dark .vehicle-plate {
-  background: #1f2d26;
-  border-color: #2f4439;
+  background: #20202c;
+  border-color: #303143;
   color: #e5e7eb;
 }
 
 .hop-live .app.dark .summary-divider {
-  background: #23342b;
+  background: #252532;
 }
 
 .hop-live .app.dark .security-banner {
-  background: #19251f;
-  border-color: #283a30;
+  background: #1a1a24;
+  border-color: #292a39;
 }
 
 .hop-live .app.dark .security-banner strong {
@@ -1416,8 +1410,8 @@
 }
 
 .hop-live .app.dark .upload-button-label {
-  background: #202e27;
-  border-color: #33493d;
+  background: #21212d;
+  border-color: #343548;
   color: #e5e7eb;
 }
 

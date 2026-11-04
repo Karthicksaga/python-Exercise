@@ -1,3 +1,4 @@
+import { setupMockBackend } from "./support/mockBackend.mjs";
 import { test, expect } from "@playwright/test";
 import { mkdirSync, copyFileSync, existsSync } from "node:fs";
 import path from "node:path";
@@ -21,6 +22,9 @@ const RIDER_SCREENS = [
   "safety",
   "support",
   "notifications",
+  "family",
+  "rewards",
+  "privacy",
 ];
 
 const RIDER_MODALS = ["sos", "share", "contacts", "report"];
@@ -32,6 +36,15 @@ const CAPTAIN_SCREENS = [
   "account",
   "vehicle",
   "safety",
+  "preferences",
+  "personal",
+  "tools",
+  "support",
+  "notifications",
+  "privacy",
+  "demand",
+  "insights",
+  "ledger",
 ];
 
 const SCREENS_DIR = path.resolve("test-results/screens");
@@ -72,8 +85,8 @@ async function auditLayout(page, { role, screen, vp, mode }) {
     findings.push(`Missing #phone element on ${role}/${screen}/${vp.id}`);
   } else {
     if (vp.width >= 768) {
-      if (phoneBox.width > 502) {
-        findings.push(`Container too wide on ${vp.id}: width=${phoneBox.width}px (expected <= 500px)`);
+      if (phoneBox.width > (mode === "live" ? 432 : 502)) {
+        findings.push(`Container too wide on ${vp.id}: width=${phoneBox.width}px exceeds the phone-width shell`);
       }
       const leftMargin = phoneBox.x;
       const rightMargin = vp.width - (phoneBox.x + phoneBox.width);
@@ -130,110 +143,6 @@ async function auditLayout(page, { role, screen, vp, mode }) {
   return { findings, buttonAudit, overflow, phoneBox };
 }
 
-async function setupMockBackend(page, { role = "rider", driverApproved = true, onboardingDraft = null } = {}) {
-  await page.route("https://**", (r) => r.abort());
-  await page.route("**/api/**", async (r) => {
-    const req = r.request();
-    const p = new URL(req.url()).pathname;
-    const body = req.method() === "POST" ? req.postDataJSON() : null;
-
-    if (p === "/api/config") {
-      return r.fulfill({
-        json: {
-          areas: [
-            { id: "chennai", name: "Chennai", min_lat: 12.8, max_lat: 13.3, min_lng: 80, max_lng: 80.5 },
-            { id: "bengaluru", name: "Bengaluru", min_lat: 12.8, max_lat: 13.2, min_lng: 77.4, max_lng: 77.8 },
-          ],
-          vehicles: [
-            { area_id: "chennai", category: "auto", name: "Auto" },
-            { area_id: "chennai", category: "bike", name: "Bike" },
-            { area_id: "chennai", category: "sedan", name: "Sedan" },
-          ],
-          development: true,
-        },
-      });
-    }
-    if (p === "/api/me") {
-      return r.fulfill({
-        json: { user: { id: role === "captain" ? "captain-1" : "rider-1" }, csrf: "csrf-token" },
-      });
-    }
-    if (p === "/api/state") {
-      return r.fulfill({
-        json: {
-          rides: [],
-          offers: [],
-          driver: role === "captain" ? [{ status: driverApproved ? "approved" : "onboarding" }] : [],
-        },
-      });
-    }
-    if (p === "/api/profile") {
-      return r.fulfill({
-        json: {
-          details: [{
-            name: role === "captain" ? "Arun Captain" : "Deepa Rider",
-            phone: "9876543210",
-            phone_verified: true,
-            email: "deepa@example.com",
-            gender: "female",
-            birth_date: "1995-05-15",
-            default_payment: "cash",
-            default_vehicle: "auto",
-          }],
-          contacts: [{ name: "Anand R", mobile: "9876543211", relationship: "Family" }],
-        },
-      });
-    }
-    if (p === "/api/companion") {
-      return r.fulfill({
-        json: {
-          scheduled_rides: [],
-          family: [],
-          preferences: { language: "en", notifications_enabled: true },
-        },
-      });
-    }
-    if (p === "/api/wallet") {
-      return r.fulfill({
-        json: {
-          balance: 650,
-          transactions: [
-            { title: "Added to wallet", amount: 500, type: "credit", date: "Today" },
-            { title: "Ride payment", amount: -268, type: "debit", date: "Yesterday" },
-          ],
-        },
-      });
-    }
-    if (p === "/api/notifications") {
-      return r.fulfill({
-        json: {
-          notifications: [
-            { id: "1", title: "Trip confirmed", body: "Your ride with Arun is scheduled.", read: false },
-          ],
-        },
-      });
-    }
-    if (p === "/api/drivers/onboarding") {
-      return r.fulfill({
-        json: {
-          draft: onboardingDraft || {
-            step: 0,
-            area_id: "chennai",
-            vehicle_category: "bike",
-            vehicle_number: "TN 09 AB 1234",
-            vehicle_make: "Honda",
-            vehicle_model: "Activa",
-            vehicle_color: "Black",
-          },
-          phone_verified: true,
-          has_photo: true,
-          documents: ["license", "rc", "insurance", "identity"].map((kind) => ({ kind })),
-        },
-      });
-    }
-    return r.fulfill({ json: {} });
-  });
-}
 
 async function saveScreenShots(page, { role, screen, vp, mode = "live" }) {
   // Primary standard name: {role}-{screen}-{viewport}.png
@@ -536,3 +445,50 @@ test.describe("Live Mode Screens Visual & Responsive Audit", () => {
     });
   }
 });
+
+
+test("Rider preferences: vehicle selection works without a route estimate", async ({ page }) => {
+  await setupMockBackend(page);
+  await page.goto("http://127.0.0.1:5183");
+  await expect(page.locator("#app[data-ready=true]")).toBeVisible();
+  await page.evaluate(() => window.prototypeBridge.go("preferences"));
+  await page.locator('[data-modal="vehicle-default"]').click();
+  await page.locator('[data-vehicle="sedan"]').click();
+  await expect(page.locator('[data-vehicle="sedan"]')).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("button", { name: "Save default" }).click();
+  await expect(page.locator('[data-modal="vehicle-default"]')).toContainText("Sedan");
+  await expect(page.locator("#account-language option:checked")).toHaveText("English");
+  const toggle = page.locator("#account-wheelchair_access");
+  await toggle.check();
+  await expect(toggle).toBeChecked();
+});
+
+for (const role of ["rider", "captain"]) {
+  test(`${role} preferences: content insets and dividers stay aligned`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupMockBackend(page, { role });
+    await page.goto(`http://127.0.0.1:${role === "rider" ? 5183 : 5184}`);
+    await expect(page.locator("#app[data-ready=true]")).toBeVisible();
+    await page.evaluate(() => window.prototypeBridge.go("preferences"));
+    await expect(page.locator(".live-preferences-page")).toBeVisible();
+    const geometry = await page.evaluate(() => {
+      const rect = selector => document.querySelector(selector).getBoundingClientRect();
+      const intro = rect(".live-page-intro");
+      const body = rect(".screen-body");
+      const appearance = document.querySelector('[data-modal="appearance"]');
+      const previous = appearance.previousElementSibling;
+      const icon = document.querySelector('.live-card-group > .list-row .list-icon');
+      return {
+        introGap: intro.top - body.top,
+        appearanceGap: appearance.getBoundingClientRect().top - previous.getBoundingClientRect().bottom,
+        bottomBorder: getComputedStyle(previous).borderBottomWidth,
+        iconInset: icon ? icon.getBoundingClientRect().left - icon.closest(".live-card-group").getBoundingClientRect().left : 21,
+      };
+    });
+    expect(geometry.introGap).toBeLessThanOrEqual(16);
+    expect(geometry.appearanceGap).toBe(0);
+    expect(geometry.bottomBorder).toBe("0px");
+    expect(geometry.iconInset).toBeGreaterThanOrEqual(20);
+    await page.screenshot({ path: test.info().outputPath(`${role}-preferences-fixed.png`) });
+  });
+}

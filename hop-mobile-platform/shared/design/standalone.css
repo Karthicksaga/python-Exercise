@@ -23,7 +23,7 @@ body {
 }
 /* Input is enabled only after the live adapters have registered their handlers. */
 #app[inert]{visibility:hidden}
-.phone:has(#app[inert])::after{content:"hop";position:absolute;inset:0;display:grid;place-items:center;color:#e54d36;font:750 42px Outfit,sans-serif;letter-spacing:-2px;background:white}
+.phone:has(#app[inert])::after{content:"hop";position:absolute;inset:0;display:grid;place-items:center;color:#4b3fd1;font:750 42px "Plus Jakarta Sans",sans-serif;letter-spacing:-2px;background:white}
 
 /* In live mobile mode, hide the fake status bar that duplicates native system status bar */
 html.hop-live .status-bar,
@@ -55,7 +55,7 @@ body.is-native-mobile .prototype-notice {
   overflow: hidden;
   cursor: pointer;
   flex-shrink: 0;
-  border: 1.5px solid var(--line, #cfd7c8);
+  border: 1.5px solid var(--line, #c8c8d7);
   background: var(--surface, #ffffff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -83,7 +83,7 @@ body.is-native-mobile .prototype-notice {
   justify-content: center;
   width: 100%;
   height: 100%;
-  color: #167b5b;
+  color: #4b3fd1;
   background: #e1f5eb;
 }
 .upload-actions {
@@ -100,7 +100,7 @@ body.is-native-mobile .prototype-notice {
   padding: 6px 10px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--ink, #19201e);
+  color: var(--ink, #14151f);
   background: var(--surface, #ffffff);
   border: 1px solid #d1d5db;
   border-radius: 8px;
@@ -125,13 +125,13 @@ body.is-native-mobile .prototype-notice {
 .text-input.invalid,
 .text-input.has-error,
 .text-input[aria-invalid="true"] {
-  border-color: #e54d36 !important;
-  box-shadow: 0 0 0 1px #e54d36 !important;
-  background-color: #fff8f7 !important;
+  border-color: #4b3fd1 !important;
+  box-shadow: 0 0 0 1px #4b3fd1 !important;
+  background-color: #f7f7fe !important;
 }
 .upload-card.invalid-card {
-  border-color: #e54d36 !important;
-  background-color: #fff8f7 !important;
+  border-color: #4b3fd1 !important;
+  background-color: #f7f7fe !important;
 }
 .badge.red {
   background: #fee2e2;
@@ -181,7 +181,7 @@ body.is-native-mobile .prototype-notice {
   font-size: 15px;
   font-weight: 700;
   margin: 0;
-  color: var(--ink, #19201e);
+  color: var(--ink, #14151f);
 }
 .icon-button.close-btn {
   background: transparent;
@@ -197,11 +197,11 @@ body.is-native-mobile .prototype-notice {
 }
 .icon-button.close-btn:hover {
   background: rgba(0, 0, 0, 0.05);
-  color: var(--ink, #19201e);
+  color: var(--ink, #14151f);
 }
 .doc-preview-body {
   padding: 16px;
-  background: #0f1412;
+  background: #0f0f14;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -239,7 +239,7 @@ body.is-native-mobile .prototype-notice {
 .camera-viewfinder-card {
   width: 100%;
   max-width: 380px;
-  background: #0f1412;
+  background: #0f0f14;
   border-radius: 20px;
   overflow: hidden;
   display: flex;
@@ -300,7 +300,7 @@ body.is-native-mobile .prototype-notice {
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  background: #0f1412;
+  background: #0f0f14;
 }
 .camera-switch-btn {
   width: 44px;
@@ -336,7 +336,7 @@ body.is-native-mobile .prototype-notice {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: #e54d36;
+  background: #4b3fd1;
 }
 .cancel-camera-btn {
   color: #94a3b8 !important;
@@ -389,7 +389,7 @@ body.is-native-mobile .prototype-notice {
   font-size: 16px;
   font-weight: 700;
   margin: 0 0 10px;
-  color: var(--ink, #19201e);
+  color: var(--ink, #14151f);
 }
 .permission-card .modal-text {
   font-size: 13px;
@@ -429,6 +429,36 @@ body.is-native-mobile .prototype-notice {
   color: #f1f5f9;
 }
 .app.dark .doc-thumbnail-placeholder {
-  background: #064e3b;
-  color: #34d399;
+  background: #26244a;
+  color: #bdb7ff;
+}
+
+/* Keep native checkbox semantics and the approved switch appearance. */
+.live-setting-toggle { position: relative; cursor: pointer; }
+.live-setting-toggle > span:first-child { flex: 1; min-width: 0; }
+.live-setting-toggle > input[type="checkbox"] {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+  opacity: 0; cursor: pointer; z-index: 1;
+}
+.live-setting-toggle > .switch { flex-shrink: 0; pointer-events: none; }
+.live-setting-toggle:has(input:checked) > .switch { background: #4f506d; }
+.live-setting-toggle:has(input:checked) > .switch::after { transform: translateX(13px); }
+.live-setting-toggle:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -3px; }
+.live-preferences-page .live-card-group > .field-label,
+.live-preferences-page .live-card-group > select { border-top: 0; }
+.live-preferences-page .live-card-group > .list-row { margin: 0; border-radius: 0; }
+.live-preferences-page .live-card-group > .list-row + .list-row { border-top: 1px solid var(--line); }
+
+/* Live preference cards share one inset and one divider between each row. */
+.screen-padding[data-live-account="preferences"] { padding-top: 0; }
+.screen-padding[data-live-account="preferences"] .live-preferences-page { padding-top: 12px; }
+.live-preferences-page .live-page-intro { margin: 0 0 16px; }
+.live-preferences-page .live-section-heading { margin: 20px 0 10px; }
+.live-preferences-page .live-card-group > .list-row {
+  width: 100%; padding: 12px 20px; min-height: 64px; border: 0;
+}
+.live-preferences-page .live-card-group > .list-row + .list-row { border-top: 1px solid var(--line); }
+.live-preferences-page .live-card-group > .toggle-row { border-bottom: 0; min-height: 56px; }
+.screen-padding[data-live-account="preferences"] .live-card-group > [data-modal="appearance"] {
+  margin-top: 0; box-shadow: none;
 }

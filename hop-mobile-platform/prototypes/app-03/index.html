@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hop — App concept 03</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="review">
+  <a class="logo" href="?">hop<i>.</i><small>App concept · 03 · Rider &amp; Captain</small></a>
+  <div class="review-tools">
+    <nav class="seg" aria-label="View">
+      <button data-view="both" aria-pressed="true">Both</button>
+      <button data-view="rider" aria-pressed="false">Rider</button>
+      <button data-view="captain" aria-pressed="false">Captain</button>
+      <button data-view="palette" aria-pressed="false">Colour review</button>
+    </nav>
+    <div class="seg" aria-label="Theme">
+      <button data-theme-btn="light" aria-pressed="true">Light</button>
+      <button data-theme-btn="dark" aria-pressed="false">Dark</button>
+    </div>
+    <span class="note">Design preview · sample data · no real actions</span>
+  </div>
+</header>
+
+<main class="gallery" id="gallery"></main>
+
+<section class="review-doc" id="palette" hidden>
+  <div class="card stack">
+    <span class="eyebrow">Verdict</span>
+    <h2>The current colours need to change; the layout and type are good.</h2>
+    <p class="muted">Outfit + Inter, the vehicle artwork, bottom sheets and spacing work well and are kept. The palette is the weak point: three competing accents, two of which fail contrast and blend into Google/OSM map tiles.</p>
+  </div>
+
+  <div class="two">
+    <div class="card stack">
+      <h3>Current palette — problems</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Pair</th><th>Contrast</th><th>Issue</th></tr></thead>
+        <tbody>
+          <tr><td><span class="chipdot" style="background:#dfb82d"></span>White on Captain yellow</td><td><span class="ratio fail">1.9 : 1</span></td><td>Fails AA; only dark text works</td></tr>
+          <tr><td><span class="chipdot" style="background:#e54d36"></span>White on Rider coral</td><td><span class="ratio fail">3.9 : 1</span></td><td>Fails AA for button text; reads as “error”</td></tr>
+          <tr><td><span class="chipdot" style="background:#78807b"></span>Muted text on paper</td><td><span class="ratio fail">3.7 : 1</span></td><td>Too faint in sunlight</td></tr>
+          <tr><td><span class="chipdot" style="background:#dfb82d"></span>Yellow vs Google main road</td><td><span class="ratio fail">1.5 : 1</span></td><td>Markers/routes vanish on roads</td></tr>
+          <tr><td><span class="chipdot" style="background:#167b5b"></span>Brand green vs OSM park</td><td>same hue</td><td>Brand blends with parks</td></tr>
+        </tbody>
+      </table></div>
+      <ul class="verdict muted">
+        <li>Rider (coral) and Captain (yellow) look like two different brands.</li>
+        <li>Coral sits next to SOS/cancel red, so the main action looks like a warning.</li>
+        <li>Olive/sage surfaces look muddy against OSM’s warm beige tiles.</li>
+      </ul>
+    </div>
+
+    <div class="card stack">
+      <h3>Proposed — one palette for both apps</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Pair</th><th>Contrast</th></tr></thead>
+        <tbody>
+          <tr><td><span class="chipdot" style="background:#4b3fd1"></span>White on Hop Indigo (buttons)</td><td><span class="ratio pass">7.2 : 1</span></td></tr>
+          <tr><td><span class="chipdot" style="background:#4b3fd1"></span>Indigo route vs map land</td><td><span class="ratio pass">6.2 : 1</span></td></tr>
+          <tr><td><span class="chipdot" style="background:#14151f"></span>Ink on white</td><td><span class="ratio pass">18.2 : 1</span></td></tr>
+          <tr><td><span class="chipdot" style="background:#6b6f80"></span>Muted on light grey</td><td><span class="ratio pass">4.6 : 1</span></td></tr>
+          <tr><td><span class="chipdot" style="background:#5b50e6"></span>White on indigo (dark mode)</td><td><span class="ratio pass">5.6 : 1</span></td></tr>
+          <tr><td>Success / warning / danger badges</td><td><span class="ratio pass">4.7 – 5.4 : 1</span></td></tr>
+        </tbody>
+      </table></div>
+      <ul class="verdict muted">
+        <li>Indigo doesn’t appear on Google or OSM maps, so routes and pins always stand out.</li>
+        <li>Green, amber and red are kept for status only: online/paid, expiring, SOS/cancel.</li>
+        <li>Captain is identified by its name, green “Online” state and content, not a second brand colour.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card stack">
+    <h3>Tokens</h3>
+    <div class="swatches">
+      <div class="sw"><i style="background:#4b3fd1;color:#fff">Primary</i><div><b>#4B3FD1</b>Buttons, route, active nav</div></div>
+      <div class="sw"><i style="background:#ecebfd;color:#3a2fb8">Primary soft</i><div><b>#ECEBFD / #3A2FB8</b>Selected option, info</div></div>
+      <div class="sw"><i style="background:#14151f;color:#fff">Ink</i><div><b>#14151F</b>Text, active chip, drop pin</div></div>
+      <div class="sw"><i style="background:#6b6f80;color:#fff">Muted</i><div><b>#6B6F80</b>Secondary text</div></div>
+      <div class="sw"><i style="background:#f4f4f9;color:#14151f">Paper</i><div><b>#F4F4F9</b>App background</div></div>
+      <div class="sw"><i style="background:#f5f5fa;color:#14151f">Surface 2</i><div><b>#F5F5FA</b>Inner tiles, inputs</div></div>
+      <div class="sw"><i style="background:#0f7a4f;color:#fff">Success</i><div><b>#0F7A4F</b>Online, paid, verified</div></div>
+      <div class="sw"><i style="background:#8a5a00;color:#fff">Warning</i><div><b>#8A5A00</b>Expiring, pending</div></div>
+      <div class="sw"><i style="background:#c62f2f;color:#fff">Danger</i><div><b>#C62F2F</b>SOS, cancel only</div></div>
+    </div>
+  </div>
+
+  <div class="card stack">
+    <h3>Making Google and OSM maps match</h3>
+    <p class="muted">The prototype map is a drawing of the target look. In the live apps, mute the provider tiles so Hop’s indigo route and markers carry the colour.</p>
+    <p><b>OpenStreetMap (Leaflet)</b>: add a day filter next to the existing night filter in <code>shared/maps/map.css</code>:</p>
+<pre>.hop-map-canvas .leaflet-tile-pane { filter: saturate(.4) brightness(1.04) contrast(.94); }</pre>
+    <p><b>Google Maps</b>: add a muted day style in <code>shared/maps/google.ts</code> (see README for the full list), e.g.</p>
+<pre>{ elementType: "geometry", stylers: [{ color: "#eef0f4" }] },
+{ featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+{ featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#e3e5ed" }] },
+{ featureType: "water", stylers: [{ color: "#cde0f5" }] },
+{ featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#d6ecd8" }] },
+{ featureType: "poi.business", stylers: [{ visibility: "off" }] }</pre>
+  </div>
+</section>
+
+<footer class="foot">Use the menu above each phone or tap through the buttons inside. The live Hop apps are unchanged.</footer>
+<script src="app.js"></script>
+</body>
+</html>

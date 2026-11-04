@@ -72,7 +72,7 @@ export async function checkout(order: Order): Promise<Verification> {
       currency: order.currency,
       name: "Hop",
       description: "Hop ride payment",
-      theme: { color: "#e54d36" },
+      theme: { color: "#4b3fd1" },
       handler: (verification: Verification) => {
         if (!finished) {
           finished = true;

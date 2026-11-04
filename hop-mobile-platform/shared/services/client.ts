@@ -12,7 +12,9 @@ export class HopAPI {
   private csrf = "";
   constructor(private send: typeof transport = transport) {}
   async request<T>(path: string, body?: unknown): Promise<T> {
-    const response = await this.send(path, {
+    let response: Response;
+    try {
+      response = await this.send(path, {
       method: body === undefined ? "GET" : "POST",
       signal: AbortSignal.timeout(12000),
       headers:
@@ -21,19 +23,24 @@ export class HopAPI {
           : { "Content-Type": "application/json", "X-CSRF-Token": this.csrf },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+    } catch (error) {
+      console.warn("Hop connection failed", error);
+      const timeout = error instanceof Error && ["TimeoutError", "AbortError"].includes(error.name);
+      throw new APIError(timeout ? "The request took too long. Please try again." : "We couldn’t connect. Check your internet connection and try again.", 0);
+    }
     const text = await response.text();
     let data: any;
     try {
       data = text ? JSON.parse(text) : {};
     } catch {
       throw new APIError(
-        "Backend returned an unreadable response.",
+        "We couldn’t load this information. Please try again.",
         response.status,
       );
     }
     if (!response.ok)
       throw new APIError(
-        data.error || `Request failed (${response.status})`,
+        data.error || (response.status === 401 ? "Please sign in to continue." : response.status === 429 ? "Too many attempts. Please wait a moment and try again." : "Something went wrong. Please try again."),
         response.status,
       );
     if (data.csrf) this.csrf = data.csrf;

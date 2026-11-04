@@ -108,6 +108,16 @@ test("nearby vehicles come only from the backend and disappear from the map when
   await page.route("**/api/nearby?*", (r) => r.fulfill({ json: { drivers } }));
   await page.goto(base);
   await expect(page.locator(".leaflet-marker-icon")).toHaveCount(1);
+  // A nearby vehicle is display-only: it can't be grabbed, clicked or dragged.
+  const vehicle = page.locator(".leaflet-marker-icon").first();
+  await expect(vehicle).not.toHaveClass(/leaflet-interactive/);
+  await expect(vehicle.locator("img")).toHaveAttribute("draggable", "false");
+  const dragBlocked = await vehicle.locator("img").evaluate((img) => {
+    const event = new DragEvent("dragstart", { bubbles: true, cancelable: true });
+    img.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(dragBlocked).toBe(true);
   drivers = [];
   await expect(page.locator(".leaflet-marker-icon")).toHaveCount(0);
   await expect(page.locator(".hop-map-status")).toContainText(

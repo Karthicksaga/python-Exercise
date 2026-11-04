@@ -36,6 +36,21 @@ class DeploymentChecks(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.validate(self.config)
 
+    def test_production_requires_buckets_and_forbids_demo_login(self):
+        config = copy.deepcopy(self.config)
+        config["service_prefix"] = "hop-prod"
+        config["api_env"].pop("MEDIA_PROFILE_BUCKET", None)
+        config["api_env"].pop("MEDIA_KYC_BUCKET", None)
+        with self.assertRaises(ValueError):
+            module.validate(config)
+        config["api_env"].update(MEDIA_PROFILE_BUCKET="hop-prod-portraits", MEDIA_KYC_BUCKET="hop-prod-kyc")
+        module.validate(config)
+        for key in ("DEMO_LOGIN", "DEV_SMS", "DEV_PAYMENTS"):
+            bad = copy.deepcopy(config)
+            bad["api_env"][key] = "true"
+            with self.assertRaises(ValueError):
+                module.validate(bad)
+
     def test_private_media_requires_distinct_complete_bucket_configuration(self):
         self.config["api_env"].update(MEDIA_PROFILE_BUCKET="hop-test-portraits", MEDIA_KYC_BUCKET="hop-test-kyc")
         module.validate(self.config)

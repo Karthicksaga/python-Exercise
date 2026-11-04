@@ -6,6 +6,7 @@ export class MotionController {
   private screen = "";
   private modal = "";
   private toast = "";
+  private vehicle = "";
   private disposed = false;
   private readonly timing = {
     quick: 160,
@@ -117,13 +118,13 @@ export class MotionController {
         );
       if (this.app.dataset.motionScreen === "auth") {
         this.play(
-          this.app.querySelector(".login-vehicle"),
+          this.app.querySelector(".login-illustration"),
           [
-            { opacity: 0, transform: "translate3d(-20px,4px,0)" },
+            { opacity: 0, transform: "translate3d(0,8px,0)" },
             { opacity: 1, transform: "translate3d(0,0,0)" },
           ],
           480,
-          "login-vehicle",
+          "login-illustration",
           40,
         );
         this.play(
@@ -165,6 +166,15 @@ export class MotionController {
         180,
         "toast-entry",
       );
+    const selected = this.app.querySelector<HTMLElement>('[data-vehicle][aria-checked="true"]');
+    const vehicle = selected?.dataset.vehicle || "";
+    if (vehicle && vehicle !== this.vehicle && !changed) {
+      this.play(selected?.querySelector("img") || selected, [
+        { transform: "translateY(3px)", opacity: .75 },
+        { transform: "translateY(0)", opacity: 1 },
+      ], this.timing.control, "vehicle-selection");
+    }
+    this.vehicle = vehicle;
     this.screen = screen;
     this.modal = modal;
     this.toast = toast;

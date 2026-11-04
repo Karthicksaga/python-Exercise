@@ -17,7 +17,7 @@ async function readyFonts(page) {
     const sample =
       "₹0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     await Promise.all(
-      ["Inter", "Outfit"].flatMap((family) =>
+      ["Plus Jakarta Sans"].flatMap((family) =>
         [400, 500, 600, 650, 700, 750, 800].map((weight) =>
           document.fonts.load(`${weight} 16px "${family}"`, sample),
         ),
@@ -70,7 +70,7 @@ for (const role of ["rider", "captain"]) {
       .review-left,.review-right,.mobile-review,.stage-caption{display:none!important}
       html,body{height:100%;overflow:hidden}body{display:grid;place-items:center}
       .review-shell,.stage{display:block;padding:0;margin:0;width:100%;height:100dvh;min-height:0}
-      #phone.phone{width:100%;max-width:500px;height:100dvh;min-height:0;border:0;border-radius:0;box-shadow:none}
+      #phone.phone{align-self:start;width:100%;max-width:500px;height:100dvh;min-height:0;border:0;border-radius:0;box-shadow:none}
     `,
     });
     // Match the standalone DOM ancestry too: ancestor clipping can otherwise

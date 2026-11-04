@@ -90,7 +90,7 @@ function OsmMarker({ position, draggable, onDragEnd, title, anchor = "bottom", z
   drag.current = onDragEnd;
   useEffect(() => {
     const m = L.marker(position, {
-      draggable,
+      draggable: Boolean(draggable),
       title,
       zIndexOffset: zIndex ?? 0,
       icon: L.divIcon({ className: "osm-marker", html: "", iconSize: [0, 0] }),
@@ -271,10 +271,11 @@ export function MapMarker(props: MarkerProps) {
     <AdvancedMarker
       position={position}
       title={title}
-      draggable={draggable}
+      // The library makes any marker with a drag handler draggable, so only attach one when asked.
+      draggable={Boolean(draggable)}
       zIndex={zIndex}
       anchorPoint={anchor === "center" ? AdvancedMarkerAnchorPoint.CENTER : undefined}
-      onDragEnd={(e) => e.latLng && onDragEnd?.(e.latLng.lat(), e.latLng.lng())}
+      onDragEnd={draggable && onDragEnd ? (e) => e.latLng && onDragEnd(e.latLng.lat(), e.latLng.lng()) : undefined}
     >
       {children}
     </AdvancedMarker>

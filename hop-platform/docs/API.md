@@ -25,7 +25,8 @@ All business endpoints are same-origin JSON. Unsafe requests require `Content-Ty
 | GET /api/drivers/earnings | Driver | Daily, current-week/month and all-time completed-fare totals plus the 50 most recent completed ride receipts |
 | POST /api/incidents | Ride participant | `{ride_id,message}` |
 | GET /api/operator | Operator | Areas, reviews, incidents and recent audit events |
-| POST /api/operator/areas | Operator | Create/update area, paise pricing and activation reference |
+| POST /api/operator/areas | Operator | Create/update area, paise pricing and activation reference. Optional `catalog_id` links it to a catalogue district (one zone per district; 409 names the existing zone) |
+| GET /api/operator/regions?state= | Operator | District catalogue (migration 035, OpenStreetMap ODbL bounds) with `area_id`/`area_name`/`area_active` of the zone using each district |
 | POST /api/operator/pricing | Operator | Configure and enable `auto`, `mini`, `sedan`, or `suv` pricing for an area |
 | POST /api/operator/drivers/{id} | Operator, not self | `{status:approved|suspended,note}` |
 | POST /api/operator/incidents/{id} | Operator | `{status:reviewing|closed,resolution}` |
@@ -114,3 +115,32 @@ All endpoints below use existing session authorization; POSTs require the existi
 - `GET /api/rides/{rideId}/receipt` — completed-trip participant only; `{details,issued_at,payment_status,payment_description,refunded_paise,filename,content_type,pdf}` with PDF base64. Snapshot fare facts are immutable; payment/refund annotations reflect current records. Unconfirmed cash/direct-UPI payments remain unconfirmed, captain reports are labelled, and wallet/provider confirmations are distinguished. Captain views omit rider business fields. This produces a trip statement, not a legally applicable supplier GST invoice.
 
 Production media uses `MEDIA_PROFILE_BUCKET` and `MEDIA_KYC_BUCKET` plus attached runtime credentials. See [private media setup](PRIVATE-MEDIA.md). Storage, SMS, Android delivery and tax-provider setup are not implied by a successful local API response.
+
+# Captain document review (migration 034, Nov 2026)
+
+**Required documents** (all must be uploaded and *accepted* before approval): `identity`, `identity_back`, `license`, `license_back`, `rc`, `rc_back`, `insurance`. **Optional:** `police` (police clearance certificate). The list is defined once in `backend/internal/app/documents.go` and returned by `GET /api/drivers/onboarding` (`required_documents`, `optional_documents`).
+
+- `POST /api/drivers/documents/{kind}`: every upload is kept as a version (`driver_document_versions`). The new version is `pending` review; the previous one is marked superseded, never deleted early.
+- `GET /api/drivers/onboarding`: each document now carries `review_status` (`pending|accepted|rejected`) and `review_reason`, so the Captain app can show what to fix.
+- `GET /api/admin/drivers?status=&area_id=&q=&expiring=1&limit=&offset=`: filtered, paged review queue. Pending applications are ordered oldest-first. The response adds `counts`, `document_reviews`, `submitted_at`, `claimed_name`, `next_expiry`, `gender_ok`, `police_reference`, plus `required_documents` and `rejection_reasons`.
+- `POST /api/admin/drivers/{id}/claim` with `{release?}`: claims an application for 30 minutes. Another operator gets `409 "<name> is reviewing this application"`.
+- `POST /api/admin/drivers/{id}`: the **only** approval endpoint. It adds:
+  - `documents: {kind: {status, reason?, note?}}`. `reason` is one of `blurry|cropped|mismatch|expired|wrong_type|glare`, or a custom `note` of at least 10 characters.
+  - `gender_ok`: gender verified against the ID; required for `pink_certified`.
+  - `police_reference`: required for `police_ok` unless a `police` document is accepted.
+
+  Rules:
+  - A check can't be ticked while one of its documents is rejected.
+  - Any rejected document keeps or returns the Captain to `pending` (offline), and notifies them with the document name and reason.
+  - Approval records `driver_verifications.evidence`: the exact object keys verified.
+  - A decision releases the claim.
+- `GET /api/admin/drivers/{id}/documents`: version history with outcomes. `GET /api/admin/document-versions/{version}`: one historical image; every view is audited.
+- `POST /api/operator/drivers/{id}`: **retired (410)**. Approval has a single rule set.
+
+**Expiry handling:** `RunCompliance` runs hourly. It sends licence and insurance reminders at 30, 7 and 1 days before expiry, each once per expiry date (`compliance_reminders`). On expiry it takes the Captain offline with a renewal message. Dispatch already excludes expired Captains.
+
+**Retention:** files from abandoned applications are deleted after 30 days. Superseded versions are deleted after 3 years, unless an approval cites them as evidence.
+
+**Security:**
+- Client `testing`/`test_mode`/`test_bypass` flags, `X-Testing-Mode` headers and `?testing=` are ignored. Only a server with `APP_ENV=development` relaxes document checks.
+- Demo sign-in (`/auth/login?role=…`) needs `APP_ENV=development` **and** `DEMO_LOGIN=true`; production refuses to start with `DEMO_LOGIN`.

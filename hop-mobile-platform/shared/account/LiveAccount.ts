@@ -78,8 +78,8 @@ export class LiveAccount {
   private action(id: string, label: string, kind: "primary" | "secondary" = "primary") {
     return `<button class="${kind}" data-account-action="${id}" ${this.busy ? "disabled" : ""}>${label}</button>`;
   }
-  private select(key: string, label: string, items: string[], value: string) {
-    return `<label class="field-label" for="account-${key}">${label}</label><select class="text-input" id="account-${key}">${items.map((v) => `<option ${value === v ? "selected" : ""}>${escape(v)}</option>`).join("")}</select>`;
+  private select(key: string, label: string, items: string[], value: string, labels: Record<string, string> = {}) {
+    return `<label class="field-label" for="account-${key}">${label}</label><select class="text-input" id="account-${key}">${items.map((v) => `<option value="${escape(v)}" ${value === v ? "selected" : ""}>${escape(labels[v] || v)}</option>`).join("")}</select>`;
   }
   private modalRow(
     title: string,
@@ -101,6 +101,8 @@ export class LiveAccount {
         const balance = data.balance_paise / 100;
         this.bridge.assign({ balance });
         amountEl.innerHTML = `${money(balance)}<span style="font-size:19px;opacity:.5">.00</span>`;
+      } else if (amountEl) {
+        amountEl.textContent = "—";
       }
     }
 
@@ -117,15 +119,18 @@ export class LiveAccount {
     const label = this.app.querySelector<HTMLElement>(
       ".screen-padding > .section-label",
     );
-    if (label && notice && data) {
-      const entries: Data[] = data.entries || data.ledger || [];
+    if (label && notice) {
+      const entries: Data[] = data?.entries || data?.ledger || [];
       let next = label.nextElementSibling;
       while (next && next !== notice) {
         const toRemove = next;
         next = next.nextElementSibling;
         toRemove.remove();
       }
-      if (entries.length > 0) {
+      if (!data) {
+        const error = this.errors.get("/api/wallet");
+        label.insertAdjacentHTML("afterend", `<div class="notice-box" role="${error ? "alert" : "status"}">${escape(error || "Loading your wallet…")}${error ? this.action("retry", "Try again", "secondary") : ""}</div>`);
+      } else if (entries.length > 0) {
         const rowsHtml = entries
           .slice(0, 10)
           .map((entry) => this.formatWalletEntry(entry))
@@ -176,7 +181,7 @@ export class LiveAccount {
     let html = "";
 
     if (this.role === "captain") {
-      html += `<div class="section-card" style="margin-bottom:14px"><div class="row"><div><small class="muted">AVAILABLE BALANCE</small><strong style="display:block;font-size:24px;margin-top:2px">${money((data?.balance_paise || 0) / 100)}</strong></div><button class="primary small" data-modal="payout" style="padding:8px 14px;font-size:11px">Request payout</button></div></div>`;
+      html += `<div class="section-card" style="margin-bottom:14px"><div class="row"><div><small class="muted">AVAILABLE BALANCE</small><strong style="display:block;font-size:24px;margin-top:2px">${data ? money(data.balance_paise / 100) : "—"}</strong></div><button class="primary small" data-modal="payout" style="padding:8px 14px;font-size:11px">Request payout</button></div></div>`;
     }
 
     if (data && Array.isArray(entries)) {
@@ -186,7 +191,8 @@ export class LiveAccount {
         html += `<p class="micro muted" style="margin:16px 4px">No transactions recorded yet.</p>`;
       }
     } else {
-      html += `<p class="micro muted" style="margin:16px 4px">Loading transactions…</p>`;
+      const error = this.errors.get(path);
+      html += `<div class="notice-box" role="${error ? "alert" : "status"}">${escape(error || "Loading transactions…")}${error ? this.action("retry", "Try again", "secondary") : ""}</div>`;
     }
 
     if (this.role === "captain" && (data?.payouts || []).length > 0) {
@@ -252,7 +258,7 @@ export class LiveAccount {
     const isPositive = paise >= 0;
     const amountFormatted = money(Math.abs(paise) / 100);
     const right = isPositive
-      ? `<strong style="color:#357451">+${amountFormatted}</strong>`
+      ? `<strong style="color:#3a2fb8">+${amountFormatted}</strong>`
       : `<strong>−${amountFormatted}</strong>`;
 
     return `<button class="list-row" data-go="${go}"><span class="list-icon">${icon(ico)}</span><span class="list-text"><strong>${escape(title)}</strong>${detail ? `<small>${escape(detail)}</small>` : ""}</span><span class="right">${right}</span></button>`;
@@ -368,7 +374,7 @@ export class LiveAccount {
       this.app
         .querySelectorAll(".sheet .progress-track i")
         .forEach((el) => ((el as HTMLElement).style.width = "0%"));
-      const trips = this.app.querySelector(".sheet .row.small > .muted");
+      const trips = this.app.querySelector(".sheet .row.small > .muted, .sheet .row.small > span:first-child");
       if (trips)
         trips.textContent = earnings
           ? `${earnings.today_completed_trips} trips today`
@@ -418,6 +424,12 @@ export class LiveAccount {
         });
       return;
     }
+    if (!modal && screen === "privacy") {
+      const notice = this.app.querySelector(".notice-box");
+      if (notice) notice.textContent = "Manage your account data and privacy. Account changes require confirmation.";
+      const detail = this.app.querySelector('[data-modal="export"] small');
+      if (detail) detail.textContent = "Download your account information";
+    }
     if (!modal && screen === "wallet") {
       this.decorateWallet();
       return;
@@ -433,7 +445,7 @@ export class LiveAccount {
     const path = modal ? modalPaths[modal] : screenPaths[screen];
     if (!path) return;
     const host = this.app.querySelector<HTMLElement>(
-      modal ? ".modal-sheet" : ".screen-padding",
+      modal ? ".modal-sheet" : screen === "demand" ? ".screen-body > .sheet" : ".screen-padding",
     );
     if (!host) return;
     const key = modal || screen;
@@ -445,7 +457,9 @@ export class LiveAccount {
     let body = "";
     const btn = (a: string, l: string) => this.action(a, l);
     if (path.startsWith("/api") && !data)
-      body = `<p role="status">${this.errors.has(path) ? escape(this.errors.get(path)) : "Loading account data…"}</p>${btn("retry", "Retry")}`;
+      body = this.errors.has(path)
+        ? `<div class="notice-box" role="alert"><p>${escape(this.errors.get(path))}</p>${btn("retry", "Retry")}</div>`
+        : `<div class="notice-box" role="status" aria-busy="true">Loading your information…</div>`;
     else if (key === "personal") {
       const name = p.name || (this.role === "captain" ? "Demo Captain" : "Demo Rider");
       const avatarChar = name ? name.charAt(0).toUpperCase() : (this.role === "captain" ? "A" : "D");
@@ -471,7 +485,7 @@ export class LiveAccount {
         (this.role !== "captain"
           ? this.modalRow("Business receipt details", "Company, GSTIN, cost centre & work email", "briefcase", "business")
           : "") +
-        `<div class="notice-box">The existing exact-number verification and captain identity review checks remain required in the real application.</div>`;
+        `<div class="notice-box">Keep your contact details up to date so we can reach you about your rides.</div>`;
     } else if (key === "personal-more") {
       body =
         `<p class="muted small" style="margin:4px 0 14px">These details are kept private and help personalize your experience.</p>` +
@@ -548,12 +562,12 @@ export class LiveAccount {
           ] as string[][])
           .map(
             ([k, l]) =>
-              `<label class="toggle-row"><span>${l}</span><input type="checkbox" id="account-${k}" ${prefs[k] ? "checked" : ""}/></label>`,
+              `<label class="toggle-row live-setting-toggle"><span><strong>${l}</strong></span><input type="checkbox" role="switch" id="account-${k}" ${prefs[k] ? "checked" : ""}/><span class="switch" aria-hidden="true"></span></label>`,
           )
           .join("");
-      body = `<div class="live-preferences-page">${this.role === "captain" ? `<div class="live-page-intro"><span class="live-eyebrow">DRIVING</span><h2>Set the trips that work for you.</h2><p>Choose your pickup range and minimum fare. These settings guide trip matching.</p></div><section class="live-card-group"><div class="live-field-block"><label class="field-label" for="account-pickup_radius_meters">Pickup radius</label><div class="live-field-hint">How far away trip requests can be</div><div class="live-input-with-unit"><input class="text-input" id="account-pickup_radius_meters" type="number" value="${escape(driver?.pickup_radius_meters || 3000)}"/><span>metres</span></div></div><div class="live-field-block"><label class="field-label" for="account-minimum_fare">Minimum fare</label><div class="live-field-hint">Skip requests below this amount</div><div class="live-input-with-unit"><input class="text-input" id="account-minimum_fare" type="number" value="${escape((driver?.minimum_fare_paise || 0) / 100)}"/><span>₹</span></div></div></section>` : `<div class="live-page-intro"><span class="live-eyebrow">MAKE IT YOURS</span><h2>Your ride, your way.</h2><p>Set your usual ride options and accessibility preferences.</p></div><section class="live-card-group">${this.modalRow("Default vehicle", vehicleLabel, "car", "vehicle-default")}${this.modalRow("Default payment", paymentLabel, "wallet", "payment")}</section>`}<div class="live-section-heading">App settings</div><section class="live-card-group">${this.select("language", "Language", ["en", "hi", "ta", "te", "kn", "ml", "bn", "mr", "gu", "pa"], prefs.language || "en")}${accessSettings}<button type="button" class="live-preference-row" data-modal="appearance"><span class="list-icon">${icon("moon")}</span><span><strong>Appearance</strong><small>Choose light or dark theme</small></span><span class="live-row-chevron">›</span></button></section></div>`;
+      body = `<div class="live-preferences-page">${this.role === "captain" ? `<div class="live-page-intro"><span class="live-eyebrow">DRIVING</span><h2>Set the trips that work for you.</h2><p>Choose your pickup range and minimum fare. These settings guide trip matching.</p></div><section class="live-card-group"><div class="live-field-block"><label class="field-label" for="account-pickup_radius_meters">Pickup radius</label><div class="live-field-hint">How far away trip requests can be</div><div class="live-input-with-unit"><input class="text-input" id="account-pickup_radius_meters" type="number" value="${escape(driver?.pickup_radius_meters || 3000)}"/><span>metres</span></div></div><div class="live-field-block"><label class="field-label" for="account-minimum_fare">Minimum fare</label><div class="live-field-hint">Skip requests below this amount</div><div class="live-input-with-unit"><input class="text-input" id="account-minimum_fare" type="number" value="${escape((driver?.minimum_fare_paise || 0) / 100)}"/><span>₹</span></div></div></section>` : `<div class="live-page-intro"><span class="live-eyebrow">MAKE IT YOURS</span><h2>Your ride, your way.</h2><p>Set your usual ride options and accessibility preferences.</p></div><section class="live-card-group">${this.modalRow("Default vehicle", vehicleLabel, "car", "vehicle-default")}${this.modalRow("Default payment", paymentLabel, "wallet", "payment")}</section>`}<div class="live-section-heading">App settings</div><section class="live-card-group">${this.select("language", "Language", ["en", "hi", "ta", "te", "kn", "ml", "bn", "mr", "gu", "pa"], prefs.language || "en", { en: "English", hi: "Hindi", ta: "Tamil", te: "Telugu", kn: "Kannada", ml: "Malayalam", bn: "Bengali", mr: "Marathi", gu: "Gujarati", pa: "Punjabi" })}${accessSettings}<button type="button" class="live-preference-row" data-modal="appearance"><span class="list-icon">${icon("moon")}</span><span><strong>Appearance</strong><small>Choose light or dark theme</small></span><span class="live-row-chevron">›</span></button></section></div>`;
     } else if (key === "tools") {
-      body = `<div class="live-tools-page"><div class="live-page-intro"><span class="live-eyebrow">CAPTAIN TOOLKIT</span><h2>Make your day work for you.</h2><p>Keep an eye on your goal, trip settings and breaks.</p></div><div class="live-section-heading">Your workday</div><section class="live-card-group"><div class="live-tool-goal"><span class="list-icon">${icon("chart")}</span><div><strong>Daily earnings goal</strong><small>Today’s completed fares</small><b>${money((data?.summary?.today_fare_paise || 0) / 100)}</b></div><button class="text-button" data-modal="goal">Edit</button></div><button class="live-tool-action" data-action="home-mode"><span class="list-icon">${icon("navigation")}</span><span><strong>Head towards home</strong><small>Prefer trips in the direction of home</small></span><span class="live-row-chevron">›</span></button></section><div class="live-section-heading">On the road</div><section class="live-card-group"><button class="live-tool-action" data-modal="service-area"><span class="list-icon">${icon("pin")}</span><span><strong>Operating city</strong><small>View your service area</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="demand"><span class="list-icon">${icon("layers")}</span><span><strong>Demand nearby</strong><small>Explore active pickup areas</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="preferences"><span class="list-icon">${icon("settings")}</span><span><strong>Driving preferences</strong><small>Pickup radius and minimum fare</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="insights"><span class="list-icon">${icon("shield")}</span><span><strong>Driving insights</strong><small>Your trip activity and feedback</small></span><span class="live-row-chevron">›</span></button></section><button class="live-break-action secondary" data-action="take-break">Take a break</button></div>`;
+      body = `<div class="live-tools-page"><div class="live-page-intro"><span class="live-eyebrow">CAPTAIN TOOLKIT</span><h2>Make your day work for you.</h2><p>Keep an eye on your goal, trip settings and breaks.</p></div><div class="live-section-heading">Your workday</div><section class="live-card-group"><div class="live-tool-goal"><span class="list-icon">${icon("chart")}</span><div><strong>Daily earnings goal</strong><small>Today’s completed fares</small><b>${this.cache.get("/api/drivers/earnings")?.summary ? money(this.cache.get("/api/drivers/earnings")!.summary.today_fare_paise / 100) : "—"}</b></div><button class="text-button" data-modal="goal">Edit</button></div><button class="live-tool-action" data-action="home-mode"><span class="list-icon">${icon("navigation")}</span><span><strong>Head towards home</strong><small>Prefer trips in the direction of home</small></span><span class="live-row-chevron">›</span></button></section><div class="live-section-heading">On the road</div><section class="live-card-group"><button class="live-tool-action" data-modal="service-area"><span class="list-icon">${icon("pin")}</span><span><strong>Operating city</strong><small>View your service area</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="demand"><span class="list-icon">${icon("layers")}</span><span><strong>Demand nearby</strong><small>Explore active pickup areas</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="preferences"><span class="list-icon">${icon("settings")}</span><span><strong>Driving preferences</strong><small>Pickup radius and minimum fare</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="insights"><span class="list-icon">${icon("shield")}</span><span><strong>Driving insights</strong><small>Your trip activity and feedback</small></span><span class="live-row-chevron">›</span></button></section><button class="live-break-action secondary" data-action="take-break">Take a break</button></div>`;
     } else if (key === "earnings") {
       const sum = data?.summary || {};
       body = `<div class="wallet-hero"><small>TODAY'S COMPLETED FARES</small><div class="amount">${money((sum.today_fare_paise || 0) / 100)}</div><p>${Number(sum.today_completed_trips || 0)} completed trips</p></div><div class="section-card"><p>Week ${money((sum.week_fare_paise || 0) / 100)}</p><p>Month ${money((sum.month_fare_paise || 0) / 100)}</p><p>All time ${money((sum.all_time_fare_paise || 0) / 100)}</p><p class="micro">Reported receipt is distinct from provider settlement.</p></div>${(data?.rides || []).map((r: Data) => `<div class="list-row"><span>${escape(r.pickup_label)} → ${escape(r.dropoff_label)}</span><strong>${money(r.fare_paise / 100)}</strong></div>`).join("")}<button class="secondary" data-go="ledger">Ledger & payouts</button>`;
@@ -621,7 +635,7 @@ export class LiveAccount {
           .map((p: Data) => {
             const ico =
               p.kind === "home" ? "home" : p.kind === "work" ? "briefcase" : "pin";
-            return `<div class="list-row"><span class="list-icon">${icon(ico)}</span><span class="list-text"><strong>${escape(p.label)}</strong><small>${escape(p.place_label || "Saved sample location")}</small></span><button class="text-button" data-account-location-delete="${escape(p.id)}" style="min-height:44px;padding:8px 12px;font-size:12px;color:var(--muted)">Remove</button></div>`;
+            return `<div class="list-row"><span class="list-icon">${icon(ico)}</span><span class="list-text"><strong>${escape(p.label)}</strong><small>${escape(p.place_label || "Saved destination")}</small></span><button class="text-button" data-account-location-delete="${escape(p.id)}" style="min-height:44px;padding:8px 12px;font-size:12px;color:var(--muted)">Remove</button></div>`;
           })
           .join("");
       }
@@ -802,19 +816,19 @@ export class LiveAccount {
         `<p class="muted small" style="margin:4px 0 14px">Follow these verification steps to protect yourself on every journey.</p>` +
         `<div class="section-card" style="margin-bottom:16px;text-align:left">` +
         `<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">` +
-        `<div class="list-icon" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;background:#e1f5eb;color:#167b5b">${icon("check", "tiny-icon")}</div>` +
+        `<div class="list-icon" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;background:#ecebfd;color:#3a2fb8">${icon("check", "tiny-icon")}</div>` +
         `<div><strong style="font-size:12px;display:block">1. Verify vehicle & plate number</strong><small style="color:var(--muted);font-size:10px;line-height:1.4;display:block;margin-top:2px">Check the vehicle model, color, and registration plate before opening the door.</small></div>` +
         `</div>` +
         `<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">` +
-        `<div class="list-icon" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;background:#e1f5eb;color:#167b5b">${icon("user", "tiny-icon")}</div>` +
+        `<div class="list-icon" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;background:#ecebfd;color:#3a2fb8">${icon("user", "tiny-icon")}</div>` +
         `<div><strong style="font-size:12px;display:block">2. Confirm Captain name</strong><small style="color:var(--muted);font-size:10px;line-height:1.4;display:block;margin-top:2px">Ask your Captain who they are picking up to make sure they know your name.</small></div>` +
         `</div>` +
         `<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">` +
-        `<div class="list-icon" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;background:#e1f5eb;color:#167b5b">${icon("lock", "tiny-icon")}</div>` +
+        `<div class="list-icon" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;background:#ecebfd;color:#3a2fb8">${icon("lock", "tiny-icon")}</div>` +
         `<div><strong style="font-size:12px;display:block">3. Share pickup PIN at start</strong><small style="color:var(--muted);font-size:10px;line-height:1.4;display:block;margin-top:2px">Provide your 4-digit start PIN only after you are safely in the correct vehicle.</small></div>` +
         `</div>` +
         `<div style="display:flex;gap:12px;align-items:flex-start">` +
-        `<div class="list-icon" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;background:#e1f5eb;color:#167b5b">${icon("location", "tiny-icon")}</div>` +
+        `<div class="list-icon" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;background:#ecebfd;color:#3a2fb8">${icon("location", "tiny-icon")}</div>` +
         `<div><strong style="font-size:12px;display:block">4. Share live trip status</strong><small style="color:var(--muted);font-size:10px;line-height:1.4;display:block;margin-top:2px">Send live tracking to trusted family or contacts so they can monitor your route.</small></div>` +
         `</div>` +
         `</div>` +
@@ -885,7 +899,7 @@ export class LiveAccount {
           `<div class="row"><div><small class="muted">CURRENT ASSIGNED TRIP</small><strong style="display:block;margin-top:2px">${escape(activeTrip.pickup_label)} → ${escape(activeTrip.dropoff_label)}</strong></div><span class="badge ${activeTrip.status === "in_progress" ? "green" : "neutral"}">${escape(activeTrip.status)}</span></div>` +
           `</div>` +
           `<div style="display:flex;flex-direction:column;gap:10px">` +
-          `<button class="primary" data-account-action="sos" style="min-height:48px;background:#e54d36;border-color:#e54d36;color:#ffffff" ${this.busy ? "disabled" : ""}>` +
+          `<button class="primary" data-account-action="sos" style="min-height:48px;background:#c62f2f;border-color:#c62f2f;color:#ffffff" ${this.busy ? "disabled" : ""}>` +
           `${this.busy ? "Sending SOS Alert…" : "Send SOS to Hop Operator"}${icon("arrow")}` +
           `</button>` +
           `<a href="tel:112" class="secondary" style="min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none">` +
@@ -904,7 +918,7 @@ export class LiveAccount {
           `<strong>Emergency Services:</strong> For urgent medical, police, or fire assistance, dial 112 on your phone immediately.` +
           `</div>` +
           `<div style="display:flex;flex-direction:column;gap:10px">` +
-          `<a href="tel:112" class="primary" style="min-height:48px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;background:#e54d36;border-color:#e54d36;color:#ffffff">` +
+          `<a href="tel:112" class="primary" style="min-height:48px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;background:#c62f2f;border-color:#c62f2f;color:#ffffff">` +
           `${icon("phone")} Call 112 Emergency Services` +
           `</a>` +
           `<button class="secondary" data-go="activity" data-action="close-modal" style="min-height:44px">View Past Trips in My Rides</button>` +
@@ -1007,19 +1021,23 @@ export class LiveAccount {
         (data?.cells || [])
           .map(
             (c: Data) =>
-              `<div class="section-card"><p>${escape(c.lat)}, ${escape(c.lng)}</p><p>${Number(c.requests || 0)} requests · ${Number(c.drivers || 0)} online Captains</p></div>`,
+              `<div class="section-card"><strong>Nearby pickup area</strong><p>${Number(c.requests || 0)} requests · ${Number(c.drivers || 0)} online Captains</p></div>`,
           )
-          .join("") || "<p>No current demand cells returned by the server.</p>";
-    else if (key === "insights")
-      body = `<p class="notice-box">Your driving insights are calculated by the backend.</p><dl>${Object.entries(
-        data || {},
-      )
-        .filter(([, v]) => typeof v === "number")
-        .map(
-          ([k, v]) =>
-            `<dt>${escape(k.replaceAll("_", " "))}</dt><dd>${Number(v)}</dd>`,
-        )
-        .join("")}</dl>`;
+          .join("") || '<div class="notice-box" role="status">No recent requests nearby. Check again in a little while.</div>';
+    else if (key === "insights") {
+      const totals = data?.totals?.[0];
+      const metric = (label: string, value: string) => `<div class="live-insight-stat"><span>${label}</span><strong>${escape(value)}</strong></div>`;
+      body = `<div class="live-page-intro"><span class="live-eyebrow">YOUR DRIVING</span><h2>Every trip adds up.</h2><p>Distance, fares and feedback from your completed trips.</p></div>`;
+      if (!totals) body += `<div class="notice-box" role="status">Trip insights aren’t available yet. Check back after your next completed trip.</div>`;
+      else if (!Number(totals.trips)) body += `<div class="empty-state"><h2>Your journey starts here.</h2><p>Complete your first trip to see your driving insights.</p><button class="primary" data-go="drive">Back to driving</button></div>`;
+      else {
+        body += `<div class="live-insight-grid">${metric("Completed trips", String(totals.trips))}${metric("Distance travelled", `${(Number(totals.meters || 0) / 1000).toFixed(1)} km`)}${metric("Average fare", money(Number(totals.avg_fare_paise || 0) / 100))}${metric("Average pickup", `${Math.round(Number(totals.avg_pickup_seconds || 0) / 60)} min`)}${metric("Rider rating", totals.avg_rating == null ? "Not rated yet" : `${totals.avg_rating} / 5`)}${metric("Best fare", money(Number(totals.best_fare_paise || 0) / 100))}</div>`;
+        for (const [key, heading, label] of [["days", "Last seven days", "day"], ["areas", "Popular destinations", "area"], ["methods", "Payment methods", "method"], ["types", "Trip types", "trip_type"]]) {
+          if (data?.[key]?.length) body += `<div class="live-section-heading">${heading}</div><div class="live-card-group">${data[key].map((row: Data) => `<div class="live-insight-row"><span><strong>${escape(row[label])}</strong><small>${Number(row.trips || 0)} trips</small></span><strong>${money(Number(row.fare_paise || 0) / 100)}</strong></div>`).join("")}</div>`;
+        }
+      }
+    }
+    if (key === "demand") body = `<div class="sheet-handle"></div><div class="live-page-intro"><h2>Demand nearby</h2><p>Recent requests in your operating city.</p></div>${body}`;
     const modalTitles: Record<string, string> = {
       "personal-more": "Gender & date of birth",
       email: "Email address",
@@ -1051,7 +1069,7 @@ export class LiveAccount {
         ? `<div class="sheet-handle"></div><div class="modal-title"><h2 id="modal-title">${escape(modalTitle)}</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">${icon("close")}</button></div>`
         : "") +
       body +
-      (this.status ? `<p role="status" class="small muted" style="margin-top:12px">${escape(this.status)}</p>` : "");
+      (this.status && !this.loading.has(path) ? `<p role="status" class="small muted" style="margin-top:12px">${escape(this.status)}</p>` : "");
     for (const el of host.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
       "[id^=account-], #full-name",
     )) {

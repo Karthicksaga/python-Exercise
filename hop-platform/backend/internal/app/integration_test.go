@@ -508,19 +508,24 @@ func TestOperatorApprovalAndAreaActivation(t *testing.T) {
 	f.uploadEvidence(d)
 	code, _ := f.call(d, "POST", "/api/drivers/apply", map[string]string{"area_id": f.area, "vehicle_make": "Honda", "vehicle_model": "Shine", "vehicle_color": "Black", "vehicle_number": "TEST12345", "upi_id": "driver@bank", "license_reference": "verified-license-reference", "insurance_reference": "verified-insurance-reference", "license_expires": time.Now().Add(24 * time.Hour).Format("2006-01-02"), "insurance_expires": time.Now().Add(24 * time.Hour).Format("2006-01-02")})
 	require(t, code, 201)
-	code, _ = f.call(d, "POST", "/api/operator/drivers/"+d.id, map[string]string{"status": "approved", "note": "Approve myself improperly"})
+	code, _ = f.call(d, "POST", "/api/admin/drivers/"+d.id, map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "status": "approved", "note": "Approve myself improperly"})
 	require(t, code, 403)
+	// The legacy review endpoint is retired so approval has a single rule set.
 	code, _ = f.call(op, "POST", "/api/operator/drivers/"+d.id, map[string]string{"status": "approved", "note": "Reviewed evidence in verification record TEST-001"})
-	require(t, code, 400)
+	require(t, code, 410)
 	code, _ = f.call(op, "POST", "/api/admin/drivers/"+d.id, map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "status": "approved", "note": "Missing police check should block"})
 	require(t, code, 400)
-	code, _ = f.call(op, "POST", "/api/admin/drivers/"+d.id, map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "status": "approved", "note": "Reviewed evidence in verification record TEST-001"})
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+d.id, map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "police_reference": "TNPOL-2026-0042", "status": "approved", "note": "Reviewed evidence in verification record TEST-001"})
+	require(t, code, 400) // every required document must be accepted first
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+d.id, map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "status": "approved", "note": "Reviewed evidence in verification record TEST-001", "documents": acceptedDocuments()})
+	require(t, code, 400) // police check needs a certificate or a reference number
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+d.id, map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "police_reference": "TNPOL-2026-0042", "status": "approved", "note": "Reviewed evidence in verification record TEST-001", "documents": acceptedDocuments()})
 	require(t, code, 200)
 	code, _ = f.call(d, "POST", "/api/drivers/online", map[string]any{})
 	require(t, code, 200)
 	code, _ = f.call(d, "POST", "/api/drivers/location", map[string]any{"lat": 13.08, "lng": 80.27, "accuracy": 10})
 	require(t, code, 200)
-	code, _ = f.call(op, "POST", "/api/operator/drivers/"+d.id, map[string]string{"status": "suspended", "note": "Suspended following documented review"})
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+d.id, map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "status": "suspended", "note": "Suspended following documented review"})
 	require(t, code, 200)
 	code, _ = f.call(d, "POST", "/api/drivers/location", map[string]any{"lat": 13.08, "lng": 80.27, "accuracy": 10})
 	require(t, code, 403)
@@ -554,7 +559,7 @@ func TestPinkRidesNeedFemaleRiderAndCertifiedDriver(t *testing.T) {
 	}
 	code, _ = f.call(rider, "POST", "/api/quotes", body)
 	require(t, code, 201)
-	checks := map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "status": "approved", "pink_certified": true, "note": "Verified in person at the hub"}
+	checks := map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "status": "approved", "pink_certified": true, "gender_ok": true, "note": "Verified in person at the hub"}
 	code, _ = f.call(op, "POST", "/api/admin/drivers/"+d.id, checks)
 	require(t, code, 400) // male profile cannot be pink certified
 	_, _ = f.s.DB.Exec(context.Background(), "UPDATE account_profiles SET gender='female' WHERE account_id=$1", d.id)
@@ -706,5 +711,44 @@ func TestUnsettledPaymentEnforcementAndIdempotency(t *testing.T) {
 	})
 	if status2 != 201 {
 		t.Fatalf("expected 201 for booking after settlement, got %d: %v", status2, body2)
+	}
+}
+
+// Demo accounts (including the demo operator) must never be reachable unless a development
+// server explicitly opts in with DEMO_LOGIN=true.
+func TestDemoLoginIsOptInAndDevelopmentOnly(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://x")
+	t.Setenv("REDIS_URL", "redis://x")
+	t.Setenv("OIDC_ISSUER", "https://issuer.test")
+	t.Setenv("OIDC_CLIENT_ID", "hop-web")
+	t.Setenv("OIDC_CLIENT_SECRET", "secret")
+	t.Setenv("SESSION_KEY", strings.Repeat("k", 40))
+	t.Setenv("PUBLIC_ORIGIN", "https://hop.test")
+	t.Setenv("ROUTING_URL", "https://route.test")
+	t.Setenv("GEOCODING_URL", "https://geo.test")
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("DEMO_LOGIN", "true")
+	if _, e := ConfigFromEnv(); e == nil {
+		t.Fatal("production config accepted DEMO_LOGIN")
+	}
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("DEMO_LOGIN", "")
+	if c, e := ConfigFromEnv(); e != nil || c.DemoLogin {
+		t.Fatalf("demo login must be off unless opted in: %v %v", c.DemoLogin, e)
+	}
+
+	f := setup(t)
+	f.s.Config.DemoLogin = false
+	for _, role := range []string{"operator", "admin", "captain", "rider"} {
+		req, _ := http.NewRequest("GET", f.http.URL+"/auth/login?role="+role, nil)
+		client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+		res, e := client.Do(req)
+		if e != nil {
+			t.Fatal(e)
+		}
+		res.Body.Close()
+		if res.StatusCode != 404 {
+			t.Fatalf("demo %s login reachable without opt-in: %d", role, res.StatusCode)
+		}
 	}
 }

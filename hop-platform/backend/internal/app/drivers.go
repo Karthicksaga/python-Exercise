@@ -76,9 +76,9 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	isTesting := s.Config.Development || in.Testing || in.TestMode || in.TestBypass ||
-		r.Header.Get("X-Testing-Mode") == "true" || r.Header.Get("X-Test-Mode") == "true" ||
-		r.URL.Query().Get("testing") == "true" || r.URL.Query().Get("test_mode") == "true"
+	// Only a server running in development mode may skip document checks or fill test defaults.
+	// Client-sent flags (body, headers, query) are accepted for compatibility but never trusted.
+	isTesting := s.Config.Development
 	if !hasMobile(r.Context(), s.DB, user(r).Account.ID) {
 		fail(w, 403, mobileRequired)
 		return
@@ -125,12 +125,12 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var mediaReady bool
-	if e = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM profile_photos WHERE account_id=$1) AND (SELECT count(*)=4 FROM driver_documents WHERE account_id=$1)`, user(r).Account.ID).Scan(&mediaReady); e != nil {
+	if e = tx.QueryRow(ctx, `SELECT `+requiredEvidenceSQL(), user(r).Account.ID).Scan(&mediaReady); e != nil {
 		dbError(w, e)
 		return
 	}
 	if !mediaReady && !isTesting {
-		fail(w, 400, "Upload your profile photo, identity, licence, RC and insurance images before submitting")
+		fail(w, 400, "Upload your profile photo and both sides of your ID, licence and RC, plus insurance, before submitting")
 		return
 	}
 	var active, categoryEnabled bool
@@ -154,7 +154,7 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 	}
 	tag, e := tx.Exec(ctx, `INSERT INTO drivers(user_id,area_id,vehicle_category,vehicle_number,upi_id,license_reference,insurance_reference,license_expires,insurance_expires,vehicle_make,vehicle_model,vehicle_color,onboarding_version)
  VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
- ON CONFLICT(user_id) DO UPDATE SET area_id=$2,vehicle_category=$3,vehicle_number=$4,upi_id=$5,license_reference=$6,insurance_reference=$7,license_expires=$8,insurance_expires=$9,vehicle_make=$10,vehicle_model=$11,vehicle_color=$12,onboarding_version=$13,updated_at=now(),review_note='Application resubmitted for review.' WHERE drivers.status='pending'`, user(r).Account.ID, in.Area, in.Category, in.Vehicle, in.UPI, in.License, in.Insurance, in.LicenseExpires, in.InsuranceExpires, strings.TrimSpace(in.Make), strings.TrimSpace(in.Model), strings.TrimSpace(in.Color), onboardingVersion)
+ ON CONFLICT(user_id) DO UPDATE SET area_id=$2,vehicle_category=$3,vehicle_number=$4,upi_id=$5,license_reference=$6,insurance_reference=$7,license_expires=$8,insurance_expires=$9,vehicle_make=$10,vehicle_model=$11,vehicle_color=$12,onboarding_version=$13,updated_at=now(),review_note='Application resubmitted for review.',submitted_at=now(),claimed_by=NULL,claimed_at=NULL WHERE drivers.status='pending'`, user(r).Account.ID, in.Area, in.Category, in.Vehicle, in.UPI, in.License, in.Insurance, in.LicenseExpires, in.InsuranceExpires, strings.TrimSpace(in.Make), strings.TrimSpace(in.Model), strings.TrimSpace(in.Color), onboardingVersion)
 	if e == nil && tag.RowsAffected() == 0 {
 		fail(w, 409, "Only pending applications can be edited. Contact support for an approved or suspended account.")
 		return

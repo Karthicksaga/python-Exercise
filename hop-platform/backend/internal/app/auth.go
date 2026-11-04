@@ -111,12 +111,17 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	if !s.limit(w, r, "login:"+s.peer(r), 30, 60) {
 		return
 	}
+	// Demo accounts (including a demo operator) exist only on an explicitly opted-in development server.
 	role := r.URL.Query().Get("role")
 	if role != "" {
+		if !s.Config.DemoLogin {
+			fail(w, 404, "Not found")
+			return
+		}
 		s.completeDemoLogin(w, r, role)
 		return
 	}
-	if s.Config.ClientID == "hop-web" {
+	if s.Config.DemoLogin {
 		ref := r.Header.Get("Referer")
 		app := appIdentity(r)
 		if app == "captain" || strings.Contains(ref, "captain") {

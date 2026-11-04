@@ -3,7 +3,7 @@
   width: 100%;
   position: absolute;
   inset: 0 auto auto 0;
-  background: #e5ebdf;
+  background: #dfdfeb;
   isolation: isolate;
 }
 .hop-map-status {
@@ -14,9 +14,9 @@
   padding: 6px 9px;
   border-radius: 9px;
   background: #fffffff0;
-  color: #556550;
+  color: #505165;
   font:
-    500 10px/1.4 "Inter",
+    500 10px/1.4 "Plus Jakarta Sans",
     sans-serif;
   box-shadow: 0 2px 8px #223a2512;
   pointer-events: none;
@@ -61,18 +61,18 @@
   transform: translateX(-50%);
   padding: 2px 6px;
   border-radius: 4px;
-  font: 700 9px/1.2 "Inter", -apple-system, sans-serif;
+  font: 700 9px/1.2 "Plus Jakarta Sans", -apple-system, sans-serif;
   letter-spacing: 0.5px;
   white-space: nowrap;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
   pointer-events: none;
 }
 .hop-pickup-badge {
-  background: #167b5b;
+  background: #4b3fd1;
   color: #ffffff;
 }
 .hop-dropoff-badge {
-  background: #e54d36;
+  background: #4b3fd1;
   color: #ffffff;
 }
 
@@ -157,7 +157,12 @@
   width: 42px;
   height: 30px;
   object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
 }
+/* Live vehicles are display-only: touches pan the map instead of grabbing the marker. */
+.hop-vehicle-div-icon { pointer-events: none; }
 
 /* Route Polyline Direction Arrows */
 .hop-route-arrow {
@@ -174,14 +179,14 @@
 }
 
 .app.dark .hop-current-dot {
-  border-color: #d7e1ce;
+  border-color: #d1d2de;
 }
 .app.dark .hop-marker-pin {
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
 }
 .app.dark .hop-map-status {
   background: #243021ed;
-  color: #d7e1ce;
+  color: #d1d2de;
 }
 
 .hop-map-canvas svg {
@@ -203,11 +208,13 @@
 }
 /* Keep live map controls reachable above the approved, internally scrolling sheet. */
 .map-screen:has(.hop-map-canvas) > .sheet {
-  max-height: calc(100% - 180px);
+  max-height: calc(100% - var(--float-head, 0px) - 180px);
 }
 /* Do not flash sample cars/geometry while live adapters load asynchronously. */
 .hop-live .mini-car,.hop-live .map-pin,.hop-live .map-bubble,.hop-live .radar-pulse-wrap,.hop-live .map-art > svg{display:none}
 
+/* Design 03: mute OSM day tiles so the indigo route and markers stand out. */
+.hop-map-canvas .leaflet-tile-pane { filter: saturate(0.4) brightness(1.04) contrast(0.94); }
 /* Darken only raster tiles; live markers, route and provider credits stay clear. */
 .hop-night-tiles .leaflet-tile-pane { filter: invert(0.9) hue-rotate(180deg) brightness(0.8) saturate(0.65); }
 .hop-live .toggle-row[data-map-pref]:disabled { opacity:0.55; cursor:not-allowed; }
@@ -226,10 +233,10 @@
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);
-  border: 1px solid var(--line, #e2e8df);
+  border: 1px solid var(--line, #dfdfe8);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  color: var(--ink, #1a2218);
-  font: 600 11px/1.2 "Inter", -apple-system, sans-serif;
+  color: var(--ink, #181922);
+  font: 600 11px/1.2 "Plus Jakarta Sans", -apple-system, sans-serif;
   cursor: pointer;
   z-index: 402;
   transition: transform 0.15s ease, background 0.15s ease;
@@ -238,14 +245,14 @@
   transform: scale(0.96);
 }
 .route-preview-badge.animating {
-  background: var(--accent-soft, #fdf8e6);
-  border-color: var(--accent, #dfb82d);
+  background: var(--accent-soft, #f4f3fe);
+  border-color: var(--accent, #4b3fd1);
   color: #5c4500;
 }
 .app.dark .route-preview-badge {
-  background: rgba(36, 49, 33, 0.92);
-  border-color: #3b4e38;
-  color: #dce5df;
+  background: rgba(34, 35, 48, 0.92);
+  border-color: #38394e;
+  color: #dcdce5;
 }
 
 .hop-preview-vehicle-overlay {
@@ -275,8 +282,8 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border: 2px solid #e54d36;
-  background: rgba(229, 77, 54, 0.2);
+  border: 2px solid #4b3fd1;
+  background: rgba(75, 63, 209, 0.2);
   animation: hop-destination-pulse 1.4s ease-out infinite;
 }
 
@@ -298,3 +305,9 @@
   }
 }
 
+
+/* Design 03 dark theme: the map follows the app. Only raster tiles are darkened (tinted toward
+   Hop's cool navy); the indigo route, pins, "you are here" dot and map credits keep full colour. */
+.app.dark .map-art:has(.hop-map-canvas) { filter: none; }
+.app.dark .hop-map-canvas { background: #1a1c26; }
+.app.dark .hop-map-canvas .leaflet-tile-pane { filter: invert(1) hue-rotate(200deg) brightness(0.85) contrast(0.9) saturate(0.35); }

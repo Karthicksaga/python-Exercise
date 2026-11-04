@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 async function setup(
   page,
-  { failSave = false, failSubmit = false, step = 0 } = {},
+  { failSave = false, failSubmit = false, step = 0, reviews = {}, driver = [] } = {},
 ) {
   const calls = [];
   const draft = {
@@ -38,7 +38,7 @@ async function setup(
         development: true,
       };
     if (path === "/api/me") json = { user: { id: "captain" }, csrf: "test" };
-    if (path === "/api/state") json = { driver: [], rides: [], offers: [] };
+    if (path === "/api/state") json = { driver, rides: [], offers: [] };
     if (path === "/api/profile")
       json = { details: [{ name: "Real Captain", phone: "9876543210" }] };
     if (path === "/api/drivers/onboarding") {
@@ -48,8 +48,9 @@ async function setup(
         draft,
         phone_verified: true,
         has_photo: true,
-        documents: ["license", "rc", "insurance", "identity"].map((kind) => ({
+        documents: ["license", "license_back", "rc", "rc_back", "insurance", "identity", "identity_back"].map((kind) => ({
           kind,
+          ...(reviews[kind] || {}),
         })),
       };
     }
@@ -62,6 +63,7 @@ async function setup(
   });
   await page.goto("http://127.0.0.1:5184");
   await expect(page.locator(".map-art, .bottom-nav")).toHaveCount(0);
+  if (driver.length) return calls;
   if (step === 0) await expect(page.getByLabel("Your legal name")).toHaveValue("Real Captain");
   else await expect(page.locator("[data-captain-onboarding]")).toContainText("Real Captain");
   return calls;
@@ -116,10 +118,8 @@ test("strict step-by-step validation prevents advancing when testing mode is dis
   page,
 }) => {
   await setup(page);
-  // Uncheck testing mode
+  // Testing mode is off by default, so every required field is enforced.
   const testingToggle = page.getByLabel("Optional onboarding for testing");
-  await expect(testingToggle).toBeChecked();
-  await testingToggle.uncheck();
   await expect(testingToggle).not.toBeChecked();
 
   // Step 0: Name missing
@@ -197,7 +197,7 @@ test("missing documents in Step 2 prevent advancing when testing mode is disable
   await page.getByLabel("Optional onboarding for testing").uncheck();
   await page.locator('[data-action="onboarding-next"]').click();
   await expect(page.getByRole("alert")).toContainText("Missing required documents:");
-  await expect(page.locator(".upload-card.invalid-card")).toHaveCount(5);
+  await expect(page.locator(".upload-card.invalid-card")).toHaveCount(8);
   await expect(page.locator(".eyebrow")).toContainText("STEP 3 OF 4");
 });
 
@@ -259,9 +259,8 @@ test("development testing mode makes empty onboarding fields optional", async ({
   page,
 }) => {
   await setup(page);
-  await expect(
-    page.getByLabel("Optional onboarding for testing"),
-  ).toBeChecked();
+  // Off by default; a developer opts in explicitly.
+  await page.getByLabel("Optional onboarding for testing").check();
   await page.getByLabel("Your legal name").fill("");
   await page.getByLabel("Operating city").selectOption("");
   await page.locator('[data-action="onboarding-next"]').click();
@@ -349,12 +348,19 @@ test("test/dev mode allows submission with no documents and unconfirmed consent"
   await page.goto("http://127.0.0.1:5184");
   await expect(page.locator(".eyebrow")).toContainText("STEP 1 OF 4");
 
-  // Testing mode is enabled by default in dev mode
-  await expect(page.getByLabel("Optional onboarding for testing")).toBeChecked();
+  // Required fields are enforced by default (user request, Nov 2026).
+  const testing = page.getByLabel("Optional onboarding for testing");
+  await expect(testing).not.toBeChecked();
 
-  // Step 0 -> Step 1
+  // Step 0 -> Step 1 (this step is already complete in the fixture)
   await page.locator('[data-action="onboarding-next"]').click();
   await expect(page.locator(".eyebrow")).toContainText("STEP 2 OF 4");
+
+  // Empty vehicle details block Continue until a developer opts in to the testing bypass.
+  await page.locator('[data-action="onboarding-next"]').click();
+  await expect(page.locator(".eyebrow")).toContainText("STEP 2 OF 4");
+  await expect(page.getByRole("alert")).toBeVisible();
+  await page.getByLabel("Optional onboarding for testing").check();
 
   // Step 1 -> Step 2
   await page.locator('[data-action="onboarding-next"]').click();
@@ -435,3 +441,36 @@ for (const width of [320, 390, 768]) {
     if (width === 390) await page.screenshot({ path: '/tmp/hop-captain-phone-layout.png', fullPage: true });
   });
 }
+
+test("a rejected document shows the operator's reason and blocks Continue until re-uploaded", async ({ page }) => {
+  await setup(page, {
+    step: 2,
+    reviews: {
+      license_back: { review_status: "rejected", review_reason: "The photo is blurry or unreadable. Retake it in good light." },
+      identity: { review_status: "accepted" },
+    },
+  });
+  const rejected = page.locator('[data-upload-kind="license_back"]');
+  await expect(rejected).toContainText("Re-upload needed");
+  await expect(rejected).toContainText("The photo is blurry or unreadable");
+  await expect(page.locator('[data-upload-kind="identity"]')).toContainText("Verified");
+  await expect(page.locator('[data-upload-kind="rc"]')).toContainText("In review");
+  await expect(page.locator('[data-upload-kind="police"]')).toContainText("Optional");
+  await page.locator('[data-action="onboarding-next"]').click();
+  await expect(page.getByRole("alert")).toContainText("Upload again: Driving licence · back");
+  await expect(page.locator(".eyebrow")).toContainText("STEP 3 OF 4");
+});
+
+test("a pending captain with a rejected document sees what to fix and can reopen the documents step", async ({ page }) => {
+  await setup(page, {
+    step: 3,
+    driver: [{ status: "pending", review_note: "Some documents need to be uploaded again." }],
+    reviews: { rc_back: { review_status: "rejected", review_reason: "Part of the document is cut off. Capture all four corners." } },
+  });
+  await expect(page.getByText("Action needed")).toBeVisible();
+  await expect(page.locator(".rejected-docs")).toContainText("Registration certificate · back");
+  await expect(page.locator(".rejected-docs")).toContainText("Capture all four corners");
+  await page.getByRole("button", { name: "Fix documents" }).click();
+  await expect(page.locator(".eyebrow")).toContainText("STEP 3 OF 4");
+  await expect(page.locator('[data-upload-kind="rc_back"]')).toContainText("Re-upload needed");
+});

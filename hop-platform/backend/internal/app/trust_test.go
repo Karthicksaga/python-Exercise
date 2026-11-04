@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -34,10 +35,19 @@ func (f *fixture) uploadEvidence(c client) {
 	photo := testPhoto(f.t)
 	code, _ := f.call(c, "POST", "/api/profile/photo", map[string]string{"image": photo})
 	require(f.t, code, 200)
-	for _, kind := range []string{"identity", "license", "rc", "insurance"} {
+	for _, kind := range requiredDocumentKinds {
 		code, _ = f.call(c, "POST", "/api/drivers/documents/"+kind, map[string]string{"image": photo})
 		require(f.t, code, 200)
 	}
+}
+
+// acceptedDocuments is the per-document decision an operator sends when every required document checks out.
+func acceptedDocuments() map[string]any {
+	docs := map[string]any{}
+	for _, kind := range requiredDocumentKinds {
+		docs[kind] = map[string]string{"status": "accepted"}
+	}
+	return docs
 }
 
 func TestProfilePhoneOwnershipAndPurposeIsolation(t *testing.T) {
@@ -115,7 +125,7 @@ func TestPrivateEvidenceAndCaptainReapproval(t *testing.T) {
 	require(t, code, 201)
 	code, _ = f.call(r, "POST", "/api/drivers/online", map[string]any{})
 	require(t, code, 403)
-	checks := map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "status": "approved", "note": "All applicant evidence reviewed privately"}
+	checks := map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "police_reference": "TNPOL-2026-0101", "status": "approved", "note": "All applicant evidence reviewed privately", "documents": acceptedDocuments()}
 	code, _ = f.call(op, "POST", "/api/admin/drivers/"+r.id, checks)
 	require(t, code, 200)
 	code, _ = f.call(r, "POST", "/api/drivers/online", map[string]any{})
@@ -259,10 +269,12 @@ func TestTestingModeDriverApplicationWithoutDocuments(t *testing.T) {
 		t.Fatalf("expected document requirement error, got %v", resp)
 	}
 
-	// With testing flag in request, applying succeeds even with no documents
+	// Security: a client-sent testing flag must not bypass document checks outside development.
 	form["testing"] = true
+	form["test_mode"] = true
+	form["test_bypass"] = true
 	code, _ = f.call(applicant, "POST", "/api/drivers/apply", form)
-	require(t, code, 201)
+	require(t, code, 400)
 
 	// In development mode (Development=true), applying succeeds even with empty vehicle fields and no documents
 	applicant2 := f.actor("rider", false)
@@ -296,6 +308,180 @@ func TestTestingModeDriverApplicationWithoutDocuments(t *testing.T) {
 		"status":       "approved",
 		"note":         "Approved in test mode",
 	}
-	code, _ = f.call(op, "POST", "/api/admin/drivers/"+applicant.id, checks)
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+applicant2.id, checks)
 	require(t, code, 200)
+
+	// Outside development, an application created by the testing bypass cannot be approved without documents.
+	applicant3 := f.actor("rider", false)
+	code, _ = f.call(applicant3, "POST", "/api/drivers/apply", map[string]any{"area_id": f.area})
+	require(t, code, 201)
+	f.s.Config.Development = false
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+applicant3.id, checks)
+	require(t, code, 400)
+	f.s.Config.Development = true
+}
+
+// End-to-end document review: per-document rejection with reasons, version history,
+// review claims, the approval evidence snapshot and expiry handling.
+func TestDocumentReviewWorkflow(t *testing.T) {
+	f := setup(t)
+	f.s.Config.Development = false
+	ctx := t.Context()
+	captain, op, op2 := f.actor("rider", false), f.actor("operator", false), f.actor("operator", false)
+	code, _ := f.call(captain, "POST", "/api/profile", map[string]string{"name": "Kavya"})
+	require(t, code, 200)
+	f.uploadEvidence(captain)
+	form := map[string]any{"area_id": f.area, "vehicle_category": "bike", "vehicle_number": "TN01AB4321", "vehicle_make": "Honda", "vehicle_model": "Shine", "vehicle_color": "Black", "license_reference": "DL-777", "insurance_reference": "INS-777", "license_expires": time.Now().AddDate(1, 0, 0).Format("2006-01-02"), "insurance_expires": time.Now().AddDate(0, 0, 5).Format("2006-01-02")}
+	code, _ = f.call(captain, "POST", "/api/drivers/apply", form)
+	require(t, code, 201)
+
+	// Claims: a second operator is told who is reviewing.
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+captain.id+"/claim", map[string]any{})
+	require(t, code, 200)
+	code, _ = f.call(op2, "POST", "/api/admin/drivers/"+captain.id+"/claim", map[string]any{})
+	require(t, code, 409)
+	code, _ = f.call(op2, "POST", "/api/admin/drivers/"+captain.id, map[string]any{"documents": map[string]any{"rc": map[string]string{"status": "accepted"}}})
+	require(t, code, 409)
+
+	// Rejection needs a reason; a rejected document can't be ticked as verified.
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+captain.id, map[string]any{"documents": map[string]any{"license_back": map[string]string{"status": "rejected"}}})
+	require(t, code, 400)
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+captain.id, map[string]any{"license_ok": true, "documents": map[string]any{"license_back": map[string]string{"status": "rejected", "reason": "blurry"}}})
+	require(t, code, 400)
+	code, res := f.call(op, "POST", "/api/admin/drivers/"+captain.id, map[string]any{"documents": map[string]any{"license_back": map[string]string{"status": "rejected", "reason": "blurry"}}})
+	require(t, code, 200)
+	if res["status"] != "pending" {
+		t.Fatalf("rejection must keep the captain pending: %v", res)
+	}
+	code, state := f.call(captain, "GET", "/api/drivers/onboarding", nil)
+	require(t, code, 200)
+	found := false
+	for _, d := range state["documents"].([]any) {
+		doc := d.(map[string]any)
+		if doc["kind"] == "license_back" && doc["review_status"] == "rejected" && strings.Contains(doc["review_reason"].(string), "blurry") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("captain must see which document was rejected and why: %v", state["documents"])
+	}
+	var notes int
+	if e := f.s.DB.QueryRow(ctx, "SELECT count(*) FROM notifications WHERE account_id=$1 AND title LIKE 'Please re-upload%' AND body LIKE '%Driving licence (back)%'", captain.id).Scan(&notes); e != nil || notes != 1 {
+		t.Fatalf("rejection notification missing: %d %v", notes, e)
+	}
+
+	// Re-upload: new version pending review, the rejected version is kept for audit.
+	code, _ = f.call(captain, "POST", "/api/drivers/documents/license_back", map[string]string{"image": testPhoto(t)})
+	require(t, code, 200)
+	code, versions := f.call(op, "GET", "/api/admin/drivers/"+captain.id+"/documents", nil)
+	require(t, code, 200)
+	var backs []map[string]any
+	for _, v := range versions["versions"].([]any) {
+		if v.(map[string]any)["kind"] == "license_back" {
+			backs = append(backs, v.(map[string]any))
+		}
+	}
+	if len(backs) != 2 || backs[0]["review_status"] != "pending" || backs[1]["review_status"] != "rejected" || backs[1]["superseded_at"] == nil {
+		t.Fatalf("document history not kept: %v", backs)
+	}
+	code, _ = f.call(op, "GET", fmt.Sprintf("/api/admin/document-versions/%v", backs[1]["id"]), nil)
+	require(t, code, 200)
+
+	// Approval with every document accepted records exactly which files were verified.
+	checks := map[string]any{"identity_ok": true, "license_ok": true, "rc_ok": true, "insurance_ok": true, "vehicle_ok": true, "police_ok": true, "police_reference": "TNPOL-2026-0007", "status": "approved", "note": "All seven documents reviewed and match", "documents": acceptedDocuments()}
+	code, _ = f.call(op, "POST", "/api/admin/drivers/"+captain.id, checks)
+	require(t, code, 200)
+	var evidenceDocs int
+	if e := f.s.DB.QueryRow(ctx, "SELECT count(*) FROM jsonb_object_keys((SELECT evidence->'documents' FROM driver_verifications WHERE driver_id=$1))", captain.id).Scan(&evidenceDocs); e != nil || evidenceDocs != len(requiredDocumentKinds) {
+		t.Fatalf("approval evidence snapshot missing: %d %v", evidenceDocs, e)
+	}
+	var claimed *string
+	_ = f.s.DB.QueryRow(ctx, "SELECT claimed_by::text FROM drivers WHERE user_id=$1", captain.id).Scan(&claimed)
+	if claimed != nil {
+		t.Fatal("a decision must release the review claim")
+	}
+
+	// Expiry: a reminder 7 days ahead is sent once; on expiry the captain goes offline with a clear message.
+	for i := 0; i < 2; i++ {
+		if e := f.s.CheckDocumentExpiry(ctx); e != nil {
+			t.Fatal(e)
+		}
+	}
+	var reminders int
+	_ = f.s.DB.QueryRow(ctx, "SELECT count(*) FROM notifications WHERE account_id=$1 AND title='Renew your insurance'", captain.id).Scan(&reminders)
+	if reminders != 1 {
+		t.Fatalf("expected exactly one insurance reminder, got %d", reminders)
+	}
+	if _, e := f.s.DB.Exec(ctx, "UPDATE drivers SET online=true,insurance_expires=(now() AT TIME ZONE 'Asia/Kolkata')::date-1 WHERE user_id=$1", captain.id); e != nil {
+		t.Fatal(e)
+	}
+	if e := f.s.CheckDocumentExpiry(ctx); e != nil {
+		t.Fatal(e)
+	}
+	var online bool
+	var note string
+	_ = f.s.DB.QueryRow(ctx, "SELECT online,review_note FROM drivers WHERE user_id=$1", captain.id).Scan(&online, &note)
+	if online || !strings.Contains(note, "expired") {
+		t.Fatalf("expired insurance must take the captain offline with a message: online=%v note=%q", online, note)
+	}
+}
+
+func TestRegionCatalogZones(t *testing.T) {
+	f := setup(t)
+	rider, op := f.actor("rider", false), f.actor("operator", false)
+	code, _ := f.call(rider, "GET", "/api/operator/regions", nil)
+	require(t, code, 403)
+	code, out := f.call(op, "GET", "/api/operator/regions?state=Tamil%20Nadu", nil)
+	require(t, code, 200)
+	regions, _ := out["regions"].([]any)
+	if len(regions) != 38 {
+		t.Fatalf("expected 38 Tamil Nadu districts, got %d", len(regions))
+	}
+	byID := map[string]map[string]any{}
+	for _, r := range regions {
+		row := r.(map[string]any)
+		byID[row["id"].(string)] = row
+	}
+	if byID["tn-chennai"]["area_id"] == nil {
+		t.Fatal("Chennai district should be linked to the seeded Chennai Metro zone")
+	}
+	madurai := byID["tn-madurai"]
+	if madurai == nil || madurai["area_id"] != nil {
+		t.Fatalf("Madurai should be available: %v", madurai)
+	}
+	zone := map[string]any{"name": "Madurai", "state": "Tamil Nadu", "catalog_id": "tn-madurai",
+		"min_lat": madurai["min_lat"], "max_lat": madurai["max_lat"], "min_lng": madurai["min_lng"], "max_lng": madurai["max_lng"],
+		"base_paise": 2500, "per_km_paise": 1200, "minimum_paise": 3000, "active": false}
+	code, created := f.call(op, "POST", "/api/operator/areas", zone)
+	require(t, code, 200)
+	// One zone per district, with a message naming the existing zone.
+	zone["name"] = "Madurai again"
+	code, dup := f.call(op, "POST", "/api/operator/areas", zone)
+	require(t, code, 409)
+	if !strings.Contains(fmt.Sprint(dup["error"]), "Madurai") {
+		t.Fatalf("duplicate message should name the zone: %v", dup)
+	}
+	// Editing the same zone keeps its district link.
+	zone["id"], zone["name"] = created["id"], "Madurai City"
+	code, _ = f.call(op, "POST", "/api/operator/areas", zone)
+	require(t, code, 200)
+	var link string
+	if e := f.s.DB.QueryRow(t.Context(), "SELECT catalog_id FROM areas WHERE id=$1", created["id"]).Scan(&link); e != nil || link != "tn-madurai" {
+		t.Fatalf("district link lost on edit: %q %v", link, e)
+	}
+	// Unknown districts and bounds outside India are refused.
+	delete(zone, "id")
+	zone["catalog_id"] = "tn-nowhere"
+	code, _ = f.call(op, "POST", "/api/operator/areas", zone)
+	require(t, code, 400)
+	zone["catalog_id"], zone["min_lat"] = "", 40
+	code, _ = f.call(op, "POST", "/api/operator/areas", zone)
+	require(t, code, 400)
+	// New zones from the catalogue stay off until activated with an approval reference.
+	code, _ = f.call(op, "GET", "/api/config", nil)
+	require(t, code, 200)
+	var active bool
+	if e := f.s.DB.QueryRow(t.Context(), "SELECT active FROM areas WHERE id=$1", created["id"]).Scan(&active); e != nil || active {
+		t.Fatalf("catalogue zone must start inactive: %v %v", active, e)
+	}
 }

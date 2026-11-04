@@ -8,4 +8,8 @@ if (new URLSearchParams(location.search).get("map") !== "reference") {
   await import("@shared/design/animations.css");
 }
 
+if (new URLSearchParams(location.search).get("map") !== "reference") {
+  await import("@shared/design/responsive.css");
+}
+
 await mountMobileApp("rider");

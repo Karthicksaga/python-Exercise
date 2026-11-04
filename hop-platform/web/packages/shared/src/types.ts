@@ -13,6 +13,8 @@ export type Area = {
   minimum_paise?: number;
   active?: boolean;
   approval_reference?: string;
+  /** District in the operator region catalogue this zone was started from. */
+  catalog_id?: string;
 };
 export type VehiclePricing = {
   area_id: string;

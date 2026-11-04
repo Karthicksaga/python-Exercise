@@ -1,6 +1,9 @@
 package app
 
 import (
+	"errors"
+
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"net/http"
 	"strings"
@@ -64,7 +67,27 @@ func (s *Server) saveArea(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "Activation requires an operator review reference")
 		return
 	}
+	if !(a.MinLat >= 6 && a.MaxLat <= 38 && a.MinLat < a.MaxLat && a.MinLng >= 68 && a.MaxLng <= 98 && a.MinLng < a.MaxLng) {
+		fail(w, 400, "Zone bounds must be inside India, with south below north and west below east")
+		return
+	}
 	ctx := r.Context()
+	if a.CatalogID != "" {
+		var holder string
+		e := s.DB.QueryRow(ctx, `SELECT COALESCE((SELECT name FROM areas WHERE catalog_id=$1 AND id::text<>$2),'') FROM region_catalog WHERE id=$1`, a.CatalogID, a.ID).Scan(&holder)
+		if errors.Is(e, pgx.ErrNoRows) {
+			fail(w, 400, "Unknown district")
+			return
+		}
+		if e != nil {
+			dbError(w, e)
+			return
+		}
+		if holder != "" {
+			fail(w, 409, "This district already has a zone: "+holder)
+			return
+		}
+	}
 	tx, e := s.DB.Begin(ctx)
 	if e != nil {
 		dbError(w, e)
@@ -72,10 +95,10 @@ func (s *Server) saveArea(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(ctx)
 	if a.ID == "" {
-		e = tx.QueryRow(ctx, `INSERT INTO areas(name,state,min_lat,max_lat,min_lng,max_lng,base_paise,per_km_paise,minimum_paise,active,approval_reference) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`, a.Name, a.State, a.MinLat, a.MaxLat, a.MinLng, a.MaxLng, a.Base, a.PerKM, a.Minimum, a.Active, a.Approval).Scan(&a.ID)
+		e = tx.QueryRow(ctx, `INSERT INTO areas(name,state,min_lat,max_lat,min_lng,max_lng,base_paise,per_km_paise,minimum_paise,active,approval_reference,catalog_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULLIF($12,'')) RETURNING id`, a.Name, a.State, a.MinLat, a.MaxLat, a.MinLng, a.MaxLng, a.Base, a.PerKM, a.Minimum, a.Active, a.Approval, a.CatalogID).Scan(&a.ID)
 	} else {
 		var tag pgconn.CommandTag
-		tag, e = tx.Exec(ctx, `UPDATE areas SET name=$2,state=$3,min_lat=$4,max_lat=$5,min_lng=$6,max_lng=$7,base_paise=$8,per_km_paise=$9,minimum_paise=$10,active=$11,approval_reference=$12,pricing_version=pricing_version+1 WHERE id=$1`, a.ID, a.Name, a.State, a.MinLat, a.MaxLat, a.MinLng, a.MaxLng, a.Base, a.PerKM, a.Minimum, a.Active, a.Approval)
+		tag, e = tx.Exec(ctx, `UPDATE areas SET name=$2,state=$3,min_lat=$4,max_lat=$5,min_lng=$6,max_lng=$7,base_paise=$8,per_km_paise=$9,minimum_paise=$10,active=$11,approval_reference=$12,catalog_id=COALESCE(NULLIF($13,''),catalog_id),pricing_version=pricing_version+1 WHERE id=$1`, a.ID, a.Name, a.State, a.MinLat, a.MaxLat, a.MinLng, a.MaxLng, a.Base, a.PerKM, a.Minimum, a.Active, a.Approval, a.CatalogID)
 		if e == nil && tag.RowsAffected() == 0 {
 			fail(w, 404, "Area not found")
 			return
@@ -99,6 +122,22 @@ func (s *Server) saveArea(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, 200, map[string]string{"id": a.ID})
+}
+
+// operatorRegions lists catalogue districts (optionally one state) with the zone already using each.
+func (s *Server) operatorRegions(w http.ResponseWriter, r *http.Request) {
+	if !operator(w, r) {
+		return
+	}
+	rows, e := jsonRows(r.Context(), s.DB, `SELECT c.id,c.state,c.district,c.min_lat,c.max_lat,c.min_lng,c.max_lng,c.centre_lat,c.centre_lng,c.source,
+ a.id AS area_id,a.name AS area_name,COALESCE(a.active,false) AS area_active
+ FROM region_catalog c LEFT JOIN areas a ON a.catalog_id=c.id
+ WHERE $1='' OR c.state=$1 ORDER BY c.state,c.district`, strings.TrimSpace(r.URL.Query().Get("state")))
+	if e != nil {
+		dbError(w, e)
+		return
+	}
+	write(w, 200, map[string]any{"regions": rows})
 }
 
 func (s *Server) saveVehiclePricing(w http.ResponseWriter, r *http.Request) {
@@ -154,68 +193,16 @@ func (s *Server) saveVehiclePricing(w http.ResponseWriter, r *http.Request) {
 	}
 	write(w, 200, map[string]bool{"ok": true})
 }
+
+// reviewDriver is retired: driver approval has a single code path with one set of rules
+// (POST /api/admin/drivers/{id}), so older clients cannot bypass document checks.
 func (s *Server) reviewDriver(w http.ResponseWriter, r *http.Request) {
 	if !operator(w, r) {
 		return
 	}
-	var in struct {
-		Status string `json:"status"`
-		Note   string `json:"note"`
-	}
-	if !decode(w, r, &in) {
-		return
-	}
-	if (in.Status != "approved" && in.Status != "suspended") || len(strings.TrimSpace(in.Note)) < 10 || len(in.Note) > 1000 {
-		fail(w, 400, "Provide status and a review note of 10–1000 characters")
-		return
-	}
-	if r.PathValue("id") == user(r).Account.ID {
-		fail(w, 403, "An operator cannot approve their own driver application")
-		return
-	}
-	ctx := r.Context()
-	tx, e := s.DB.Begin(ctx)
-	if e != nil {
-		dbError(w, e)
-		return
-	}
-	defer tx.Rollback(ctx)
-	if e = lockJourney(ctx, tx, r.PathValue("id")); e != nil {
-		dbError(w, e)
-		return
-	}
-	if in.Status == "approved" {
-		var ok bool
-		_ = tx.QueryRow(ctx, "SELECT COALESCE((SELECT identity_ok AND license_ok AND rc_ok AND insurance_ok AND vehicle_ok AND police_ok FROM driver_verifications WHERE driver_id=$1),false)", r.PathValue("id")).Scan(&ok)
-		var ready bool
-		err := tx.QueryRow(ctx, `SELECT onboarding_version=0 OR EXISTS(SELECT 1 FROM profile_photos WHERE account_id=$1 AND approved) FROM drivers WHERE user_id=$1`, r.PathValue("id")).Scan(&ready)
-		if err != nil {
-			dbError(w, err)
-			return
-		}
-		if !ok || !ready || !hasMobile(ctx, tx, r.PathValue("id")) {
-			fail(w, 400, "Complete the verification checklist in the admin console first")
-			return
-		}
-	}
-	tag, e := tx.Exec(ctx, `UPDATE drivers SET status=$2,online=false,review_note=$3,reviewed_by=$4,reviewed_at=now(),updated_at=now() WHERE user_id=$1 AND ($2='suspended' OR (license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND insurance_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date))`, r.PathValue("id"), in.Status, in.Note, user(r).Account.ID)
-	if e != nil {
-		dbError(w, e)
-		return
-	}
-	if tag.RowsAffected() == 0 {
-		fail(w, 400, "Driver is missing or documents have expired")
-		return
-	}
-	if e = audit(ctx, tx, user(r).Account.ID, "", "driver_reviewed", map[string]string{"driver_id": r.PathValue("id"), "status": in.Status, "note": in.Note}); e == nil {
-		e = tx.Commit(ctx)
-	}
-	if e != nil {
-		dbError(w, e)
-		return
-	}
-	write(w, 200, map[string]bool{"ok": true})
+	fail(w, 410, "This endpoint is retired. Use POST /api/admin/drivers/{id}.")
 }
+
 func (s *Server) reviewIncident(w http.ResponseWriter, r *http.Request) {
 	if !operator(w, r) {
 		return
