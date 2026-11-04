@@ -9,8 +9,10 @@ import (
 )
 
 type Config struct {
-	ProfileBucket, KYCBucket                                                                                                                                                               string
-	FCMServiceAccountFile                                                                                                                                                                  string
+	ProfileBucket, KYCBucket string
+	FCMServiceAccountFile    string
+	// FCMProject: send Android pushes as the API's own Google identity (no key file).
+	FCMProject                                                                                                                                                                             string
 	RiderOrigin, CaptainOrigin, AdminOrigin                                                                                                                                                string
 	VAPIDPublic, VAPIDPrivate, VAPIDSubject, Address, DatabaseURL, ListenURL, RedisURL, PublicOrigin, AllowedOrigins, Issuer, ClientID, ClientSecret, SessionKey, RoutingURL, GeocodingURL string
 	Development                                                                                                                                                                            bool
@@ -51,6 +53,7 @@ func ConfigFromEnv() (Config, error) {
 	}
 	c.ProfileBucket, c.KYCBucket = os.Getenv("MEDIA_PROFILE_BUCKET"), os.Getenv("MEDIA_KYC_BUCKET")
 	c.FCMServiceAccountFile = os.Getenv("FCM_SERVICE_ACCOUNT_FILE")
+	c.FCMProject = os.Getenv("FCM_PROJECT_ID")
 	c.SMSWebhookURL, c.SMSWebhookToken = os.Getenv("SMS_WEBHOOK_URL"), os.Getenv("SMS_WEBHOOK_TOKEN")
 	c.PaymentAPIURL = env("PAYMENT_API_URL", env("RAZORPAY_API_URL", "https://api.razorpay.com/v1"))
 	c.PaymentKeyID = strings.TrimSpace(env("PAYMENT_KEY_ID", os.Getenv("RAZORPAY_KEY_ID")))

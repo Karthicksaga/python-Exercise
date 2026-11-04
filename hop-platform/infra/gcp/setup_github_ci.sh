@@ -4,6 +4,7 @@
 #   - Workload Identity pool "hop-github" + provider "github", accepting only this repository's
 #     hop.yml workflow on master.
 #   - The "staging" GitHub environment may act as hop-deploy.
+#   - hop-api may send Android pushes (Firebase Cloud Messaging) as itself, with no key file.
 #   - hop-deploy's remaining permissions from §3 (Service Usage Consumer, Cloud Build source bucket,
 #     read access to the private media buckets' metadata).
 # Then prints the three GitHub environment variables to set (and sets them if `gh` is signed in).
@@ -45,6 +46,9 @@ for kind in portraits kyc; do
   gcloud storage buckets describe "$bucket" >/dev/null 2>&1 &&
     q gcloud storage buckets add-iam-policy-binding "$bucket" --member="serviceAccount:$DEPLOY" --role=roles/storage.legacyBucketReader
 done
+
+echo "› hop-api may send Android push notifications (Firebase Cloud Messaging, no key file)"
+q gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:hop-api@${PROJECT_ID}.iam.gserviceaccount.com" --role=roles/firebasecloudmessaging.admin --condition=None
 
 provider_name="${POOL}/providers/github"
 config="$here/deploy.local.json"

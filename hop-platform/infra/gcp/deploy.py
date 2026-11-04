@@ -167,6 +167,9 @@ def deploy(c, revision):
     if c.get("fcm_secret"):
         env["FCM_SERVICE_ACCOUNT_FILE"] = "/secrets/firebase.json"
         secrets["/secrets/firebase.json"] = c["fcm_secret"]
+    elif c.get("fcm_project", c["project_id"]):
+        # Android push sent as the API's own identity (needs the FCM sender role; setup_github_ci.sh).
+        env["FCM_PROJECT_ID"] = c.get("fcm_project", c["project_id"])
     with tempfile.TemporaryDirectory(prefix="hop-deploy-") as directory:
         env_file = Path(directory) / "api-env.json"
         env_file.write_text(json.dumps(env))

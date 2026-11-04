@@ -13,6 +13,10 @@ export class APIError extends Error {
 export class HopAPI {
   private csrf = "";
   constructor(private send: typeof transport = transport) {}
+  /** The session's CSRF token, for native code that calls the API on the app's behalf. */
+  get csrfToken() {
+    return this.csrf;
+  }
   async request<T>(path: string, body?: unknown): Promise<T> {
     let response: Response;
     try {
