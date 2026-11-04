@@ -21,3 +21,8 @@ if (releaseRequested) {
     }
     android.buildTypes.release.signingConfig = android.signingConfigs.hopRelease
 }
+
+// Google Maps SDK for Android key (an Android-restricted key: package name + signing SHA-1).
+// Native map loads without a Map ID are free; the key only identifies the app to Google.
+// Set HOP_ANDROID_MAPS_KEY when building; without it the app falls back to the web map.
+android.defaultConfig.manifestPlaceholders += [hopMapsKey: System.getenv('HOP_ANDROID_MAPS_KEY') ?: '']

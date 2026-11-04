@@ -1,7 +1,7 @@
 import { LiveAccount } from "../account/LiveAccount";
 import { LiveBooking } from "../booking/LiveBooking";
 import { LiveHistory } from "../history/LiveHistory";
-import { driverAlertSound, acceptRideSound, notificationSound, startSearchingSound, stopSearchingSound } from "../sounds";
+import { acceptRideSound, captainArrivedSound, captainFoundSound, notificationSound, rideCancelledSound, startOfferAlert, startSearchingSound, stopOfferAlert, stopSearchingSound, tripCompleteSound, tripStartedSound } from "../sounds";
 import { CaptainOnboarding } from "../onboarding/CaptainOnboarding";
 import { icon } from "../icons";
 import {
@@ -25,6 +25,13 @@ interface Bridge {
   notify(message: string): void;
 }
 type Route = { route: Coordinate[]; meters: number; seconds: number };
+// Names riders understand instead of "Route 2": the quickest, the shortest, or another option.
+export function routeLabels(routes: Route[]): string[] {
+  if (!routes.length) return [];
+  const fastest = routes.reduce((b, r, i) => (r.seconds < routes[b].seconds ? i : b), 0);
+  const shortest = routes.reduce((b, r, i) => (r.meters < routes[b].meters ? i : b), 0);
+  return routes.map((_, i) => (i === fastest && i === shortest ? "Fastest & shortest" : i === fastest ? "Fastest" : i === shortest ? "Shortest" : "Alternative"));
+}
 type Notice = { id: string; title: string; body: string; created_at?: string; read_at?: string | null; kind?: string };
 
 /** Data and action adapter for the approved UI; no alternate screen renderer. */
@@ -43,6 +50,9 @@ export class LiveJourney {
   private onboarding?: CaptainOnboarding;
   private onboardingDismissed = false;
   private walletBalance?: number;
+  private paymentChecked = false;
+  private synced = false;
+  private paymentChosen = false;
   private walletLoading = false;
   private authError = "";
   private phone = "";
@@ -135,6 +145,15 @@ export class LiveJourney {
     meters: number;
     stale: boolean;
   };
+  // Tapping a grey alternative route on the map selects it, like tapping its chip.
+  private routePick = (event: Event) => {
+    const index = (event as CustomEvent<{ index: number }>).detail?.index;
+    if (!Number.isInteger(index) || index === this.booking.routeIndex || !this.routes[index]) return;
+    this.booking.routeIndex = index;
+    this.quote = undefined;
+    this.bookingPayload = undefined;
+    void this.plan();
+  };
   private navigationUpdate = (event: Event) => {
     this.navigation = (event as CustomEvent).detail || undefined;
     this.decorate();
@@ -185,6 +204,7 @@ export class LiveJourney {
     window.addEventListener("hop-location-denied", this.locationDenied);
     window.addEventListener("hop-navigation", this.navigationUpdate);
     window.addEventListener("hop-map-pick", this.mapPick);
+    window.addEventListener("hop-route-pick", this.routePick);
     window.addEventListener("hop-live-state", this.serverState);
     this.observer = new MutationObserver(() => this.decorate());
     this.observer.observe(app, { childList: true });
@@ -245,6 +265,24 @@ export class LiveJourney {
     this.recovery = state;
     this.bridge.update({ modal: "live-recovery" });
   }
+  // A new rider starts on Wallet with no balance, so their first request would be refused.
+  // Unless they picked Wallet themselves, a ride the wallet can't cover starts on Cash, and the
+  // Payment row shows it before they request.
+  private preferAffordablePayment() {
+    if (this.paymentChecked || this.paymentChosen || this.bridge.read().payment !== "Wallet") return;
+    this.paymentChecked = true;
+    void api
+      .request<{ balance_paise: number }>("/api/wallet")
+      .then((wallet) => {
+        this.walletBalance = wallet.balance_paise;
+        const fare = this.estimates[this.bridge.read().vehicle] ?? this.quote?.fare_paise;
+        if (this.paymentChosen || this.bridge.read().payment !== "Wallet" || !Number.isSafeInteger(wallet.balance_paise) || fare === undefined || wallet.balance_paise >= fare) return;
+        this.bridge.update({ payment: "Cash" });
+        this.bridge.notify(`Your wallet has ${money(wallet.balance_paise / 100)}, so this ride is set to Cash. Change it under Payment method.`);
+      })
+      .catch(() => { this.paymentChecked = false; });
+  }
+
   private message(error: unknown) {
     this.bridge.notify(
       error instanceof Error
@@ -376,7 +414,10 @@ export class LiveJourney {
         );
     }
   }
-  private showResults(results: Point[], label: string) {
+  private showResults(found: Point[], label: string) {
+    // The address service often returns the same place several times a few metres apart.
+    const near = (a: Point, b: Point) => Math.abs(a.lat - b.lat) < 0.0015 && Math.abs(a.lng - b.lng) < 0.0015;
+    const results = found.filter((p, i) => !found.slice(0, i).some((q) => q.label === p.label && near(p, q)));
     this.results = results;
     this.searchLabel = label;
     const list = this.app.querySelector("#place-results");
@@ -385,7 +426,11 @@ export class LiveJourney {
         results
           .map(
             (p, i) =>
-              `<button class="list-row" data-live-place="${i}"><span class="list-icon">⌖</span><span class="list-text"><strong>${escape(p.label)}</strong><small>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small></span><span>›</span></button>`,
+              {
+                // "Guindy, Anna Salai (Mount Road)" reads as the place, then where it is.
+                const [name, ...area] = p.label.split(", ");
+                return `<button class="list-row" data-live-place="${i}"><span class="list-icon">⌖</span><span class="list-text"><strong>${escape(name)}</strong>${area.length ? `<small>${escape(area.join(", "))}</small>` : ""}</span><span>›</span></button>`;
+              },
           )
           .join("") ||
         `<div class="search-feedback" role="status"><p>${escape(label)}</p>${this.searchNeedsSignIn ? '<button class="secondary" data-live-login>Sign in to search places</button>' : ""}</div>`;
@@ -472,8 +517,16 @@ export class LiveJourney {
     this.bridge.notify("Ride request cancelled.");
   }
 
+  // Every fetched route for the map, so unselected ones stay visible (grey) and tappable.
+  private alternatives() {
+    const labels = routeLabels(this.routes);
+    return this.routes.length < 2 ? [] : this.routes.map((r, index) => ({
+      index, route: r.route, selected: index === this.booking.routeIndex,
+      label: `${labels[index]} · ${Math.ceil(r.seconds / 60)} min`,
+    }));
+  }
   private planningError = "";
-  private async plan() {
+  private async plan(): Promise<void> {
     if (!this.pickup || !this.dropoff) return;
     const revision = ++this.routeSequence,
       pickup = { ...this.pickup },
@@ -536,17 +589,31 @@ export class LiveJourney {
               pickup,
               dropoff,
               route: this.route.route,
+              alternatives: this.alternatives(),
+              dropoffNote: this.route.seconds > 0 ? `${Math.ceil(this.route.seconds / 60)} min ride` : undefined,
             },
           }),
         );
         return;
       }
-      const response = await api.request<{ routes: Route[] }>(
-        "/api/routes/alternatives",
-        { pickup, dropoff, stops: this.booking.stops },
-      );
-      if (revision !== this.routeSequence) return;
-      this.routes = response.routes || [];
+      // Routes are fetched once per pickup/destination (invalidate() clears them); switching
+      // between them reuses the list instead of asking the router again.
+      if (!this.routes.length) {
+        const response = await api.request<{ routes: Route[] }>(
+          "/api/routes/alternatives",
+          { pickup, dropoff, stops: this.booking.stops },
+        );
+        if (revision !== this.routeSequence) return;
+        this.routes = response.routes || [];
+        // Start on the fastest route (after the server's traffic adjustment), not simply the
+        // router's first choice, and price that route with a quote for it.
+        const fastest = this.routes.reduce((best, r, i) => (r.seconds < this.routes[best].seconds ? i : best), 0);
+        if (fastest > 0 && this.booking.routeIndex === 0) {
+          this.booking.routeIndex = fastest;
+          return this.plan();
+        }
+      }
+      // Estimates price the first (recommended) route; other routes go through per-vehicle quotes above.
       const route = this.routes[0];
       if (!route?.route?.length)
         throw new Error("No road route is available for these locations.");
@@ -577,6 +644,8 @@ export class LiveJourney {
             pickup,
             dropoff,
             route: route.route,
+            alternatives: this.alternatives(),
+            dropoffNote: route.seconds > 0 ? `${Math.ceil(route.seconds / 60)} min ride` : undefined,
           },
         }),
       );
@@ -741,6 +810,7 @@ export class LiveJourney {
       if (ride) this.openPayment(ride);
       return;
     }
+    if (button.dataset.payment) this.paymentChosen = true;
     if (button.dataset.modal === "payment") {
       void api
         .request<{ balance_paise: number }>("/api/wallet")
@@ -862,6 +932,8 @@ export class LiveJourney {
           throw new Error("Operator approval is required before driving.");
         }
         await api.online(!driver.online);
+        // The map starts or stops location sharing and plays the matching sound.
+        window.dispatchEvent(new CustomEvent("hop-captain-online", { detail: !driver.online }));
         try {
           this.sync(await api.state());
         } catch {
@@ -1143,7 +1215,23 @@ export class LiveJourney {
         )
           this.requestKey = crypto.randomUUID();
         this.bookingPayload = payload;
-        await api.bookRide(payload.quote, this.requestKey, payment, options);
+        try {
+          await api.bookRide(payload.quote, this.requestKey, payment, options);
+        } catch (e) {
+          // An unpaid earlier ride blocks booking. Open its payment screen so the rider can
+          // settle it (or see that it's waiting for the captain) instead of a passing message.
+          if (e instanceof APIError && e.status === 402 && e.details.code === "payment_required" && typeof e.details.ride_id === "string") {
+            const state = await api.state().catch(() => undefined);
+            if (state) this.sync(state);
+            const unpaid = this.state?.rides.find((r) => r.id === e.details.ride_id);
+            if (unpaid) {
+              this.openPayment(unpaid);
+              this.bridge.notify("Settle your last ride before booking another. If you paid your captain in cash, ask them to record it.");
+              return;
+            }
+          }
+          throw e;
+        }
         this.bridge.update({ phase: "requested" });
         this.bridge.go("matching");
         try {
@@ -1184,6 +1272,7 @@ export class LiveJourney {
       ].includes(action)
     ) {
       this.stop(event);
+      if (action === "accept" || action === "decline") stopOfferAlert();
       void this.run(async () => {
         await api.session();
         const state = await api.state();
@@ -1270,12 +1359,19 @@ export class LiveJourney {
     const ride = this.active();
     if (this.role === "rider" && ride?.status === "requested") startSearchingSound();
     else stopSearchingSound();
+    // Sounds mark changes the person didn't make themselves; the first load after opening the
+    // app stays quiet so an ongoing trip doesn't replay "captain found".
+    const announce = this.synced;
+    this.synced = true;
+    if (this.role === "captain" && (ride || !state.offers?.length)) stopOfferAlert();
     if (ride) {
       const revision = `${ride.id}:${ride.status}`;
       if (revision !== this.seenRide) {
         this.seenRide = revision;
-        if (this.role === "captain" && ride.status === "accepted")
+        if (announce && this.role === "captain" && ride.status === "accepted")
           acceptRideSound();
+        if (announce && this.role === "rider")
+          ({ accepted: captainFoundSound, arrived: captainArrivedSound, in_progress: tripStartedSound } as Record<string, () => void>)[ride.status]?.();
         this.bridge.update({
           phase: ride.status,
           pickup: ride.pickup_label,
@@ -1306,10 +1402,12 @@ export class LiveJourney {
       );
       this.seenRide = "";
       if (finished) {
+        if (this.role === "rider") tripCompleteSound();
         this.bridge.assign({ phase: "completed" });
         this.openPayment(finished);
         return;
       }
+      if (previous?.status === "cancelled" || previous?.status === "expired") rideCancelledSound();
       if (this.role === "rider") {
         if (previous?.status === "cancelled") {
           this.cancelRiderRide();
@@ -1329,7 +1427,7 @@ export class LiveJourney {
       const offer = state.offers[0];
       if (!this.offersSeen.has(offer.id)) {
         this.offersSeen.add(offer.id);
-        driverAlertSound();
+        startOfferAlert();
         this.bridge.update({
           pickup: offer.pickup_label,
           destination: offer.dropoff_label,
@@ -1361,6 +1459,29 @@ export class LiveJourney {
   private decorate() {
     if (this.sessionChecked && !this.signedIn && this.bridge.read().screen !== "auth") {
       this.bridge.go("auth");
+      return;
+    }
+    // The payment page owns the screen until it closes; if a re-render drew over it, restore it.
+    if (this.payment) {
+      this.payment.ensureShown();
+      return;
+    }
+    // The design preview's "Simulate: taken by another captain" control would show a made-up
+    // state; live apps learn that from the server's 409 on accept instead.
+    this.app.querySelectorAll('[data-modal="ride-taken"]').forEach((el) => el.remove());
+    // A trip screen with no live trip behind it would show the design preview's sample captain
+    // and pickup code. Go to the finished ride's payment, or home, instead.
+    const tripScreens = this.role === "rider" ? ["matching", "tracking"] : ["pickup", "otp", "trip"];
+    if (this.state && !this.busy && !this.payment && !this.active() && tripScreens.includes(this.bridge.read().screen)) {
+      const unpaid = this.state.rides.find((r) => r.mine !== false && r.status === "completed" && !["paid_online", "driver_reported_received", "rider_reported_paid"].includes(r.payment_status ?? ""));
+      this.seenRide = "";
+      if (unpaid) {
+        this.bridge.assign({ phase: "completed" });
+        this.openPayment(unpaid);
+      } else {
+        this.bridge.update({ phase: "none" });
+        this.bridge.go(this.role === "rider" ? "home" : "drive");
+      }
       return;
     }
     if (this.role === "captain" && this.signedIn && this.state?.driver?.[0]?.status !== "approved") {
@@ -1640,9 +1761,7 @@ export class LiveJourney {
           if (price)
             price.textContent =
               this.estimates[button.dataset.vehicle!] !== undefined
-                ? money(
-                    Math.round(this.estimates[button.dataset.vehicle!] / 100),
-                  )
+                ? money(this.estimates[button.dataset.vehicle!] / 100)
                 : "Unavailable";
           const detail = button.querySelector("small");
           if (detail)
@@ -1652,10 +1771,11 @@ export class LiveJourney {
         this.app.querySelector<HTMLElement>(".route-alt-row");
       if (alternatives) {
         alternatives.hidden = this.routes.length < 2;
+        const labels = routeLabels(this.routes);
         const content = this.routes
           .map(
             (r, i) =>
-              `<button class="route-alt-chip ${i === this.booking.routeIndex ? "active" : ""}" role="radio" aria-checked="${i === this.booking.routeIndex}" data-live-route-index="${i}"><span>Route ${i + 1}</span><strong>${Math.ceil(r.seconds / 60)} min</strong><small>${(r.meters / 1000).toFixed(1)} km</small></button>`,
+              `<button class="route-alt-chip ${i === this.booking.routeIndex ? "active" : ""}" role="radio" aria-checked="${i === this.booking.routeIndex}" data-live-route-index="${i}"><span>${labels[i]}</span><strong>${Math.ceil(r.seconds / 60)} min</strong><small>${(r.meters / 1000).toFixed(1)} km</small></button>`,
           )
           .join("");
         if (alternatives.innerHTML !== content)
@@ -1720,6 +1840,7 @@ export class LiveJourney {
       const eta = this.app.querySelector(".confirm-sheet > .row p");
       if (eta)
         eta.textContent = "Captain availability is confirmed during matching";
+      this.preferAffordablePayment();
     }
     if (screen === "choose") {
       const badge = this.app.querySelector(".choose-sheet .badge");
@@ -2013,6 +2134,7 @@ export class LiveJourney {
   }
   destroy() {
     stopSearchingSound();
+    stopOfferAlert();
     this.onboarding?.destroy();
     this.history?.destroy();
     this.booking.destroy();
@@ -2031,6 +2153,7 @@ export class LiveJourney {
     this.app.removeEventListener("change", this.changeArea, true);
     window.removeEventListener("hop-location-denied", this.locationDenied);
     window.removeEventListener("hop-navigation", this.navigationUpdate);
+    window.removeEventListener("hop-route-pick", this.routePick);
     window.removeEventListener("hop-map-pick", this.mapPick);
     window.removeEventListener("hop-live-state", this.serverState);
   }

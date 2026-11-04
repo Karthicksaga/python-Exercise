@@ -13,6 +13,8 @@ export class LivePayment {
   private busy = false;
   private confirmReceipt = false;
   private cashChosen = false;
+  private confirmUnpaid = false;
+  private rating = 0;
   private error = "";
   private balance?: number;
   private timer?: ReturnType<typeof setTimeout>;
@@ -39,6 +41,10 @@ export class LivePayment {
   }
   private key() {
     return `hop.payment.pending:${this.ride.id}`;
+  }
+  /** Puts the payment page back if the app's renderer drew another screen over it. */
+  ensureShown() {
+    if (!this.disposed && !this.app.querySelector(".payment-intro")) this.render();
   }
   update(ride: Ride) {
     if (this.disposed) return;
@@ -97,12 +103,17 @@ export class LivePayment {
   }
   private click = (event: Event) => {
     const button = (event.target as Element).closest<HTMLElement>(
-      "[data-live-method],[data-live-pay]",
+      "[data-live-method],[data-live-pay],[data-live-rate]",
     );
     if (!button) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     if (this.busy) return;
+    if (button.dataset.liveRate) {
+      this.rating = Number(button.dataset.liveRate);
+      this.render();
+      return;
+    }
     if (button.dataset.liveMethod) {
       this.selected = button.dataset.liveMethod;
       this.render();
@@ -154,6 +165,7 @@ export class LivePayment {
     }
     if (action === "not-yet") {
       this.confirmReceipt = false;
+      this.confirmUnpaid = false;
       this.render();
       return;
     }
@@ -165,6 +177,36 @@ export class LivePayment {
     if (action === "cash") {
       void this.run(async () => {
         await api.action(this.ride.id, this.ride.version, "payment_received");
+        await this.refresh();
+      });
+      return;
+    }
+    if (action === "cash-paid") {
+      void this.run(async () => {
+        await api.action(this.ride.id, this.ride.version, "cash_paid");
+        await this.refresh();
+      });
+      return;
+    }
+    if (action === "unpaid-confirm") {
+      this.confirmUnpaid = true;
+      this.confirmReceipt = false;
+      this.render();
+      return;
+    }
+    if (action === "unpaid") {
+      void this.run(async () => {
+        await api.action(this.ride.id, this.ride.version, "payment_not_received");
+        this.confirmUnpaid = false;
+        await this.refresh();
+      });
+      return;
+    }
+    if (action === "rate") {
+      if (this.rating < 1) return;
+      void this.run(async () => {
+        await api.request(`/api/rides/${this.ride.id}/rating`, { score: this.rating });
+        this.ride = { ...this.ride, my_rating: this.rating };
         await this.refresh();
       });
       return;
@@ -223,7 +265,11 @@ export class LivePayment {
     if (this.ride.status !== "completed" && this.ride.status !== "in_progress")
       throw new Error("Payment is available after your trip starts.");
     await this.refresh();
-    if (this.ride.payment_status && this.ride.payment_status !== "unconfirmed")
+    if (
+      this.ride.payment_status &&
+      this.ride.payment_status !== "unconfirmed" &&
+      this.ride.payment_status !== "driver_reported_unpaid"
+    )
       return;
     if (this.selected === "cash" || this.selected === "wallet") {
       if (
@@ -296,6 +342,18 @@ export class LivePayment {
     this.verification = undefined;
     await this.refresh();
   }
+  /** One rating per trip; the server rejects a second one. */
+  private ratingCard() {
+    if (this.ride.status !== "completed" || !(this.role === "captain" || this.ride.driver_name)) return "";
+    const other = this.role === "rider" ? "your Captain" : "your rider";
+    if (this.ride.my_rating)
+      return `<div class="section-card payment-rating" data-rated="${this.ride.my_rating}"><p>You rated ${other} ${"★".repeat(this.ride.my_rating)}</p></div>`;
+    return `<div class="section-card payment-rating"><p>How was ${other}?</p><div class="stars" aria-label="Rate ${other}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="${n <= this.rating ? "active" : ""}" data-live-rate="${n}" aria-label="${n} star${n > 1 ? "s" : ""}" aria-pressed="${n === this.rating}">★</button>`).join("")}</div></div>`;
+  }
+  private ratingAction() {
+    if (this.ride.status !== "completed" || !(this.role === "captain" || this.ride.driver_name) || this.ride.my_rating || this.rating < 1) return "";
+    return this.button(`Send ${this.rating}-star rating`, "rate");
+  }
   private button(label: string, action: string, secondary = false) {
     return `<button class="${secondary ? "secondary" : "primary"}" data-live-pay="${action}" ${this.busy ? "disabled" : ""}>${label}</button>`;
   }
@@ -312,8 +370,11 @@ export class LivePayment {
       this.qr,
       this.confirmReceipt,
       this.cashChosen,
+      this.confirmUnpaid,
+      this.rating,
     ]);
-    if (signature === this.lastRendered) return;
+    // Re-draw when nothing changed only if the app's renderer has drawn over this page.
+    if (signature === this.lastRendered && this.app.dataset.livePayment === this.ride.id && this.app.querySelector(".payment-intro")) return;
     this.lastRendered = signature;
     const status = this.ride.payment_status || "unconfirmed",
       amount = this.ride.payable_paise ?? this.ride.fare_paise;
@@ -328,10 +389,30 @@ export class LivePayment {
       copy = verified
         ? "Payment confirmed by Hop’s backend."
         : "Reported by the Captain. This is separate from gateway verification.";
-      content = `<div class="payment-state-symbol success">✓</div>${summary}<div class="payment-receipt"><span>Payment method</span><strong>${escape(verified ? (this.ride.payment_method === "wallet" ? "Wallet" : "Online payment") : this.ride.payment_method.toUpperCase())}</strong><span>Status</span><strong>${verified ? "Backend confirmed" : "Captain reported received"}</strong><span>Ride reference</span><strong>${escape(this.ride.id.slice(0, 12))}</strong></div>`;
-      actions = this.button("Done", "close");
+      content = `<div class="payment-state-symbol success">✓</div>${summary}<div class="payment-receipt"><span>Payment method</span><strong>${escape(verified ? (this.ride.payment_method === "wallet" ? "Wallet" : "Online payment") : this.ride.payment_method.toUpperCase())}</strong><span>Status</span><strong>${verified ? "Backend confirmed" : "Captain reported received"}</strong><span>Ride reference</span><strong>${escape(this.ride.id.slice(0, 12))}</strong></div>${this.ratingCard()}`;
+      actions = this.ratingAction() + this.button("Done", "close", !!this.ratingAction());
       if (!verified && this.role === "rider")
         actions += this.button("Report a payment issue", "dispute", true);
+    } else if (status === "rider_reported_paid" && this.role === "rider") {
+      title = "Thanks, payment noted.";
+      copy = "You told us you paid your Captain. You can book your next ride.";
+      content = `<div class="payment-state-symbol success">✓</div>${summary}<div class="payment-receipt"><span>Payment method</span><strong>${escape(this.ride.payment_method.toUpperCase())}</strong><span>Status</span><strong>You reported paying</strong><span>Ride reference</span><strong>${escape(this.ride.id.slice(0, 12))}</strong></div>${this.ratingCard()}`;
+      actions = this.ratingAction() + this.button("Done", "close", !!this.ratingAction());
+    } else if (status === "driver_reported_unpaid" && this.role === "rider" && !this.pending && !this.directUpi) {
+      title = "Your Captain didn’t receive payment.";
+      copy = "Pay with Wallet or online now, or report an issue if you already paid.";
+      const choice = this.selected === "cash" ? "wallet" : this.selected;
+      content =
+        summary +
+        paymentMethods(choice, this.balance).replace(/<button[^>]*data-live-method="cash"[\s\S]*?<\/button>/, "") +
+        '<div class="payment-hint">You can’t book another ride until this payment is settled.</div>';
+      actions =
+        (choice === "wallet" && this.balance !== undefined && this.balance < amount
+          ? this.button(`Add ${inr(Math.max(1000, amount - this.balance))} to Wallet`, "topup")
+          : "") +
+        this.button(choice === "wallet" ? "Pay with Wallet" : "Pay online", "pay") +
+        this.button("I already paid · report an issue", "dispute", true) +
+        this.button("Back to rides", "close", true);
     } else if (status === "rider_disputed") {
       title = "Your payment is under review.";
       copy = "Support needs to review this payment before another settlement.";
@@ -378,17 +459,26 @@ export class LivePayment {
       copy = "Cash is paid directly at the end of the ride.";
       content =
         summary +
-        '<div class="payment-hint">We’re waiting for your Captain to record receipt. An online payment is not being requested.</div>';
+        '<div class="payment-hint">Hand the cash to your Captain, then tap “I’ve paid my Captain”. Your Captain can still confirm it or report a problem.</div>';
       actions =
-        this.button("Check payment status", "refresh") +
+        (status === "unconfirmed" && this.ride.status === "completed"
+          ? this.button("I’ve paid my Captain", "cash-paid")
+          : "") +
+        this.button("Check payment status", "refresh", status === "unconfirmed") +
         this.button("Change method", "change", true) +
         this.button("Back to rides", "close", true);
     } else if (this.role === "captain") {
-      title = "Record the handover.";
-      copy = "Check the status before recording payment from the rider.";
+      const riderPaid = status === "rider_reported_paid",
+        unpaid = status === "driver_reported_unpaid";
+      title = riderPaid ? "Rider says they paid." : unpaid ? "Reported as not received." : "Record the handover.";
+      copy = riderPaid
+        ? "Confirm the handover, or report it if you didn’t get the money."
+        : unpaid
+          ? "The rider has been asked to pay. Record it if you receive the payment later."
+          : "Check the status before recording payment from the rider.";
       content =
         summary +
-        `<div class="payment-receipt"><span>Method</span><strong>${escape(this.ride.payment_method.toUpperCase())}</strong><span>Status</span><strong>Awaiting confirmation</strong></div><div class="payment-hint">Only record receipt after receiving the cash or direct UPI payment. Online payments are verified by the backend.</div>`;
+        `<div class="payment-receipt"><span>Method</span><strong>${escape(this.ride.payment_method.toUpperCase())}</strong><span>Status</span><strong>${riderPaid ? "Rider reported paying" : unpaid ? "You reported not received" : "Awaiting confirmation"}</strong></div><div class="payment-hint">Only record receipt after receiving the cash or direct UPI payment. Online payments are verified by the backend.</div>${this.ratingCard()}`;
       actions =
         this.ride.status === "completed" &&
         this.ride.payment_method !== "wallet"
@@ -404,7 +494,19 @@ export class LivePayment {
         copy =
           "Confirm only after you have received the cash or direct UPI payment.";
         actions += this.button("Not yet", "not-yet", true);
-      }
+      } else if (this.confirmUnpaid) {
+        title = "Report payment not received?";
+        copy = "The rider will be asked to pay before booking again.";
+        actions =
+          this.button("Yes, I didn’t receive it", "unpaid") +
+          this.button("Not yet", "not-yet", true);
+      } else if (
+        this.ride.status === "completed" &&
+        !unpaid &&
+        (this.ride.payment_method === "cash" || this.ride.payment_method === "upi")
+      )
+        actions += this.button("Cash not received", "unpaid-confirm", true);
+      if (!this.confirmReceipt && !this.confirmUnpaid) actions = this.ratingAction() + actions;
       actions += this.button("Back to rides", "close", true);
     } else {
       content =
