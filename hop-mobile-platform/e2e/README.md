@@ -1,8 +1,9 @@
 # Rider + Captain end-to-end tests
 
-Two tests drive both apps against a real Hop API:
+Three tests drive both apps against a real Hop API:
 
 - `onboarding.e2e.mjs`: a new captain signs up in the Captain app (details, portrait, vehicle, every required document), submits, waits in review with nothing unlocked, an operator accepts each document and approves, and the captain can go online.
+- `next-ride.e2e.mjs`: a captain finishing a trip is offered a new request near the drop-off, accepts it mid-trip, settles the first trip's cash, then goes straight to the next pickup; the second rider is told a captain is finishing nearby.
 - `ride.e2e.mjs`: one complete ride. Sign-in by phone code, captain online and sharing GPS, booking with real place search and road routes, accept, drive to the pickup, arrive, pickup code, trip, complete. Then cash: the rider taps "I've paid my Captain" (which lets them book again), the captain confirms it, and each side rates the other.
 
 ## Local

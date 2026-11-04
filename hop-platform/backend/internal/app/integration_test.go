@@ -338,6 +338,37 @@ func (f *fixture) book(c client, q string) string {
 	f.dispatch()
 	return out["id"].(string)
 }
+
+// elapse lets a ride's live offers run out and makes its next matching round due, as waiting
+// would, then runs that round.
+func (f *fixture) elapse(id string) {
+	f.t.Helper()
+	ctx := context.Background()
+	if _, e := f.s.DB.Exec(ctx, "UPDATE ride_offers SET expires_at=now()-interval '1 minute' WHERE ride_id=$1 AND outcome IS NULL", id); e != nil {
+		f.t.Fatal(e)
+	}
+	if _, e := f.s.DB.Exec(ctx, "UPDATE rides SET dispatch_due=now()-interval '1 second' WHERE id=$1", id); e != nil {
+		f.t.Fatal(e)
+	}
+	f.dispatch()
+}
+
+// offerTo waits through matching rounds until the captain is offered the ride. Requests go to
+// one captain at a time, so in tests with several captains the one a test uses may not be first.
+func (f *fixture) offerTo(c client, id string) {
+	f.t.Helper()
+	for i := 0; i < 8; i++ {
+		var offered bool
+		if e := f.s.DB.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM ride_offers WHERE ride_id=$1 AND driver_id=$2 AND expires_at>now())", id, c.id).Scan(&offered); e != nil {
+			f.t.Fatal(e)
+		}
+		if offered {
+			return
+		}
+		f.elapse(id)
+	}
+	f.t.Fatalf("captain %s was never offered ride %s", c.id, id)
+}
 func (f *fixture) dispatch() {
 	f.t.Helper()
 	if e := f.s.DispatchStaged(context.Background()); e != nil {
@@ -610,6 +641,7 @@ func TestEarlyFinishAdjustsFareUnlessRiderApprovesFull(t *testing.T) {
 		rider := f.actor("rider", false)
 		driver := f.actor("rider", true)
 		id := f.book(rider, f.quote(rider))
+		f.offerTo(driver, id) // an earlier run's captain is also free and may be offered it first
 		require(t, f.act(driver, id, "accept", 1, ""), 200)
 		require(t, f.act(driver, id, "arrive", 2, ""), 200)
 		require(t, f.act(driver, id, "start", 3, f.s.pin(id)), 200)

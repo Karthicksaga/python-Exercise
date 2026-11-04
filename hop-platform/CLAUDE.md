@@ -35,4 +35,6 @@ Captain document rules (required/optional kinds, rejection reasons, review claim
 
 Zones (`areas`) are lat/lng rectangles. Two live zones may not overlap (`saveArea`, 409). `region_catalog` (migration 035) lists districts operators can start a zone from, with city limits from migration 036 (`city_source` is `boundary` or `approx`). Add a state with `backend/scripts/fetch_districts.py`, and its city limits with the script's `--cities` mode. Run it once and commit the generated migration; never call OpenStreetMap at runtime.
 
+Captain matching lives in `internal/app/dispatch.go` (rounds, exclusive offers, batch assignment, next ride) and `dispatch_eta.go` (ranking); the rules are summarised in `docs/API.md` under "Captain matching". Tests that need a particular captain to be offered a ride use `f.offerTo` / `f.elapse` (integration_test.go), which simulate offer windows passing.
+
 Money is stored in integer paise. Ride status changes go through versioned actions (`POST /api/rides/{id}/actions` with `version`). Keep both rules.

@@ -198,7 +198,7 @@ func TestTripStatementSnapshotAuthorizationAndPayment(t *testing.T) {
 }
 
 func TestRoadRankingAndOfferOutcomes(t *testing.T) {
-	picks := []pick{{id: "near", dist: 100, score: 1}, {id: "far", dist: 500, score: 2}}
+	picks := []pick{{id: "near", dist: 100, penalty: 1}, {id: "far", dist: 500, penalty: 2}}
 	ranked := rankCandidates(picks, map[string]float64{"near": 900, "far": 60}, 1)
 	if len(ranked) != 1 || ranked[0].id != "far" || ranked[0].source != "road" {
 		t.Fatal("ranking ignored road travel time")
@@ -213,6 +213,14 @@ func TestRoadRankingAndOfferOutcomes(t *testing.T) {
 	q := f.quote(r)
 	f.s.Config.RoutingURL = router.URL
 	id := f.book(r, q)
+	// Wider rounds offer a request to two captains at once; run one of those.
+	if _, e := f.s.DB.Exec(context.Background(), "DELETE FROM ride_offers WHERE ride_id=$1", id); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := f.s.DB.Exec(context.Background(), "UPDATE rides SET dispatch_stage=2,dispatch_due=now()-interval '1 second' WHERE id=$1", id); e != nil {
+		t.Fatal(e)
+	}
+	f.dispatch()
 	code, _ := f.call(a, "POST", "/api/rides/"+id+"/offer-seen", map[string]any{})
 	require(t, code, 200)
 	require(t, f.act(a, id, "accept", 1, ""), 200)

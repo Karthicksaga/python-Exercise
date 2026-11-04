@@ -8,6 +8,7 @@ import { watchLocation } from "./locationWatch";
 import type { Coordinate, MapData, MapView } from "./types";
 import { api } from "../services/client";
 import { ForegroundTracking } from "./foregroundTracking";
+import { ensureRideAlerts } from "../notifications/device";
 import { currentLocation } from "../platform/transport";
 import { RoutePreviewController } from "./RoutePreview";
 import { remainingRoute, snapToRoute } from "./motion";
@@ -303,6 +304,9 @@ export class PrototypeMap {
   };
   private sharingStarting = false;
   private shareLocation() {
+    void ensureRideAlerts().then((problem) => {
+      if (problem) { this.message = problem; this.label(); }
+    });
     if (this.tracking.active || this.sharingStarting) return;
     this.sharingStarting = true;
     void this.tracking.start().catch((e) => {

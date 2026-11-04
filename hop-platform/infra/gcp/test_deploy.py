@@ -100,6 +100,7 @@ class DeploymentChecks(unittest.TestCase):
         self.assertTrue(all("--port=80" in cmd for cmd in deploys[2:]))
         self.assertEqual(environments[0]["RIDER_ORIGIN"], self.config["origins"]["rider"])
         self.assertEqual(environments[0]["APP_ENV"], "production")
+        self.assertEqual(environments[0]["FCM_PROJECT_ID"], self.config["project_id"])  # push without a key file
         self.assertNotIn("DATABASE_URL", environments[0])
         self.assertEqual([e["HOP_APP"] for e in environments[2:]], ["rider", "captain", "admin"])
         self.assertTrue(all(e["BACKEND_UPSTREAM"] == "https://hop-api-abc.a.run.app" for e in environments[2:]))

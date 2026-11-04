@@ -55,6 +55,7 @@ func TestFareNegotiationAndReservation(t *testing.T) {
 	require(t, code, 201)
 	id := out["id"].(string)
 	f.dispatch()
+	f.offerTo(d, id)
 	code, _ = f.call(d, "POST", "/api/rides/"+id+"/bids", map[string]any{"amount_paise": 99999})
 	require(t, code, 400)
 	code, _ = f.call(d, "POST", "/api/rides/"+id+"/bids", map[string]any{"amount_paise": 5300})

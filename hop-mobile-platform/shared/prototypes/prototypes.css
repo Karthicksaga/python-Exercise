@@ -320,3 +320,18 @@
   color: var(--ink);
   font-weight: 700;
 }
+/* Captain trip screen (Nov 2026): a next ride offered or held for right after this drop-off. */
+.next-ride-card {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+.next-ride-card p {
+  margin: 0;
+}
+.next-ride-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}

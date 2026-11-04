@@ -39,8 +39,10 @@ public class CaptainLocationService extends Service implements LocationListener 
             startForeground(4101, notification);
             if (availabilityCheck == null) availabilityCheck = worker.scheduleWithFixedDelay(this::checkAvailability, 0, 10, TimeUnit.SECONDS);
             locations = (LocationManager)getSystemService(LOCATION_SERVICE);
-            if (locations.isProviderEnabled(LocationManager.GPS_PROVIDER)) locations.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 5, this);
-            if (locations.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) locations.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000, 5, this);
+            // No minimum distance: a parked captain must keep reporting, or the server marks them out
+            // of date after 20 s and riders lose the "Captain N min" estimate.
+            if (locations.isProviderEnabled(LocationManager.GPS_PROVIDER)) locations.requestLocationUpdates(LocationManager.GPS_PROVIDER, 4000, 0, this);
+            if (locations.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) locations.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 4000, 0, this);
             if (!locations.isProviderEnabled(LocationManager.GPS_PROVIDER) && !locations.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) stopSelf();
         } catch (SecurityException | IllegalStateException e) { stopSelf(); }
         return START_NOT_STICKY;
@@ -73,6 +75,8 @@ public class CaptainLocationService extends Service implements LocationListener 
         try {
             JSONObject body = new JSONObject();
             body.put("lat",fix.getLatitude());body.put("lng",fix.getLongitude());body.put("accuracy",Math.max(1,fix.getAccuracy()));
+            if (fix.hasSpeed()) body.put("speed",Math.max(0,fix.getSpeed())); // m/s, as the app sends
+            if (fix.hasBearing()) body.put("heading",fix.getBearing());
             worker.execute(() -> {
                 HttpURLConnection connection = null;
                 try {

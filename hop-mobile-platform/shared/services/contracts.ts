@@ -41,6 +41,16 @@ export type Ride = {
   driver_lat?: number;
   driver_lng?: number;
   route?: RoutePoint[];
+  /** Captain offers: "next" is a ride offered to start after the captain's current drop-off. */
+  offer_kind?: "now" | "next";
+  /** When this captain's exclusive window to accept ends. */
+  offer_expires_at?: string;
+  /** Captain: they accepted this as their next ride; it becomes theirs when they complete their trip. */
+  next_ride_held?: boolean;
+  /** Rider: the ride is held for a captain finishing a nearby trip. */
+  next_ride?: boolean;
+  next_ride_eta_seconds?: number;
+  reserved_driver_name?: string;
 };
 export type State = {
   saved_locations?: (Point & { kind: string; place_label: string })[];

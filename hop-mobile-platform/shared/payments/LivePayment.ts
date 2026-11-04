@@ -83,6 +83,14 @@ export class LivePayment {
       } catch {}
     }
   }
+  /**
+   * Sends a payment action with the ride's latest version. The other person may have just changed
+   * the ride (the rider reporting cash, say), and a stale version would be refused.
+   */
+  private async act(name: string) {
+    await this.refresh();
+    await api.action(this.ride.id, this.ride.version, name);
+  }
   private async run(work: () => Promise<void>) {
     if (this.busy) return;
     this.busy = true;
@@ -176,14 +184,14 @@ export class LivePayment {
     }
     if (action === "cash") {
       void this.run(async () => {
-        await api.action(this.ride.id, this.ride.version, "payment_received");
+        await this.act("payment_received");
         await this.refresh();
       });
       return;
     }
     if (action === "cash-paid") {
       void this.run(async () => {
-        await api.action(this.ride.id, this.ride.version, "cash_paid");
+        await this.act("cash_paid");
         await this.refresh();
       });
       return;
@@ -196,7 +204,7 @@ export class LivePayment {
     }
     if (action === "unpaid") {
       void this.run(async () => {
-        await api.action(this.ride.id, this.ride.version, "payment_not_received");
+        await this.act("payment_not_received");
         this.confirmUnpaid = false;
         await this.refresh();
       });
@@ -213,7 +221,7 @@ export class LivePayment {
     }
     if (action === "dispute") {
       void this.run(async () => {
-        await api.action(this.ride.id, this.ride.version, "payment_disputed");
+        await this.act("payment_disputed");
         await this.refresh();
       });
       return;

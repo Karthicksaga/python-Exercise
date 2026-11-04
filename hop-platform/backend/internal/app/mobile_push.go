@@ -9,15 +9,30 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
 )
 
 func (s *Server) configureNativePush(ctx context.Context) error {
 	if s.Config.FCMServiceAccountFile == "" {
+		// On Cloud Run the API's own service account sends (it needs the Firebase Cloud Messaging
+		// sender role), so no downloadable key is stored anywhere.
+		if s.Config.FCMProject == "" {
+			return nil
+		}
+		if !regexp.MustCompile(`^[a-z][a-z0-9-]{4,62}$`).MatchString(s.Config.FCMProject) {
+			return fmt.Errorf("invalid FCM_PROJECT_ID")
+		}
+		source, e := google.DefaultTokenSource(context.WithValue(ctx, oauth2.HTTPClient, s.HTTP), "https://www.googleapis.com/auth/firebase.messaging")
+		if e != nil {
+			return fmt.Errorf("Firebase sender credentials: %w", e)
+		}
+		s.FCM, s.FCMProject = source, s.Config.FCMProject
 		return nil
 	}
 	raw, e := os.ReadFile(s.Config.FCMServiceAccountFile)
@@ -113,7 +128,7 @@ func (s *Server) deliverNative(ctx context.Context, tx pushDB, account string, m
 	}
 	retry := false
 	for _, token := range tokens {
-		raw, _ := json.Marshal(map[string]any{"message": map[string]any{"token": token, "notification": map[string]string{"title": msg.Title, "body": msg.Body}, "data": map[string]string{"tag": msg.Tag}, "android": map[string]any{"priority": "high", "notification": map[string]string{"channel_id": "hop-rides", "tag": msg.Tag}}}})
+		raw, _ := json.Marshal(map[string]any{"message": map[string]any{"token": token, "notification": map[string]string{"title": msg.Title, "body": msg.Body}, "data": map[string]string{"tag": msg.Tag}, "android": androidDelivery(msg)}})
 		req, e := http.NewRequestWithContext(ctx, "POST", "https://fcm.googleapis.com/v1/projects/"+s.FCMProject+"/messages:send", bytes.NewReader(raw))
 		if e != nil {
 			continue
@@ -135,4 +150,14 @@ func (s *Server) deliverNative(ctx context.Context, tx pushDB, account string, m
 		}
 	}
 	return retry
+}
+
+// androidDelivery: ride requests ring on their own channel and expire with the offer, so a captain
+// whose phone was offline never gets a request that is already gone. Other alerts use "hop-rides".
+func androidDelivery(msg pushMessage) map[string]any {
+	if strings.HasPrefix(msg.Tag, "offer-") {
+		return map[string]any{"priority": "high", "ttl": "30s", "notification": map[string]any{
+			"channel_id": "hop-ride-requests", "tag": msg.Tag, "notification_priority": "PRIORITY_MAX", "visibility": "PUBLIC", "default_vibrate_timings": true}}
+	}
+	return map[string]any{"priority": "high", "notification": map[string]string{"channel_id": "hop-rides", "tag": msg.Tag}}
 }

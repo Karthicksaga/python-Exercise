@@ -718,12 +718,13 @@ export class LiveJourney {
     event.preventDefault();
     event.stopImmediatePropagation();
   }
-  private openPayment(ride: Ride) {
+  private openPayment(ride: Ride, after?: () => void) {
     this.payment?.destroy();
     this.bridge.assign({ modal: null });
     this.payment = new LivePayment(this.app, ride, this.role, () => {
       this.payment = undefined;
-      this.bridge.go("activity");
+      if (after) after();
+      else this.bridge.go("activity");
     });
   }
   private startCityRide() {
@@ -731,6 +732,60 @@ export class LiveJourney {
     this.bridge.assign({ tripType: "city", schedule: "Now" });
     this.quote = undefined;
     this.bookingPayload = undefined;
+  }
+  /** A next-ride offer (or held next ride) for a captain who is on a trip. */
+  private pendingNext() {
+    return this.role === "captain" ? this.state?.offers?.find((o) => o.offer_kind === "next") : undefined;
+  }
+  /** Captain trip screen: the next ride on offer (accept/decline) or already held for them. */
+  private nextRideCard(offer?: Ride) {
+    let card = this.app.querySelector<HTMLElement>(".next-ride-card");
+    const sheet = this.app.querySelector(".sheet .tracking-heading");
+    if (!offer || !sheet) {
+      card?.remove();
+      return;
+    }
+    const fare = money(offer.fare_paise / 100);
+    const html = offer.next_ride_held
+      ? `<span class="badge green">Next ride booked</span><strong>Pickup: ${escape(offer.pickup_label)}</strong><p class="small muted">Starts when you complete this trip · ${fare}. The rider knows you’re coming next.</p>`
+      : `<span class="badge">Next ride request</span><strong>${escape(offer.pickup_label)} → ${escape(offer.dropoff_label)}</strong><p class="small muted">Close to this drop-off · starts right after it · ${fare}</p><div class="next-ride-actions"><button class="primary" data-live-next="accept" ${this.busy ? "disabled" : ""}>Accept next ride</button><button class="secondary" data-live-next="decline" ${this.busy ? "disabled" : ""}>Decline</button></div>`;
+    if (!card) {
+      card = document.createElement("div");
+      card.className = "section-card next-ride-card";
+      card.setAttribute("role", "region");
+      card.setAttribute("aria-label", "Next ride");
+      sheet.after(card);
+    }
+    if (card.dataset.signature !== html) {
+      card.dataset.signature = html;
+      card.innerHTML = html;
+    }
+  }
+  private countdownTimer?: ReturnType<typeof setInterval>;
+  /** Captain request screen: seconds left in this captain's exclusive window to accept. */
+  private offerCountdown(expiresAt?: string) {
+    clearInterval(this.countdownTimer);
+    this.countdownTimer = undefined;
+    const sheet = this.app.querySelector(".driver-sheet");
+    let line = this.app.querySelector<HTMLElement>(".offer-countdown");
+    const until = expiresAt ? Date.parse(expiresAt) : NaN;
+    if (!sheet || !Number.isFinite(until)) {
+      line?.remove();
+      return;
+    }
+    if (!line) {
+      line = document.createElement("p");
+      line.className = "fineprint offer-countdown";
+      line.setAttribute("aria-live", "off");
+      sheet.appendChild(line);
+    }
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+      if (line) line.textContent = left > 0 ? `Only you have this request · ${left} s to accept` : "Time’s up · checking for the next request";
+      if (!left) clearInterval(this.countdownTimer);
+    };
+    tick();
+    this.countdownTimer = setInterval(tick, 1000);
   }
   private click = (event: Event) => {
     const button = (event.target as Element)?.closest<HTMLElement>(
@@ -756,6 +811,19 @@ export class LiveJourney {
       this.booking.tripType = button.dataset.triptype!;
       this.bridge.assign({ tripType: this.booking.tripType });
       this.bridge.go("plan");
+      return;
+    }
+    if (button.dataset.liveNext) {
+      this.stop(event);
+      stopOfferAlert();
+      const offer = this.pendingNext();
+      void this.run(async () => {
+        if (!offer) throw new Error("This next ride is no longer available.");
+        await api.session();
+        if (button.dataset.liveNext === "accept") await api.action(offer.id, offer.version, "accept");
+        else await api.request(`/api/rides/${offer.id}/decline`, {});
+        this.sync(await api.state());
+      });
       return;
     }
     if (button.hasAttribute("data-live-retry-plan")) {
@@ -1363,11 +1431,29 @@ export class LiveJourney {
     // app stays quiet so an ongoing trip doesn't replay "captain found".
     const announce = this.synced;
     this.synced = true;
-    if (this.role === "captain" && (ride || !state.offers?.length)) stopOfferAlert();
+    const nextOffer = this.pendingNext();
+    if (this.role === "captain" && (ride ? !nextOffer || nextOffer.next_ride_held : !state.offers?.length)) stopOfferAlert();
+    if (this.role === "captain" && ride && nextOffer && !nextOffer.next_ride_held && !this.offersSeen.has(nextOffer.id)) {
+      this.offersSeen.add(nextOffer.id);
+      startOfferAlert();
+    }
     if (ride) {
       const revision = `${ride.id}:${ride.status}`;
       if (revision !== this.seenRide) {
+        // A captain's next ride starts the moment they complete a trip: settle that trip's
+        // payment first, then head to the next pickup.
+        const previous = this.seenRide.split(":")[0];
+        const finished =
+          this.role === "captain" && previous && previous !== ride.id
+            ? state.rides?.find((r) => r.id === previous && r.status === "completed")
+            : undefined;
         this.seenRide = revision;
+        if (finished) {
+          this.bridge.update({ phase: ride.status, pickup: ride.pickup_label, destination: ride.dropoff_label, vehicle: ride.vehicle_category, payment: ride.payment_method });
+          this.openPayment(finished, () => this.bridge.go("pickup"));
+          this.bridge.notify(`Next ride starts now · after this payment, head to ${ride.pickup_label}`);
+          return;
+        }
         if (announce && this.role === "captain" && ride.status === "accepted")
           acceptRideSound();
         if (announce && this.role === "rider")
@@ -1862,8 +1948,13 @@ export class LiveJourney {
           "Waiting for a server-confirmed Captain assignment";
       this.app.querySelector(".handoff-box")?.remove();
       const status = this.app.querySelector(".matching-radar-status strong");
+      const held = this.active();
       if (status)
-        status.textContent = "Searching for eligible nearby Captains…";
+        status.textContent = held?.next_ride
+          ? `${held.reserved_driver_name || "A Captain"} is finishing a trip nearby`
+          : "Searching for eligible nearby Captains…";
+      if (subtitle && held?.next_ride)
+        subtitle.textContent = `They’ll come to you right after${held.next_ride_eta_seconds ? ` · about ${Math.max(1, Math.round(held.next_ride_eta_seconds / 60))} min` : ""}`;
     }
     const ride = this.active();
     if (ride && screen === "tracking") {
@@ -1928,10 +2019,12 @@ export class LiveJourney {
       const badge = this.app.querySelector(".online-pill");
       if (badge)
         badge.textContent = offer ? "New live request" : "No current requests";
+      this.offerCountdown(offer?.offer_kind === "now" ? offer.offer_expires_at : undefined);
       this.app
         .querySelectorAll(".offer-facts strong")
         .forEach((el) => (el.textContent = "—"));
     }
+    if (this.role === "captain") this.nextRideCard(screen === "trip" ? this.pendingNext() : undefined);
     if (this.role === "captain" && ["pickup", "trip"].includes(screen)) {
       if (this.bridge.read().cockpitMode) {
         const nav = this.navigation,
@@ -2135,6 +2228,7 @@ export class LiveJourney {
   destroy() {
     stopSearchingSound();
     stopOfferAlert();
+    clearInterval(this.countdownTimer);
     this.onboarding?.destroy();
     this.history?.destroy();
     this.booking.destroy();

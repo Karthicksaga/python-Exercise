@@ -1,7 +1,15 @@
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 import { api, APIError } from "../services/client";
+// Captain Android app: a foreground service (CaptainLocationService) that keeps sharing location
+// with the screen off or another app open, shown as an ongoing "Hop Captain · Online" notification.
+const HopTracking = registerPlugin<{
+  start(options: { url: string; app: string; csrf: string }): Promise<void>;
+  stop(): Promise<void>;
+}>("HopTracking");
+const nativeCaptain = () => Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && import.meta.env.VITE_HOP_ROLE === "captain";
 export class ForegroundTracking {
+  private native = false;
   private stopWatch?: () => void;
   private generation = 0;
   private lastSent = 0;
@@ -20,6 +28,16 @@ export class ForegroundTracking {
     if (!state.driver?.[0]?.online)
       throw new Error("Go online in your Captain account before sharing GPS.");
     const generation = ++this.generation;
+    if (nativeCaptain()) {
+      const permission = await Geolocation.requestPermissions();
+      if (permission.location === "denied") throw new Error("Location permission is required.");
+      if (generation !== this.generation) return;
+      await HopTracking.start({ url: import.meta.env.VITE_MOBILE_API_URL, app: "captain", csrf: api.csrfToken });
+      if (generation !== this.generation) { void HopTracking.stop(); return; }
+      this.native = this.active = true;
+      this.status("Live GPS sharing on · keeps working with the screen off");
+      return;
+    }
     this.active = true;
     const receive = (coords: {
       latitude: number;
@@ -127,6 +145,8 @@ export class ForegroundTracking {
   }
   stop() {
     this.generation++;
+    if (this.native) void HopTracking.stop().catch(() => {});
+    this.native = false;
     this.stopWatch?.();
     this.stopWatch = undefined;
     clearTimeout(this.retryTimer);

@@ -19,6 +19,19 @@ export async function enableNotifications(): Promise<void> {
       sound: "hop_rides.wav",
       vibration: true,
     });
+    if (import.meta.env.VITE_HOP_ROLE === "captain")
+      // Ride requests ring with the same chime as in the app and show on the lock screen, so
+      // a captain with the screen off or another app open still hears them (server tag "offer-").
+      await PushNotifications.createChannel({
+        id: "hop-ride-requests",
+        name: "Ride requests",
+        description: "New ride requests while you're online",
+        importance: 5,
+        visibility: 1,
+        sound: "ride_request.wav",
+        vibration: true,
+        lights: true,
+      });
     await new Promise<void>((resolve, reject) => {
       const handles: { remove: () => Promise<void> }[] = [];
       const finish = (error?: unknown) => {
@@ -93,7 +106,22 @@ export async function enableNotifications(): Promise<void> {
     throw error;
   }
 }
+let rideAlertsOn = false;
+/**
+ * Captain Android app, on Go online: make sure ride requests can reach this phone when the app is
+ * in the background. Asks for notification permission the first time; never throws.
+ */
+export async function ensureRideAlerts(): Promise<string | undefined> {
+  if (rideAlertsOn || !Capacitor.isNativePlatform() || import.meta.env.VITE_HOP_ROLE !== "captain") return;
+  try {
+    await enableNotifications();
+    rideAlertsOn = true;
+  } catch (error) {
+    return `Ride alerts are off: ${(error as Error).message} Keep Hop open to see requests.`;
+  }
+}
 export async function disableNotifications() {
+  rideAlertsOn = false;
   if (Capacitor.isNativePlatform()) {
     await pushGuard.prepare();
     if (nativeToken)

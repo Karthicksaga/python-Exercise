@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { MapCanvas, MapFit, MapLine, MapMarker, MapRect } from "@hop/shared/mapkit";
 import type { ScreenProps } from "../AdminApp";
 import { ago, CATS, CAT_ORDER, rupee, useLoad } from "../lib";
@@ -96,7 +96,54 @@ export default function Dispatch({ go }: ScreenProps) {
           ) : <Empty title="No active rides" icon="route">{cat === "all" ? "Nothing in progress right now." : "None for this vehicle type."}</Empty>}
         </div>
       </section>
+      <MatchingReport />
     </>
+  );
+}
+
+type Report = {
+  requests: number; matched: number; no_captain: number; cancelled_while_searching: number; still_searching: number;
+  seconds_to_match_median: number | null; seconds_to_match_p90: number | null; offers_per_matched_ride: number | null;
+  accepted_pickup_eta_seconds: number | null; next_rides: number;
+  offer_outcomes: Record<string, number>; eta_sources: Record<string, number>;
+  by_round: { round: number; offers: number; accepted: number }[];
+};
+const secs = (v: number | null) => (v == null ? "—" : v < 90 ? `${Math.round(v)} s` : `${(v / 60).toFixed(1)} min`);
+const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "—");
+const OUTCOME: Record<string, string> = { accepted: "Accepted", declined: "Declined", expired: "Timed out", superseded: "Taken by another captain", missed: "Missed", live: "Waiting now" };
+
+// How well captain matching works: from GET /api/operator/dispatch-report.
+function MatchingReport() {
+  const notify = useNotify();
+  const [days, setDays] = useState("7");
+  const { data: r } = useLoad<Report>(`/api/operator/dispatch-report?days=${days}`, notify, 60000);
+  const offers = r ? Object.values(r.offer_outcomes).reduce((a, b) => a + b, 0) : 0;
+  return (
+    <section className="card" aria-label="Captain matching">
+      <div className="card-head">
+        <h3>Captain matching</h3>
+        <Chips label="Period" value={days} onChange={setDays} items={[["1", "Today"], ["7", "7 days"], ["30", "30 days"]]} />
+      </div>
+      {!r ? <p className="muted">Loading…</p> : !r.requests ? <Empty title="No ride requests yet" icon="route">Numbers appear once riders start booking.</Empty> : <>
+        <div className="grid g-kpi">
+          <div className="kpi"><span className="eyebrow">Found a captain</span><strong>{pct(r.matched, r.requests)}</strong><small>{r.matched} of {r.requests} requests · {r.no_captain} found nobody</small></div>
+          <div className="kpi"><span className="eyebrow">Time to a captain</span><strong>{secs(r.seconds_to_match_median)}</strong><small>typical · 9 in 10 within {secs(r.seconds_to_match_p90)}</small></div>
+          <div className="kpi"><span className="eyebrow">Offers per match</span><strong>{r.offers_per_matched_ride ?? "—"}</strong><small>captains asked before one accepted</small></div>
+          <div className="kpi"><span className="eyebrow">Pickup time promised</span><strong>{secs(r.accepted_pickup_eta_seconds)}</strong><small>{r.next_rides} next rides from captains finishing nearby</small></div>
+        </div>
+        <div className="grid g-main" style={{ marginTop: 14 }}>
+          <div>
+            <h4>How offers ended <small className="muted">({offers})</small></h4>
+            <dl className="kv">{Object.entries(r.offer_outcomes).sort((a, b) => b[1] - a[1]).map(([k, n]) => <Fragment key={k}><dt>{OUTCOME[k] ?? k}</dt><dd>{n} · {pct(n, offers)}</dd></Fragment>)}</dl>
+          </div>
+          <div>
+            <h4>By round</h4>
+            <dl className="kv">{r.by_round.map((x) => <Fragment key={x.round}><dt>Round {x.round}</dt><dd>{x.offers} offers · {pct(x.accepted, x.offers)} accepted</dd></Fragment>)}</dl>
+            <p className="muted small">Travel times from the road router: {pct(r.eta_sources.road ?? 0, offers)} of offers; the rest are distance estimates.{r.cancelled_while_searching ? ` ${r.cancelled_while_searching} riders cancelled while searching.` : ""}</p>
+          </div>
+        </div>
+      </>}
+    </section>
   );
 }
 
