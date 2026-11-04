@@ -152,7 +152,11 @@ def deploy(c, revision):
             # Either missing, or the deploy account can't read bucket metadata (storage.buckets.get).
             print(f"WARNING: could not confirm gs://{bucket} exists; uploads fail if it is missing "
                   "(create it with setup_gcp.py --media)")
-    worker = c.get("worker", True)
+    # The worker is one always-on 1 vCPU instance (Cloud Run needs a full vCPU for always-on CPU),
+    # roughly US$50/month. Low-cost setups (staging) keep the jobs inside the API instead, which
+    # costs nothing extra; their jobs then run while the apps are in use (CPU is only given to
+    # requests). Set "worker": true to opt in.
+    worker = c.get("worker", not c.get("low_cost", False))
     env = dict(c["api_env"], **routing, APP_ENV=app_env, ADDRESS=":8080", MIGRATE_ON_START="true",
                MEDIA_PROFILE_BUCKET=profile_bucket, MEDIA_KYC_BUCKET=kyc_bucket,
                HOP_ROLE="api" if worker else "all",

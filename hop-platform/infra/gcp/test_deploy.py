@@ -125,8 +125,18 @@ class DeploymentChecks(unittest.TestCase):
             module.deploy(config, "b" * 40)
         return [cmd for cmd in commands if cmd[:2] == ["run", "deploy"]], environments
 
+    def test_low_cost_keeps_jobs_in_the_api_unless_the_worker_is_chosen(self):
+        self.config["low_cost"] = True
+        deploys, environments = self.fake_deploy(self.config)
+        self.assertEqual(len(deploys), 4)  # no always-on worker: no extra cost
+        self.assertEqual(environments[0]["HOP_ROLE"], "all")
+        self.config["worker"] = True
+        deploys, _ = self.fake_deploy(self.config)
+        self.assertEqual(deploys[1][2], "hop-staging-worker")
+
     def test_background_jobs_run_in_a_private_always_on_worker(self):
         self.config["low_cost"] = True
+        self.config["worker"] = True
         deploys, environments = self.fake_deploy(self.config)
         api, worker = deploys[0], deploys[1]
         self.assertEqual(api[2], "hop-staging-api")
