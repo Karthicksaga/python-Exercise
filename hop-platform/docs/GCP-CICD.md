@@ -92,9 +92,11 @@ python3 -m unittest discover -s hop-platform/infra/gcp -p 'test_*.py'
 
 In GitHub Settings → Environments, create `staging` and `production`. Set these environment variables:
 
-- `HOP_DEPLOY_CONFIG`: the complete filled JSON configuration, containing no secret values.
+- `HOP_DEPLOY_CONFIG`: the complete filled JSON configuration, containing no secret values. Required for CI; the workflow has no fallback to the git-ignored `deploy.local.json`. Paste the file contents, not its path.
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`: `projects/NUMBER/locations/global/workloadIdentityPools/hop-github/providers/github`.
 - `GCP_DEPLOY_SERVICE_ACCOUNT`: `hop-deploy@PROJECT_ID.iam.gserviceaccount.com`.
+
+Missing deployment variables produce a GitHub error annotation naming the required settings before cloud authentication. Invalid JSON is rejected without printing its contents. Local manual deployments can still use `deploy.local.json`.
 
 For the Android CI builds, also set repository Actions variables `RIDER_GOOGLE_MAPS_API_KEY`, `RIDER_GOOGLE_MAP_ID`, `CAPTAIN_GOOGLE_MAPS_API_KEY`, and `CAPTAIN_GOOGLE_MAP_ID`. Use browser keys suitable for the bundled WebView origin. These public client settings are separate from backend credentials and from the environment-specific web keys in `HOP_DEPLOY_CONFIG`. Without the API keys, Android builds fail with a configuration message rather than producing an APK that silently switches providers.
 

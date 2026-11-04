@@ -200,8 +200,7 @@ jobs:
           WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           DEPLOY_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
         run: |
-          test -n "$WIF_PROVIDER" && test -n "$DEPLOY_ACCOUNT"
-          python -c 'import os,pathlib; cfg = os.environ.get("DEPLOY_CONFIG") or pathlib.Path("hop-platform/infra/gcp/deploy.local.json").read_text(); pathlib.Path(os.environ["RUNNER_TEMP"], "hop-deploy.json").write_text(cfg)'
+          python hop-platform/infra/gcp/prepare_ci_config.py
           python hop-platform/infra/gcp/deploy.py "$RUNNER_TEMP/hop-deploy.json" --validate-only
       - uses: google-github-actions/auth@v3
         with:
