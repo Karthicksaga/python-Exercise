@@ -230,7 +230,7 @@ func TestRideForOtherPersonFamilyAndFavoriteFirst(t *testing.T) {
 	if len(st["offers"].([]any)) != 1 {
 		t.Fatal("favorite did not see offer")
 	}
-	f.s.DB.Exec(ctx, "UPDATE rides SET favorite_first_until=now()-interval '1 second', dispatch_at=now()-interval '20 seconds' WHERE id=$1", rideID)
-	f.dispatch()
+	f.s.DB.Exec(ctx, "UPDATE rides SET favorite_first_until=now()-interval '1 second' WHERE id=$1", rideID)
+	f.offerTo(other, rideID)
 	require(t, f.act(other, rideID, "accept", 1, ""), 200)
 }

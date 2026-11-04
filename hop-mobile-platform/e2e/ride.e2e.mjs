@@ -2,6 +2,7 @@
 // e2e/run-local.sh starts. Place search and road routes use live services, so results can vary
 // slightly; the test reads the values the server returns instead of assuming them.
 import { test, expect } from "@playwright/test";
+import { signIn, phoneGps, state, book } from "./helpers.mjs";
 
 const RIDER = "http://127.0.0.1:5183";
 const CAPTAIN = "http://127.0.0.1:5184";
@@ -9,43 +10,6 @@ const CAPTAIN = "http://127.0.0.1:5184";
 const CAPTAIN_PHONE = process.env.HOP_E2E_CAPTAIN_PHONE || "9000000002";
 const RIDER_PHONE = process.env.HOP_E2E_RIDER_PHONE || "9000000003";
 const START = { latitude: 13.0067, longitude: 80.2206, accuracy: 10 }; // Guindy
-
-async function signIn(page, url, phone) {
-  await page.goto(url);
-  await expect(page.locator(".login-screen")).toBeVisible();
-  await page.locator("#demo-phone").fill(phone);
-  await page.getByRole("button", { name: "Send sign-in code", exact: true }).click();
-  // Development servers accept 123456; they never send an SMS.
-  await page.getByLabel("Six-digit SMS code").fill("123456");
-  await page.getByRole("button", { name: "Verify & continue", exact: true }).click();
-}
-
-// A simulated phone GPS. Chrome only reports a simulated location when it changes, but a real
-// receiver keeps reporting (with a little jitter) while the phone stands still, so this does too.
-function phoneGps(context, start) {
-  let at = { ...start }, n = 0;
-  const jitter = () => (n++ % 2 ? 1 : -1) * 0.000003; // about 30 cm
-  const timer = setInterval(() => {
-    void context.setGeolocation({ latitude: at.latitude + jitter(), longitude: at.longitude, accuracy: 10 }).catch(() => {});
-  }, 3000);
-  return {
-    // Moves the phone in small steps, as a real GPS would while driving.
-    async drive(page, to, steps = 8) {
-      const from = at;
-      for (let i = 1; i <= steps; i++) {
-        at = {
-          latitude: from.latitude + ((to.latitude - from.latitude) * i) / steps,
-          longitude: from.longitude + ((to.longitude - from.longitude) * i) / steps,
-        };
-        await context.setGeolocation({ ...at, accuracy: 10 });
-        await page.waitForTimeout(2200);
-      }
-    },
-    stop: () => clearInterval(timer),
-  };
-}
-
-const state = async (context, url) => (await context.request.get(`${url}/api/state`)).json();
 
 test("a rider books, rides, pays cash and rates; the captain accepts, drives, confirms the cash and rates", async ({ browser }) => {
   const captainCtx = await browser.newContext({ geolocation: START, permissions: ["geolocation"] });
@@ -64,17 +28,7 @@ test("a rider books, rides, pays cash and rates; the captain accepts, drives, co
   // 2. The rider books with real place search. A new rider's wallet is empty, so the ride
   //    starts on Cash instead of a request the server would refuse.
   await signIn(rider, RIDER, RIDER_PHONE);
-  await rider.getByRole("button", { name: "Where are you going?" }).click();
-  await rider.getByRole("textbox", { name: "Pickup location", exact: true }).fill("Guindy");
-  await rider.locator("[data-live-place]").first().click();
-  await rider.getByRole("textbox", { name: "Search destination" }).fill("Kotturpuram");
-  await rider.locator("[data-live-place]").first().click();
-  await expect(rider.locator(".footer-price strong")).toHaveText(/^₹\d+(\.\d{2})?$/, { timeout: 30000 });
-  const fare = (await rider.locator(".footer-price strong").innerText()).trim();
-  await rider.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(rider.getByRole("button", { name: /Payment method/ })).toContainText("Cash", { timeout: 15000 });
-  await rider.getByRole("button", { name: "Request a ride" }).click();
-  await expect(rider.getByRole("button", { name: "Cancel request" })).toBeVisible({ timeout: 15000 });
+  const fare = await book(rider, "Guindy", "Kotturpuram");
 
   // 3. The captain gets the request at the rider's fare, with no preview-only controls.
   await expect(captain.getByRole("button", { name: "Accept ride", exact: true })).toBeVisible({ timeout: 30000 });

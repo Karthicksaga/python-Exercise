@@ -36,7 +36,7 @@ func (s *Server) dispatchRoadETAs(ctx context.Context, ride string) map[string]f
 	if s.DB.QueryRow(ctx, `SELECT q.area_id::text,q.vehicle_category,q.pickup_lat,q.pickup_lng FROM rides r JOIN quotes q ON q.id=r.quote_id WHERE r.id=$1 AND r.status='requested'`, ride).Scan(&area, &category, &lat, &lng) != nil {
 		return result
 	}
-	picks, e := s.candidates(ctx, s.DB, ride, area, category, lat, lng, stageRadius[len(stageRadius)-1], 24, nil)
+	picks, e := s.candidates(ctx, s.DB, ride, area, category, lat, lng, rounds[len(rounds)-1].radius, 24, nil)
 	if e != nil || len(picks) == 0 {
 		return result
 	}
@@ -108,16 +108,28 @@ func (s *Server) dispatchRoadETAs(ctx context.Context, ride string) map[string]f
 	}
 	return result
 }
+
+// rankCandidates turns travel time into a score (minutes, lower is better) and keeps the best.
+// Free captains use road time when the router answered (it routes from where they are, so only
+// half the turnaround penalty applies), otherwise the distance estimate plus the full penalty.
+// Captains finishing a trip use their drop-off-then-drive estimate.
 func rankCandidates(picks []pick, road map[string]float64, limit int) []pick {
 	for i := range picks {
 		p := &picks[i]
-		p.eta = p.dist * 1.3 / 6.5
-		p.source = "estimate"
-		if sec, ok := road[p.id]; ok {
-			p.score += sec/60 - p.dist*1.3/6.5/60
-			p.eta = sec
-			p.source = "road"
+		if p.kind == "" {
+			p.kind = "now"
 		}
+		if p.base == 0 && p.kind == "now" {
+			p.base = p.dist * 1.3 / 6.5
+		}
+		p.eta, p.source = p.base+p.turn, "estimate"
+		if sec, ok := road[p.id]; ok && p.kind == "now" {
+			p.eta, p.source = sec+p.turn/2, "road"
+		}
+		if p.kind == "next" {
+			p.source = "next"
+		}
+		p.score = p.eta/60 + p.penalty
 	}
 	sort.SliceStable(picks, func(i, j int) bool {
 		if picks[i].score == picks[j].score {

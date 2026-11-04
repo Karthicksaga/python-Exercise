@@ -67,6 +67,8 @@ HOP_E2E_OPERATOR_PHONE=… npm run test:e2e:staging          # the same two test
   - Only a denied permission stops sharing. Watch timeouts (standing still) and a lost signal are temporary.
   - With no fix for 8 s, the tracker asks for a fresh reading. It never re-sends an old fix.
 - Captain Android app: Go online starts the native foreground service (`CaptainLocationService`, via `HopTracking` in `foregroundTracking.ts`), which keeps sharing location with the screen off and keeps reporting while parked (no minimum distance). It also registers ride alerts (`ensureRideAlerts`): requests ring on the "Ride requests" channel (`ride_request.wav`, made by `scripts/ride-request-sound.py`) and expire after 30 s. The server sends Firebase pushes as its own identity (`FCM_PROJECT_ID`, no key file).
+- Captain matching (Nov 2026): a request is offered to one captain at a time; the request screen shows "Only you have this request · N s". A "Next ride" card appears on the captain's trip screen when they're finishing a trip near a new pickup (`LiveJourney.nextRideCard`); completing the trip opens its payment first, then the next pickup. The rider's search screen says a captain is finishing a trip nearby.
+- Payment actions fetch the ride's latest version first (`LivePayment.act`): the other person may have just changed it.
 - Rider map: the last captain fix stays on screen for 30 s before the car is hidden as out of date.
 - Never leave a trip screen without a live ride behind it: the renderer would show its sample captain ("Arun Kumar") and pickup code. `LiveJourney.decorate` sends the app to payment or home, and the payment page restores itself if the renderer draws over it.
 - Booking:

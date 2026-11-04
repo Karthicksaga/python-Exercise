@@ -147,3 +147,14 @@ Production media uses `MEDIA_PROFILE_BUCKET` and `MEDIA_KYC_BUCKET` plus attache
 **Security:**
 - Client `testing`/`test_mode`/`test_bypass` flags, `X-Testing-Mode` headers and `?testing=` are ignored. Only a server with `APP_ENV=development` relaxes document checks.
 - Demo sign-in (`/auth/login?role=…`) needs `APP_ENV=development` **and** `DEMO_LOGIN=true`; production refuses to start with `DEMO_LOGIN`.
+
+
+# Captain matching (migration 038, Nov 2026)
+
+- Requests are offered in rounds, each **exclusive** to the offered captain(s) for a short window: 1 captain within 3 km (8 s), another 1 within 3 km (8 s), 2 within 6 km (10 s), 4 within 20 km (12 s), then a sweep of 4 every 10 s. In a busy zone (3+ open requests and more requests than free captains) the first two rounds offer to 2.
+- Windows shrink for captains who rarely accept (never below 5 s). A decline moves the request on at once. A captain who let a request time out can get it again later, after captains who haven't seen it; one who declined never does.
+- A captain holds at most one live offer. Requests due in the same second are matched together (best pairs first, with a swap so no request is left short when another had a spare option).
+- Ranking: road time to the pickup when the router answers, otherwise distance ×1.3 at 6.5 m/s plus a turnaround penalty for captains moving away from the pickup; then rating, recent acceptance, idle time and favourites.
+- **Next ride:** a captain within 1.2 km of their drop-off, with that drop-off within 2 km of a new pickup, can be offered it (`offer_kind: "next"` in `/api/state` offers). Accepting while on the trip returns `{ok:true,next_ride:true}`: the ride stays `requested`, held for them for 6 minutes (`next_ride_held: true`), and becomes `accepted` for them when they `complete` the current trip. The rider's ride shows `next_ride: true`, `reserved_driver_name` and `next_ride_eta_seconds`.
+- Captain offers also carry `offer_expires_at` (end of their window). Accept is honoured up to 3 s after it.
+- `GET /api/operator/dispatch-report?days=1..90&area_id=` (operator): `requests`, `matched`, `no_captain`, `cancelled_while_searching`, `still_searching`, `seconds_to_match_median`/`_p90`, `offers_per_matched_ride`, `accepted_pickup_eta_seconds`, `next_rides`, `offer_outcomes`, `eta_sources`, `by_round`.

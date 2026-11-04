@@ -43,10 +43,11 @@ var offerFrom = `
  AND (r.payment_method<>'upi' OR d.upi_id<>'') AND COALESCE(r.offered_fare_paise,q.fare_paise)+` + groupFareExtra + `>=d.minimum_fare_paise
  AND (r.favorite_first_until IS NULL OR r.favorite_first_until<=now() OR EXISTS(SELECT 1 FROM favorite_drivers f WHERE f.rider_id=r.rider_id AND f.driver_id=d.user_id))
  AND (r.reserved_until IS NULL OR r.reserved_until<=now() OR r.reserved_driver_id=d.user_id)
- AND (r.reserved_driver_id=d.user_id OR EXISTS(SELECT 1 FROM ride_offers o WHERE o.ride_id=r.id AND o.driver_id=d.user_id))
+ AND (r.reserved_driver_id=d.user_id OR EXISTS(SELECT 1 FROM ride_offers o WHERE o.ride_id=r.id AND o.driver_id=d.user_id AND (o.expires_at IS NULL OR o.expires_at>now())))
  AND 6371000*acos(least(1,greatest(-1,sin(radians(d.lat))*sin(radians(q.pickup_lat))+cos(radians(d.lat))*cos(radians(q.pickup_lat))*cos(radians(d.lng-q.pickup_lng)))))<=d.pickup_radius_meters
  AND NOT EXISTS(SELECT 1 FROM ride_declines dc WHERE dc.ride_id=r.id AND dc.driver_id=d.user_id)
- AND NOT EXISTS(SELECT 1 FROM rides busy WHERE busy.driver_id=d.user_id AND busy.status IN ('accepted','arrived','in_progress'))` + riderBusyFilter + goHomeFilter
+ AND NOT EXISTS(SELECT 1 FROM rides busy WHERE busy.driver_id=d.user_id AND busy.status IN ('accepted','arrived','in_progress')
+   AND NOT (busy.status='in_progress' AND (r.next_driver_id=d.user_id OR EXISTS(SELECT 1 FROM ride_offers nx WHERE nx.ride_id=r.id AND nx.driver_id=d.user_id AND nx.kind='next'))))` + riderBusyFilter + goHomeFilter
 
 func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 	uid := user(r).Account.ID
@@ -71,15 +72,26 @@ func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 			ride["bids"] = bids
 			var name string
 			var until time.Time
-			if s.DB.QueryRow(r.Context(), `SELECT split_part(a.name,' ',1),r.reserved_until FROM rides r JOIN accounts a ON a.id=r.reserved_driver_id WHERE r.id=$1 AND r.reserved_until>now()`, ride["id"]).Scan(&name, &until) == nil {
+			var nextRide bool
+			var eta *int
+			if s.DB.QueryRow(r.Context(), `SELECT split_part(a.name,' ',1),r.reserved_until,r.next_driver_id IS NOT NULL,
+ (SELECT o.eta_seconds FROM ride_offers o WHERE o.ride_id=r.id AND o.driver_id=r.next_driver_id)
+ FROM rides r JOIN accounts a ON a.id=r.reserved_driver_id WHERE r.id=$1 AND r.reserved_until>now()`, ride["id"]).Scan(&name, &until, &nextRide, &eta) == nil {
 				ride["reserved_driver_name"] = name
 				ride["reserved_until"] = until
+				// Held for a captain finishing a nearby trip: they come here right after.
+				if nextRide {
+					ride["next_ride"] = true
+					if eta != nil {
+						ride["next_ride_eta_seconds"] = *eta
+					}
+				}
 			}
 		}
 		if ride["mine"] == true && ride["status"] == "requested" {
 			var n, stage int
 			if s.DB.QueryRow(r.Context(), "SELECT (SELECT count(*) FROM ride_offers WHERE ride_id=$1), dispatch_stage FROM rides WHERE id=$1", ride["id"]).Scan(&n, &stage) == nil {
-				ride["search_radius_m"] = stageRadius[max(0, min(stage, len(stageRadius))-1)]
+				ride["search_radius_m"] = roundRadius(stage)
 				ride["dispatch_stage"] = stage
 				ride["notified_drivers"] = n
 			}
@@ -116,7 +128,10 @@ func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 	}
 	// The SQL proximity filter is an inexpensive candidate filter; acceptance repeats exact distance validation.
 	offers, e := jsonRows(r.Context(), s.DB, `SELECT r.id,r.version,r.group_id,r.share_state,q.pickup_label,q.dropoff_label,q.pickup_lat,q.pickup_lng,q.dropoff_lat,q.dropoff_lng,q.meters,q.seconds,COALESCE(r.offered_fare_paise,q.fare_paise)+`+groupFareExtra+` AS fare_paise,q.fare_paise AS quoted_fare_paise,r.offered_fare_paise IS NOT NULL AND r.share_state='none' AS negotiated,
- (SELECT amount_paise FROM ride_bids b WHERE b.ride_id=r.id AND b.driver_id=$1) AS my_bid_paise,q.trip_type,q.stops,q.rental_hours,q.vehicle_category,q.pink,q.route_geometry AS route,r.payment_method,r.expires_at`+offerFrom+` ORDER BY r.created_at LIMIT 20`, uid)
+ (SELECT amount_paise FROM ride_bids b WHERE b.ride_id=r.id AND b.driver_id=$1) AS my_bid_paise,q.trip_type,q.stops,q.rental_hours,q.vehicle_category,q.pink,q.route_geometry AS route,r.payment_method,r.expires_at,
+ COALESCE((SELECT o.kind FROM ride_offers o WHERE o.ride_id=r.id AND o.driver_id=$1),'now') AS offer_kind,
+ (SELECT o.expires_at FROM ride_offers o WHERE o.ride_id=r.id AND o.driver_id=$1) AS offer_expires_at,
+ COALESCE(r.next_driver_id=$1,false) AS next_ride_held`+offerFrom+` ORDER BY r.created_at LIMIT 20`, uid)
 	if e != nil {
 		dbError(w, e)
 		return
@@ -490,7 +505,7 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var offered bool
-		if e = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM ride_offers WHERE ride_id=$1 AND driver_id=$2) OR EXISTS(SELECT 1 FROM rides WHERE id=$1 AND reserved_driver_id=$2)", id, uid).Scan(&offered); e != nil {
+		if e = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM ride_offers WHERE ride_id=$1 AND driver_id=$2 AND (expires_at IS NULL OR expires_at>now()-interval '"+offerGrace+"')) OR EXISTS(SELECT 1 FROM rides WHERE id=$1 AND reserved_driver_id=$2)", id, uid).Scan(&offered); e != nil {
 			dbError(w, e)
 			return
 		}
@@ -505,7 +520,22 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if busy {
-			fail(w, 409, "Finish your active ride first")
+			// A captain finishing a nearby trip may take this as their next ride: it is held for
+			// them and becomes theirs when they complete the current trip.
+			if queued, e := s.holdNextRide(ctx, tx, id, uid, rider); e != nil {
+				dbError(w, e)
+				return
+			} else if !queued {
+				fail(w, 409, "Finish your active ride first")
+				return
+			}
+			if e = tx.Commit(ctx); e != nil {
+				dbError(w, e)
+				return
+			}
+			s.wake(rider)
+			s.wake(uid)
+			write(w, 200, map[string]bool{"ok": true, "next_ride": true})
 			return
 		}
 		driver = uid
@@ -828,6 +858,10 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 	if e == nil && next == "completed" {
 		e = ensureTripStatement(ctx, tx, id)
 	}
+	var nextRider string
+	if e == nil && next == "completed" {
+		nextRider, e = startNextRide(ctx, tx, uid)
+	}
 	if e == nil {
 		e = audit(ctx, tx, uid, id, next, map[string]string{"reason": input.Reason})
 	}
@@ -843,6 +877,7 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 	}
 	s.wake(rider)
 	s.wake(driver)
+	s.wake(nextRider)
 	slog.Info("ride status transitioned", "ride_id", id, "status", next, "actor_id", uid)
 	write(w, 200, map[string]bool{"ok": true})
 }
@@ -1080,7 +1115,12 @@ func (s *Server) decline(w http.ResponseWriter, r *http.Request) {
 		_, e = tx.Exec(ctx, "DELETE FROM ride_bids WHERE ride_id=$1 AND driver_id=$2", rideID, uid)
 	}
 	if e == nil {
-		_, e = tx.Exec(ctx, "UPDATE ride_offers SET outcome='declined' WHERE ride_id=$1 AND driver_id=$2 AND outcome IS NULL", rideID, uid)
+		_, e = tx.Exec(ctx, "UPDATE ride_offers SET outcome='declined',expires_at=LEAST(expires_at,now()) WHERE ride_id=$1 AND driver_id=$2 AND outcome IS NULL", rideID, uid)
+		if e == nil {
+			// Nobody else is holding this request: offer it to the next captain now, not after the wait.
+			_, e = tx.Exec(ctx, `UPDATE rides SET dispatch_due=now() WHERE id=$1 AND status='requested'
+ AND NOT EXISTS(SELECT 1 FROM ride_offers o WHERE o.ride_id=$1 AND o.outcome IS NULL AND o.expires_at>now())`, rideID)
+		}
 		if e == nil {
 			e = audit(ctx, tx, uid, rideID, "driver_declined", nil)
 		}
@@ -1093,4 +1133,56 @@ func (s *Server) decline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, 200, map[string]bool{"ok": true})
+}
+
+// holdNextRide reserves a requested ride for a captain who is on a trip, when it was offered to
+// them as a next ride. It reports false when this offer isn't a next-ride offer or they can't take it.
+func (s *Server) holdNextRide(ctx context.Context, tx pgx.Tx, rideID, uid, rider string) (bool, error) {
+	var kind string
+	var onTrip bool
+	if e := tx.QueryRow(ctx, `SELECT COALESCE((SELECT kind FROM ride_offers WHERE ride_id=$1 AND driver_id=$2),''),
+ EXISTS(SELECT 1 FROM rides WHERE driver_id=$2 AND status='in_progress' AND group_id IS NULL)
+ AND NOT EXISTS(SELECT 1 FROM rides WHERE driver_id=$2 AND status IN ('accepted','arrived'))`, rideID, uid).Scan(&kind, &onTrip); e != nil {
+		return false, e
+	}
+	if kind != "next" || !onTrip {
+		return false, nil
+	}
+	// A hold that lapsed (or a ride that moved on) must not block this one.
+	if _, e := tx.Exec(ctx, "UPDATE rides SET next_driver_id=NULL WHERE next_driver_id=$1 AND id<>$2 AND (status<>'requested' OR reserved_until<=now())", uid, rideID); e != nil {
+		return false, e
+	}
+	tag, e := tx.Exec(ctx, `UPDATE rides SET next_driver_id=$2,reserved_driver_id=$2,reserved_until=now()+interval '`+nextHold+`',
+ expires_at=GREATEST(expires_at,now()+interval '`+nextHold+`'+interval '1 minute'),version=version+1,updated_at=now()
+ WHERE id=$1 AND status='requested' AND group_id IS NULL
+ AND NOT EXISTS(SELECT 1 FROM rides n WHERE n.next_driver_id=$2 AND n.id<>$1 AND n.status='requested' AND n.reserved_until>now())`, rideID, uid)
+	if e != nil || tag.RowsAffected() == 0 {
+		return false, e
+	}
+	if e = audit(ctx, tx, uid, rideID, "next_ride_held", map[string]string{}); e != nil {
+		return false, e
+	}
+	return true, notify(ctx, tx, rider, "ride", "Captain found", "Your Captain is finishing a trip nearby and will come to you right after.")
+}
+
+// startNextRide gives a captain who just completed a trip the next ride held for them, if any.
+// It returns that ride's rider, to wake their app.
+func startNextRide(ctx context.Context, tx pgx.Tx, uid string) (string, error) {
+	var id, rider string
+	e := tx.QueryRow(ctx, `SELECT id::text,rider_id::text FROM rides WHERE next_driver_id=$1 AND status='requested'
+ AND reserved_until>now() AND expires_at>now() FOR UPDATE`, uid).Scan(&id, &rider)
+	if errors.Is(e, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if e != nil {
+		return "", e
+	}
+	if _, e = tx.Exec(ctx, `UPDATE rides SET status='accepted',driver_id=$2,reserved_driver_id=NULL,reserved_until=NULL,
+ version=version+1,updated_at=now() WHERE id=$1`, id, uid); e != nil {
+		return "", e
+	}
+	if e = audit(ctx, tx, uid, id, "accepted", map[string]string{"next_ride": "true"}); e != nil {
+		return "", e
+	}
+	return rider, notifyRideStatus(ctx, tx, id, "accepted", uid, rider, uid)
 }
