@@ -359,6 +359,24 @@ def store_secret(project: str, name: str, data: str, sa_api_email: str) -> str:
     return ref
 
 
+def setup_media_buckets(project: str, region: str, prefix: str, sa_api: str) -> tuple[str, str]:
+    """Private buckets for profile photos and captain documents (names match deploy.py's staging default).
+    Public access is blocked, access is per-bucket IAM only, and only the API service account can use them."""
+    print_step("Setting up private media storage")
+    names = (f"{project}-{prefix}-portraits", f"{project}-{prefix}-kyc")
+    for name in names:
+        code, _ = gcloud(["storage", "buckets", "describe", f"gs://{name}", "--project", project], check=False)
+        if code != 0:
+            gcloud(["storage", "buckets", "create", f"gs://{name}", "--project", project, "--location", region,
+                    "--uniform-bucket-level-access", "--public-access-prevention", "--default-storage-class", "STANDARD"])
+            print_ok(f"Created gs://{name}")
+        else:
+            print_ok(f"gs://{name} already exists")
+        gcloud(["storage", "buckets", "add-iam-policy-binding", f"gs://{name}", "--project", project,
+                f"--member=serviceAccount:{sa_api}", "--role=roles/storage.objectAdmin"])
+    return names
+
+
 def precreate_cloud_run_origins(project: str, region: str, prefix: str, sa_web: str) -> dict[str, str]:
     print_step("Pre-creating Cloud Run placeholder gateways to acquire live HTTPS origins")
     origins = {}
@@ -401,6 +419,7 @@ def main():
     parser.add_argument("--prefix", default="hop-staging", help="Cloud Run service prefix (default: hop-staging)")
     parser.add_argument("--redis-type", choices=["vm", "memorystore"], default="vm", help="Redis deployment type: 'vm' (~$6.50/mo) or 'memorystore' (~$35/mo)")
     parser.add_argument("--maps-key", default="AIzaSyCCa4firTw6fA47CChTyhgpkKyBQrD0fkE", help="Google Maps Browser API Key")
+    parser.add_argument("--media", action="store_true", help="Only create the private media buckets for an existing project, then stop")
     parser.add_argument("--map-id", default="95dc318d6886956642a639bc", help="Google Maps JavaScript Map ID")
     args = parser.parse_args()
 
@@ -423,6 +442,9 @@ def main():
 
     # 1. Auth & set project
     check_auth()
+    if args.media:
+        setup_media_buckets(project, region, prefix, f"hop-api@{project}.iam.gserviceaccount.com")
+        return
     gcloud(["config", "set", "project", project], check=True)
     check_billing(project)
 
@@ -459,10 +481,13 @@ def main():
     sec_session = store_secret(project, "hop-session-key", session_key, sa_emails["api"])
     sec_oidc = store_secret(project, "hop-oidc-secret", oidc_secret, sa_emails["api"])
 
-    # 9. Cloud Run Origins
+    # 9. Private media storage (profile photos, captain documents)
+    setup_media_buckets(project, region, prefix, sa_emails["api"])
+
+    # 10. Cloud Run Origins
     origins = precreate_cloud_run_origins(project, region, prefix, sa_emails["web"])
 
-    # 10. Write deploy.local.json
+    # 11. Write deploy.local.json
     print_step("Generating populated deploy.local.json (Low-Cost Optimized)")
     deploy_config = {
         "project_id": project,

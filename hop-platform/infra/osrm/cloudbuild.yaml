@@ -1,0 +1,14 @@
+# Builds the routing image. Run it when you want fresher map data (it is not part of every deploy):
+#   gcloud builds submit infra/osrm --config=infra/osrm/cloudbuild.yaml \
+#     --substitutions=_REGION=asia-south1,_REPOSITORY=hop-containers,_DATA=$(date +%Y%m%d)
+# then set "osrm_image" in deploy.local.json to the printed digest.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: [build, --build-arg, THREADS=16, -t, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/osrm:${_DATA}', .]
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/osrm:${_DATA}'
+options:
+  machineType: E2_HIGHCPU_32  # preprocessing South India needs more than 11 GB of RAM
+  diskSizeGb: 100
+  logging: CLOUD_LOGGING_ONLY
+timeout: 3600s
