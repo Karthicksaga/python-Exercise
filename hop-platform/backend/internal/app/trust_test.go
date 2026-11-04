@@ -485,3 +485,72 @@ func TestRegionCatalogZones(t *testing.T) {
 		t.Fatalf("catalogue zone must start inactive: %v %v", active, e)
 	}
 }
+
+// City limits come with each district; live zones may not overlap; the summary feeds the Overview.
+func TestZoneCityLimitsOverlapAndSummary(t *testing.T) {
+	f := setup(t)
+	rider, op := f.actor("rider", false), f.actor("operator", false)
+	code, out := f.call(op, "GET", "/api/operator/regions?state=Tamil%20Nadu", nil)
+	require(t, code, 200)
+	byID := map[string]map[string]any{}
+	for _, r := range out["regions"].([]any) {
+		row := r.(map[string]any)
+		byID[row["id"].(string)] = row
+	}
+	madurai, dindigul := byID["tn-madurai"], byID["tn-dindigul"]
+	if madurai["city_source"] != "boundary" || madurai["city_min_lat"].(float64) < madurai["min_lat"].(float64) || madurai["city_max_lat"].(float64) > madurai["max_lat"].(float64) {
+		t.Fatalf("Madurai city limits should be an OSM boundary inside the district: %v", madurai)
+	}
+	if dindigul["city_source"] != "approx" {
+		t.Fatalf("Dindigul city limits should be marked approximate: %v", dindigul)
+	}
+	zone := func(r map[string]any, prefix string, active bool) map[string]any {
+		return map[string]any{"name": r["district"], "state": "Tamil Nadu", "catalog_id": r["id"],
+			"min_lat": r[prefix+"min_lat"], "max_lat": r[prefix+"max_lat"], "min_lng": r[prefix+"min_lng"], "max_lng": r[prefix+"max_lng"],
+			"base_paise": 2000, "per_km_paise": 1000, "minimum_paise": 2500, "active": active, "approval_reference": "TN-TEST-0001"}
+	}
+	code, created := f.call(op, "POST", "/api/operator/areas", zone(madurai, "", true))
+	require(t, code, 200)
+	// Madurai's district box reaches Dindigul town, so Dindigul can't open bookings while it does…
+	code, clash := f.call(op, "POST", "/api/operator/areas", zone(dindigul, "city_", true))
+	require(t, code, 409)
+	if !strings.Contains(fmt.Sprint(clash["error"]), "Madurai") {
+		t.Fatalf("overlap message should name the live zone: %v", clash)
+	}
+	// …saving it inactive is still allowed…
+	code, draft := f.call(op, "POST", "/api/operator/areas", zone(dindigul, "city_", false))
+	require(t, code, 200)
+	// …and once Madurai is shrunk to its city limits, Dindigul can open.
+	shrunk := zone(madurai, "city_", true)
+	shrunk["id"] = created["id"]
+	code, _ = f.call(op, "POST", "/api/operator/areas", shrunk)
+	require(t, code, 200)
+	open := zone(dindigul, "city_", true)
+	open["id"] = draft["id"]
+	code, _ = f.call(op, "POST", "/api/operator/areas", open)
+	require(t, code, 200)
+
+	code, _ = f.call(rider, "GET", "/api/operator/summary", nil)
+	require(t, code, 403)
+	code, out = f.call(op, "GET", "/api/operator/summary", nil)
+	require(t, code, 200)
+	sum := out["summary"].(map[string]any)
+	for _, k := range []string{"sos_active", "incidents_open", "drivers_pending", "changes_pending", "expiring_7d", "payouts_requested", "payouts_requested_paise", "lost_open", "active_rides"} {
+		if _, ok := sum[k]; !ok {
+			t.Fatalf("summary is missing %s: %v", k, sum)
+		}
+	}
+	found := false
+	for _, a := range out["areas"].([]any) {
+		row := a.(map[string]any)
+		if row["name"] == "Madurai" {
+			found = true
+			if fmt.Sprint(row["categories"]) != "[bike]" || row["active"] != true {
+				t.Fatalf("Madurai should be live with bike only: %v", row)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("summary areas should list Madurai")
+	}
+}

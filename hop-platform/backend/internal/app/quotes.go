@@ -131,6 +131,7 @@ type routeOption struct {
 }
 
 // routesVia returns the best route first and, when alternatives is set, up to two more.
+// Seconds are the router's free-flow time; callers convert them with trafficAdjustDuration exactly once.
 func (s *Server) routesVia(ctx context.Context, points []Point, maxMeters, maxSeconds float64, simplified, alternatives bool) ([]routeOption, error) {
 	if s.Config.RoutingURL == "" {
 		return nil, fmt.Errorf("routing is not configured")
@@ -199,8 +200,8 @@ func (s *Server) routesVia(ctx context.Context, points []Point, maxMeters, maxSe
 			}
 			continue
 		}
-		tCalibrated := float64(trafficAdjustDuration(d, t, "", false))
-		out = append(out, routeOption{int64(math.Ceil(d)), int64(math.Ceil(tCalibrated)), geometry})
+		// Raw free-flow seconds: each caller applies trafficAdjustDuration once, with its vehicle category.
+		out = append(out, routeOption{int64(math.Ceil(d)), int64(math.Ceil(t)), geometry})
 	}
 	return out, nil
 }
@@ -227,6 +228,9 @@ func (s *Server) routeAlternatives(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		fail(w, 503, "Routes are unavailable right now")
 		return
+	}
+	for i := range routes {
+		routes[i].Seconds = trafficAdjustDuration(float64(routes[i].Meters), float64(routes[i].Seconds), "", false)
 	}
 	write(w, 200, map[string]any{"routes": routes})
 }

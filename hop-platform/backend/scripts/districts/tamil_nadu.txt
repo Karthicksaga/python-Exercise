@@ -1,5 +1,5 @@
 Ariyalur
-Chengalpattu
+Chengalpattu > Chengalpattu|Tambaram
 Chennai
 Coimbatore
 Cuddalore
@@ -7,32 +7,32 @@ Dharmapuri
 Dindigul
 Erode
 Kallakurichi
-Kanchipuram|Kancheepuram
-Kanniyakumari
+Kanchipuram|Kancheepuram > Kanchipuram|Kancheepuram
+Kanniyakumari > Nagercoil
 Karur
 Krishnagiri
 Madurai
 Mayiladuthurai
 Nagapattinam
 Namakkal
-Nilgiris
+Nilgiris > Udhagamandalam|Ooty
 Perambalur
 Pudukkottai
 Ramanathapuram
 Ranipet
 Salem
-Sivaganga|Sivagangai
+Sivaganga|Sivagangai > Sivaganga|Karaikudi
 Tenkasi
 Thanjavur
 Theni
-Thoothukudi
-Tiruchirappalli
+Thoothukudi > Thoothukudi|Tuticorin
+Tiruchirappalli > Tiruchirappalli|Trichy
 Tirunelveli
-Tirupathur|Tirupattur
+Tirupathur|Tirupattur > Tirupattur|Tirupathur
 Tiruppur
-Tiruvallur|Thiruvallur
+Tiruvallur|Thiruvallur > Tiruvallur|Thiruvallur|Avadi
 Tiruvannamalai
-Tiruvarur|Thiruvarur
+Tiruvarur|Thiruvarur > Tiruvarur|Thiruvarur
 Vellore
 Viluppuram
 Virudhunagar

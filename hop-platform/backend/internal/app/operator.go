@@ -94,6 +94,24 @@ func (s *Server) saveArea(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(ctx)
+	if a.Active {
+		// Two live zones covering the same streets would give riders there an ambiguous zone.
+		// The transaction lock makes zone activations take turns, so two can't race past this check.
+		var clash string
+		if _, e = tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtext('areas.activation'))"); e == nil {
+			e = tx.QueryRow(ctx, `SELECT COALESCE((SELECT name FROM areas WHERE active AND id::text<>$1
+ AND min_lat<$3 AND max_lat>$2 AND min_lng<$5 AND max_lng>$4 ORDER BY name LIMIT 1),'')`,
+				a.ID, a.MinLat, a.MaxLat, a.MinLng, a.MaxLng).Scan(&clash)
+		}
+		if e != nil {
+			dbError(w, e)
+			return
+		}
+		if clash != "" {
+			fail(w, 409, "This zone overlaps "+clash+", which is taking bookings. Shrink it before opening bookings.")
+			return
+		}
+	}
 	if a.ID == "" {
 		e = tx.QueryRow(ctx, `INSERT INTO areas(name,state,min_lat,max_lat,min_lng,max_lng,base_paise,per_km_paise,minimum_paise,active,approval_reference,catalog_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULLIF($12,'')) RETURNING id`, a.Name, a.State, a.MinLat, a.MaxLat, a.MinLng, a.MaxLng, a.Base, a.PerKM, a.Minimum, a.Active, a.Approval, a.CatalogID).Scan(&a.ID)
 	} else {
@@ -130,6 +148,7 @@ func (s *Server) operatorRegions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, e := jsonRows(r.Context(), s.DB, `SELECT c.id,c.state,c.district,c.min_lat,c.max_lat,c.min_lng,c.max_lng,c.centre_lat,c.centre_lng,c.source,
+ c.city,c.city_source,c.city_min_lat,c.city_max_lat,c.city_min_lng,c.city_max_lng,
  a.id AS area_id,a.name AS area_name,COALESCE(a.active,false) AS area_active
  FROM region_catalog c LEFT JOIN areas a ON a.catalog_id=c.id
  WHERE $1='' OR c.state=$1 ORDER BY c.state,c.district`, strings.TrimSpace(r.URL.Query().Get("state")))
@@ -238,4 +257,54 @@ func (s *Server) reviewIncident(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, 200, map[string]bool{"ok": true})
+}
+
+// operatorSummary returns the counts behind the console's Overview "Needs attention" list and
+// zone table in one round trip. Each count uses the same rule as the screen it links to.
+func (s *Server) operatorSummary(w http.ResponseWriter, r *http.Request) {
+	if !operator(w, r) {
+		return
+	}
+	ctx := r.Context()
+	var sum struct {
+		SOSActive      int     `json:"sos_active"`
+		IncidentsOpen  int     `json:"incidents_open"`
+		DriversPending int     `json:"drivers_pending"`
+		OldestPending  *string `json:"oldest_pending_at"`
+		ChangesPending int     `json:"changes_pending"`
+		Expiring7      int     `json:"expiring_7d"`
+		PayoutsWaiting int     `json:"payouts_requested"`
+		PayoutsPaise   int64   `json:"payouts_requested_paise"`
+		LostOpen       int     `json:"lost_open"`
+		ActiveRides    int     `json:"active_rides"`
+	}
+	e := s.DB.QueryRow(ctx, `SELECT
+ (SELECT count(*) FROM sos_events x LEFT JOIN incidents i ON i.id=x.incident_id WHERE COALESCE(i.status,'open')<>'closed'),
+ (SELECT count(*) FROM incidents WHERE status<>'closed'),
+ (SELECT count(*) FROM drivers WHERE status='pending'),
+ (SELECT to_char(min(submitted_at) AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM drivers WHERE status='pending'),
+ (SELECT count(*) FROM vehicle_change_requests WHERE status='pending')+(SELECT count(*) FROM area_change_requests WHERE status='pending'),
+ (SELECT count(*) FROM drivers WHERE status='approved' AND LEAST(license_expires,insurance_expires) <= (now() AT TIME ZONE 'Asia/Kolkata')::date + 7),
+ (SELECT count(*) FROM driver_payouts WHERE status='requested'),
+ (SELECT COALESCE(sum(amount_paise),0) FROM driver_payouts WHERE status='requested'),
+ (SELECT count(*) FROM lost_items WHERE status='open'),
+ (SELECT count(*) FROM rides WHERE status IN ('requested','accepted','arrived','in_progress'))`).Scan(
+		&sum.SOSActive, &sum.IncidentsOpen, &sum.DriversPending, &sum.OldestPending, &sum.ChangesPending,
+		&sum.Expiring7, &sum.PayoutsWaiting, &sum.PayoutsPaise, &sum.LostOpen, &sum.ActiveRides)
+	if e != nil {
+		dbError(w, e)
+		return
+	}
+	areas, e := jsonRows(ctx, s.DB, `SELECT a.id,a.name,a.state,a.active,
+ COALESCE((SELECT array_agg(p.category ORDER BY array_position(ARRAY['bike','auto','mini','sedan','suv'],p.category))
+   FROM area_vehicle_pricing p WHERE p.area_id=a.id AND p.enabled),'{}') AS categories,
+ (SELECT count(*) FROM drivers d WHERE d.area_id=a.id AND d.online AND d.status='approved') AS captains_online,
+ (SELECT o.multiplier FROM surge_overrides o WHERE o.area_id=a.id AND o.ends_at>now() ORDER BY o.multiplier DESC LIMIT 1) AS surge_multiplier,
+ (SELECT o.reason FROM surge_overrides o WHERE o.area_id=a.id AND o.ends_at>now() ORDER BY o.multiplier DESC LIMIT 1) AS surge_reason
+ FROM areas a ORDER BY a.active DESC,a.state,a.name`)
+	if e != nil {
+		dbError(w, e)
+		return
+	}
+	write(w, 200, map[string]any{"summary": sum, "areas": areas})
 }

@@ -114,7 +114,46 @@ func run() error {
 		return e
 	}
 	defer s.Close()
-	httpServer := &http.Server{Addr: config.Address, Handler: s.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
+	role, e := serviceRole()
+	if e != nil {
+		return e
+	}
+	handler := s.Handler()
+	if role == "worker" {
+		// The worker serves only health checks; Cloud Run needs a listening port.
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+		mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+		handler = mux
+	}
+	httpServer := &http.Server{Addr: config.Address, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
+	if role != "worker" {
+		// Each API instance listens for database change signals to wake its own live streams.
+		go s.RunEvents(ctx)
+	}
+	if role != "api" {
+		runWorker(ctx, s, config)
+	}
+	slog.Info("service role", "role", role)
+	errors := make(chan error, 1)
+	go func() { slog.Info("API listening", "address", config.Address); errors <- httpServer.ListenAndServe() }()
+	select {
+	case <-ctx.Done():
+		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return httpServer.Shutdown(shutdown)
+	case e := <-errors:
+		if e == http.ErrServerClosed {
+			return nil
+		}
+		return e
+	}
+}
+
+// runWorker starts the background jobs: ride expiry, scheduled and staged dispatch, push delivery,
+// document compliance and media cleanup. They coordinate through database leases, so they are safe
+// on several instances, but one worker instance is enough.
+func runWorker(ctx context.Context, s *app.Server, config app.Config) {
 	go func() {
 		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
@@ -142,21 +181,20 @@ func run() error {
 	}
 	go s.RunMediaCleanup(ctx)
 	go s.RunCompliance(ctx)
-	go s.RunEvents(ctx)
 	go s.RunPush(ctx)
 	go s.RunDispatch(ctx, func(e error) { slog.Error("staged dispatch failed", "error", e) })
-	errors := make(chan error, 1)
-	go func() { slog.Info("API listening", "address", config.Address); errors <- httpServer.ListenAndServe() }()
-	select {
-	case <-ctx.Done():
-		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		return httpServer.Shutdown(shutdown)
-	case e := <-errors:
-		if e == http.ErrServerClosed {
-			return nil
-		}
-		return e
+}
+
+// serviceRole picks what this process runs: "api" (HTTP only), "worker" (background jobs only)
+// or "all" (both, the default for local development and single-service deploys).
+func serviceRole() (string, error) {
+	switch role := os.Getenv("HOP_ROLE"); role {
+	case "", "all":
+		return "all", nil
+	case "api", "worker":
+		return role, nil
+	default:
+		return "", fmt.Errorf("HOP_ROLE must be api, worker or all")
 	}
 }
 func startupMigrationsEnabled() (bool, error) {
