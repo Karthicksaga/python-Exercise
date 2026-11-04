@@ -67,7 +67,7 @@ func (s *Server) createPaymentOrder(w http.ResponseWriter, r *http.Request) {
 		fail(w, 409, "You can pay online once the trip has started")
 		return
 	}
-	if payStatus != "unconfirmed" {
+	if payStatus != "unconfirmed" && payStatus != "driver_reported_unpaid" {
 		fail(w, 409, "This trip's payment is already settled or under review")
 		return
 	}

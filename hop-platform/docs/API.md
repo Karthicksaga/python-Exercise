@@ -25,8 +25,9 @@ All business endpoints are same-origin JSON. Unsafe requests require `Content-Ty
 | GET /api/drivers/earnings | Driver | Daily, current-week/month and all-time completed-fare totals plus the 50 most recent completed ride receipts |
 | POST /api/incidents | Ride participant | `{ride_id,message}` |
 | GET /api/operator | Operator | Areas, reviews, incidents and recent audit events |
-| POST /api/operator/areas | Operator | Create/update area, paise pricing and activation reference. Optional `catalog_id` links it to a catalogue district (one zone per district; 409 names the existing zone) |
-| GET /api/operator/regions?state= | Operator | District catalogue (migration 035, OpenStreetMap ODbL bounds) with `area_id`/`area_name`/`area_active` of the zone using each district |
+| POST /api/operator/areas | Operator | Create/update area, paise pricing and activation reference. Optional `catalog_id` links it to a catalogue district (one zone per district; 409 names the existing zone). Opening bookings (`active: true`) is refused with 409 when the box overlaps another live zone; inactive zones may overlap |
+| GET /api/operator/regions?state= | Operator | District catalogue (migration 035, OpenStreetMap ODbL bounds) with `area_id`/`area_name`/`area_active` of the zone using each district plus city limits (migration 036): `city`, `city_source` (`boundary` = OSM city boundary, `approx` = box around the city centre, null = none) and `city_min_lat`…`city_max_lng` |
+| GET /api/operator/summary | Operator | Overview counts in one call: `summary` (`sos_active`, `incidents_open`, `drivers_pending`, `oldest_pending_at`, `changes_pending`, `expiring_7d`, `payouts_requested`, `payouts_requested_paise`, `lost_open`, `active_rides`) and `areas` (`categories` enabled, `captains_online`, live `surge_multiplier`/`surge_reason`) |
 | POST /api/operator/pricing | Operator | Configure and enable `auto`, `mini`, `sedan`, or `suv` pricing for an area |
 | POST /api/operator/drivers/{id} | Operator, not self | `{status:approved|suspended,note}` |
 | POST /api/operator/incidents/{id} | Operator | `{status:reviewing|closed,resolution}` |
@@ -41,7 +42,9 @@ Driver earnings are calculated from completed ride fares with zero platform comm
 
 `POST /api/quotes` returns the selected route as `route: [{lat,lng}, ...]` in route order. The geometry is saved with the quote and included in participant ride objects from `GET /api/state` and eligible driver offers, so clients can continue drawing the same road route after booking. It is routing-provider geometry, not a straight line; local development uses synthetic fixture geometry and must not be presented as real navigation.
 
-Actions: `accept`, `arrive`, `start`, `complete`, `cancel`, `payment_received`, `payment_disputed`. `version` must match the latest trip version. A 409 requires refreshing the trip, not blindly replaying an action. Driver acceptance checks approval, document validity, area, online status, server location age ≤60 seconds, distance ≤3 km, and no active assignment. UPI requests require a driver UPI ID.
+Actions: `accept`, `arrive`, `start`, `complete`, `cancel`, `payment_received`, `payment_disputed`, `cash_paid`, `payment_not_received`. `version` must match the latest trip version. A 409 requires refreshing the trip, not blindly replaying an action. Driver acceptance checks approval, document validity, area, online status, server location age ≤60 seconds, distance ≤3 km, and no active assignment. UPI requests require a driver UPI ID.
+
+Cash and direct UPI (Nov 2026): the rider's `cash_paid` sets `rider_reported_paid`, which lifts the booking block (`402 payment_required`). The Captain's `payment_not_received` sets `driver_reported_unpaid`, which keeps the block; the rider may then pay by Wallet or online, or dispute. The Captain's `payment_received` settles any of these. Only `paid_online`, `driver_reported_received` and `rider_reported_paid` let the rider book again.
 
 `start` requires the rider's six-digit `pickup_code`. The code is only returned to its rider while accepted/arrived. Five wrong attempts lock that ride's start action; cancellation/support remains possible. Never log or embed pickup codes in analytics.
 

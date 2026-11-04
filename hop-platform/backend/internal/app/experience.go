@@ -72,6 +72,7 @@ func (s *Server) estimates(w http.ResponseWriter, r *http.Request) {
 		fail(w, 503, "A road quote is unavailable. Please try again later")
 		return
 	}
+	seconds = trafficAdjustDuration(float64(meters), float64(seconds), "", false)
 	rows, e := s.DB.Query(r.Context(), "SELECT category,base_paise,per_km_paise,minimum_paise,stop_fee_paise FROM area_vehicle_pricing WHERE area_id=$1 AND enabled", in.AreaID)
 	if e != nil {
 		dbError(w, e)

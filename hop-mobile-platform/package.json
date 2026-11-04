@@ -10,6 +10,8 @@
     "build:rider": "npm run build -w @hop-mobile/rider",
     "build:captain": "npm run build -w @hop-mobile/captain",
     "build": "npm run build:rider && npm run build:captain",
+    "test:e2e": "bash e2e/run-local.sh",
+    "test:e2e:staging": "bash e2e/run-staging.sh",
     "android:rider": "node scripts/android.mjs rider",
     "android:captain": "node scripts/android.mjs captain",
     "typecheck": "tsc --noEmit -p apps/rider && tsc --noEmit -p apps/captain",
@@ -28,9 +30,12 @@
     "@capacitor/core": "^8.5.3",
     "@capacitor/filesystem": "^8.1.5",
     "@capacitor/geolocation": "^8.2.4",
+    "@capacitor/google-maps": "^8.0.1",
     "@capacitor/push-notifications": "^8.1.3",
     "@capacitor/share": "^8.0.3",
+    "@maplibre/maplibre-gl-leaflet": "0.1.3",
     "leaflet": "^1.9.4",
+    "maplibre-gl": "4.7.1",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {

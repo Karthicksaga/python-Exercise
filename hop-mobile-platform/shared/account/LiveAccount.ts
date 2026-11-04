@@ -799,13 +799,13 @@ export class LiveAccount {
         `<div class="empty-state" style="padding:16px 10px 12px">` +
         icon("shield") +
         `<h2>RideCheck™ Safety Monitor</h2>` +
-        `<p style="margin-top:8px">Hop monitors trip telemetry in the background. If your ride experiences an unexpected prolonged stop, anomaly, or route deviation, Hop automatically checks in to verify your safety.</p>` +
+        `<p style="margin-top:8px">While your trip is under way and the Hop app is open, Hop watches the captain's live GPS. If the ride leaves the planned route for 45 seconds, or stops for 4 minutes away from your destination, the map asks whether everything is okay.</p>` +
         `</div>` +
         `<div class="notice-box" style="margin:14px 0 18px">` +
-        `<strong>How RideCheck protects you:</strong><br/>` +
-        `• Real-time GPS and stationary vehicle detection.<br/>` +
-        `• Proactive safety check-in prompt during unexpected delays.<br/>` +
-        `• Rapid escalation to the Hop 24/7 safety team if no response.` +
+        `<strong>How RideCheck works:</strong><br/>` +
+        `• It uses only the captain's measured GPS position.<br/>` +
+        `• The check-in stays on screen until you answer: you're fine, share your trip, or get help.<br/>` +
+        `• Get help raises an SOS with the Hop operations team. It doesn't call emergency services.` +
         `</div>` +
         `<div style="display:flex;flex-direction:column;gap:10px">` +
         `<button class="primary" data-action="close-modal" style="min-height:44px">Understood</button>` +

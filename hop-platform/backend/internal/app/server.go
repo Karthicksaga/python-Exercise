@@ -152,8 +152,8 @@ func (s *Server) Handler() http.Handler {
 		"GET /api/operator/live-map": s.operatorLiveMap, "POST /api/operator/rides/{id}/cancel": s.operatorCancelRide,
 		"GET /api/operator/sos": s.operatorSOSEvents, "POST /api/operator/sos/{id}/resolve": s.operatorResolveSOS,
 		"GET /api/operator/lost-items": s.operatorLostItems, "POST /api/operator/lost-items/{id}": s.operatorUpdateLostItem,
-		"GET /api/operator/analytics": s.operatorAnalytics,
-		"GET /api/admin/drivers":      s.adminDrivers, "POST /api/admin/drivers/{id}": s.adminDecision,
+		"GET /api/operator/analytics": s.operatorAnalytics, "GET /api/operator/summary": s.operatorSummary,
+		"GET /api/admin/drivers": s.adminDrivers, "POST /api/admin/drivers/{id}": s.adminDecision,
 		"POST /api/admin/drivers/{id}/claim": s.adminClaim, "GET /api/admin/drivers/{id}/documents": s.adminDocumentVersions,
 		"GET /api/admin/document-versions/{version}": s.adminDocumentVersion,
 	}

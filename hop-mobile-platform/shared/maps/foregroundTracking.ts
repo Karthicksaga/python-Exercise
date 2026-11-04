@@ -10,9 +10,11 @@ export class ForegroundTracking {
   private lastFixAt = 0;
   private failures = 0;
   private retryTimer?: ReturnType<typeof setTimeout>;
+  private freshTimer?: ReturnType<typeof setInterval>;
   active = false;
   constructor(private status: (message: string) => void) {}
   async start() {
+    if (this.active) return; // already sharing; a second watch would duplicate every fix
     await api.session();
     const state = await api.state();
     if (!state.driver?.[0]?.online)
@@ -45,10 +47,13 @@ export class ForegroundTracking {
         const id = await Geolocation.watchPosition(
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
           (position, error) => {
-            if (error) {
+            // Only a denied permission ends sharing. A timeout (standing still) or a lost signal
+            // (tunnel, basement) is temporary, and the watch keeps reporting once it's back.
+            if (error && /permission|denied/i.test(String((error as { message?: string }).message ?? error))) {
               this.stop();
-              this.status("GPS unavailable · sharing stopped");
-            } else if (position) receive(position.coords);
+              this.status("Location permission is off · sharing stopped");
+            } else if (error) this.status("Weak GPS signal · still trying");
+            else if (position) receive(position.coords);
           },
         );
         if (generation !== this.generation)
@@ -60,14 +65,29 @@ export class ForegroundTracking {
       } else {
         const id = navigator.geolocation.watchPosition(
           (p) => receive(p.coords),
-          () => {
-            this.stop();
-            this.status("GPS unavailable · sharing stopped");
+          (error) => {
+            // Only a denied permission ends sharing; a timeout (standing still) or a lost
+            // signal is temporary and the watch keeps reporting once it's back.
+            if (error.code === error.PERMISSION_DENIED) {
+              this.stop();
+              this.status("Location permission is off · sharing stopped");
+            } else if (error.code !== error.TIMEOUT) this.status("Weak GPS signal · still trying");
           },
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
         );
         this.stopWatch = () => navigator.geolocation.clearWatch(id);
       }
+      // A phone that isn't moving may stop reporting positions, and the server then treats the
+      // captain's location as out of date. Ask for a new reading (a real measurement, never a
+      // re-sent old one) whenever none has arrived for 8 seconds.
+      this.freshTimer = setInterval(() => {
+        if (generation !== this.generation || document.hidden || Date.now() - this.lastFixAt < 8000) return;
+        const ask = Capacitor.isNativePlatform()
+          ? Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }).then((p) => p.coords)
+          : new Promise<GeolocationCoordinates>((resolve, reject) =>
+              navigator.geolocation.getCurrentPosition((p) => resolve(p.coords), reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }));
+        void ask.then(receive).catch(() => {});
+      }, 4000);
     } catch (e) {
       this.stop();
       throw e;
@@ -111,6 +131,8 @@ export class ForegroundTracking {
     this.stopWatch = undefined;
     clearTimeout(this.retryTimer);
     this.retryTimer = undefined;
+    clearInterval(this.freshTimer);
+    this.freshTimer = undefined;
     this.pending = undefined;
     this.active = false;
   }
