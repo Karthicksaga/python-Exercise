@@ -37,44 +37,132 @@
   border: none !important;
 }
 
-/* Prominent SVG Teardrop Pins (Pickup & Dropoff) */
+/* Pickup (round, indigo) and drop-off (square, ink) pins, approved Nov 2026. Each stands on a
+   short stem whose ground dot is the exact spot; the callout above carries the useful number. */
+.hop-custom-pin-icon { overflow: visible; }
 .hop-marker-pin {
-  position: relative;
-  width: 32px;
-  height: 42px;
-  cursor: pointer;
-  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.hop-marker-pin:hover {
-  transform: none;
-}
-.hop-marker-pin .hop-pin-svg {
-  display: block;
-  width: 32px;
-  height: 42px;
-}
-.hop-pin-badge {
   position: absolute;
-  top: -19px;
+  left: 0;
+  bottom: 0;
+  transform: translate(-50%, 2px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  font-family: "Plus Jakarta Sans", -apple-system, sans-serif;
+}
+.hop-pin-callout {
+  position: absolute;
   left: 50%;
-  transform: translateX(-50%);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font: 700 9px/1.2 "Plus Jakarta Sans", -apple-system, sans-serif;
-  letter-spacing: 0.5px;
+  bottom: calc(100% + 6px);
+  transform: translateX(calc(-50% + var(--dx, 0px)));
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 5px 10px 5px 5px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  color: var(--ink);
+  box-shadow: 0 4px 14px rgba(20, 21, 31, 0.18);
+  font: 700 12px/1.2 inherit;
   white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+}
+.hop-marker-pin.below .hop-pin-callout { bottom: auto; top: calc(100% + 6px); }
+button.hop-pin-callout { cursor: pointer; }
+button.hop-pin-callout:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.hop-pin-key {
+  padding: 4px 6px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.hop-dropoff-pin .hop-pin-key { background: var(--ink); }
+.hop-pin-note { font-variant-numeric: tabular-nums; }
+.hop-pin-chevron { color: var(--muted); margin-left: -2px; }
+.hop-pin-head {
+  position: relative;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 2px 6px rgba(20, 21, 31, 0.35);
+  display: grid;
+  place-items: center;
+}
+.hop-pin-head i { width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+.hop-dropoff-pin .hop-pin-head { border-radius: 6px; background: var(--ink); }
+.hop-dropoff-pin .hop-pin-head i { width: 6px; height: 6px; border-radius: 1px; }
+.hop-pin-stem { width: 3px; height: 12px; border-radius: 2px; background: var(--accent); }
+.hop-dropoff-pin .hop-pin-stem { background: var(--ink); }
+.hop-pin-ground { width: 10px; height: 4px; border-radius: 50%; background: rgba(20, 21, 31, 0.35); }
+/* Soft ring at the pickup while the captain is on the way. */
+.hop-pin-pulse {
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin-left: -20px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(75, 63, 209, 0.4);
+  background: rgba(75, 63, 209, 0.16);
   pointer-events: none;
+  animation: hop-pin-wait 1.8s ease-out infinite;
 }
-.hop-pickup-badge {
-  background: #4b3fd1;
-  color: #ffffff;
+@keyframes hop-pin-wait {
+  0% { transform: scale(0.5); opacity: 0.9; }
+  100% { transform: scale(1.4); opacity: 0; }
 }
-.hop-dropoff-badge {
-  background: #4b3fd1;
-  color: #ffffff;
+@keyframes hop-pin-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
 }
+/* Planned route: a light travels from pickup to drop-off; pins pop in as the route draws. */
+.hop-route-flow {
+  stroke-dasharray: var(--seg, 40px) var(--len, 1000px);
+  animation: hop-route-flow 2.6s linear infinite;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.9));
+}
+@keyframes hop-route-flow {
+  from { stroke-dashoffset: var(--seg, 40px); }
+  to { stroke-dashoffset: calc(-1 * var(--len, 1000px)); }
+}
+.hop-pin-pop .hop-pin-head { animation: hop-pin-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.hop-pin-pop .hop-pin-callout { animation: hop-callout-in 0.35s ease-out 0.1s both; }
+@keyframes hop-pin-pop {
+  0% { transform: translateY(-14px) scale(0.4); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes hop-callout-in {
+  from { opacity: 0; translate: 0 4px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hop-route-flow { display: none; }
+  .hop-pin-pop .hop-pin-head, .hop-pin-pop .hop-pin-callout { animation: none; }
+  .hop-pin-pulse { animation: none; transform: none; opacity: 0.8; }
+  .hop-marker-pin.pulse .hop-pin-head { animation: none; }
+}
+.app.dark .hop-pin-callout { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); }
+/* In dark mode --ink turns light, so the drop-off keeps the dark chip colour. */
+.app.dark .hop-dropoff-pin .hop-pin-key,
+.app.dark .hop-dropoff-pin .hop-pin-head,
+.app.dark .hop-dropoff-pin .hop-pin-stem { background: var(--on-chip); }
+.app.dark .hop-pin-ground { background: rgba(0, 0, 0, 0.6); }
+
+/* Hop's vector map is drawn in its own colours, so the raster tint and dark-mode inversion
+   must not touch it. */
+.hop-map-canvas.hop-vector-base .leaflet-tile-pane,
+.app.dark .hop-map-canvas.hop-vector-base .leaflet-tile-pane,
+.hop-vector-base.hop-night-tiles .leaflet-tile-pane { filter: none; }
 
 /* Current Location Pulsing Marker & Directional Heading Beam */
 .hop-current-marker {
@@ -144,18 +232,18 @@
 }
 
 /* Vehicle Marker */
+/* Top-down artwork (vehicleArt.ts) rotated every frame by the motion engine, so no CSS transition. */
 .hop-vehicle-marker {
-  width: 42px;
-  height: 30px;
+  width: 46px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.25s ease-out;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+  will-change: transform;
 }
 .hop-vehicle-icon {
-  width: 42px;
-  height: 30px;
+  width: 46px;
+  height: 46px;
   object-fit: contain;
   pointer-events: none;
   -webkit-user-drag: none;
@@ -180,9 +268,6 @@
 
 .app.dark .hop-current-dot {
   border-color: #d1d2de;
-}
-.app.dark .hop-marker-pin {
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
 }
 .app.dark .hop-map-status {
   background: #243021ed;
@@ -255,19 +340,33 @@
   color: #dcdce5;
 }
 
+.hop-vehicle-overlay {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  pointer-events: none;
+  will-change: left, top;
+}
+.hop-vehicle-overlay img {
+  width: 46px;
+  height: 46px;
+  display: block;
+  will-change: transform;
+  -webkit-user-drag: none;
+  user-select: none;
+}
 .hop-preview-vehicle-overlay {
   position: absolute;
-  width: 44px;
-  height: 30px;
+  width: 46px;
+  height: 46px;
   pointer-events: none;
   z-index: 1050;
   will-change: transform, left, top;
 }
 .hop-preview-vehicle-overlay img {
-  width: 44px;
-  height: 30px;
+  width: 46px;
+  height: 46px;
   object-fit: contain;
-  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
   transition: transform 0.1s linear;
 }
 
@@ -287,8 +386,8 @@
   animation: hop-destination-pulse 1.4s ease-out infinite;
 }
 
-.hop-marker-pin.pulse {
-  animation: hop-destination-pulse 1.4s ease-out infinite;
+.hop-marker-pin.pulse .hop-pin-head {
+  animation: hop-pin-bob 1.2s ease-in-out infinite;
 }
 @keyframes hop-destination-pulse {
   0% {
@@ -311,3 +410,41 @@
 .app.dark .map-art:has(.hop-map-canvas) { filter: none; }
 .app.dark .hop-map-canvas { background: #1a1c26; }
 .app.dark .hop-map-canvas .leaflet-tile-pane { filter: invert(1) hue-rotate(200deg) brightness(0.85) contrast(0.9) saturate(0.35); }
+
+/* Alternative routes: grey lines with a tappable label (Google draws its own label image). */
+.hop-route-alternative { cursor: pointer; }
+.hop-route-tag-icon { background: none !important; border: 0 !important; }
+.hop-route-tag {
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line, #e6e6ef);
+  background: var(--surface, #fff);
+  color: var(--ink, #14151f);
+  font: 700 12px/1 "Plus Jakarta Sans", system-ui, sans-serif;
+  box-shadow: 0 2px 8px rgba(20, 21, 31, 0.16);
+  cursor: pointer;
+}
+
+/* RideCheck: an on-map check-in when the trip stops unexpectedly or leaves the planned road. */
+.hop-ridecheck {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 12px;
+  z-index: 1200;
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--surface, #fff);
+  color: var(--ink, #14151f);
+  box-shadow: 0 14px 34px -10px rgba(38, 40, 96, 0.35);
+  border: 1px solid rgba(198, 47, 47, 0.35);
+}
+.hop-ridecheck strong { font-size: 15px; }
+.hop-ridecheck p { margin: 0; font-size: 13px; color: var(--muted, #6b6f80); }
+.hop-ridecheck .hop-ridecheck-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.hop-ridecheck button { min-height: 40px; flex: 1 1 auto; }

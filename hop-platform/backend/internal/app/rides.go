@@ -244,7 +244,7 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 	var unpaidFare int64
 	e = tx.QueryRow(ctx, `SELECT r.id::text, GREATEST(0, COALESCE(r.offered_fare_paise, q.fare_paise) - q.discount_paise)
  FROM rides r JOIN quotes q ON q.id=r.quote_id
- WHERE r.rider_id=$1 AND r.status='completed' AND r.payment_status NOT IN ('paid_online','driver_reported_received')
+ WHERE r.rider_id=$1 AND r.status='completed' AND r.payment_status NOT IN ('paid_online','driver_reported_received','rider_reported_paid')
  ORDER BY r.completed_at DESC LIMIT 1`, uid).Scan(&unpaidRideID, &unpaidFare)
 	if e == nil && unpaidRideID != "" {
 		slog.Warn("booking rejected due to outstanding payment obligation", "rider_id", uid, "unpaid_ride_id", unpaidRideID, "fare_paise", unpaidFare)
@@ -662,6 +662,50 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 			}
 			next = "cancelled"
 		}
+	case "cash_paid", "payment_not_received":
+		// Cash and direct UPI: the rider's "I've paid" lifts the booking block; the Captain can still
+		// confirm the handover, or report it missing, which blocks the rider again until it is settled.
+		riderSide := input.Action == "cash_paid"
+		if status != "completed" || (payment != "cash" && payment != "upi") || (riderSide && uid != rider) || (!riderSide && uid != driver) {
+			break
+		}
+		reported, from := "rider_reported_paid", []string{"unconfirmed"}
+		if !riderSide {
+			reported, from = "driver_reported_unpaid", []string{"unconfirmed", "rider_reported_paid"}
+		}
+		if payStatus == reported {
+			write(w, 200, map[string]bool{"ok": true})
+			return
+		}
+		tag, err := tx.Exec(ctx, "UPDATE rides SET payment_status=$2,version=version+1,updated_at=now() WHERE id=$1 AND payment_status=ANY($3)", id, reported, from)
+		if err != nil {
+			dbError(w, err)
+			return
+		}
+		if tag.RowsAffected() == 0 {
+			fail(w, 409, "This trip's payment is already settled or under review")
+			return
+		}
+		if riderSide {
+			e = notify(ctx, tx, driver, "payment", "Rider says they paid", "Confirm the cash handover, or report it if you didn't receive it.")
+		} else {
+			e = notify(ctx, tx, rider, "payment", "Payment not received", "Your Captain reported that they didn't receive payment for your last trip.")
+		}
+		if e == nil {
+			e = audit(ctx, tx, uid, id, event, map[string]string{})
+		}
+		if e == nil {
+			e = tx.Commit(ctx)
+		}
+		if e != nil {
+			dbError(w, e)
+			return
+		}
+		s.wake(rider)
+		s.wake(driver)
+		slog.Info("payment status updated", "ride_id", id, "payment_status", reported, "actor_id", uid)
+		write(w, 200, map[string]bool{"ok": true})
+		return
 	case "payment_received", "payment_disputed":
 		if input.Action == "payment_received" && uid == driver && (payStatus == "driver_reported_received" || payStatus == "paid_online") {
 			slog.Info("payment_received called idempotently", "ride_id", id, "driver_id", uid, "payment_status", payStatus)
@@ -714,7 +758,7 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 			fail(w, 400, "Invalid payment method")
 			return
 		}
-		if status == "completed" && payStatus != "unconfirmed" {
+		if status == "completed" && payStatus != "unconfirmed" && payStatus != "driver_reported_unpaid" {
 			fail(w, 409, "Payment for this ride is already settled or under review")
 			return
 		}

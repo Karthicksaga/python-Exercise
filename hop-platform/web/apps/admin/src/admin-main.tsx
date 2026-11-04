@@ -5,9 +5,10 @@ import { MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
 import { theme } from "./theme";
 import AdminApp from "./AdminApp";
-import "@hop/shared/style.css";
 import "./admin.css";
 
+// The console is styled by admin.css (Design 03). Mantine stays only because shared map
+// components (the tile-error card) and the theme hook use it.
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 createRoot(document.getElementById("root")!).render(

@@ -59,6 +59,8 @@ The API is publicly reachable because gateways proxy without Google IAM tokens; 
 
 ## 4. Connect GitHub without a service-account key
 
+**Shortcut for this project:** `bash hop-platform/infra/gcp/setup_github_ci.sh` runs every step below for the `staging` environment, adds hop-deploy's remaining §3 permissions, and prints (or, with `gh` signed in, sets) the three GitHub environment variables. It is safe to re-run.
+
 Use Workload Identity Federation. Obtain the numeric GitHub repository and owner IDs from GitHub's repository API, then configure the provider. Replace all placeholders first:
 
 ```sh

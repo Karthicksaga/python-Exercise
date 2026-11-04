@@ -1,6 +1,8 @@
 package app
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -42,5 +44,24 @@ func TestTrafficAdjustDuration(t *testing.T) {
 	outMin := float64(outSec) / 60.0
 	if outMin < 80 || outMin > 120 {
 		t.Fatalf("100 km highway trip should take around 80-120 minutes, got %.1f minutes", outMin)
+	}
+}
+
+// The router's free-flow time must be converted to a city estimate exactly once. Applying the
+// conversion to an already-converted time roughly doubled quoted trip times.
+func TestRouteSecondsAreAdjustedOnce(t *testing.T) {
+	osrm := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"code":"Ok","routes":[{"distance":14000,"duration":1080,"geometry":{"coordinates":[[80.20,13.00],[80.25,13.05]]}}]}`))
+	}))
+	defer osrm.Close()
+	s := &Server{Config: Config{RoutingURL: osrm.URL}, HTTP: osrm.Client()}
+	meters, raw, _, e := s.routeVia(t.Context(), []Point{{Lat: 13, Lng: 80.2}, {Lat: 13.05, Lng: 80.25}}, 100000, 86400, false)
+	if e != nil || meters != 14000 || raw != 1080 {
+		t.Fatalf("routeVia should return the router's raw distance and time, got %d m %d s (%v)", meters, raw, e)
+	}
+	once := trafficAdjustDuration(float64(meters), float64(raw), "sedan", false)
+	if min := float64(once) / 60; min < 35 || min > 60 {
+		t.Fatalf("a 14 km city trip should quote 35-60 minutes, got %.1f", min)
 	}
 }

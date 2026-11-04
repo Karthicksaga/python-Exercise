@@ -220,7 +220,9 @@ func (s *Server) otpVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defaultName := "Rider " + in.Phone[6:]
-	if strings.Contains(strings.ToLower(r.Header.Get("Origin")), "captain") || strings.Contains(strings.ToLower(r.Header.Get("Referer")), "captain") {
+	// The Captain app identifies itself with X-Hop-App (its Android origin is https://localhost);
+	// web origins may also name the app. This only picks the default display name.
+	if r.Header.Get("X-Hop-App") == "captain" || strings.Contains(strings.ToLower(r.Header.Get("Origin")), "captain") || strings.Contains(strings.ToLower(r.Header.Get("Referer")), "captain") {
 		defaultName = "Captain " + in.Phone[6:]
 	}
 	var account string

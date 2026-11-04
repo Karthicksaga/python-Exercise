@@ -30,6 +30,8 @@ if (release || process.argv.includes('--apk')) {
 }
 process.env.VITE_MOBILE_API_URL = apiUrl;
 process.env.VITE_DEV_MODE = release ? 'false' : 'true';
+// The native Google map (free per load) is used only when the build has an Android Maps key.
+process.env.VITE_NATIVE_MAPS = process.env.HOP_ANDROID_MAPS_KEY ? 'true' : 'false';
 
 function run(cmd, args, cwd = root) {
   console.log(`> [${cwd}] ${cmd} ${args.join(' ')}`);
@@ -38,7 +40,9 @@ function run(cmd, args, cwd = root) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-// 1. Build the web dist for the app
+// 1. Patch the map plugin (adds the tiles-loaded event the OpenStreetMap fallback relies on),
+//    then build the web dist for the app
+run(process.execPath, [path.join(root, 'scripts', 'patch-google-maps.mjs')]);
 run('npm', ['run', `build:${app}`]);
 
 // 2. Sync with Capacitor Android wrapper

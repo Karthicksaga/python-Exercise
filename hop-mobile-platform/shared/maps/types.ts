@@ -16,7 +16,17 @@ export type MapData = {
   route?: Coordinate[];
   following?: boolean;
   editable?: boolean;
+  /** Ride status while a trip is live (accepted, arrived, in_progress). */
+  phase?: string;
+  /** The route is the captain's road route to the pickup, so the captain is drawn on it. */
+  approach?: boolean;
+  /** Every drivable route in backend order. Unselected ones are drawn in grey; tapping one picks it. */
+  alternatives?: AlternativeRoute[];
+  /** Short real values shown in the pin callouts, e.g. "Captain 3 min", "Arrive 6:42 PM". */
+  pickupNote?: string;
+  dropoffNote?: string;
 };
+export type AlternativeRoute = { index: number; route: Coordinate[]; label: string; selected: boolean };
 export type MapPreferences = { traffic: boolean; satellite: boolean; lowdata: boolean; night: boolean };
 export interface MapView {
   setPreferences(preferences: MapPreferences): void;
@@ -28,6 +38,7 @@ export interface MapView {
   setRouteProgress?(points: Coordinate[]): void;
   setPreviewVehicle?(position: Coordinate | null, heading?: number): void;
   pulseDestination?(active: boolean): void;
+  setAlternatives?(routes: AlternativeRoute[]): void;
   destroy(): void;
 }
 export const validCoordinate = (p: Coordinate) =>

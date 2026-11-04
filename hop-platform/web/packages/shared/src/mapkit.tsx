@@ -316,3 +316,141 @@ function GoogleCircle({ center, radius, color, opacity = 0.35 }: CircleProps) {
 export function MapCircle(props: CircleProps) {
   return useMapProvider() === "osm" ? <OsmCircle {...props} /> : <GoogleCircle {...props} />;
 }
+
+// ---------- Zone rectangles (operator console) ----------
+export type Bounds = { min_lat: number; max_lat: number; min_lng: number; max_lng: number };
+type RectProps = { bounds: Bounds; color: string; fillOpacity?: number; weight?: number; dashed?: boolean; label?: string };
+type RectEditorProps = { bounds: Bounds; color: string; onChange: (b: Bounds, done: boolean) => void };
+const r4 = (n: number) => Math.round(n * 10000) / 10000;
+const MIN_SPAN = 0.01; // about 1 km
+
+function OsmRect({ bounds: b, color, fillOpacity = 0.08, weight = 2, dashed, label }: RectProps) {
+  const map = useContext(OsmContext)!;
+  useEffect(() => {
+    const rect = L.rectangle([[b.min_lat, b.min_lng], [b.max_lat, b.max_lng]], {
+      color, weight, fillColor: color, fillOpacity, dashArray: dashed ? "6 6" : undefined, interactive: false,
+    }).addTo(map);
+    if (label) rect.bindTooltip(label, { permanent: true, direction: "center", className: "zone-label" });
+    return () => {
+      rect.remove();
+    };
+  }, [map, b.min_lat, b.max_lat, b.min_lng, b.max_lng, color, fillOpacity, weight, dashed, label]);
+  return null;
+}
+function GoogleRect({ bounds: b, color, fillOpacity = 0.08, weight = 2 }: RectProps) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    const rect = new google.maps.Rectangle({
+      map, bounds: { north: b.max_lat, south: b.min_lat, east: b.max_lng, west: b.min_lng },
+      strokeColor: color, strokeWeight: weight, fillColor: color, fillOpacity, clickable: false,
+    });
+    return () => rect.setMap(null);
+  }, [map, b.min_lat, b.max_lat, b.min_lng, b.max_lng, color, fillOpacity, weight]);
+  return null;
+}
+// A fixed rectangle, used for other zones, district outlines and overlaps.
+export function MapRect(props: RectProps) {
+  return useMapProvider() === "osm" ? <OsmRect {...props} /> : <GoogleRect {...props} />;
+}
+
+function OsmRectEditor({ bounds, color, onChange }: RectEditorProps) {
+  const map = useContext(OsmContext)!;
+  const change = useRef(onChange);
+  change.current = onChange;
+  const parts = useRef<{ rect: L.Rectangle; corners: Record<string, L.Marker>; move: L.Marker } | null>(null);
+  const live = useRef(bounds);
+  live.current = bounds;
+  useEffect(() => {
+    const handle = (cls: string, label: string) =>
+      L.divIcon({ className: "zone-handle-wrap", html: `<span class="zone-handle ${cls}" role="img" aria-label="${label}"></span>`, iconSize: [28, 28], iconAnchor: [14, 14] });
+    const b = live.current;
+    const rect = L.rectangle([[b.min_lat, b.min_lng], [b.max_lat, b.max_lng]], { color, weight: 2.5, fillColor: color, fillOpacity: 0.13, interactive: false }).addTo(map);
+    const corners: Record<string, L.Marker> = {};
+    const place = (nb: Bounds) => {
+      rect.setBounds([[nb.min_lat, nb.min_lng], [nb.max_lat, nb.max_lng]]);
+      corners.nw.setLatLng([nb.max_lat, nb.min_lng]); corners.ne.setLatLng([nb.max_lat, nb.max_lng]);
+      corners.sw.setLatLng([nb.min_lat, nb.min_lng]); corners.se.setLatLng([nb.min_lat, nb.max_lng]);
+      move.setLatLng([(nb.min_lat + nb.max_lat) / 2, (nb.min_lng + nb.max_lng) / 2]);
+    };
+    for (const k of ["nw", "ne", "sw", "se"]) {
+      const lat = k[0] === "n" ? b.max_lat : b.min_lat, lng = k[1] === "w" ? b.min_lng : b.max_lng;
+      const m = L.marker([lat, lng], { draggable: true, icon: handle("corner " + k, `Resize from the ${k.toUpperCase()} corner`), zIndexOffset: 1000, keyboard: false }).addTo(map);
+      const update = (done: boolean) => {
+        const p = m.getLatLng(), c = live.current, nb = { ...c };
+        if (k[0] === "n") nb.max_lat = r4(Math.max(p.lat, c.min_lat + MIN_SPAN)); else nb.min_lat = r4(Math.min(p.lat, c.max_lat - MIN_SPAN));
+        if (k[1] === "e") nb.max_lng = r4(Math.max(p.lng, c.min_lng + MIN_SPAN)); else nb.min_lng = r4(Math.min(p.lng, c.max_lng - MIN_SPAN));
+        live.current = nb; place(nb); change.current(nb, done);
+      };
+      m.on("drag", () => update(false)); m.on("dragend", () => update(true));
+      corners[k] = m;
+    }
+    const move = L.marker([(b.min_lat + b.max_lat) / 2, (b.min_lng + b.max_lng) / 2], { draggable: true, icon: handle("move", "Move the zone"), zIndexOffset: 1000, keyboard: false }).addTo(map);
+    let start = live.current, from = move.getLatLng();
+    move.on("dragstart", () => { start = live.current; from = move.getLatLng(); });
+    const shift = (done: boolean) => {
+      const p = move.getLatLng(), dLat = p.lat - from.lat, dLng = p.lng - from.lng;
+      const nb = { min_lat: r4(start.min_lat + dLat), max_lat: r4(start.max_lat + dLat), min_lng: r4(start.min_lng + dLng), max_lng: r4(start.max_lng + dLng) };
+      live.current = nb; place(nb); change.current(nb, done);
+    };
+    move.on("drag", () => shift(false)); move.on("dragend", () => shift(true));
+    parts.current = { rect, corners, move };
+    return () => {
+      rect.remove(); move.remove(); Object.values(corners).forEach((m) => m.remove());
+      parts.current = null;
+    };
+    // Built once per map; outside changes are applied by the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, color]);
+  useEffect(() => {
+    const p = parts.current;
+    if (!p) return;
+    const b = bounds;
+    p.rect.setBounds([[b.min_lat, b.min_lng], [b.max_lat, b.max_lng]]);
+    p.corners.nw.setLatLng([b.max_lat, b.min_lng]); p.corners.ne.setLatLng([b.max_lat, b.max_lng]);
+    p.corners.sw.setLatLng([b.min_lat, b.min_lng]); p.corners.se.setLatLng([b.min_lat, b.max_lng]);
+    p.move.setLatLng([(b.min_lat + b.max_lat) / 2, (b.min_lng + b.max_lng) / 2]);
+  }, [bounds.min_lat, bounds.max_lat, bounds.min_lng, bounds.max_lng]);
+  return null;
+}
+function GoogleRectEditor({ bounds, color, onChange }: RectEditorProps) {
+  const map = useMap();
+  const change = useRef(onChange);
+  change.current = onChange;
+  const rect = useRef<google.maps.Rectangle | null>(null);
+  useEffect(() => {
+    if (!map) return;
+    const r = new google.maps.Rectangle({
+      map, editable: true, draggable: true, strokeColor: color, strokeWeight: 2.5, fillColor: color, fillOpacity: 0.13,
+      bounds: { north: bounds.max_lat, south: bounds.min_lat, east: bounds.max_lng, west: bounds.min_lng },
+    });
+    const read = (): Bounds => {
+      const b = r.getBounds()!, ne = b.getNorthEast(), sw = b.getSouthWest();
+      return { min_lat: r4(sw.lat()), max_lat: r4(ne.lat()), min_lng: r4(sw.lng()), max_lng: r4(ne.lng()) };
+    };
+    let dragging = false;
+    const ls = [
+      r.addListener("bounds_changed", () => change.current(read(), !dragging)),
+      r.addListener("dragstart", () => { dragging = true; }),
+      r.addListener("dragend", () => { dragging = false; change.current(read(), true); }),
+      r.addListener("mouseup", () => change.current(read(), true)),
+    ];
+    rect.current = r;
+    return () => { ls.forEach((l) => l.remove()); r.setMap(null); rect.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, color]);
+  useEffect(() => {
+    const r = rect.current, b = r?.getBounds();
+    if (!r || !b) return;
+    const ne = b.getNorthEast(), sw = b.getSouthWest();
+    // Only push outside changes; echoing the rectangle's own edits back would fight the drag.
+    if (r4(ne.lat()) === bounds.max_lat && r4(sw.lat()) === bounds.min_lat && r4(ne.lng()) === bounds.max_lng && r4(sw.lng()) === bounds.min_lng) return;
+    r.setBounds({ north: bounds.max_lat, south: bounds.min_lat, east: bounds.max_lng, west: bounds.min_lng });
+  }, [bounds.min_lat, bounds.max_lat, bounds.min_lng, bounds.max_lng]);
+  return null;
+}
+// An editable zone: drag the corners to resize and the centre (or the box on Google) to move it.
+// onChange fires while dragging (done=false) and once when the drag ends (done=true).
+export function MapRectEditor(props: RectEditorProps) {
+  return useMapProvider() === "osm" ? <OsmRectEditor {...props} /> : <GoogleRectEditor {...props} />;
+}

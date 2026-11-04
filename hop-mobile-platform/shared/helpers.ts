@@ -10,8 +10,12 @@ export const escape = (value: any): string =>
       ] || c
   );
 
-export const money = (value: number | string): string =>
-  `₹${Number(value || 0).toLocaleString("en-IN")}`;
+// Whole rupees show as "₹131"; an amount with paise always shows both digits ("₹130.50").
+export const money = (value: number | string): string => {
+  const rupees = Number(value || 0);
+  const paise = Math.round(rupees * 100) % 100 !== 0;
+  return `₹${rupees.toLocaleString("en-IN", { minimumFractionDigits: paise ? 2 : 0, maximumFractionDigits: 2 })}`;
+};
 
 export function img(category = "auto", width = 56): string {
   return `<img src="/assets/${category}.png" alt="${category}" width="${width}" height="${Math.round(

@@ -1,5 +1,7 @@
-import type { Coordinate, MapData, MapView, MapPreferences } from "./types";
-import { vehicleCategory } from "./types";
+import type { AlternativeRoute, Coordinate, MapData, MapView, MapPreferences } from "./types";
+import { divergencePoint, VehicleMotion } from "./motion";
+import { topDownVehicle, VEHICLE_MARKER_SIZE } from "./vehicleArt";
+import { framePadding, pinSvg, type PinKind } from "./pins";
 
 declare global {
   interface Window {
@@ -47,21 +49,10 @@ export function loadGoogle(key: string): Promise<void> {
   return loading;
 }
 
-const pickupSvg = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-<svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M16 1C7.716 1 1 7.716 1 16c0 11.5 15 25 15 25s15-13.5 15-25c0-8.284-6.716-15-15-15Z" fill="#4b3fd1" stroke="#ffffff" stroke-width="2"/>
-  <circle cx="16" cy="16" r="6" fill="#ffffff"/>
-  <text x="16" y="19.5" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-weight="700" font-size="10" fill="#4b3fd1" text-anchor="middle">P</text>
-</svg>
-`)}`;
-
-const dropoffSvg = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-<svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M16 1C7.716 1 1 7.716 1 16c0 11.5 15 25 15 25s15-13.5 15-25c0-8.284-6.716-15-15-15Z" fill="#14151f" stroke="#ffffff" stroke-width="2"/>
-  <circle cx="16" cy="16" r="6" fill="#ffffff"/>
-  <circle cx="16" cy="16" r="3" fill="#14151f"/>
-</svg>
-`)}`;
+function routeTagSvg(label: string) {
+  const w = Math.round(label.length * 6.6 + 22);
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="28" viewBox="0 0 ${w} 28"><rect x="1" y="1" width="${w - 2}" height="26" rx="13" fill="#ffffff" stroke="#c9cbd8"/><text x="${w / 2}" y="18" text-anchor="middle" font-family="'Plus Jakarta Sans',-apple-system,sans-serif" font-size="12" font-weight="700" fill="#3b3d4f">${label.replace(/[<&>"]/g, "")}</text></svg>`)}`;
+}
 
 function currentSvg(heading?: number) {
   const hasHeading = heading != null && !Number.isNaN(heading);
@@ -92,7 +83,7 @@ function getPreviewVehicleOverlayClass() {
         super();
         this.div = document.createElement("div");
         this.div.className = "hop-preview-vehicle-overlay";
-        this.div.innerHTML = `<img src="./assets/sedan.png" alt="Preview vehicle" draggable="false" style="transform: rotate(${heading}deg);" />`;
+        this.div.innerHTML = `<img src="${topDownVehicle("sedan")}" alt="Preview vehicle" draggable="false" style="transform: rotate(${heading}deg);" />`;
       }
       onAdd() {
         this.getPanes()?.overlayMouseTarget.appendChild(this.div);
@@ -102,8 +93,8 @@ function getPreviewVehicleOverlayClass() {
         if (!projection) return;
         const point = projection.fromLatLngToDivPixel(this.position);
         if (point) {
-          this.div.style.left = `${point.x - 22}px`;
-          this.div.style.top = `${point.y - 15}px`;
+          this.div.style.left = `${point.x - VEHICLE_MARKER_SIZE / 2}px`;
+          this.div.style.top = `${point.y - VEHICLE_MARKER_SIZE / 2}px`;
         }
       }
       update(pos: Coordinate, heading: number) {
@@ -118,6 +109,45 @@ function getPreviewVehicleOverlayClass() {
     };
   }
   return GooglePreviewVehicleOverlayClass;
+}
+
+// A live vehicle drawn as a rotated top-down image, so it can face its direction of travel.
+let VehicleOverlayClass: any;
+function getVehicleOverlayClass() {
+  if (!VehicleOverlayClass && typeof google !== "undefined" && google.maps?.OverlayView) {
+    VehicleOverlayClass = class extends google.maps.OverlayView {
+      private div: HTMLElement;
+      private img: HTMLImageElement;
+      private position: google.maps.LatLng;
+      constructor(position: Coordinate, category: string) {
+        super();
+        this.position = new google.maps.LatLng(position.lat, position.lng);
+        this.div = document.createElement("div");
+        this.div.className = "hop-vehicle-overlay";
+        this.div.title = "Live captain";
+        this.img = document.createElement("img");
+        this.img.src = topDownVehicle(category);
+        this.img.alt = "Vehicle";
+        this.img.draggable = false;
+        this.div.append(this.img);
+      }
+      onAdd() { this.getPanes()?.markerLayer.appendChild(this.div); }
+      draw() {
+        const point = this.getProjection()?.fromLatLngToDivPixel(this.position);
+        if (point) {
+          this.div.style.left = `${point.x - VEHICLE_MARKER_SIZE / 2}px`;
+          this.div.style.top = `${point.y - VEHICLE_MARKER_SIZE / 2}px`;
+        }
+      }
+      move(pos: Coordinate, heading: number) {
+        this.position = new google.maps.LatLng(pos.lat, pos.lng);
+        this.img.style.transform = `rotate(${heading}deg)`;
+        this.draw();
+      }
+      onRemove() { this.div.remove(); }
+    };
+  }
+  return VehicleOverlayClass;
 }
 
 function getDestinationPulseOverlayClass() {
@@ -150,10 +180,39 @@ function getDestinationPulseOverlayClass() {
   return DestinationPulseOverlayClass;
 }
 
+// Hop's muted Google map style (design 03), shared by the web map and the native Android map.
+export function hopMapStyles(preferences: MapPreferences): google.maps.MapTypeStyle[] {
+    const styles: google.maps.MapTypeStyle[] = [];
+    if (preferences.lowdata) styles.push({ featureType: "poi", stylers: [{ visibility: "off" }] }, { featureType: "transit", stylers: [{ visibility: "off" }] });
+    // Muted base map so Hop's indigo route and markers carry the colour (design 03).
+    if (preferences.night) styles.push(
+      { elementType: "geometry", stylers: [{ color: "#1a1c26" }] },
+      { elementType: "labels.text.fill", stylers: [{ color: "#9a9eb2" }] },
+      { elementType: "labels.text.stroke", stylers: [{ color: "#1a1c26" }] },
+      { featureType: "road", elementType: "geometry", stylers: [{ color: "#2e3244" }] },
+      { featureType: "water", elementType: "geometry", stylers: [{ color: "#16243b" }] },
+      { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#1c2e25" }] },
+    );
+    else if (!preferences.satellite) styles.push(
+      { elementType: "geometry", stylers: [{ color: "#eef0f4" }] },
+      { elementType: "labels.text.fill", stylers: [{ color: "#6b6f80" }] },
+      { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
+      { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+      { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#e3e5ed" }] },
+      { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#d9dce6" }] },
+      { featureType: "water", elementType: "geometry", stylers: [{ color: "#cde0f5" }] },
+      { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#d6ecd8" }] },
+      { featureType: "poi.business", stylers: [{ visibility: "off" }] },
+    );
+    return styles;
+}
+
 export class GoogleMapView implements MapView {
   private map: google.maps.Map;
   private traffic?: google.maps.TrafficLayer;
-  private vehicles = new Map<string, google.maps.Marker>();
+  private vehicles = new Map<string, any>();
+  private alternatives: (google.maps.Polyline | google.maps.Marker)[] = [];
+  private motion = new VehicleMotion((id, p, heading) => this.vehicles.get(id)?.move(p, heading));
   private pickupMarker?: google.maps.Marker;
   private dropoffMarker?: google.maps.Marker;
   private currentMarker?: google.maps.Marker;
@@ -163,7 +222,9 @@ export class GoogleMapView implements MapView {
   private lastDropoffPos?: Coordinate;
   private tileTimeout?: ReturnType<typeof setTimeout>;
 
+  private host: HTMLElement;
   constructor(host: HTMLElement, center: Coordinate, failed: () => void) {
+    this.host = host;
     this.map = new google.maps.Map(host, {
       center,
       zoom: 14,
@@ -187,6 +248,7 @@ export class GoogleMapView implements MapView {
     );
     this.route = new google.maps.Polyline({
       map: this.map,
+      zIndex: 5,
       strokeColor: "#4b3fd1",
       strokeWeight: 5,
       strokeOpacity: 0.95,
@@ -213,117 +275,72 @@ export class GoogleMapView implements MapView {
       this.traffic ||= new google.maps.TrafficLayer();
       this.traffic.setMap(this.map);
     } else this.traffic?.setMap(null);
-    const styles: google.maps.MapTypeStyle[] = [];
-    if (preferences.lowdata) styles.push({ featureType: "poi", stylers: [{ visibility: "off" }] }, { featureType: "transit", stylers: [{ visibility: "off" }] });
-    // Muted base map so Hop's indigo route and markers carry the colour (design 03).
-    if (preferences.night) styles.push(
-      { elementType: "geometry", stylers: [{ color: "#1a1c26" }] },
-      { elementType: "labels.text.fill", stylers: [{ color: "#9a9eb2" }] },
-      { elementType: "labels.text.stroke", stylers: [{ color: "#1a1c26" }] },
-      { featureType: "road", elementType: "geometry", stylers: [{ color: "#2e3244" }] },
-      { featureType: "water", elementType: "geometry", stylers: [{ color: "#16243b" }] },
-      { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#1c2e25" }] },
-    );
-    else if (!preferences.satellite) styles.push(
-      { elementType: "geometry", stylers: [{ color: "#eef0f4" }] },
-      { elementType: "labels.text.fill", stylers: [{ color: "#6b6f80" }] },
-      { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
-      { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-      { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#e3e5ed" }] },
-      { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#d9dce6" }] },
-      { featureType: "water", elementType: "geometry", stylers: [{ color: "#cde0f5" }] },
-      { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#d6ecd8" }] },
-      { featureType: "poi.business", stylers: [{ visibility: "off" }] },
-    );
+    const styles = hopMapStyles(preferences);
     this.map.setOptions({ styles });
   }
 
+  private pinKeys: Record<PinKind, string> = { pickup: "", dropoff: "" };
+  private editable = false;
+  private placePin(kind: PinKind, marker: google.maps.Marker | undefined, point: Coordinate | undefined, data: MapData) {
+    if (!point) {
+      marker?.setMap(null);
+      this.pinKeys[kind] = "";
+      return undefined;
+    }
+    const note = kind === "pickup" ? data.pickupNote : data.dropoffNote;
+    const icon = () => {
+      const pin = pinSvg(kind, note);
+      return { url: pin.url, scaledSize: new google.maps.Size(pin.width, pin.height), anchor: new google.maps.Point(pin.anchorX, pin.anchorY) };
+    };
+    this.editable = Boolean(data.editable);
+    if (!marker) {
+      marker = new google.maps.Marker({
+        map: this.map, position: point, title: kind === "pickup" ? "Pickup" : "Destination",
+        draggable: Boolean(data.editable), icon: icon(), zIndex: 1000,
+      });
+      marker.addListener("dragend", (event: google.maps.MapMouseEvent) => {
+        if (event.latLng) window.dispatchEvent(new CustomEvent("hop-map-pick", { detail: { ...event.latLng.toJSON(), target: kind } }));
+      });
+      // While booking, tapping the pin opens the edit control for that stop.
+      marker.addListener("click", () => {
+        if (this.editable) window.dispatchEvent(new CustomEvent("hop-pin-edit", { detail: { target: kind } }));
+      });
+      this.pinKeys[kind] = note ?? "";
+    } else {
+      marker.setPosition(point);
+      marker.setMap(this.map);
+      if ((note ?? "") !== this.pinKeys[kind]) {
+        this.pinKeys[kind] = note ?? "";
+        marker.setIcon(icon());
+      }
+    }
+    return marker;
+  }
+
   update(data: MapData) {
-    // 1. Vehicles
+    // 1. Vehicles: placed by the motion engine so they glide and face their direction.
     const ids = new Set(data.vehicles.map((v) => v.id));
-    for (const [id, marker] of this.vehicles) {
+    for (const [id, overlay] of this.vehicles) {
       if (!ids.has(id)) {
-        marker.setMap(null);
+        this.motion.remove(id);
+        overlay.setMap(null);
         this.vehicles.delete(id);
       }
     }
+    const Overlay = getVehicleOverlayClass();
     for (const v of data.vehicles) {
-      let marker = this.vehicles.get(v.id);
-      if (!marker) {
-        marker = new google.maps.Marker({
-          map: this.map,
-          title: "Live captain",
-          clickable: false,
-          icon: {
-            url: `./assets/${vehicleCategory(v.category)}.png`,
-            scaledSize: new google.maps.Size(42, 30),
-            anchor: new google.maps.Point(21, 15),
-          },
-          zIndex: 900,
-        });
-        this.vehicles.set(v.id, marker);
+      if (!this.vehicles.has(v.id) && Overlay) {
+        const overlay = new Overlay(v, v.category);
+        overlay.setMap(this.map);
+        this.vehicles.set(v.id, overlay);
       }
-      marker.setPosition({ lat: v.lat, lng: v.lng });
+      this.motion.set(v.id, v, v.heading);
     }
 
-    // 2. Pickup Marker
-    if (data.pickup) {
-      if (!this.pickupMarker) {
-        this.pickupMarker = new google.maps.Marker({
-          map: this.map,
-          position: data.pickup,
-          title: "Pickup",
-          draggable: Boolean(data.editable),
-          icon: {
-            url: pickupSvg,
-            scaledSize: new google.maps.Size(32, 42),
-            anchor: new google.maps.Point(16, 42),
-          },
-          zIndex: 1000,
-        });
-        this.pickupMarker.addListener("dragend", (event: google.maps.MapMouseEvent) => {
-          if (event.latLng) window.dispatchEvent(new CustomEvent("hop-map-pick", {
-            detail: { ...event.latLng.toJSON(), target: "pickup" },
-          }));
-        });
-      } else {
-        this.pickupMarker.setPosition(data.pickup);
-        this.pickupMarker.setMap(this.map);
-      }
-    } else if (this.pickupMarker) {
-      this.pickupMarker.setMap(null);
-      this.pickupMarker = undefined;
-    }
-
-    // 3. Dropoff Marker
-    if (data.dropoff) {
-      this.lastDropoffPos = data.dropoff;
-      if (!this.dropoffMarker) {
-        this.dropoffMarker = new google.maps.Marker({
-          map: this.map,
-          position: data.dropoff,
-          title: "Destination",
-          draggable: Boolean(data.editable),
-          icon: {
-            url: dropoffSvg,
-            scaledSize: new google.maps.Size(32, 42),
-            anchor: new google.maps.Point(16, 42),
-          },
-          zIndex: 1000,
-        });
-        this.dropoffMarker.addListener("dragend", (event: google.maps.MapMouseEvent) => {
-          if (event.latLng) window.dispatchEvent(new CustomEvent("hop-map-pick", {
-            detail: { ...event.latLng.toJSON(), target: "dropoff" },
-          }));
-        });
-      } else {
-        this.dropoffMarker.setPosition(data.dropoff);
-        this.dropoffMarker.setMap(this.map);
-      }
-    } else if (this.dropoffMarker) {
-      this.dropoffMarker.setMap(null);
-      this.dropoffMarker = undefined;
-    }
+    // 2. Pickup (round) and drop-off (square) pins with their callouts.
+    this.pickupMarker = this.placePin("pickup", this.pickupMarker, data.pickup, data);
+    if (data.dropoff) this.lastDropoffPos = data.dropoff;
+    this.dropoffMarker = this.placePin("dropoff", this.dropoffMarker, data.dropoff, data);
 
     this.pickupMarker?.setDraggable(Boolean(data.editable));
     this.dropoffMarker?.setDraggable(Boolean(data.editable));
@@ -359,6 +376,24 @@ export class GoogleMapView implements MapView {
 
     // 5. Route
     this.route.setPath(data.route || []);
+  }
+
+  setAlternatives(routes: AlternativeRoute[]) {
+    this.alternatives.forEach((l) => l.setMap(null));
+    this.alternatives = [];
+    for (const alt of routes) {
+      if (alt.selected || alt.route.length < 2) continue;
+      const pick = () => window.dispatchEvent(new CustomEvent("hop-route-pick", { detail: { index: alt.index } }));
+      const line = new google.maps.Polyline({ map: this.map, path: alt.route, strokeColor: "#8b8fa3", strokeOpacity: 0.65, strokeWeight: 6, zIndex: 1, clickable: true });
+      line.addListener("click", pick);
+      const mid = divergencePoint(alt.route, routes.find((r) => r.selected)?.route ?? []);
+      const tag = new google.maps.Marker({
+        map: this.map, position: mid, zIndex: 650, title: `Use route: ${alt.label}`,
+        icon: { url: routeTagSvg(alt.label), anchor: new google.maps.Point(0, 14) },
+      });
+      tag.addListener("click", pick);
+      this.alternatives.push(line, tag);
+    }
   }
 
   setRouteProgress(points: Coordinate[]) {
@@ -417,7 +452,7 @@ export class GoogleMapView implements MapView {
     }
     const bounds = new google.maps.LatLngBounds();
     points.forEach((p) => bounds.extend(p));
-    this.map.fitBounds(bounds, 45);
+    this.map.fitBounds(bounds, framePadding(this.host));
   }
 
   camera() {
@@ -430,7 +465,9 @@ export class GoogleMapView implements MapView {
     clearTimeout(this.tileTimeout);
     this.previewOverlay?.setMap(null);
     this.destinationPulse?.setMap(null);
+    this.motion.destroy();
     this.vehicles.forEach((m) => m.setMap(null));
+    this.alternatives.forEach((l) => l.setMap(null));
     this.pickupMarker?.setMap(null);
     this.dropoffMarker?.setMap(null);
     this.currentMarker?.setMap(null);

@@ -26,7 +26,7 @@ func (s *Server) operatorLiveMap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rides, e := jsonRows(ctx, s.DB, `SELECT r.id, r.status, r.payment_method, r.payment_status,
-		r.created_at, r.updated_at,
+		r.created_at, r.updated_at, r.driver_id,
 		ra.name AS rider_name, COALESCE(da.name, '') AS driver_name,
 		COALESCE(d.vehicle_category, 'auto') AS vehicle_category,
 		COALESCE(d.vehicle_number, '') AS vehicle_number,

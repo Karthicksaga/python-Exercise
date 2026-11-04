@@ -47,6 +47,10 @@ func paymentDescription(status string) string {
 		return "Paid from Hop wallet"
 	case "driver_reported_received":
 		return "Captain reported payment received (cash / direct UPI; not bank-verified)"
+	case "rider_reported_paid":
+		return "Rider reported paying the Captain directly (not yet confirmed by the Captain)"
+	case "driver_reported_unpaid":
+		return "Captain reported payment not received — payment still due"
 	case "rider_disputed":
 		return "Payment disputed — support review required"
 	default:

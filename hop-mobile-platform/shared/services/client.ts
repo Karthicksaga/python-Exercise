@@ -4,6 +4,8 @@ export class APIError extends Error {
   constructor(
     message: string,
     public status: number,
+    /** The server's machine-readable error code and extra fields, when it sends them. */
+    public details: { code?: string; [key: string]: unknown } = {},
   ) {
     super(message);
   }
@@ -42,6 +44,7 @@ export class HopAPI {
       throw new APIError(
         data.error || (response.status === 401 ? "Please sign in to continue." : response.status === 429 ? "Too many attempts. Please wait a moment and try again." : "Something went wrong. Please try again."),
         response.status,
+        data && typeof data === "object" ? data : {},
       );
     if (data.csrf) this.csrf = data.csrf;
     return data as T;

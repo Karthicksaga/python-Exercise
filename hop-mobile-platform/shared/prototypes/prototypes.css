@@ -310,3 +310,13 @@
   box-shadow: inset 0 0 0 4px var(--accent);
 }
 .payment-error{background:#ecebfd;color:#b23d2d;border:1px solid #c9c5f7}.payment-amount strong{font-variant-numeric:tabular-nums}.payment-method-symbol .icon{width:19px;height:19px;stroke-width:1.7}.payment-actions button:disabled{opacity:.55;cursor:wait}
+/* Trip rating on the payment page (Nov 2026): reuses the receipt screen's .stars row. */
+.payment-rating {
+  margin-top: 14px;
+  text-align: center;
+}
+.payment-rating p {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 700;
+}

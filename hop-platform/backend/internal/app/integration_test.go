@@ -752,3 +752,44 @@ func TestDemoLoginIsOptInAndDevelopmentOnly(t *testing.T) {
 		}
 	}
 }
+
+// Cash handover: the rider's "I've paid" lifts the booking block, the Captain's "not received"
+// restores it, and the Captain's confirmation settles it.
+func TestCashHandoverReportsControlBookingBlock(t *testing.T) {
+	f := setup(t)
+	rider := f.actor("rider", false)
+	driver := f.actor("rider", true)
+	stranger := f.actor("rider", false)
+	ride1 := f.book(rider, f.quote(rider))
+	require(t, f.act(driver, ride1, "accept", 1, ""), 200)
+	require(t, f.act(driver, ride1, "arrive", 2, ""), 200)
+	require(t, f.act(driver, ride1, "start", 3, f.s.pin(ride1)), 200)
+	f.atDestination(driver, ride1)
+	require(t, f.act(driver, ride1, "complete", 4, ""), 200)
+	book := func(n string) (int, map[string]any) {
+		return f.call(rider, "POST", "/api/rides", map[string]any{"quote_id": f.quote(rider), "request_key": "33333333-3333-4333-8333-" + n + strings.ReplaceAll(rider.id, "-", "")[:11], "payment_method": "cash"})
+	}
+	if status, body := book("1"); status != 402 {
+		t.Fatalf("expected 402 before any report, got %d: %v", status, body)
+	}
+	// Only the rider can report paying, and only the Captain can report it missing.
+	if status, _ := f.call(stranger, "POST", "/api/rides/"+ride1+"/actions", map[string]any{"action": "cash_paid", "version": 5}); status < 400 {
+		t.Fatalf("a stranger must not report payment, got %d", status)
+	}
+	require(t, f.act(driver, ride1, "cash_paid", 5, ""), 409)
+	require(t, f.act(rider, ride1, "cash_paid", 5, ""), 200)
+	require(t, f.act(rider, ride1, "cash_paid", 6, ""), 200)
+	if status, body := book("2"); status != 201 {
+		t.Fatalf("rider-reported cash must lift the block, got %d: %v", status, body)
+	}
+	require(t, f.act(rider, ride1, "payment_not_received", 6, ""), 409)
+	require(t, f.act(driver, ride1, "payment_not_received", 6, ""), 200)
+	var payStatus string
+	if e := f.s.DB.QueryRow(context.Background(), "SELECT payment_status FROM rides WHERE id=$1", ride1).Scan(&payStatus); e != nil || payStatus != "driver_reported_unpaid" {
+		t.Fatalf("expected driver_reported_unpaid, got %q (%v)", payStatus, e)
+	}
+	require(t, f.act(driver, ride1, "payment_received", 7, ""), 200)
+	if e := f.s.DB.QueryRow(context.Background(), "SELECT payment_status FROM rides WHERE id=$1", ride1).Scan(&payStatus); e != nil || payStatus != "driver_reported_received" {
+		t.Fatalf("expected driver_reported_received, got %q (%v)", payStatus, e)
+	}
+}

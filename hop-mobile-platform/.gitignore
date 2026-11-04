@@ -7,3 +7,6 @@ playwright-report/
 mobile/*/android/.gradle/
 mobile/*/android/**/build/
 mobile/*/android/local.properties
+
+# Local e2e settings (database URL with password)
+e2e/.env.e2e
