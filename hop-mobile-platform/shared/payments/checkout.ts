@@ -4,6 +4,8 @@ export type Order = {
   currency: string;
   key_id: string;
   test_mode?: boolean;
+  /** The payer's verified mobile (+91…), pre-filled so the checkout doesn't ask again. */
+  contact?: string;
 };
 export type Verification = {
   razorpay_order_id: string;
@@ -73,6 +75,7 @@ export async function checkout(order: Order): Promise<Verification> {
       name: "Hop",
       description: "Hop ride payment",
       theme: { color: "#4b3fd1" },
+      ...(order.contact ? { prefill: { contact: order.contact } } : {}),
       handler: (verification: Verification) => {
         if (!finished) {
           finished = true;

@@ -121,3 +121,16 @@ The existing CI Android artifacts are debug APKs for local testing. They are not
 Retain deployed Cloud Run revisions and image digests. To recover an application rollout, direct traffic for each affected service back to its known-good revision using Cloud Run's revisions page or `gcloud run services update-traffic SERVICE --to-revisions=REVISION=100`. A traffic rollback does not undo migrations. Restore data only through a separately reviewed recovery procedure. Secret versions are pinned, so rotation requires updating the configuration and redeploying.
 
 References: [Cloud Build identities](https://docs.cloud.google.com/build/docs/securing-builds/configure-user-specified-service-accounts), [GitHub federation](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines), [Cloud Run background CPU](https://docs.cloud.google.com/run/docs/configuring/billing-settings), [Cloud Run secrets](https://docs.cloud.google.com/run/docs/configuring/services/secrets).
+
+## Google sign-in for the operator portal
+
+The operator portal signs in with Google accounts (`OIDC_ISSUER=https://accounts.google.com`). Google only lets you create the sign-in client in the console:
+
+1. **Google Auth Platform** (console → APIs & Services → OAuth consent screen), project `rider-app-6ed5b`: app name "Hop Operator Console", audience **External**, and keep it in **Testing**. Under **Audience → Test users**, add each operator's Gmail address. Only test users can sign in while the app is in Testing.
+2. **Clients → Create client → Web application.** Authorised redirect URI, exactly: `https://<admin-origin>/auth/callback` (staging: `https://hop-staging-admin-qp262su4sq-el.a.run.app/auth/callback`). Copy the client ID and the client secret.
+3. Run `bash hop-platform/infra/gcp/set_oidc_client.sh <client-id> ops@example.com,second@example.com`. It asks for the secret, stores it as a new `hop-oidc-secret` version, updates `deploy.local.json`, validates it, and updates the GitHub `staging` environment's `HOP_DEPLOY_CONFIG`.
+4. Redeploy, then sign in at the admin origin.
+
+**Operators:** verified Google emails listed in `OPERATOR_EMAILS` (an `api_env` setting) become operators when they sign in. The change is audited as `operator_promoted_by_config`. Removing an email doesn't demote the account; change its role in the database for that. Other accounts can still be promoted with `api promote-operator <account UUID>`.
+
+`deploy.py` refuses a Google issuer whose client ID isn't a real Web client ID (`…apps.googleusercontent.com`), so a placeholder can't be deployed by mistake. With Google the API sends `prompt=select_account` (Google rejects `prompt=login`, which other providers use).

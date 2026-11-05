@@ -37,6 +37,19 @@ func (s *Server) isPaymentTestMode() bool {
 	return strings.HasPrefix(s.Config.PaymentKeyID, "rzp_test_") || s.devPayments()
 }
 
+// checkoutContact is the payer's verified mobile, so the provider checkout doesn't ask for it again.
+// Empty when there is none (the checkout then asks).
+func (s *Server) checkoutContact(ctx context.Context, account string) string {
+	var phone string
+	if s.DB.QueryRow(ctx, "SELECT phone FROM verified_phones WHERE account_id=$1", account).Scan(&phone) != nil || phone == "" {
+		return ""
+	}
+	if !strings.HasPrefix(phone, "+") {
+		phone = "+91" + phone
+	}
+	return phone
+}
+
 func hmacHex(secret, message string) string {
 	h := hmac.New(sha256.New, []byte(secret))
 	h.Write([]byte(message))
@@ -84,7 +97,7 @@ func (s *Server) createPaymentOrder(w http.ResponseWriter, r *http.Request) {
 	if keyID == "" && s.devPayments() {
 		keyID = "rzp_test_mock"
 	}
-	write(w, 201, map[string]any{"order_id": orderID, "amount_paise": fare, "currency": "INR", "key_id": keyID, "test_mode": s.isPaymentTestMode()})
+	write(w, 201, map[string]any{"order_id": orderID, "amount_paise": fare, "currency": "INR", "key_id": keyID, "test_mode": s.isPaymentTestMode(), "contact": s.checkoutContact(ctx, uid)})
 }
 
 // settlePayment marks an order paid exactly once, after the caller verified the provider signature.

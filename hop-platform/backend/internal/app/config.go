@@ -24,6 +24,9 @@ type Config struct {
 	SMSWebhookURL, SMSWebhookToken                                   string
 	MSG91AuthKey, MSG91TemplateID                                    string
 	PaymentAPIURL, PaymentKeyID, PaymentKeySecret, PaymentWebhookKey string
+	// OperatorEmails: verified emails from the configured identity provider (OIDC) that become operators
+	// when they sign in. Deploy configuration, so only whoever controls the deploy can grant it.
+	OperatorEmails []string
 }
 
 func ConfigFromEnv() (Config, error) {
@@ -59,6 +62,16 @@ func ConfigFromEnv() (Config, error) {
 	c.PaymentKeyID = strings.TrimSpace(env("PAYMENT_KEY_ID", os.Getenv("RAZORPAY_KEY_ID")))
 	c.PaymentKeySecret = strings.TrimSpace(env("PAYMENT_KEY_SECRET", os.Getenv("RAZORPAY_KEY_SECRET")))
 	c.PaymentWebhookKey = strings.TrimSpace(env("PAYMENT_WEBHOOK_SECRET", os.Getenv("RAZORPAY_WEBHOOK_SECRET")))
+	for _, email := range strings.Split(os.Getenv("OPERATOR_EMAILS"), ",") {
+		email = strings.ToLower(strings.TrimSpace(email))
+		if email == "" {
+			continue
+		}
+		if !strings.Contains(email, "@") || strings.ContainsAny(email, " <>") || len(email) > 254 {
+			return c, fmt.Errorf("OPERATOR_EMAILS must be a comma-separated list of email addresses")
+		}
+		c.OperatorEmails = append(c.OperatorEmails, email)
+	}
 	if c.SMSWebhookURL != "" && !strings.HasPrefix(c.SMSWebhookURL, "https://") && os.Getenv("APP_ENV") != "development" {
 		return c, fmt.Errorf("SMS_WEBHOOK_URL must use HTTPS")
 	}

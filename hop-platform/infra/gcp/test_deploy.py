@@ -25,6 +25,17 @@ class DeploymentChecks(unittest.TestCase):
             with self.assertRaises(ValueError):
                 module.validate(config)
 
+    def test_google_sign_in_needs_a_real_client_id_and_valid_operator_emails(self):
+        self.config["api_env"]["OIDC_ISSUER"] = "https://accounts.google.com"
+        with self.assertRaises(ValueError):
+            module.validate(self.config)  # "hop-web" placeholder
+        self.config["api_env"]["OIDC_CLIENT_ID"] = "614653152825-abc123def456.apps.googleusercontent.com"
+        self.config["api_env"]["OPERATOR_EMAILS"] = "ops@hop-test.net, second@hop-test.net"
+        module.validate(self.config)
+        self.config["api_env"]["OPERATOR_EMAILS"] = "not-an-email"
+        with self.assertRaises(ValueError):
+            module.validate(self.config)
+
     def test_rejects_secrets_in_public_config_and_unpinned_versions(self):
         module.validate(self.config)
         for key, value in [("SESSION_KEY", "sensitive"), ("APP_ENV", "development")]:

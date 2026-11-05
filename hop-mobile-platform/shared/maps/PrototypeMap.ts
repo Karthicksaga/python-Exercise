@@ -67,6 +67,8 @@ export class PrototypeMap {
   private previewCameraFollow = true;
   private located = (event: Event) => {
     this.current = (event as CustomEvent<Coordinate>).detail;
+    // Booking uses this to tell whether the phone is inside a service area.
+    window.dispatchEvent(new CustomEvent("hop-here", { detail: this.current }));
     this.centered = true;
     this.feed.setLocation(this.current);
     this.paint();

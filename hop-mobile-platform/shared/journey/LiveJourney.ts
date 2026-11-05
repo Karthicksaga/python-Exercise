@@ -85,6 +85,57 @@ export class LiveJourney {
   private noticesLoading = false;
   private noticesError = "";
   private rideChat: RideChat;
+  /** The phone's own position from the home map, used to tell whether it's inside a service area. */
+  private here?: { lat: number; lng: number };
+  private hopHere = (event: Event) => {
+    const d = (event as CustomEvent<{ lat: number; lng: number }>).detail;
+    if (!d || !Number.isFinite(d.lat) || !Number.isFinite(d.lng)) return;
+    const moved = !this.here || Math.abs(this.here.lat - d.lat) + Math.abs(this.here.lng - d.lng) > 0.0005;
+    this.here = { lat: d.lat, lng: d.lng };
+    if (moved) this.decorate();
+  };
+  private inService(point: { lat: number; lng: number }) {
+    return !!this.config?.areas.some((a) => point.lat >= a.min_lat && point.lat <= a.max_lat && point.lng >= a.min_lng && point.lng <= a.max_lng);
+  }
+  private serviceNote() {
+    const names = (this.config?.areas || []).map((a) => a.name.replace(/ (Urban|Rural|District|City)$/i, ""));
+    return names.length ? `Hop serves ${names.join(", ")} for now.` : "Hop isn't serving any area yet.";
+  }
+  /** Outside every service area there is nothing to book, so search is switched off with a reason. */
+  private gateService(screen: string) {
+    if (this.role !== "rider" || !this.config) return;
+    if (screen === "home") {
+      const out = !!this.here && !this.inService(this.here);
+      const card = this.app.querySelector<HTMLElement>(".home-where");
+      let note = card?.querySelector<HTMLElement>(".home-unavailable");
+      if (out && card && !note) {
+        note = document.createElement("p");
+        note.className = "home-unavailable";
+        note.setAttribute("role", "status");
+        note.innerHTML = `<strong>Hop isn’t available at your location yet.</strong>${escape(this.serviceNote())}`;
+        card.append(note);
+      } else if (!out) note?.remove();
+      this.app
+        .querySelectorAll<HTMLButtonElement>('.screen-body [data-go="search"], .shortcut[data-destination], [data-triptype], [data-action="usual-ride"]')
+        .forEach((b) => {
+          if (b.disabled === out) return;
+          b.disabled = out;
+          b.toggleAttribute("data-out-of-service", out);
+        });
+    }
+    if (screen === "search") {
+      const point = this.pickup || this.here;
+      const out = !!point && !this.inService(point);
+      const input = this.app.querySelector<HTMLInputElement>("#destination-input");
+      if (input && input.disabled !== out) {
+        input.dataset.placeholder ||= input.placeholder;
+        input.disabled = out;
+        input.placeholder = out ? "Pickup is outside Hop’s service areas" : input.dataset.placeholder;
+      }
+      const message = `This pickup is outside Hop’s service areas. ${this.serviceNote()} Choose a pickup inside one of them.`;
+      if (out && this.searchLabel !== message) this.showResults([], message);
+    }
+  }
   private submit = (event: Event) => {
     if ((event.target as HTMLFormElement).id !== "chat-form") return;
     this.stop(event);
@@ -162,6 +213,7 @@ export class LiveJourney {
     window.addEventListener("hop-map-pick", this.mapPick);
     window.addEventListener("hop-route-pick", this.routePick);
     window.addEventListener("hop-live-state", this.serverState);
+    window.addEventListener("hop-here", this.hopHere);
     this.observer = new MutationObserver(() => this.decorate());
     this.observer.observe(app, { childList: true });
     void api
@@ -2078,6 +2130,7 @@ export class LiveJourney {
       });
     }
     this.rideChat.update();
+    this.gateService(screen);
     if (screen === "activity") {
       this.history ||= new LiveHistory(
         this.app,
@@ -2208,6 +2261,7 @@ export class LiveJourney {
     window.removeEventListener("hop-route-pick", this.routePick);
     window.removeEventListener("hop-map-pick", this.mapPick);
     window.removeEventListener("hop-live-state", this.serverState);
+    window.removeEventListener("hop-here", this.hopHere);
     this.rideChat.close();
   }
 }

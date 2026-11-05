@@ -549,10 +549,13 @@ function currentMeta() {
     screens[state.role][0]
   );
 }
+const TAB_SCREENS = { rider: ["home", "activity", "wallet", "account"], captain: ["drive", "earnings", "activity", "account"] };
 function go(screen, replace = false) {
   if(screen === "commute"){notify("Hop Commute is currently disabled.");return;}
   if (screen !== state.screen) $("#app").dataset.motionDirection = replace ? "back" : "forward";
   if (!replace && screen !== state.screen) state.back.push(state.screen);
+  // A bottom tab starts a fresh history, so Back never walks through every tab visited before.
+  if (TAB_SCREENS[state.role].includes(screen)) state.back = [];
   state.screen = screen;
   state.last[state.role] = screen;
   state.modal = null;
@@ -794,7 +797,7 @@ function riderView() {
         brand: true,
         map: true,
         nav: "home",
-        body: `${mapArt()}<section class="home-where" aria-label="Plan a ride"><div class="home-where-top"><div class="home-heading"><span class="home-greeting">A LITTLE CLOSER, WITH HOP</span><h2>Where to next?</h2></div><div class="map-bubble home-area">${icon("pin", "tiny-icon")} Chennai <span class="muted">⌄</span></div></div><button class="destination-search" data-go="search">${icon("search")}<span style="flex:1">Where are you going?</span><span class="round">${icon("arrow")}</span></button><div class="shortcut-grid"><button class="shortcut" data-destination="Home">${icon("home")}<span><strong>Home</strong><small>2nd Cross Street</small></span></button><button class="shortcut" data-destination="Work">${icon("briefcase")}<span><strong>Work</strong><small>Olympia Tech Park</small></span></button></div></section><div class="sheet home-sheet"><div class="sheet-handle"></div><div class="product-row"><button class="product-chip active" data-go="search">City ride</button><button class="product-chip" data-triptype="rental">Hourly rental</button><button class="product-chip" data-triptype="outstation">Outstation</button></div><button class="usual-ride" data-action="usual-ride"><span class="usual-mark">${icon("refresh")}</span><span><small>MY USUAL RIDE</small><strong>${escape(state.usual.destination)}</strong><span>${vehicleData.find(item => item.id === state.usual.vehicle).name} · ${state.usual.payment}</span></span><span class="usual-arrow">${icon("arrow")}</span></button></div>`,
+        body: `${mapArt()}<section class="home-where" aria-label="Plan a ride"><h2 class="sr-only">Where to next?</h2><button class="destination-search" data-go="search">${icon("search")}<span style="flex:1">Where are you going?</span><span class="round">${icon("arrow")}</span></button></section><div class="sheet home-sheet"><div class="sheet-handle"></div><div class="shortcut-grid home-shortcuts"><button class="shortcut" data-destination="Home">${icon("home")}<span><strong>Home</strong><small>2nd Cross Street</small></span></button><button class="shortcut" data-destination="Work">${icon("briefcase")}<span><strong>Work</strong><small>Olympia Tech Park</small></span></button></div><div class="product-row"><button class="product-chip active" data-go="search">City ride</button><button class="product-chip" data-triptype="rental">Hourly rental</button><button class="product-chip" data-triptype="outstation">Outstation</button></div><button class="usual-ride" data-action="usual-ride"><span class="usual-mark">${icon("refresh")}</span><span><small>MY USUAL RIDE</small><strong>${escape(state.usual.destination)}</strong><span>${vehicleData.find(item => item.id === state.usual.vehicle).name} · ${state.usual.payment}</span></span><span class="usual-arrow">${icon("arrow")}</span></button></div>`,
       };
     case "search":
       return {

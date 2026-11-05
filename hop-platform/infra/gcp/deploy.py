@@ -70,7 +70,14 @@ def validate(c):
     for key in ("OIDC_ISSUER", "GEOCODING_URL") + (() if sidecar else ("ROUTING_URL",)):
         https_url(env[key])
     require(bool(env["OIDC_CLIENT_ID"]), "OIDC_CLIENT_ID is required")
-    allowed_env = {"OIDC_ISSUER", "OIDC_CLIENT_ID", "ROUTING_URL", "GEOCODING_URL", "VAPID_PUBLIC_KEY", "VAPID_SUBJECT", "MEDIA_PROFILE_BUCKET", "MEDIA_KYC_BUCKET", "DEV_SMS", "DEV_PAYMENTS", "DEMO_LOGIN"}
+    if env["OIDC_ISSUER"].rstrip("/") == "https://accounts.google.com":
+        # A placeholder (like "hop-web") deploys fine but every sign-in fails with invalid_client.
+        require(re.fullmatch(r"[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com", env["OIDC_CLIENT_ID"]),
+                "With Google sign-in, OIDC_CLIENT_ID must be the Web client ID ending in .apps.googleusercontent.com "
+                "(Google Cloud console: APIs & Services > Credentials; see set_oidc_client.sh)")
+    for email in filter(None, (e.strip() for e in env.get("OPERATOR_EMAILS", "").split(","))):
+        require(re.fullmatch(r"[^@\s<>,]+@[^@\s<>,]+\.[^@\s<>,]+", email), "OPERATOR_EMAILS must be a comma-separated list of email addresses")
+    allowed_env = {"OPERATOR_EMAILS", "OIDC_ISSUER", "OIDC_CLIENT_ID", "ROUTING_URL", "GEOCODING_URL", "VAPID_PUBLIC_KEY", "VAPID_SUBJECT", "MEDIA_PROFILE_BUCKET", "MEDIA_KYC_BUCKET", "DEV_SMS", "DEV_PAYMENTS", "DEMO_LOGIN"}
     require(set(env) <= allowed_env, "api_env accepts public configuration only; use api_secrets for credentials")
     staging = is_staging(c)
     buckets = list(media_buckets(c))

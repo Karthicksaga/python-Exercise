@@ -3468,3 +3468,19 @@ h3,
 .chat .chat-closed { margin-top: 6px; }
 .chat-unread-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--accent); color: white; font-size: 10px; font-weight: 800; line-height: 1; }
 .chat-compose .text-input:disabled { opacity: .6; }
+
+/* Home (Nov 2026, requested by the product owner): the floating card is only the search bar, so the map
+   stays visible; Home/Work moved into the bottom sheet as compact shortcuts. */
+.home-where { padding: 8px; gap: 8px; }
+.app:has(> .screen-body.map-screen) .screen-body.map-screen:has(.home-where) .map-controls { margin-top: calc(var(--float-head) + 84px); }
+.home-sheet .home-shortcuts { margin: 4px 0 8px; gap: 8px; }
+.home-sheet .home-shortcuts .shortcut { min-height: 48px; padding: 8px 10px; border-radius: 14px; background: #f5f5fa; }
+.app.dark .home-sheet .home-shortcuts .shortcut { background: #20232f; }
+.home-sheet .home-shortcuts .shortcut small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-sheet .home-shortcuts .shortcut > span { min-width: 0; }
+/* Outside every service area: search is switched off and this message says why. */
+.home-where .home-unavailable { margin: 0; padding: 4px 8px 6px; font-size: calc(11px + var(--font-step, 0px)); color: var(--muted); line-height: 1.45; }
+.home-where .home-unavailable strong { color: var(--ink); display: block; font-size: calc(12px + var(--font-step, 0px)); }
+.app button[data-out-of-service] { opacity: .5; }
+/* Read by screen readers, not shown. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

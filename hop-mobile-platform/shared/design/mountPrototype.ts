@@ -75,6 +75,22 @@ export async function mountPrototype(role: "rider" | "captain") {
           return;
         }
       }
+      // Android convention: Back on a start screen leaves the app. Captains (and anyone on a live trip)
+      // go to the background instead, so location sharing and the trip keep running.
+      const root = role === "rider" ? "home" : "drive";
+      const tabs = role === "rider" ? ["home", "activity", "wallet", "account"] : ["drive", "earnings", "activity", "account"];
+      const trip = role === "rider" ? ["matching", "tracking"] : ["request", "pickup", "otp", "trip"];
+      if (st.screen === root || st.screen === "auth" || st.screen === "onboarding" || trip.includes(st.screen)) {
+        if (role === "rider" && !trip.includes(st.screen)) void App.exitApp();
+        else void App.minimizeApp();
+        return;
+      }
+      // Other tabs go back to the start tab, not through every screen visited before.
+      if (tabs.includes(st.screen)) {
+        prototypeBridge.go(root, true);
+        prototypeBridge.assign({ back: [] });
+        return;
+      }
       prototypeBridge.back();
     });
   }

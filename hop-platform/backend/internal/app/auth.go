@@ -188,8 +188,29 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.cookie(w, loginCookie(r), state, 300)
-	http.Redirect(w, r, oauth.AuthCodeURL(state, oauth2.S256ChallengeOption(entry.Verifier), oidc.Nonce(entry.Nonce), oauth2.SetAuthURLParam("prompt", "login")), http.StatusFound)
+	http.Redirect(w, r, oauth.AuthCodeURL(state, oauth2.S256ChallengeOption(entry.Verifier), oidc.Nonce(entry.Nonce), oauth2.SetAuthURLParam("prompt", loginPrompt(s.Config.Issuer))), http.StatusFound)
 }
+// loginPrompt asks the identity provider to show its account screen on every sign-in, so a shared
+// device can't silently reuse someone else's session. Google only accepts none, consent and
+// select_account (it rejects "login"); other OIDC providers (Keycloak, Auth0) use "login".
+func loginPrompt(issuer string) string {
+	if strings.TrimSuffix(issuer, "/") == "https://accounts.google.com" {
+		return "select_account"
+	}
+	return "login"
+}
+
+// operatorByConfig reports whether a verified identity-provider email is listed in OPERATOR_EMAILS.
+func (s *Server) operatorByConfig(email string) bool {
+	email = strings.ToLower(strings.TrimSpace(email))
+	for _, allowed := range s.Config.OperatorEmails {
+		if email == allowed {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
 	cookie, e := r.Cookie(loginCookie(r))
@@ -252,6 +273,25 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		dbError(w, e)
 		return
+	}
+	// Listed operators are promoted on sign-in (never demoted here), and the change is audited.
+	if s.operatorByConfig(claims.Email) {
+		tx, e := s.DB.Begin(ctx)
+		if e == nil {
+			defer tx.Rollback(ctx)
+			if tag, err := tx.Exec(ctx, "UPDATE accounts SET role='operator' WHERE id=$1 AND role<>'operator'", account); err != nil {
+				e = err
+			} else if tag.RowsAffected() > 0 {
+				e = audit(ctx, tx, account, "", "operator_promoted_by_config", map[string]string{"issuer": s.Config.Issuer})
+			}
+			if e == nil {
+				e = tx.Commit(ctx)
+			}
+		}
+		if e != nil {
+			dbError(w, e)
+			return
+		}
 	}
 	if entry.MobileChallenge != "" {
 		s.mobileReturn(w, r, account, entry)

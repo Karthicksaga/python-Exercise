@@ -274,7 +274,7 @@ func (s *Server) walletTopup(w http.ResponseWriter, r *http.Request) {
 		if keyID == "" && s.devPayments() {
 			keyID = "rzp_test_mock"
 		}
-		write(w, 201, map[string]any{"order_id": order, "amount_paise": in.AmountPaise, "currency": "INR", "key_id": keyID, "test_mode": s.isPaymentTestMode()})
+		write(w, 201, map[string]any{"order_id": order, "amount_paise": in.AmountPaise, "currency": "INR", "key_id": keyID, "test_mode": s.isPaymentTestMode(), "contact": s.checkoutContact(r.Context(), user(r).Account.ID)})
 		return
 	}
 	if !s.devPayments() {
