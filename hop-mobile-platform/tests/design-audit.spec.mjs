@@ -34,6 +34,8 @@ for (const [size, viewport] of phones)
         const r = nav?.getBoundingClientRect();
         const small = [...document.querySelectorAll("#app :is(button, a[href], input, select, [role=switch])")]
           .filter((el) => {
+            // Map credit links are inline text links, which WCAG 2.5.8 exempts from the size rule.
+            if (el.closest(".leaflet-control-attribution, .maplibregl-ctrl-attrib")) return false;
             const b = el.getBoundingClientRect(), s = getComputedStyle(el);
             return b.width > 0 && b.height > 0 && s.visibility !== "hidden" && b.bottom > 0 && b.top < vh && (b.height < 24 || b.width < 24);
           })
