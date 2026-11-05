@@ -32,6 +32,10 @@ type Config struct {
 	OperatorEmails []string
 }
 
+// testOnboarding: captains may apply, and be approved, without documents. Development always
+// allows it; staging opts in with DEV_ONBOARDING.
+func (c Config) testOnboarding() bool { return c.Development || c.TestOnboarding }
+
 func ConfigFromEnv() (Config, error) {
 	c := Config{VAPIDPublic: os.Getenv("VAPID_PUBLIC_KEY"), VAPIDPrivate: os.Getenv("VAPID_PRIVATE_KEY"), VAPIDSubject: os.Getenv("VAPID_SUBJECT"), Address: env("ADDRESS", ":8080"), DatabaseURL: os.Getenv("DATABASE_URL"), ListenURL: os.Getenv("DATABASE_LISTEN_URL"), RedisURL: os.Getenv("REDIS_URL"), PublicOrigin: env("PUBLIC_ORIGIN", "http://localhost:8080"), AllowedOrigins: os.Getenv("ALLOWED_ORIGINS"), Issuer: os.Getenv("OIDC_ISSUER"), ClientID: os.Getenv("OIDC_CLIENT_ID"), ClientSecret: os.Getenv("OIDC_CLIENT_SECRET"), SessionKey: os.Getenv("SESSION_KEY"), RoutingURL: os.Getenv("ROUTING_URL"), GeocodingURL: os.Getenv("GEOCODING_URL"), Development: os.Getenv("APP_ENV") == "development"}
 	if os.Getenv("DEMO_LOGIN") == "true" {
@@ -42,7 +46,7 @@ func ConfigFromEnv() (Config, error) {
 	}
 	c.DevSMS = os.Getenv("DEV_SMS") == "true" || os.Getenv("ENABLE_TEST_SMS") == "true" || c.Development
 	c.DevPayments = os.Getenv("DEV_PAYMENTS") == "true" || os.Getenv("ENABLE_TEST_PAYMENTS") == "true" || c.Development
-	c.TestOnboarding = os.Getenv("DEV_ONBOARDING") == "true" || c.Development
+	c.TestOnboarding = os.Getenv("DEV_ONBOARDING") == "true"
 	c.RiderOrigin, c.CaptainOrigin, c.AdminOrigin = os.Getenv("RIDER_ORIGIN"), os.Getenv("CAPTAIN_ORIGIN"), os.Getenv("ADMIN_ORIGIN")
 	if c.Development {
 		c.RiderOrigin = env("RIDER_ORIGIN", "http://localhost:5173")
