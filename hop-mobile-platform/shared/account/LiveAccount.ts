@@ -6,6 +6,8 @@ import { icon } from "../icons";
 import type { State, Config } from "../services/contracts";
 import type { OnboardingBridge as Bridge } from "../onboarding/CaptainOnboarding";
 type Data = Record<string, any>;
+/** Figures that change when a trip ends or is paid. */
+const MONEY_PATHS = ["/api/drivers/earnings", "/api/drivers/wallet", "/api/wallet", "/api/drivers/insights"];
 export class LiveAccount {
   private drafts = new Map<string, { value: string; checked: boolean }>();
   private topupAmount = 500;
@@ -29,6 +31,7 @@ export class LiveAccount {
   };
   private generation = 0;
   private cache = new Map<string, Data>();
+  private loadedAt = new Map<string, number>();
   private loading = new Set<string>();
   private errors = new Map<string, string>();
   private busy = false;
@@ -323,6 +326,7 @@ export class LiveAccount {
         throw new Error("Wallet balance is unavailable.");
       if (generation !== this.generation) return;
       this.cache.set(path, result);
+      this.loadedAt.set(path, Date.now());
       this.errors.delete(path);
     } catch (e) {
       this.errors.set(path, (e as Error).message);
@@ -332,8 +336,9 @@ export class LiveAccount {
     }
   }
   private get(path: string) {
+    const stale = MONEY_PATHS.includes(path) && Date.now() - (this.loadedAt.get(path) || 0) > 60_000;
     if (
-      !this.cache.has(path) &&
+      (!this.cache.has(path) || stale) &&
       !this.loading.has(path) &&
       !this.errors.has(path)
     )
@@ -354,7 +359,23 @@ export class LiveAccount {
     if (!r) throw new Error("Select a trip in My rides first.");
     return r;
   }
+  /** Money figures change when a trip ends or is paid, so reload them when any trip's status does. */
+  private tripsSignature = "";
+  private dropStaleMoney() {
+    const rides = this.state()?.rides || [];
+    const signature = rides.map((r) => `${r.id}:${r.status}:${r.payment_status || ""}`).join("|");
+    if (signature === this.tripsSignature) return;
+    const first = this.tripsSignature === "";
+    this.tripsSignature = signature;
+    if (first) return;
+    // Keep showing the old figure until the new one arrives.
+    for (const path of MONEY_PATHS) {
+      this.errors.delete(path);
+      if (this.cache.has(path)) void this.load(path);
+    }
+  }
   render(force = false) {
+    this.dropStaleMoney();
     const ui = this.bridge.read(),
       screen = ui.screen,
       modal = ui.modal;

@@ -1470,3 +1470,155 @@
 
 /* Animate sheets without moving the provider canvas. */
 .hop-live .screen-body.map-screen { animation: none; will-change: auto; }
+
+/* ==========================================================================
+   Motion pass (approved Nov 2026, "Hop Launch Motion" preview): place search,
+   finding a captain and trip moments. All of it stops under reduced motion.
+   ========================================================================== */
+
+/* Place search: shimmering rows while Hop looks places up, then results slide in. */
+.hop-live .hop-search-skeleton { display: grid; }
+.hop-live .hop-skel-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.hop-live .hop-skel-row > span { flex: 1; display: grid; gap: 7px; }
+.hop-live .hop-skel { display: block; border-radius: 6px; background: linear-gradient(90deg, var(--line) 0%, var(--paper) 50%, var(--line) 100%); background-size: 200% 100%; animation: hop-shimmer 1.2s linear infinite; }
+.hop-live .hop-skel-icon { width: 34px; height: 34px; border-radius: 11px; flex: none; }
+.hop-live .hop-skel-line { height: 10px; width: 72%; }
+.hop-live .hop-skel-line.short { height: 8px; width: 46%; }
+@keyframes hop-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.hop-live .hop-live-dots { display: inline-flex; gap: 3px; margin-left: 4px; vertical-align: middle; }
+.hop-live .hop-live-dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); animation: hop-dot 1s ease-in-out infinite; }
+.hop-live .hop-live-dots i:nth-child(2) { animation-delay: .15s; }
+.hop-live .hop-live-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes hop-dot { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.hop-live .hop-result-in { animation: hop-rise .3s ease-out both; animation-delay: calc(var(--i, 0) * 60ms); }
+.hop-live .hop-result-in mark { background: none; color: var(--accent); font-weight: 800; }
+@keyframes hop-rise { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Finding a captain: the current step sweeps and rings ripple from the pickup. */
+.hop-live .step-progress i { position: relative; overflow: hidden; }
+.hop-live [data-motion-screen="matching"] .step-progress i.done + i:not(.done)::after {
+  content: ""; position: absolute; inset: 0; width: 45%; border-radius: inherit; background: var(--accent);
+  animation: hop-sweep 1.3s ease-in-out infinite;
+}
+@keyframes hop-sweep { from { transform: translateX(-110%); } to { transform: translateX(240%); } }
+.hop-pin-wave {
+  position: absolute; bottom: -68px; left: 50%; width: 140px; height: 140px; margin-left: -70px; border-radius: 50%;
+  border: 2px solid var(--accent); opacity: 0; pointer-events: none; animation: hop-wave 2.4s ease-out infinite;
+}
+.hop-pin-wave:nth-of-type(2) { animation-delay: .8s; }
+.hop-pin-wave:nth-of-type(3) { animation-delay: 1.6s; }
+@keyframes hop-wave { from { transform: scale(.1); opacity: .7; } to { transform: scale(1); opacity: 0; } }
+
+/* Trip moments: a chip pops onto the map, and the sheet's key detail flips in. */
+.hop-moment-chip {
+  position: absolute; z-index: 6; left: 50%; top: calc(var(--float-head, 100px) + 8px); transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 99px; white-space: nowrap;
+  background: var(--surface); color: var(--ink); font-size: calc(13px + var(--font-step, 0px)); font-weight: 700;
+  box-shadow: 0 6px 18px rgba(30,30,80,.18); pointer-events: none;
+  animation: hop-chip-in .45s .1s cubic-bezier(.34,1.56,.64,1) both, hop-chip-out .3s 2.2s ease-in forwards;
+}
+.hop-moment-tick { width: 20px; height: 20px; border-radius: 50%; background: var(--green); display: grid; place-items: center; }
+.hop-moment-tick svg { width: 12px; height: 12px; }
+@keyframes hop-chip-in { from { transform: translate(-50%, -12px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+@keyframes hop-chip-out { to { transform: translate(-50%, -8px); opacity: 0; } }
+.hop-live #app[data-hop-moment="accepted"] .live-trip-sheet .plate { animation: hop-flip .5s .35s ease-out both; transform-origin: top; }
+.hop-live #app[data-hop-moment="accepted"] .live-trip-sheet .driver-card .avatar { animation: hop-pop .5s .2s cubic-bezier(.34,1.56,.64,1) both; }
+.hop-live #app[data-hop-moment="arrived"] .live-trip-sheet .pin-code strong { animation: hop-flip .45s .3s ease-out both; transform-origin: top; display: inline-block; }
+.hop-live #app[data-hop-moment="arrived"] .live-trip-sheet .driver-card .avatar { animation: hop-ring 1s .2s ease-out 2; }
+.hop-live #app[data-hop-moment] .sheet { animation: hop-sheet-up .45s cubic-bezier(.2,.9,.3,1.1) both; }
+@keyframes hop-flip { from { transform: rotateX(90deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes hop-pop { from { transform: scale(.55); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes hop-ring { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } to { box-shadow: 0 0 0 14px transparent; } }
+@keyframes hop-sheet-up { from { transform: translateY(28px); opacity: .4; } to { transform: none; opacity: 1; } }
+
+/* Paid: the tick pops in a green disc with a small burst. Cash: a ₹ stamp presses in. */
+.hop-live .payment-state-symbol.hop-celebrate { position: relative; overflow: visible; animation: hop-pop .5s cubic-bezier(.34,1.56,.64,1) both; }
+.hop-live .payment-state-symbol.success:not(.hop-stamp) { background: var(--green); color: #fff; border-radius: 50%; }
+.hop-live .payment-state-symbol.hop-celebrate i {
+  position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: var(--accent);
+  opacity: 0; animation: hop-spark .8s .3s ease-out both;
+}
+.hop-live .payment-state-symbol.hop-celebrate i:nth-child(even) { background: color-mix(in srgb, var(--accent) 55%, #fff); width: 4px; height: 4px; margin: -2px; }
+@keyframes hop-spark { 0% { transform: rotate(var(--a)) translateX(14px); opacity: 1; } 100% { transform: rotate(var(--a)) translateX(60px); opacity: 0; } }
+.hop-live .payment-state-symbol.hop-stamp { border-radius: 50%; border: 3px solid var(--green); background: color-mix(in srgb, var(--green) 12%, var(--surface)); color: var(--green); font-weight: 800; }
+.hop-live .payment-state-symbol.hop-stamp.hop-celebrate { animation: hop-stamp .45s .1s cubic-bezier(.3,1.5,.5,1) both; }
+@keyframes hop-stamp { from { transform: scale(1.8) rotate(-18deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .hop-live :is(.hop-skel, .hop-live-dots i, .hop-result-in, .payment-state-symbol, .sheet, .plate, .avatar, .pin-code strong),
+  .hop-live .step-progress i::after, .hop-pin-wave, .hop-moment-chip, .hop-live .payment-state-symbol i {
+    animation: none !important;
+  }
+  .hop-pin-wave, .hop-live .payment-state-symbol i, .hop-live [data-motion-screen="matching"] .step-progress i::after { display: none; }
+}
+
+/* ── Compact redesign (Nov 2026, approved): captain online switch and slide to confirm ── */
+/* The online button moves into the header as a small switch (LiveJourney.decorate). */
+.app-head .head-tools .hop-duty-switch {
+  display: inline-flex; align-items: center; gap: 8px; width: auto; min-width: 0; height: 44px; min-height: 44px;
+  margin: 0; padding: 0 6px 0 12px; border: 0; border-radius: 22px; background: #14151f; color: #fff;
+  font-size: calc(13px + var(--font-step, 0px)); font-weight: 800; letter-spacing: 0; white-space: nowrap;
+  box-shadow: var(--soft-shadow); filter: none;
+}
+.app-head .head-tools .hop-duty-switch::after {
+  content: ""; flex: none; width: 40px; height: 26px; border-radius: 13px;
+  background: radial-gradient(circle at 13px 50%, #fff 9px, transparent 10px), #8a8ea0;
+  transition: background .2s ease;
+}
+.app-head .head-tools .hop-duty-switch.is-online { background: var(--surface, #fff); color: var(--ink, #14151f); }
+.app-head .head-tools .hop-duty-switch.is-online::after { background: radial-gradient(circle at 27px 50%, #fff 9px, transparent 10px), var(--green, #167b5b); }
+/* With the switch in the header, the "You're online" pill and the empty bottom bar go. */
+.app:has(.app-head .hop-duty-switch) .online-pill { display: none; }
+.app:has(.app-head .hop-duty-switch) > .action-bar:not(:has(button)) { display: none; }
+
+/* Slide to confirm (slideToConfirm.ts): Accept ride and Complete trip. */
+.hop-slide {
+  --slide-x: 0px; --slide-p: 0;
+  position: relative; width: 100%; height: 56px; border-radius: 16px; overflow: hidden;
+  background: var(--accent-soft, #ecebfd); touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.hop-slide-accept { background: #e7f5ee; }
+.hop-slide-fill {
+  position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--slide-x) + 56px);
+  border-radius: 16px; background: var(--accent, #4b3fd1); transition: width .25s ease;
+}
+.hop-slide-accept .hop-slide-fill, .hop-slide-done .hop-slide-fill { background: var(--green, #167b5b); }
+.hop-slide-text {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding-left: 44px;
+  font-size: calc(15px + var(--font-step, 0px)); font-weight: 800; color: var(--accent-ink, #3a2fb8);
+  opacity: calc(1 - var(--slide-p) * .8); pointer-events: none;
+}
+.hop-slide-accept .hop-slide-text { color: #17704a; }
+#app .hop-slide .hop-slide-knob {
+  position: absolute; left: 4px; top: 4px; z-index: 1; display: flex; align-items: center; justify-content: center;
+  width: 48px; min-width: 48px; height: 48px; min-height: 48px; margin: 0; padding: 0; border: 0; border-radius: 12px;
+  background: #fff; color: var(--accent, #4b3fd1); box-shadow: 0 2px 8px rgba(20,21,31,.25); filter: none;
+  transform: translateX(var(--slide-x)); transition: transform .25s ease; cursor: grab; touch-action: none; opacity: 1; overflow: visible;
+}
+#app .hop-slide .hop-slide-knob:hover, #app .hop-slide .hop-slide-knob:focus-visible { box-shadow: 0 2px 8px rgba(20,21,31,.25); }
+#app .hop-slide-accept .hop-slide-knob, #app .hop-slide-done .hop-slide-knob { color: var(--green, #167b5b); }
+#app .hop-slide-dragging .hop-slide-fill, #app .hop-slide-dragging .hop-slide-knob { transition: none; }
+.hop-slide-done { background: var(--green, #167b5b); }
+#app .hop-slide-nudge .hop-slide-knob { animation: hop-slide-nudge .5s ease; }
+@keyframes hop-slide-nudge { 35% { transform: translateX(22px); } 70% { transform: translateX(-3px); } }
+/* Ride request: the slide on top, Decline as a quiet text button under it. */
+.action-bar .driver-offer-actions:has(.hop-slide) { display: flex; flex-direction: column-reverse; gap: 2px; flex: 1 1 100%; width: 100%; }
+.action-bar:has(.hop-slide) > .row { flex: 1 1 100%; }
+#app .hop-slide .hop-slide-knob:focus-visible { outline: 3px solid var(--accent, #4b3fd1); outline-offset: -3px; }
+.action-bar .driver-offer-actions:has(.hop-slide) > .secondary {
+  width: 100%; min-height: 44px; background: transparent; border: 0; box-shadow: none; color: var(--muted, #6b6f80);
+}
+@media (prefers-reduced-motion: reduce) {
+  #app .hop-slide-fill, #app .hop-slide .hop-slide-knob, .app-head .head-tools .hop-duty-switch::after { transition: none; }
+}
+
+/* Captain cash change helper (LivePayment.changeHelper). */
+.cash-change { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; padding: 14px; border-radius: 18px; background: var(--surface, #fff); border: 1px solid var(--line, #e6e6ee); }
+.cash-change-label { font-size: calc(14px + var(--font-step, 0px)); font-weight: 700; }
+.cash-change-notes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.cash-change-notes button { min-height: 48px; border-radius: 12px; border: 1px solid var(--line, #e6e6ee); background: var(--surface, #fff); color: var(--ink, #14151f); font-weight: 800; font-size: calc(15px + var(--font-step, 0px)); }
+.cash-change-notes button[aria-checked="true"] { background: var(--accent, #4b3fd1); border-color: var(--accent, #4b3fd1); color: #fff; }
+.cash-change-result { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 14px; border-radius: 14px; background: var(--bg, #f4f4f8); color: var(--muted, #6b6f80); font-weight: 700; }
+.cash-change-result strong { font-size: calc(24px + var(--font-step, 0px)); font-weight: 800; letter-spacing: -.5px; }
+.cash-change-result.give { background: var(--accent-soft, #ecebfd); color: var(--accent-ink, #3a2fb8); }
+.cash-change-result.exact { background: #e7f5ee; color: #17704a; }

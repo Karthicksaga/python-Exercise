@@ -289,10 +289,11 @@ export class PrototypeMap {
         const button = this.app.querySelector<HTMLElement>(
           '[data-action="online"]',
         );
-        if (button?.firstChild && !button.hasAttribute("data-live-onboard"))
-          button.firstChild.textContent = online
-            ? "Take a break · Go offline"
-            : "Go online";
+        if (button && !button.hasAttribute("data-live-onboard")) {
+          button.textContent = online ? "Online" : "Go online";
+          button.setAttribute("aria-pressed", String(online));
+          button.classList.toggle("is-online", online);
+        }
       },
     );
     this.observer = new MutationObserver(() => void this.attach());

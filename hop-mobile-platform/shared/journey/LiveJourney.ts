@@ -14,6 +14,8 @@ import { RideChat } from "../chat/RideChat";
 import { paymentMethods } from "../payments/components";
 import { api, APIError } from "../services/client";
 import type { Point, Config, Quote, State, Ride } from "../services/contracts";
+import { playMoment } from "../design/tripMoments";
+import { enhanceSlides } from "../design/slideToConfirm";
 import { escape, money } from "../helpers";
 import type { Coordinate } from "../maps/types";
 import { distanceMeters } from "../maps/motion";
@@ -55,6 +57,10 @@ export class LiveJourney {
   private paymentChecked = false;
   private synced = false;
   private paymentChosen = false;
+  /** A ride step that just happened, played as a short motion once its screen is drawn. */
+  private pendingMoment = "";
+  /** The ride whose pickup code boxes were last cleared. */
+  private pinRide = "";
   private walletLoading = false;
   private authError = "";
   private phone = "";
@@ -287,8 +293,8 @@ export class LiveJourney {
         this.walletBalance = wallet.balance_paise;
         const fare = this.estimates[this.bridge.read().vehicle] ?? this.quote?.fare_paise;
         if (this.paymentChosen || this.bridge.read().payment !== "Wallet" || !Number.isSafeInteger(wallet.balance_paise) || fare === undefined || wallet.balance_paise >= fare) return;
+        // Quietly: the Payment row already shows Cash, and a pop-up here only got in the way.
         this.bridge.update({ payment: "Cash" });
-        this.bridge.notify(`Your wallet has ${money(wallet.balance_paise / 100)}, so this ride is set to Cash. Change it under Payment method.`);
       })
       .catch(() => { this.paymentChecked = false; });
   }
@@ -354,7 +360,8 @@ export class LiveJourney {
       return;
     }
     this.searchNeedsSignIn = false;
-    this.showResults([], "Searching places…");
+    this.searchQuery = query;
+    this.showResults([], "Searching places…", true);
     this.searchTimer = setTimeout(() => void this.search(query, sequence), 350);
   };
   private changeArea = (event: Event) => {
@@ -425,7 +432,15 @@ export class LiveJourney {
         );
     }
   }
-  private showResults(found: Point[], label: string) {
+  private searchQuery = "";
+  /** The typed letters, highlighted where a result's name starts with them. */
+  private highlight(name: string) {
+    const q = this.searchQuery;
+    if (q && name.toLowerCase().startsWith(q.toLowerCase()))
+      return `<mark>${escape(name.slice(0, q.length))}</mark>${escape(name.slice(q.length))}`;
+    return escape(name);
+  }
+  private showResults(found: Point[], label: string, loading = false) {
     // The address service often returns the same place several times a few metres apart.
     const near = (a: Point, b: Point) => Math.abs(a.lat - b.lat) < 0.0015 && Math.abs(a.lng - b.lng) < 0.0015;
     const results = found.filter((p, i) => !found.slice(0, i).some((q) => q.label === p.label && near(p, q)));
@@ -440,13 +455,21 @@ export class LiveJourney {
               {
                 // "Guindy, Anna Salai (Mount Road)" reads as the place, then where it is.
                 const [name, ...area] = p.label.split(", ");
-                return `<button class="list-row" data-live-place="${i}"><span class="list-icon">⌖</span><span class="list-text"><strong>${escape(name)}</strong>${area.length ? `<small>${escape(area.join(", "))}</small>` : ""}</span><span>›</span></button>`;
+                return `<button class="list-row hop-result-in" style="--i:${i}" data-live-place="${i}"><span class="list-icon">⌖</span><span class="list-text"><strong>${this.highlight(name)}</strong>${area.length ? `<small>${escape(area.join(", "))}</small>` : ""}</span><span>›</span></button>`;
               },
           )
           .join("") ||
+        (loading
+          ? `<div class="hop-search-skeleton" role="status" aria-label="${escape(label)}">${'<div class="hop-skel-row" aria-hidden="true"><i class="hop-skel hop-skel-icon"></i><span><i class="hop-skel hop-skel-line"></i><i class="hop-skel hop-skel-line short"></i></span></div>'.repeat(3)}</div>`
+          : "") ||
         `<div class="search-feedback" role="status"><p>${escape(label)}</p>${this.searchNeedsSignIn ? '<button class="secondary" data-live-login>Sign in to search places</button>' : ""}</div>`;
     const heading = this.app.querySelector("#results-label");
-    if (heading) heading.textContent = results.length ? "SEARCH RESULTS" : "PLACES";
+    if (heading)
+      heading.innerHTML = results.length
+        ? "SEARCH RESULTS"
+        : loading
+          ? 'SEARCHING <span class="hop-live-dots" aria-hidden="true"><i></i><i></i><i></i></span>'
+          : "PLACES";
   }
   private async select(point: Point) {
     this.sequence++;
@@ -497,11 +520,23 @@ export class LiveJourney {
     if (!this.pickup && this.bridge.read().screen === "home") {
       this.target = "pickup";
     }
-    void this.select({
-      ...point,
-      label: `Map pin ${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`,
-    }).catch((e) => this.message(e));
+    // A tapped point gets the street name from the server; raw coordinates read like an error.
+    void (async () => {
+      let label = "Pinned location";
+      try {
+        label = (await api.request<{ label: string }>(`/api/places/reverse?lat=${point.lat}&lng=${point.lng}`)).label || label;
+      } catch {}
+      await this.select({ lat: point.lat, lng: point.lng, label });
+    })().catch((e) => this.message(e));
   };
+  /** After a trip ends, home starts clean: no old pickup, drop-off or route on the map or in the form. */
+  private clearPlan() {
+    this.pickup = undefined;
+    this.dropoff = undefined;
+    this.routes = [];
+    this.invalidate();
+    this.bridge.assign({ pickup: "", destination: "", search: "" });
+  }
   private cancelRiderRide() {
     this.recovery = undefined;
     this.seenRide = "";
@@ -1092,6 +1127,15 @@ export class LiveJourney {
       );
       return;
     }
+    if (action === "external-nav") {
+      this.stop(event);
+      const ride = this.active();
+      if (!ride) return;
+      const going = ride.status === "in_progress" ? { lat: ride.dropoff_lat, lng: ride.dropoff_lng } : { lat: ride.pickup_lat, lng: ride.pickup_lng };
+      // Google Maps' own app opens this link with voice turn-by-turn; Hop keeps tracking the trip.
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${going.lat},${going.lng}&travelmode=${ride.vehicle_category === "bike" ? "two-wheeler" : "driving"}&dir_action=navigate`, "_blank");
+      return;
+    }
     if (action === "toggle-cockpit") {
       this.stop(event);
       if (
@@ -1435,11 +1479,23 @@ export class LiveJourney {
             .join("");
           if (name === "start" && !/^\d{6}$/.test(code))
             throw new Error("Enter the rider’s six-digit pickup code.");
-          await api.action(ride.id, ride.version, name, {
-            ...(name === "start" ? { code } : {}),
-            ...(name === "complete" ? { confirm: true } : {}),
-            ...(name === "cancel" ? { reason: "Plans changed" } : {}),
-          });
+          const send = (confirm: boolean) =>
+            api.action(ride.id, ride.version, name, {
+              ...(name === "start" ? { code } : {}),
+              ...(confirm ? { confirm: true } : {}),
+              ...(name === "cancel" ? { reason: "Plans changed" } : {}),
+            });
+          if (name === "complete") {
+            // Ask the server first: far from the drop-off it answers 409 "Early finish…" with the
+            // reduced fare. Show the captain that and complete only if they agree.
+            try {
+              await send(false);
+            } catch (error) {
+              if (!(error instanceof APIError && error.status === 409 && /early finish/i.test(error.message))) throw error;
+              if (!window.confirm(`${error.message}\n\nComplete the trip here?`)) return;
+              await send(true);
+            }
+          } else await send(false);
         }
         try {
           this.sync(await api.state());
@@ -1523,6 +1579,7 @@ export class LiveJourney {
           acceptRideSound();
         if (announce && this.role === "rider")
           ({ accepted: captainFoundSound, arrived: captainArrivedSound, in_progress: tripStartedSound } as Record<string, () => void>)[ride.status]?.();
+        if (announce) this.pendingMoment = ride.status;
         this.bridge.update({
           phase: ride.status,
           pickup: ride.pickup_label,
@@ -1543,6 +1600,14 @@ export class LiveJourney {
                 } as Record<string, string>
               )[ride.status] || "drive",
         );
+        if (this.pendingMoment) {
+          const chips: Record<string, Record<string, string>> = {
+            rider: { accepted: "Captain found", arrived: "Your captain is here", in_progress: "Trip started" },
+            captain: { accepted: "Ride accepted", arrived: "You’ve arrived", in_progress: "Trip started" },
+          };
+          playMoment(this.app, this.pendingMoment, chips[this.role][this.pendingMoment]);
+          this.pendingMoment = "";
+        }
       }
     } else if (this.seenRide) {
       const previous = state.rides?.find(
@@ -1552,6 +1617,7 @@ export class LiveJourney {
         (r) => r.id === this.seenRide.split(":")[0] && r.status === "completed",
       );
       this.seenRide = "";
+      if (finished || this.role === "captain") this.clearPlan();
       if (finished) {
         if (this.role === "rider") tripCompleteSound();
         this.bridge.assign({ phase: "completed" });
@@ -1626,6 +1692,7 @@ export class LiveJourney {
     if (this.state && !this.busy && !this.payment && !this.active() && tripScreens.includes(this.bridge.read().screen)) {
       const unpaid = this.state.rides.find((r) => r.mine !== false && r.status === "completed" && !["paid_online", "driver_reported_received", "rider_reported_paid"].includes(r.payment_status ?? ""));
       this.seenRide = "";
+      this.clearPlan();
       if (unpaid) {
         this.bridge.assign({ phase: "completed" });
         this.openPayment(unpaid);
@@ -1645,6 +1712,7 @@ export class LiveJourney {
         this.app.querySelectorAll<HTMLElement>('.bottom-nav').forEach(el => { el.remove(); });
       }
     }
+    if (this.role === "captain") enhanceSlides(this.app);
     this.booking?.render();
     this.account?.render();
     if (this.role === "captain" && this.bridge.read().screen === "onboarding") {
@@ -1709,9 +1777,14 @@ export class LiveJourney {
                 : "Complete Captain onboarding";
         } else {
           duty.removeAttribute("data-live-onboard");
-          duty.textContent = driver.online
-            ? "Take a break · Go offline"
-            : "Go online";
+          duty.textContent = driver.online ? "Online" : "Go online";
+          // Compact redesign (Nov 2026): an approved captain's online control is a small switch in
+          // the header instead of a full-width bar. Same button, same handlers, just moved.
+          duty.classList.add("hop-duty-switch");
+          duty.setAttribute("aria-pressed", String(Boolean(driver.online)));
+          duty.classList.toggle("is-online", Boolean(driver.online));
+          const tools = this.app.querySelector(".app-head .head-tools");
+          if (tools && duty.parentElement !== tools) tools.prepend(duty);
         }
       }
 
@@ -1916,8 +1989,35 @@ export class LiveJourney {
                 : "Unavailable";
           const detail = button.querySelector("small");
           if (detail)
-            detail.textContent = "Availability confirmed during matching";
+            detail.textContent =
+              this.estimates[button.dataset.vehicle!] !== undefined
+                ? "Captains checked when you book"
+                : "Not available for this trip";
         });
+      // Compact redesign: when some rides are priced, the unavailable ones fold into one dimmed row
+      // ("Cars · Mini cab, Sedan, SUV") instead of a stack of "Unavailable" rows.
+      const rows = [...this.app.querySelectorAll<HTMLButtonElement>("button[data-vehicle]")];
+      const off = rows.filter((b) => this.estimates[b.dataset.vehicle!] === undefined);
+      rows.forEach((b) => {
+        b.hidden = false;
+        const strong = b.querySelector("strong");
+        if (strong) {
+          b.dataset.liveName ||= strong.textContent?.trim() || b.dataset.vehicle!;
+          strong.textContent = b.dataset.liveName;
+        }
+      });
+      if (off.length > 1 && off.length < rows.length) {
+        const names = off.map((b) => b.dataset.liveName || b.dataset.vehicle!);
+        const cars = off.every((b) => ["mini", "sedan", "suv"].includes(b.dataset.vehicle!));
+        off.slice(1).forEach((b) => (b.hidden = true));
+        const first = off[0];
+        const title = first.querySelector("strong");
+        if (title) title.textContent = cars ? "Cars" : "Other rides";
+        const detail = first.querySelector("small");
+        if (detail) detail.textContent = `${names.join(", ")} · not available for this trip`;
+        const price = first.querySelector(".vehicle-price");
+        if (price) price.textContent = "";
+      }
       const alternatives =
         this.app.querySelector<HTMLElement>(".route-alt-row");
       if (alternatives) {
@@ -2106,24 +2206,13 @@ export class LiveJourney {
           const el = this.app.querySelector(selector);
           if (el) el.textContent = value;
         };
-        text(".cockpit-turn-symbol", "•");
-        text(
-          ".cockpit-turn-dist",
-          valid ? `${nav.steps?.[0]?.meters || 0} m` : "Guidance unavailable",
-        );
+        const step = valid ? nav.steps?.[0] : undefined;
+        const km = (m: number) => (m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(1)} km`);
+        text(".cockpit-turn-dist", step ? `In ${km(step.meters || 0)}` : valid ? "Follow the route" : "Finding your route…");
         text(
           ".cockpit-turn-street",
-          valid
-            ? nav.steps?.[0]?.instruction || "Follow the server route"
-            : "Waiting for current road guidance",
+          step?.instruction || (valid ? "Keep to the highlighted road" : "Guidance appears once your GPS fix arrives"),
         );
-        text(".cockpit-turn-dir", "Use road signs and your surroundings");
-        text(".speed-num", "—");
-        text(".speed-limit-sign span:last-child", "—");
-        text(".compass-badge", "GPS telemetry unavailable");
-        this.app
-          .querySelectorAll(".lane-box")
-          .forEach((el) => (el.textContent = "—"));
         const stats = this.app.querySelectorAll(".cockpit-trip-stats strong");
         if (stats[0])
           stats[0].textContent = valid
@@ -2136,8 +2225,8 @@ export class LiveJourney {
         if (stats[2])
           stats[2].textContent =
             screen === "pickup"
-              ? this.active()?.pickup_label || "Pickup"
-              : this.active()?.dropoff_label || "Destination";
+              ? this.active()?.pickup_label.split(",")[0] || "Pickup"
+              : this.active()?.dropoff_label.split(",")[0] || "Destination";
       }
       const instruction = this.app.querySelector(".route-pill strong");
       const distance = this.app.querySelector(".route-pill .small");
@@ -2178,6 +2267,15 @@ export class LiveJourney {
       if (avatar && !avatar.querySelector("img")) avatar.textContent = "R";
     }
     if (screen === "otp") {
+      // The code boxes keep typed digits across re-renders. Clear them for each new ride, so an
+      // earlier ride's digits are never sent with this one's (the server refuses a mixed code).
+      const rideId = this.active()?.id || "";
+      if (rideId && rideId !== this.pinRide) {
+        this.pinRide = rideId;
+        const form = this.bridge.read().form as Record<string, string> | undefined;
+        if (form) for (const key of Object.keys(form)) if (/:pin-\d$/.test(key)) delete form[key];
+        this.app.querySelectorAll<HTMLInputElement>('.pin-entry input').forEach((input) => (input.value = ""));
+      }
       this.app.querySelector(".otp-actions-row")?.remove();
       const notice = this.app.querySelector(".screen-padding > .notice-box");
       if (notice) notice.textContent = "Confirm the code with your rider. Start the trip only when they are safely on board.";

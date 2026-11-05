@@ -84,7 +84,7 @@ for (const [role, port] of [
       })
       .click();
     await expect(
-      page.getByText("Captain reported received", { exact: true }),
+      page.getByText("Received by Captain", { exact: true }),
     ).toBeVisible();
     expect(calls).toEqual([]);
   });

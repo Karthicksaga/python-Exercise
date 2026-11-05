@@ -12,6 +12,8 @@ export async function mountPrototype(role: "rider" | "captain") {
     new URLSearchParams(location.search).get("map") === "reference";
   // Reference mode compares the canonical paint without live-only animation layers.
   if (!referenceMode) await import("./animations.css");
+  // The launch screen from index.html stays on top until the first real screen is ready.
+  const launch = document.getElementById("hop-launch");
   document.body.innerHTML = `${
     referenceMode
       ? `
@@ -27,6 +29,11 @@ export async function mountPrototype(role: "rider" | "captain") {
   }
     <main class="phone" id="phone"><div class="app" id="app"></div></main>`;
   const host = document.querySelector<HTMLElement>("#app")!;
+  if (launch) {
+    document.body.append(launch);
+    // Never hide an error behind it: give up waiting after 15 s.
+    setTimeout(() => launch.isConnected && launch.classList.add("out"), 15000);
+  }
   // No image (vehicles, icons) can be dragged out of place; CSS user-drag is WebKit-only.
   host.addEventListener("dragstart", (event) => {
     if (event.target instanceof HTMLImageElement) event.preventDefault();
@@ -44,6 +51,11 @@ export async function mountPrototype(role: "rider" | "captain") {
     host.inert = false;
     host.setAttribute("aria-busy", "false");
     host.dataset.ready = "true";
+    if (launch?.isConnected) {
+      launch.classList.add("out");
+      launch.setAttribute("aria-hidden", "true");
+      setTimeout(() => launch.remove(), 320);
+    }
   };
   // Normal apps are standalone: review controls exist only in explicit
   // reference mode for screenshot comparisons.

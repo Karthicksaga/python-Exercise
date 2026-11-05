@@ -100,7 +100,7 @@ export class PaymentPrototype {
       title = "Cash handover recorded.";
       copy =
         "Recorded by the Captain. This is not a bank or gateway verification.";
-      content = `<div class="payment-state-symbol success">✓</div>${summary}<div class="payment-receipt"><span>Payment method</span><strong>Cash</strong><span>Status</span><strong>Captain reported received</strong><span>Reference</span><strong>DEMO-CASH-268</strong></div>`;
+      content = `<div class="payment-state-symbol success">✓</div>${summary}<div class="payment-receipt"><span>Payment method</span><strong>Cash</strong><span>Status</span><strong>Received by Captain</strong><span>Reference</span><strong>DEMO-CASH-268</strong></div>`;
       actions = this.button("Back to prototype", "choose");
     } else if (this.state === "success") {
       title = "All settled.";

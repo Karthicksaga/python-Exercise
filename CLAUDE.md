@@ -5,7 +5,7 @@ Only two folders are active. Everything else (`bike-taxi`, `python*`, `oop assig
 - `hop-mobile-platform/`: Rider and Captain mobile apps (Capacitor + Vite + TypeScript). Read `hop-mobile-platform/CLAUDE.md` before changing anything there.
 - `hop-platform/`: the Go API (`backend/`), plus the canonical mobile UI renderer in `prototypes/mobile-first/` that both mobile apps import. Read `hop-platform/CLAUDE.md` for backend work.
 
-UI work on either app also needs the skill `.agents/skills/hop-mobile-design/SKILL.md`.
+UI work on either app also needs the skill `.agents/skills/hop-mobile-design/SKILL.md`. Screenshot reviews, "make it fit" and redesign requests also use `.agents/skills/hop-design-review/SKILL.md` (layout rules plus `npm run test:audit`). Both are linked from `.claude/skills/` so they show up as `/hop-mobile-design` and `/hop-design-review`.
 
 Suggestions (reviews, proposals, architecture ideas, issues found but not fixed) always go in `suggestions/`: one dated file each, plus a row in `suggestions/README.md`. Things that are built are documented in the project docs instead.
 

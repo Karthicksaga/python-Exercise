@@ -322,7 +322,7 @@ test("captain receives real offer, accepts with version, then sees pickup naviga
   );
   await page.goto("http://127.0.0.1:5184");
   await expect(page.locator(".driver-sheet .amount")).toHaveText("₹237");
-  await page.getByRole("button", { name: "Accept ride", exact: true }).click();
+  await page.getByRole("button", { name: "Accept ride", exact: true }).press("Enter");
   await expect
     .poll(() => action)
     .toMatchObject({ action: "accept", version: 3 });

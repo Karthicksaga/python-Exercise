@@ -93,11 +93,42 @@ HOP_E2E_OPERATOR_PHONE=… npm run test:e2e:staging          # the same two test
 - Matching never offers a ride to the account that booked it. Rider and Captain apps signed in with the same phone number are the same account, so testing a full ride needs two phone numbers.
 - Ratings: after payment, each side rates the other once (1–5 stars, `POST /api/rides/{id}/rating`) on the payment page; `my_rating` shows the stored score.
 - Money shows paise when present ("₹130.50"), and cards and footers use the same `money()` helper.
+- Phone-test fixes (Nov 2026, second round):
+  - Launch: Android splash is the indigo mark on ink (`res/drawable/ic_hop.xml`, `#14151F`), then the inline launch screen in `apps/*/index.html` (`#hop-launch`), which `mountPrototype` fades out on `ready()` (15 s fallback).
+  - Motion (approved "Hop Launch Motion" preview), styles at the end of `animations.css`: search skeleton rows and highlighted results, a sweeping step and pickup rings (`.hop-pin-wave`, OSM) while finding a captain, and trip moments from `shared/design/tripMoments.ts` (`playMoment` chip + `#app[data-hop-moment]`, `countUp`). Payment success shows a tick burst (paid) or a ₹ stamp (cash), once per status.
+  - Bottom navigation is docked to the bottom edge (no floating pill), and on map screens the action bar continues the sheet.
+  - Full-screen navigation (`cockpitHUD`) is a map screen: next turn on top, real time/distance/destination and the trip action below, plus "Google Maps" (`external-nav`, opens Google Maps turn-by-turn). No speed, limit or lane data.
+  - Pickup code boxes are cleared for each new ride (`LiveJourney.pinRide`); typing keeps the new digit and a pasted code fills the boxes. Mixed old/new digits caused "Incorrect pickup code" on staging.
+  - Payment actions retry once on "Ride changed" (both people tapping at once). A cash ride's payment page opens on "I’ve paid my Captain"; "Change method" shows the other options. No pop-up when the app switches a short wallet to Cash.
+  - Money figures in `LiveAccount` (earnings, wallets, insights) reload when any trip's status or payment changes, and after 60 s.
 - Sounds (`shared/sounds.ts`):
   - One FM "chime" voice, a motif per event.
   - The captain ride-request alert repeats every 2.6 s until accept or decline (45 s max).
   - Rider sounds for captain found, captain arrived (doorbell), trip started and trip complete.
   - No sound on the first state load after opening, or while the app is hidden.
+
+## Phone-test fixes (Nov 2026, third round, from screenshots)
+- After a trip ends, `LiveJourney.clearPlan()` clears the old pickup, drop-off and route, so home maps on both apps start clean. This was the "same pickup and drop" report.
+- A pickup chosen by tapping the map gets its street name from `/api/places/reverse` ("Pinned location" if that fails), never raw coordinates.
+- Route fields show focus with an indigo label and dot halo, not a box over the label (`responsive.css`).
+- Vehicle rows: priced ones say "Captains checked when you book"; others say "Not available for this trip" and are dimmed.
+- Payment page: plain titles ("Cash received." for the captain, "Paid to your Captain." for the rider), "Received by Captain" status, "Cash" not "CASH". The action links use flex, so a lone link is centred.
+- Trip cards: short dates ("5 Nov, 6:31 pm"), readable status and vehicle words, one wrapping link row. "Showing your 50 most recent trips" only appears at 50.
+- The captain's GPS sharing button stays. Reopening the app while online needs it to resume sharing (see the maps test).
+- A ₹25 charge against a ₹62 estimate is the early-finish fare (`earlyFinishQuote`, `rides.go`): the captain completed about 3 km short of the drop-off.
+- Design audit: `npm run test:audit` (`tests/design-audit.spec.mjs`, uses `@axe-core/playwright`) checks the flush bottom nav, no sideways scroll, tap targets and critical accessibility issues on phone sizes, with screenshots in the report. Review workflow: `.agents/skills/hop-design-review/SKILL.md`.
+
+## Compact redesign (approved Nov 2026; preview https://claude.ai/artifact/78gPbf4hv57Yr89QFL51Ay)
+- **Slide to confirm** (`shared/design/slideToConfirm.ts`): Captain "Accept ride" (70%) and "Complete trip" (85%).
+  - The renderer's button becomes the knob, so its handlers, name and Enter/Space keyboard path stay. A pointer tap alone is stopped in a window capture listener and nudges the knob.
+  - Tests confirm with `.press("Enter")`, or drag (see `tests/compact-redesign.spec.mjs`).
+- **Early finish:** "Complete trip" first sends `complete` without `confirm`. On 409 "Early finish…" the captain sees the server's message (reduced fare) in a confirm dialog, and only "yes" resends with `confirm: true`. The full-ride tests accept that dialog.
+- **Online switch:** an approved captain's `[data-action="online"]` button is moved into `.app-head .head-tools` and styled as a switch ("Online" / "Go online", `aria-pressed`). Unapproved captains keep the bottom button. The GPS sharing map button stays.
+- **Cash change helper:** `LivePayment.changeHelper` ("Rider gave" Exact / next notes → "Give back ₹…"), on the captain's cash page only. It runs on the phone, with no API call.
+- **Choose your ride:** when some vehicles are priced, the unpriced ones fold into one dimmed "Cars" / "Other rides" row. Real names are kept in `data-live-name`.
+- **Not built yet:**
+  - The pickup-spot screen needs server data for named spots.
+  - Merging Review into Choose your ride: the vehicle route preview stays on Review.
 
 ## Finding things cheaply
 - Find a screen with `grep -n "<screen-id>" ../hop-platform/prototypes/mobile-first/app.js`, then read only that range.

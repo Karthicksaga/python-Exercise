@@ -131,6 +131,6 @@ test("a new captain onboards in the app, an operator approves every document, an
   const me = await (await ctx.request.get(`${CAPTAIN}/api/me`)).json();
   expect(me.user.name).not.toMatch(/^Rider /);
   // Leave the test captain offline so it never receives real requests.
-  await page.getByRole("button", { name: /Go offline|You’re online/ }).first().click().catch(() => {});
+  await page.getByRole("button", { name: /^Online$|Go offline/ }).first().click().catch(() => {});
   await ctx.close();
 });

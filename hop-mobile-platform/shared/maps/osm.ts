@@ -41,9 +41,9 @@ function computeDistanceMeters(a: Coordinate, b: Coordinate): number {
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
-function pinIcon(kind: PinKind, note: string | undefined, editable: boolean, waiting: boolean, callout: boolean): L.DivIcon {
+function pinIcon(kind: PinKind, note: string | undefined, editable: boolean, waiting: boolean, callout: boolean, searching = false): L.DivIcon {
   // Zero-size icon: the pin draws itself above the point, so callouts of any width stay anchored.
-  return L.divIcon({ className: "hop-custom-pin-icon", html: pinHtml(kind, note, { editable, waiting, callout }), iconSize: [0, 0], iconAnchor: [0, 0] });
+  return L.divIcon({ className: "hop-custom-pin-icon", html: pinHtml(kind, note, { editable, waiting, searching, callout }), iconSize: [0, 0], iconAnchor: [0, 0] });
 }
 
 function createCurrentIcon(heading?: number): L.DivIcon {
@@ -247,9 +247,11 @@ export class OSMMapView implements MapView {
     const note = kind === "pickup" ? data.pickupNote : data.dropoffNote;
     const editable = Boolean(data.editable);
     const waiting = kind === "pickup" && data.phase === "accepted";
+    // Rings ripple from the pickup while Hop looks for a captain.
+    const searching = kind === "pickup" && data.phase === "requested";
     // Once the rider is in the car, the pickup no longer needs a callout.
     const callout = !(kind === "pickup" && data.phase === "in_progress");
-    const key = `${note ?? ""}|${editable}|${waiting}|${callout}`;
+    const key = `${note ?? ""}|${editable}|${waiting}|${searching}|${callout}`;
     if (!point) {
       marker?.remove();
       this.pinKeys[kind] = "";
@@ -259,7 +261,7 @@ export class OSMMapView implements MapView {
       marker = L.marker([point.lat, point.lng], {
         title: kind === "pickup" ? "Pickup location" : "Dropoff destination",
         draggable: editable,
-        icon: pinIcon(kind, note, editable, waiting, callout),
+        icon: pinIcon(kind, note, editable, waiting, callout, searching),
         zIndexOffset: 1000,
       }).addTo(this.map);
       const placed = marker;
@@ -277,7 +279,7 @@ export class OSMMapView implements MapView {
       if (!this.map.hasLayer(marker)) marker.addTo(this.map);
       if (key !== this.pinKeys[kind]) {
         this.pinKeys[kind] = key;
-        marker.setIcon(pinIcon(kind, note, editable, waiting, callout));
+        marker.setIcon(pinIcon(kind, note, editable, waiting, callout, searching));
       }
     }
     return marker;

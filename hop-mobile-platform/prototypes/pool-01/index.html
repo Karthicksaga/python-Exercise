@@ -1,0 +1,347 @@
+<!doctype html>
+<title>Hop Pool Prototype</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Hop Pool · prototype 01. Intercity seat sharing, Android app concept.
+   Same tokens as the approved Hop design (Nov 2026): indigo primary, ink, paper; green/amber/red for status only. */
+:root{
+  --bg:#f4f4f9;--surface:#fff;--surface-2:#f5f5fa;--surface-3:#ebebf3;
+  --ink:#14151f;--ink-2:#3b3d4f;--muted:#5e6274;--line:#e6e6ef;
+  --primary:#4b3fd1;--primary-ink:#3a2fb8;--primary-soft:#ecebfd;--on-primary:#fff;
+  --chip-on:#14151f;--on-chip:#fff;
+  --success:#0f7a4f;--success-soft:#e3f5ec;--warn:#8a5a00;--warn-soft:#fff4dc;--danger:#c62f2f;
+  --shadow:0 1px 2px rgba(22,24,52,.05),0 14px 34px -10px rgba(38,40,96,.18);
+  --font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --bg:#0e0f16;--surface:#181a24;--surface-2:#20232f;--surface-3:#2a2d3c;--ink:#f1f1f7;--ink-2:#cdd0dc;--muted:#9a9eb2;--line:#2c2f40;
+  --primary:#5b50e6;--primary-ink:#bdb7ff;--primary-soft:#26244a;--chip-on:#f1f1f7;--on-chip:#14151f;
+  --success:#4cc58f;--success-soft:#14301f;--warn:#f2c66b;--warn-soft:#33270f;--danger:#ff8080;color-scheme:dark}}
+:root[data-theme=dark]{
+  --bg:#0e0f16;--surface:#181a24;--surface-2:#20232f;--surface-3:#2a2d3c;--ink:#f1f1f7;--ink-2:#cdd0dc;--muted:#9a9eb2;--line:#2c2f40;
+  --primary:#5b50e6;--primary-ink:#bdb7ff;--primary-soft:#26244a;--chip-on:#f1f1f7;--on-chip:#14151f;
+  --success:#4cc58f;--success-soft:#14301f;--warn:#f2c66b;--warn-soft:#33270f;--danger:#ff8080;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+[hidden]{display:none!important}
+h1,h2,h3{margin:0;letter-spacing:-.4px}
+p{margin:0}
+
+/* Review chrome */
+.review{max-width:1260px;margin:auto;padding:22px 0 10px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:baseline;gap:12px;font:800 30px/1 var(--font);letter-spacing:-1.3px}
+.logo small{font:600 12px var(--font);letter-spacing:0;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:flex;padding:4px;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.seg button{border:0;background:none;padding:0 14px;min-height:38px;border-radius:10px;color:var(--muted);font-weight:600;font-size:13px}
+.seg [aria-pressed=true]{background:var(--chip-on);color:var(--on-chip)}
+.note{font-size:11px;color:var(--muted)}
+.gallery{max-width:1260px;margin:auto;padding:14px 0 40px;display:flex;flex-wrap:wrap;justify-content:center;gap:36px 48px}
+.device{width:min(390px,100%);display:flex;flex-direction:column;gap:12px}
+.device-bar{display:flex;gap:8px;align-items:center}
+.device-bar strong{font-weight:700;font-size:15px;min-width:70px}
+.device-bar select{flex:1;min-width:0;min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:0 10px;color:var(--ink)}
+.device-bar .next{min-height:44px;border:0;border-radius:12px;background:var(--primary-soft);color:var(--primary-ink);font-weight:700;font-size:13px;padding:0 12px;white-space:nowrap}
+
+/* Phone */
+.phone{position:relative;height:800px;border-radius:44px;overflow:hidden;background:var(--bg);border:8px solid var(--surface);box-shadow:0 0 0 1px var(--line),0 40px 70px -30px rgba(40,40,100,.35)}
+.page{position:absolute;inset:0;overflow-y:auto;padding:22px 18px 110px;scrollbar-width:none;display:flex;flex-direction:column;gap:14px}
+.page.has-bar{padding-bottom:150px}
+.top{display:flex;align-items:center;gap:10px;min-height:44px}
+.top h1{font-size:20px}
+.back{width:44px;height:44px;border-radius:14px;border:0;background:var(--surface);display:grid;place-items:center;box-shadow:0 2px 10px rgba(30,30,80,.06);flex:none}
+.brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:26px;letter-spacing:-1.3px}
+.tag{font-size:10px;letter-spacing:1.3px;font-weight:700;color:var(--primary-ink);background:var(--primary-soft);padding:4px 8px;border-radius:99px}
+.hero h2{font-size:28px;line-height:1.1;letter-spacing:-1.1px;font-weight:800}
+.hero p{margin-top:6px;color:var(--muted)}
+.card{background:var(--surface);border-radius:22px;padding:14px;box-shadow:var(--shadow)}
+.stack{display:flex;flex-direction:column;gap:10px}
+.field{display:flex;align-items:center;gap:12px;min-height:54px;padding:0 14px;border-radius:14px;background:var(--surface-2)}
+.field small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.8px;color:var(--muted);text-transform:uppercase}
+.field b{font-size:15px}
+.dot{width:12px;height:12px;border-radius:50%;border:3px solid var(--primary);flex:none}
+.sq{width:12px;height:12px;border-radius:3px;background:var(--ink);flex:none}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.primary{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;border-radius:16px;border:0;background:var(--primary);color:var(--on-primary);font-weight:800;font-size:16px;width:100%}
+.secondary{min-height:48px;border-radius:14px;border:1px solid var(--line);background:var(--surface);font-weight:700;width:100%}
+.link{border:0;background:none;color:var(--primary-ink);font-weight:700;min-height:44px;padding:0}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.chip{flex:none;min-height:38px;padding:0 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:13px}
+.chip[aria-pressed=true]{background:var(--chip-on);color:var(--on-chip);border-color:var(--chip-on)}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--surface-3);color:var(--ink-2)}
+.badge.ok{background:var(--success-soft);color:var(--success)}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.brand{background:var(--primary-soft);color:var(--primary-ink)}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--primary-soft);color:var(--primary-ink);display:grid;place-items:center;font-weight:800;flex:none}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.grow{flex:1;min-width:0}
+/* Trip card in results */
+.trip{border:0;text-align:left;width:100%;display:flex;flex-direction:column;gap:12px}
+.times{display:grid;grid-template-columns:52px 16px 1fr auto;column-gap:10px;row-gap:2px;align-items:center}
+.times b{font-size:15px}
+.times .line{grid-row:span 2;align-self:stretch;display:flex;flex-direction:column;align-items:center}
+.times .line i{width:2px;flex:1;background:var(--line)}
+.times .price{grid-row:span 2;text-align:right}
+.times .price b{font-size:18px}
+.price small{display:block;font-size:11px;color:var(--muted)}
+/* Route timeline on trip details */
+.tl{display:grid;grid-template-columns:52px 16px 1fr;column-gap:10px}
+.tl .t{font-weight:700;padding-top:1px}
+.tl .rail{display:flex;flex-direction:column;align-items:center}
+.tl .rail i{width:2px;flex:1;background:var(--primary);opacity:.35;min-height:30px}
+.tl .stop{padding-bottom:16px}
+.tl .stop b{display:block}
+.rule{display:flex;align-items:center;gap:10px;min-height:44px;border-bottom:1px solid var(--line)}
+.rule:last-child{border:0}
+.bar{position:absolute;left:0;right:0;bottom:0;padding:12px 16px 18px;background:var(--surface);border-radius:24px 24px 0 0;box-shadow:0 -10px 24px -18px rgba(30,30,80,.4);display:flex;align-items:center;gap:12px}
+.bar .total{flex:none}
+.bar .total b{display:block;font-size:20px}
+.bar .primary{flex:1}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-weight:800;font-size:18px}
+.stepper b{min-width:28px;text-align:center;font-size:18px}
+.choice{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 12px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);width:100%;text-align:left}
+.choice[aria-pressed=true]{border-color:var(--primary);background:var(--primary-soft)}
+.ticket{background:var(--ink);color:#fff;border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.ticket .muted{color:#b9bacb}
+.code{font-size:26px;font-weight:800;letter-spacing:6px}
+.nav{position:absolute;left:12px;right:12px;bottom:12px;background:var(--surface);border-radius:24px;padding:6px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));box-shadow:var(--shadow)}
+.nav button{border:0;background:none;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:600;color:var(--muted)}
+.nav button[aria-current=page]{color:var(--primary-ink);font-weight:800}
+.range{position:relative;height:8px;border-radius:8px;background:var(--surface-3)}
+.range i{position:absolute;top:0;bottom:0;border-radius:8px;background:var(--primary-soft)}
+.range b{position:absolute;top:-6px;width:20px;height:20px;border-radius:50%;background:var(--primary);border:3px solid var(--surface)}
+.req{display:flex;flex-direction:column;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.req:last-child{border:0}
+.feedback{font-size:13px;padding:10px 12px;border-radius:12px;background:var(--success-soft);color:var(--success);font-weight:600}
+@media (prefers-reduced-motion:no-preference){.page>*{animation:rise .3s ease-out both}.page>*:nth-child(2){animation-delay:.03s}.page>*:nth-child(3){animation-delay:.06s}@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}}
+</style>
+
+<header class="review">
+  <div class="logo">hop<span class="tag">POOL</span><small>Prototype 01 · intercity seat sharing · Android</small></div>
+  <div class="tools">
+    <div class="seg" role="group" aria-label="View">
+      <button data-view="both" aria-pressed="true">Both</button>
+      <button data-view="passenger" aria-pressed="false">Passenger</button>
+      <button data-view="driver" aria-pressed="false">Driver</button>
+    </div>
+    <div class="seg" role="group" aria-label="Theme">
+      <button data-theme-btn="light" aria-pressed="true">Light</button>
+      <button data-theme-btn="dark" aria-pressed="false">Dark</button>
+    </div>
+    <span class="note">Design preview · sample data · no real actions</span>
+  </div>
+</header>
+<main class="gallery" id="gallery"></main>
+
+<script>
+const I = {
+  back:'<path d="M15 6l-6 6 6 6"/>', arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>', search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+  plus:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>', ticket:'<path d="M4 7h16v4a2 2 0 0 0 0 4v2H4v-2a2 2 0 0 0 0-4z"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', cal:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="m9 12 2 2 4-4"/>', car:'<path d="M5 16l1.5-5A2 2 0 0 1 8.4 9.5h7.2a2 2 0 0 1 1.9 1.5L19 16M4 16h16v3H4zM7 19v2M17 19v2"/>',
+  smoke:'<path d="M3 15h14v3H3zM20 15v3M3 3l18 18"/>', seat:'<path d="M7 4v9h10M7 13l-2 7M17 13l2 7M9 4h4"/>', bolt:'<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>',
+  chat:'<path d="M4 5h16v11H8l-4 4z"/>', bike:'<circle cx="6" cy="16" r="3"/><circle cx="18" cy="16" r="3"/><path d="M6 16l4-7h5l3 7M10 9 8 6H6"/>',
+  swap:'<path d="M7 4v16M7 4 3 8M7 4l4 4M17 20V4M17 20l-4-4M17 20l4-4"/>', bell:'<path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  women:'<circle cx="12" cy="8" r="5"/><path d="M12 13v8M9 18h6"/>', check:'<path d="m5 12 5 5 9-10"/>', pin:'<path d="M12 21s7-6 7-11.5a7 7 0 1 0-14 0C5 15 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/>'
+};
+const ic = (n, s = 20, c = 'currentColor') => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+
+const TRIPS = [
+  { id: 'a', dep: '06:00', arr: '12:30', from: 'Mattuthavani', to: 'Koyambedu', price: 520, name: 'Senthil K', init: 'S', rating: '4.8', trips: 32, seats: 2, car: 'Maruti Dzire · White', tags: ['instant'] },
+  { id: 'b', dep: '07:30', arr: '14:00', from: 'Periyar Bus Stand', to: 'Tambaram', price: 480, name: 'Priya R', init: 'P', rating: '4.9', trips: 18, seats: 1, car: 'Hyundai i20 · Blue', tags: ['women'] },
+  { id: 'c', dep: '13:00', arr: '19:45', from: 'Anna Nagar', to: 'Guindy', price: 550, name: 'Arun M', init: 'A', rating: '4.6', trips: 5, seats: 3, car: 'Toyota Innova · Silver', tags: [] },
+];
+const S = {
+  passenger: { screen: 'find', trip: 'a', seats: 1, pickup: 'Mattuthavani', pay: 'upi', filter: 'all', hopRide: true },
+  driver: { screen: 'route', price: 500, seats: 3, accepted: false },
+};
+const SCREENS = {
+  passenger: [['find','Find a ride'],['results','Search results'],['trip','Trip details'],['book','Book seats'],['booked','Seat booked'],['trips','My trips']],
+  driver: [['route','Offer: route'],['when','Offer: date and seats'],['price','Offer: price per seat'],['published','Requests'],['day','Trip day']],
+};
+const trip = () => TRIPS.find((t) => t.id === S.passenger.trip);
+const back = (to, title) => `<div class="top"><button class="back" aria-label="Back" data-go="${to}">${ic('back')}</button><h1>${title}</h1></div>`;
+const nav = (cur) => `<nav class="nav" aria-label="Main">${[['find','search','Find'],['offer','plus','Offer'],['trips','ticket','My trips'],['acct','user','Account']].map(([k,i,l]) => `<button ${k===cur?'aria-current="page"':''} data-go="${k==='offer'?'@driver':k==='acct'?'find':k}">${ic(i)}${l}</button>`).join('')}</nav>`;
+const tags = (t) => [t.tags.includes('instant') ? `<span class="badge brand">${ic('bolt',12)}Instant booking</span>` : '', t.tags.includes('women') ? `<span class="badge brand">${ic('women',12)}Women only</span>` : ''].join('');
+
+const P = {
+  find: () => `<div class="page">
+    <div class="row between"><div class="brand">hop<span class="tag">POOL</span></div><button class="back" aria-label="Notifications">${ic('bell')}</button></div>
+    <div class="hero"><h2>Going out of town?<br>Share the ride.</h2><p>Seats in verified cars between cities, at a shared fuel cost.</p></div>
+    <div class="card stack">
+      <div class="field"><span class="dot"></span><span class="grow"><small>From</small><b>Madurai</b></span></div>
+      <div class="field"><span class="sq"></span><span class="grow"><small>To</small><b>Chennai</b></span><button class="back" aria-label="Swap from and to" style="box-shadow:none">${ic('swap',18)}</button></div>
+      <div class="two"><div class="field">${ic('cal',18)}<span class="grow"><small>Date</small><b>Sat, 8 Nov</b></span></div><div class="field">${ic('user',18)}<span class="grow"><small>Seats</small><b>${S.passenger.seats}</b></span></div></div>
+      <button class="primary" data-go="results">Search rides ${ic('arrow',18)}</button>
+    </div>
+    <button class="card row" data-go="@driver" style="border:0;text-align:left;background:var(--ink);color:#fff">
+      <span class="avatar" style="background:rgba(255,255,255,.12);color:#fff">${ic('car')}</span>
+      <span class="grow"><b style="display:block">Driving somewhere?</b><span class="small" style="color:#b9bacb">Offer your empty seats, share fuel costs</span></span>${ic('arrow',18)}
+    </button></div>${nav('find')}`,
+
+  results: () => {
+    const f = S.passenger.filter;
+    const list = TRIPS.filter((t) => f === 'all' || (f === 'women' && t.tags.includes('women')) || (f === 'instant' && t.tags.includes('instant')));
+    return `<div class="page">${back('find','Madurai → Chennai')}
+    <p class="muted small" style="margin-top:-10px;padding-left:54px">Sat, 8 Nov · ${S.passenger.seats} seat · ${TRIPS.length} rides</p>
+    <div class="chips">${[['all','All rides'],['instant','Instant booking'],['women','Women only']].map(([k,l]) => `<button class="chip" data-filter="${k}" aria-pressed="${f===k}">${l}</button>`).join('')}</div>
+    ${list.map((t) => `<button class="card trip" data-trip="${t.id}">
+      <div class="times"><b>${t.dep}</b><span class="line"><span class="dot" style="width:10px;height:10px;border-width:2.5px"></span><i></i></span><span>${t.from}</span><span class="price"><b>₹${t.price}</b><small>per seat</small></span>
+      <b>${t.arr}</b><span class="line"><span class="sq" style="width:10px;height:10px"></span></span><span>${t.to}</span></div>
+      <div class="row"><span class="avatar">${t.init}</span><span class="grow"><b style="display:block">${t.name}</b><span class="small muted">★ ${t.rating} · ${t.trips} trips</span></span><span class="small muted">${t.seats} ${t.seats===1?'seat':'seats'} left</span></div>
+      ${t.tags.length ? `<div class="row" style="flex-wrap:wrap;gap:6px">${tags(t)}</div>` : ''}
+    </button>`).join('') || '<p class="muted">No rides match this filter. Try All rides.</p>'}</div>`;
+  },
+
+  trip: () => { const t = trip(); return `<div class="page has-bar">${back('results','Sat, 8 Nov')}
+    <div class="card"><div class="tl">
+      <span class="t">${t.dep}</span><span class="rail"><span class="dot"></span><i></i></span><span class="stop"><b>${t.from}</b><span class="small muted">Madurai · pickup point</span></span>
+      <span class="t muted small">6h 30m</span><span class="rail"><i></i></span><span class="stop small muted">Via Trichy (NH 38)</span>
+      <span class="t">${t.arr}</span><span class="rail"><span class="sq"></span></span><span class="stop" style="padding:0"><b>${t.to}</b><span class="small muted">Chennai · drop-off point</span></span>
+    </div></div>
+    <div class="card stack">
+      <div class="row"><span class="avatar">${t.init}</span><span class="grow"><b style="display:block">${t.name}</b><span class="small muted">★ ${t.rating} · ${t.trips} trips</span></span></div>
+      <div class="row" style="flex-wrap:wrap;gap:6px"><span class="badge ok">${ic('shield',12)}ID and licence checked</span>${tags(t)}</div>
+      <div class="rule">${ic('car',18)}<span>${t.car}</span></div>
+      <div class="rule">${ic('seat',18)}<span>Max. 2 in the back</span></div>
+      <div class="rule">${ic('smoke',18)}<span>No smoking</span></div>
+    </div>
+    <button class="secondary row" style="justify-content:center;gap:8px">${ic('chat',18)}Ask ${t.name.split(' ')[0]} a question</button></div>
+    <div class="bar"><span class="total"><span class="small muted">Per seat</span><b>₹${t.price}</b></span><button class="primary" data-go="book">Book a seat ${ic('arrow',18)}</button></div>`; },
+
+  book: () => { const t = trip(), st = S.passenger, total = t.price * st.seats; return `<div class="page has-bar">${back('trip','Book your seat')}
+    <div class="card stack"><div class="row between"><span><b style="display:block">Seats</b><span class="small muted">${t.seats} available</span></span>
+      <span class="stepper"><button aria-label="One seat less" data-seats="-1">−</button><b>${st.seats}</b><button aria-label="One seat more" data-seats="1">+</button></span></div></div>
+    <div class="card stack"><b>Pay ${t.name.split(' ')[0]}</b>
+      ${[['upi','UPI to the driver','When you get in the car'],['cash','Cash','Hand it over at the drop-off']].map(([k,l,d]) => `<button class="choice" data-pay="${k}" aria-pressed="${st.pay===k}"><span class="grow"><b style="display:block">${l}</b><span class="small muted">${d}</span></span></button>`).join('')}
+    </div>
+    <button class="choice" data-toggle="hopRide" aria-pressed="${st.hopRide}">${ic('bike',22)}<span class="grow"><b style="display:block">Hop bike to the pickup</b><span class="small muted">Reach ${t.from} by 05:45 · about ₹45</span></span>${st.hopRide ? ic('check',20) : ''}</button>
+    <p class="small muted">Prices only cover a share of fuel and tolls. Hop doesn't let drivers profit from seats.</p></div>
+    <div class="bar"><span class="total"><span class="small muted">${st.seats} ${st.seats===1?'seat':'seats'}</span><b>₹${total}</b></span><button class="primary" data-go="booked">${t.tags.includes('instant') ? 'Book now' : 'Send request'}</button></div>`; },
+
+  booked: () => { const t = trip(), st = S.passenger, instant = t.tags.includes('instant'); return `<div class="page">
+    <div class="feedback">${instant ? 'Seat booked. Have a good trip.' : `Request sent. ${t.name.split(' ')[0]} usually replies within an hour.`}</div>
+    <div class="ticket">
+      <div class="row between"><span class="small muted">Sat, 8 Nov · ${st.seats} ${st.seats===1?'seat':'seats'}</span><span class="badge ${instant?'ok':'warn'}">${instant?'Confirmed':'Waiting for driver'}</span></div>
+      <div><b style="font-size:20px">${t.dep} · ${t.from}</b><p class="muted">to ${t.to}, about ${t.arr}</p></div>
+      <div class="row between"><span><span class="small muted">Pickup code</span><div class="code">${instant ? '3 8 1 5' : '- - - -'}</div></span><span class="small muted" style="text-align:right">${t.car}<br>Plate shown on the day</span></div>
+    </div>
+    <div class="two"><button class="secondary row" style="justify-content:center;gap:6px">${ic('chat',18)}Message</button><button class="secondary row" style="justify-content:center;gap:6px">${ic('shield',18)}Safety</button></div>
+    ${st.hopRide ? `<div class="card row">${ic('bike',22)}<span class="grow"><b style="display:block">Hop bike at 05:25</b><span class="small muted">From your home to ${t.from}. We'll remind you.</span></span></div>` : ''}
+    <button class="link" data-go="trips">See all my trips</button></div>${nav('trips')}`; },
+
+  trips: () => `<div class="page"><div class="top"><h1>My trips</h1></div>
+    <div class="chips"><button class="chip" aria-pressed="true">Upcoming</button><button class="chip" aria-pressed="false">Past</button></div>
+    <button class="card trip" data-go="booked"><div class="row between"><b>Sat, 8 Nov · ${trip().dep}</b><span class="badge ok">Confirmed</span></div><span>Madurai → Chennai · ${trip().name}</span></button>
+    <p class="muted small" style="text-align:center">Trips you book or offer appear here.</p></div>${nav('trips')}`,
+};
+
+const D = {
+  route: () => `<div class="page has-bar">${back('route','Offer a ride')}
+    <p class="muted" style="margin-top:-6px">Step 1 of 3 · where are you going?</p>
+    <div class="card stack">
+      <div class="field"><span class="dot"></span><span class="grow"><small>Leaving from</small><b>Madurai · Mattuthavani</b></span></div>
+      <div class="field"><span class="sq"></span><span class="grow"><small>Going to</small><b>Chennai · Koyambedu</b></span></div>
+      <button class="link" style="text-align:left">+ Add a stop on the way (e.g. Trichy)</button>
+    </div>
+    <div class="card row">${ic('shield',22,'var(--success)')}<span class="grow small">Your licence and RC are already checked through Hop Captain. No new documents needed.</span></div></div>
+    <div class="bar"><button class="primary" data-go="when">Continue ${ic('arrow',18)}</button></div>`,
+
+  when: () => `<div class="page has-bar">${back('route','Offer a ride')}
+    <p class="muted" style="margin-top:-6px">Step 2 of 3 · when, and how many seats?</p>
+    <div class="card stack"><div class="two"><div class="field">${ic('cal',18)}<span class="grow"><small>Date</small><b>Sat, 8 Nov</b></span></div><div class="field"><span class="grow"><small>Leaving at</small><b>06:00</b></span></div></div></div>
+    <div class="card row between"><span><b style="display:block">Seats to offer</b><span class="small muted">Keep 2 in the back for comfort</span></span>
+      <span class="stepper"><button aria-label="One seat less" data-dseats="-1">−</button><b>${S.driver.seats}</b><button aria-label="One seat more" data-dseats="1">+</button></span></div>
+    <button class="choice" aria-pressed="true">${ic('bolt',22)}<span class="grow"><b style="display:block">Instant booking</b><span class="small muted">Passengers book without waiting for you</span></span></button>
+    <button class="choice" aria-pressed="false">${ic('women',22)}<span class="grow"><b style="display:block">Women only</b><span class="small muted">Only women can book this ride</span></span></button></div>
+    <div class="bar"><button class="primary" data-go="price">Continue ${ic('arrow',18)}</button></div>`,
+
+  price: () => { const p = S.driver.price, min = 400, max = 600, pos = ((p - min) / (max - min)) * 100; return `<div class="page has-bar">${back('when','Offer a ride')}
+    <p class="muted" style="margin-top:-6px">Step 3 of 3 · price per seat</p>
+    <div class="card stack" style="align-items:center;text-align:center">
+      <span class="stepper"><button aria-label="Lower price" data-price="-10">−</button><b style="font-size:40px;min-width:130px">₹${p}</b><button aria-label="Higher price" data-price="10">+</button></span>
+      <span class="badge ${p<=560?'ok':'warn'}">${p<=560?'Good price for this route':'Higher than most rides'}</span>
+    </div>
+    <div class="card stack"><div class="row between small"><span>₹${min}</span><b>Allowed range</b><span>₹${max}</span></div>
+      <div class="range"><i style="left:0;right:0"></i><b style="left:calc(${pos}% - 10px)"></b></div>
+      <p class="small muted">Based on fuel and tolls for 460 km, shared with your passengers. Hop keeps seats non-profit, so you can't go above ₹${max}.</p></div>
+    <p class="small muted">With ${S.driver.seats} passengers you get back about ₹${p * S.driver.seats} of your trip cost.</p></div>
+    <div class="bar"><button class="primary" data-go="published">Publish ride</button></div>`; },
+
+  published: () => `<div class="page">${back('price','Sat, 8 Nov · 06:00')}
+    <div class="feedback">Your ride is live. Passengers can book it now.</div>
+    <div class="card stack"><div class="row between"><b>Madurai → Chennai</b><span class="badge brand">${S.driver.accepted?1:0} of ${S.driver.seats} booked</span></div>
+      <span class="small muted">₹${S.driver.price} per seat · Instant booking</span></div>
+    <div class="card"><b>Requests</b>
+      <div class="req"><div class="row"><span class="avatar">K</span><span class="grow"><b style="display:block">Karthick</b><span class="small muted">★ 4.9 · 1 seat · Mattuthavani</span></span></div>
+      ${S.driver.accepted ? '<span class="badge ok">Accepted · they\'ll get your plate on the day</span>' : '<div class="two"><button class="secondary" data-decline>Decline</button><button class="primary" style="min-height:48px;font-size:14px" data-accept>Accept</button></div>'}</div>
+    </div>
+    <button class="link" data-go="day">Preview trip day</button></div>`,
+
+  day: () => `<div class="page has-bar">${back('published','Trip day')}
+    <div class="hero"><h2>Leaving in 25 min</h2><p>Mattuthavani pickup point · 06:00</p></div>
+    <div class="card"><b>Passengers</b>
+      ${[['K','Karthick','1 seat · UPI','Code 3815'],['M','Meena','2 seats · Cash','Code 7240']].map(([i,n,d,c]) => `<div class="req"><div class="row"><span class="avatar">${i}</span><span class="grow"><b style="display:block">${n}</b><span class="small muted">${d}</span></span><span class="badge">${c}</span></div></div>`).join('')}
+    </div>
+    <p class="small muted">Check each passenger's code when they get in. Share your live trip with family from the Safety button.</p></div>
+    <div class="bar"><button class="primary">Start trip</button></div>`,
+};
+
+function render(role) {
+  const host = document.querySelector(`[data-role=${role}]`); if (!host) return;
+  const st = S[role]; const fn = (role === 'passenger' ? P : D)[st.screen];
+  host.querySelector('.phone').innerHTML = fn();
+  host.querySelector('select').value = st.screen;
+}
+function go(role, screen) {
+  if (screen === '@driver') { go('driver', 'route'); document.querySelector('[data-role=driver]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
+  S[role].screen = screen; render(role);
+  const p = document.querySelector(`[data-role=${role}] .page`); if (p) p.scrollTop = 0;
+}
+function mount() {
+  const gal = document.getElementById('gallery');
+  gal.innerHTML = ['passenger','driver'].map((role) => `<section class="device" data-role="${role}" aria-label="${role} app"><div class="device-bar"><strong>${role === 'passenger' ? 'Passenger' : 'Driver'}</strong><select aria-label="${role} screen">${SCREENS[role].map(([k,l],i) => `<option value="${k}">${String(i+1).padStart(2,'0')} · ${l}</option>`).join('')}</select><button class="next" data-next>Next →</button></div><div class="phone"></div></section>`).join('');
+  render('passenger'); render('driver');
+  gal.addEventListener('change', (e) => { const d = e.target.closest('[data-role]'); if (e.target.matches('select')) go(d.dataset.role, e.target.value); });
+  gal.addEventListener('click', (e) => {
+    const d = e.target.closest('[data-role]'); const t = e.target.closest('button'); if (!d || !t) return;
+    const role = d.dataset.role, st = S[role];
+    if (t.matches('[data-next]')) { const f = SCREENS[role].map(([k]) => k); return go(role, f[(f.indexOf(st.screen) + 1) % f.length]); }
+    if (t.dataset.trip) { st.trip = t.dataset.trip; st.seats = 1; return go(role, 'trip'); }
+    if (t.dataset.go) return go(role, t.dataset.go);
+    if (t.dataset.filter) { st.filter = t.dataset.filter; return render(role); }
+    if (t.dataset.seats) { st.seats = Math.max(1, Math.min(trip().seats, st.seats + +t.dataset.seats)); return render(role); }
+    if (t.dataset.pay) { st.pay = t.dataset.pay; return render(role); }
+    if (t.dataset.toggle) { st[t.dataset.toggle] = !st[t.dataset.toggle]; return render(role); }
+    if (t.dataset.dseats) { st.seats = Math.max(1, Math.min(4, st.seats + +t.dataset.dseats)); return render(role); }
+    if (t.dataset.price) { st.price = Math.max(400, Math.min(600, st.price + +t.dataset.price)); return render(role); }
+    if (t.hasAttribute('data-accept')) { st.accepted = true; return render(role); }
+    if (t.hasAttribute('data-decline')) { st.accepted = false; return render(role); }
+  });
+  const setView = (v) => {
+    document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === v));
+    gal.querySelectorAll('.device').forEach((x) => { x.hidden = !(v === 'both' || v === x.dataset.role); });
+  };
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+  const setTheme = (t) => {
+    document.documentElement.dataset.theme = t;
+    document.querySelectorAll('[data-theme-btn]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.themeBtn === t));
+  };
+  document.querySelectorAll('[data-theme-btn]').forEach((b) => b.addEventListener('click', () => setTheme(b.dataset.themeBtn)));
+  setTheme(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+}
+mount();
+</script>

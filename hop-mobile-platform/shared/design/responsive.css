@@ -53,7 +53,7 @@ html.hop-live {
 .hop-live .map-controls .icon-button { width:44px;height:44px; }
 .hop-live .map-controls.hop-compact-controls { grid-template-columns:repeat(3,44px); }
 .hop-live .map-controls { gap:6px; }
-.hop-live .bottom-nav { padding-bottom:max(10px,env(safe-area-inset-bottom)); }
+.hop-live .bottom-nav { padding-bottom:max(8px,env(safe-area-inset-bottom)); }
 .hop-live .bottom-nav button { min-height:48px; }
 .hop-live .app.dark :is(.live-card-group,.section-card,.notice-empty) { background:var(--surface); color:var(--ink); }
 .hop-live .app.dark .screen-padding :is(.text-input,select,textarea) { background:#262735; color:var(--ink); border-color:var(--line); }
@@ -142,8 +142,11 @@ html.hop-live {
 .hop-live .tracking-heading .eta { white-space: nowrap; flex-shrink: 0; }
 /* Payment page: one main button, the other actions as a lighter row underneath, so the amount and
    choices keep the screen (they were three stacked full-width buttons). */
-.hop-live .payment-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px 10px; }
-.hop-live .payment-actions > :is(.primary, .fineprint, .payment-error) { grid-column: 1 / -1; }
+/* Flex, not grid: a link left alone on its row ("Done", "Report a payment issue") fills the row
+   and sits centred instead of hugging the left column. */
+.hop-live .payment-actions { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+.hop-live .payment-actions > * { flex: 1 1 140px; text-align: center; justify-content: center; }
+.hop-live .payment-actions > :is(.primary, .fineprint, .payment-error) { flex-basis: 100%; }
 .hop-live .payment-actions > .secondary { min-height: 44px; margin: 0; background: transparent; box-shadow: none; border: 0; color: var(--accent); font-weight: 700; font-size: calc(13px + var(--font-step, 0px)); }
 @media (max-width: 360px) { .hop-live .payment-actions > .fineprint { display: none; } }
 /* Riders never see the review build's "Switch to Captain perspective" shortcut. */
@@ -165,3 +168,14 @@ html.hop-live {
   .hop-live .summary-hero > .badge { order: 3; margin-left: 0; }
   .hop-live .summary-row { flex-wrap: wrap; gap: 4px 8px; }
 }
+
+/* Phone test, Nov 2026: the focus ring around a route field covered its "Pickup location" label.
+   The focused field shows an indigo label and a halo on its dot instead. */
+.hop-live .route-field input:focus-visible { outline: none; }
+.hop-live .route-field:focus-within small { color: var(--accent); font-weight: 700; }
+.hop-live .route-field:focus-within .location-dot { box-shadow: 0 0 0 4px rgba(75,63,209,.18); }
+/* Vehicles with no fare for this trip look switched off, not just labelled. */
+.hop-live [data-vehicle]:disabled { opacity: .5; }
+/* Trip card links sit in one tidy wrapping row instead of a gappy two-column grid. */
+.hop-live .activity-actions { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 8px; }
+.hop-live .activity-actions > .text-button { min-height: 40px; padding: 8px 0; flex: 0 0 auto; }

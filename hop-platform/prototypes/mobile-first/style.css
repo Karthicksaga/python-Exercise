@@ -2435,165 +2435,32 @@ h3,
   color: #9798b3;
 }
 
-.cockpit-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 100%;
-  background: #101015;
-  color: #f1f1f5;
-  padding: 14px;
-  box-sizing: border-box;
-  overflow-y: auto;
-}
+/* Full-screen navigation (captain): live map, next turn on top, trip facts and actions below. */
 .cockpit-turn-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  background: #1a1a24;
-  border: 1px solid #2a2b3a;
-  border-radius: 16px;
-  padding: 14px;
+  position: absolute; z-index: 4; left: 14px; right: 14px; top: var(--float-head, 100px);
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 20px;
+  background: var(--ink); color: #fff; box-shadow: var(--card-shadow);
 }
 .cockpit-turn-symbol {
-  font-size: 32px;
-  line-height: 1;
-  color: #4b3fd1;
-  font-weight: 800;
+  width: 46px; height: 46px; flex: none; border-radius: 14px; display: grid; place-items: center;
+  background: var(--accent); color: #fff;
 }
-.cockpit-turn-dist {
-  font-family: "Plus Jakarta Sans", sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #4b3fd1;
-}
-.cockpit-turn-street {
-  font-size: 14px;
-  font-weight: 600;
-  color: #f1f1f5;
-  margin-top: 2px;
-}
-.cockpit-turn-dir {
-  font-size: 10px;
-  color: #8f90a1;
-  margin-top: 3px;
-}
-.cockpit-lanes {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin: 12px 0;
-}
-.lane-box {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  border: 1.5px solid #2a2b3a;
-  background: #17171f;
-  color: #5c5d6e;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: 700;
-}
-.lane-box.active {
-  border-color: #4b3fd1;
-  background: #26244a;
-  color: #4b3fd1;
-}
-.cockpit-telemetry {
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  background: #17171f;
-  border-radius: 14px;
-  padding: 12px 8px;
-  margin: 6px 0;
-}
-.speed-gauge {
-  text-align: center;
-}
-.speed-num {
-  font-family: "Plus Jakarta Sans", sans-serif;
-  font-size: 28px;
-  font-weight: 800;
-  color: #f1f1f5;
-  display: block;
-  line-height: 1;
-}
-.speed-unit {
-  font-size: 8px;
-  color: #8f90a1;
-  text-transform: uppercase;
-}
-.speed-limit-sign {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 3px solid #4b3fd1;
-  background: #fff;
-  color: #111;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-}
-.limit-label {
-  font-size: 5px;
-  font-weight: 800;
-  color: #666;
-  line-height: 1;
-}
-.limit-num {
-  font-family: "Plus Jakarta Sans", sans-serif;
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 1;
-}
-.compass-badge {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #8f90a1;
-  background: #1f1f2b;
-  padding: 5px 8px;
-  border-radius: 8px;
-}
+.cockpit-turn-symbol svg { width: 24px; height: 24px; }
+.cockpit-turn-text { min-width: 0; }
+.cockpit-turn-dist { font-size: calc(20px + var(--font-step, 0px)); font-weight: 800; letter-spacing: -.5px; line-height: 1.15; }
+.cockpit-turn-street { font-size: calc(13px + var(--font-step, 0px)); font-weight: 600; opacity: .85; margin-top: 2px; overflow-wrap: anywhere; }
+.cockpit-sheet { padding-top: 16px; }
 .cockpit-trip-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  background: #17171f;
-  border-radius: 12px;
-  padding: 8px;
-  text-align: center;
-  margin-bottom: 10px;
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 16px; align-items: end; margin-bottom: 14px;
 }
-.cockpit-trip-stats small {
-  font-size: 8px;
-  color: #8f90a1;
-  text-transform: uppercase;
-  display: block;
-}
-.cockpit-trip-stats strong {
-  font-family: "Plus Jakarta Sans", sans-serif;
-  font-size: 13px;
-  color: #f1f1f5;
-}
-.cockpit-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.cockpit-exit-btn {
-  background: #222330 !important;
-  color: #d1d2de !important;
-  border: 1px solid #333446 !important;
-}
+.cockpit-trip-stats small { display: block; font-size: calc(10px + var(--font-step, 0px)); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
+.cockpit-trip-stats strong { display: block; font-size: calc(18px + var(--font-step, 0px)); font-weight: 800; letter-spacing: -.4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cockpit-trip-stats .stat-col:last-child strong { font-size: calc(14px + var(--font-step, 0px)); font-weight: 700; }
+.cockpit-actions { display: flex; flex-direction: column; gap: 8px; }
+.cockpit-actions > .primary { width: 100%; }
+.cockpit-secondary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.cockpit-secondary .secondary { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.cockpit-exit-btn { padding-inline: 20px; }
 
 .commute-hero {
   padding: 2px 0 8px;
@@ -3363,13 +3230,16 @@ h3,
   margin-top: var(--float-head);
 }
 
-/* Bottom navigation floats as a pill above the content. */
+/* Bottom navigation is docked to the bottom edge (Nov 2026, after phone testing): no gap under or
+   around it, and it covers the phone's gesture bar area. */
 .bottom-nav {
-  margin: 0 14px max(12px, env(safe-area-inset-bottom)); padding: 6px; border: 0; border-radius: 24px;
-  background: var(--surface); box-shadow: var(--card-shadow);
+  margin: 0; padding: 6px 10px max(8px, env(safe-area-inset-bottom)); border: 0; border-top: 1px solid var(--line); border-radius: 0;
+  background: var(--surface); box-shadow: none; position: relative; z-index: 5;
 }
 .bottom-nav button { min-height: 52px; }
 .action-bar { border-top: 0; box-shadow: 0 -10px 24px -18px rgba(30,30,80,.3); border-radius: 24px 24px 0 0; }
+/* Under a map sheet the action bar continues the sheet, so the two read as one panel. */
+.screen-body.map-screen + .action-bar { border-radius: 0; box-shadow: none; }
 
 /* Design 03: Rider home — floating "where to" card over the map, compact bottom sheet. */
 .home-where {

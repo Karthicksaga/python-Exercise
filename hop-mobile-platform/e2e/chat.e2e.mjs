@@ -39,7 +39,7 @@ test("rider and captain chat in real time during a trip", async ({ browser }, te
       .toMatchObject({ online: true, lat: expect.closeTo(START.latitude, 4), lng: expect.closeTo(START.longitude, 4) });
     await book(rider, "Guindy", "Kotturpuram");
     await expect(captain.getByRole("button", { name: "Accept ride", exact: true })).toBeVisible({ timeout: 30000 });
-    await captain.getByRole("button", { name: "Accept ride", exact: true }).click();
+    await captain.getByRole("button", { name: "Accept ride", exact: true }).press("Enter");
     try {
       await expect(captain.getByRole("button", { name: "I’ve arrived" })).toBeVisible({ timeout: 15000 });
     } catch (error) {

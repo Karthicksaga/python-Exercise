@@ -79,6 +79,8 @@ test("rider checkout waits for backend settlement and reuses an existing order",
     }),
   );
   await openPayment(page);
+  // A cash booking opens on "I’ve paid my Captain"; paying another way is one tap away.
+  await page.getByRole("button", { name: "Change method", exact: true }).click();
   await page.getByRole("radio", { name: /UPI \/ online/ }).click();
   await page.getByRole("button", { name: "Pay online", exact: true }).click();
   await expect.poll(() => verify).toBe(1);
@@ -117,11 +119,11 @@ test("Captain payment receipt is a backend report, not an online verification", 
   await page.getByRole("button", { name: "Record payment received" }).click();
   await page.getByRole("button", { name: "Yes, payment received" }).click();
   await expect(
-    page.getByRole("heading", { name: "Payment handover recorded." }),
+    page.getByRole("heading", { name: "Cash received." }),
   ).toBeVisible();
   expect(action).toMatchObject({ action: "payment_received", version: 7 });
   await expect(
-    page.getByText("Captain reported received", { exact: true }),
+    page.getByText("Received by Captain", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("Confirmed by Hop", { exact: true }),
@@ -156,6 +158,8 @@ test("wallet top-up and payment use backend amounts and never credit locally", a
     return r.fulfill({ json: { ok: true } });
   });
   await openPayment(page);
+  // A cash booking opens on "I’ve paid my Captain"; paying another way is one tap away.
+  await page.getByRole("button", { name: "Change method", exact: true }).click();
   await page.getByRole("radio", { name: /Hop Wallet/ }).click();
   await page.getByRole("button", { name: /Add.*to Wallet/ }).click();
   await expect.poll(() => topup).toEqual({ amount_paise: 14000 });
@@ -187,6 +191,8 @@ test("uncertain order creation cannot silently create a duplicate payment", asyn
     });
   });
   await openPayment(page);
+  // A cash booking opens on "I’ve paid my Captain"; paying another way is one tap away.
+  await page.getByRole("button", { name: "Change method", exact: true }).click();
   await page.getByRole("radio", { name: /UPI \/ online/ }).click();
   await page.getByRole("button", { name: "Pay online", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("unavailable");

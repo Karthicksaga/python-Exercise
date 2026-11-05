@@ -767,27 +767,12 @@ function commuteView() {
 
 function cockpitHUD(type = "trip") {
   const isPickup = type === "pickup";
-  const maneuver = isPickup
-    ? {
-        icon: "↰",
-        dist: "200 m",
-        street: "Turn left onto Sardar Patel Road",
-        dir: "Towards Adyar Signal / Pickup pin",
-        speed: 38,
-        limit: 50,
-        heading: "NW 310°",
-      }
-    : {
-        icon: "↑",
-        dist: "1.4 km",
-        street: "Continue straight on GST Road",
-        dir: "Towards Airport Flyover / Drop",
-        speed: 52,
-        limit: 60,
-        heading: "SW 215°",
-      };
-
-  return `<div class="cockpit-container"><div class="cockpit-header"><div class="cockpit-turn-card"><span class="cockpit-turn-symbol">${maneuver.icon}</span><div class="cockpit-turn-text"><div class="cockpit-turn-dist">In ${maneuver.dist}</div><div class="cockpit-turn-street">${maneuver.street}</div><div class="cockpit-turn-dir">${maneuver.dir}</div></div></div></div><div class="cockpit-center"><div class="cockpit-lanes"><span class="lane-box">↑</span><span class="lane-box active">${maneuver.icon}</span><span class="lane-box">↱</span></div><div class="cockpit-telemetry"><div class="speed-gauge"><span class="speed-num">${maneuver.speed}</span><span class="speed-unit">km/h</span></div><div class="speed-limit-sign"><span class="limit-label">LIMIT</span><span class="limit-num">${maneuver.limit}</span></div><div class="compass-badge">${icon("navigation", "tiny-icon")} ${maneuver.heading}</div></div></div><div class="cockpit-footer"><div class="cockpit-trip-stats"><div class="stat-col"><small>ETA</small><strong>${isPickup ? "3 min" : "18 min"}</strong></div><div class="stat-col"><small>Remaining</small><strong>${isPickup ? "1.2 km" : "6.2 km"}</strong></div><div class="stat-col"><small>Destination</small><strong>${isPickup ? "Pickup Pin" : "Airport"}</strong></div></div><div class="cockpit-actions"><button class="primary" data-action="${isPickup ? "arrive" : "complete-trip"}">${isPickup ? "I’ve arrived" : "Complete trip"} ${icon("arrow")}</button><button class="cockpit-exit-btn secondary" data-action="toggle-cockpit">Exit Cockpit HUD</button></div></div></div>`;
+  // Full-screen navigation: the map fills the screen, the next turn sits on top and the trip facts and
+  // one action sit below. No speed, speed limit or lane data: the app has no source for them.
+  const turn = isPickup
+    ? { dist: "200 m", street: "Turn left onto Sardar Patel Road" }
+    : { dist: "1.4 km", street: "Continue straight on GST Road" };
+  return `${mapArt(true, true)}<div class="cockpit-turn-card"><span class="cockpit-turn-symbol" aria-hidden="true">${icon("navigation")}</span><div class="cockpit-turn-text"><div class="cockpit-turn-dist">In ${turn.dist}</div><div class="cockpit-turn-street">${turn.street}</div></div></div><div class="sheet cockpit-sheet"><div class="cockpit-trip-stats"><div class="stat-col"><small>Arrive in</small><strong>${isPickup ? "3 min" : "18 min"}</strong></div><div class="stat-col"><small>Remaining</small><strong>${isPickup ? "1.2 km" : "6.2 km"}</strong></div><div class="stat-col"><small>${isPickup ? "Pickup" : "Drop-off"}</small><strong>${escape(isPickup ? state.pickup : state.destination)}</strong></div></div><div class="cockpit-actions"><button class="primary" data-action="${isPickup ? "arrive" : "complete-trip"}">${isPickup ? "I’ve arrived" : "Complete trip"} ${icon("arrow")}</button><div class="cockpit-secondary"><button class="secondary" data-action="external-nav">${icon("navigation", "tiny-icon")} Google Maps</button><button class="secondary cockpit-exit-btn" data-action="toggle-cockpit">Exit</button></div></div></div>`;
 }
 
 function riderView() {
@@ -914,7 +899,8 @@ function captainView() {
     case "pickup":
       if (state.cockpitMode) {
         return {
-          title: "Cockpit Navigation",
+          title: "Navigation",
+          map: true,
           body: cockpitHUD("pickup"),
         };
       }
@@ -928,13 +914,14 @@ function captainView() {
       return {
         title: "Start the ride",
         back: true,
-        body: `<div class="screen-padding"><div class="empty-state" style="padding:22px 10px 10px">${icon("lock")}<h2>Ask for the pickup code.</h2><p>Confirm you’re with the right rider before starting your trip.</p></div><div class="pin-entry">${[0, 1, 2, 3, 4, 5].map((i) => `<input id="pin-${i}" type="text" inputmode="numeric" maxlength="1" aria-label="Code digit ${i + 1}"/>`).join("")}</div><div class="otp-actions-row"><button class="secondary small auto-otp-btn" data-action="autofill-otp">${icon("lock", "tiny-icon")} Autofill Rider OTP (431602)</button></div><p class="fineprint" style="margin-top:8px">Prototype code: <strong>431602</strong>. Actual code rules stay with the backend.</p><p class="message-error" id="pin-error" role="alert"></p><div class="section-card" style="margin-top:16px"><div class="driver-card" style="padding:0"><span class="avatar">D</span><span class="driver-text"><strong>Demo Rider</strong><small>${escape(state.destination)}</small></span></div></div><div class="notice-box">Pickup waiting charges retain the existing grace period and backend rules. This screen shows no running charge.</div></div>`,
+        body: `<div class="screen-padding"><div class="empty-state" style="padding:22px 10px 10px">${icon("lock")}<h2>Ask for the pickup code.</h2><p>Confirm you’re with the right rider before starting your trip.</p></div><div class="pin-entry">${[0, 1, 2, 3, 4, 5].map((i) => `<input id="pin-${i}" type="text" inputmode="numeric" maxlength="6" autocomplete="off" aria-label="Code digit ${i + 1}"/>`).join("")}</div><div class="otp-actions-row"><button class="secondary small auto-otp-btn" data-action="autofill-otp">${icon("lock", "tiny-icon")} Autofill Rider OTP (431602)</button></div><p class="fineprint" style="margin-top:8px">Prototype code: <strong>431602</strong>. Actual code rules stay with the backend.</p><p class="message-error" id="pin-error" role="alert"></p><div class="section-card" style="margin-top:16px"><div class="driver-card" style="padding:0"><span class="avatar">D</span><span class="driver-text"><strong>Demo Rider</strong><small>${escape(state.destination)}</small></span></div></div><div class="notice-box">Pickup waiting charges retain the existing grace period and backend rules. This screen shows no running charge.</div></div>`,
         action: primary("Verify & start ride", "start-trip"),
       };
     case "trip":
       if (state.cockpitMode) {
         return {
-          title: "Cockpit Navigation",
+          title: "Navigation",
+          map: true,
           body: cockpitHUD("trip"),
         };
       }
@@ -946,7 +933,8 @@ function captainView() {
       };
     case "cockpit":
       return {
-        title: "Cockpit Navigation",
+        title: "Navigation",
+        map: true,
         body: cockpitHUD("trip"),
       };
     case "collect":
@@ -1959,12 +1947,13 @@ const actions = {
     notify("Unread inbox preview. All notifications here are samples."),
   "read-all": () => notify("Sample notifications marked as read."),
   "next-demo": nextDemo,
+  "external-nav": () => notify("Opens Google Maps with turn-by-turn directions in the app."),
   "toggle-cockpit": () => {
     state.cockpitMode = !state.cockpitMode;
     render();
     notify(
       state.cockpitMode
-        ? "Cockpit Navigation HUD activated."
+        ? "Full-screen navigation on."
         : "Returned to standard view.",
     );
   },
@@ -2176,11 +2165,24 @@ document.addEventListener("input", (event) => {
     return;
   }
   if (input.id.startsWith("pin-")) {
-    input.value = input.value.replace(/\D/g, "").slice(-1);
-    if (input.value) {
-      const next = $(`#pin-${Number(input.id.split("-")[1]) + 1}`);
-      next?.focus();
+    const index = Number(input.id.split("-")[1]);
+    const digits = input.value.replace(/\D/g, "");
+    if (digits.length >= 6 - index && digits.length > 1) {
+      // A pasted or keyboard-suggested code fills the boxes from here on.
+      [...digits.slice(0, 6 - index)].forEach((digit, offset) => {
+        const box = $(`#pin-${index + offset}`);
+        if (!box) return;
+        box.value = digit;
+        state.form ||= {};
+        state.form[`${state.role}:${state.screen}:${state.modal || ""}:pin-${index + offset}`] = digit;
+      });
+      $(`#pin-${Math.min(5, index + digits.length - 1)}`)?.focus();
+      return;
     }
+    // Keep the digit just typed, not one that was already in the box.
+    const typed = typeof event.data === "string" && /\d/.test(event.data) ? event.data.replace(/\D/g, "").slice(-1) : digits.slice(-1);
+    input.value = typed;
+    if (input.value) $(`#pin-${index + 1}`)?.focus();
   }
   if (input.id) {
     state.form ||= {};
@@ -2216,6 +2218,10 @@ document.addEventListener("submit", (event) => {
   }
 });
 document.addEventListener("keydown", (event) => {
+  // Backspace in an empty code box goes back to the previous one.
+  if (event.key === "Backspace" && event.target.id?.startsWith("pin-") && !event.target.value) {
+    $(`#pin-${Number(event.target.id.split("-")[1]) - 1}`)?.focus();
+  }
   if (event.key === "Escape" && state.modal) {
     state.modal = null;
     render();

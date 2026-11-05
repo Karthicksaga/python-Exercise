@@ -10,7 +10,7 @@ const KEY: Record<PinKind, string> = { pickup: "PICKUP", dropoff: "DROP" };
 const escape = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** HTML for the OpenStreetMap (Leaflet) pin. The root keeps the `hop-marker-pin` class. */
-export function pinHtml(kind: PinKind, note: string | undefined, options: { editable: boolean; waiting: boolean; callout?: boolean }) {
+export function pinHtml(kind: PinKind, note: string | undefined, options: { editable: boolean; waiting: boolean; searching?: boolean; callout?: boolean }) {
   const label = `${kind === "pickup" ? "Pickup" : "Drop-off"}${note ? `: ${note}` : ""}`;
   const body = `<span class="hop-pin-key">${KEY[kind]}</span>${note ? `<span class="hop-pin-note">${escape(note)}</span>` : ""}`;
   const callout = options.editable
@@ -20,6 +20,7 @@ export function pinHtml(kind: PinKind, note: string | undefined, options: { edit
     ${options.callout === false ? "" : callout}
     <span class="hop-pin-head" aria-hidden="true"><i></i></span><span class="hop-pin-stem" aria-hidden="true"></span><span class="hop-pin-ground" aria-hidden="true"></span>
     ${options.waiting ? '<span class="hop-pin-pulse" aria-hidden="true"></span>' : ""}
+    ${options.searching ? '<span class="hop-pin-wave" aria-hidden="true"></span><span class="hop-pin-wave" aria-hidden="true"></span><span class="hop-pin-wave" aria-hidden="true"></span>' : ""}
   </div>`;
 }
 

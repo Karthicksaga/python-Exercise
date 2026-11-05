@@ -15,7 +15,8 @@
     "android:rider": "node scripts/android.mjs rider",
     "android:captain": "node scripts/android.mjs captain",
     "typecheck": "tsc --noEmit -p apps/rider && tsc --noEmit -p apps/captain",
-    "test:design": "playwright test --config playwright.config.mjs"
+    "test:design": "playwright test --config playwright.config.mjs",
+    "test:audit": "playwright test --config playwright.config.mjs tests/design-audit.spec.mjs"
   },
   "workspaces": [
     "apps/*",
@@ -39,6 +40,7 @@
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
     "@capacitor/cli": "^8.5.3",
     "@playwright/test": "^1.64.1",
     "@types/google.maps": "^3.66.7",

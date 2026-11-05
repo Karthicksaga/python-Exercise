@@ -427,7 +427,7 @@ test("history tabs support keyboard navigation", async ({ page }) => {
     page.getByRole("heading", { name: "No active rides" }),
   ).toBeVisible();
 });
-test("Captain cockpit displays server guidance and no synthetic speed or speed limit", async ({
+test("Captain full-screen navigation shows the live map, server guidance and no synthetic speed", async ({
   page,
 }) => {
   const trip = {
@@ -458,10 +458,11 @@ test("Captain cockpit displays server guidance and no synthetic speed or speed l
   await expect(page.locator(".cockpit-turn-street")).toHaveText(
     "Continue on the verified road",
   );
-  await expect(page.locator(".speed-num")).toHaveText("—");
-  await expect(page.locator(".speed-limit-sign span:last-child")).toHaveText(
-    "—",
-  );
+  await expect(page.locator(".cockpit-turn-dist")).toHaveText("In 120 m");
+  // Full-screen navigation is drawn on the live map, with no invented speed, limit or lanes.
+  await expect(page.locator(".screen-body.map-screen")).toBeVisible();
+  await expect(page.locator(".speed-num, .speed-limit-sign, .lane-box")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Google Maps/ })).toBeVisible();
 });
 test("uncertain account top-up creation is not retried as a new payment", async ({
   page,

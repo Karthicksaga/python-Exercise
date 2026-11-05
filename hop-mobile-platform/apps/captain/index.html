@@ -7,12 +7,47 @@
       content="width=device-width, initial-scale=1.0"
     />
     <title>Hop Captain</title>
-    <meta name="theme-color" content="#1b1c1d" />
+    <meta name="theme-color" content="#14151F" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="icon" type="image/png" href="/assets/sedan.png" />
+    <style>
+      /* Launch screen (Nov 2026): shown before any script loads, removed when the first screen is ready.
+         It follows the Android splash: same ink background and indigo mark. Colours are the design tokens
+         (ink #14151F, indigo #4B3FD1, glow #8F86FF), inlined because style.css hasn't loaded yet. */
+      #hop-launch { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: #14151F; color: #fff;
+        font-family: "Plus Jakarta Sans", system-ui, sans-serif; transition: opacity .28s ease; }
+      #hop-launch.out { opacity: 0; pointer-events: none; }
+      #hop-launch .l-in { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+      #hop-launch .l-mark { width: 72px; height: 72px; animation: l-pop .55s cubic-bezier(.34,1.56,.64,1) both; }
+      #hop-launch .l-word { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 34px; letter-spacing: -1.5px; line-height: 1; animation: l-rise .45s .2s ease-out both; }
+      #hop-launch .l-word span { font-size: 10px; letter-spacing: 1.4px; font-weight: 700; padding: 4px 8px; border-radius: 99px; background: rgba(255,255,255,.14); }
+      #hop-launch .l-track { position: relative; width: 150px; height: 24px; margin-top: 12px; animation: l-rise .45s .35s ease-out both; }
+      #hop-launch .l-road { position: absolute; left: 8px; right: 8px; top: 11px; height: 2px; border-radius: 2px; background: rgba(255,255,255,.16); overflow: hidden; }
+      #hop-launch .l-road i { position: absolute; inset: 0; background: linear-gradient(90deg, transparent, #8F86FF); transform-origin: left; animation: l-fill 1.6s .5s ease-in-out infinite; }
+      #hop-launch .l-pick { position: absolute; left: 2px; top: 6px; width: 12px; height: 12px; border-radius: 50%; border: 3px solid #8F86FF; background: #14151F; box-sizing: border-box; }
+      #hop-launch .l-drop { position: absolute; right: 2px; top: 6px; width: 12px; height: 12px; border-radius: 3px; background: #fff; }
+      #hop-launch .l-car { position: absolute; left: 4px; top: 5px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(143,134,255,.35); animation: l-drive 1.6s .5s ease-in-out infinite; }
+      #hop-launch .l-hint { position: absolute; left: 0; right: 0; bottom: max(32px, env(safe-area-inset-bottom)); text-align: center; font-size: 12px; color: rgba(255,255,255,.55); animation: l-rise .4s .5s ease-out both; }
+      @keyframes l-pop { from { transform: scale(.55); opacity: 0; } to { transform: none; opacity: 1; } }
+      @keyframes l-rise { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+      @keyframes l-drive { 0% { left: 4px; } 70%, 100% { left: calc(100% - 18px); } }
+      @keyframes l-fill { 0% { transform: scaleX(0); } 70%, 100% { transform: scaleX(1); } }
+      @media (prefers-reduced-motion: reduce) {
+        #hop-launch, #hop-launch * { animation: none !important; transition: none !important; }
+        #hop-launch .l-car { left: calc(100% - 18px); }
+      }
+    </style>
   </head>
   <body>
+    <div id="hop-launch" role="status" aria-label="Opening Hop Captain">
+      <div class="l-in">
+        <svg class="l-mark" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4B3FD1" d="M8,0 L40,0 Q48,0 48,8 L48,40 Q48,48 40,48 L8,48 Q0,48 0,40 L0,8 Q0,0 8,0Z"/><path fill="#fff" d="M14,10 L21,10 L21,21 Q24,18 28,18 Q35,18 35,27 L35,38 L28,38 L28,28 Q28,24 25,24 Q21,24 21,29 L21,38 L14,38Z"/><circle cx="40" cy="36" r="3.2" fill="#8F86FF"/></svg>
+        <div class="l-word">hop<span>CAPTAIN</span></div>
+        <div class="l-track" aria-hidden="true"><div class="l-road"><i></i></div><div class="l-pick"></div><div class="l-drop"></div><div class="l-car"></div></div>
+      </div>
+      <div class="l-hint">Checking your sign-in</div>
+    </div>
     <div id="app" class="app captain"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script type="module" src="/src/main.ts"></script>
