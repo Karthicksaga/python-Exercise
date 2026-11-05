@@ -7,6 +7,8 @@ Only two folders are active. Everything else (`bike-taxi`, `python*`, `oop assig
 
 UI work on either app also needs the skill `.agents/skills/hop-mobile-design/SKILL.md`.
 
+Suggestions (reviews, proposals, architecture ideas, issues found but not fixed) always go in `suggestions/`: one dated file each, plus a row in `suggestions/README.md`. Things that are built are documented in the project docs instead.
+
 ## Saving tokens
 - Large files: `prototypes/mobile-first/app.js` (~150 KB), `style.css` (~3.3k lines) and `shared/design/animations.css` (~1.5k lines). Grep for the selector or function first, then read only that range.
 - `node_modules/`, `dist/`, `test-results/`, `playwright-report/`, `evidence/` and `docs/ui-ux-audit-evidence/` are generated output. Never read them.
