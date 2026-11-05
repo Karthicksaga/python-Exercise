@@ -41,6 +41,9 @@ q gcloud iam service-accounts add-iam-policy-binding "$DEPLOY" --project="$PROJE
 echo "› hop-deploy permissions"
 q gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$DEPLOY" --role=roles/serviceusage.serviceUsageConsumer --condition=None
 q gcloud storage buckets add-iam-policy-binding "gs://${PROJECT_ID}_cloudbuild" --member="serviceAccount:$DEPLOY" --role=roles/storage.objectAdmin
+# gcloud builds submit also reads the source bucket and lists the project's buckets to check it isn't
+# squatted (storage.buckets.get + storage.buckets.list). Bucket Viewer covers both, without object access.
+q gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$DEPLOY" --role=roles/storage.bucketViewer --condition=None
 for kind in portraits kyc; do
   bucket="gs://${PROJECT_ID}-${PREFIX}-${kind}"
   gcloud storage buckets describe "$bucket" >/dev/null 2>&1 &&

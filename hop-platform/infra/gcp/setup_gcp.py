@@ -374,6 +374,10 @@ def setup_media_buckets(project: str, region: str, prefix: str, sa_api: str) -> 
             print_ok(f"gs://{name} already exists")
         gcloud(["storage", "buckets", "add-iam-policy-binding", f"gs://{name}", "--project", project,
                 f"--member=serviceAccount:{sa_api}", "--role=roles/storage.objectAdmin"])
+        # The API reads the bucket's own settings at startup (validatePrivacy) and refuses to start if it
+        # can't; objectAdmin covers objects only, so also grant storage.buckets.get.
+        gcloud(["storage", "buckets", "add-iam-policy-binding", f"gs://{name}", "--project", project,
+                f"--member=serviceAccount:{sa_api}", "--role=roles/storage.legacyBucketReader"])
     return names
 
 
