@@ -199,6 +199,9 @@ export class LiveFeed {
         this.approach = undefined; // keep the booked route; never invent an approach path or time
       }
     }
+    // The rider's trip sheet shows the same wait time as the pickup pin.
+    if (this.role === "rider")
+      window.dispatchEvent(new CustomEvent("hop-trip-eta", { detail: { ride: ride.id, status: ride.status, seconds: secondsLeft } }));
     this.data = {
       center: vehicles[0] || pickup,
       pickup,

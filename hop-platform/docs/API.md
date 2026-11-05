@@ -108,7 +108,7 @@ All endpoints below use existing session authorization; POSTs require the existi
 - `POST /api/profile/photo` — `{image: base64JPEGorPNG}`; decoded input/output at most 512 KiB; server re-encodes as JPEG. Approved captains return to pending review and go offline; an active captain trip blocks replacement.
 - `POST /api/profile/photo/delete` — removes a rider portrait reference. Captains must upload a replacement instead.
 - `GET /api/profile/photo/{accountId}` — `{image,content_type}` for the owner, an operator, or an assigned rider with an approved captain portrait during/recently after the trip. Never returns a public object URL.
-- `GET /api/drivers/onboarding` — `{draft,documents,has_photo,photo_approved,phone_verified,storage_mode}` for the caller.
+- `GET /api/drivers/onboarding` — `{draft,documents,has_photo,photo_approved,phone_verified,storage_mode,documents_required,testing_mode,required_documents,optional_documents}` for the caller. `testing_mode` is true in development or with `DEV_ONBOARDING=true` (staging): `apply` then accepts a test application without documents and fills test defaults, and an operator can approve it without accepted documents.
 - `POST /api/drivers/onboarding` — saves the application fields plus `step` (0–3); returns `{ok:true}`. Drafts are private and server-side.
 - `POST /api/drivers/documents/{kind}` — `{image: base64JPEGorPNG}`; `kind` is identity/license/rc/insurance; max 2 MiB decoded input/output, max 2048 pixels per side. Server validation/re-encoding applies. Only the caller's document can be written.
 - `GET /api/drivers/documents/{accountId}/{kind}` — owner/operator only; read is audited before disclosure; returns `{image,content_type}`. Unauthorized callers receive 404.

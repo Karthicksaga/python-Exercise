@@ -131,11 +131,19 @@ export class LiveAccount {
     if (hero) {
       const small = hero.querySelector("small");
       if (small) small.textContent = "YOUR HOP WALLET";
+    }
+    // The renderer's offer card advertises a sample code (HOP50) that doesn't exist. Real promo
+    // codes are entered when reviewing a ride.
+    this.app.querySelector(".screen-padding > .offer-card")?.remove();
+    if (hero) {
       const amountEl = hero.querySelector(".amount");
       if (amountEl && data && Number.isSafeInteger(data.balance_paise)) {
         const balance = data.balance_paise / 100;
         this.bridge.assign({ balance });
-        amountEl.innerHTML = `${money(balance)}<span style="font-size:19px;opacity:.5">.00</span>`;
+        // money() already shows paise when there are any; add the faded ".00" only for whole rupees.
+        amountEl.innerHTML = Number.isInteger(balance)
+          ? `${money(balance)}<span style="font-size:19px;opacity:.5">.00</span>`
+          : money(balance);
       } else if (amountEl) {
         amountEl.textContent = "—";
       }
@@ -216,7 +224,7 @@ export class LiveAccount {
     let html = "";
 
     if (this.role === "captain") {
-      html += `<div class="section-card" style="margin-bottom:14px"><div class="row"><div><small class="muted">AVAILABLE BALANCE</small><strong style="display:block;font-size:24px;margin-top:2px">${data ? money(data.balance_paise / 100) : "—"}</strong></div><button class="primary small" data-modal="payout" style="padding:8px 14px;font-size:11px">Request payout</button></div></div>`;
+      html += `<div class="section-card live-ledger-balance"><small class="muted">AVAILABLE BALANCE</small><strong>${data ? money(data.balance_paise / 100) : "—"}</strong><button class="primary" data-modal="payout">Request payout</button></div>`;
     }
 
     if (data && Array.isArray(entries)) {
@@ -397,23 +405,27 @@ export class LiveAccount {
         mini.textContent = earnings
           ? money(earnings.today_fare_paise / 100)
           : "—";
-      const rows = this.app.querySelectorAll(".sheet .row");
-      rows.forEach((row) => {
-        if (row.textContent?.includes("Daily goal")) {
-          const amount = row.querySelector("strong");
-          if (amount)
-            amount.textContent = earnings
-              ? `${money(earnings.today_fare_paise / 100)} / ${money(((this.state()?.driver?.[0] as Data)?.daily_goal_paise || 0) / 100)}`
-              : "Loading earnings…";
-        }
-      });
+      // Daily goal row: today's fares against the captain's own goal (none set → no target).
+      const goal = ((this.state()?.driver?.[0] as Data)?.daily_goal_paise || 0) / 100;
+      const today = earnings ? earnings.today_fare_paise / 100 : 0;
+      const goalRow = Array.from(this.app.querySelectorAll(".sheet .row.small")).find((row) =>
+        row.textContent?.includes("Daily goal"),
+      );
+      const amount = goalRow?.querySelector("strong");
+      if (amount)
+        amount.textContent = !earnings
+          ? "Loading earnings…"
+          : goal > 0
+            ? `${money(today)} / ${money(goal)}`
+            : `${money(today)} · no goal set`;
       this.app
-        .querySelectorAll(".sheet .progress-track i")
-        .forEach((el) => ((el as HTMLElement).style.width = "0%"));
-      const trips = this.app.querySelector(".sheet .row.small > .muted, .sheet .row.small > span:first-child");
+        .querySelectorAll<HTMLElement>(".sheet .progress-track i")
+        .forEach((el) => (el.style.width = `${goal > 0 ? Math.min(100, (today / goal) * 100) : 0}%`));
+      // The row under the bar replaces the sample "6 trips today".
+      const trips = this.app.querySelector(".sheet .row:not(.small) > span.small.muted");
       if (trips)
         trips.textContent = earnings
-          ? `${earnings.today_completed_trips} trips today`
+          ? `${earnings.today_completed_trips} ${earnings.today_completed_trips === 1 ? "trip" : "trips"} today`
           : "Loading trips…";
     }
     if (!modal && screen === "account") {
@@ -606,7 +618,18 @@ export class LiveAccount {
       body = `<div class="live-tools-page"><div class="live-page-intro"><span class="live-eyebrow">CAPTAIN TOOLKIT</span><h2>Make your day work for you.</h2><p>Keep an eye on your goal, trip settings and breaks.</p></div><div class="live-section-heading">Your workday</div><section class="live-card-group"><div class="live-tool-goal"><span class="list-icon">${icon("chart")}</span><div><strong>Daily earnings goal</strong><small>Today’s completed fares</small><b>${this.cache.get("/api/drivers/earnings")?.summary ? money(this.cache.get("/api/drivers/earnings")!.summary.today_fare_paise / 100) : "—"}</b></div><button class="text-button" data-modal="goal">Edit</button></div><button class="live-tool-action" data-action="home-mode"><span class="list-icon">${icon("navigation")}</span><span><strong>Head towards home</strong><small>Prefer trips in the direction of home</small></span><span class="live-row-chevron">›</span></button></section><div class="live-section-heading">On the road</div><section class="live-card-group"><button class="live-tool-action" data-modal="service-area"><span class="list-icon">${icon("pin")}</span><span><strong>Operating city</strong><small>View your service area</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="demand"><span class="list-icon">${icon("layers")}</span><span><strong>Demand nearby</strong><small>Explore active pickup areas</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="preferences"><span class="list-icon">${icon("settings")}</span><span><strong>Driving preferences</strong><small>Pickup radius and minimum fare</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="insights"><span class="list-icon">${icon("shield")}</span><span><strong>Driving insights</strong><small>Your trip activity and feedback</small></span><span class="live-row-chevron">›</span></button></section><button class="live-break-action secondary" data-action="take-break">Take a break</button></div>`;
     } else if (key === "earnings") {
       const sum = data?.summary || {};
-      body = `<div class="wallet-hero"><small>TODAY'S COMPLETED FARES</small><div class="amount">${money((sum.today_fare_paise || 0) / 100)}</div><p>${Number(sum.today_completed_trips || 0)} completed trips</p></div><div class="section-card"><p>Week ${money((sum.week_fare_paise || 0) / 100)}</p><p>Month ${money((sum.month_fare_paise || 0) / 100)}</p><p>All time ${money((sum.all_time_fare_paise || 0) / 100)}</p><p class="micro">Reported receipt is distinct from provider settlement.</p></div>${(data?.rides || []).map((r: Data) => `<div class="list-row"><span>${escape(r.pickup_label)} → ${escape(r.dropoff_label)}</span><strong>${money(r.fare_paise / 100)}</strong></div>`).join("")}${this.passCard()}<button class="secondary" data-go="ledger">Ledger & payouts</button>`;
+      const fare = (paise: number | undefined) => money((paise || 0) / 100);
+      const trips = Number(sum.today_completed_trips || 0);
+      const rides = (data?.rides || []) as Data[];
+      body = `<div class="live-earnings-page"><div class="wallet-hero"><small>TODAY'S COMPLETED FARES</small><div class="amount">${fare(sum.today_fare_paise)}</div><p>${trips} completed ${trips === 1 ? "trip" : "trips"}</p></div>`
+        + `<div class="live-earnings-stats"><div><small>This week</small><strong>${fare(sum.week_fare_paise)}</strong></div><div><small>This month</small><strong>${fare(sum.month_fare_paise)}</strong></div><div><small>All time</small><strong>${fare(sum.all_time_fare_paise)}</strong></div></div>`
+        + `<section class="live-card-group"><button class="live-tool-action" data-go="ledger"><span class="list-icon">${icon("wallet")}</span><span><strong>Ledger & payouts</strong><small>Balance, payout requests and history</small></span><span class="live-row-chevron">›</span></button></section>`
+        + this.passCard()
+        + `<div class="live-section-heading">Recent trips</div>`
+        + (rides.length
+          ? `<section class="live-card-group">${rides.map((r) => `<div class="live-earnings-trip"><span>${escape(r.pickup_label)} → ${escape(r.dropoff_label)}</span><strong>${fare(r.fare_paise)}</strong></div>`).join("")}</section>`
+          : `<p class="live-page-note">Completed trips will appear here.</p>`)
+        + `<p class="live-page-note">Fares riders paid for completed trips. Payouts to your bank are shown in Ledger & payouts.</p></div>`;
     } else if (key === "pass") body = this.passSheet(data || {});
     else if (key === "payout")
       body =
@@ -627,7 +650,13 @@ export class LiveAccount {
       const vehicleNumber = driver?.vehicle_number || "Registration not supplied";
       const status = driver?.status || "Not applied";
       const documentRow = (title: string, detail: string, ico: string) => `<div class="live-document-row"><span class="list-icon">${icon(ico)}</span><span><strong>${title}</strong><small>${escape(detail)}</small></span><span class="live-row-chevron">›</span></div>`;
-      body = `<div class="live-vehicle-page"><section class="live-vehicle-card"><div class="live-vehicle-art">${icon("car")}</div><div><span class="live-eyebrow">YOUR VEHICLE</span><h2>${escape(vehicleName)}</h2><span class="live-vehicle-plate">${escape(vehicleNumber)}</span></div></section><div class="live-status-card"><span><small>APPLICATION STATUS</small><strong>${escape(status.replaceAll("_", " "))}</strong></span><span class="badge ${status === "approved" ? "green" : "neutral"}">${escape(status.replaceAll("_", " "))}</span></div><div class="live-page-intro live-doc-intro"><h2>Vehicle & documents</h2><p>Review your submitted information and private documents.</p></div><section class="live-card-group">${documentRow("Driving licence", driver?.license_expires ? `Expires ${escape(driver.license_expires.slice(0, 10))}` : "Expiry date not supplied", "file")}${documentRow("Registration certificate", driver?.vehicle_number ? "Submitted with your application" : "Not supplied", "file")}${documentRow("Vehicle insurance", driver?.insurance_expires ? `Expires ${escape(driver.insurance_expires.slice(0, 10))}` : "Expiry date not supplied", "shield")}</section><button class="live-vehicle-action primary" data-go="onboarding">View application & private documents</button><p class="live-page-note">Vehicle changes and document approvals are reviewed by the operator.</p></div>`;
+      // Show the vehicle type the captain applied with (bike, auto, mini, sedan or SUV).
+      const categoryNames: Record<string, string> = { bike: "Bike", auto: "Auto-rickshaw", mini: "Mini cab", sedan: "Sedan", suv: "SUV" };
+      const category = String(driver?.vehicle_category || "");
+      const art = categoryNames[category]
+        ? `<img src="./assets/${category}.png" alt="" draggable="false"/>`
+        : icon("car");
+      body = `<div class="live-vehicle-page"><section class="live-vehicle-card"><div class="live-vehicle-art">${art}</div><div><span class="live-eyebrow">YOUR VEHICLE${categoryNames[category] ? ` · ${categoryNames[category].toUpperCase()}` : ""}</span><h2>${escape(vehicleName)}</h2><span class="live-vehicle-plate">${escape(vehicleNumber)}</span></div></section><div class="live-status-card"><span><small>APPLICATION STATUS</small><strong>${escape(status.replaceAll("_", " "))}</strong></span><span class="badge ${status === "approved" ? "green" : "neutral"}">${escape(status.replaceAll("_", " "))}</span></div><div class="live-page-intro live-doc-intro"><h2>Vehicle & documents</h2><p>Review your submitted information and private documents.</p></div><section class="live-card-group">${documentRow("Driving licence", driver?.license_expires ? `Expires ${escape(driver.license_expires.slice(0, 10))}` : "Expiry date not supplied", "file")}${documentRow("Registration certificate", driver?.vehicle_number ? "Submitted with your application" : "Not supplied", "file")}${documentRow("Vehicle insurance", driver?.insurance_expires ? `Expires ${escape(driver.insurance_expires.slice(0, 10))}` : "Expiry date not supplied", "shield")}</section><button class="live-vehicle-action primary" data-go="onboarding">View application & private documents</button><p class="live-page-note">Vehicle changes and document approvals are reviewed by the operator.</p></div>`;
     }
     else if (key === "rewards") {
       const referral = data?.referral?.[0] || {};
@@ -690,7 +719,7 @@ export class LiveAccount {
           suggestions.push({
             kind: "home",
             label: "Home",
-            address: "2nd Cross Street, Adyar",
+            address: "Add your home address",
             ico: "home",
           });
         }
@@ -698,22 +727,22 @@ export class LiveAccount {
           suggestions.push({
             kind: "work",
             label: "Work",
-            address: "Olympia Tech Park, Guindy",
+            address: "Add your work address",
             ico: "briefcase",
           });
         }
         if (locs.length === 0 && !hasHome && !hasWork) {
           suggestions.push({
             kind: "favorite",
-            label: "Gym",
-            address: "Phoenix Marketcity, Velachery",
+            label: "Favourite",
+            address: "A place you go often",
             ico: "pin",
           });
         }
 
         if (suggestions.length > 0) {
           suggestionsHtml =
-            `<div class="section-label" style="margin-top:16px">Quick suggestions <span>Frequent</span></div>` +
+            `<div class="section-label" style="margin-top:16px">Quick suggestions <span>Not set yet</span></div>` +
             suggestions
               .map(
                 (s) =>
@@ -729,9 +758,9 @@ export class LiveAccount {
         suggestionsHtml +
         `<div class="section-label" style="margin-top:20px">+ Add a place <span>New location</span></div>` +
         `<div class="section-card" style="margin-top:6px;background:white">` +
-        `<label class="field-label" for="account-location-kind" style="margin-top:0">Kind (Home, Work, Favorite)</label>` +
+        `<label class="field-label" for="account-location-kind" style="margin-top:0">Type of place</label>` +
         `<select class="text-input" id="account-location-kind">` +
-        `<option value="favorite">Favorite</option>` +
+        `<option value="favorite">Favourite</option>` +
         `<option value="home">Home</option>` +
         `<option value="work">Work</option>` +
         `</select>` +
@@ -748,7 +777,7 @@ export class LiveAccount {
         `<p class="small muted" style="margin:4px 0 14px">Save your favourite destinations for quick one-tap booking.</p>` +
         `<label class="field-label" for="account-location-kind">Kind (home/work/favorite)</label>` +
         `<select class="text-input" id="account-location-kind">` +
-        `<option value="favorite">Favorite</option>` +
+        `<option value="favorite">Favourite</option>` +
         `<option value="home">Home</option>` +
         `<option value="work">Work</option>` +
         `</select>` +
@@ -1046,7 +1075,7 @@ export class LiveAccount {
         btn("export", "Download my data");
     else if (key === "delete-account")
       body =
-        `<p>${p.deletion_requested_at ? "Account deletion has been requested. You can cancel during the recovery window." : "Request account deletion after the backend recovery window. This is a real account action."}</p><label class="toggle-row"><span>I confirm this account deletion request</span><input type="checkbox" id="account-confirm-deletion"/></label>` +
+        `<p>${p.deletion_requested_at ? "Account deletion has been requested. You can cancel during the recovery window." : "Request account deletion. You can cancel during the recovery window. This is a real account action."}</p><label class="toggle-row"><span>I confirm this account deletion request</span><input type="checkbox" id="account-confirm-deletion"/></label>` +
         btn(
           p.deletion_requested_at ? "cancel-deletion" : "deletion",
           p.deletion_requested_at
@@ -1274,9 +1303,11 @@ export class LiveAccount {
         "#account-location-address",
       );
       if (kindSelect) kindSelect.value = kind;
-      if (labelInput) labelInput.value = label;
-      if (addressInput) addressInput.value = address;
-      labelInput?.focus();
+      if (labelInput) labelInput.value = label === "Favourite" ? "" : label;
+      // Suggestions carry no address: the rider picks or types their own (a place chosen in
+      // search stays filled in).
+      void address;
+      (label === "Favourite" ? labelInput : addressInput || labelInput)?.focus();
       return;
     }
 
@@ -1673,7 +1704,7 @@ export class LiveAccount {
           sessionStorage.removeItem(key);
           this.cache.delete("/api/wallet");
           this.status =
-            "Development credit recorded by the backend. No real money charged.";
+            "Test credit added. No real money was charged.";
           this.statusError = false;
           this.bridge.update({ modal: null, balance: order.balance_paise / 100 });
           this.bridge.notify(`Added ₹${(amount / 100).toLocaleString("en-IN")} to your wallet.`);
@@ -1685,10 +1716,10 @@ export class LiveAccount {
         await api.request("/api/wallet/verify", verification);
         sessionStorage.removeItem(key);
         this.cache.delete("/api/wallet");
-        this.status = "Top-up verified by the backend.";
+        this.status = "Top-up confirmed.";
         this.statusError = false;
         this.bridge.update({ modal: null });
-        this.bridge.notify("Top-up verified by the backend.");
+        this.bridge.notify("Top-up confirmed.");
         await this.load("/api/wallet");
         return;
       }

@@ -20,6 +20,9 @@ type Config struct {
 	DemoLogin           bool
 	TrustedProxies      []netip.Prefix
 	DevSMS, DevPayments bool
+	// TestOnboarding lets a captain apply without documents and an operator approve that test
+	// application (DEV_ONBOARDING=true, for staging). Always on in development.
+	TestOnboarding bool
 	// Optional providers. OTP login needs an SMS webhook; online payments need Razorpay-style keys.
 	SMSWebhookURL, SMSWebhookToken                                   string
 	MSG91AuthKey, MSG91TemplateID                                    string
@@ -39,6 +42,7 @@ func ConfigFromEnv() (Config, error) {
 	}
 	c.DevSMS = os.Getenv("DEV_SMS") == "true" || os.Getenv("ENABLE_TEST_SMS") == "true" || c.Development
 	c.DevPayments = os.Getenv("DEV_PAYMENTS") == "true" || os.Getenv("ENABLE_TEST_PAYMENTS") == "true" || c.Development
+	c.TestOnboarding = os.Getenv("DEV_ONBOARDING") == "true" || c.Development
 	c.RiderOrigin, c.CaptainOrigin, c.AdminOrigin = os.Getenv("RIDER_ORIGIN"), os.Getenv("CAPTAIN_ORIGIN"), os.Getenv("ADMIN_ORIGIN")
 	if c.Development {
 		c.RiderOrigin = env("RIDER_ORIGIN", "http://localhost:5173")

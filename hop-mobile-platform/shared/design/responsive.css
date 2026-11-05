@@ -129,3 +129,39 @@ html.hop-live {
 
 /* Images are never draggable: a long-press or mouse drag must not lift vehicles or icons off the screen. */
 .hop-live img { -webkit-user-drag: none; user-select: none; -webkit-touch-callout: none; }
+/* Review your ride: the route lines and meeting-point link match the option rows below them. */
+.hop-live .confirm-route .route-line strong { font-size: calc(13px + var(--font-step,0px)); line-height: 1.4; }
+.hop-live .confirm-route .route-line button { font-size: calc(12px + var(--font-step,0px)); min-height: 44px; }
+.hop-live .confirm-sheet .pickup-inline { font-size: calc(13px + var(--font-step,0px)); min-height: 44px; padding-bottom: 0; }
+/* Small phones (≤360 px): the booking footer keeps the fare and a one-line button. */
+.hop-live .action-bar .primary { white-space: nowrap; }
+@media (max-width: 360px) {
+  .hop-live .action-bar .fare-caption { display: none; }
+}
+/* Trip sheets: the ETA / "Live" badge never breaks onto two lines. */
+.hop-live .tracking-heading .eta { white-space: nowrap; flex-shrink: 0; }
+/* Payment page: one main button, the other actions as a lighter row underneath, so the amount and
+   choices keep the screen (they were three stacked full-width buttons). */
+.hop-live .payment-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px 10px; }
+.hop-live .payment-actions > :is(.primary, .fineprint, .payment-error) { grid-column: 1 / -1; }
+.hop-live .payment-actions > .secondary { min-height: 44px; margin: 0; background: transparent; box-shadow: none; border: 0; color: var(--accent); font-weight: 700; font-size: calc(13px + var(--font-step, 0px)); }
+@media (max-width: 360px) { .hop-live .payment-actions > .fineprint { display: none; } }
+/* Riders never see the review build's "Switch to Captain perspective" shortcut. */
+.hop-live .row:has(> [data-action="switch-to-captain-pickup"]) { display: none; }
+
+/* Rider trip sheet (Nov 2026, simplified): headline, captain + large plate, pickup code, one action
+   row and a light "Trip details or cancel" link. Sample extras from the renderer are hidden. */
+.hop-live .live-trip-sheet :is(.eta, .pickup-brief, .driver-card > img) { display: none; }
+.hop-live .live-trip-sheet .tracking-heading h2 { font-size: calc(21px + var(--font-step, 0px)); }
+.hop-live .live-trip-sheet .plate { display: inline-block; margin-top: 6px; padding: 5px 10px; border: 1.5px solid var(--ink); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: calc(14px + var(--font-step, 0px)); font-weight: 800; letter-spacing: 1px; }
+.hop-live .live-trip-sheet[data-phase="accepted"] .pin-code { background: transparent; border: 0; box-shadow: none; padding: 6px 0; }
+.hop-live .live-trip-sheet[data-phase="accepted"] .pin-code strong { font-size: calc(18px + var(--font-step, 0px)); }
+.hop-live .live-trip-sheet[data-phase="in_progress"] .confirm-route .route-line:first-child { display: none; }
+.hop-live .live-trip-sheet > button.secondary[data-modal] { background: transparent; box-shadow: none; border: 0; color: var(--accent); font-weight: 700; min-height: 44px; }
+
+/* Onboarding review on small phones: the status badge gets its own line, rows wrap. */
+@media (max-width: 360px) {
+  .hop-live .summary-hero { flex-wrap: wrap; }
+  .hop-live .summary-hero > .badge { order: 3; margin-left: 0; }
+  .hop-live .summary-row { flex-wrap: wrap; gap: 4px 8px; }
+}

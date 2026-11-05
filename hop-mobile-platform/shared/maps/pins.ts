@@ -71,11 +71,16 @@ export function walkNote(meters: number) {
 /** Room to leave when framing a route: below the bars over the map's top edge, plus the
  * height of a pin and its callout (about 70 px) when there is space, so neither ends up hidden. */
 export function framePadding(host: HTMLElement) {
-  const side = 45, bottom = 45;
-  const bars = Number(host.dataset.topInset || 0), height = host.clientHeight;
+  // Pin labels ("PICKUP · Captain 4 min") stick out to the right of their pin, and the map
+  // buttons sit on the right edge, so the right margin is wider than the left.
+  // A short map keeps tighter margins so the route isn't squeezed under the top bars.
+  const side = 45, height = host.clientHeight, roomy = height >= 360;
+  const bottom = roomy ? 70 : side;
+  const right = Math.round(roomy ? Math.min(130, Math.max(side, host.clientWidth * 0.3)) : Math.min(70, Math.max(side, host.clientWidth * 0.15)));
+  const bars = Number(host.dataset.topInset || 0);
   // Best: below the bars with room for callouts. Tighter: just below the bars (callouts then
   // flip or slide to stay visible). A very short map keeps the plain margin rather than
   // squeezing the route into a sliver.
   const top = height - (bars + 70) - bottom >= 80 ? bars + 70 : height - (bars + 16) - bottom >= 60 ? bars + 16 : side;
-  return { top: Math.round(top), bottom, left: side, right: side };
+  return { top: Math.round(top), bottom, left: side, right };
 }

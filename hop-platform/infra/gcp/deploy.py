@@ -77,7 +77,7 @@ def validate(c):
                 "(Google Cloud console: APIs & Services > Credentials; see set_oidc_client.sh)")
     for email in filter(None, (e.strip() for e in env.get("OPERATOR_EMAILS", "").split(","))):
         require(re.fullmatch(r"[^@\s<>,]+@[^@\s<>,]+\.[^@\s<>,]+", email), "OPERATOR_EMAILS must be a comma-separated list of email addresses")
-    allowed_env = {"OPERATOR_EMAILS", "OIDC_ISSUER", "OIDC_CLIENT_ID", "ROUTING_URL", "GEOCODING_URL", "VAPID_PUBLIC_KEY", "VAPID_SUBJECT", "MEDIA_PROFILE_BUCKET", "MEDIA_KYC_BUCKET", "DEV_SMS", "DEV_PAYMENTS", "DEMO_LOGIN"}
+    allowed_env = {"OPERATOR_EMAILS", "OIDC_ISSUER", "OIDC_CLIENT_ID", "ROUTING_URL", "GEOCODING_URL", "VAPID_PUBLIC_KEY", "VAPID_SUBJECT", "MEDIA_PROFILE_BUCKET", "MEDIA_KYC_BUCKET", "DEV_SMS", "DEV_PAYMENTS", "DEV_ONBOARDING", "DEMO_LOGIN"}
     require(set(env) <= allowed_env, "api_env accepts public configuration only; use api_secrets for credentials")
     staging = is_staging(c)
     buckets = list(media_buckets(c))
@@ -85,7 +85,7 @@ def validate(c):
         # Production: identity documents need durable private storage, and demo accounts must not exist.
         require(all(buckets), "Production needs MEDIA_PROFILE_BUCKET and MEDIA_KYC_BUCKET (private buckets)")
         require(not env.get("DEMO_LOGIN"), "DEMO_LOGIN is not allowed in production")
-        require(env.get("DEV_SMS") != "true" and env.get("DEV_PAYMENTS") != "true", "DEV_SMS/DEV_PAYMENTS are not allowed in production")
+        require(all(env.get(k) != "true" for k in ("DEV_SMS", "DEV_PAYMENTS", "DEV_ONBOARDING")), "DEV_SMS/DEV_PAYMENTS/DEV_ONBOARDING are not allowed in production")
     require(isinstance(c.get("worker", True), bool), "worker must be true or false")
     if any(buckets):
         require(all(re.fullmatch(r"[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]", b) for b in buckets)
@@ -147,7 +147,8 @@ def deploy(c, revision):
         "https://hop-staging-admin-qp262su4sq-el.a.run.app",
     ]
     # Staging runs in production mode too (secure cookies, real document checks, no fake captains);
-    # it only opts in to test sign-in and test payments through DEV_SMS / DEV_PAYMENTS.
+    # it only opts in to test sign-in, test payments and document-free test applications through
+    # DEV_SMS / DEV_PAYMENTS / DEV_ONBOARDING.
     app_env = "production"
     routing = {"ROUTING_URL": "http://127.0.0.1:5000"} if c.get("osrm_image") else {}
     profile_bucket, kyc_bucket = media_buckets(c)

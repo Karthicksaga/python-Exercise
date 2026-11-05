@@ -448,3 +448,46 @@ button.hop-pin-callout:focus-visible { outline: 3px solid var(--accent); outline
 .hop-ridecheck p { margin: 0; font-size: 13px; color: var(--muted, #6b6f80); }
 .hop-ridecheck .hop-ridecheck-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .hop-ridecheck button { min-height: 40px; flex: 1 1 auto; }
+
+/* Map declutter (Nov 2026, requested by the product owner after phone testing).
+   - The status chip shows only when something needs attention; normal states are read to screen readers only.
+   - "Replay route" is a small icon button.
+   - Map buttons form one column at the bottom right of the map, just above the sheet, instead of
+     floating over the route and pins. Recentre and follow do the same job off a trip, so booking and
+     the Drive screen show only one of them (Follow me while booking); "show full route" only appears when there is a route. */
+.hop-map-status.hop-map-status-quiet {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0; box-shadow: none;
+}
+.route-preview-badge:not(.animating) { padding: 0; width: 40px; height: 40px; justify-content: center; border-radius: 14px; }
+.route-preview-badge:not(.animating) .icon { width: 16px !important; height: 16px !important; }
+.app:has(> .screen-body.map-screen) .screen-body.map-screen:has(.hop-map-canvas) .map-controls:not(.sheet *, .home-where *) {
+  top: auto; margin-top: 0; right: 14px;
+  bottom: calc(100% - var(--hop-map-height, 60%) + 18px);
+  grid-template-columns: auto; grid-auto-flow: row; gap: 8px; z-index: 403;
+}
+.screen-body.map-screen:has(.hop-map-canvas):is(:has(.choose-sheet), :has(.confirm-sheet)) .map-controls [data-action="center-map"] { display: none; }
+.screen-body.map-screen:has(.hop-map-canvas) .map-controls:not([data-has-route]) :is([data-follow], [data-route-fit]) { display: none; }
+/* With a route on screen, "Follow me" recentres, so "Centre map" would be a duplicate. */
+.screen-body.map-screen:has(.hop-map-canvas) .map-controls[data-has-route] [data-action="center-map"] { display: none; }
+/* GPS sharing is switched on the Drive screen; trips share location automatically. */
+.screen-body.map-screen:has(.hop-map-canvas):not(:has(.zone-pill-row)) .map-controls [data-live-gps] { display: none; }
+/* A pop-up sheet covers the map: its buttons, status and replay badge must not float above it. */
+.app:has(.sheet-overlay) .screen-body.map-screen :is(.map-controls, .hop-map-status, .route-preview-badge) { visibility: hidden; }
+/* A problem message sits at the bottom left of the map, clear of the header, route bar and pins. */
+.app:has(> .screen-body.map-screen) .screen-body.map-screen .hop-map-status:not(.hop-map-status-quiet) {
+  top: auto !important; margin-top: 0 !important; left: 12px; right: auto;
+  bottom: calc(100% - var(--hop-map-height, 60%) + 18px); max-width: calc(100% - 92px); border-radius: 12px;
+}
+/* Short maps: the message shares the bottom row with the buttons instead of covering the route. */
+.app:has(> .screen-body.map-screen) .screen-body.map-screen:has(.map-controls.hop-compact-controls) .hop-map-status:not(.hop-map-status-quiet) {
+  bottom: calc(100% - var(--hop-map-height, 60%) + 12px); max-width: calc(100% - 196px); min-width: 110px;
+  font-size: 10px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+/* Short maps (large text, small phones): the column becomes a row so it never reaches the header. */
+.app:has(> .screen-body.map-screen) .screen-body.map-screen:has(.hop-map-canvas) .map-controls.hop-compact-controls:not(.sheet *, .home-where *) { grid-template-columns: none; grid-auto-flow: column; bottom: calc(100% - var(--hop-map-height, 60%) + 12px); }
+
+/* Short maps: the replay button moves up so the location message can use the bottom row. */
+.app:has(> .screen-body.map-screen) .screen-body.map-screen:has(.map-controls.hop-compact-controls) .route-preview-badge:not(.sheet *) {
+  top: auto; margin-top: 0; bottom: calc(100% - var(--hop-map-height, 60%) + 66px);
+}

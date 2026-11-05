@@ -558,7 +558,7 @@ export class OSMMapView implements MapView {
     }
   }
 
-  setPreviewVehicle(pos: Coordinate | null, heading = 0) {
+  setPreviewVehicle(pos: Coordinate | null, heading = 0, category = "auto") {
     if (!pos) {
       if (this.previewMarker) {
         this.previewMarker.remove();
@@ -568,13 +568,13 @@ export class OSMMapView implements MapView {
     }
     if (!this.previewMarker) {
       this.previewMarker = L.marker([pos.lat, pos.lng], {
-        icon: createVehicleIcon("sedan", heading),
+        icon: createVehicleIcon(category, heading),
         zIndexOffset: 1200,
         interactive: false,
       }).addTo(this.map);
     } else {
       this.previewMarker.setLatLng([pos.lat, pos.lng]);
-      this.previewMarker.setIcon(createVehicleIcon("sedan", heading));
+      this.previewMarker.setIcon(createVehicleIcon(category, heading));
     }
   }
 

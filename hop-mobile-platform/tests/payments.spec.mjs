@@ -99,7 +99,7 @@ test("rider checkout waits for backend settlement and reuses an existing order",
     page.getByRole("heading", { name: "All settled." }),
   ).toBeVisible();
   await expect(
-    page.getByText("Backend confirmed", { exact: true }),
+    page.getByText("Confirmed by Hop", { exact: true }),
   ).toBeVisible();
 });
 test("Captain payment receipt is a backend report, not an online verification", async ({
@@ -124,7 +124,7 @@ test("Captain payment receipt is a backend report, not an online verification", 
     page.getByText("Captain reported received", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("Backend confirmed", { exact: true }),
+    page.getByText("Confirmed by Hop", { exact: true }),
   ).toHaveCount(0);
 });
 test("wallet top-up and payment use backend amounts and never credit locally", async ({

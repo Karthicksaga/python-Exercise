@@ -76,9 +76,9 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	// Only a server running in development mode may skip document checks or fill test defaults.
-	// Client-sent flags (body, headers, query) are accepted for compatibility but never trusted.
-	isTesting := s.Config.Development
+	// Only the server's own setting (development, or DEV_ONBOARDING on staging) may skip document
+	// checks or fill test defaults. Client-sent flags are accepted for compatibility but never trusted.
+	isTesting := s.Config.TestOnboarding
 	if !hasMobile(r.Context(), s.DB, user(r).Account.ID) {
 		fail(w, 403, mobileRequired)
 		return

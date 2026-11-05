@@ -56,7 +56,7 @@ class DeploymentChecks(unittest.TestCase):
             module.validate(config)
         config["api_env"].update(MEDIA_PROFILE_BUCKET="hop-prod-portraits", MEDIA_KYC_BUCKET="hop-prod-kyc")
         module.validate(config)
-        for key in ("DEMO_LOGIN", "DEV_SMS", "DEV_PAYMENTS"):
+        for key in ("DEMO_LOGIN", "DEV_SMS", "DEV_PAYMENTS", "DEV_ONBOARDING"):
             bad = copy.deepcopy(config)
             bad["api_env"][key] = "true"
             with self.assertRaises(ValueError):

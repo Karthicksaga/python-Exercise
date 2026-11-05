@@ -81,7 +81,7 @@ export async function enableNotifications(): Promise<void> {
       "Notification permission was not granted. In-app updates remain available.",
     );
   const { key } = await api.request<{ key: string }>("/api/push/key");
-  if (!key) throw new Error("Push delivery is not configured on this backend.");
+  if (!key) throw new Error("Phone alerts aren’t set up yet.");
   const registration = await navigator.serviceWorker.register("/sw.js");
   await navigator.serviceWorker.ready;
   const bytes = Uint8Array.from(

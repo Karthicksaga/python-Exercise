@@ -541,10 +541,8 @@ test("canonical wallet screen preserves prototype layout and top-up modal update
   const addMoneyBtn = hero.locator('button[data-modal="topup"]');
   await expect(addMoneyBtn).toHaveText("+ Add money");
 
-  const offerCard = page.locator(".offer-card");
-  await expect(offerCard).toBeVisible();
-  await expect(offerCard.locator("strong")).toContainText("A little off your next ride");
-  await expect(offerCard.locator('button[data-action="apply-promo"]')).toBeVisible();
+  // The renderer's sample offer (HOP50) isn't a real promo, so the live wallet doesn't show it.
+  await expect(page.locator(".offer-card")).toHaveCount(0);
 
   await expect(page.locator(".screen-padding > .section-label")).toContainText("Recent transactions");
   const rows = page.locator(".screen-padding .list-row");

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 async function setup(
   page,
-  { failSave = false, failSubmit = false, step = 0, reviews = {}, driver = [] } = {},
+  { failSave = false, failSubmit = false, step = 0, reviews = {}, driver = [], testingMode } = {},
 ) {
   const calls = [];
   const draft = {
@@ -48,6 +48,7 @@ async function setup(
         draft,
         phone_verified: true,
         has_photo: true,
+        ...(testingMode === undefined ? {} : { testing_mode: testingMode }),
         documents: ["license", "license_back", "rc", "rc_back", "insurance", "identity", "identity_back"].map((kind) => ({
           kind,
           ...(reviews[kind] || {}),
@@ -473,4 +474,13 @@ test("a pending captain with a rejected document sees what to fix and can reopen
   await page.getByRole("button", { name: "Fix documents" }).click();
   await expect(page.locator(".eyebrow")).toContainText("STEP 3 OF 4");
   await expect(page.locator('[data-upload-kind="rc_back"]')).toContainText("Re-upload needed");
+});
+
+test("testing mode is offered only when the server allows applying without documents", async ({ page }) => {
+  // Staging without DEV_ONBOARDING still demands documents, so the app must not offer to skip them.
+  await setup(page, { testingMode: false });
+  await expect(page.getByLabel("Optional onboarding for testing")).toHaveCount(0);
+  await page.reload();
+  await setup(page, { testingMode: true });
+  await expect(page.getByLabel("Optional onboarding for testing")).toBeVisible();
 });

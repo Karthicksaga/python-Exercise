@@ -36,7 +36,8 @@ export interface MapView {
   camera(): { center: Coordinate; zoom: number };
   restore(camera: { center: Coordinate; zoom: number }): void;
   setRouteProgress?(points: Coordinate[]): void;
-  setPreviewVehicle?(position: Coordinate | null, heading?: number): void;
+  /** The route preview's travelling vehicle, drawn as the rider's chosen category (bike, auto…). */
+  setPreviewVehicle?(position: Coordinate | null, heading?: number, category?: string): void;
   pulseDestination?(active: boolean): void;
   setAlternatives?(routes: AlternativeRoute[]): void;
   destroy(): void;

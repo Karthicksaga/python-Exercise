@@ -260,7 +260,7 @@ export class LivePayment {
       sessionStorage.removeItem(key);
       await this.refresh();
       this.error =
-        "Development wallet credit recorded by the backend. No real money was charged.";
+        "Test wallet credit added. No real money was charged.";
       return;
     }
     sessionStorage.setItem(key, JSON.stringify(result));
@@ -337,7 +337,7 @@ export class LivePayment {
       this.pending = false;
       sessionStorage.removeItem(this.key());
       throw new Error(
-        "Only the backend’s development payment stub is configured. Choose Cash or Wallet; no checkout or payment was attempted.",
+        "Online payment isn’t available yet. Choose Cash or Wallet; nothing was charged.",
       );
     }
     this.pending = true;
@@ -395,9 +395,9 @@ export class LivePayment {
       const verified = status === "paid_online";
       title = verified ? "All settled." : "Payment handover recorded.";
       copy = verified
-        ? "Payment confirmed by Hop’s backend."
+        ? "Payment confirmed by Hop."
         : "Reported by the Captain. This is separate from gateway verification.";
-      content = `<div class="payment-state-symbol success">✓</div>${summary}<div class="payment-receipt"><span>Payment method</span><strong>${escape(verified ? (this.ride.payment_method === "wallet" ? "Wallet" : "Online payment") : this.ride.payment_method.toUpperCase())}</strong><span>Status</span><strong>${verified ? "Backend confirmed" : "Captain reported received"}</strong><span>Ride reference</span><strong>${escape(this.ride.id.slice(0, 12))}</strong></div>${this.ratingCard()}`;
+      content = `<div class="payment-state-symbol success">✓</div>${summary}<div class="payment-receipt"><span>Payment method</span><strong>${escape(verified ? (this.ride.payment_method === "wallet" ? "Wallet" : "Online payment") : this.ride.payment_method.toUpperCase())}</strong><span>Status</span><strong>${verified ? "Confirmed by Hop" : "Captain reported received"}</strong><span>Ride reference</span><strong>${escape(this.ride.id.slice(0, 12))}</strong></div>${this.ratingCard()}`;
       actions = this.ratingAction() + this.button("Done", "close", !!this.ratingAction());
       if (!verified && this.role === "rider")
         actions += this.button("Report a payment issue", "dispute", true);
@@ -486,7 +486,7 @@ export class LivePayment {
           : "Check the status before recording payment from the rider.";
       content =
         summary +
-        `<div class="payment-receipt"><span>Method</span><strong>${escape(this.ride.payment_method.toUpperCase())}</strong><span>Status</span><strong>${riderPaid ? "Rider reported paying" : unpaid ? "You reported not received" : "Awaiting confirmation"}</strong></div><div class="payment-hint">Only record receipt after receiving the cash or direct UPI payment. Online payments are verified by the backend.</div>${this.ratingCard()}`;
+        `<div class="payment-receipt"><span>Method</span><strong>${escape(this.ride.payment_method.toUpperCase())}</strong><span>Status</span><strong>${riderPaid ? "Rider reported paying" : unpaid ? "You reported not received" : "Awaiting confirmation"}</strong></div><div class="payment-hint">Only record receipt after receiving the cash or direct UPI payment. Hop confirms online payments for you.</div>${this.ratingCard()}`;
       actions =
         this.ride.status === "completed" &&
         this.ride.payment_method !== "wallet"
@@ -520,7 +520,7 @@ export class LivePayment {
       content =
         summary +
         paymentMethods(this.selected, this.balance) +
-        `<div class="payment-hint">${this.selected === "cash" ? "Cash is handed directly to your Captain. Wait for their receipt confirmation." : this.selected === "wallet" ? "Wallet payment is settled by the backend. Your balance is never changed locally." : "Your online payment is verified by the backend after secure provider checkout."}</div>`;
+        `<div class="payment-hint">${this.selected === "cash" ? "Cash is handed directly to your Captain. Wait for their receipt confirmation." : this.selected === "wallet" ? "Hop takes the fare from your wallet balance and confirms it here." : "Hop confirms your online payment after secure checkout."}</div>`;
       actions =
         (this.selected === "wallet" &&
         this.balance !== undefined &&
