@@ -476,7 +476,7 @@ test("Captain pickup code is validated by the backend before the trip starts", a
     code: "901234",
   });
 });
-test("trip chat sends a real backend message and does not generate an automatic reply", async ({
+test("trip chat uses real names, shows sent/seen, retries without duplicates, and counts unread", async ({
   page,
 }) => {
   const active = {
@@ -493,38 +493,79 @@ test("trip chat sends a real backend message and does not generate an automatic 
     vehicle_category: "auto",
     payment_method: "cash",
     fare_paise: 23700,
+    driver_name: "Ravi Kumar",
   };
-  let messages = [];
+  // A small chat server: messages, the captain's read position, and one lost response.
+  const messages = [];
+  let captainRead = 0;
+  let lostResponse = true;
+  const view = (after = 0) => ({
+    id: "c1", kind: "ride", ref: "chat-ride", can_post: true, last_message_id: messages.at(-1)?.id || 0, unread: 0, has_more: false,
+    participants: [
+      { role: "rider", name: "Priya", me: true, last_read_id: 0, typing: false },
+      { role: "captain", name: "Ravi", me: false, last_read_id: captainRead, typing: false },
+    ],
+    messages: messages.filter((m) => m.id > after).map((m) => ({ ...m, mine: m.sender_role === "rider", system: false })),
+  });
+  const captainSays = (body) => messages.push({ id: messages.length + 1, body, sender_role: "captain", client_id: null, sent_at: new Date().toISOString() });
   await setup(page, () => ({ rides: [active], driver: [], offers: [] }));
   await page.route("**/api/rides/chat-ride/position", (r) =>
-    r.fulfill({
-      json: {
-        lat: 13.006,
-        lng: 80.22,
-        at: new Date().toISOString(),
-        stale: false,
-        status: "accepted",
-      },
-    }),
+    r.fulfill({ json: { lat: 13.006, lng: 80.22, at: new Date().toISOString(), stale: false, status: "accepted" } }),
   );
-  await page.route("**/api/rides/chat-ride/messages", (r) => {
-    if (r.request().method() === "POST") {
-      messages.push({
-        body: r.request().postDataJSON().body,
-        mine: true,
-        sent_at: new Date().toISOString(),
-      });
-      return r.fulfill({ json: messages.at(-1) });
+  await page.route("**/api/rides/chat-ride/chat", (r) => r.fulfill({ json: { id: "c1" } }));
+  await page.route("**/api/chats/c1**", async (r) => {
+    const url = new URL(r.request().url());
+    if (url.pathname === "/api/chats/c1/messages") {
+      const { client_id, body } = r.request().postDataJSON();
+      let m = messages.find((x) => x.client_id === client_id);
+      if (!m) messages.push((m = { id: messages.length + 1, body, sender_role: "rider", client_id, sent_at: new Date().toISOString() }));
+      // The server stored "Gate 2" but the phone never got the answer.
+      if (body === "Gate 2" && lostResponse) return (lostResponse = false), r.abort("connectionreset");
+      return r.fulfill({ status: 201, json: { ...m, mine: true, system: false } });
     }
-    return r.fulfill({ json: { messages } });
+    if (url.pathname === "/api/chats/c1/read" || url.pathname === "/api/chats/c1/typing") return r.fulfill({ json: { ok: true } });
+    if (url.pathname === "/api/chats/c1/wait") {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      return r.fulfill({ json: view(Number(url.searchParams.get("after") || 0)) });
+    }
+    return r.fulfill({ json: view() });
   });
   await page.goto("http://127.0.0.1:5183");
   await page.getByRole("button", { name: "Message", exact: true }).click();
+
+  // Real names, never the design preview's sample captain; quick replies stay available.
+  await expect(page.locator(".app-head h1")).toHaveText("Ravi · your captain");
+  await expect(page.locator("#app")).not.toContainText("Arun");
+  await expect(page.getByRole("button", { name: "I’m at pickup" })).toBeVisible();
+
+  // Sent, then Seen once the captain reads it.
   await page.getByRole("textbox", { name: "Message" }).fill("At the main gate");
   await page.getByRole("button", { name: "Send message", exact: true }).click();
-  await expect(page.locator(".chat-bubble")).toHaveCount(1);
-  await expect(page.locator(".chat-bubble")).toHaveText("At the main gate");
-  expect(messages).toHaveLength(1);
+  await expect(page.locator(".chat-bubble.mine")).toHaveText(["At the main gate"]);
+  await expect(page.locator(".chat-meta").last()).toContainText("Sent");
+  captainRead = 1;
+  await expect(page.locator(".chat-meta").last()).toContainText("Seen", { timeout: 5000 });
+
+  // A lost response shows "Not sent"; retrying stores nothing new.
+  await page.getByRole("textbox", { name: "Message" }).fill("Gate 2");
+  await page.getByRole("button", { name: "Send message", exact: true }).click();
+  await page.getByRole("button", { name: "Not sent · Tap to retry" }).click();
+  await expect(page.locator(".chat-bubble.mine")).toHaveText(["At the main gate", "Gate 2"]);
+  expect(messages.filter((m) => m.body === "Gate 2")).toHaveLength(1);
+
+  // A quick reply sends straight away; the captain's reply arrives without reloading, and nothing
+  // replies automatically.
+  await page.getByRole("button", { name: "I’m at pickup" }).click();
+  await expect(page.locator(".chat-bubble.mine")).toHaveCount(3);
+  captainSays("Coming in 2 minutes");
+  await expect(page.locator(".chat-bubble.partner")).toHaveText(["Coming in 2 minutes"], { timeout: 5000 });
+  expect(messages.filter((m) => m.sender_role === "captain")).toHaveLength(1);
+
+  // Back on the trip screen, a new message shows a count on the Message button.
+  await page.getByRole("button", { name: "Back" }).click();
+  captainSays("I'm outside");
+  await expect(page.getByRole("button", { name: "Message, 1 unread" })).toBeVisible({ timeout: 5000 });
+  await expect(page.locator(".chat-unread-badge")).toHaveText("1");
 });
 test("saved Home uses backend coordinates and can be combined with a newly selected pickup", async ({
   page,

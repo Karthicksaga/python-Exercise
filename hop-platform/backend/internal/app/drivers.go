@@ -302,6 +302,14 @@ func (s *Server) online(w http.ResponseWriter, r *http.Request) {
 		fail(w, 409, "Finish or cancel your rider trip before going online in Captain")
 		return
 	}
+	var needsPass bool
+	if e := tx.QueryRow(ctx, `SELECT NOT `+passOK+` FROM drivers d JOIN areas a ON a.id=d.area_id WHERE d.user_id=$1`, uid).Scan(&needsPass); e != nil && !errors.Is(e, pgx.ErrNoRows) {
+		dbError(w, e)
+		return
+	} else if needsPass {
+		fail(w, 403, passRequiredMessage)
+		return
+	}
 	tag, err := tx.Exec(ctx, `UPDATE drivers d SET online=true,location_at=NULL,updated_at=now() FROM areas a
  WHERE d.user_id=$1 AND d.area_id=a.id AND d.status='approved' AND a.active
  AND (d.onboarding_version=0 OR EXISTS(SELECT 1 FROM profile_photos f WHERE f.account_id=d.user_id AND f.approved))

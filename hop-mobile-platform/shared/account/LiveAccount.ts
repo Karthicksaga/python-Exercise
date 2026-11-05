@@ -78,6 +78,41 @@ export class LiveAccount {
   private action(id: string, label: string, kind: "primary" | "secondary" = "primary") {
     return `<button class="${kind}" data-account-action="${id}" ${this.busy ? "disabled" : ""}>${label}</button>`;
   }
+  // Monthly pass card on Earnings. Shown only when a pass is needed or the captain has one.
+  private passCard() {
+    const pass = this.get("/api/drivers/pass");
+    if (!pass) return "";
+    if (!pass.required && !pass.active && !pass.paid_until) return "";
+    const until = pass.paid_until ? this.day(pass.paid_until) : "";
+    const badge = pass.active
+      ? `<span class="badge green">Active</span>`
+      : `<span class="badge ${pass.required ? "warn" : "neutral"}">${pass.required ? "Needed" : "Not active"}</span>`;
+    const detail = pass.active
+      ? `Paid until ${until}`
+      : pass.required
+        ? "You need a pass to go online in your zone"
+        : "Not needed in your zone right now";
+    return `<div class="section-card" style="margin:14px 0"><div class="row"><div><small class="muted">MONTHLY PASS</small><strong style="display:block;margin-top:2px">${escape(detail)}</strong></div>${badge}</div><p class="micro muted" style="margin:6px 0 10px">${money(pass.price_paise / 100)} for ${Number(pass.days)} days. No commission on your fares.</p><button class="${pass.active ? "secondary" : "primary"}" data-modal="pass">${pass.active ? "View pass" : "Get a pass"}</button></div>`;
+  }
+  private passSheet(pass: Data) {
+    const price = money(pass.price_paise / 100);
+    const balance = Number(pass.balance_paise || 0);
+    let action = "";
+    if (!pass.can_buy)
+      action = `<div class="notice-box">You can renew from ${escape(this.day(pass.renew_from))}, in the last ${Number(pass.renew_days)} days of your pass.</div>`;
+    else if (balance < pass.price_paise)
+      action = `<div class="notice-box">Your Hop balance is ${money(balance / 100)}. To pay in cash, contact Hop support and they will add the pass for you.</div>`;
+    else action = this.action("buy-pass", `Pay ${price} from earnings`);
+    const starts = pass.paid_until ? `Starts when your current pass ends (${escape(this.day(pass.paid_until))}).` : "Starts as soon as you pay.";
+    const history = ((pass.history || []) as Data[])
+      .map((h) => `<div class="list-row"><span class="list-text"><strong>${escape(this.day(h.starts_at))} – ${escape(this.day(h.ends_at))}</strong><small>${h.source === "operator" ? "Added by Hop" : "Paid from earnings"}</small></span><span class="right"><strong>${money(Number(h.price_paise || 0) / 100)}</strong></span></div>`)
+      .join("");
+    return `<div class="row" style="margin:6px 0 4px"><span class="muted small">Price</span><strong>${price} · ${Number(pass.days)} days</strong></div><div class="row" style="margin-bottom:12px"><span class="muted small">Hop balance</span><strong>${money(balance / 100)}</strong></div><p class="small muted" style="margin:0 0 14px">${starts} You keep the full fare on every trip while your pass is active.</p>${action}${history ? `<div class="section-label" style="margin-top:18px">Your passes</div>${history}` : ""}`;
+  }
+  private day(value: string) {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+  }
   private select(key: string, label: string, items: string[], value: string, labels: Record<string, string> = {}) {
     return `<label class="field-label" for="account-${key}">${label}</label><select class="text-input" id="account-${key}">${items.map((v) => `<option value="${escape(v)}" ${value === v ? "selected" : ""}>${escape(labels[v] || v)}</option>`).join("")}</select>`;
   }
@@ -337,6 +372,7 @@ export class LiveAccount {
       contacts: "/api/profile",
       goal: "driver",
       payout: "/api/drivers/wallet",
+      pass: "/api/drivers/pass",
       share: "trip",
       sos: "trip",
       report: "trip",
@@ -570,8 +606,9 @@ export class LiveAccount {
       body = `<div class="live-tools-page"><div class="live-page-intro"><span class="live-eyebrow">CAPTAIN TOOLKIT</span><h2>Make your day work for you.</h2><p>Keep an eye on your goal, trip settings and breaks.</p></div><div class="live-section-heading">Your workday</div><section class="live-card-group"><div class="live-tool-goal"><span class="list-icon">${icon("chart")}</span><div><strong>Daily earnings goal</strong><small>Today’s completed fares</small><b>${this.cache.get("/api/drivers/earnings")?.summary ? money(this.cache.get("/api/drivers/earnings")!.summary.today_fare_paise / 100) : "—"}</b></div><button class="text-button" data-modal="goal">Edit</button></div><button class="live-tool-action" data-action="home-mode"><span class="list-icon">${icon("navigation")}</span><span><strong>Head towards home</strong><small>Prefer trips in the direction of home</small></span><span class="live-row-chevron">›</span></button></section><div class="live-section-heading">On the road</div><section class="live-card-group"><button class="live-tool-action" data-modal="service-area"><span class="list-icon">${icon("pin")}</span><span><strong>Operating city</strong><small>View your service area</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="demand"><span class="list-icon">${icon("layers")}</span><span><strong>Demand nearby</strong><small>Explore active pickup areas</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="preferences"><span class="list-icon">${icon("settings")}</span><span><strong>Driving preferences</strong><small>Pickup radius and minimum fare</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="insights"><span class="list-icon">${icon("shield")}</span><span><strong>Driving insights</strong><small>Your trip activity and feedback</small></span><span class="live-row-chevron">›</span></button></section><button class="live-break-action secondary" data-action="take-break">Take a break</button></div>`;
     } else if (key === "earnings") {
       const sum = data?.summary || {};
-      body = `<div class="wallet-hero"><small>TODAY'S COMPLETED FARES</small><div class="amount">${money((sum.today_fare_paise || 0) / 100)}</div><p>${Number(sum.today_completed_trips || 0)} completed trips</p></div><div class="section-card"><p>Week ${money((sum.week_fare_paise || 0) / 100)}</p><p>Month ${money((sum.month_fare_paise || 0) / 100)}</p><p>All time ${money((sum.all_time_fare_paise || 0) / 100)}</p><p class="micro">Reported receipt is distinct from provider settlement.</p></div>${(data?.rides || []).map((r: Data) => `<div class="list-row"><span>${escape(r.pickup_label)} → ${escape(r.dropoff_label)}</span><strong>${money(r.fare_paise / 100)}</strong></div>`).join("")}<button class="secondary" data-go="ledger">Ledger & payouts</button>`;
-    } else if (key === "payout")
+      body = `<div class="wallet-hero"><small>TODAY'S COMPLETED FARES</small><div class="amount">${money((sum.today_fare_paise || 0) / 100)}</div><p>${Number(sum.today_completed_trips || 0)} completed trips</p></div><div class="section-card"><p>Week ${money((sum.week_fare_paise || 0) / 100)}</p><p>Month ${money((sum.month_fare_paise || 0) / 100)}</p><p>All time ${money((sum.all_time_fare_paise || 0) / 100)}</p><p class="micro">Reported receipt is distinct from provider settlement.</p></div>${(data?.rides || []).map((r: Data) => `<div class="list-row"><span>${escape(r.pickup_label)} → ${escape(r.dropoff_label)}</span><strong>${money(r.fare_paise / 100)}</strong></div>`).join("")}${this.passCard()}<button class="secondary" data-go="ledger">Ledger & payouts</button>`;
+    } else if (key === "pass") body = this.passSheet(data || {});
+    else if (key === "payout")
       body =
         `<p>Available: ${money((data?.balance_paise || 0) / 100)} · Minimum: ${money((data?.min_payout_paise || 0) / 100)}</p>` +
         this.field("payout-amount", "Payout amount (₹)", "", "number") +
@@ -1046,6 +1083,7 @@ export class LiveAccount {
       contacts: "Emergency contacts",
       goal: "Daily earnings goal",
       payout: "Request payout",
+      pass: "Monthly pass",
       share: "Share trip",
       sos: "Emergency help",
       report: screen === "safety" ? "Report a safety concern" : "Report an issue",
@@ -1431,6 +1469,19 @@ export class LiveAccount {
           daily_goal_paise: Math.round(Number(v("goal")) * 100),
         });
         await this.refresh();
+      }
+      if (a === "buy-pass") {
+        const pass = this.cache.get("/api/drivers/pass");
+        if (!pass) throw new Error("Pass details are still loading. Try again.");
+        try {
+          await api.request("/api/drivers/pass", { price_paise: pass.price_paise });
+        } finally {
+          // The price, balance or end date may have changed either way.
+          this.cache.delete("/api/drivers/pass");
+          this.cache.delete("/api/drivers/wallet");
+        }
+        this.status = "Pass bought. It's paid from your Hop balance.";
+        return;
       }
       if (a === "payout") {
         await api.request("/api/drivers/payouts", {

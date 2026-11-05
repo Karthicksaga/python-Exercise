@@ -1,6 +1,8 @@
 # Rider + Captain end-to-end tests
 
-Three tests drive both apps against a real Hop API:
+Four tests drive both apps against a real Hop API:
+
+- `chat.e2e.mjs`: rider and captain chat in two separate browsers during a trip: delivery time to the other phone, unread count on the trip screen, real names, "Seen", typing, quick replies, a message sent while offline that goes out once on reconnect, history after a reload, and the chat closing when the ride is cancelled. Each `--repeat-each` run uses a new rider; the fixed test captain allows about 4 back-to-back runs before the sign-in code limit (5 per 10 minutes).
 
 - `onboarding.e2e.mjs`: a new captain signs up in the Captain app (details, portrait, vehicle, every required document), submits, waits in review with nothing unlocked, an operator accepts each document and approves, and the captain can go online.
 - `next-ride.e2e.mjs`: a captain finishing a trip is offered a new request near the drop-off, accepts it mid-trip, settles the first trip's cash, then goes straight to the next pickup; the second rider is told a captain is finishing nearby.

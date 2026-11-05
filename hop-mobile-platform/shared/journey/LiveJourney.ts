@@ -10,6 +10,7 @@ import {
 } from "../notifications/device";
 import { recoveryStates, type RecoveryState } from "./recovery";
 import { LivePayment } from "../payments/LivePayment";
+import { RideChat } from "../chat/RideChat";
 import { paymentMethods } from "../payments/components";
 import { api, APIError } from "../services/client";
 import type { Point, Config, Quote, State, Ride } from "../services/contracts";
@@ -83,58 +84,12 @@ export class LiveJourney {
   private noticeFilter = "all";
   private noticesLoading = false;
   private noticesError = "";
-  private chat: { body: string; mine: boolean; sent_at: string }[] = [];
-  private chatAt = 0;
-  private chatLoading = false;
+  private rideChat: RideChat;
   private submit = (event: Event) => {
     if ((event.target as HTMLFormElement).id !== "chat-form") return;
     this.stop(event);
-    const input = this.app.querySelector<HTMLInputElement>("#message-input");
-    const text = input?.value.trim();
-    if (text)
-      void this.run(async () => {
-        await this.sendChat(text);
-        if (input) input.value = "";
-      });
+    this.rideChat.submit();
   };
-  private async sendChat(body: string) {
-    const ride = this.active();
-    if (!ride || ride.status === "requested")
-      throw new Error("Chat is available after a Captain accepts the ride.");
-    await api.request(`/api/rides/${encodeURIComponent(ride.id)}/messages`, {
-      body,
-    });
-    await this.loadChat();
-  }
-  private async loadChat() {
-    const ride = this.active();
-    if (!ride || this.chatLoading) return;
-    this.chatLoading = true;
-    try {
-      const data = await api.request<{
-        messages: { body: string; mine: boolean; sent_at: string }[];
-      }>(`/api/rides/${encodeURIComponent(ride.id)}/messages`);
-      this.chat = data.messages || [];
-      this.paintChat();
-    } catch {
-    } finally {
-      this.chatAt = Date.now();
-      this.chatLoading = false;
-    }
-  }
-  private paintChat() {
-    if (this.bridge.read().screen !== "chat") return;
-    const chat = this.app.querySelector(".chat");
-    if (chat)
-      chat.innerHTML = this.chat.length
-        ? this.chat
-            .map(
-              (m) =>
-                `<div class="chat-bubble ${m.mine ? "mine" : "partner"}">${escape(m.body)}</div>`,
-            )
-            .join("")
-        : '<p class="small muted">Messages appear here during your active ride.</p>';
-  }
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private stopped = false;
   private observer: MutationObserver;
@@ -166,6 +121,7 @@ export class LiveJourney {
     // The shared renderer starts with review-only addresses. A live journey
     // has no pickup or destination until the user explicitly selects one.
     bridge.assign({ pickup: "", destination: "", search: "" });
+    this.rideChat = new RideChat(app, role, bridge, () => this.active());
     this.account = new LiveAccount(
       app,
       role,
@@ -324,6 +280,7 @@ export class LiveJourney {
     const input = event.target as HTMLInputElement;
     if (input.id === "demo-phone") this.phone = input.value;
     if (input.id === "live-login-code") this.otp = input.value;
+    if (input.id === "message-input") this.rideChat.typing();
     if (!["pickup-input", "destination-input"].includes(input.id)) return;
     event.stopImmediatePropagation();
     this.target = input.id === "pickup-input" ? "pickup" : "dropoff";
@@ -922,9 +879,9 @@ export class LiveJourney {
       }
       return;
     }
-    if (button.dataset.message) {
+    if (button.dataset.message || button.dataset.chatRetry || button.dataset.chatDiscard || button.dataset.chatOlder !== undefined) {
       this.stop(event);
-      void this.run(() => this.sendChat(button.dataset.message!));
+      this.rideChat.click(button);
       return;
     }
     if (button.dataset.vehicle && this.bridge.read().screen === "choose") {
@@ -999,7 +956,13 @@ export class LiveJourney {
           this.bridge.go("onboarding");
           throw new Error("Operator approval is required before driving.");
         }
-        await api.online(!driver.online);
+        try {
+          await api.online(!driver.online);
+        } catch (error) {
+          // A zone that needs a monthly pass: take the captain to Earnings, where they can get one.
+          if (!driver.online && /monthly pass/i.test((error as Error).message)) this.bridge.go("earnings");
+          throw error;
+        }
         // The map starts or stops location sharing and plays the matching sound.
         window.dispatchEvent(new CustomEvent("hop-captain-online", { detail: !driver.online }));
         try {
@@ -1139,7 +1102,7 @@ export class LiveJourney {
         this.dropoff = undefined;
         this.invalidate();
         this.notices = [];
-        this.chat = [];
+        this.rideChat.close();
         this.codeSent = false;
         this.phone = "";
         this.otp = "";
@@ -2114,12 +2077,7 @@ export class LiveJourney {
             "Use the pickup code shown on the rider’s active trip.";
       });
     }
-    if (screen === "chat") {
-      this.paintChat();
-      if (Date.now() - this.chatAt > 3000) void this.loadChat();
-      const send = this.app.querySelector('[aria-label="Send sample message"]');
-      send?.setAttribute("aria-label", "Send message");
-    }
+    this.rideChat.update();
     if (screen === "activity") {
       this.history ||= new LiveHistory(
         this.app,
@@ -2250,5 +2208,6 @@ export class LiveJourney {
     window.removeEventListener("hop-route-pick", this.routePick);
     window.removeEventListener("hop-map-pick", this.mapPick);
     window.removeEventListener("hop-live-state", this.serverState);
+    this.rideChat.close();
   }
 }

@@ -79,9 +79,13 @@ func TestRideChatIsPrivateAndOnlyWhileActive(t *testing.T) {
 	code, _ = f.call(stranger, "POST", "/api/rides/"+id+"/messages", map[string]any{"body": "hi"})
 	require(t, code, 404)
 
-	var notes int
-	if e := f.s.DB.QueryRow(t.Context(), "SELECT count(*) FROM notifications WHERE account_id=$1 AND kind='chat'", driver.id).Scan(&notes); e != nil || notes != 1 {
-		t.Fatalf("driver should get one chat notification, got %d (%v)", notes, e)
+	// Chat has its own unread count (and phone alerts) instead of filling the notification list.
+	// The driver replied (which counts as reading), so the rider has the one unread message.
+	_, st := f.call(rider, "GET", "/api/state", nil)
+	for _, ride := range st["rides"].([]any) {
+		if r := ride.(map[string]any); r["id"] == id && r["chat_unread"] != float64(1) {
+			t.Fatalf("rider should have one unread message, got %v", r["chat_unread"])
+		}
 	}
 
 	f.s.DB.Exec(t.Context(), "UPDATE rides SET status='completed' WHERE id=$1", id)

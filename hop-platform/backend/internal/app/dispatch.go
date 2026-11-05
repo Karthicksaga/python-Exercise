@@ -93,7 +93,7 @@ var candidateFrom = ` FROM rides r JOIN quotes q ON q.id=r.quote_id JOIN areas a
  AND NOT EXISTS(SELECT 1 FROM ride_declines dc WHERE dc.ride_id=r.id AND dc.driver_id=d.user_id)
  AND NOT EXISTS(SELECT 1 FROM ride_offers lo JOIN rides lr ON lr.id=lo.ride_id WHERE lo.driver_id=d.user_id AND lo.outcome IS NULL AND lo.expires_at>now() AND lr.status='requested')
  AND c.dist<=LEAST(d.pickup_radius_meters,$2::float8)
- AND ($5::uuid[] IS NULL OR d.user_id=ANY($5::uuid[]))` + riderBusyFilter + goHomeFilter + ` %s`
+ AND ($5::uuid[] IS NULL OR d.user_id=ANY($5::uuid[]))` + riderBusyFilter + goHomeFilter + ` AND ` + passOK + ` %s`
 
 // Minutes added to (or taken off) the travel time: low rating, low recent acceptance, idle time
 // (a small reward, for fairness), the rider's favourites, and having already let this request

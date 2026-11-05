@@ -19,13 +19,14 @@ const Fares = lazy(() => import("./screens/Fares"));
 const Surge = lazy(() => import("./screens/Surge"));
 const Payouts = lazy(() => import("./screens/Payouts"));
 const Promos = lazy(() => import("./screens/Promos"));
+const Passes = lazy(() => import("./screens/Passes"));
 const Audit = lazy(() => import("./screens/Audit"));
 
-export type View = "overview" | "dispatch" | "rides" | "reviews" | "scores" | "safety" | "lost" | "zones" | "fares" | "surge" | "payouts" | "promos" | "audit";
+export type View = "overview" | "dispatch" | "rides" | "reviews" | "scores" | "safety" | "lost" | "zones" | "fares" | "surge" | "payouts" | "promos" | "passes" | "audit";
 export type ScreenProps = { sub: string; go: (route: string) => void; summary: Summary | null; refreshSummary: () => void };
 const SCREENS: Record<View, React.ComponentType<ScreenProps>> = {
   overview: Overview, dispatch: Dispatch, rides: Rides, reviews: Reviews, scores: Scores, safety: Safety, lost: LostFound,
-  zones: Zones, fares: Fares, surge: Surge, payouts: Payouts, promos: Promos, audit: Audit,
+  zones: Zones, fares: Fares, surge: Surge, payouts: Payouts, promos: Promos, passes: Passes, audit: Audit,
 };
 // Bookmarks from the previous console keep working.
 const LEGACY: Record<string, string> = {
@@ -36,7 +37,7 @@ const SUB: Record<View, string> = {
   overview: "Today across all service areas", dispatch: "Captains and active rides, refreshed every 6 seconds", rides: "Search, inspect, cancel and refund rides",
   reviews: "Applications, document expiry and change requests", scores: "Built from cancellations, incidents and ratings", safety: "Emergencies first, then rider and captain reports",
   lost: "Items riders left behind", zones: "Where riders can book and captains can work", fares: "Prices per area and vehicle", surge: "Demand multipliers, overrides and peak hours",
-  payouts: "Captain payouts, refunds and balances", promos: "Discount codes for riders", audit: "Every operator action, written by the server",
+  payouts: "Captain payouts, refunds and balances", promos: "Discount codes for riders", passes: "Captain monthly passes, prices and zones that need one", audit: "Every operator action, written by the server",
 };
 type NavItem = [View, string, string, (s: Summary) => number, ((s: Summary) => boolean)?];
 const NAV: [string | null, NavItem[]][] = [
@@ -45,7 +46,7 @@ const NAV: [string | null, NavItem[]][] = [
   ["Captains", [["reviews", "Captain reviews", "id", (s) => s.drivers_pending + s.changes_pending], ["scores", "Safety scores", "gauge", () => 0]]],
   ["Safety & care", [["safety", "SOS & incidents", "alert", (s) => s.sos_active + s.incidents_open, (s) => s.sos_active > 0], ["lost", "Lost & found", "box", (s) => s.lost_open]]],
   ["Network", [["zones", "Service areas", "zone", () => 0], ["fares", "Fares", "tag", () => 0], ["surge", "Surge & peak", "bolt", () => 0]]],
-  ["Money", [["payouts", "Payouts & refunds", "wallet", (s) => s.payouts_requested], ["promos", "Promo codes", "ticket", () => 0]]],
+  ["Money", [["payouts", "Payouts & refunds", "wallet", (s) => s.payouts_requested], ["promos", "Promo codes", "ticket", () => 0], ["passes", "Captain passes", "id", () => 0]]],
   ["Records", [["audit", "Audit log", "list", () => 0]]],
 ];
 const label = (v: View) => NAV.flatMap(([, items]) => items).find(([id]) => id === v)?.[1] ?? "Overview";

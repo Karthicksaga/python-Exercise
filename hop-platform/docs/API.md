@@ -90,7 +90,7 @@ Products are off until an operator sets them: `POST /api/operator/trip-pricing` 
 
 **Phone OTP login.** `POST /auth/otp/request {phone}` and `POST /auth/otp/verify {phone, code}` (same-origin only). Codes are 6 digits, valid 10 min, 5 attempts, stored only as an HMAC; request is limited to 5/10 min per number and 20/h per IP, with a 30 s resend gap. Delivery uses MSG91 when `MSG91_AUTH_KEY` and `MSG91_TEMPLATE_ID` are set (DLT-approved template with an `##otp##` variable), otherwise a provider-neutral webhook: `SMS_WEBHOOK_URL` receives `{"to":"+91…","message":"…"}` with `Authorization: Bearer $SMS_WEBHOOK_TOKEN`. Without it, production returns 503; in development the code is returned as `dev_code`.
 
-**Online payments (Razorpay-compatible).** Configure `PAYMENT_KEY_ID`, `PAYMENT_KEY_SECRET`, `PAYMENT_WEBHOOK_SECRET` (and `PAYMENT_API_URL`, default `https://api.razorpay.com/v1`). `POST /api/rides/{id}/pay` (rider, trip started/completed) creates an order for the agreed fare; the browser pays in provider checkout; `POST /api/rides/{id}/pay/verify` (checkout signature) and the public `POST /api/payments/webhook` (`X-Razorpay-Signature`, amount must match the order) mark the ride `paid_online`. Refunds and reconciliation are not implemented.
+**Online payments (Razorpay-compatible).** Configure `PAYMENT_KEY_ID`, `PAYMENT_KEY_SECRET`, `PAYMENT_WEBHOOK_SECRET` (and `PAYMENT_API_URL`, default `https://api.razorpay.com/v1`). `POST /api/rides/{id}/pay` (rider, trip started/completed) creates an order for the agreed fare; the browser pays in provider checkout; `POST /api/rides/{id}/pay/verify` (checkout signature) and the public `POST /api/payments/webhook` (`X-Razorpay-Signature`, amount must match the order) mark the ride `paid_online`. Refunds to the card or UPI and reconciliation are not implemented; see `PROVIDERS-PENDING.md`.
 
 ## Driver tools
 - `POST /api/drivers/go-home` `{lat,lng}` starts go-home mode (409 after 2 uses a day); `{off:true}` stops it.
@@ -158,3 +158,42 @@ Production media uses `MEDIA_PROFILE_BUCKET` and `MEDIA_KYC_BUCKET` plus attache
 - **Next ride:** a captain within 1.2 km of their drop-off, with that drop-off within 2 km of a new pickup, can be offered it (`offer_kind: "next"` in `/api/state` offers). Accepting while on the trip returns `{ok:true,next_ride:true}`: the ride stays `requested`, held for them for 6 minutes (`next_ride_held: true`), and becomes `accepted` for them when they `complete` the current trip. The rider's ride shows `next_ride: true`, `reserved_driver_name` and `next_ride_eta_seconds`.
 - Captain offers also carry `offer_expires_at` (end of their window). Accept is honoured up to 3 s after it.
 - `GET /api/operator/dispatch-report?days=1..90&area_id=` (operator): `requests`, `matched`, `no_captain`, `cancelled_while_searching`, `still_searching`, `seconds_to_match_median`/`_p90`, `offers_per_matched_ride`, `accepted_pickup_eta_seconds`, `next_rides`, `offer_outcomes`, `eta_sources`, `by_round`.
+
+# Captain monthly pass (migration 039, Nov 2026)
+
+Captains pay a flat price for a period (30 days by default) instead of a per-ride commission. **Off by default:** a zone needs a pass only after an operator turns on `areas.pass_required`. Online payment for the pass waits for the payment gateway (see `PROVIDERS-PENDING.md`).
+
+**Where it's enforced** (shared SQL `passOK` in `passes.go`): going online (`403` with "A monthly pass is needed…"), the offers list in `/api/state`, accepting a ride, and matching. A captain who stays online after their pass ends stops getting requests.
+
+| Endpoint | Who | Notes |
+|---|---|---|
+| GET /api/drivers/pass | Captain | `required` (their zone), `active` (current period or null), `paid_until` (end of the last queued period), `category`, `price_paise`, `days`, `balance_paise`, `can_buy`, `renew_from`, `renew_days`, `history` (last 12) |
+| POST /api/drivers/pass `{price_paise}` | Captain (approved) | Pays from the earnings balance (`driver_ledger` kind `pass`). `price_paise` must equal the current price (409 if it changed). Allowed with no pass or ≤ 7 days left, so a double tap can't buy two months. 409 if the balance is short. The new period starts when the last one ends. |
+| GET /api/operator/passes | Operator | `prices`, `areas` (with `pass_required`, `captains`, `with_pass`), `passes` (last 100), `captains` (approved, with `paid_until`), `revenue_month_paise`, `active_passes`, `renew_days` |
+| POST /api/operator/pass-prices `{category, price_paise, days}` | Operator | ₹0–₹1,00,000, 1–90 days. Applies to the next purchase. Audited. |
+| POST /api/operator/areas/{id}/pass `{required}` | Operator | Turns the requirement on or off for a zone. Audited. |
+| POST /api/operator/drivers/{id}/pass `{days, collected_paise, note}` | Operator | Adds a period (e.g. cash at the office or a free trial) without touching the balance. Note ≥ 3 characters. Notifies the captain. Audited. |
+
+Starting prices (placeholders): bike ₹499, auto ₹799, mini ₹1,499, sedan ₹1,799, SUV ₹1,999 for 30 days. The admin console page is **Money → Captain passes**; the Captain app shows a pass card on Earnings when a pass is needed or held.
+
+# Chat (migration 040, Nov 2026)
+
+Chat for any feature. A conversation belongs to something (`kind` + `ref`, e.g. `ride` + ride id) and has participants with roles. The `/api/chats` endpoints work the same for every kind; who may post, and when, is decided per kind by a `chatPolicy` in `chat.go`. Code: `backend/internal/app/chat.go`; app client: `hop-mobile-platform/shared/chat/` (`ChatSession` is UI-free and reusable; `RideChat` is the trip screen).
+
+**Add chat to a new feature:** register a policy in `chatPolicies`, and call `openConversation(ctx, tx, kind, ref, {account: role, …})` when the feature needs a conversation. Nothing else changes: the endpoints, delivery, read receipts and phone alerts all work for the new kind.
+
+| Endpoint | Notes |
+|---|---|
+| GET /api/chats | Inbox: the caller's conversations with `unread`, `last_message` and the other participants (first names). |
+| GET /api/chats/{id}`?before=` | `can_post`, `closed_reason`, `participants` (`role`, `name`, `me`, `last_read_id`, `typing`), the latest 50 `messages` oldest first, `has_more`. `before=<id>` pages back. Participants only (404 otherwise). |
+| GET /api/chats/{id}/wait`?after=&seen=&typing=&open=` | Long poll. Returns at once if there are messages after `after`, someone else has read past `seen`, typing differs from `typing` (1/0), or posting opened or closed versus `open` (1/0). Otherwise holds up to 10 s, then returns the current state. Woken by database triggers through the event hub, so it works across API instances and through the native HTTP plugin. |
+| POST /api/chats/{id}/messages `{client_id, body}` | `client_id` is a UUID made by the device: a retry with the same id returns the stored message (200) instead of a duplicate (201 for new). 1–1000 characters, control characters removed, 40 per minute. 409 with the reason when the conversation is closed. Sending marks earlier messages as read. |
+| POST /api/chats/{id}/read `{message_id}` | Moves the read position forward only, never past the newest message. Wakes the others ("Seen"). |
+| POST /api/chats/{id}/typing `{}` | Marks the caller typing for 6 seconds (Redis) and wakes the others. Ignored (`ok: false`) when closed. |
+| POST /api/rides/{id}/chat | Opens (or finds) a ride's conversation for its rider or captain. 404 before a captain accepts. |
+
+**Ride chat rules:** open while the ride is accepted, arrived or in progress, and for 30 minutes after completion (lost items). Closed for cancelled rides. History stays readable. Ride rows in `/api/state` carry `chat_unread`.
+
+**Phone alerts:** each message queues a push for the other participants (`push_outbox` kind `chat`), held for 3 seconds. It's skipped if they read it in the app meanwhile. Title "<first name> sent a message", tag `chat-<conversation>` so alerts for one conversation replace each other. Chat no longer writes rows to the notification list.
+
+**Older apps:** `GET/POST /api/rides/{id}/messages` still work, on top of the new tables. Migration 040 copied `ride_messages` into the new tables, marked as read.

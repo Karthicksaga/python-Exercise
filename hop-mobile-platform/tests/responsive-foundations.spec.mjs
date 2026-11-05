@@ -105,3 +105,24 @@ test('Captain pickup code fits six accessible inputs on a short phone',async({pa
  expect(boxes).toHaveLength(6);
  for(const box of boxes){expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);expect(box.left).toBeGreaterThanOrEqual(0);expect(box.right).toBeLessThanOrEqual(320);}
 });
+
+test('Captain monthly pass card buys the shown price from earnings',async({page})=>{
+ await setupMockBackend(page,{role:'captain'});
+ let bought=null;
+ const pass=()=>({required:true,active:bought?{id:'p1',starts_at:'2026-11-05T00:00:00Z',ends_at:'2026-12-05T00:00:00Z',source:'earnings'}:null,paid_until:bought?'2026-12-05T00:00:00Z':null,category:'bike',price_paise:49900,days:30,balance_paise:bought?10100:60000,can_buy:!bought,renew_from:bought?'2026-11-28T00:00:00Z':'2026-11-05T00:00:00Z',renew_days:7,history:[]});
+ await page.route('**/api/drivers/earnings',r=>r.fulfill({json:{summary:{today_fare_paise:0,today_completed_trips:0,week_fare_paise:0,month_fare_paise:0,all_time_fare_paise:0},rides:[]}}));
+ await page.route('**/api/drivers/pass',r=>{
+  if(r.request().method()==='POST'){bought=JSON.parse(r.request().postData()||'{}');return r.fulfill({status:201,json:{id:'p1'}});}
+  return r.fulfill({json:pass()});
+ });
+ await page.goto('http://127.0.0.1:5184');await expect(page.locator('#app[data-ready=true]')).toBeVisible();
+ await page.evaluate(()=>window.prototypeBridge.go('earnings'));
+ const card=page.locator('.section-card',{hasText:'MONTHLY PASS'});
+ await expect(card).toContainText('You need a pass to go online in your zone');
+ await expect(card).toContainText('₹499 for 30 days');
+ await card.getByRole('button',{name:'Get a pass'}).click();
+ await page.locator('[data-account-action="buy-pass"]').click();
+ await expect.poll(()=>bought).toEqual({price_paise:49900});
+ await page.evaluate(()=>window.prototypeBridge.update({modal:null}));
+ await expect(card).toContainText('Paid until 5 Dec 2026');
+});

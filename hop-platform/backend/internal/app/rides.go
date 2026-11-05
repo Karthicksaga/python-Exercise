@@ -31,6 +31,9 @@ const rideSelect = `SELECT r.id,r.status,r.version,r.payment_method,r.payment_st
  CASE WHEN r.rider_id=$1::uuid AND r.status IN ('accepted','arrived','in_progress') AND d.location_at>now()-interval '60 seconds' THEN d.lng ELSE NULL END AS driver_lng
  ,(SELECT round(avg(score)::numeric,1)::float8 FROM ride_ratings WHERE rated_id=r.driver_id) AS driver_rating,(SELECT count(*) FROM ride_ratings WHERE rated_id=r.driver_id) AS driver_rating_count,(SELECT count(*) FROM rides c WHERE c.driver_id=r.driver_id AND c.status='completed') AS driver_trips
  ,myrating.score AS my_rating,myrating.comment AS my_rating_comment
+ ,(SELECT count(*) FROM chat_conversations cc JOIN chat_participants cp ON cp.conversation_id=cc.id AND cp.account_id=$1::uuid
+   JOIN chat_messages cm ON cm.conversation_id=cc.id AND cm.id>cp.last_read_id AND cm.sender_id IS DISTINCT FROM $1::uuid
+   WHERE cc.kind='ride' AND cc.ref=r.id::text)::int AS chat_unread
  ,q.discount_paise,q.surge_multiplier::float8 AS surge_multiplier,q.promo_code,q.pink,GREATEST(0,COALESCE(r.offered_fare_paise,q.fare_paise)-q.discount_paise) AS payable_paise,r.full_fare_status,r.adjusted_from_paise,r.covered_meters
  FROM rides r JOIN quotes q ON q.id=r.quote_id JOIN accounts ra ON ra.id=r.rider_id LEFT JOIN drivers d ON d.user_id=r.driver_id LEFT JOIN accounts da ON da.id=r.driver_id
  LEFT JOIN ride_ratings myrating ON myrating.ride_id=r.id AND myrating.rater_id=$1::uuid`
@@ -40,7 +43,7 @@ var offerFrom = `
  FROM rides r JOIN quotes q ON q.id=r.quote_id JOIN areas a ON a.id=q.area_id JOIN drivers d ON d.user_id=$1
  WHERE r.status='requested' AND r.expires_at>now() AND r.rider_id<>$1 AND r.share_state<>'waiting' AND (r.group_id IS NULL OR r.group_leader) AND d.status='approved' AND d.online AND a.active AND d.area_id=q.area_id AND d.vehicle_category=q.vehicle_category
  AND d.license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND d.insurance_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND d.location_at>now()-interval '60 seconds'
- AND (r.payment_method<>'upi' OR d.upi_id<>'') AND COALESCE(r.offered_fare_paise,q.fare_paise)+` + groupFareExtra + `>=d.minimum_fare_paise
+ AND (r.payment_method<>'upi' OR d.upi_id<>'') AND COALESCE(r.offered_fare_paise,q.fare_paise)+` + groupFareExtra + `>=d.minimum_fare_paise AND ` + passOK + `
  AND (r.favorite_first_until IS NULL OR r.favorite_first_until<=now() OR EXISTS(SELECT 1 FROM favorite_drivers f WHERE f.rider_id=r.rider_id AND f.driver_id=d.user_id))
  AND (r.reserved_until IS NULL OR r.reserved_until<=now() OR r.reserved_driver_id=d.user_id)
  AND (r.reserved_driver_id=d.user_id OR EXISTS(SELECT 1 FROM ride_offers o WHERE o.ride_id=r.id AND o.driver_id=d.user_id AND (o.expires_at IS NULL OR o.expires_at>now())))
@@ -488,7 +491,7 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 		}
 		var at Point
 		var has bool
-		e = tx.QueryRow(ctx, `SELECT d.lat,d.lng,d.pickup_radius_meters,(d.status='approved' AND d.online AND d.area_id=$2 AND d.vehicle_category=$4 AND d.minimum_fare_paise<=$5 AND a.active AND d.location_at>now()-interval '60 seconds' AND d.license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND d.insurance_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND ($3<>'upi' OR d.upi_id<>'')) FROM drivers d JOIN areas a ON a.id=d.area_id WHERE d.user_id=$1 FOR UPDATE OF d`, uid, area, payment, category, rideFare).Scan(&at.Lat, &at.Lng, &pickupRadius, &has)
+		e = tx.QueryRow(ctx, `SELECT d.lat,d.lng,d.pickup_radius_meters,(d.status='approved' AND d.online AND d.area_id=$2 AND d.vehicle_category=$4 AND d.minimum_fare_paise<=$5 AND a.active AND d.location_at>now()-interval '60 seconds' AND d.license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND d.insurance_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND ($3<>'upi' OR d.upi_id<>'') AND `+passOK+`) FROM drivers d JOIN areas a ON a.id=d.area_id WHERE d.user_id=$1 FOR UPDATE OF d`, uid, area, payment, category, rideFare).Scan(&at.Lat, &at.Lng, &pickupRadius, &has)
 		if e != nil || !has || distance(at, pickup) > float64(pickupRadius) {
 			fail(w, 403, "An approved, nearby driver with fresh location is required")
 			return

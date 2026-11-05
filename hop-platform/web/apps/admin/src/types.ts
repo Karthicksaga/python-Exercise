@@ -67,3 +67,11 @@ export type Analytics = {
   payments: { payment_method: string; count: number; total_paise: number }[];
   volume: { day: string; count: number; completed: number }[];
 };
+
+export type PassData = {
+  prices: { category: string; price_paise: number; days: number; updated_at: string }[];
+  areas: { id: string; name: string; active: boolean; pass_required: boolean; captains: number; with_pass: number }[];
+  passes: { id: string; driver_id: string; captain_name: string; vehicle_number: string; category: string; starts_at: string; ends_at: string; source: "earnings" | "operator"; price_paise: number; note: string; created_at: string; current: boolean }[];
+  captains: { id: string; name: string; vehicle_number: string; category: string; area: string | null; paid_until: string | null }[];
+  revenue_month_paise: number; active_passes: number; renew_days: number;
+};

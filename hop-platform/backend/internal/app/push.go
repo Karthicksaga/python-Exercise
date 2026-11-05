@@ -229,6 +229,19 @@ func (s *Server) composePush(ctx context.Context, tx pushDB, j pushJob) (pushMes
 			return pushMessage{}, false
 		}
 		return pushMessage{Title: title, Body: body, Tag: "ride-" + j.ref, URL: "/"}, true
+	case "chat":
+		// Skipped when the person already read it in the app, or when it's a system message.
+		var name, body, conversation string
+		var read bool
+		if tx.QueryRow(ctx, `SELECT split_part(a.name,' ',1),m.body,m.conversation_id::text,m.id<=p.last_read_id
+ FROM chat_messages m JOIN accounts a ON a.id=m.sender_id JOIN chat_participants p ON p.conversation_id=m.conversation_id AND p.account_id=$2::uuid
+ WHERE m.id=$1::bigint`, j.ref, j.account).Scan(&name, &body, &conversation, &read) != nil || read {
+			return pushMessage{}, false
+		}
+		if r := []rune(body); len(r) > 140 {
+			body = string(r[:139]) + "…"
+		}
+		return pushMessage{Title: name + " sent a message", Body: body, Tag: "chat-" + conversation, URL: "/"}, true
 	case "notification":
 		var title, body string
 		if tx.QueryRow(ctx, "SELECT title,body FROM notifications WHERE id=$1::uuid", j.ref).Scan(&title, &body) != nil {

@@ -3454,3 +3454,17 @@ h3,
 .home-where .home-greeting { display: none; }
 .app:has(> .screen-body.map-screen) .screen-body.map-screen:has(.home-where) .map-controls { grid-template-columns: auto; margin-top: calc(var(--float-head) + 200px); }
 .app:has(> .screen-body.map-screen) .screen-body.map-screen:has(.home-where) .hop-map-status { top: auto; bottom: 188px; margin-top: 0; border-radius: 99px; }
+
+/* === Chat (Nov 2026): message status, typing, unread count. Red is status only ("Not sent"). === */
+.app { --danger: #c62f2f; }
+.app.dark { --danger: #ff8a80; }
+.chat .chat-meta { align-self: flex-end; margin-top: -6px; font-size: calc(9px + var(--font-step, 0px)); color: var(--muted); background: none; border: 0; padding: 0 2px; min-height: 0; }
+.chat .chat-meta.seen { color: var(--accent-ink); }
+.chat button.chat-meta.failed { color: var(--danger); font-weight: 700; min-height: 32px; cursor: pointer; }
+.chat .chat-bubble.mine.failed { opacity: .65; }
+.chat .chat-bubble { white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat .chat-typing { font-size: calc(10px + var(--font-step, 0px)); color: var(--muted); font-style: italic; }
+.chat .chat-older { align-self: center; font-size: calc(11px + var(--font-step, 0px)); min-height: 36px; }
+.chat .chat-closed { margin-top: 6px; }
+.chat-unread-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--accent); color: white; font-size: 10px; font-weight: 800; line-height: 1; }
+.chat-compose .text-input:disabled { opacity: .6; }

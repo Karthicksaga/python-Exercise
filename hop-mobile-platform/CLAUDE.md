@@ -76,6 +76,7 @@ HOP_E2E_OPERATOR_PHONE=… npm run test:e2e:staging          # the same two test
   - A `402 payment_required` opens the unpaid ride's payment screen.
   - The default route is the fastest by server time, not the router's first route.
 - Cash and direct UPI (Nov 2026): the rider's "I’ve paid my Captain" (`cash_paid` → `rider_reported_paid`) lets them book again. The captain can confirm it (`payment_received`) or report "Cash not received" (`payment_not_received` → `driver_reported_unpaid`), which blocks booking until the rider pays by Wallet or online, or disputes.
+- Chat (Nov 2026): `shared/chat/ChatSession.ts` (reusable, no UI) and `RideChat.ts` (trip chat screen). Long polling on `/api/chats/{id}/wait`; every message has a device-made `client_id`, so retries never duplicate; unsent messages survive a restart. The chat header and bubbles show real first names, never the preview's "Arun". Statuses: Sending… / Sent / Seen / Not sent · Tap to retry. The trip screen's Message button shows an unread count ("Message, N unread"). Contract in `hop-platform/docs/API.md` under "Chat".
 - Ratings: after payment, each side rates the other once (1–5 stars, `POST /api/rides/{id}/rating`) on the payment page; `my_rating` shows the stored score.
 - Money shows paise when present ("₹130.50"), and cards and footers use the same `money()` helper.
 - Sounds (`shared/sounds.ts`):

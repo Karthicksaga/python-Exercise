@@ -4,10 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"sort"
-	"strconv"
-	"strings"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -103,98 +99,4 @@ func (s *Server) estimates(w http.ResponseWriter, r *http.Request) {
 		options[0].Tag = "cheapest"
 	}
 	write(w, 200, map[string]any{"meters": meters, "seconds": seconds, "route": route, "options": options})
-}
-
-type chatMessage struct {
-	ID       int64  `json:"id"`
-	Mine     bool   `json:"mine"`
-	Body     string `json:"body"`
-	SentAt   string `json:"sent_at"`
-	SenderID string `json:"-"`
-}
-
-// chatParty returns the other participant and the trip status, or false when the caller is not on the ride.
-func (s *Server) chatParty(r *http.Request, rideID, uid string) (other, status string, ok bool) {
-	var rider string
-	var driver *string
-	if s.DB.QueryRow(r.Context(), "SELECT rider_id::text, driver_id::text, status FROM rides WHERE id=$1", rideID).Scan(&rider, &driver, &status) != nil || driver == nil {
-		return "", "", false
-	}
-	switch uid {
-	case rider:
-		return *driver, status, true
-	case *driver:
-		return rider, status, true
-	}
-	return "", "", false
-}
-
-func (s *Server) rideMessages(w http.ResponseWriter, r *http.Request) {
-	uid := user(r).Account.ID
-	id := r.PathValue("id")
-	if _, _, ok := s.chatParty(r, id, uid); !ok {
-		fail(w, 404, "Ride not found")
-		return
-	}
-	after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
-	rows, e := s.DB.Query(r.Context(), `SELECT id,sender_id=$2::uuid,body,to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"')
- FROM ride_messages WHERE ride_id=$1 AND id>$3 ORDER BY id LIMIT 200`, id, uid, after)
-	if e != nil {
-		dbError(w, e)
-		return
-	}
-	defer rows.Close()
-	out := []chatMessage{}
-	for rows.Next() {
-		var m chatMessage
-		if e = rows.Scan(&m.ID, &m.Mine, &m.Body, &m.SentAt); e != nil {
-			dbError(w, e)
-			return
-		}
-		out = append(out, m)
-	}
-	write(w, 200, map[string]any{"messages": out})
-}
-
-func (s *Server) sendRideMessage(w http.ResponseWriter, r *http.Request) {
-	uid := user(r).Account.ID
-	id := r.PathValue("id")
-	var in struct {
-		Body string `json:"body"`
-	}
-	if !decode(w, r, &in) {
-		return
-	}
-	body := strings.TrimSpace(strings.Map(func(c rune) rune {
-		if unicode.IsControl(c) && c != '\n' {
-			return -1
-		}
-		return c
-	}, in.Body))
-	if n := utf8.RuneCountInString(body); n < 1 || n > 500 {
-		fail(w, 400, "Write a message of 1 to 500 characters")
-		return
-	}
-	other, status, ok := s.chatParty(r, id, uid)
-	if !ok {
-		fail(w, 404, "Ride not found")
-		return
-	}
-	if status != "accepted" && status != "arrived" && status != "in_progress" {
-		fail(w, 409, "Chat is available while the trip is active")
-		return
-	}
-	if !s.limit(w, r, "chat:"+uid, 40, 60) {
-		return
-	}
-	var msg chatMessage
-	e := s.DB.QueryRow(r.Context(), `WITH ins AS (INSERT INTO ride_messages(ride_id,sender_id,body) VALUES($1,$2,$3) RETURNING id,body,created_at),
- note AS (INSERT INTO notifications(account_id,kind,title,body) SELECT $4,'chat',left(split_part(a.name,' ',1)||' sent a message',120),left($3,200) FROM accounts a WHERE a.id=$2)
- SELECT id,body,to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM ins`, id, uid, body, other).Scan(&msg.ID, &msg.Body, &msg.SentAt)
-	if e != nil {
-		dbError(w, e)
-		return
-	}
-	msg.Mine = true
-	write(w, 201, msg)
 }
