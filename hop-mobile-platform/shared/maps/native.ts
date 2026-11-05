@@ -193,15 +193,15 @@ export class NativeMapView implements MapView {
   }
 
   private previewAt = 0;
-  setPreviewVehicle(pos: Coordinate | null, heading = 0) {
+  setPreviewVehicle(pos: Coordinate | null, heading = 0, category = "auto") {
     const now = performance.now();
     if (pos && now - this.previewAt < MOVE_EVERY_MS) return;
     this.previewAt = now;
     this.run(async () => {
       if (!this.map) return;
       if (!pos) { await this.clear(this.preview); this.preview = undefined; return; }
-      this.preview = await this.placeMarker(this.preview, `${pos.lat},${pos.lng}:${heading}`, {
-        coordinate: pos, iconUrl: sprite("sedan", heading), iconSize: VEHICLE, iconAnchor: { x: 23, y: 23 }, title: "Route preview", zIndex: 30,
+      this.preview = await this.placeMarker(this.preview, `${pos.lat},${pos.lng}:${heading}:${category}`, {
+        coordinate: pos, iconUrl: sprite(vehicleCategory(category), heading), iconSize: VEHICLE, iconAnchor: { x: 23, y: 23 }, title: "Route preview", zIndex: 30,
       });
     });
   }

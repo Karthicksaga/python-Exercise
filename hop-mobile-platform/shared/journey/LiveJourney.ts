@@ -16,6 +16,7 @@ import { api, APIError } from "../services/client";
 import type { Point, Config, Quote, State, Ride } from "../services/contracts";
 import { escape, money } from "../helpers";
 import type { Coordinate } from "../maps/types";
+import { distanceMeters } from "../maps/motion";
 import { currentLocation } from "../platform/transport";
 interface Bridge {
   assign(patch: Record<string, unknown>): void;
@@ -213,6 +214,7 @@ export class LiveJourney {
     window.addEventListener("hop-map-pick", this.mapPick);
     window.addEventListener("hop-route-pick", this.routePick);
     window.addEventListener("hop-live-state", this.serverState);
+    window.addEventListener("hop-trip-eta", this.tripEta);
     window.addEventListener("hop-here", this.hopHere);
     this.observer = new MutationObserver(() => this.decorate());
     this.observer.observe(app, { childList: true });
@@ -742,6 +744,54 @@ export class LiveJourney {
     this.quote = undefined;
     this.bookingPayload = undefined;
   }
+  /** Captain's wait time from the live map feed (rider), so the sheet and the pickup pin agree. */
+  private eta?: { ride: string; status: string; seconds?: number };
+  private tripEta = (event: Event) => {
+    this.eta = (event as CustomEvent<{ ride: string; status: string; seconds?: number }>).detail;
+    const ride = this.active();
+    if (ride && this.bridge.read().screen === "tracking") this.decorateTripSheet(ride);
+  };
+  /**
+   * Rider trip sheet (Nov 2026, simplified at the product owner's request): one headline, the
+   * captain with a large number plate, the pickup code (highlighted once they arrive), one row of
+   * actions and a light link for trip details. The renderer's sample extras are hidden in CSS.
+   */
+  private decorateTripSheet(ride: Ride) {
+    const sheet = this.app.querySelector<HTMLElement>(".screen-body > .sheet");
+    if (!sheet) return;
+    sheet.classList.add("live-trip-sheet");
+    sheet.dataset.phase = ride.status;
+    const name = ride.driver_name || "Your captain";
+    const first = name.split(" ")[0];
+    const minutes =
+      this.eta?.ride === ride.id && this.eta.status === ride.status && Number.isFinite(this.eta.seconds)
+        ? Math.max(1, Math.round((this.eta.seconds as number) / 60))
+        : undefined;
+    const set = (selector: string, text: string) => {
+      const el = sheet.querySelector(selector);
+      if (el && el.textContent !== text) el.textContent = text;
+    };
+    set(
+      ".tracking-heading h2",
+      ride.status === "in_progress"
+        ? minutes
+          ? `Arriving in ${minutes} min`
+          : `Heading to ${ride.dropoff_label.split(",")[0]}`
+        : ride.status === "arrived"
+          ? `${first} is here`
+          : minutes
+            ? `${first} arrives in ${minutes} min`
+            : `${first} is on the way`,
+    );
+    set(".driver-text strong", name);
+    set(".driver-card .avatar", first.charAt(0).toUpperCase() || "C");
+    const kind: Record<string, string> = { bike: "Bike", auto: "Auto-rickshaw", mini: "Mini cab", sedan: "Sedan", suv: "SUV" };
+    set(".driver-text small", ride.status === "in_progress" ? `To ${ride.dropoff_label.split(",")[0]}` : kind[ride.vehicle_category] || "Your ride");
+    set(".plate", ride.vehicle_number || "Plate pending");
+    set(".pin-code strong", ride.pickup_code || "Waiting");
+    set(".pin-code > span", ride.status === "arrived" ? "Share this code to start" : "Pickup code");
+    set('.sheet > button.secondary[data-modal="cancel"]', "Trip details or cancel");
+  }
   /** A next-ride offer (or held next ride) for a captain who is on a trip. */
   private pendingNext() {
     return this.role === "captain" ? this.state?.offers?.find((o) => o.offer_kind === "next") : undefined;
@@ -957,7 +1007,7 @@ export class LiveJourney {
     if (button.dataset.routeAlt) {
       this.stop(event);
       this.bridge.notify(
-        "The displayed route is the backend’s recommended road route.",
+        "This is the recommended road route.",
       );
       return;
     }
@@ -1038,7 +1088,7 @@ export class LiveJourney {
     ) {
       this.stop(event);
       this.bridge.notify(
-        "Live rides advance only after the backend confirms a real trip action.",
+        "Your ride updates as soon as Hop confirms each step.",
       );
       return;
     }
@@ -1167,7 +1217,7 @@ export class LiveJourney {
       this.startCityRide();
       this.bridge.go("search");
       this.bridge.notify(
-        "Choose your pickup and destination to get a fresh backend fare.",
+        "Choose your pickup and destination to see the fare.",
       );
       return;
     }
@@ -1237,13 +1287,13 @@ export class LiveJourney {
         const ui = this.bridge.read();
         if (!this.quote)
           throw new Error(
-            "Get a fresh backend quote before requesting a ride.",
+            "Get an updated fare before requesting a ride.",
           );
         if (
           this.quoteOptionsKey !== JSON.stringify(this.booking.quoteOptions())
         )
           throw new Error(
-            "Ride options changed. Review a fresh backend quote before booking.",
+            "Ride options changed. Review the updated fare before booking.",
           );
         const payment = String(ui.payment).toLowerCase();
         const options = this.booking.rideOptions(this.quote);
@@ -1420,7 +1470,7 @@ export class LiveJourney {
     ) {
       this.stop(event);
       this.bridge.notify(
-        "This action is not connected to a supported backend operation yet. No changes were made.",
+        "This option isn’t available yet. Nothing was changed.",
       );
     }
   };
@@ -1797,7 +1847,7 @@ export class LiveJourney {
         while (title.nextSibling) title.nextSibling.remove();
         panel.insertAdjacentHTML(
           "beforeend",
-          `<p class="small muted" style="margin-bottom:15px">Choose how you’d like to pay for your ride.</p>${paymentMethods(this.bridge.read().payment, this.walletBalance, "data-payment")}<p class="fineprint">The backend confirms availability and wallet balance when you request the ride.</p>`,
+          `<p class="small muted" style="margin-bottom:15px">Choose how you’d like to pay for your ride.</p>${paymentMethods(this.bridge.read().payment, this.walletBalance, "data-payment")}<p class="fineprint">Hop checks your wallet balance when you request the ride.</p>`,
         );
       }
     }
@@ -1842,12 +1892,12 @@ export class LiveJourney {
     }
     if (screen === "choose") {
       const badge = this.app.querySelector(".choose-sheet .badge");
-      if (badge) badge.textContent = "Backend estimates";
+      if (badge) badge.textContent = "Live prices";
       const subline = this.app.querySelector(".choose-sheet .subline");
       if (subline)
         subline.textContent =
           this.booking.tripType === "rental" && this.route
-            ? `Hourly rental · ${this.booking.rentalHours} hours · backend price`
+            ? `Hourly rental · ${this.booking.rentalHours} hours`
             : this.route
               ? `${(this.route.meters / 1000).toFixed(1)} km · ${Math.ceil(this.route.seconds / 60)} min · road route`
               : this.planningError ||
@@ -1900,6 +1950,13 @@ export class LiveJourney {
           ? `−${money(this.quote.discount_paise / 100)}`
           : "";
     }
+    if (this.bridge.read().modal === "meeting") {
+      // The renderer's meeting sheet is written for its sample map.
+      const badge = this.app.querySelector(".meeting-overview .badge");
+      if (badge) badge.textContent = "Your pickup";
+      const mapButton = this.app.querySelector('.modal-sheet [data-action="meeting-map"]');
+      if (mapButton) mapButton.textContent = "Show pickup on the map";
+    }
     if (this.bridge.read().modal === "fare") {
       const overview = this.app.querySelector(".fare-overview strong");
       const value =
@@ -1910,13 +1967,20 @@ export class LiveJourney {
         overview.textContent =
           value !== undefined ? money(value / 100) : "Quote required";
       const breakdown = this.app.querySelector(".modal-sheet .breakdown");
+      const set = (selector: string, text: string) => {
+        const el = this.app.querySelector(selector);
+        if (el) el.textContent = text;
+      };
+      set(".fare-overview span", "ESTIMATED FARE");
+      set(".modal-sheet .quote-explainer p", "Changed the route or ride options? Get an updated fare before you request.");
+      set('.modal-sheet [data-action="refresh-sample-quote"]', "Get an updated fare");
       if (breakdown)
-        breakdown.innerHTML = `<div class="row"><span>Backend quoted total</span><strong>${value !== undefined ? money(value / 100) : "—"}</strong></div><p class="small muted">Pricing follows the existing backend. No sample fee breakdown is used.</p>`;
+        breakdown.innerHTML = `<div class="row"><span>Quoted total</span><strong>${value !== undefined ? money(value / 100) : "—"}</strong></div><p class="small muted">This is the fare Hop quoted for this route and vehicle.</p>`;
     }
     if (screen === "choose" || screen === "confirm") {
       const caption = this.app.querySelector(".footer-price span");
       if (caption?.firstChild)
-        caption.firstChild.textContent = "Backend estimated fare";
+        caption.firstChild.textContent = "Estimated fare";
       const value =
         this.quote?.payable_paise ??
         this.quote?.fare_paise ??
@@ -1935,7 +1999,7 @@ export class LiveJourney {
         breakdownAmount.textContent =
           value === undefined ? "—" : money(value / 100);
       if (badge)
-        badge.textContent = this.quote ? "Backend quote" : "Quote required";
+        badge.textContent = this.quote ? "Fare locked" : "Getting fare";
     }
     if (screen === "confirm") {
       const eta = this.app.querySelector(".confirm-sheet > .row p");
@@ -1945,7 +2009,7 @@ export class LiveJourney {
     }
     if (screen === "choose") {
       const badge = this.app.querySelector(".choose-sheet .badge");
-      if (badge) badge.textContent = "Backend estimates";
+      if (badge) badge.textContent = "Live prices";
     }
     if (screen === "matching") {
       const fare = this.active()?.payable_paise ?? this.active()?.fare_paise;
@@ -1960,7 +2024,7 @@ export class LiveJourney {
       const subtitle = this.app.querySelector(".matching-radar-status small");
       if (subtitle)
         subtitle.textContent =
-          "Waiting for a server-confirmed Captain assignment";
+          "We'll tell you the moment a captain accepts";
       this.app.querySelector(".handoff-box")?.remove();
       const status = this.app.querySelector(".matching-radar-status strong");
       const held = this.active();
@@ -1972,26 +2036,7 @@ export class LiveJourney {
         subtitle.textContent = `They’ll come to you right after${held.next_ride_eta_seconds ? ` · about ${Math.max(1, Math.round(held.next_ride_eta_seconds / 60))} min` : ""}`;
     }
     const ride = this.active();
-    if (ride && screen === "tracking") {
-      const name = this.app.querySelector(".driver-text strong");
-      if (name) name.textContent = ride.driver_name || "Assigned Captain";
-      const plate = this.app.querySelector(".plate");
-      if (plate)
-        plate.textContent = ride.vehicle_number || "Vehicle details pending";
-      const code = this.app.querySelector(".pin-code strong");
-      if (code) code.textContent = ride.pickup_code || "Waiting";
-      const heading = this.app.querySelector(".tracking-heading h2");
-      if (heading)
-        heading.textContent =
-          ride.status === "in_progress"
-            ? "On your way to the destination"
-            : ride.status === "arrived"
-              ? "Your Captain has arrived"
-              : "Your Captain is on the way";
-      this.app
-        .querySelectorAll(".eta")
-        .forEach((el) => (el.textContent = "Live"));
-    }
+    if (ride && screen === "tracking") this.decorateTripSheet(ride);
     if (this.role === "captain" && screen === "request") {
       const offer = this.state?.offers?.[0];
       if (offer) {
@@ -2032,12 +2077,25 @@ export class LiveJourney {
       if (amount)
         amount.textContent = offer ? money(offer.fare_paise / 100) : "—";
       const badge = this.app.querySelector(".online-pill");
-      if (badge)
-        badge.textContent = offer ? "New live request" : "No current requests";
+      // The header already says "New ride request"; the map chip stays only when there's none.
+      if (badge && offer) badge.remove();
+      else if (badge) badge.textContent = "No current requests";
       this.offerCountdown(offer?.offer_kind === "now" ? offer.offer_expires_at : undefined);
+      const fareLabel = this.app.querySelector(".driver-sheet .row .small.muted");
+      if (fareLabel?.textContent?.startsWith("Estimated fare")) fareLabel.textContent = "Estimated fare";
+      // Pickup distance from the captain's last fix, trip time from the quote, and the payment method.
+      const me = this.state?.driver?.[0] as { lat?: number; lng?: number } | undefined;
+      const km = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
+      const toPickup =
+        offer && me?.lat != null && me?.lng != null
+          ? km(distanceMeters({ lat: me.lat, lng: me.lng }, { lat: offer.pickup_lat, lng: offer.pickup_lng }))
+          : "—";
+      const seconds = Number((offer as { seconds?: number } | undefined)?.seconds || 0);
+      const methods: Record<string, string> = { cash: "Cash", upi: "UPI", wallet: "Wallet", online: "Online" };
+      const facts = [toPickup, seconds ? `${Math.max(1, Math.round(seconds / 60))} min` : "—", offer ? methods[offer.payment_method] || offer.payment_method : "—"];
       this.app
         .querySelectorAll(".offer-facts strong")
-        .forEach((el) => (el.textContent = "—"));
+        .forEach((el, i) => (el.textContent = facts[i] ?? "—"));
     }
     if (this.role === "captain") this.nextRideCard(screen === "trip" ? this.pendingNext() : undefined);
     if (this.role === "captain" && ["pickup", "trip"].includes(screen)) {
@@ -2257,6 +2315,7 @@ export class LiveJourney {
     this.app.removeEventListener("focusin", this.focus, true);
     this.app.removeEventListener("change", this.changeArea, true);
     window.removeEventListener("hop-location-denied", this.locationDenied);
+    window.removeEventListener("hop-trip-eta", this.tripEta);
     window.removeEventListener("hop-navigation", this.navigationUpdate);
     window.removeEventListener("hop-route-pick", this.routePick);
     window.removeEventListener("hop-map-pick", this.mapPick);

@@ -13,6 +13,8 @@ Proposals, reviews and recommendations for Hop. These are things suggested, not 
 
 | Date | Suggestion | Status |
 |---|---|---|
+| 2026-11-05 | [Brand name conflict: "Hop"](2026-11-05-brand-name-conflict.md) | Deferred, keeping Hop for now |
+| 2026-11-05 | [UI review follow-ups](2026-11-05-ui-review-follow-ups.md) | Proposed |
 | 2026-11-05 | [Architecture: making Hop scale](2026-11-05-architecture-scalability.md) | Proposed |
 | 2026-11-05 | [Open issues found during testing](2026-11-05-open-issues-from-testing.md) | Not fixed |
 | 2026-11-05 | [Feature gaps and unique features](2026-11-05-feature-gaps-and-unique-features.md) | Partly done (monthly pass, chat) |

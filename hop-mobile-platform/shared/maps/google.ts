@@ -79,11 +79,12 @@ function getPreviewVehicleOverlayClass() {
       constructor(
         private position: google.maps.LatLng,
         private heading: number,
+        private category: string,
       ) {
         super();
         this.div = document.createElement("div");
         this.div.className = "hop-preview-vehicle-overlay";
-        this.div.innerHTML = `<img src="${topDownVehicle("sedan")}" alt="Preview vehicle" draggable="false" style="transform: rotate(${heading}deg);" />`;
+        this.div.innerHTML = `<img src="${topDownVehicle(category)}" alt="Preview vehicle" draggable="false" style="transform: rotate(${heading}deg);" />`;
       }
       onAdd() {
         this.getPanes()?.overlayMouseTarget.appendChild(this.div);
@@ -97,10 +98,14 @@ function getPreviewVehicleOverlayClass() {
           this.div.style.top = `${point.y - VEHICLE_MARKER_SIZE / 2}px`;
         }
       }
-      update(pos: Coordinate, heading: number) {
+      update(pos: Coordinate, heading: number, category: string) {
         this.position = new google.maps.LatLng(pos.lat, pos.lng);
         const img = this.div.querySelector<HTMLImageElement>("img");
         if (img) img.style.transform = `rotate(${heading}deg)`;
+        if (img && category !== this.category) {
+          this.category = category;
+          img.src = topDownVehicle(category);
+        }
         this.draw();
       }
       onRemove() {
@@ -400,7 +405,7 @@ export class GoogleMapView implements MapView {
     this.route.setPath(points || []);
   }
 
-  setPreviewVehicle(pos: Coordinate | null, heading = 0) {
+  setPreviewVehicle(pos: Coordinate | null, heading = 0, category = "auto") {
     if (!pos) {
       if (this.previewOverlay) {
         this.previewOverlay.setMap(null);
@@ -414,10 +419,11 @@ export class GoogleMapView implements MapView {
       this.previewOverlay = new OverlayClass(
         new google.maps.LatLng(pos.lat, pos.lng),
         heading,
+        category,
       );
       this.previewOverlay.setMap(this.map);
     } else {
-      this.previewOverlay.update(pos, heading);
+      this.previewOverlay.update(pos, heading, category);
     }
   }
 

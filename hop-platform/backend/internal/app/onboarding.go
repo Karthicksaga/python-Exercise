@@ -208,7 +208,7 @@ func (s *Server) onboardingState(w http.ResponseWriter, r *http.Request) {
 	} else if s.Media != nil {
 		mode = "private_cloud"
 	}
-	write(w, 200, map[string]any{"draft": draft, "documents": docs, "has_photo": photo, "photo_approved": approved, "storage_mode": mode, "phone_verified": hasMobile(ctx, s.DB, uid), "documents_required": !s.Config.Development, "testing_mode": s.Config.Development, "required_documents": requiredDocumentKinds, "optional_documents": optionalDocumentKinds})
+	write(w, 200, map[string]any{"draft": draft, "documents": docs, "has_photo": photo, "photo_approved": approved, "storage_mode": mode, "phone_verified": hasMobile(ctx, s.DB, uid), "documents_required": !s.Config.TestOnboarding, "testing_mode": s.Config.TestOnboarding, "required_documents": requiredDocumentKinds, "optional_documents": optionalDocumentKinds})
 }
 func (s *Server) saveOnboarding(w http.ResponseWriter, r *http.Request) {
 	var in applicationDraft

@@ -6,6 +6,7 @@ import { Capacitor } from "@capacitor/core";
 import { LiveFeed } from "./liveFeed";
 import { watchLocation } from "./locationWatch";
 import type { Coordinate, MapData, MapView } from "./types";
+import { vehicleCategory } from "./types";
 import { api } from "../services/client";
 import { ForegroundTracking } from "./foregroundTracking";
 import { ensureRideAlerts } from "../notifications/device";
@@ -40,6 +41,18 @@ function computeDistanceMeters(a: Coordinate, b: Coordinate): number {
 }
 
 /** Replaces only the sample map canvas. The approved surrounding UI is untouched. */
+// Status messages that mean "all is well". They aren't drawn over the map.
+const QUIET_STATUS = new Set([
+  "",
+  "Connecting to Hop for live locations",
+  "Live nearby vehicles",
+  "No nearby vehicles online",
+  "Live captain location",
+  "Location found · fetching live vehicles",
+  "Online · sharing your location so riders can find you",
+  "You’re offline · GPS sharing stopped",
+]);
+
 export class PrototypeMap {
   private view?: MapView;
   private canvas?: HTMLElement;
@@ -85,6 +98,12 @@ export class PrototypeMap {
       this.message = "Allow location access to find your position · you can still choose a map pin";
     }
     this.label();
+  }
+
+  // The vehicle the rider picked on Choose your ride (the renderer keeps it in its state).
+  private selectedVehicle(): string {
+    const bridge = (window as { prototypeBridge?: { read?: () => { vehicle?: string } } }).prototypeBridge;
+    return vehicleCategory(String(bridge?.read?.().vehicle || "auto"));
   }
 
   private isConfirmScreen(): boolean {
@@ -163,6 +182,10 @@ export class PrototypeMap {
   private paint() {
     const shown = this.display();
     this.view?.update(shown);
+    // "Follow me" and "Show full route" only help when a route is drawn; without one, the
+    // map shows just layers and recentre (map.css).
+    const hasRoute = Boolean((shown.route && shown.route.length > 1) || (shown.pickup && shown.dropoff));
+    this.root?.parentElement?.querySelector<HTMLElement>(".map-controls")?.toggleAttribute("data-has-route", hasRoute);
     const alternatives = this.data.pickup ? [] : this.planned?.alternatives ?? [];
     const key = JSON.stringify(alternatives.map((a) => [a.index, a.selected, a.route.length]));
     if (key !== this.alternativesKey) {
@@ -503,8 +526,14 @@ export class PrototypeMap {
   };
 
   private label() {
-    if (this.status)
-      this.status.textContent = `${this.provider || "Loading map"} · ${this.message}`;
+    if (!this.status) return;
+    // The provider name is read out but not shown: the map's own credits already name it.
+    const provider = document.createElement("span");
+    provider.className = "sr-only";
+    provider.textContent = `${this.provider || "Loading map"} · `;
+    this.status.replaceChildren(provider, document.createTextNode(this.message));
+    // Normal states stay off the map (screen readers still hear them); only problems show.
+    this.status.classList.toggle("hop-map-status-quiet", QUIET_STATUS.has(this.message));
   }
 
   // Wide bars floating over the top of the map (screen header, route bar, status) hide part of
@@ -540,11 +569,12 @@ export class PrototypeMap {
       ? Math.max(100, sheet.getBoundingClientRect().top - top)
       : body.clientHeight;
     this.canvas.style.height = `${height}px`;
+    body.style.setProperty("--hop-map-height", `${height}px`);
     this.canvas.style.left = `${inset}px`;
     this.canvas.style.width = inset ? `calc(100% - ${inset}px)` : "100%";
     body
       .querySelector(".map-controls")
-      ?.classList.toggle("hop-compact-controls", height < 230);
+      ?.classList.toggle("hop-compact-controls", height < 360);
   };
 
   private decoratePreferences() {
@@ -581,7 +611,9 @@ export class PrototypeMap {
     this.root = root || undefined;
     if (!root) return;
     const revision = this.revision;
-    if (this.role === "rider" && !this.locationRequested) {
+    // Both apps find the phone first, so the map opens where the person is, not at the last
+    // position the server knows. For a captain this is the location prompt after approval.
+    if (!this.locationRequested) {
       this.locationRequested = true;
       void this.locate();
     }
@@ -773,7 +805,7 @@ export class PrototypeMap {
     this.routePreview = new RoutePreviewController(route, {
       onProgress: (subRoute, vehiclePos, heading) => {
         this.view?.setRouteProgress?.(subRoute);
-        this.view?.setPreviewVehicle?.(vehiclePos, heading);
+        this.view?.setPreviewVehicle?.(vehiclePos, heading, this.selectedVehicle());
       },
       onCamera: (pos) => {
         if (this.previewCameraFollow) {
@@ -839,7 +871,7 @@ export class PrototypeMap {
         "aria-label",
         "Replay route preview animation",
       );
-      this.previewBadge.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M1 4v6h6"></path><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg><span>Replay route</span>`;
+      this.previewBadge.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M1 4v6h6"></path><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg><span class="sr-only">Replay route</span>`;
     }
   }
 

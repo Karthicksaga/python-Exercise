@@ -21,6 +21,8 @@ type Evidence = {
   documents: { kind: string; url?: string; review_status?: "pending" | "accepted" | "rejected"; review_reason?: string }[];
   has_photo: boolean;
   phone_verified: boolean;
+  /** The server lets this captain apply without documents (development, or DEV_ONBOARDING on staging). */
+  testing_mode?: boolean;
 };
 
 const vehicleCategories = [
@@ -197,6 +199,9 @@ export class CaptainOnboarding {
   }
 
   private isDevMode(): boolean {
+    // The server decides. Offering "Testing mode" when the server will still demand documents
+    // made Submit fail with a missing-documents error.
+    if (typeof this.evidence?.testing_mode === "boolean") return this.evidence.testing_mode;
     if (this.config()?.development) return true;
     if (api.isDevEnvironment(this.config())) return true;
     if (typeof window !== "undefined") {
@@ -751,7 +756,10 @@ export class CaptainOnboarding {
       const selectedArea =
         areas.find((a) => a.id === this.draft.area_id)?.name ||
         "Select a city";
-      const docCount = this.evidence.documents.length;
+      // Required documents uploaded so far (both sides of ID, licence and RC, plus insurance).
+      const required = documents.filter((d) => !d.optional).map((d) => d.kind);
+      const docCount = required.filter((k) => this.evidence?.documents.some((d) => d.kind === k)).length;
+      const docTotal = required.length;
       body = `
         <div class="section-card onboarding-card summary-card">
           <div class="summary-hero">
@@ -790,8 +798,8 @@ export class CaptainOnboarding {
             </div>
             <div class="summary-row">
               <span class="summary-label">${icon("file", "tiny-icon")} Documents</span>
-              <span class="badge ${docCount >= 4 ? "green" : "warn"}">
-                ${docCount} of 4 verified
+              <span class="badge ${docCount >= docTotal ? "green" : "warn"}">
+                ${docCount} of ${docTotal} uploaded
               </span>
             </div>
             <div class="summary-row">

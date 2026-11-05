@@ -106,7 +106,7 @@ export class LiveBooking {
         n > Math.floor(quote.fare_paise * 1.5)
       )
         throw new Error(
-          "Fare offer must be between 70% and 150% of the backend quote.",
+          "Your offer must be between 70% and 150% of the quoted fare.",
         );
       out.offer_paise = n;
     }
@@ -181,7 +181,7 @@ export class LiveBooking {
     if (modal === "promo")
       body =
         this.field("promo", "Promo code", this.promo) +
-        `<p class="small muted">The server validates eligibility and discount. Clear the code to remove it.</p><button class="primary" data-booking-action="save">Apply code</button>`;
+        `<p class="small muted">Hop checks the code and shows your discount on the fare. Clear the code to remove it.</p><button class="primary" data-booking-action="save">Apply code</button>`;
     if (modal === "options")
       body =
         this.toggle("share", "Share this ride", this.share) +
@@ -197,7 +197,7 @@ export class LiveBooking {
           this.offer,
           "number",
         ) +
-        `<p class="small muted">Offer bounds: 70–150% of the server quote. Eligibility is checked by the backend.</p><button class="primary" data-booking-action="save">Save ride options</button>`;
+        `<p class="small muted">You can offer 70–150% of the quoted fare. Hop checks which options apply to your ride.</p><button class="primary" data-booking-action="save">Save ride options</button>`;
     if (modal === "passenger") {
       body =
         this.field(
@@ -372,7 +372,7 @@ export class LiveBooking {
             this.favoriteFirst)
         )
           throw new Error(
-            "Scheduled city rides do not support these additional options in the current backend.",
+            "Scheduled city rides don’t support these extra options yet.",
           );
         this.status = "";
         this.bridge.update({

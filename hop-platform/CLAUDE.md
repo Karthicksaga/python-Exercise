@@ -31,7 +31,7 @@ cd backend && go build ./... && go test ./...
 TEST_DATABASE_URL=postgres://…/hop_integration_test TEST_REDIS_URL=redis://127.0.0.1:6390/15 go test ./... -p 1
 ```
 
-Captain document rules (required/optional kinds, rejection reasons, review claims, expiry job) live in `internal/app/documents.go`; approval is only `POST /api/admin/drivers/{id}` (`admin.go`). Never trust client-sent testing flags; only `Config.Development` relaxes checks, and demo login needs `Config.DemoLogin`.
+Captain document rules (required/optional kinds, rejection reasons, review claims, expiry job) live in `internal/app/documents.go`; approval is only `POST /api/admin/drivers/{id}` (`admin.go`). Never trust client-sent testing flags; only server settings relax checks: `Config.Development`, plus the staging switches `DEV_SMS`, `DEV_PAYMENTS` and `DEV_ONBOARDING` (`Config.TestOnboarding`: apply and approve a captain without documents). `deploy.py` refuses all three in production. Demo login needs `Config.DemoLogin`.
 
 Zones (`areas`) are lat/lng rectangles. Two live zones may not overlap (`saveArea`, 409). `region_catalog` (migration 035) lists districts operators can start a zone from, with city limits from migration 036 (`city_source` is `boundary` or `approx`). Add a state with `backend/scripts/fetch_districts.py`, and its city limits with the script's `--cities` mode. Run it once and commit the generated migration; never call OpenStreetMap at runtime.
 

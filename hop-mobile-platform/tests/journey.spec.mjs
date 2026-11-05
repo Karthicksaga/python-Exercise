@@ -133,7 +133,7 @@ test("rider searches actual places, draws road route, obtains quote and submits 
   ).toHaveCount(1);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.locator(".confirm-sheet .badge")).toHaveText(
-    "Backend quote",
+    "Fare locked",
   );
   await expect(page.locator(".confirm-route")).toContainText(dropoff.label);
   await expect(page.locator(".confirm-route")).not.toContainText(
@@ -637,7 +637,7 @@ test("expired quote uses the approved recovery dialog and refresh does not book 
   await page.getByRole("button", { name: "Refresh fare", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator(".confirm-sheet .badge")).toHaveText(
-    "Backend quote",
+    "Fare locked",
   );
   expect(quotes).toBe(2);
   expect(bookings).toBe(1);

@@ -123,7 +123,9 @@ test("Saved places screen renders canonical subtitle, quick suggestions, and all
   // Verify form inputs populated
   await expect(page.locator("#account-location-kind")).toHaveValue("home");
   await expect(page.locator("#account-location-label")).toHaveValue("Home");
-  await expect(page.locator("#account-location-address")).toHaveValue("2nd Cross Street, Adyar");
+  // Suggestions never fill in an invented address; the rider enters their own.
+  await expect(page.locator("#account-location-address")).toHaveValue("");
+  await page.locator("#account-location-address").fill("2nd Cross Street, Adyar");
 
   // Click Save destination
   const saveBtn = page.locator('[data-account-action="save-location"]');
