@@ -78,7 +78,7 @@ func (s *Server) applyDriver(w http.ResponseWriter, r *http.Request) {
 	}
 	// Only the server's own setting (development, or DEV_ONBOARDING on staging) may skip document
 	// checks or fill test defaults. Client-sent flags are accepted for compatibility but never trusted.
-	isTesting := s.Config.TestOnboarding
+	isTesting := s.Config.testOnboarding()
 	if !hasMobile(r.Context(), s.DB, user(r).Account.ID) {
 		fail(w, 403, mobileRequired)
 		return

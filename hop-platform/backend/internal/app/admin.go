@@ -258,7 +258,7 @@ func (s *Server) adminDecision(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		testingBypass := false
-		if s.Config.TestOnboarding {
+		if s.Config.testOnboarding() {
 			_ = tx.QueryRow(ctx, `SELECT onboarding_version=0 FROM drivers WHERE user_id=$1`, id).Scan(&testingBypass)
 		}
 		if !testingBypass {
