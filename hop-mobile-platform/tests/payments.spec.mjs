@@ -46,7 +46,7 @@ async function openPayment(page, role = "rider") {
     .click();
   await page.getByRole("tab", { name: "Past", exact: true }).click();
   await page
-    .getByRole("button", { name: "Payment & receipt", exact: false })
+    .getByRole("button", { name: "Receipt", exact: true })
     .click();
   await expect(page.locator("[data-live-payment]")).toBeVisible();
 }
@@ -116,8 +116,7 @@ test("Captain payment receipt is a backend report, not an online verification", 
     return r.fulfill({ json: { ok: true } });
   });
   await openPayment(page, "captain");
-  await page.getByRole("button", { name: "Record payment received" }).click();
-  await page.getByRole("button", { name: "Yes, payment received" }).click();
+  await page.getByRole("button", { name: "Record payment received" }).press("Enter");
   await expect(
     page.getByRole("heading", { name: "Cash received." }),
   ).toBeVisible();

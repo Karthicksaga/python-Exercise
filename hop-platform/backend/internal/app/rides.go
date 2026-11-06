@@ -35,6 +35,7 @@ const rideSelect = `SELECT r.id,r.status,r.version,r.payment_method,r.payment_st
    JOIN chat_messages cm ON cm.conversation_id=cc.id AND cm.id>cp.last_read_id AND cm.sender_id IS DISTINCT FROM $1::uuid
    WHERE cc.kind='ride' AND cc.ref=r.id::text)::int AS chat_unread
  ,q.discount_paise,q.surge_multiplier::float8 AS surge_multiplier,q.promo_code,q.pink,GREATEST(0,COALESCE(r.offered_fare_paise,q.fare_paise)-q.discount_paise) AS payable_paise,r.full_fare_status,r.adjusted_from_paise,r.covered_meters
+ ,CASE WHEN r.status='arrived' THEN (SELECT max(created_at) FROM audit_events e WHERE e.ride_id=r.id AND e.action='arrived') END AS arrived_at
  FROM rides r JOIN quotes q ON q.id=r.quote_id JOIN accounts ra ON ra.id=r.rider_id LEFT JOIN drivers d ON d.user_id=r.driver_id LEFT JOIN accounts da ON da.id=r.driver_id
  LEFT JOIN ride_ratings myrating ON myrating.ride_id=r.id AND myrating.rater_id=$1::uuid`
 

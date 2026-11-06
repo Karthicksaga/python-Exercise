@@ -42,10 +42,10 @@ test("a captain finishing a trip nearby takes the next ride, settles the first, 
   const pickup = { latitude: trip.pickup_lat, longitude: trip.pickup_lng };
   const dropoff = { latitude: trip.dropoff_lat, longitude: trip.dropoff_lng };
   await gps.drive(captain, pickup, 4);
-  await captain.getByRole("button", { name: "I’ve arrived" }).click();
+  await captain.getByRole("button", { name: "I’ve arrived" }).press("Enter");
   const code = (await state(firstCtx, RIDER)).rides.find((r) => r.id === trip.id).pickup_code;
   for (const [i, digit] of [...code].entries()) await captain.locator(`#pin-${i}`).fill(digit);
-  await captain.getByRole("button", { name: "Verify & start ride" }).click();
+  await captain.getByRole("button", { name: "Verify & start ride" }).press("Enter");
   await expect(captain.getByRole("button", { name: "Complete trip" })).toBeVisible({ timeout: 15000 });
 
   // 2. Most of the way there (a few hundred metres to go), a second rider asks for a pickup
@@ -67,9 +67,8 @@ test("a captain finishing a trip nearby takes the next ride, settles the first, 
   await gps.drive(captain, dropoff, 3);
   await captain.getByRole("button", { name: "Complete trip" }).press("Enter");
   await expect(captain.getByRole("button", { name: "Record payment received" })).toBeVisible({ timeout: 15000 });
-  await first.getByRole("button", { name: "I’ve paid my Captain" }).click();
-  await captain.getByRole("button", { name: "Record payment received" }).click();
-  await captain.getByRole("button", { name: "Yes, payment received" }).click();
+  await first.getByRole("button", { name: "I’ve paid my Captain" }).press("Enter");
+  await captain.getByRole("button", { name: "Record payment received" }).press("Enter");
   await expect(captain.getByRole("heading", { name: "Cash received." })).toBeVisible({ timeout: 20000 });
   await captain.getByRole("button", { name: "Done", exact: true }).click();
   await expect(captain.getByRole("button", { name: "I’ve arrived" })).toBeVisible({ timeout: 15000 });

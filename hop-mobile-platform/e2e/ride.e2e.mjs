@@ -59,12 +59,12 @@ test("a rider books, rides, pays cash and rates; the captain accepts, drives, co
 
   // 5. The captain drives to the pickup and arrives; the rider is told.
   await gps.drive(captain, pickup);
-  await captain.getByRole("button", { name: "I’ve arrived" }).click();
+  await captain.getByRole("button", { name: "I’ve arrived" }).press("Enter");
   await expect(rider.locator(".hop-pickup-pin .hop-pin-callout")).toContainText("Captain is here", { timeout: 15000 });
 
   // 6. The rider's code starts the trip; the rider gets a real arrival time.
   for (const [i, digit] of [...code].entries()) await captain.locator(`#pin-${i}`).fill(digit);
-  await captain.getByRole("button", { name: "Verify & start ride" }).click();
+  await captain.getByRole("button", { name: "Verify & start ride" }).press("Enter");
   await expect(captain.getByRole("button", { name: "Complete trip" })).toBeVisible({ timeout: 15000 });
   await expect(rider.locator(".hop-dropoff-pin .hop-pin-callout")).toContainText(/Arrive \d{1,2}:\d{2}/, { timeout: 20000 });
 
@@ -80,13 +80,12 @@ test("a rider books, rides, pays cash and rates; the captain accepts, drives, co
 
   // 8. Cash changes hands. The rider says they paid, which frees them to book again; the captain
   //    sees that and confirms it, which settles the trip.
-  await rider.getByRole("button", { name: "I’ve paid my Captain" }).click();
+  await rider.getByRole("button", { name: "I’ve paid my Captain" }).press("Enter");
   await expect(rider.getByRole("heading", { name: "Thanks, payment noted." })).toBeVisible({ timeout: 15000 });
   expect((await state(riderCtx, RIDER)).rides.find((r) => r.id === ride.id)).toMatchObject({ payment_status: "rider_reported_paid" });
   await expect(captain.getByRole("heading", { name: "Rider says they paid." })).toBeVisible({ timeout: 20000 });
   await expect(captain.getByRole("button", { name: "Cash not received" })).toBeVisible();
-  await captain.getByRole("button", { name: "Record payment received" }).click();
-  await captain.getByRole("button", { name: "Yes, payment received" }).click();
+  await captain.getByRole("button", { name: "Record payment received" }).press("Enter");
   await expect(rider.getByRole("heading", { name: "Paid to your Captain." })).toBeVisible({ timeout: 20000 });
   expect((await state(riderCtx, RIDER)).rides.find((r) => r.id === ride.id)).toMatchObject({ status: "completed", payment_status: "driver_reported_received" });
 

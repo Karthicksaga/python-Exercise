@@ -4,6 +4,8 @@ import { escape } from "../helpers";
 import { inr, paymentMethods } from "./components";
 import { checkout, type Order, type Verification } from "./checkout";
 import { countUp } from "../design/tripMoments";
+import { enhanceSlides } from "../design/slideToConfirm";
+import { fareStory } from "../design/tripExtras";
 
 /** "cash" → "Cash", "upi" → "UPI" for receipts. */
 const methodName = (m: string) => (m === "upi" ? "UPI" : m ? m[0].toUpperCase() + m.slice(1) : "");
@@ -450,7 +452,7 @@ export class LivePayment {
         : this.role === "captain"
           ? "You confirmed the rider paid you. It’s added to today’s earnings."
           : "Your Captain confirmed they received the payment.";
-      content = `${this.successSymbol(status)}${summary}<div class="payment-receipt"><span>Payment method</span><strong>${escape(verified ? (this.ride.payment_method === "wallet" ? "Wallet" : "Online payment") : methodName(this.ride.payment_method))}</strong><span>Status</span><strong>${verified ? "Confirmed by Hop" : "Received by Captain"}</strong><span>Ride reference</span><strong>${escape(this.ride.id.slice(0, 12))}</strong></div>${this.ratingCard()}`;
+      content = `${this.successSymbol(status)}${summary}${fareStory(this.ride, this.role)}<div class="payment-receipt"><span>Payment method</span><strong>${escape(verified ? (this.ride.payment_method === "wallet" ? "Wallet" : "Online payment") : methodName(this.ride.payment_method))}</strong><span>Status</span><strong>${verified ? "Confirmed by Hop" : "Received by Captain"}</strong><span>Ride reference</span><strong>${escape(this.ride.id.slice(0, 12))}</strong></div>${this.ratingCard()}`;
       actions = this.ratingAction() + this.button("Done", "close", !!this.ratingAction());
       if (!verified && this.role === "rider")
         actions += this.button("Report a payment issue", "dispute", true);
@@ -519,8 +521,8 @@ export class LivePayment {
       title = "Pay your Captain.";
       copy = "Cash is paid directly at the end of the ride.";
       content =
-        summary +
-        '<div class="payment-hint">Hand the cash to your Captain, then tap “I’ve paid my Captain”. Your Captain can still confirm it or report a problem.</div>';
+        summary + fareStory(this.ride, "rider") +
+        '<div class="payment-hint">Hand the cash to your Captain, then slide “I’ve paid my Captain”. Your Captain can still confirm it or report a problem.</div>';
       actions =
         (status === "unconfirmed" && this.ride.status === "completed"
           ? this.button("I’ve paid my Captain", "cash-paid")
@@ -539,16 +541,12 @@ export class LivePayment {
           : "Collect the fare from your rider, then record it here.";
       content =
         summary +
+        fareStory(this.ride, "captain") +
         `<div class="payment-receipt"><span>Method</span><strong>${escape(methodName(this.ride.payment_method))}</strong><span>Status</span><strong>${riderPaid ? "Rider reported paying" : unpaid ? "You reported not received" : "Awaiting confirmation"}</strong></div>${this.ride.payment_method === "cash" && this.ride.status === "completed" && !unpaid ? this.changeHelper(amount) : ""}<div class="payment-hint">Only record receipt after receiving the cash or direct UPI payment. Hop confirms online payments for you.</div>${this.ratingCard()}`;
       actions =
         this.ride.status === "completed" &&
         this.ride.payment_method !== "wallet"
-          ? this.button(
-              this.confirmReceipt
-                ? "Yes, payment received"
-                : "Record payment received",
-              this.confirmReceipt ? "cash" : "cash-confirm",
-            )
+          ? this.button("Record payment received", "cash")
           : this.button("Check payment status", "refresh");
       if (this.confirmReceipt) {
         title = "Confirm the handover.";
@@ -605,6 +603,8 @@ export class LivePayment {
     this.app.className = `app ${this.role} payment-prototype`;
     this.app.dataset.livePayment = this.ride.id;
     this.app.innerHTML = `<header class="app-head"><div class="brand">hop<span class="role-tag">${this.role.toUpperCase()}</span></div><span class="badge neutral" data-keep>Ride payment</span></header><div class="screen-body"><section class="payment-intro"><span>THE LAST LITTLE STEP</span><h1>${escape(title)}</h1><p>${escape(copy)}</p></section><div class="payment-content">${this.error ? `<div class="payment-hint payment-error" role="alert">${escape(this.error)}</div>` : ""}${content}</div></div><footer class="action-bar payment-actions">${actions}<p class="fineprint">Status comes from your Hop account · ${this.busy ? "Updating…" : "Secure payment handling"}</p></footer>`;
+    // "I’ve paid my Captain" and "Record payment received" are slides (trip steps and money records).
+    enhanceSlides(this.app);
   }
   destroy() {
     this.disposed = true;

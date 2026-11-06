@@ -19,7 +19,8 @@ import { api, APIError } from "../services/client";
 import type { Point, Config, Quote, State, Ride } from "../services/contracts";
 import { playMoment } from "../design/tripMoments";
 import { enhanceSlides } from "../design/slideToConfirm";
-import { enableSwipe } from "../design/swipe";
+import { enableTabSwipe } from "../design/swipe";
+import { riderBeacon, showBeacon, captainBeaconHint, waitClock } from "../design/tripExtras";
 import { escape, money } from "../helpers";
 import type { Coordinate } from "../maps/types";
 import { distanceMeters } from "../maps/motion";
@@ -223,11 +224,7 @@ export class LiveJourney {
     );
     app.addEventListener("submit", this.submit, true);
     app.addEventListener("click", this.click, true);
-    enableSwipe(app, {
-      selector: ".notice-card.is-unread[data-notice-id]",
-      label: "Read",
-      onSwipe: (card) => this.readNotice(card.dataset.noticeId!),
-    });
+    enableTabSwipe(app);
     app.addEventListener("input", this.input, true);
     app.addEventListener("focusin", this.focus, true);
     app.addEventListener("change", this.changeArea, true);
@@ -462,7 +459,12 @@ export class LiveJourney {
     const results = found.filter((p, i) => !found.slice(0, i).some((q) => q.label === p.label && near(p, q)));
     this.results = results;
     this.searchLabel = label;
-    const list = this.app.querySelector("#place-results");
+    const list = this.app.querySelector<HTMLElement>("#place-results");
+    // decorate() calls this every few seconds; rebuild only when the results change, or the rows
+    // replay their slide-in and the list looks like it keeps refreshing (phone test, Nov 2026).
+    const key = JSON.stringify([results.map((p) => p.label), label, loading, this.searchNeedsSignIn, this.searchQuery]);
+    if (list && list.dataset.shown === key && list.childElementCount) return;
+    if (list) list.dataset.shown = key;
     if (list)
       list.innerHTML =
         results
@@ -843,6 +845,17 @@ export class LiveJourney {
     set(".pin-code strong", ride.pickup_code || "Waiting");
     set(".pin-code > span", ride.status === "arrived" ? "Share this code to start" : "Pickup code");
     set('.sheet > button.secondary[data-modal="cancel"]', "Trip details or cancel");
+    // Hop originals: the fair wait clock and the pickup beacon, while the captain waits at the pickup.
+    let extras = sheet.querySelector<HTMLElement>(".hop-trip-extras");
+    if (!extras) {
+      extras = document.createElement("div");
+      extras.className = "hop-trip-extras";
+      const anchor = sheet.querySelector(".pin-code");
+      if (anchor) anchor.after(extras);
+      else sheet.append(extras);
+    }
+    waitClock(extras, ride, "rider");
+    riderBeacon(extras, ride);
   }
   /** A next-ride offer (or held next ride) for a captain who is on a trip. */
   private pendingNext() {
@@ -903,6 +916,13 @@ export class LiveJourney {
       "button,a,[data-go]",
     );
     if (!button) return;
+    if (button.dataset.hopBeacon) {
+      this.stop(event);
+      const ride = this.active();
+      if (button.dataset.hopBeacon === "on" && ride) showBeacon(document.body, ride);
+      else document.querySelector(".hop-beacon")?.remove();
+      return;
+    }
     if (this.app.querySelector("[data-captain-onboarding]")) return;
     if (this.payment) return;
     if (
@@ -1749,7 +1769,25 @@ export class LiveJourney {
         this.app.querySelectorAll<HTMLElement>('.bottom-nav').forEach(el => { el.remove(); });
       }
     }
-    if (this.role === "captain") enhanceSlides(this.app);
+    if (this.role === "captain") {
+      enhanceSlides(this.app);
+      const screenNow = this.bridge.read().screen, ride = this.active();
+      const host = screenNow === "pickup" ? this.app.querySelector(".screen-body > .sheet") : screenNow === "otp" ? this.app.querySelector(".screen-padding") : null;
+      if (host) {
+        let extras = host.querySelector<HTMLElement>(".hop-trip-extras");
+        if (!extras) {
+          extras = document.createElement("div");
+          extras.className = "hop-trip-extras";
+          const anchor = host.querySelector(".tracking-heading, .empty-state");
+          if (anchor) anchor.after(extras);
+          else host.prepend(extras);
+        }
+        waitClock(extras, ride, "captain");
+        captainBeaconHint(extras, ride);
+      }
+      // On the trip the rider is in the vehicle: no Message button (safety and navigation stay).
+      this.app.querySelectorAll<HTMLElement>('.circle-actions [data-go="chat"]').forEach((b) => (b.style.display = screenNow === "trip" ? "none" : ""));
+    }
     this.booking?.render();
     this.account?.render();
     if (this.role === "captain" && this.bridge.read().screen === "onboarding") {
@@ -2411,7 +2449,7 @@ export class LiveJourney {
     const list = shown.map(n => `<article class="notice-card ${!n.read_at ? "is-unread" : ""}" data-notice-id="${escape(n.id)}"><span class="notice-symbol" aria-hidden="true">${icon(n.kind === "chat" ? "chat" : n.kind?.includes("payment") || n.kind?.includes("payout") ? "wallet" : n.kind?.includes("ride") || n.kind?.includes("trip") ? "car" : "bell")}</span><div class="notice-copy"><div class="notice-title"><h2>${escape(n.title)}</h2>${!n.read_at ? '<span class="notice-unread-dot" aria-label="Unread"></span>' : ""}</div><p>${escape(n.body)}</p><time ${n.created_at ? `datetime="${escape(n.created_at)}"` : ""}>${escape(dateLabel(n.created_at))}</time>${!n.read_at ? `<button class="text-button notice-read" data-notice-read="${escape(n.id)}">Mark read</button>` : ""}</div></article>`).join("");
     body.innerHTML = `<div class="notice-toolbar"><div class="tabs" aria-label="Filter notifications"><button data-notice-filter="all" aria-pressed="${this.noticeFilter === "all"}" class="${this.noticeFilter === "all" ? "active" : ""}">All</button><button data-notice-filter="unread" aria-pressed="${this.noticeFilter === "unread"}" class="${this.noticeFilter === "unread" ? "active" : ""}">Unread${unread ? ` (${unread})` : ""}</button></div><button class="text-button" data-action="read-all" ${!unread || this.busy ? "disabled" : ""}>Mark all as read</button></div><section class="notice-list" aria-label="Notifications">${this.noticesLoading ? '<p class="notice-empty" role="status">Loading notifications…</p>' : this.noticesError ? `<div class="notice-empty" role="alert"><p>${escape(this.noticesError)}</p><button class="secondary" data-action="retry-notifications">Try again</button></div>` : list || `<div class="notice-empty">${icon("bell")}<h2>${this.noticeFilter === "unread" ? "You’re all caught up" : "No notifications yet"}</h2><p>Ride updates and account messages will appear here.</p></div>`}</section>${this.alertCard()}`;
   }
-  /** Marks one notification read (swipe right, or its "Mark read" button). */
+  /** Marks one notification read (its "Mark read" button). */
   private async readNotice(id: string) {
     const notice = this.notices.find((n) => n.id === id);
     if (!notice || notice.read_at) return;

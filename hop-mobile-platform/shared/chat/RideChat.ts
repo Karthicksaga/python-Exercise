@@ -148,7 +148,9 @@ export class RideChat {
     const snap = this.snap;
     const name = this.otherName();
     const title = this.app.querySelector(".app-head h1");
-    const heading = this.role === "rider" ? `${name} · your captain` : `${name} · your rider`;
+    const fallback = this.role === "rider" ? "Your captain" : "Your rider";
+    // No name yet → just "Your captain", not "Your captain · your captain".
+    const heading = name === fallback ? fallback : `${name} · ${fallback.toLowerCase()}`;
     if (title && title.textContent !== heading) title.textContent = heading;
 
     let html = "";

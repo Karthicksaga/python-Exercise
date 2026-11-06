@@ -10,10 +10,15 @@ const phones = [
   ["small", { width: 360, height: 760 }],
   ["large", { width: 412, height: 915 }],
 ];
+const go = (screen) => async (page) => page.evaluate((s) => window.prototypeBridge.go(s), screen);
 const screens = [
   { role: "rider", port: 5183, name: "home", open: async () => {} },
   { role: "rider", port: 5183, name: "route", open: async (page) => page.getByRole("button", { name: "Where are you going?" }).click() },
+  ...["activity", "wallet", "account", "saved", "family", "preferences", "notifications", "personal", "support", "safety", "rewards", "plan", "privacy"]
+    .map((name) => ({ role: "rider", port: 5183, name, open: go(name) })),
   { role: "captain", port: 5184, name: "drive", open: async () => {} },
+  ...["activity", "earnings", "account", "tools", "preferences", "vehicle", "notifications", "personal", "support", "insights", "safety", "ledger"]
+    .map((name) => ({ role: "captain", port: 5184, name, open: go(name) })),
 ];
 
 for (const [size, viewport] of phones)

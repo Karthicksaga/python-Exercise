@@ -59,7 +59,7 @@ test('ride planning has one anchored action and clear trip options on a short ph
 });
 
 for (const [role, port] of [['rider',5183],['captain',5184]]) {
- test(`${role} swipes a notification right to mark just that one read`, async ({page}) => {
+ test(`${role} swipes between notification tabs and marks one notification read`, async ({page}) => {
   await page.setViewportSize({width:390,height:844});
   const reads=[];
   await page.route('https://**',r=>r.abort());
@@ -69,22 +69,22 @@ for (const [role, port] of [['rider',5183],['captain',5184]]) {
   await page.route('**/api/config',r=>r.fulfill({json:{areas:[],vehicles:[],development:true}}));
   await page.route('**/api/companion',r=>r.fulfill({json:{notifications:[
    {id:'a',kind:'ride',title:'First',body:'One',created_at:new Date().toISOString(),read_at:null},
-   {id:'b',kind:'ride',title:'Second',body:'Two',created_at:new Date().toISOString(),read_at:null}
+   {id:'b',kind:'ride',title:'Second',body:'Two',created_at:new Date().toISOString(),read_at:'2026-10-28T09:00:00Z'}
   ]}}));
   await page.route('**/api/notifications/read',r=>{reads.push(r.request().postDataJSON());return r.fulfill({json:{ok:true}});});
   await page.goto(`http://127.0.0.1:${port}/`);
   await page.getByRole('button',{name:'Notifications',exact:true}).click();
-  const card=page.locator('.notice-card[data-notice-id="a"]');
-  const box=await card.boundingBox();
-  await page.mouse.move(box.x+30,box.y+box.height/2);
-  await page.mouse.down();
-  await page.mouse.move(box.x+box.width-10,box.y+box.height/2,{steps:10});
-  await page.mouse.up();
-  await expect.poll(()=>reads).toEqual([{id:'a'}]);
-  await expect(page.locator('.notice-card.is-unread')).toHaveCount(1);
+  await expect(page.locator('.notice-card')).toHaveCount(2);
+  const swipe=async(from,to)=>{const box=await page.locator('.notice-list').boundingBox();const y=box.y+40;await page.mouse.move(from,y);await page.mouse.down();await page.mouse.move(to,y,{steps:6});await page.mouse.up();};
+  await swipe(320,60); // swipe left → next tab (Unread)
+  await expect(page.locator('[data-notice-filter="unread"]')).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('.notice-card')).toHaveCount(1);
+  await swipe(60,320); // swipe right → back to All
+  await expect(page.locator('[data-notice-filter="all"]')).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('.notice-card')).toHaveCount(2);
+  expect(reads).toEqual([]);
   await page.getByRole('button',{name:'Mark read',exact:true}).click();
-  await expect.poll(()=>reads.length).toBe(2);
-  expect(reads[1]).toEqual({id:'b'});
+  await expect.poll(()=>reads).toEqual([{id:'a'}]);
   await expect(page.locator('.notice-card.is-unread')).toHaveCount(0);
  });
 }

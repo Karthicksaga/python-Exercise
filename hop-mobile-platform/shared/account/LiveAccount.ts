@@ -231,7 +231,7 @@ export class LiveAccount {
       // of cash trips, instead of a bare ₹0 next to an always-on payout button.
       const balance = data ? Number(data.balance_paise || 0) : undefined;
       const today = this.get("/api/drivers/earnings")?.summary;
-      html += `<section class="live-ledger-hero"><span class="live-eyebrow">TO PAY OUT</span><strong>${balance === undefined ? "—" : money(balance / 100)}</strong><p>${balance && balance > 0 ? "From online and wallet rides. Request it and Hop sends it to your payout account." : "Online and wallet fares collect here. Cash you take from riders is already yours."}</p>${balance && balance > 0 ? `<button class="primary" data-modal="payout">Request payout</button>` : ""}</section>`;
+      html += `<section class="live-ledger-hero"><span class="live-eyebrow">TO PAY OUT</span><strong>${balance === undefined ? "—" : money(balance / 100)}</strong><p>${balance && balance > 0 ? "From online and wallet rides. Request it and Hop sends it to your payout account." : "Online and wallet fares collect here. Cash you take from riders is already yours."}</p></section>${balance && balance > 0 ? `<button class="primary" data-dock data-modal="payout">Request payout of ${money(balance / 100)}</button>` : ""}`;
       if (today)
         html += `<div class="live-ledger-today"><div><span>Earned today</span><strong>${money(today.today_fare_paise / 100)}</strong></div><div><span>Trips today</span><strong>${today.today_completed_trips}</strong></div></div>`;
     }
@@ -380,8 +380,34 @@ export class LiveAccount {
       if (this.cache.has(path)) void this.load(path);
     }
   }
+  private openPhotoSheet() {
+    this.app.querySelector(".hop-photo-sheet")?.remove();
+    const sheet = document.createElement("div");
+    sheet.className = "hop-photo-sheet";
+    sheet.innerHTML = `<div class="panel" role="dialog" aria-modal="true" aria-label="Profile photo"><strong>Profile photo</strong><p>A clear photo of your face helps your ${this.role === "rider" ? "captain" : "rider"} recognise you at pickup.</p><button type="button" class="primary" data-photo-pick="camera">${icon("camera", "tiny-icon")} Take a photo</button><button type="button" class="secondary" data-photo-pick="gallery">Choose from gallery</button><button type="button" class="text-button" data-photo-pick="cancel">Cancel</button><input type="file" accept="image/*" capture="user" data-account-photo hidden aria-hidden="true"/></div>`;
+    this.app.append(sheet);
+    sheet.querySelector<HTMLElement>("[data-photo-pick]")?.focus();
+  }
+  /** Sub-pages keep their main action docked at the bottom, never mid-page (Nov 2026 button system). */
+  private dock() {
+    const el = this.app.querySelector<HTMLElement>(".screen-body [data-dock]");
+    if (!el || el.closest(".modal-sheet")) return;
+    const body = this.app.querySelector(".screen-body");
+    let bar = this.app.querySelector<HTMLElement>("footer.action-bar[data-docked]");
+    if (!bar) {
+      bar = document.createElement("footer");
+      bar.className = "action-bar";
+      bar.dataset.docked = "";
+      body?.after(bar);
+    }
+    bar.replaceChildren(el);
+  }
   private statusScreen = "";
   render(force = false) {
+    this.renderPage(force);
+    this.dock();
+  }
+  private renderPage(force = false) {
     this.dropStaleMoney();
     const ui = this.bridge.read(),
       screen = ui.screen,
@@ -489,7 +515,7 @@ export class LiveAccount {
               : "Verify mobile ownership in Personal details";
           if (avatar && p.has_photo && p.id && !avatar.querySelector("img")) {
             avatar.setAttribute("style", "overflow:hidden;padding:0");
-            avatar.innerHTML = `<img src="/api/profile/photo/${encodeURIComponent(p.id)}" alt="${escape(p.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.remove()"/>`;
+            avatar.innerHTML = `<img src="/api/profile/photo/${encodeURIComponent(p.id)}" alt="${escape(p.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement && (this.parentElement.textContent = this.alt.trim().charAt(0).toUpperCase())"/>`;
           }
         }
       }
@@ -551,7 +577,7 @@ export class LiveAccount {
       const avatarHtml = this.photo
         ? `<img src="data:image/jpeg;base64,${this.photo}" alt="${escape(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`
         : p.has_photo && p.id
-          ? `<img src="/api/profile/photo/${encodeURIComponent(p.id)}" alt="${escape(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.remove()"/>`
+          ? `<img src="/api/profile/photo/${encodeURIComponent(p.id)}" alt="${escape(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement && (this.parentElement.textContent = this.alt.trim().charAt(0).toUpperCase())"/>`
           : avatarChar;
 
       const phoneDetail = `${p.phone || "Not set"} · ${p.phone_verified ? "Verified" : "Unverified"}`;
@@ -693,7 +719,7 @@ export class LiveAccount {
       const art = categoryNames[category]
         ? `<img src="./assets/${category}.png" alt="" draggable="false"/>`
         : icon("car");
-      body = `<div class="live-vehicle-page"><section class="live-vehicle-card"><div class="live-vehicle-art">${art}</div><div><span class="live-eyebrow">YOUR VEHICLE${categoryNames[category] ? ` · ${categoryNames[category].toUpperCase()}` : ""}</span><h2>${escape(vehicleName)}</h2><span class="live-vehicle-plate">${escape(vehicleNumber)}</span></div></section><div class="live-status-card"><span><small>APPLICATION STATUS</small><strong>${escape(status.replaceAll("_", " "))}</strong></span><span class="badge ${status === "approved" ? "green" : "neutral"}">${escape(status.replaceAll("_", " "))}</span></div><div class="live-page-intro live-doc-intro"><h2>Vehicle & documents</h2><p>Review your submitted information and private documents.</p></div><section class="live-card-group">${documentRow("Driving licence", driver?.license_expires ? `Expires ${escape(driver.license_expires.slice(0, 10))}` : "Expiry date not supplied", "file")}${documentRow("Registration certificate", driver?.vehicle_number ? "Submitted with your application" : "Not supplied", "file")}${documentRow("Vehicle insurance", driver?.insurance_expires ? `Expires ${escape(driver.insurance_expires.slice(0, 10))}` : "Expiry date not supplied", "shield")}</section><button class="live-vehicle-action primary" data-go="onboarding">View application & private documents</button><p class="live-page-note">Vehicle changes and document approvals are reviewed by the operator.</p></div>`;
+      body = `<div class="live-vehicle-page"><section class="live-vehicle-card"><div class="live-vehicle-art">${art}</div><div><span class="live-eyebrow">YOUR VEHICLE${categoryNames[category] ? ` · ${categoryNames[category].toUpperCase()}` : ""}</span><h2>${escape(vehicleName)}</h2><span class="live-vehicle-plate">${escape(vehicleNumber)}</span></div></section><div class="live-status-card"><span><small>APPLICATION STATUS</small><strong>${escape(status.replaceAll("_", " ").replace(/^./, (c: string) => c.toUpperCase()))}</strong></span>${status === "approved" ? `<span class="badge green">✓ Ready to drive</span>` : ""}</div><div class="live-page-intro live-doc-intro"><h2>Vehicle & documents</h2><p>Review your submitted information and private documents.</p></div><section class="live-card-group">${documentRow("Driving licence", driver?.license_expires ? `Expires ${escape(driver.license_expires.slice(0, 10))}` : "Expiry date not supplied", "file")}${documentRow("Registration certificate", driver?.vehicle_number ? "Submitted with your application" : "Not supplied", "file")}${documentRow("Vehicle insurance", driver?.insurance_expires ? `Expires ${escape(driver.insurance_expires.slice(0, 10))}` : "Expiry date not supplied", "shield")}</section><button class="live-vehicle-action primary" data-dock data-go="onboarding">View application & private documents</button><p class="live-page-note">Vehicle changes and document approvals are reviewed by the operator.</p></div>`;
     }
     else if (key === "rewards") {
       const referral = data?.referral?.[0] || {};
@@ -714,7 +740,7 @@ export class LiveAccount {
               `<div class="section-card"><strong>${escape(m.name)}</strong><p>${escape(m.status)}</p>${m.status === "pending" && m.role === "member" ? `<button class="secondary" data-account-family-accept="${escape(m.id)}">Accept invitation</button>` : ""}<button class="text-button" data-account-family-delete="${escape(m.id)}">Remove</button></div>`,
           )
           .join("") +
-        `<button class="secondary" data-modal="family-invite">Invite family member</button><div class="section-label">Favourite captains</div>` +
+        `<button class="primary" data-dock data-modal="family-invite">Invite family member</button><div class="section-label">Favourite captains</div>` +
         ((data?.favorite_drivers || []).length === 0
           ? `<div class="family-empty-card compact"><span class="family-empty-icon">${icon("car")}</span><strong>No favourites yet</strong><p>Captains you save after a ride will appear here.</p></div>`
           : "") +
@@ -805,7 +831,7 @@ export class LiveAccount {
         `<input class="text-input" id="account-location-label" placeholder="e.g. Home, Work, Gym, Central Café" maxlength="40"/>` +
         `<label class="field-label" for="account-location-address" style="margin-top:12px">Destination address</label>` +
         `<input class="text-input" id="account-location-address" placeholder="${liveDest ? escape(liveDest.label) : "Select destination in search or enter address"}" value="${liveDest ? escape(liveDest.label) : ""}"/>` +
-        `<button class="primary" data-account-action="save-location" style="margin-top:16px;width:100%;min-height:48px" ${this.busy ? "disabled" : ""}>${this.busy ? "Saving…" : "Save destination"}${icon("arrow")}</button>` +
+        `<button class="primary" data-dock data-account-action="save-location" ${this.busy ? "disabled" : ""}>${this.busy ? "Saving…" : "Save destination"}${icon("arrow")}</button>` +
         `</div>` +
         `<div class="notice-box" style="margin-top:16px">Choose a real address on the booking search, or enter your destination above to save it for quick booking.</div>`;
     } else if (key === "add-place") {
@@ -1238,6 +1264,7 @@ export class LiveAccount {
     const el = e.target as HTMLInputElement;
     if (!el.hasAttribute("data-account-photo") || !el.files?.[0]) return;
     const file = el.files[0];
+    this.app.querySelector(".hop-photo-sheet")?.remove();
     void (async () => {
       if (
         (file.type && !/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type)) ||
@@ -1309,7 +1336,21 @@ export class LiveAccount {
     if (portraitBtn) {
       e.preventDefault();
       e.stopImmediatePropagation();
-      this.app.querySelector<HTMLInputElement>("input[data-account-photo]")?.click();
+      this.openPhotoSheet();
+      return;
+    }
+    // One photo sheet for Rider and Captain: take a photo or choose one from the gallery.
+    const pick = (e.target as Element).closest<HTMLElement>("[data-photo-pick], .hop-photo-sheet");
+    if (pick) {
+      const how = pick.dataset.photoPick;
+      if (how === "camera") this.app.querySelector<HTMLInputElement>(".hop-photo-sheet input[capture]")?.click();
+      else if (how === "gallery") {
+        this.app.querySelector(".hop-photo-sheet")?.remove();
+        this.app.querySelector<HTMLInputElement>(".screen-body input[data-account-photo]")?.click();
+      } else if (how === "cancel" || pick.classList.contains("hop-photo-sheet")) this.app.querySelector(".hop-photo-sheet")?.remove();
+      else return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
       return;
     }
 

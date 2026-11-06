@@ -22,3 +22,5 @@ Proposals, reviews and recommendations for Hop. These are things suggested, not 
 | 2026-11-05 | [Payments, SMS and calling, after approval](../hop-platform/docs/PROVIDERS-PENDING.md) | On hold until product approval |
 | 2026-11-05 | [Compact UI redesign (Rider + Captain)](2026-11-05-compact-ui-redesign.md) | Partly built |
 | 2026-11-05 | [UX review of the compact redesign](2026-11-05-ux-review-compact-redesign.md) | Proposed |
+| 2026-11-06 | [Button placement audit](2026-11-06-button-placement-audit.md) | Approved and built |
+| 2026-11-06 | [Hop originals: UX innovations](2026-11-06-hop-originals.md) | Approved; phase 1 built |

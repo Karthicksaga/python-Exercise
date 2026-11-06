@@ -97,6 +97,7 @@ Products are off until an operator sets them: `POST /api/operator/trip-pricing` 
 - `POST /api/drivers/goal` `{daily_goal_paise}` sets the daily earnings goal.
 - `GET /api/drivers/demand` cells now include `drivers` (online drivers in the same ~1 km cell).
 - Rides include `wait_charge_paise`; `driver` state includes `home_until`, `home_uses`, `daily_goal_paise`.
+- Rides with status `arrived` include `arrived_at` (the captain's "arrived" time). The free wait is 3 min, then ₹2/min up to ₹100 (`waitChargeSQL`), so both apps can show the same clock.
 # Trust, onboarding and trip statements (migration 031)
 
 All endpoints below use existing session authorization; POSTs require the existing CSRF token and approved Origin. Responses are private/no-store. Android uses the existing native authenticated JSON transport.

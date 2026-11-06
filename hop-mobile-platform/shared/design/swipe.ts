@@ -1,62 +1,68 @@
-// Swipe a list card sideways to act on it (Nov 2026: swipe right marks a notification read).
-// One delegated listener per root, so cards the renderer redraws keep working. Vertical scrolling
-// stays with the browser (touch-action: pan-y on the cards); a mostly-vertical drag never swipes.
-// Styles: animations.css, "Swipe to act".
+// Swipe between tabs (Nov 2026 phone test): on any screen with a tab bar (Activity / Trips:
+// Ongoing · Upcoming · Past, Notifications: All · Unread, Earnings: Today · This week…), a sideways
+// swipe on the page moves to the neighbouring tab, like flicking between pages.
+// Swipe left → next tab, swipe right → previous tab. The tab's own click handler does the work, so
+// every screen keeps its existing behaviour. Maps, sliders, inputs and sideways-scrolling rows keep
+// their own gestures. Touch events are used because Android cancels pointer events once it starts
+// scrolling; the mouse path is for desktop testing. Styles: animations.css, "Swipe between tabs".
 
-type Options = { selector: string; label: string; onSwipe: (card: HTMLElement) => void | Promise<void> };
-const attached = new WeakMap<HTMLElement, Options[]>();
+const IGNORE = "input, textarea, select, .leaflet-container, .hop-map-canvas, .hop-slide, [data-no-tab-swipe]";
 
-export function enableSwipe(root: HTMLElement, options: Options) {
-  const list = attached.get(root);
-  if (list) {
-    if (!list.some((o) => o.selector === options.selector)) list.push(options);
-    return;
-  }
-  attached.set(root, [options]);
-  let card: HTMLElement | null = null, opts: Options | undefined, startX = 0, startY = 0, dx = 0, decided = false, swiping = false;
-  const reset = (el: HTMLElement) => {
-    el.classList.remove("hop-swiping");
-    el.style.removeProperty("--swipe-x");
-  };
-  root.addEventListener("pointerdown", (e) => {
-    const target = e.target as Element;
-    for (const o of attached.get(root) || []) {
-      const hit = target.closest<HTMLElement>(o.selector);
-      if (hit && !target.closest("button, a, input")) {
-        card = hit; opts = o; startX = e.clientX; startY = e.clientY; dx = 0; decided = false; swiping = false;
-        hit.dataset.swipeLabel = o.label;
-        return;
-      }
+function tabBar(root: HTMLElement): HTMLElement[] {
+  const bar = [...root.querySelectorAll<HTMLElement>(".screen-body .tabs")].find((el) => el.offsetParent !== null && !el.closest(".modal-sheet"));
+  return bar ? [...bar.querySelectorAll<HTMLElement>(":scope > button")].filter((b) => !(b as HTMLButtonElement).disabled) : [];
+}
+
+function activeIndex(tabs: HTMLElement[]) {
+  return tabs.findIndex(
+    (t) => t.classList.contains("active") || t.getAttribute("aria-selected") === "true" || t.getAttribute("aria-pressed") === "true",
+  );
+}
+
+/** True when the gesture starts inside something that scrolls sideways on its own. */
+function scrollsSideways(el: Element | null, root: HTMLElement) {
+  for (let node = el; node && node !== root; node = node.parentElement)
+    if (node instanceof HTMLElement && node.scrollWidth > node.clientWidth + 2 && /auto|scroll/.test(getComputedStyle(node).overflowX)) return true;
+  return false;
+}
+
+export function enableTabSwipe(root: HTMLElement) {
+  if (root.dataset.tabSwipe) return;
+  root.dataset.tabSwipe = "1";
+  let start: { x: number; y: number; t: number } | null = null;
+  const begin = (x: number, y: number, target: EventTarget | null) => {
+    const el = target as Element | null;
+    if (!el?.closest?.(".screen-body") || el.closest(IGNORE) || scrollsSideways(el, root) || root.querySelector(".modal-sheet")) {
+      start = null;
+      return;
     }
-  });
-  root.addEventListener("pointermove", (e) => {
-    if (!card) return;
-    const x = e.clientX - startX, y = e.clientY - startY;
-    if (!decided) {
-      if (Math.abs(x) < 8 && Math.abs(y) < 8) return;
-      decided = true;
-      swiping = x > 0 && Math.abs(x) > Math.abs(y) * 1.5;
-      if (!swiping) { card = null; return; }
-      card.setPointerCapture?.(e.pointerId);
-      card.classList.add("hop-swiping");
-    }
-    dx = Math.max(0, x);
-    card.style.setProperty("--swipe-x", `${dx}px`);
-  });
-  const end = () => {
-    const el = card, o = opts;
-    card = null;
-    // The click that follows this pointerup is swallowed below; later taps must not be.
-    setTimeout(() => { swiping = false; }, 0);
-    if (!el || !swiping || !o) return;
-    if (dx > Math.min(120, el.offsetWidth * 0.35)) {
-      el.classList.add("hop-swiped");
-      navigator.vibrate?.(15);
-      void Promise.resolve(o.onSwipe(el)).finally(() => { el.classList.remove("hop-swiped"); reset(el); });
-    } else reset(el);
+    start = { x, y, t: Date.now() };
   };
-  root.addEventListener("pointerup", end);
-  root.addEventListener("pointercancel", end);
-  // A swipe that started on a card must not also count as a tap on it.
-  root.addEventListener("click", (e) => { if (swiping && dx > 8) { e.stopPropagation(); swiping = false; } }, true);
+  const finish = (x: number, y: number) => {
+    if (!start) return;
+    const dx = x - start.x, dy = y - start.y, quick = Date.now() - start.t < 700;
+    start = null;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6 || !quick) return;
+    const tabs = tabBar(root);
+    const current = activeIndex(tabs);
+    if (current < 0) return;
+    const next = current + (dx < 0 ? 1 : -1);
+    if (next < 0 || next >= tabs.length) return;
+    tabs[next].click();
+    navigator.vibrate?.(8);
+    // The tab redraws its content; slide the new content in from the side it came from.
+    requestAnimationFrame(() => {
+      const panel = root.querySelector<HTMLElement>(".screen-body .screen-padding") || root.querySelector<HTMLElement>(".screen-body");
+      if (!panel || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      panel.classList.remove("hop-tab-in-left", "hop-tab-in-right");
+      void panel.offsetWidth;
+      panel.classList.add(dx < 0 ? "hop-tab-in-right" : "hop-tab-in-left");
+      setTimeout(() => panel.classList.remove("hop-tab-in-left", "hop-tab-in-right"), 320);
+    });
+  };
+  root.addEventListener("touchstart", (e) => e.touches.length === 1 ? begin(e.touches[0].clientX, e.touches[0].clientY, e.target) : (start = null), { passive: true });
+  root.addEventListener("touchend", (e) => { const t = e.changedTouches[0]; if (t) finish(t.clientX, t.clientY); }, { passive: true });
+  root.addEventListener("touchcancel", () => (start = null), { passive: true });
+  root.addEventListener("pointerdown", (e) => { if (e.pointerType === "mouse") begin(e.clientX, e.clientY, e.target); });
+  root.addEventListener("pointerup", (e) => { if (e.pointerType === "mouse") finish(e.clientX, e.clientY); });
 }

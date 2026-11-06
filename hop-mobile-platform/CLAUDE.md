@@ -141,11 +141,40 @@ HOP_E2E_OPERATOR_PHONE=… npm run test:e2e:staging          # the same two test
   - The notifications screen shows the real state (on / off in settings / not asked) from `notificationStatus()`.
   - If Android has blocked alerts, the button opens Hop's notification settings (`HopPushGuard.openSettings`, both apps).
   - Errors show their real message instead of the generic "Stay in the loop" sheet.
-- **Swipe right to read** (`shared/design/swipe.ts`, reusable): marks one notification read through `POST /api/notifications/read {"id"}` (new optional field). Every unread card also has a "Mark read" button for keyboard and screen-reader users.
+- **Swipe between tabs** (`shared/design/swipe.ts`, `enableTabSwipe`): on any screen with a `.tabs` bar (Activity/Trips, Notifications, Earnings periods) a sideways swipe clicks the neighbouring tab (left → next, right → previous) and the new content slides in. Maps, sliders, inputs and sideways-scrolling rows keep their own gestures. Touch events, since Android cancels pointer events once it scrolls.
+- **Mark one notification read:** each unread card has a "Mark read" button → `POST /api/notifications/read {"id"}` (new optional field).
 - **Nearby captains** show on the rider map only while booking, not on the home screen (`PrototypeMap.browsingHome`).
 - **Rider home (compact redesign):** a slim search bar under the header, and four tiles (Home, Work, Rental, Outstation) plus the usual ride in the sheet. Home and Work keep the saved address in their accessible name. Trip types are still also in "Plan a ride".
 - **Razorpay:** the checkout pre-fills the verified mobile (falls back to `/api/profile` when the order has none). `ViewportController` doesn't resize the app while the checkout iframe has focus, which dropped the keyboard after each digit.
 - **Captain ledger:** a "To pay out" hero that explains cash is already the captain's, today's earnings and trips, an activity list, and a payout button only when there is a balance.
+
+## UI polish pass (Nov 2026, all 44 screens reviewed at phone size)
+- Chat: the message box fills the bar. The header says "Your captain" (not "Your captain · your captain") until a name is known.
+- Error notes (`.notice-box[role=alert|status]`): readable text with a normal-size button, not a full-width one.
+- Captain Drive sheet: the city is a quiet outlined chip and the headline is 22 px.
+- Trip cards: "Book again", then one even row of Receipt · Report an issue · Statement. Addresses clamp to two lines.
+- Vehicle & documents: status "Approved" with a "✓ Ready to drive" badge (it used to repeat "approved"). Profile photos that fail to load fall back to the initial.
+- Online switch shows only the toggle under 360 px wide, or with large text under 400 px (its text stays the accessible name).
+- `npm run test:audit` now covers 27 screens (13 rider, 14 captain incl. home/route/drive) at 360 and 412 px.
+
+## Approved prototype, phase 1 (Nov 2026; prototype https://claude.ai/artifact/SSuyWApGcrtBFFugtqA1r1)
+- **Button system** (`animations.css`, "Button system"):
+  - The bottom `.action-bar` is flat and edge to edge. Its `.primary` or slide runs full-bleed on the bottom edge (60 px + safe area, square corners).
+  - Notes, the fare line and small text actions sit above it (`order`).
+  - Sub-page main actions are docked there, not mid-page: mark the button `data-dock` and `LiveAccount.dock()` moves it. Used by Saved places "Save destination", Your people "Invite family member", Vehicle "View application…" and Ledger "Request payout of ₹…".
+- **Slides** (`slideToConfirm.ts`, `SLIDES`) cover every trip step and money record:
+  - Accept (70%), I've arrived, Start trip, Complete trip, captain "Record payment received" (it records at once; the old "Yes, payment received" step is gone), rider "I've paid my Captain".
+  - `LivePayment.render` calls `enhanceSlides`. Tests confirm with `.press("Enter")`.
+- **On the trip:** the rider has no Call or Message (CSS on `.live-trip-sheet[data-phase="in_progress"]`), and the captain's trip screen hides Message. Safety, Share and navigation stay.
+- **Hop originals** (`shared/design/tripExtras.ts`):
+  - **Fair wait clock:** rider tracking, captain pickup and code screens show the same countdown from `ride.arrived_at` (new in `/api/state` for `arrived` rides). It uses the server's rule: 3 min free, then ₹2/min up to ₹100 (`waitChargeSQL`).
+  - **Pickup beacon:** the rider's "Light up my phone" fills the screen with a colour picked from the ride id (`beaconFor`). The overlay sits on `<body>` so redraws don't remove it. The captain sees "Look for a teal phone".
+  - **Fare story:** on the payment page, built from `quoted_fare_paise`, `wait_charge_paise`, `adjusted_from_paise`/`covered_meters` (early finish), `discount_paise` and `payable_paise`.
+- **Profile photo:** one sheet for both apps (`LiveAccount.openPhotoSheet`): Take a photo (`capture="user"`) or Choose from gallery.
+- **Still to build:**
+  - Phase 2: the remaining "when things go wrong" screens, ride notes.
+  - Phase 3: language bridge, voice destination, chai break, Home by 9 pm, arrival alert, SMS backup.
+  - The Captain onboarding portrait keeps its own camera step.
 
 ## Finding things cheaply
 - Find a screen with `grep -n "<screen-id>" ../hop-platform/prototypes/mobile-first/app.js`, then read only that range.

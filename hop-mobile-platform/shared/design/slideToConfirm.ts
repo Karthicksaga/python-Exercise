@@ -1,11 +1,21 @@
-// Slide to confirm (Nov 2026 compact redesign, approved): the Captain slides to accept a ride and to
-// complete a trip, so a pocket tap or a bump on the road can't do either.
+// Slide to confirm (Nov 2026 redesign, approved): trip steps and money records are slid, not tapped,
+// so a pocket tap or a bump on the road can't trigger them.
 // The renderer's own button becomes the knob, so every existing handler, its accessible name
 // ("Accept ride", "Complete trip") and keyboard use stay the same: Enter or Space confirms at once.
 // A pointer tap without a slide is stopped before any handler sees it and just nudges the knob.
 // Styles are in animations.css under "Slide to confirm".
 
-const SELECTOR = '.action-bar button[data-action="accept"], .action-bar button[data-action="complete-trip"]';
+// Every trip step and money record is a slide (approved Nov 2026 prototype). Saving, Continue and
+// Done stay normal taps; SOS stays one tap.
+const SLIDES: { sel: string; text: string; green?: boolean; at?: number }[] = [
+  { sel: '[data-action="accept"]', text: "Slide to accept", green: true, at: 0.7 },
+  { sel: '[data-action="arrive"]', text: "Slide when you’ve arrived" },
+  { sel: '[data-action="start-trip"]', text: "Slide to start trip" },
+  { sel: '[data-action="complete-trip"]', text: "Slide to complete trip" },
+  { sel: '[data-live-pay="cash"]', text: "Slide when cash is received", green: true },
+  { sel: '[data-live-pay="cash-paid"]', text: "Slide when you’ve paid", green: true },
+];
+const SELECTOR = SLIDES.map((s) => `.action-bar button${s.sel}`).join(", ");
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 let allowClick = false;
 let installed = false;
@@ -34,21 +44,22 @@ export function enhanceSlides(root: HTMLElement) {
 
 function build(button: HTMLButtonElement) {
   if (button.dataset.slideConfirm) return;
-  const accept = button.dataset.action === "accept";
-  const name = (button.textContent || "").trim() || (accept ? "Accept ride" : "Complete trip");
+  const conf = SLIDES.find((s) => button.matches(s.sel))!;
+  const accept = !!conf.green;
+  const name = (button.textContent || "").trim() || conf.text;
   const track = document.createElement("div");
   track.className = `hop-slide ${accept ? "hop-slide-accept" : ""}`;
-  track.innerHTML = `<i class="hop-slide-fill" aria-hidden="true"></i><span class="hop-slide-text" aria-hidden="true">${accept ? "Slide to accept" : "Slide to complete trip"}</span>`;
+  track.innerHTML = `<i class="hop-slide-fill" aria-hidden="true"></i><span class="hop-slide-text" aria-hidden="true">${conf.text}</span>`;
   button.before(track);
   track.append(button);
   button.dataset.slideConfirm = "1";
   button.setAttribute("aria-label", name);
-  button.title = `${accept ? "Slide to accept" : "Slide to complete"}, or press Enter`;
+  button.title = `${conf.text}, or press Enter`;
   button.classList.add("hop-slide-knob");
   button.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
 
   // Accepting is on a 15 s timer, so it completes a little earlier than ending a trip.
-  const threshold = accept ? 0.7 : 0.85;
+  const threshold = conf.at ?? 0.85;
   let start = 0, x = 0, max = 0, dragging = false;
   const place = (value: number, animate: boolean) => {
     x = value;
@@ -58,7 +69,7 @@ function build(button: HTMLButtonElement) {
   };
   button.addEventListener("pointerdown", (event) => {
     if (button.disabled || track.classList.contains("hop-slide-done")) return;
-    max = track.clientWidth - button.offsetWidth - 8;
+    max = track.clientWidth - button.offsetWidth - button.offsetLeft * 2;
     start = event.clientX - x;
     dragging = true;
     button.setPointerCapture?.(event.pointerId);

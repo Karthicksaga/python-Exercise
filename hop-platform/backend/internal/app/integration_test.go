@@ -276,6 +276,11 @@ func TestProfileSavedLocationsAndRideRatings(t *testing.T) {
 	rideID := f.book(rider, f.quote(rider))
 	require(t, f.act(driver, rideID, "accept", 1, ""), 200)
 	require(t, f.act(driver, rideID, "arrive", 2, ""), 200)
+	// Both apps show the same free-wait clock, counted from this arrival time.
+	_, arrived := f.call(rider, "GET", "/api/state", nil)
+	if at, _ := arrived["rides"].([]any)[0].(map[string]any)["arrived_at"].(string); at == "" {
+		t.Fatalf("arrived ride has no arrived_at: %#v", arrived["rides"])
+	}
 	require(t, f.act(driver, rideID, "start", 3, f.s.pin(rideID)), 200)
 	f.atDestination(driver, rideID)
 	require(t, f.act(driver, rideID, "complete", 4, ""), 200)

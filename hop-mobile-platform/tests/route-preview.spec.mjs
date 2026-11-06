@@ -216,11 +216,14 @@ test.describe("Premium Animated Route Preview & Action Bar Polish", () => {
     expect(requestBox).toBeTruthy();
     expect(fineBox).toBeTruthy();
 
-    // Price button and Request button are side-by-side on the first row
-    expect(Math.abs(priceBox.y - requestBox.y)).toBeLessThan(15);
-    // Fineprint is below the action button
-    expect(fineBox.y).toBeGreaterThanOrEqual(requestBox.y + requestBox.height - 2);
-    // Fineprint has wide width (spanning across the container)
+    // Approved button system (Nov 2026): the fare line and fineprint sit above, and the Request
+    // button runs full width on the bottom edge with no side gaps.
+    const barBox = await actionBar.boundingBox();
+    expect(priceBox.y + priceBox.height).toBeLessThanOrEqual(requestBox.y + 1);
+    expect(fineBox.y + fineBox.height).toBeLessThanOrEqual(requestBox.y + 1);
+    expect(Math.abs(requestBox.x - barBox.x)).toBeLessThan(1);
+    expect(Math.abs(requestBox.width - barBox.width)).toBeLessThan(1);
+    expect(Math.abs(requestBox.y + requestBox.height - (barBox.y + barBox.height))).toBeLessThan(1);
     expect(fineBox.width).toBeGreaterThan(200);
   });
 

@@ -460,13 +460,13 @@ test("Captain pickup code is validated by the backend before the trip starts", a
   await page.goto("http://127.0.0.1:5184");
   await expect(page.locator(".pin-entry")).toBeVisible();
   for (let i = 0; i < 6; i++) await page.locator(`#pin-${i}`).fill("3");
-  await page.getByRole("button", { name: "Verify & start ride" }).click();
+  await page.getByRole("button", { name: "Verify & start ride" }).press("Enter");
   await expect.poll(() => attempts.length).toBe(1);
   await expect(page.locator(".pin-entry")).toBeVisible();
   expect(phase).toBe("arrived");
   for (const [i, digit] of [..."901234"].entries())
     await page.locator(`#pin-${i}`).fill(digit);
-  await page.getByRole("button", { name: "Verify & start ride" }).click();
+  await page.getByRole("button", { name: "Verify & start ride" }).press("Enter");
   await expect(
     page.getByRole("heading", { name: "On trip", exact: true }),
   ).toBeVisible();

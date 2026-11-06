@@ -51,6 +51,16 @@ export type Ride = {
   next_ride?: boolean;
   next_ride_eta_seconds?: number;
   reserved_driver_name?: string;
+  /** Fare story (payment page): the quoted price, waiting charge, early-finish adjustment and distance. */
+  quoted_fare_paise?: number;
+  wait_charge_paise?: number;
+  adjusted_from_paise?: number | null;
+  covered_meters?: number | null;
+  discount_paise?: number;
+  meters?: number;
+  seconds?: number;
+  /** When the captain marked "arrived"; both apps count the free wait from here. */
+  arrived_at?: string | null;
 };
 export type State = {
   saved_locations?: (Point & { kind: string; place_label: string })[];
