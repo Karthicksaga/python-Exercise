@@ -107,6 +107,11 @@ test("nearby vehicles come only from the backend and disappear from the map when
   );
   await page.route("**/api/nearby?*", (r) => r.fulfill({ json: { drivers } }));
   await page.goto(base);
+  // Riders see nearby captains only while booking (Nov 2026), not on the home map.
+  await expect(page.locator(".hop-map-canvas")).toBeVisible();
+  await page.waitForTimeout(2500);
+  await expect(page.locator(".leaflet-marker-icon")).toHaveCount(0);
+  await page.evaluate(() => window.prototypeBridge.go("choose"));
   await expect(page.locator(".leaflet-marker-icon")).toHaveCount(1);
   // A nearby vehicle is display-only: it can't be grabbed, clicked or dragged.
   const vehicle = page.locator(".leaflet-marker-icon").first();

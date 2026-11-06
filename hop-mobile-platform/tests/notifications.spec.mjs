@@ -57,3 +57,34 @@ test('ride planning has one anchored action and clear trip options on a short ph
  await page.setViewportSize({width:390,height:844});
  await page.screenshot({path:'/tmp/hop-ride-plan.png',fullPage:true});
 });
+
+for (const [role, port] of [['rider',5183],['captain',5184]]) {
+ test(`${role} swipes a notification right to mark just that one read`, async ({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  const reads=[];
+  await page.route('https://**',r=>r.abort());
+  await page.route('**/api/**',r=>r.fulfill({json:{}}));
+  await page.route('**/api/me',r=>r.fulfill({json:{user:{id:role},csrf:'csrf'}}));
+  await page.route('**/api/state',r=>r.fulfill({json:{rides:[],offers:[],driver:role==='captain'?[{status:'approved'}]:[]}}));
+  await page.route('**/api/config',r=>r.fulfill({json:{areas:[],vehicles:[],development:true}}));
+  await page.route('**/api/companion',r=>r.fulfill({json:{notifications:[
+   {id:'a',kind:'ride',title:'First',body:'One',created_at:new Date().toISOString(),read_at:null},
+   {id:'b',kind:'ride',title:'Second',body:'Two',created_at:new Date().toISOString(),read_at:null}
+  ]}}));
+  await page.route('**/api/notifications/read',r=>{reads.push(r.request().postDataJSON());return r.fulfill({json:{ok:true}});});
+  await page.goto(`http://127.0.0.1:${port}/`);
+  await page.getByRole('button',{name:'Notifications',exact:true}).click();
+  const card=page.locator('.notice-card[data-notice-id="a"]');
+  const box=await card.boundingBox();
+  await page.mouse.move(box.x+30,box.y+box.height/2);
+  await page.mouse.down();
+  await page.mouse.move(box.x+box.width-10,box.y+box.height/2,{steps:10});
+  await page.mouse.up();
+  await expect.poll(()=>reads).toEqual([{id:'a'}]);
+  await expect(page.locator('.notice-card.is-unread')).toHaveCount(1);
+  await page.getByRole('button',{name:'Mark read',exact:true}).click();
+  await expect.poll(()=>reads.length).toBe(2);
+  expect(reads[1]).toEqual({id:'b'});
+  await expect(page.locator('.notice-card.is-unread')).toHaveCount(0);
+ });
+}

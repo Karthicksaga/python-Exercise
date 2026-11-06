@@ -60,7 +60,7 @@ All require a session and CSRF token except `GET /api/share/{token}`.
 |---|---|
 | `GET /api/companion` | Preferences, in-app notifications, referral code/points, family, favorite drivers, scheduled rides, lost items. Also settles referral rewards once the referred rider has a completed ride. |
 | `POST /api/preferences` | Language (en/hi/ta/te/kn/ml/bn/mr/gu/pa), accessibility needs, notification opt-in. |
-| `POST /api/notifications/read` | Mark all notifications read. |
+| `POST /api/notifications/read` | Mark all notifications read, or only `{"id": "…"}` (swipe to read). |
 | `POST /api/rides/{id}/sos` | Active-ride SOS (optional `lat`/`lng`); creates an operator incident. Does not contact emergency services — call 112. |
 | `POST /api/rides/{id}/share`, `/share/revoke` | Rider creates/revokes a 6-hour live-trip link. |
 | `GET /api/share/{token}` | Unauthenticated, rate-limited view: status, labels, driver first name, vehicle number, driver location. Never exposes the pickup code. |

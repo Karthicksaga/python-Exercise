@@ -3385,3 +3385,22 @@ h3,
 .live-ledger-balance small { letter-spacing: 1px; font-size: calc(10px + var(--font-step, 0px)); }
 .live-ledger-balance strong { font-size: calc(26px + var(--font-step, 0px)); }
 .live-ledger-balance .primary { margin-top: 10px; width: 100%; }
+
+/* Compact redesign (approved Nov 2026): the rider home search is one slim bar under the header,
+   and the sheet holds one row of quick chips (Home, Work, Rental, Outstation) plus the usual ride. */
+.home-where { padding: 0; background: transparent; box-shadow: none; border-radius: 0; gap: 0; top: calc(var(--float-head) - 34px); }
+.home-where .destination-search {
+  min-height: 52px; padding: 0 8px 0 16px; border-radius: 16px; background: var(--surface);
+  box-shadow: var(--card-shadow); font-size: calc(15px + var(--font-step, 0px)); font-weight: 700;
+}
+.home-quick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 4px 0 10px; }
+.home-chip {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 60px; min-width: 0;
+  padding: 8px 4px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+}
+.home-chip .icon { width: 20px; height: 20px; color: var(--accent); }
+.home-chip small { display: none; }
+.home-chip strong { font-size: calc(12px + var(--font-step, 0px)); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.home-chip > span { display: block; max-width: 100%; text-align: center; }
+.home-sheet .usual-ride { padding: 10px 12px; }
+.app:has(> .screen-body.map-screen) .screen-body.map-screen:has(.home-where) .map-controls { margin-top: calc(var(--float-head) + 70px); }

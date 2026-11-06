@@ -59,6 +59,16 @@ export async function checkout(order: Order): Promise<Verification> {
       "Only a development payment stub is configured. No payment was attempted. Configure the provider’s test key to test checkout.",
     );
   await load();
+  // Never make the person type their number: fall back to the verified mobile on their profile
+  // (an order saved before the server sent "contact" has none).
+  let contact = order.contact;
+  if (!contact) {
+    try {
+      const { api } = await import("../services/client");
+      const p = (await api.request<{ details?: { phone?: string; phone_verified?: boolean }[] }>("/api/profile")).details?.[0];
+      if (p?.phone) contact = p.phone.startsWith("+") ? p.phone : `+91${p.phone}`;
+    } catch {}
+  }
   return new Promise((resolve, reject) => {
     let finished = false;
     const fail = (message: string) => {
@@ -75,7 +85,7 @@ export async function checkout(order: Order): Promise<Verification> {
       name: "Hop",
       description: "Hop ride payment",
       theme: { color: "#4b3fd1" },
-      ...(order.contact ? { prefill: { contact: order.contact } } : {}),
+      ...(contact ? { prefill: { contact } } : {}),
       handler: (verification: Verification) => {
         if (!finished) {
           finished = true;

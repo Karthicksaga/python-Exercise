@@ -15,6 +15,9 @@ export class ViewportController {
   private update = () => {
     // Pinch zoom must retain browser panning rather than resizing the app.
     if (this.viewport && Math.abs(this.viewport.scale - 1) > 0.01) return;
+    // While a payment checkout (an iframe over the app) has the keyboard, leave the app alone:
+    // resizing the page under it made the checkout redraw and drop the keyboard after each digit.
+    if (document.activeElement instanceof HTMLIFrameElement) return;
     const height = this.viewport?.height ?? window.innerHeight;
     this.shell.style.setProperty("--hop-viewport-height", `${height}px`);
     const active = document.activeElement;

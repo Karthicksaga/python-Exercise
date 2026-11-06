@@ -24,4 +24,18 @@ public class HopPushGuardPlugin extends Plugin {
             call.reject("Could not initialize device notifications. Check this app's Firebase configuration and rebuild.");
         }
     }
+
+    /** Opens this app's notification settings, since Android stops asking after a denial. */
+    @PluginMethod
+    public void openSettings(PluginCall call) {
+        try {
+            android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getContext().getPackageName())
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (RuntimeException error) {
+            call.reject("Open Settings › Apps › Hop › Notifications to turn alerts on.");
+        }
+    }
 }

@@ -36,7 +36,7 @@ export const recoveryStates = {
     action: "Back to rides",
   },
   alerts: {
-    symbol: "♧",
+    symbol: "◎",
     title: "Stay in the loop.",
     copy: "Device notifications aren’t enabled. In-app trip updates remain available while the app is open.",
     action: "View notifications",

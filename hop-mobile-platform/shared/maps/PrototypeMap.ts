@@ -106,6 +106,13 @@ export class PrototypeMap {
     return vehicleCategory(String(bridge?.read?.().vehicle || "auto"));
   }
 
+  // Riders see nearby captains only while booking, not every time they open the app (phone test, Nov 2026).
+  private browsingHome(): boolean {
+    if (this.role !== "rider") return false;
+    const bridge = (window as { prototypeBridge?: { read?: () => { screen?: string } } }).prototypeBridge;
+    return bridge?.read?.().screen === "home";
+  }
+
   private isConfirmScreen(): boolean {
     return (
       this.role === "rider" && Boolean(this.app.querySelector(".confirm-sheet"))
@@ -138,7 +145,7 @@ export class PrototypeMap {
             ...this.data,
             ...this.planned,
             route: isPreviewing ? [] : this.planned?.route,
-            vehicles: this.data.vehicles,
+            vehicles: this.browsingHome() ? [] : this.data.vehicles,
           }),
       editable: this.role === "rider" && !this.data.pickup,
       current: this.current,

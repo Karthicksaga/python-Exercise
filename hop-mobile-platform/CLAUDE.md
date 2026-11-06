@@ -130,6 +130,23 @@ HOP_E2E_OPERATOR_PHONE=… npm run test:e2e:staging          # the same two test
   - The pickup-spot screen needs server data for named spots.
   - Merging Review into Choose your ride: the vehicle route preview stays on Review.
 
+## Phone-test fixes (Nov 2026, fourth round)
+- **Profile photo:** if `createImageBitmap` can't decode a phone photo (Android WebView: "The source image could not be decoded"), `loadImage` decodes it through an `<img>`. The picker accepts `image/*`.
+- **Account status line** ("Personal details saved.") is cleared when the screen changes (`LiveAccount.statusScreen`).
+- **Pop-ups the account layer doesn't fill** (Appearance, Language…) still get the live page drawn under them (`ownModal`); before, the renderer's sample page showed through.
+- **Dark mode** is remembered on the phone (`localStorage` "hop-dark"). With no choice yet, it follows the phone's setting.
+- **Captain earnings:** the drive sheet's real earnings are filled in while a pop-up is open too. The ₹1,260 was the renderer's sample.
+- **Operating city:** an approved captain sees their city and "Contact support" (there is no city-change API yet), not "View Captain Application".
+- **Phone alerts:**
+  - The notifications screen shows the real state (on / off in settings / not asked) from `notificationStatus()`.
+  - If Android has blocked alerts, the button opens Hop's notification settings (`HopPushGuard.openSettings`, both apps).
+  - Errors show their real message instead of the generic "Stay in the loop" sheet.
+- **Swipe right to read** (`shared/design/swipe.ts`, reusable): marks one notification read through `POST /api/notifications/read {"id"}` (new optional field). Every unread card also has a "Mark read" button for keyboard and screen-reader users.
+- **Nearby captains** show on the rider map only while booking, not on the home screen (`PrototypeMap.browsingHome`).
+- **Rider home (compact redesign):** a slim search bar under the header, and four tiles (Home, Work, Rental, Outstation) plus the usual ride in the sheet. Home and Work keep the saved address in their accessible name. Trip types are still also in "Plan a ride".
+- **Razorpay:** the checkout pre-fills the verified mobile (falls back to `/api/profile` when the order has none). `ViewportController` doesn't resize the app while the checkout iframe has focus, which dropped the keyboard after each digit.
+- **Captain ledger:** a "To pay out" hero that explains cash is already the captain's, today's earnings and trips, an activity list, and a payout button only when there is a balance.
+
 ## Finding things cheaply
 - Find a screen with `grep -n "<screen-id>" ../hop-platform/prototypes/mobile-first/app.js`, then read only that range.
 - Find styles with `grep -n "\.selector" ../hop-platform/prototypes/mobile-first/style.css`.

@@ -1,7 +1,7 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { api } from "../services/client";
-const pushGuard = registerPlugin<{ prepare(): Promise<void> }>("HopPushGuard");
+const pushGuard = registerPlugin<{ prepare(): Promise<void>; openSettings(): Promise<void> }>("HopPushGuard");
 let nativeToken = "";
 export async function enableNotifications(): Promise<void> {
   await api.session();
@@ -141,4 +141,23 @@ export async function disableNotifications() {
     });
     await subscription.unsubscribe();
   }
+}
+
+export type AlertState = "on" | "off" | "blocked" | "unavailable";
+/** Whether phone alerts are on, can be asked for, or were turned off in the phone's settings. */
+export async function notificationStatus(): Promise<AlertState> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const { receive } = await PushNotifications.checkPermissions();
+      return receive === "granted" ? "on" : receive === "denied" ? "blocked" : "off";
+    }
+    if (!("Notification" in window)) return "unavailable";
+    return Notification.permission === "granted" ? "on" : Notification.permission === "denied" ? "blocked" : "off";
+  } catch {
+    return "unavailable";
+  }
+}
+/** Android stops asking once notifications are denied; this opens Hop's notification settings. */
+export async function openNotificationSettings() {
+  if (Capacitor.isNativePlatform()) await pushGuard.openSettings();
 }

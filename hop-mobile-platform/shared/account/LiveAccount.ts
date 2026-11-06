@@ -227,14 +227,20 @@ export class LiveAccount {
     let html = "";
 
     if (this.role === "captain") {
-      html += `<div class="section-card live-ledger-balance"><small class="muted">AVAILABLE BALANCE</small><strong>${data ? money(data.balance_paise / 100) : "—"}</strong><button class="primary" data-modal="payout">Request payout</button></div>`;
+      // Captain ledger (Nov 2026 phone test): say what the balance is, and why it can be ₹0 on a day
+      // of cash trips, instead of a bare ₹0 next to an always-on payout button.
+      const balance = data ? Number(data.balance_paise || 0) : undefined;
+      const today = this.get("/api/drivers/earnings")?.summary;
+      html += `<section class="live-ledger-hero"><span class="live-eyebrow">TO PAY OUT</span><strong>${balance === undefined ? "—" : money(balance / 100)}</strong><p>${balance && balance > 0 ? "From online and wallet rides. Request it and Hop sends it to your payout account." : "Online and wallet fares collect here. Cash you take from riders is already yours."}</p>${balance && balance > 0 ? `<button class="primary" data-modal="payout">Request payout</button>` : ""}</section>`;
+      if (today)
+        html += `<div class="live-ledger-today"><div><span>Earned today</span><strong>${money(today.today_fare_paise / 100)}</strong></div><div><span>Trips today</span><strong>${today.today_completed_trips}</strong></div></div>`;
     }
 
     if (data && Array.isArray(entries)) {
       if (entries.length > 0) {
-        html += entries.map((e) => this.formatWalletEntry(e)).join("");
+        html += `<div class="live-section-heading">Activity</div><section class="live-card-group live-ledger-list">${entries.map((e) => this.formatWalletEntry(e)).join("")}</section>`;
       } else {
-        html += `<p class="micro muted" style="margin:16px 4px">No transactions recorded yet.</p>`;
+        html += `<div class="live-ledger-empty">${icon("wallet")}<strong>No payouts or online fares yet</strong><p>When a rider pays online or by wallet, it shows up here.</p></div>`;
       }
     } else {
       const error = this.errors.get(path);
@@ -246,12 +252,12 @@ export class LiveAccount {
       html += ((data?.payouts || []) as Data[])
         .map(
           (p: Data) =>
-            `<div class="section-card" style="margin-bottom:8px"><div class="row"><strong>${money(p.amount_paise / 100)}</strong><span class="badge ${p.status === "paid" ? "green" : "neutral"}">${escape(p.status)}</span></div><small class="muted">${escape(p.reference || "")}</small></div>`,
+            `<div class="section-card" style="margin-bottom:8px"><div class="row"><strong>${money(p.amount_paise / 100)}</strong><span class="badge ${p.status === "paid" ? "green" : "neutral"}">${escape(String(p.status).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()))}</span></div><small class="muted">${escape(p.reference || "")}</small></div>`,
         )
         .join("");
     }
 
-    html += `<div class="notice-box" style="margin-top:20px">${this.role === "captain" ? "Ledger entries and payout processing are managed by the operator." : "Ledger entries and payment verification are managed by the server."}</div>`;
+    html += `<p class="live-page-note">${this.role === "captain" ? "Hop’s team checks each payout request before sending it." : "Every wallet payment is confirmed by Hop."}</p>`;
 
     if (this.status) {
       html += `<p role="status" class="small muted" style="margin-top:12px">${escape(this.status)}</p>`;
@@ -374,11 +380,18 @@ export class LiveAccount {
       if (this.cache.has(path)) void this.load(path);
     }
   }
+  private statusScreen = "";
   render(force = false) {
     this.dropStaleMoney();
     const ui = this.bridge.read(),
       screen = ui.screen,
       modal = ui.modal;
+    // A saved/updated message belongs to the page it came from; drop it when the person moves on.
+    if (screen !== this.statusScreen) {
+      this.statusScreen = screen;
+      this.status = "";
+      this.statusError = false;
+    }
     const screenPaths: Record<string, string> = {
       personal: "/api/profile",
       preferences: "/api/companion",
@@ -419,7 +432,7 @@ export class LiveAccount {
       "edit-place": "state",
       "sos-info": "safety",
     };
-    if (!modal && this.role === "captain" && screen === "drive") {
+    if (this.role === "captain" && screen === "drive") {
       const earnings = this.get("/api/drivers/earnings")?.summary;
       const mini = this.app.querySelector(".earnings-mini strong");
       if (mini)
@@ -511,13 +524,16 @@ export class LiveAccount {
       this.decorateLedger();
       return;
     }
-    const path = modal ? modalPaths[modal] : screenPaths[screen];
+    // A pop-up this layer doesn't fill (Appearance, Language…) still needs the live page under it,
+    // or the renderer's sample page shows through.
+    const ownModal = modal && modalPaths[modal] ? modal : null;
+    const path = ownModal ? modalPaths[ownModal] : screenPaths[screen];
     if (!path) return;
     const host = this.app.querySelector<HTMLElement>(
-      modal ? ".modal-sheet" : screen === "demand" ? ".screen-body > .sheet" : ".screen-padding",
+      ownModal ? ".modal-sheet" : screen === "demand" ? ".screen-body > .sheet" : ".screen-padding",
     );
     if (!host) return;
-    const key = modal || screen;
+    const key = ownModal || screen;
     if (!force && host.dataset.liveAccount === key) return;
     host.dataset.liveAccount = key;
     const data = path.startsWith("/api") ? this.get(path) : {},
@@ -546,7 +562,7 @@ export class LiveAccount {
 
       body =
         `<div class="account-hero"><span class="avatar" style="${this.photo || (p.has_photo && p.id) ? "overflow:hidden;padding:0" : ""}">${avatarHtml}</span><div><h2>${escape(name)}</h2><button class="text-button" style="padding:0;min-height:25px;font-size:10px" data-action="portrait" data-account-action="portrait">Change photo</button>${this.photo ? `<button class="text-button" style="padding:0;min-height:25px;font-size:10px;margin-left:8px;color:var(--accent)" data-account-action="photo">${this.busy ? "Saving…" : "Save photo"}</button>` : ""}</div></div>` +
-        `<input type="file" accept="image/jpeg,image/png" data-account-photo style="display:none" aria-hidden="true"/>` +
+        `<input type="file" accept="image/*" data-account-photo style="display:none" aria-hidden="true"/>` +
         `<label class="field-label" for="full-name">Full name</label><input class="text-input" id="full-name" value="${escape(name)}"/>` +
         this.modalRow("Mobile number", phoneDetail, "phone", "verify", phoneRight) +
         this.modalRow("Email address", p.email ? p.email : "Add or update your email", "mail", "email") +
@@ -1153,7 +1169,7 @@ export class LiveAccount {
     };
     const modalTitle = modalTitles[key] || key.replaceAll("-", " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
     host.innerHTML =
-      (modal
+      (ownModal
         ? `<div class="sheet-handle"></div><div class="modal-title"><h2 id="modal-title">${escape(modalTitle)}</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">${icon("close")}</button></div>`
         : "") +
       body +
@@ -1167,7 +1183,7 @@ export class LiveAccount {
         if ("checked" in el) (el as HTMLInputElement).checked = draft.checked;
       }
     }
-    if (!modal) {
+    if (!ownModal) {
       if (key === "personal" || key === "preferences") {
         let bar = this.app.querySelector<HTMLElement>(".action-bar");
         const actionName =
@@ -1224,11 +1240,13 @@ export class LiveAccount {
     const file = el.files[0];
     void (async () => {
       if (
-        !/^image\/(jpeg|png)$/.test(file.type) ||
+        (file.type && !/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type)) ||
         file.size > 12 * 1024 * 1024
       )
-        throw new Error("Choose a JPEG or PNG up to 12 MB.");
-      const b = await createImageBitmap(file);
+        throw new Error("Choose a photo (JPEG, PNG or HEIC) up to 12 MB.");
+      // Android's WebView can't decode many camera photos with createImageBitmap ("The source image
+      // could not be decoded"); an <img> decodes anything the phone's gallery shows.
+      const b = await createImageBitmap(file).catch(() => loadImage(file));
       try {
         if (Math.min(b.width, b.height) < 64)
           throw new Error("Photo is too small.");
@@ -1763,4 +1781,18 @@ export class LiveAccount {
         this.render(true);
       });
   };
+}
+
+/** Decodes a picked photo through an <img>, for when createImageBitmap can't. Same shape as ImageBitmap. */
+async function loadImage(file: File): Promise<{ width: number; height: number; close(): void } & CanvasImageSource> {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.src = url;
+  try {
+    await img.decode();
+  } catch {
+    URL.revokeObjectURL(url);
+    throw new Error("This photo couldn't be opened. Try another photo, or take a new one.");
+  }
+  return Object.assign(img, { width: img.naturalWidth, height: img.naturalHeight, close: () => URL.revokeObjectURL(url) });
 }

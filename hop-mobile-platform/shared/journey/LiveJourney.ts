@@ -6,6 +6,9 @@ import { CaptainOnboarding } from "../onboarding/CaptainOnboarding";
 import { icon } from "../icons";
 import {
   enableNotifications,
+  notificationStatus,
+  openNotificationSettings,
+  type AlertState,
   disableNotifications,
 } from "../notifications/device";
 import { recoveryStates, type RecoveryState } from "./recovery";
@@ -16,6 +19,7 @@ import { api, APIError } from "../services/client";
 import type { Point, Config, Quote, State, Ride } from "../services/contracts";
 import { playMoment } from "../design/tripMoments";
 import { enhanceSlides } from "../design/slideToConfirm";
+import { enableSwipe } from "../design/swipe";
 import { escape, money } from "../helpers";
 import type { Coordinate } from "../maps/types";
 import { distanceMeters } from "../maps/motion";
@@ -179,6 +183,13 @@ export class LiveJourney {
     // The shared renderer starts with review-only addresses. A live journey
     // has no pickup or destination until the user explicitly selects one.
     bridge.assign({ pickup: "", destination: "", search: "" });
+    // Appearance (Nov 2026): the dark choice is kept on the phone; with no choice yet, follow the phone.
+    try {
+      const saved = localStorage.getItem("hop-dark");
+      const dark = saved === null ? matchMedia("(prefers-color-scheme: dark)").matches : saved === "1";
+      bridge.assign({ toggled: { ...bridge.read().toggled, dark } });
+      this.savedDark = dark;
+    } catch {}
     this.rideChat = new RideChat(app, role, bridge, () => this.active());
     this.account = new LiveAccount(
       app,
@@ -212,6 +223,11 @@ export class LiveJourney {
     );
     app.addEventListener("submit", this.submit, true);
     app.addEventListener("click", this.click, true);
+    enableSwipe(app, {
+      selector: ".notice-card.is-unread[data-notice-id]",
+      label: "Read",
+      onSwipe: (card) => this.readNotice(card.dataset.noticeId!),
+    });
     app.addEventListener("input", this.input, true);
     app.addEventListener("focusin", this.focus, true);
     app.addEventListener("change", this.changeArea, true);
@@ -747,7 +763,8 @@ export class LiveJourney {
       )
         this.showRecovery("taken");
       else if (this.lastAction === "enable-device-notifications")
-        this.showRecovery("alerts");
+        // The toast above already says what went wrong; refresh the card so it can offer Settings.
+        void this.refreshAlerts();
       else if (
         typeof error === "object" &&
         error !== null &&
@@ -1076,6 +1093,12 @@ export class LiveJourney {
       this.app.querySelector<HTMLButtonElement>(`[data-notice-filter="${this.noticeFilter}"]`)?.focus();
       return;
     }
+    const readOne = (event.target as Element).closest<HTMLElement>("[data-notice-read]");
+    if (readOne) {
+      this.stop(event);
+      void this.readNotice(readOne.dataset.noticeRead!);
+      return;
+    }
     const action = button.dataset.action;
     if (action === "retry-notifications") {
       this.stop(event);
@@ -1230,8 +1253,14 @@ export class LiveJourney {
     if (action === "enable-device-notifications") {
       this.stop(event);
       void this.run(async () => {
+        if ((await notificationStatus()) === "blocked") {
+          await openNotificationSettings();
+          this.bridge.notify("Turn on notifications for Hop, then come back.");
+          return;
+        }
         await enableNotifications();
-        this.bridge.notify("Device notifications enabled.");
+        this.alertState = "on";
+        this.bridge.notify("Phone alerts are on.");
       });
       return;
     }
@@ -1673,7 +1702,15 @@ export class LiveJourney {
     }
     this.decorate();
   }
+  private savedDark?: boolean;
+  private rememberAppearance() {
+    const dark = Boolean(this.bridge.read().toggled?.dark);
+    if (dark === this.savedDark) return;
+    this.savedDark = dark;
+    try { localStorage.setItem("hop-dark", dark ? "1" : "0"); } catch {}
+  }
   private decorate() {
+    this.rememberAppearance();
     if (this.sessionChecked && !this.signedIn && this.bridge.read().screen !== "auth") {
       this.bridge.go("auth");
       return;
@@ -1809,7 +1846,9 @@ export class LiveJourney {
       if (this.bridge.read().modal === "service-area") {
         const panel = this.app.querySelector(".modal-sheet");
         if (panel && !panel.querySelector("[data-live-state]"))
-          panel.innerHTML = `<div data-live-state><div class="sheet-handle"></div><div class="modal-title"><h2>Operating city</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">×</button></div><div class="section-card"><div class="row"><div><small class="muted">OPERATING CITY</small><strong style="display:block;margin-top:2px">${escape(jurisdiction)}</strong></div><span class="badge green">City</span></div><p class="micro muted" style="margin-top:6px">Your application uses a configured operating city. No neighbourhood-zone approvals.</p><p class="small muted">Captain status: ${escape(driver?.status || "Not applied")}</p></div><div class="notice-box">Captain and document approval is required before driving. The backend enforces the configured service area.</div><button class="primary" data-go="onboarding">${driver?.status === "approved" ? "View Captain Application" : "Complete Captain Onboarding"}</button></div>`;
+          panel.innerHTML = driver?.status === "approved"
+            ? `<div data-live-state><div class="sheet-handle"></div><div class="modal-title"><h2>Operating city</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">×</button></div><div class="section-card"><div class="row"><div><small class="muted">YOU DRIVE IN</small><strong style="display:block;margin-top:2px">${escape(jurisdiction)}</strong></div><span class="badge green">Approved</span></div><p class="micro muted" style="margin-top:6px">You get ride requests anywhere in this city.</p></div><div class="notice-box">Want to drive in another city? Hop support can move your account. Your documents stay approved.</div><button class="primary" data-go="support">Contact support</button></div>`
+            : `<div data-live-state><div class="sheet-handle"></div><div class="modal-title"><h2>Operating city</h2><button class="icon-button" aria-label="Close dialog" data-action="close-modal">×</button></div><div class="section-card"><div class="row"><div><small class="muted">OPERATING CITY</small><strong style="display:block;margin-top:2px">${escape(jurisdiction)}</strong></div><span class="badge green">City</span></div><p class="micro muted" style="margin-top:6px">Your application uses a configured operating city. No neighbourhood-zone approvals.</p><p class="small muted">Captain status: ${escape(driver?.status || "Not applied")}</p></div><div class="notice-box">Captain and document approval is required before driving. The backend enforces the configured service area.</div><button class="primary" data-go="onboarding">${driver?.status === "approved" ? "View Captain Application" : "Complete Captain Onboarding"}</button></div>`;
       }
     }
     if (
@@ -1843,9 +1882,10 @@ export class LiveJourney {
           (p) => p.kind.toLowerCase() === name,
         );
         const detail = button.querySelector("small");
-        if (detail)
-          detail.textContent =
-            saved?.place_label || "Choose your saved address";
+        const place = saved?.place_label || "Choose your saved address";
+        if (detail) detail.textContent = place;
+        // The compact home tiles hide the address, so keep it in the button's name.
+        button.setAttribute("aria-label", `${button.dataset.destination} · ${place}`);
       });
     if (screen === "auth") {
       const phone = this.app.querySelector<HTMLInputElement>("#demo-phone");
@@ -2354,7 +2394,7 @@ export class LiveJourney {
     if (this.bridge.read().screen !== "notifications") return;
     const body = this.app.querySelector(".screen-padding");
     if (!body) return;
-    const key = JSON.stringify([this.notices, this.noticeFilter, this.noticesLoading, this.noticesError, this.busy]);
+    const key = JSON.stringify([this.notices, this.noticeFilter, this.noticesLoading, this.noticesError, this.busy, this.alertState]);
     if (body.getAttribute("data-notices") === key) return;
     body.setAttribute("data-notices", key);
     const unread = this.notices.filter(n => !n.read_at).length;
@@ -2368,8 +2408,41 @@ export class LiveJourney {
       const day = date.toDateString() === today.toDateString() ? "Today" : date.toDateString() === yesterday.toDateString() ? "Yesterday" : date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
       return `${day} · ${date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
     };
-    const list = shown.map(n => `<article class="notice-card ${!n.read_at ? "is-unread" : ""}"><span class="notice-symbol" aria-hidden="true">${icon(n.kind === "chat" ? "chat" : n.kind?.includes("payment") || n.kind?.includes("payout") ? "wallet" : n.kind?.includes("ride") || n.kind?.includes("trip") ? "car" : "bell")}</span><div class="notice-copy"><div class="notice-title"><h2>${escape(n.title)}</h2>${!n.read_at ? '<span class="notice-unread-dot" aria-label="Unread"></span>' : ""}</div><p>${escape(n.body)}</p><time ${n.created_at ? `datetime="${escape(n.created_at)}"` : ""}>${escape(dateLabel(n.created_at))}</time></div></article>`).join("");
-    body.innerHTML = `<div class="notice-toolbar"><div class="tabs" aria-label="Filter notifications"><button data-notice-filter="all" aria-pressed="${this.noticeFilter === "all"}" class="${this.noticeFilter === "all" ? "active" : ""}">All</button><button data-notice-filter="unread" aria-pressed="${this.noticeFilter === "unread"}" class="${this.noticeFilter === "unread" ? "active" : ""}">Unread${unread ? ` (${unread})` : ""}</button></div><button class="text-button" data-action="read-all" ${!unread || this.busy ? "disabled" : ""}>Mark all as read</button></div><section class="notice-list" aria-label="Notifications">${this.noticesLoading ? '<p class="notice-empty" role="status">Loading notifications…</p>' : this.noticesError ? `<div class="notice-empty" role="alert"><p>${escape(this.noticesError)}</p><button class="secondary" data-action="retry-notifications">Try again</button></div>` : list || `<div class="notice-empty">${icon("bell")}<h2>${this.noticeFilter === "unread" ? "You’re all caught up" : "No notifications yet"}</h2><p>Ride updates and account messages will appear here.</p></div>`}</section><div class="notice-device"><span class="list-icon" aria-hidden="true">${icon("bell")}</span><div><strong>Stay updated</strong><p class="small muted">Get trip alerts on this device.</p><button class="text-button" data-action="enable-device-notifications">Enable device notifications</button></div></div>`;
+    const list = shown.map(n => `<article class="notice-card ${!n.read_at ? "is-unread" : ""}" data-notice-id="${escape(n.id)}"><span class="notice-symbol" aria-hidden="true">${icon(n.kind === "chat" ? "chat" : n.kind?.includes("payment") || n.kind?.includes("payout") ? "wallet" : n.kind?.includes("ride") || n.kind?.includes("trip") ? "car" : "bell")}</span><div class="notice-copy"><div class="notice-title"><h2>${escape(n.title)}</h2>${!n.read_at ? '<span class="notice-unread-dot" aria-label="Unread"></span>' : ""}</div><p>${escape(n.body)}</p><time ${n.created_at ? `datetime="${escape(n.created_at)}"` : ""}>${escape(dateLabel(n.created_at))}</time>${!n.read_at ? `<button class="text-button notice-read" data-notice-read="${escape(n.id)}">Mark read</button>` : ""}</div></article>`).join("");
+    body.innerHTML = `<div class="notice-toolbar"><div class="tabs" aria-label="Filter notifications"><button data-notice-filter="all" aria-pressed="${this.noticeFilter === "all"}" class="${this.noticeFilter === "all" ? "active" : ""}">All</button><button data-notice-filter="unread" aria-pressed="${this.noticeFilter === "unread"}" class="${this.noticeFilter === "unread" ? "active" : ""}">Unread${unread ? ` (${unread})` : ""}</button></div><button class="text-button" data-action="read-all" ${!unread || this.busy ? "disabled" : ""}>Mark all as read</button></div><section class="notice-list" aria-label="Notifications">${this.noticesLoading ? '<p class="notice-empty" role="status">Loading notifications…</p>' : this.noticesError ? `<div class="notice-empty" role="alert"><p>${escape(this.noticesError)}</p><button class="secondary" data-action="retry-notifications">Try again</button></div>` : list || `<div class="notice-empty">${icon("bell")}<h2>${this.noticeFilter === "unread" ? "You’re all caught up" : "No notifications yet"}</h2><p>Ride updates and account messages will appear here.</p></div>`}</section>${this.alertCard()}`;
+  }
+  /** Marks one notification read (swipe right, or its "Mark read" button). */
+  private async readNotice(id: string) {
+    const notice = this.notices.find((n) => n.id === id);
+    if (!notice || notice.read_at) return;
+    try {
+      await api.request("/api/notifications/read", { id });
+      notice.read_at = new Date().toISOString();
+    } catch (error) {
+      this.message(error);
+    }
+    this.renderNotices();
+  }
+  private alertState?: AlertState;
+  private async refreshAlerts() {
+    const next = await notificationStatus();
+    if (next === this.alertState) return;
+    this.alertState = next;
+    this.app.querySelector(".screen-padding")?.removeAttribute("data-notices");
+    this.renderNotices();
+  }
+  /** Phone alerts card under the notifications: on, blocked in settings, or not asked yet. */
+  private alertCard() {
+    if (this.alertState === undefined) void this.refreshAlerts();
+    const state = this.alertState;
+    if (state === "unavailable") return "";
+    const [title, copy, button] =
+      state === "on"
+        ? ["Phone alerts are on", "Trip updates reach this phone even when Hop is closed.", ""]
+        : state === "blocked"
+          ? ["Phone alerts are off", "Notifications for Hop are turned off in your phone’s settings.", "Open phone settings"]
+          : ["Stay updated", "Get trip alerts on this device.", "Enable device notifications"];
+    return `<div class="notice-device ${state === "on" ? "is-on" : ""}"><span class="list-icon" aria-hidden="true">${icon("bell")}</span><div><strong>${title}</strong><p class="small muted">${copy}</p>${button ? `<button class="text-button" data-action="enable-device-notifications">${button}</button>` : ""}</div></div>`;
   }
   private async notifications() {
     try {

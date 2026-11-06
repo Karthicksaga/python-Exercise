@@ -196,8 +196,20 @@ func (s *Server) savePreferences(w http.ResponseWriter, r *http.Request) {
 	write(w, 200, map[string]bool{"ok": true})
 }
 
+// readNotifications marks all unread notifications read, or just one when "id" is given (swipe to read).
 func (s *Server) readNotifications(w http.ResponseWriter, r *http.Request) {
-	if _, e := s.DB.Exec(r.Context(), "UPDATE notifications SET read_at=now() WHERE account_id=$1 AND read_at IS NULL", user(r).Account.ID); e != nil {
+	var in struct {
+		ID string `json:"id"`
+	}
+	if !decode(w, r, &in) {
+		return
+	}
+	q, args := "UPDATE notifications SET read_at=now() WHERE account_id=$1 AND read_at IS NULL", []any{user(r).Account.ID}
+	if in.ID != "" {
+		q += " AND id::text=$2"
+		args = append(args, in.ID)
+	}
+	if _, e := s.DB.Exec(r.Context(), q, args...); e != nil {
 		dbError(w, e)
 		return
 	}

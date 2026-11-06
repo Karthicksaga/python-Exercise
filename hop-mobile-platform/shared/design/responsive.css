@@ -179,3 +179,5 @@ html.hop-live {
 /* Trip card links sit in one tidy wrapping row instead of a gappy two-column grid. */
 .hop-live .activity-actions { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 8px; }
 .hop-live .activity-actions > .text-button { min-height: 40px; padding: 8px 0; flex: 0 0 auto; }
+/* Long addresses on trip cards stop at two lines. */
+.hop-live .activity-card .route-line strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

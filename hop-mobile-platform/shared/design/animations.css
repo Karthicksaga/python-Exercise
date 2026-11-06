@@ -1622,3 +1622,31 @@
 .cash-change-result strong { font-size: calc(24px + var(--font-step, 0px)); font-weight: 800; letter-spacing: -.5px; }
 .cash-change-result.give { background: var(--accent-soft, #ecebfd); color: var(--accent-ink, #3a2fb8); }
 .cash-change-result.exact { background: #e7f5ee; color: #17704a; }
+
+/* Swipe to act (shared/design/swipe.ts): swipe a notification right to mark it read. */
+.notice-card.is-unread { touch-action: pan-y; position: relative; }
+.notice-card.hop-swiping { transform: translateX(var(--swipe-x, 0px)); transition: none; }
+.notice-card.hop-swiping::before {
+  content: attr(data-swipe-label); position: absolute; top: 0; bottom: 0; right: 100%; width: var(--swipe-x, 0px);
+  display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 16px;
+  background: var(--green, #167b5b); color: #fff; font-weight: 800; font-size: 13px;
+}
+.notice-card:not(.hop-swiping) { transition: transform .2s ease; }
+.notice-card.hop-swiped { transform: translateX(110%); opacity: 0; transition: transform .22s ease, opacity .22s ease; }
+.notice-card .notice-read { min-height: 36px; padding: 6px 0 0; font-size: calc(12px + var(--font-step, 0px)); }
+@media (prefers-reduced-motion: reduce) { .notice-card, .notice-card.hop-swiped { transition: none; } }
+
+/* Captain ledger & payouts (LiveAccount.decorateLedger). */
+.live-ledger-hero { display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: 22px; background: #14151f; color: #fff; margin-top: 4px; }
+.live-ledger-hero .live-eyebrow { color: rgba(255,255,255,.7); }
+.live-ledger-hero strong { font-size: calc(36px + var(--font-step, 0px)); font-weight: 800; letter-spacing: -1px; line-height: 1.1; }
+.live-ledger-hero p { margin: 0; color: rgba(255,255,255,.75); font-size: calc(13px + var(--font-step, 0px)); line-height: 1.45; }
+.live-ledger-hero .primary { margin-top: 8px; background: #fff; color: var(--accent, #4b3fd1); }
+.live-ledger-today { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0 4px; }
+.live-ledger-today > div { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 16px; background: var(--surface, #fff); border: 1px solid var(--line, #e6e6ee); }
+.live-ledger-today span { font-size: calc(12px + var(--font-step, 0px)); color: var(--muted, #6b6f80); }
+.live-ledger-today strong { font-size: calc(18px + var(--font-step, 0px)); font-weight: 800; }
+.live-ledger-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 28px 16px; margin-top: 12px; border-radius: 18px; border: 1px dashed var(--line, #e6e6ee); color: var(--muted, #6b6f80); }
+.live-ledger-empty .icon { width: 28px; height: 28px; color: var(--accent, #4b3fd1); }
+.live-ledger-empty strong { color: var(--ink, #14151f); font-size: calc(15px + var(--font-step, 0px)); }
+.live-ledger-empty p { margin: 0; font-size: calc(13px + var(--font-step, 0px)); }

@@ -162,6 +162,22 @@ func TestCompanionReferralFamilyScheduleAndPreferences(t *testing.T) {
 	}
 	code, _ = f.call(referrer, "POST", "/api/notifications/read", map[string]any{})
 	require(t, code, 200)
+
+	// Swipe to read: only the named notification is marked read.
+	ctx = context.Background()
+	var first, second string
+	for _, id := range []*string{&first, &second} {
+		if e := f.s.DB.QueryRow(ctx, `INSERT INTO notifications(account_id,kind,title,body) VALUES($1,'test','Hello','Body') RETURNING id::text`, referrer.id).Scan(id); e != nil {
+			t.Fatal(e)
+		}
+	}
+	code, _ = f.call(referrer, "POST", "/api/notifications/read", map[string]any{"id": first})
+	require(t, code, 200)
+	var unread int
+	f.s.DB.QueryRow(ctx, "SELECT count(*) FROM notifications WHERE account_id=$1 AND read_at IS NULL", referrer.id).Scan(&unread)
+	if unread != 1 {
+		t.Fatalf("one notification should stay unread, got %d", unread)
+	}
 }
 
 func TestRideForOtherPersonFamilyAndFavoriteFirst(t *testing.T) {
