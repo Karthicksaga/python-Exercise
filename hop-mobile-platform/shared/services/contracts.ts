@@ -61,6 +61,11 @@ export type Ride = {
   seconds?: number;
   /** When the captain marked "arrived"; both apps count the free wait from here. */
   arrived_at?: string | null;
+  /** Hop originals (phases 2–3): notes for the captain, arrival text and SMS trip updates. */
+  rider_notes?: string[];
+  arrival_alert?: boolean;
+  arrival_alert_status?: "sent" | "test" | "unavailable" | "no_contact" | "failed" | null;
+  sms_updates?: boolean;
 };
 export type State = {
   saved_locations?: (Point & { kind: string; place_label: string })[];
@@ -84,6 +89,11 @@ export type Config = {
   development: boolean;
   routing_configured: boolean;
   phone_login: boolean;
+  /** Texts (arrival alert, SMS updates): a provider is set up, or only logged in test mode. */
+  sms_available?: boolean;
+  sms_test_mode?: boolean;
+  /** Chat translation (Google Cloud Translation) is configured. */
+  translate_available?: boolean;
 };
 export type Quote = {
   payable_paise?: number;

@@ -642,3 +642,26 @@ test("expired quote uses the approved recovery dialog and refresh does not book 
   expect(quotes).toBe(2);
   expect(bookings).toBe(1);
 });
+
+test("language bridge: the captain's quick reply shows in the rider's language, with the original a tap away", async ({ page }) => {
+  const active = { id: "tr-ride", version: 2, status: "accepted", mine: true, pickup_lat: pickup.lat, pickup_lng: pickup.lng, dropoff_lat: dropoff.lat, dropoff_lng: dropoff.lng, pickup_label: pickup.label, dropoff_label: dropoff.label, vehicle_category: "auto", payment_method: "cash", fare_paise: 23700, driver_name: "Ravi Kumar" };
+  const view = {
+    id: "c2", kind: "ride", ref: "tr-ride", can_post: true, last_message_id: 1, unread: 0, has_more: false,
+    participants: [{ role: "rider", name: "Priya", me: true, last_read_id: 0, typing: false }, { role: "captain", name: "Ravi", me: false, last_read_id: 0, typing: false }],
+    messages: [{ id: 1, body: "I’m at the pickup.", sender_role: "captain", client_id: null, sent_at: new Date().toISOString(), mine: false, system: false }],
+  };
+  await setup(page, () => ({ rides: [active], driver: [], offers: [] }));
+  await page.route("**/api/companion", (r) => r.fulfill({ json: { scheduled_rides: [], family: [], preferences: { language: "ta" } } }));
+  await page.route("**/api/rides/tr-ride/position", (r) => r.fulfill({ json: { lat: 13.006, lng: 80.22, at: new Date().toISOString(), stale: false, status: "accepted" } }));
+  await page.route("**/api/rides/tr-ride/chat", (r) => r.fulfill({ json: { id: "c2" } }));
+  await page.route("**/api/chats/c2**", async (r) => {
+    if (new URL(r.request().url()).pathname.endsWith("/wait")) await new Promise((res) => setTimeout(res, 500));
+    return r.fulfill({ json: view });
+  });
+  await page.goto("http://127.0.0.1:5183");
+  await page.getByRole("button", { name: /^Message/ }).click();
+  const bubble = page.locator(".chat-bubble.partner");
+  await expect(bubble).toContainText("நான் பிக்அப் இடத்தில் இருக்கேன்.");
+  await page.getByRole("button", { name: "Translated · Show original" }).click();
+  await expect(bubble).toContainText("I’m at the pickup.");
+});

@@ -5,7 +5,13 @@ import { inr, paymentMethods } from "./components";
 import { checkout, type Order, type Verification } from "./checkout";
 import { countUp } from "../design/tripMoments";
 import { enhanceSlides } from "../design/slideToConfirm";
-import { fareStory } from "../design/tripExtras";
+import { fareStory, arrivalResult } from "../design/tripExtras";
+
+// A 1–2 star rating asks what went wrong; the picks are sent as the rating comment.
+const LOW_REASONS = {
+  rider: ["Unsafe driving", "Rude behaviour", "Longer route", "Asked for extra money", "Vehicle not clean", "Late pickup"],
+  captain: ["Rude behaviour", "Long wait at pickup", "Wrong pickup spot", "Didn’t pay", "Damaged the vehicle"],
+};
 
 /** "cash" → "Cash", "upi" → "UPI" for receipts. */
 const methodName = (m: string) => (m === "upi" ? "UPI" : m ? m[0].toUpperCase() + m.slice(1) : "");
@@ -53,6 +59,7 @@ export class LivePayment {
   }
   /** The settled status whose success motion has already played. */
   private gave?: number;
+  private lowReasons = new Set<string>();
   private celebrated = "";
   private isSettled(status?: string) {
     return status === "paid_online" || status === "driver_reported_received" || status === "rider_reported_paid";
@@ -146,12 +153,18 @@ export class LivePayment {
   }
   private click = (event: Event) => {
     const button = (event.target as Element).closest<HTMLElement>(
-      "[data-live-method],[data-live-pay],[data-live-rate],[data-live-gave]",
+      "[data-live-method],[data-live-pay],[data-live-rate],[data-live-gave],[data-live-reason]",
     );
     if (!button) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     if (this.busy) return;
+    if (button.dataset.liveReason) {
+      const r = button.dataset.liveReason;
+      this.lowReasons.has(r) ? this.lowReasons.delete(r) : this.lowReasons.add(r);
+      this.render();
+      return;
+    }
     if (button.dataset.liveGave) {
       this.gave = Number(button.dataset.liveGave);
       this.render();
@@ -253,7 +266,8 @@ export class LivePayment {
     if (action === "rate") {
       if (this.rating < 1) return;
       void this.run(async () => {
-        await api.request(`/api/rides/${this.ride.id}/rating`, { score: this.rating });
+        const comment = this.rating <= 2 && this.lowReasons.size ? [...this.lowReasons].join(", ") : "";
+        await api.request(`/api/rides/${this.ride.id}/rating`, { score: this.rating, ...(comment ? { comment } : {}) });
         this.ride = { ...this.ride, my_rating: this.rating };
         await this.refresh();
       });
@@ -396,7 +410,10 @@ export class LivePayment {
     const other = this.role === "rider" ? "your Captain" : "your rider";
     if (this.ride.my_rating)
       return `<div class="section-card payment-rating" data-rated="${this.ride.my_rating}"><p>You rated ${other} ${"★".repeat(this.ride.my_rating)}</p></div>`;
-    return `<div class="section-card payment-rating"><p>How was ${other}?</p><div class="stars" aria-label="Rate ${other}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="${n <= this.rating ? "active" : ""}" data-live-rate="${n}" aria-label="${n} star${n > 1 ? "s" : ""}" aria-pressed="${n === this.rating}">★</button>`).join("")}</div></div>`;
+    const reasons = this.rating >= 1 && this.rating <= 2
+      ? `<div class="hop-low-rating"><p>What went wrong? <small>(optional)</small></p><div class="hop-notes-chips">${LOW_REASONS[this.role].map((r) => `<button type="button" class="product-chip ${this.lowReasons.has(r) ? "active" : ""}" aria-pressed="${this.lowReasons.has(r)}" data-live-reason="${escape(r)}">${escape(r)}</button>`).join("")}</div></div>`
+      : "";
+    return `<div class="section-card payment-rating"><p>How was ${other}?</p><div class="stars" aria-label="Rate ${other}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="${n <= this.rating ? "active" : ""}" data-live-rate="${n}" aria-label="${n} star${n > 1 ? "s" : ""}" aria-pressed="${n === this.rating}">★</button>`).join("")}</div>${reasons}</div>`;
   }
   private ratingAction() {
     if (this.ride.status !== "completed" || !(this.role === "captain" || this.ride.driver_name) || this.ride.my_rating || this.rating < 1) return "";
@@ -433,6 +450,7 @@ export class LivePayment {
       this.confirmUnpaid,
       this.rating,
       this.gave,
+      [...this.lowReasons],
     ]);
     // Re-draw when nothing changed only if the app's renderer has drawn over this page.
     if (signature === this.lastRendered && this.app.dataset.livePayment === this.ride.id && this.app.querySelector(".payment-intro")) return;
@@ -452,14 +470,14 @@ export class LivePayment {
         : this.role === "captain"
           ? "You confirmed the rider paid you. It’s added to today’s earnings."
           : "Your Captain confirmed they received the payment.";
-      content = `${this.successSymbol(status)}${summary}${fareStory(this.ride, this.role)}<div class="payment-receipt"><span>Payment method</span><strong>${escape(verified ? (this.ride.payment_method === "wallet" ? "Wallet" : "Online payment") : methodName(this.ride.payment_method))}</strong><span>Status</span><strong>${verified ? "Confirmed by Hop" : "Received by Captain"}</strong><span>Ride reference</span><strong>${escape(this.ride.id.slice(0, 12))}</strong></div>${this.ratingCard()}`;
+      content = `${this.successSymbol(status)}${summary}${this.role === "rider" ? arrivalResult(this.ride) : ""}${fareStory(this.ride, this.role)}<div class="payment-receipt"><span>Payment method</span><strong>${escape(verified ? (this.ride.payment_method === "wallet" ? "Wallet" : "Online payment") : methodName(this.ride.payment_method))}</strong><span>Status</span><strong>${verified ? "Confirmed by Hop" : "Received by Captain"}</strong><span>Ride reference</span><strong>${escape(this.ride.id.slice(0, 12))}</strong></div>${this.ratingCard()}`;
       actions = this.ratingAction() + this.button("Done", "close", !!this.ratingAction());
       if (!verified && this.role === "rider")
         actions += this.button("Report a payment issue", "dispute", true);
     } else if (status === "rider_reported_paid" && this.role === "rider") {
       title = "Thanks, payment noted.";
       copy = "You told us you paid your Captain. You can book your next ride.";
-      content = `${this.successSymbol(status)}${summary}<div class="payment-receipt"><span>Payment method</span><strong>${escape(methodName(this.ride.payment_method))}</strong><span>Status</span><strong>You reported paying</strong><span>Ride reference</span><strong>${escape(this.ride.id.slice(0, 12))}</strong></div>${this.ratingCard()}`;
+      content = `${this.successSymbol(status)}${summary}${arrivalResult(this.ride)}<div class="payment-receipt"><span>Payment method</span><strong>${escape(methodName(this.ride.payment_method))}</strong><span>Status</span><strong>You reported paying</strong><span>Ride reference</span><strong>${escape(this.ride.id.slice(0, 12))}</strong></div>${this.ratingCard()}`;
       actions = this.ratingAction() + this.button("Done", "close", !!this.ratingAction());
     } else if (status === "driver_reported_unpaid" && this.role === "rider" && !this.pending && !this.directUpi) {
       title = "Your Captain didn’t receive payment.";

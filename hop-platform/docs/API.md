@@ -98,6 +98,17 @@ Products are off until an operator sets them: `POST /api/operator/trip-pricing` 
 - `GET /api/drivers/demand` cells now include `drivers` (online drivers in the same ~1 km cell).
 - Rides include `wait_charge_paise`; `driver` state includes `home_until`, `home_uses`, `daily_goal_paise`.
 - Rides with status `arrived` include `arrived_at` (the captain's "arrived" time). The free wait is 3 min, then ₹2/min up to ₹100 (`waitChargeSQL`), so both apps can show the same clock.
+
+## Hop originals, phases 2 and 3 (migration 041, `originals.go`)
+- `POST /api/rides` accepts `notes` (subset of `quiet`, `luggage`, `boarding`, `call`; anything else is 400 "Unknown ride note"), `arrival_alert` and `sms_updates` (bools).
+- Rides include `rider_notes`, `arrival_alert`, `arrival_alert_status` (`sent` | `test` | `unavailable` | `no_contact` | `failed`, set after completion) and `sms_updates`. Offers include `rider_notes`.
+- `POST /api/rides/{id}/alerts` `{arrival_alert?, sms_updates?}`: rider only, active ride, otherwise 404.
+- With `sms_updates`, the rider gets a text on accepted, arrived and in_progress. With `arrival_alert`, the first emergency contact gets one on completed.
+- `POST /api/drivers/break` `{minutes}` (5–60, or 0 to end): no new offers until `break_until`; the captain stays online.
+- `POST /api/drivers/home-by` `{at:"HH:MM", lat, lng}` (IST; tomorrow if the time has passed) or `{off:true}`. From an hour before `home_by`, only rides towards home are offered.
+- `driver` state includes `online_since`, `break_until`, `home_by`.
+- `POST /api/translate` `{text, to}` → `{text}`. 503 "Translation isn't set up yet" without `TRANSLATE_API_KEY` (Google Cloud Translation v2).
+- `GET /api/config` adds `sms_available`, `sms_test_mode` (DEV_SMS / development: texts are logged only) and `translate_available`.
 # Trust, onboarding and trip statements (migration 031)
 
 All endpoints below use existing session authorization; POSTs require the existing CSRF token and approved Origin. Responses are private/no-store. Android uses the existing native authenticated JSON transport.

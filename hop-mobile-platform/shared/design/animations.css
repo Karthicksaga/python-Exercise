@@ -1717,3 +1717,32 @@
 .hop-photo-sheet .panel :is(.primary, .secondary) { width: 100%; min-height: 52px; }
 @keyframes hop-sheet-up { from { transform: translateY(30px); opacity: .6; } }
 @media (prefers-reduced-motion: reduce) { .hop-photo-sheet .panel { animation: none; } }
+
+/* ── Hop originals, phases 2 and 3: ride notes, alerts, chai break, home by, language bridge ── */
+.hop-notes { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 4px; }
+.hop-notes > strong { font-size: 14px; }
+.hop-notes > small, .hop-alert-note { color: var(--muted); font-size: 12px; }
+.hop-notes-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.hop-notes-chips .product-chip { min-height: 40px; padding: 0 14px; }
+.hop-notes-card { display: flex; flex-direction: column; gap: 2px; margin: 10px 0; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, var(--brand, #2563eb) 9%, transparent); }
+.hop-notes-card strong { font-size: 15px; }
+.hop-notes-card small { color: var(--muted); font-size: 12px; }
+.hop-alerts { display: flex; flex-direction: column; margin: 10px 0 2px; border-top: 1px solid var(--line); }
+.hop-alert-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 8px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.hop-alert-row span { display: flex; flex-direction: column; gap: 2px; }
+.hop-alert-row strong { font-size: 14px; }
+.hop-alert-row small { color: var(--muted); font-size: 12px; }
+.hop-alert-row input { width: 44px; height: 26px; flex: none; accent-color: var(--brand, #2563eb); }
+.hop-alert-note { padding-top: 6px; }
+.hop-break { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0; padding: 12px 14px; border-radius: 16px; background: color-mix(in srgb, #f59e0b 14%, var(--surface, #fff)); }
+.hop-break span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hop-break small { color: var(--muted); font-size: 12px; }
+.hop-break button { flex: none; min-height: 44px; padding: 0 14px; }
+.hop-low-rating { margin-top: 12px; }
+.hop-low-rating p { margin: 0 0 8px; font-weight: 600; }
+.hop-low-rating small { color: var(--muted); font-weight: 400; }
+.hop-home-by input[type="time"] { margin-top: 6px; max-width: 160px; }
+.hop-home-by .field-label { display: block; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.hop-home-by-actions { display: flex; flex-direction: column; gap: 4px; align-self: flex-start; }
+.chat-tr { display: block; margin-top: 4px; padding: 0; min-height: 24px; border: 0; background: none; color: var(--brand, #2563eb); font-size: 12px; text-decoration: underline; cursor: pointer; }
+.hop-voice .hop-voice-langs { display: flex; flex-direction: column; gap: 8px; }

@@ -6,6 +6,7 @@ import type { Ride } from "../services/contracts";
 import { escape } from "../helpers";
 import { notificationSound } from "../sounds";
 import { ChatSession, type ChatItem, type ChatSnapshot } from "./ChatSession";
+import { QUICK_TEXT } from "../design/tripExtras";
 
 type Bridge = { read(): { screen: string }; notify(message: string): void };
 
@@ -52,9 +53,45 @@ export class RideChat {
     this.badge(ride);
   }
 
+  // Language bridge (approved Nov 2026): the other person's messages are shown in this person's app
+  // language. Quick replies use a built-in phrase table; other text uses translation when it's set up.
+  private lang = "en";
+  private canTranslate = false;
+  private translated = new Map<string, string>();
+  private showOriginal = new Set<string>();
+  setLanguage(lang: string, canTranslate: boolean) {
+    if (lang === this.lang && canTranslate === this.canTranslate) return;
+    this.lang = lang;
+    this.canTranslate = canTranslate;
+    this.painted = "";
+  }
+  private shownText(m: ChatItem) {
+    if (m.mine || this.lang === "en" || this.showOriginal.has(m.key)) return { text: m.body, note: "" };
+    const t = QUICK_TEXT[m.body]?.[this.lang] || this.translated.get(m.key);
+    if (t) return { text: t, note: `<button type="button" class="chat-tr" data-chat-orig="${escape(m.key)}">Translated · Show original</button>` };
+    return { text: m.body, note: this.canTranslate ? `<button type="button" class="chat-tr" data-chat-translate="${escape(m.key)}">Translate</button>` : "" };
+  }
+
   /** Handles chat buttons. Returns true when the click was a chat action. */
   click(button: HTMLElement): boolean {
     const d = button.dataset;
+    if (d.chatOrig) {
+      this.showOriginal.has(d.chatOrig) ? this.showOriginal.delete(d.chatOrig) : this.showOriginal.add(d.chatOrig);
+      this.painted = "";
+      this.paint();
+      return true;
+    }
+    if (d.chatTranslate) {
+      const key = d.chatTranslate, item = this.snap?.items.find((m) => m.key === key);
+      if (item) {
+        this.showOriginal.delete(key);
+        void api.request<{ text: string }>("/api/translate", { text: item.body, to: this.lang }).then(
+          (r) => { this.translated.set(key, r.text); this.painted = ""; this.paint(); },
+          (e) => this.bridge.notify((e as Error).message),
+        );
+      }
+      return true;
+    }
     if (d.chatRetry) return this.session?.retry(d.chatRetry), true;
     if (d.chatDiscard) return this.session?.discard(d.chatDiscard), true;
     if (d.chatOlder !== undefined) {
@@ -164,7 +201,7 @@ export class RideChat {
       if (snap.offline) html += `<div class="chat-time" role="status">Reconnecting… messages will send when you’re back online.</div>`;
       if (!snap.canPost) html += `<div class="notice-box chat-closed" role="status">${escape(snap.closedReason || "This chat is closed.")}</div>`;
       else
-        html += `<div class="product-row" style="margin-top:15px">${QUICK[this.role].map(([label, text]) => `<button class="product-chip" data-message="${escape(text)}">${escape(label)}</button>`).join("")}</div>`;
+        html += `<div class="product-row" style="margin-top:15px">${QUICK[this.role].map(([label, text]) => `<button class="product-chip" data-message="${escape(text)}">${escape(this.lang !== "en" ? QUICK_TEXT[text]?.[this.lang] || label : label)}</button>`).join("")}</div>`;
     }
     if (html !== this.painted || !chat.dataset.liveChat) {
       const scroller = this.scroller(chat);
@@ -193,8 +230,9 @@ export class RideChat {
 
   private bubble(m: ChatItem) {
     if (m.system) return `<div class="chat-time">${escape(m.body)}</div>`;
-    const bubble = `<div class="chat-bubble ${m.mine ? "mine" : "partner"}${m.status === "failed" ? " failed" : ""}" data-chat-key="${m.key}">${escape(m.body)}</div>`;
-    if (!m.mine) return bubble;
+    const shown = this.shownText(m);
+    const bubble = `<div class="chat-bubble ${m.mine ? "mine" : "partner"}${m.status === "failed" ? " failed" : ""}" data-chat-key="${m.key}">${escape(shown.text)}</div>`;
+    if (!m.mine) return bubble + (shown.note ? `<div class="chat-meta partner">${shown.note}</div>` : "");
     const time = clock(m.sentAt);
     switch (m.status) {
       case "sending":

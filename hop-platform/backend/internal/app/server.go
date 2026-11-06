@@ -135,7 +135,7 @@ func (s *Server) Handler() http.Handler {
 		"POST /api/android/push/subscribe": s.androidPushSubscribe, "POST /api/android/push/unsubscribe": s.androidPushUnsubscribe,
 		"GET /api/push/key": s.pushKey, "POST /api/push/subscribe": s.pushSubscribe, "POST /api/push/unsubscribe": s.pushUnsubscribe,
 		"GET /api/nearby": s.nearby, "GET /api/stream": s.stream, "POST /api/operator/vehicle-changes/{id}": s.reviewVehicleChange, "POST /api/operator/area-changes/{id}": s.reviewAreaChange,
-		"GET /api/drivers/earnings": s.driverEarnings, "GET /api/drivers/demand": s.driverDemand, "POST /api/drivers/go-home": s.goHome, "POST /api/drivers/goal": s.saveGoal, "GET /api/drivers/insights": s.driverInsights,
+		"GET /api/drivers/earnings": s.driverEarnings, "GET /api/drivers/demand": s.driverDemand, "POST /api/drivers/go-home": s.goHome, "POST /api/drivers/break": s.driverBreak, "POST /api/drivers/home-by": s.homeBy, "POST /api/rides/{id}/alerts": s.rideAlerts, "POST /api/translate": s.translate, "POST /api/drivers/goal": s.saveGoal, "GET /api/drivers/insights": s.driverInsights,
 		"POST /api/incidents": s.incident, "GET /api/operator": s.operatorState, "GET /api/operator/regions": s.operatorRegions,
 		"POST /api/operator/areas": s.saveArea, "POST /api/operator/drivers/{id}": s.reviewDriver,
 		"POST /api/operator/pricing":        s.saveVehiclePricing,

@@ -36,6 +36,7 @@ const rideSelect = `SELECT r.id,r.status,r.version,r.payment_method,r.payment_st
    WHERE cc.kind='ride' AND cc.ref=r.id::text)::int AS chat_unread
  ,q.discount_paise,q.surge_multiplier::float8 AS surge_multiplier,q.promo_code,q.pink,GREATEST(0,COALESCE(r.offered_fare_paise,q.fare_paise)-q.discount_paise) AS payable_paise,r.full_fare_status,r.adjusted_from_paise,r.covered_meters
  ,CASE WHEN r.status='arrived' THEN (SELECT max(created_at) FROM audit_events e WHERE e.ride_id=r.id AND e.action='arrived') END AS arrived_at
+ ,r.rider_notes,r.arrival_alert,r.arrival_alert_status,r.sms_updates
  FROM rides r JOIN quotes q ON q.id=r.quote_id JOIN accounts ra ON ra.id=r.rider_id LEFT JOIN drivers d ON d.user_id=r.driver_id LEFT JOIN accounts da ON da.id=r.driver_id
  LEFT JOIN ride_ratings myrating ON myrating.ride_id=r.id AND myrating.rater_id=$1::uuid`
 
@@ -125,14 +126,14 @@ func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	driver, e := jsonRows(r.Context(), s.DB, `SELECT user_id,area_id,status,vehicle_number,vehicle_category,vehicle_make,vehicle_model,vehicle_color,onboarding_version,upi_id,license_reference,insurance_reference,license_expires,insurance_expires,review_note,online,location_at,pickup_radius_meters,minimum_fare_paise,home_lat,home_lng,home_until,home_uses,home_uses_on,daily_goal_paise,lat,lng FROM drivers WHERE user_id=$1`, uid)
+	driver, e := jsonRows(r.Context(), s.DB, `SELECT user_id,area_id,status,vehicle_number,vehicle_category,vehicle_make,vehicle_model,vehicle_color,onboarding_version,upi_id,license_reference,insurance_reference,license_expires,insurance_expires,review_note,online,location_at,pickup_radius_meters,minimum_fare_paise,home_lat,home_lng,home_until,home_uses,home_uses_on,daily_goal_paise,lat,lng,online_since,break_until,home_by FROM drivers WHERE user_id=$1`, uid)
 	if e != nil {
 		dbError(w, e)
 		return
 	}
 	// The SQL proximity filter is an inexpensive candidate filter; acceptance repeats exact distance validation.
 	offers, e := jsonRows(r.Context(), s.DB, `SELECT r.id,r.version,r.group_id,r.share_state,q.pickup_label,q.dropoff_label,q.pickup_lat,q.pickup_lng,q.dropoff_lat,q.dropoff_lng,q.meters,q.seconds,COALESCE(r.offered_fare_paise,q.fare_paise)+`+groupFareExtra+` AS fare_paise,q.fare_paise AS quoted_fare_paise,r.offered_fare_paise IS NOT NULL AND r.share_state='none' AS negotiated,
- (SELECT amount_paise FROM ride_bids b WHERE b.ride_id=r.id AND b.driver_id=$1) AS my_bid_paise,q.trip_type,q.stops,q.rental_hours,q.vehicle_category,q.pink,q.route_geometry AS route,r.payment_method,r.expires_at,
+ (SELECT amount_paise FROM ride_bids b WHERE b.ride_id=r.id AND b.driver_id=$1) AS my_bid_paise,r.rider_notes,q.trip_type,q.stops,q.rental_hours,q.vehicle_category,q.pink,q.route_geometry AS route,r.payment_method,r.expires_at,
  COALESCE((SELECT o.kind FROM ride_offers o WHERE o.ride_id=r.id AND o.driver_id=$1),'now') AS offer_kind,
  (SELECT o.expires_at FROM ride_offers o WHERE o.ride_id=r.id AND o.driver_id=$1) AS offer_expires_at,
  COALESCE(r.next_driver_id=$1,false) AS next_ride_held`+offerFrom+` ORDER BY r.created_at LIMIT 20`, uid)
@@ -177,6 +178,10 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 		OfferPaise     *int64 `json:"offer_paise"`
 		Share          bool   `json:"share"`
 		GoOffline      bool   `json:"go_offline"`
+		// Hop originals: notes for the captain, the arrival alert and SMS trip updates.
+		Notes        []string `json:"notes"`
+		ArrivalAlert bool     `json:"arrival_alert"`
+		SMSUpdates   bool     `json:"sms_updates"`
 	}
 	if !decode(w, r, &input) {
 		return
@@ -202,6 +207,11 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if !hasMobile(ctx, s.DB, uid) {
 		fail(w, 403, mobileRequired)
+		return
+	}
+	notes, ok := validNotes(input.Notes)
+	if !ok {
+		fail(w, 400, "Unknown ride note")
 		return
 	}
 	if input.Share && (input.OfferPaise != nil || input.FavoriteFirst) {
@@ -345,6 +355,9 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(e, pgx.ErrNoRows) {
 		fail(w, 409, "Quote expired or service area unavailable; request a fresh quote")
 		return
+	}
+	if e == nil {
+		_, e = tx.Exec(ctx, "UPDATE rides SET rider_notes=$2,arrival_alert=$3,sms_updates=$4 WHERE id=$1", id, notes, input.ArrivalAlert, input.SMSUpdates)
 	}
 	if e != nil {
 		dbError(w, e)
@@ -882,6 +895,7 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 	s.wake(rider)
 	s.wake(driver)
 	s.wake(nextRider)
+	go s.rideTexts(id, next)
 	slog.Info("ride status transitioned", "ride_id", id, "status", next, "actor_id", uid)
 	write(w, 200, map[string]bool{"ok": true})
 }

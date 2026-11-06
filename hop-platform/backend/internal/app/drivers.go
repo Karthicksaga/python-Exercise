@@ -310,7 +310,7 @@ func (s *Server) online(w http.ResponseWriter, r *http.Request) {
 		fail(w, 403, passRequiredMessage)
 		return
 	}
-	tag, err := tx.Exec(ctx, `UPDATE drivers d SET online=true,location_at=NULL,updated_at=now() FROM areas a
+	tag, err := tx.Exec(ctx, `UPDATE drivers d SET online=true,online_since=CASE WHEN d.online THEN d.online_since ELSE now() END,location_at=NULL,updated_at=now() FROM areas a
  WHERE d.user_id=$1 AND d.area_id=a.id AND d.status='approved' AND a.active
  AND (d.onboarding_version=0 OR EXISTS(SELECT 1 FROM profile_photos f WHERE f.account_id=d.user_id AND f.approved))
  AND d.license_expires>=(now() AT TIME ZONE 'Asia/Kolkata')::date

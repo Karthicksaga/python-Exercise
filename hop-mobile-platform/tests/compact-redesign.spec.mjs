@@ -198,3 +198,90 @@ test("one photo sheet for both apps, and sub-page main actions are docked full w
   const bar = await page.locator(".action-bar").boundingBox(), b = await invite.boundingBox();
   expect(Math.abs(b.width - bar.width)).toBeLessThan(1);
 });
+
+// ── Phases 2 and 3 of the approved prototype ──
+test("captain sees the rider's notes on the request", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setup(page, () => ({ rides: [], offers: [{ ...ride, status: "requested", rider_notes: ["quiet", "luggage"] }], driver: [{ online: true, status: "approved" }] }));
+  await page.goto("http://127.0.0.1:5184");
+  await expect(page.locator(".driver-sheet .hop-notes-card")).toContainText("Quiet ride · Luggage");
+});
+
+test("after 4 hours online the captain is offered a chai break, which pauses requests", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const posts = [];
+  let driver = { online: true, status: "approved", online_since: new Date(Date.now() - 4.5 * 3600e3).toISOString() };
+  await setup(page, () => ({ rides: [], offers: [], driver: [driver] }));
+  await page.route("**/api/drivers/break", (r) => {
+    const body = r.request().postDataJSON();
+    posts.push(body);
+    driver = { ...driver, break_until: body.minutes ? new Date(Date.now() + body.minutes * 60e3).toISOString() : null };
+    return r.fulfill({ json: { ok: true } });
+  });
+  await page.goto("http://127.0.0.1:5184");
+  const card = page.locator(".hop-break");
+  await expect(card).toContainText("4 h 30 min on the road");
+  await card.getByRole("button", { name: "15 min break" }).click();
+  await expect.poll(() => posts.length).toBe(1);
+  expect(posts[0]).toEqual({ minutes: 15 });
+  await expect(card).toContainText("On a chai break");
+  await card.getByRole("button", { name: "End break" }).click();
+  await expect.poll(() => posts.at(-1)).toEqual({ minutes: 0 });
+});
+
+test("rider on a trip can turn on the arrival alert; test mode says texts are only logged", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const posts = [];
+  let trip = { ...ride, status: "in_progress", mine: true, driver_name: "Murugan S", vehicle_number: "TN 59 AB 4821" };
+  await setup(page, () => ({ rides: [trip], offers: [], driver: [] }));
+  await page.route("**/api/config", (r) => r.fulfill({ json: { areas: [], vehicles: [], development: true, sms_test_mode: true } }));
+  await page.route("**/api/rides/slide-ride/alerts", (r) => {
+    const body = r.request().postDataJSON();
+    posts.push(body);
+    trip = { ...trip, ...body };
+    return r.fulfill({ json: { ok: true } });
+  });
+  await page.goto("http://127.0.0.1:5183");
+  const alerts = page.locator(".live-trip-sheet .hop-alerts");
+  await expect(alerts).toContainText("Test mode: texts are logged, not sent.");
+  await alerts.locator('[data-hop-alert="arrival_alert"]').check();
+  await expect.poll(() => posts.length).toBe(1);
+  expect(posts[0]).toEqual({ arrival_alert: true });
+});
+
+test("a low rating asks what went wrong and sends the picks as the comment; arrival text result is shown", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const rated = [];
+  const done = { ...ride, status: "completed", mine: true, driver_name: "Murugan S", payment_status: "paid_online", payment_method: "online", arrival_alert: true, arrival_alert_status: "test", created_at: new Date().toISOString() };
+  await setup(page, () => ({ rides: [done], offers: [], driver: [] }));
+  await page.route("**/api/rides/slide-ride/rating", (r) => { rated.push(r.request().postDataJSON()); return r.fulfill({ json: { ok: true } }); });
+  await page.goto("http://127.0.0.1:5183");
+  await page.getByRole("button", { name: "Activity", exact: true }).click();
+  await page.getByRole("tab", { name: "Past", exact: true }).click();
+  await page.getByRole("button", { name: "Receipt", exact: true }).click();
+  await expect(page.locator(".hop-arrival-test")).toContainText("arrival text was logged");
+  await page.getByRole("button", { name: "2 stars" }).click();
+  const why = page.locator(".hop-low-rating");
+  await expect(why).toContainText("What went wrong?");
+  await why.locator("[data-live-reason]").first().click();
+  const reason = await why.locator("[data-live-reason]").first().textContent();
+  await page.getByRole("button", { name: "Send 2-star rating" }).click();
+  await expect.poll(() => rated.length).toBe(1);
+  expect(rated[0]).toEqual({ score: 2, comment: reason });
+});
+
+test("captain sets a Home by time from Driver tools", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const posts = [];
+  await setup(page, () => ({ rides: [], offers: [], driver: [{ online: true, status: "approved", home_lat: 13.05, home_lng: 80.25 }] }));
+  await page.route("**/api/drivers/home-by", (r) => { posts.push(r.request().postDataJSON()); return r.fulfill({ json: { ok: true } }); });
+  await page.goto("http://127.0.0.1:5184");
+  await expect(page.locator("#app[data-ready=true]")).toBeVisible();
+  await page.evaluate(() => window.prototypeBridge.go("tools"));
+  const row = page.locator(".hop-home-by");
+  await expect(row).toContainText("Home by");
+  await row.locator("#account-home-by").fill("20:30");
+  await row.getByRole("button", { name: "Turn on" }).click();
+  await expect.poll(() => posts.length).toBe(1);
+  expect(posts[0]).toEqual({ at: "20:30", lat: 13.05, lng: 80.25 });
+});

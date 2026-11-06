@@ -134,3 +134,110 @@ export function fareStory(ride: Ride, role: "rider" | "captain") {
   const ico: Record<string, string> = { lock: "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4", clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2", route: "M12 3l7 18-7-4-7 4z", gift: "M3 9h18v4H3zM5 13v8h14v-8M12 9v12", check: "M5 12.5l4.5 4.5L19 7.5" };
   return `<section class="hop-fare-story" aria-label="How this fare was worked out"><strong>Fare story</strong>${steps.map(([i, t, d, a]) => `<div><span class="hop-fs-dot" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${ico[i]}"/></svg></span><span><b>${escape(t)}</b><small>${escape(d)}</small></span><span class="hop-fs-amt">${a}</span></div>`).join("")}</section>`;
 }
+
+// ── Ride notes (phase 2) ───────────────────────────────
+// Four fixed notes, shown to the captain in their own app language (no translation service needed).
+export const NOTE_LABELS: Record<string, Record<string, string>> = {
+  quiet: { en: "Quiet ride", ta: "அமைதியான பயணம்", hi: "शांत सफ़र" },
+  luggage: { en: "Luggage", ta: "லக்கேஜ் இருக்கு", hi: "सामान है" },
+  boarding: { en: "Help boarding", ta: "ஏற உதவி வேணும்", hi: "चढ़ने में मदद चाहिए" },
+  call: { en: "On a call", ta: "போன்ல பேசிட்டு இருக்கேன்", hi: "फ़ोन पर हूँ" },
+};
+export const noteLabel = (code: string, lang = "en") => NOTE_LABELS[code]?.[lang] || NOTE_LABELS[code]?.en || code;
+
+/** Rider, Review screen: pick notes for the captain. */
+export function notesPicker(container: Element | null, selected: Set<string>) {
+  if (!container) return;
+  let box = container.querySelector<HTMLElement>(".hop-notes");
+  if (!box) {
+    box = document.createElement("section");
+    box.className = "hop-notes";
+    box.setAttribute("aria-label", "Note for your captain");
+    container.append(box);
+  }
+  const html = `<strong>Note for your captain</strong><div class="hop-notes-chips">${Object.keys(NOTE_LABELS).map((c) => `<button type="button" class="product-chip ${selected.has(c) ? "active" : ""}" aria-pressed="${selected.has(c)}" data-hop-note="${c}">${noteLabel(c)}</button>`).join("")}</div><small>Your captain sees these in their own language.</small>`;
+  if (box.innerHTML !== html) box.innerHTML = html;
+}
+
+/** Captain: the rider's notes, in the captain's language with the English underneath. */
+export function notesCard(container: Element | null, notes: string[] | undefined, lang: string) {
+  if (!container) return;
+  let card = container.querySelector<HTMLElement>(".hop-notes-card");
+  if (!notes?.length) return card?.remove();
+  if (!card) {
+    card = document.createElement("div");
+    card.className = "hop-notes-card";
+    card.setAttribute("role", "note");
+    container.append(card);
+  }
+  const html = `<span class="live-eyebrow">RIDER NOTES</span><strong>${notes.map((n) => escape(noteLabel(n, lang))).join(" · ")}</strong>${lang !== "en" ? `<small>${notes.map((n) => escape(noteLabel(n))).join(" · ")}</small>` : ""}`;
+  if (card.innerHTML !== html) card.innerHTML = html;
+}
+
+// ── Arrival alert and SMS updates (phase 3) ────────────
+type SmsConfig = { sms_available?: boolean; sms_test_mode?: boolean };
+/** Rider on a trip: tell a contact on arrival, and SMS updates if the internet drops. */
+export function alertToggles(container: Element | null, ride: Ride | undefined, cfg: SmsConfig = {}) {
+  if (!container) return;
+  let box = container.querySelector<HTMLElement>(".hop-alerts");
+  if (!ride || !["accepted", "arrived", "in_progress"].includes(ride.status)) return box?.remove();
+  if (!box) {
+    box = document.createElement("div");
+    box.className = "hop-alerts";
+    container.append(box);
+  }
+  const note = cfg.sms_available ? "" : cfg.sms_test_mode ? "Test mode: texts are logged, not sent." : "Texts aren’t set up yet, so nothing will be sent.";
+  const row = (key: "arrival_alert" | "sms_updates", title: string, detail: string) =>
+    `<label class="hop-alert-row"><span><strong>${title}</strong><small>${detail}</small></span><input type="checkbox" role="switch" data-hop-alert="${key}" ${ride[key] ? "checked" : ""}/></label>`;
+  const html = row("arrival_alert", "Tell my emergency contact when I arrive", "They get a text the moment you reach.") +
+    row("sms_updates", "SMS updates if my internet drops", "Captain arriving and trip started, by text.") +
+    (note ? `<small class="hop-alert-note">${note}</small>` : "");
+  if (box.innerHTML !== html) box.innerHTML = html;
+}
+/** Rider payment page: what happened to the arrival text. */
+export function arrivalResult(ride: Ride) {
+  const s = ride.arrival_alert_status;
+  if (!ride.arrival_alert || !s) return "";
+  const text = {
+    sent: "Your emergency contact got a text that you arrived.",
+    test: "Test mode: the arrival text was logged, not sent.",
+    unavailable: "Texts aren’t set up yet, so no arrival text was sent.",
+    no_contact: "Add an emergency contact (Safety centre) to use arrival alerts.",
+    failed: "The arrival text couldn’t be sent.",
+  }[s];
+  return text ? `<div class="payment-hint hop-arrival-${s}" role="status">${text}</div>` : "";
+}
+
+// ── Chai break (phase 3) ───────────────────────────────
+/** Captain Drive: after 4 hours online, a gentle 15-minute break; while on a break, a countdown. */
+export function breakCard(container: Element | null, driver: { online?: boolean; online_since?: string | null; break_until?: string | null } | undefined) {
+  if (!container) return;
+  let card = container.querySelector<HTMLElement>(".hop-break");
+  const until = driver?.break_until ? Date.parse(driver.break_until) : 0;
+  const onlineFor = driver?.online && driver.online_since ? Date.now() - Date.parse(driver.online_since) : 0;
+  const onBreak = until > Date.now();
+  if (!driver?.online || (!onBreak && onlineFor < 4 * 3600 * 1000)) return card?.remove();
+  if (!card) {
+    card = document.createElement("div");
+    card.className = "hop-break";
+    container.querySelector(".zone-pill-row")?.after(card);
+    if (!card.isConnected) container.prepend(card);
+  }
+  const hours = Math.floor(onlineFor / 3600000), mins = Math.floor((onlineFor % 3600000) / 60000);
+  const left = Math.max(0, Math.round((until - Date.now()) / 60000));
+  const html = onBreak
+    ? `<span><strong>On a chai break · ${left} min left</strong><small>Requests are paused. You stay online.</small></span><button type="button" class="secondary" data-hop-break="0">End break</button>`
+    : `<span><strong>${hours} h ${mins} min on the road</strong><small>Time for a chai? Requests pause, you keep your place.</small></span><button type="button" class="secondary" data-hop-break="15">15 min break</button>`;
+  if (card.innerHTML !== html) card.innerHTML = html;
+}
+
+// ── Language bridge: quick replies (phase 3) ───────────
+// Quick replies are sent in English and shown to the other person in their app language.
+export const QUICK_TEXT: Record<string, Record<string, string>> = {
+  "I’m at the pickup.": { ta: "நான் பிக்அப் இடத்தில் இருக்கேன்.", hi: "मैं पिकअप पर हूँ।" },
+  "I’ll be there shortly.": { ta: "சீக்கிரம் வந்துடுவேன்.", hi: "मैं थोड़ी देर में पहुँच रहा/रही हूँ।" },
+  "Please wait 2 minutes.": { ta: "2 நிமிஷம் காத்திருங்க.", hi: "कृपया 2 मिनट रुकिए।" },
+  "I’ve arrived outside.": { ta: "நான் வெளியே வந்துட்டேன்.", hi: "मैं बाहर पहुँच गया हूँ।" },
+  "Hazard lights are on.": { ta: "ஹசார்ட் லைட் போட்டிருக்கேன்.", hi: "हैज़र्ड लाइट चालू है।" },
+  "Stuck in traffic, about 5 minutes.": { ta: "டிராஃபிக்ல இருக்கேன், சுமார் 5 நிமிஷம்.", hi: "ट्रैफ़िक में हूँ, लगभग 5 मिनट।" },
+};

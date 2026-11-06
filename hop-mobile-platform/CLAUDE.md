@@ -171,10 +171,18 @@ HOP_E2E_OPERATOR_PHONE=… npm run test:e2e:staging          # the same two test
   - **Pickup beacon:** the rider's "Light up my phone" fills the screen with a colour picked from the ride id (`beaconFor`). The overlay sits on `<body>` so redraws don't remove it. The captain sees "Look for a teal phone".
   - **Fare story:** on the payment page, built from `quoted_fare_paise`, `wait_charge_paise`, `adjusted_from_paise`/`covered_meters` (early finish), `discount_paise` and `payable_paise`.
 - **Profile photo:** one sheet for both apps (`LiveAccount.openPhotoSheet`): Take a photo (`capture="user"`) or Choose from gallery.
-- **Still to build:**
-  - Phase 2: the remaining "when things go wrong" screens, ride notes.
-  - Phase 3: language bridge, voice destination, chai break, Home by 9 pm, arrival alert, SMS backup.
-  - The Captain onboarding portrait keeps its own camera step.
+- The Captain onboarding portrait keeps its own camera step.
+
+## Approved prototype, phases 2 and 3 (Nov 2026; backend migration 041, `internal/app/originals.go`)
+All helpers are in `shared/design/tripExtras.ts` unless named; styles are in `animations.css` under "phases 2 and 3".
+- **Ride notes:** the rider picks Quiet ride / Luggage / Help boarding / On a call on Review (`notesPicker`, `.hop-notes`); they go with the booking as `notes` (codes only, server checks them). The captain sees them on the request and pickup screens in their own app language (`notesCard`, `NOTE_LABELS`), English underneath.
+- **Low rating:** 1–2 stars shows "What went wrong?" chips (`LivePayment`, `LOW_REASONS`); the picks are sent as the rating `comment`.
+- **Arrival alert and SMS updates:** rider trip sheet switches (`alertToggles`) post `/api/rides/{id}/alerts`. The server texts the first emergency contact on completion and saves `arrival_alert_status`; the payment page says what happened (`arrivalResult`). Without an SMS provider the switches say "test mode" or "not set up" and never claim a text was sent.
+- **Chai break:** after 4 h online the captain Drive screen offers a 15 min break (`breakCard`, `/api/drivers/break`); requests pause, they stay online. "Take a break" in Driver tools does the same (it used to go offline).
+- **Home by:** Driver tools "Be home by" time (`LiveAccount.homeByRow`, `/api/drivers/home-by`). From an hour before, only rides towards home. Home is the saved go-home spot, or the current location (the app says so).
+- **Language bridge** (`RideChat`): messages from the other person show in your app language. Quick replies use the fixed `QUICK_TEXT` table; other text has a Translate button only when the server has `TRANSLATE_API_KEY` (`translate_available`). "Show original" is always one tap away.
+- **Voice destination** (`shared/design/voice.ts`, rider only): mic on search, pick English/Tamil/Hindi, Android's speech screen fills the destination. Needs the native plugin `@capacitor-community/speech-recognition` and `RECORD_AUDIO`; on the web it says it isn't available.
+- Tests: `tests/compact-redesign.spec.mjs` (phases 2–3 block), the notes test in `completion.spec.mjs`, the language bridge test in `journey.spec.mjs`, backend `originals_test.go`.
 
 ## Finding things cheaply
 - Find a screen with `grep -n "<screen-id>" ../hop-platform/prototypes/mobile-first/app.js`, then read only that range.

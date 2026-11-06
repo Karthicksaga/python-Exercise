@@ -22,7 +22,8 @@ func meterSQL(lat1, lng1, lat2, lng2 string) string {
 
 // goHomeFilter hides rides that lead away from home while a driver's go-home mode is on:
 // the drop must be near home or clearly closer to home than the pickup.
-var goHomeFilter = fmt.Sprintf(` AND (d.home_until IS NULL OR d.home_until<=now() OR d.home_lat IS NULL OR %[1]s<=%[3]d OR %[1]s<%[2]s-%[4]d)`,
+// It also applies in the hour before a captain's "home by" time, and a captain on a chai break gets no offers.
+var goHomeFilter = fmt.Sprintf(` AND (d.break_until IS NULL OR d.break_until<=now()) AND (((d.home_until IS NULL OR d.home_until<=now()) AND (d.home_by IS NULL OR now() NOT BETWEEN d.home_by-interval '60 minutes' AND d.home_by)) OR d.home_lat IS NULL OR %[1]s<=%[3]d OR %[1]s<%[2]s-%[4]d)`,
 	meterSQL("q.dropoff_lat", "q.dropoff_lng", "d.home_lat", "d.home_lng"),
 	meterSQL("q.pickup_lat", "q.pickup_lng", "d.home_lat", "d.home_lng"), goHomeNearMeters, goHomeCloserMeter)
 

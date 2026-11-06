@@ -600,3 +600,17 @@ test("empty wallet history remains empty without duplicating payment notices on 
   }
   await expect(page.locator('.screen-padding > .list-row')).toHaveCount(0);
 });
+
+test("rider picks notes for the captain on Review and they are sent with the booking", async ({ page }) => {
+  const posts = await fixture(page);
+  await chooseRoute(page);
+  await review(page);
+  const notes = page.locator(".confirm-sheet .hop-notes");
+  await expect(notes).toContainText("Note for your captain");
+  await notes.getByRole("button", { name: "Quiet ride" }).click();
+  await notes.getByRole("button", { name: "Luggage" }).click();
+  await expect(notes.getByRole("button", { name: "Quiet ride" })).toHaveAttribute("aria-pressed", "true");
+  await page.locator('[data-action="request"]').click();
+  await expect.poll(() => posts.filter((p) => p.path === "/api/rides").length).toBe(1);
+  expect(posts.find((p) => p.path === "/api/rides").body.notes).toEqual(["quiet", "luggage"]);
+});

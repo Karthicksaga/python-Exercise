@@ -100,7 +100,7 @@ func (s *Server) publicConfig(w http.ResponseWriter, r *http.Request) {
 	for i := range products {
 		products[i].Name = vehicleNames[products[i].Category]
 	}
-	write(w, 200, map[string]any{"areas": areas, "vehicles": products, "commission_paise": 0, "development": s.Config.Development, "routing_configured": s.Config.RoutingURL != "",
+	write(w, 200, map[string]any{"areas": areas, "vehicles": products, "commission_paise": 0, "development": s.Config.Development, "sms_available": s.smsConfigured(), "sms_test_mode": !s.smsConfigured() && s.devSMS(), "translate_available": s.Config.TranslateAPIKey != "", "routing_configured": s.Config.RoutingURL != "",
 		"online_payments": s.paymentsActive(), "payment_test_mode": s.isPaymentTestMode(), "phone_login": s.smsConfigured() || s.devSMS()})
 }
 func distance(a, b Point) float64 {

@@ -20,7 +20,8 @@ import type { Point, Config, Quote, State, Ride } from "../services/contracts";
 import { playMoment } from "../design/tripMoments";
 import { enhanceSlides } from "../design/slideToConfirm";
 import { enableTabSwipe } from "../design/swipe";
-import { riderBeacon, showBeacon, captainBeaconHint, waitClock } from "../design/tripExtras";
+import { riderBeacon, showBeacon, captainBeaconHint, waitClock, notesPicker, notesCard, alertToggles, breakCard } from "../design/tripExtras";
+import { VOICE_LANGS, voiceAvailable, listen } from "../design/voice";
 import { escape, money } from "../helpers";
 import type { Coordinate } from "../maps/types";
 import { distanceMeters } from "../maps/motion";
@@ -226,6 +227,7 @@ export class LiveJourney {
     app.addEventListener("click", this.click, true);
     enableTabSwipe(app);
     app.addEventListener("input", this.input, true);
+    app.addEventListener("change", this.alertChange, true);
     app.addEventListener("focusin", this.focus, true);
     app.addEventListener("change", this.changeArea, true);
     window.addEventListener("hop-location-denied", this.locationDenied);
@@ -792,7 +794,55 @@ export class LiveJourney {
       else this.bridge.go("activity");
     });
   }
+  /** Rider notes for the captain (Review screen), sent with the booking. */
+  private rideNotes = new Set<string>();
+  /** Rider trip switches: arrival text and SMS updates (POST /api/rides/{id}/alerts). */
+  private alertChange = (event: Event) => {
+    const input = (event.target as Element)?.closest?.<HTMLInputElement>("input[data-hop-alert]");
+    const ride = this.active();
+    if (!input || !ride) return;
+    event.stopImmediatePropagation();
+    const key = input.dataset.hopAlert!;
+    void this.run(async () => {
+      try {
+        await api.request(`/api/rides/${ride.id}/alerts`, { [key]: input.checked });
+      } catch (e) {
+        input.checked = !input.checked;
+        throw e;
+      }
+      this.sync(await api.state());
+    });
+  };
+  /** Speak your destination: pick a language, then Android's speech screen listens once. */
+  private async voiceSearch() {
+    if (!(await voiceAvailable())) {
+      this.bridge.notify("Voice search isn’t available on this phone. Type your destination instead.");
+      return;
+    }
+    this.app.querySelector(".hop-voice")?.remove();
+    const sheet = document.createElement("div");
+    sheet.className = "hop-photo-sheet hop-voice";
+    sheet.innerHTML = `<div class="panel" role="dialog" aria-modal="true" aria-label="Speak your destination"><strong>Speak your destination</strong><p>Choose the language you'll speak in.</p>${VOICE_LANGS.map((l) => `<button type="button" class="secondary" data-voice-lang="${l.code}">${l.label}</button>`).join("")}<button type="button" class="text-button" data-voice-lang="">Cancel</button></div>`;
+    sheet.addEventListener("click", (e) => {
+      const b = (e.target as Element).closest<HTMLElement>("[data-voice-lang]");
+      if (!b && e.target !== sheet) return;
+      e.stopPropagation();
+      sheet.remove();
+      const lang = b?.dataset.voiceLang;
+      if (!lang) return;
+      void listen(lang).then((heard) => {
+        const field = this.app.querySelector<HTMLInputElement>("#destination-input");
+        if (!heard || !field) return this.bridge.notify("Didn’t catch that. Try again or type it.");
+        field.value = heard;
+        field.focus();
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+      }, (err) => this.message(err));
+    });
+    this.app.append(sheet);
+    sheet.querySelector<HTMLElement>("button")?.focus();
+  }
   private startCityRide() {
+    this.rideNotes.clear();
     this.booking.reset();
     this.bridge.assign({ tripType: "city", schedule: "Now" });
     this.quote = undefined;
@@ -856,6 +906,8 @@ export class LiveJourney {
     }
     waitClock(extras, ride, "rider");
     riderBeacon(extras, ride);
+    alertToggles(ride.status === "in_progress" ? extras : null, ride, this.config);
+    if (ride.status !== "in_progress") extras.querySelector(".hop-alerts")?.remove();
   }
   /** A next-ride offer (or held next ride) for a captain who is on a trip. */
   private pendingNext() {
@@ -916,6 +968,27 @@ export class LiveJourney {
       "button,a,[data-go]",
     );
     if (!button) return;
+    if (button.dataset.hopNote) {
+      this.stop(event);
+      const n = button.dataset.hopNote;
+      this.rideNotes.has(n) ? this.rideNotes.delete(n) : this.rideNotes.add(n);
+      notesPicker(this.app.querySelector(".confirm-sheet"), this.rideNotes);
+      return;
+    }
+    if (button.dataset.hopBreak !== undefined) {
+      this.stop(event);
+      void this.run(async () => {
+        await api.request("/api/drivers/break", { minutes: Number(button.dataset.hopBreak) });
+        this.bridge.notify(Number(button.dataset.hopBreak) ? "Enjoy your chai. Requests are paused for 15 minutes." : "Break over. Requests are back on.");
+        this.sync(await api.state());
+      });
+      return;
+    }
+    if (button.dataset.modal === "voice") {
+      this.stop(event);
+      void this.voiceSearch();
+      return;
+    }
     if (button.dataset.hopBeacon) {
       this.stop(event);
       const ride = this.active();
@@ -1053,7 +1126,7 @@ export class LiveJourney {
       }
       return;
     }
-    if (button.dataset.message || button.dataset.chatRetry || button.dataset.chatDiscard || button.dataset.chatOlder !== undefined) {
+    if (button.dataset.message || button.dataset.chatRetry || button.dataset.chatDiscard || button.dataset.chatOlder !== undefined || button.dataset.chatOrig || button.dataset.chatTranslate) {
       this.stop(event);
       this.rideChat.click(button);
       return;
@@ -1217,7 +1290,9 @@ export class LiveJourney {
     if (action === "take-break") {
       this.stop(event);
       void this.run(async () => {
-        await api.online(false);
+        // Chai break (approved Nov 2026): requests pause for 15 minutes; the captain stays online.
+        await api.request("/api/drivers/break", { minutes: 15 });
+        this.bridge.notify("Enjoy your chai. Requests are paused for 15 minutes.");
         try {
           this.sync(await api.state());
         } catch {
@@ -1389,7 +1464,7 @@ export class LiveJourney {
             "Ride options changed. Review the updated fare before booking.",
           );
         const payment = String(ui.payment).toLowerCase();
-        const options = this.booking.rideOptions(this.quote);
+        const options = { ...this.booking.rideOptions(this.quote), ...(this.rideNotes.size ? { notes: [...this.rideNotes] } : {}) };
         if (this.booking.scheduleAt) {
           if (
             this.booking.tripType !== "city" ||
@@ -1769,6 +1844,7 @@ export class LiveJourney {
         this.app.querySelectorAll<HTMLElement>('.bottom-nav').forEach(el => { el.remove(); });
       }
     }
+    if (this.role === "rider" && this.bridge.read().screen === "confirm") notesPicker(this.app.querySelector(".confirm-sheet"), this.rideNotes);
     if (this.role === "captain") {
       enhanceSlides(this.app);
       const screenNow = this.bridge.read().screen, ride = this.active();
@@ -1784,7 +1860,10 @@ export class LiveJourney {
         }
         waitClock(extras, ride, "captain");
         captainBeaconHint(extras, ride);
+        notesCard(extras, ride?.rider_notes, this.account.language());
       }
+      if (screenNow === "request") notesCard(this.app.querySelector(".driver-sheet"), this.state?.offers?.[0]?.rider_notes, this.account.language());
+      if (screenNow === "drive") breakCard(this.app.querySelector(".screen-body > .sheet"), this.state?.driver?.[0] as Parameters<typeof breakCard>[1]);
       // On the trip the rider is in the vehicle: no Message button (safety and navigation stay).
       this.app.querySelectorAll<HTMLElement>('.circle-actions [data-go="chat"]').forEach((b) => (b.style.display = screenNow === "trip" ? "none" : ""));
     }
@@ -2363,6 +2442,7 @@ export class LiveJourney {
             "Use the pickup code shown on the rider’s active trip.";
       });
     }
+    this.rideChat.setLanguage(this.account.language(), !!this.config?.translate_available);
     this.rideChat.update();
     this.gateService(screen);
     if (screen === "activity") {

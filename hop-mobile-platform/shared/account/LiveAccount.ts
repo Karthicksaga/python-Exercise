@@ -3,6 +3,7 @@ import { checkout, type Order } from "../payments/checkout";
 import { api } from "../services/client";
 import { escape, money } from "../helpers";
 import { icon } from "../icons";
+import { currentLocation } from "../platform/transport";
 import type { State, Config } from "../services/contracts";
 import type { OnboardingBridge as Bridge } from "../onboarding/CaptainOnboarding";
 type Data = Record<string, any>;
@@ -341,6 +342,18 @@ export class LiveAccount {
       this.render(true);
     }
   }
+  /** Captain Driver tools: "Home by" time (POST /api/drivers/home-by). */
+  private homeByRow() {
+    const d = this.state()?.driver?.[0] as Data | undefined;
+    const at = d?.home_by ? new Date(String(d.home_by)) : undefined;
+    const hhmm = at && Number.isFinite(at.getTime()) ? at.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }) : "";
+    const pretty = at ? at.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "";
+    return `<div class="live-tool-goal hop-home-by"><span class="list-icon">${icon("clock")}</span><div><strong>Home by ${pretty || "a set time"}</strong><small>${at ? "From an hour before, you only get rides that bring you closer to home." : "From an hour before, only rides that bring you closer to home."}</small><label class="field-label" for="account-home-by">Be home by</label><input id="account-home-by" class="text-input" type="time" value="${hhmm || "21:00"}"/></div><div class="hop-home-by-actions"><button class="text-button" data-account-action="home-by">${at ? "Update" : "Turn on"}</button>${at ? '<button class="text-button" data-account-action="home-by-off">Turn off</button>' : ""}</div></div>`;
+  }
+  /** The person's app language ("en", "ta", "hi"…), from their preferences; "en" until loaded. */
+  language(): string {
+    return String(this.get("/api/companion")?.preferences?.language || "en");
+  }
   private get(path: string) {
     const stale = MONEY_PATHS.includes(path) && Date.now() - (this.loadedAt.get(path) || 0) > 60_000;
     if (
@@ -678,7 +691,7 @@ export class LiveAccount {
           .join("");
       body = `<div class="live-preferences-page">${this.role === "captain" ? `<div class="live-page-intro"><span class="live-eyebrow">DRIVING</span><h2>Set the trips that work for you.</h2><p>Choose your pickup range and minimum fare. These settings guide trip matching.</p></div><section class="live-card-group"><div class="live-field-block"><label class="field-label" for="account-pickup_radius_meters">Pickup radius</label><div class="live-field-hint">How far away trip requests can be</div><div class="live-input-with-unit"><input class="text-input" id="account-pickup_radius_meters" type="number" value="${escape(driver?.pickup_radius_meters || 3000)}"/><span>metres</span></div></div><div class="live-field-block"><label class="field-label" for="account-minimum_fare">Minimum fare</label><div class="live-field-hint">Skip requests below this amount</div><div class="live-input-with-unit"><input class="text-input" id="account-minimum_fare" type="number" value="${escape((driver?.minimum_fare_paise || 0) / 100)}"/><span>₹</span></div></div></section>` : `<div class="live-page-intro"><span class="live-eyebrow">MAKE IT YOURS</span><h2>Your ride, your way.</h2><p>Set your usual ride options and accessibility preferences.</p></div><section class="live-card-group">${this.modalRow("Default vehicle", vehicleLabel, "car", "vehicle-default")}${this.modalRow("Default payment", paymentLabel, "wallet", "payment")}</section>`}<div class="live-section-heading">App settings</div><section class="live-card-group">${this.select("language", "Language", ["en", "hi", "ta", "te", "kn", "ml", "bn", "mr", "gu", "pa"], prefs.language || "en", { en: "English", hi: "Hindi", ta: "Tamil", te: "Telugu", kn: "Kannada", ml: "Malayalam", bn: "Bengali", mr: "Marathi", gu: "Gujarati", pa: "Punjabi" })}${accessSettings}<button type="button" class="live-preference-row" data-modal="appearance"><span class="list-icon">${icon("moon")}</span><span><strong>Appearance</strong><small>Choose light or dark theme</small></span><span class="live-row-chevron">›</span></button></section></div>`;
     } else if (key === "tools") {
-      body = `<div class="live-tools-page"><div class="live-page-intro"><span class="live-eyebrow">CAPTAIN TOOLKIT</span><h2>Make your day work for you.</h2><p>Keep an eye on your goal, trip settings and breaks.</p></div><div class="live-section-heading">Your workday</div><section class="live-card-group"><div class="live-tool-goal"><span class="list-icon">${icon("chart")}</span><div><strong>Daily earnings goal</strong><small>Today’s completed fares</small><b>${this.cache.get("/api/drivers/earnings")?.summary ? money(this.cache.get("/api/drivers/earnings")!.summary.today_fare_paise / 100) : "—"}</b></div><button class="text-button" data-modal="goal">Edit</button></div><button class="live-tool-action" data-action="home-mode"><span class="list-icon">${icon("navigation")}</span><span><strong>Head towards home</strong><small>Prefer trips in the direction of home</small></span><span class="live-row-chevron">›</span></button></section><div class="live-section-heading">On the road</div><section class="live-card-group"><button class="live-tool-action" data-modal="service-area"><span class="list-icon">${icon("pin")}</span><span><strong>Operating city</strong><small>View your service area</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="demand"><span class="list-icon">${icon("layers")}</span><span><strong>Demand nearby</strong><small>Explore active pickup areas</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="preferences"><span class="list-icon">${icon("settings")}</span><span><strong>Driving preferences</strong><small>Pickup radius and minimum fare</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="insights"><span class="list-icon">${icon("shield")}</span><span><strong>Driving insights</strong><small>Your trip activity and feedback</small></span><span class="live-row-chevron">›</span></button></section><button class="live-break-action secondary" data-action="take-break">Take a break</button></div>`;
+      body = `<div class="live-tools-page"><div class="live-page-intro"><span class="live-eyebrow">CAPTAIN TOOLKIT</span><h2>Make your day work for you.</h2><p>Keep an eye on your goal, trip settings and breaks.</p></div><div class="live-section-heading">Your workday</div><section class="live-card-group"><div class="live-tool-goal"><span class="list-icon">${icon("chart")}</span><div><strong>Daily earnings goal</strong><small>Today’s completed fares</small><b>${this.cache.get("/api/drivers/earnings")?.summary ? money(this.cache.get("/api/drivers/earnings")!.summary.today_fare_paise / 100) : "—"}</b></div><button class="text-button" data-modal="goal">Edit</button></div><button class="live-tool-action" data-action="home-mode"><span class="list-icon">${icon("navigation")}</span><span><strong>Head towards home</strong><small>Prefer trips in the direction of home</small></span><span class="live-row-chevron">›</span></button>${this.homeByRow()}</section><div class="live-section-heading">On the road</div><section class="live-card-group"><button class="live-tool-action" data-modal="service-area"><span class="list-icon">${icon("pin")}</span><span><strong>Operating city</strong><small>View your service area</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="demand"><span class="list-icon">${icon("layers")}</span><span><strong>Demand nearby</strong><small>Explore active pickup areas</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="preferences"><span class="list-icon">${icon("settings")}</span><span><strong>Driving preferences</strong><small>Pickup radius and minimum fare</small></span><span class="live-row-chevron">›</span></button><button class="live-tool-action" data-go="insights"><span class="list-icon">${icon("shield")}</span><span><strong>Driving insights</strong><small>Your trip activity and feedback</small></span><span class="live-row-chevron">›</span></button></section><button class="live-break-action secondary" data-action="take-break">Take a break</button></div>`;
     } else if (key === "earnings") {
       const sum = data?.summary || {};
       const fare = (paise: number | undefined) => money((paise || 0) / 100);
@@ -1558,6 +1571,26 @@ export class LiveAccount {
           },
         });
         this.cache.delete("/api/companion");
+        await this.refresh();
+      }
+      if (a === "home-by" || a === "home-by-off") {
+        if (a === "home-by-off") {
+          await api.request("/api/drivers/home-by", { off: true });
+          this.status = "Home time turned off.";
+        } else {
+          // Home is the captain's saved go-home spot; without one, it's where they are now (said plainly).
+          const d = this.state()?.driver?.[0] as Data | undefined;
+          let lat = d?.home_lat as number | undefined, lng = d?.home_lng as number | undefined, here = false;
+          if (lat == null || lng == null) {
+            const c = await currentLocation();
+            lat = c.latitude;
+            lng = c.longitude;
+            here = true;
+          }
+          await api.request("/api/drivers/home-by", { at: v("account-home-by"), lat, lng });
+          this.status = here ? "Saved. Home is set to where you are now." : "Home time saved.";
+        }
+        this.statusError = false;
         await this.refresh();
       }
       if (a === "contact") {

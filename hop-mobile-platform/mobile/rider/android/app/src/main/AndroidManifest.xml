@@ -49,6 +49,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Speak your destination (approved Nov 2026): microphone for on-device speech recognition. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />

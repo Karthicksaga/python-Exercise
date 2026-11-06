@@ -1,6 +1,6 @@
 # Hop originals: UX ideas other ride apps don't have (6 Nov 2026)
 
-Status: **Approved; phase 1 built 6 Nov 2026** (fair wait clock, pickup beacon, fare story; see hop-mobile-platform/CLAUDE.md). Shown in the prototype https://claude.ai/artifact/SSuyWApGcrtBFFugtqA1r1 (marked NEW). Nothing is built in the apps.
+Status: **Approved; phases 1–3 built 6 Nov 2026** (phase 1: fair wait clock, pickup beacon, fare story; phases 2–3: ride notes, low-rating reasons, arrival alert, SMS updates, chai break, Home by, language bridge, voice destination; see hop-mobile-platform/CLAUDE.md). Shown in the prototype https://claude.ai/artifact/SSuyWApGcrtBFFugtqA1r1 (marked NEW).
 
 ## What others already have
 From a web scan, Nov 2026:
