@@ -14,6 +14,39 @@ function vectorBaseEnabled() {
   catch { return false; }
 }
 type VectorLayer = L.Layer & { getMaplibreMap(): import("maplibre-gl").Map };
+/**
+ * The MapLibre-Leaflet plugin (0.1.3) redraws one animation frame after a zoom or resize without
+ * checking that the map still exists, so leaving a map screen mid-animation threw
+ * "Cannot read properties of null (reading 'getZoom')". This makes those callbacks skip a removed map.
+ */
+type GuardedProto = Record<string, unknown> & { __hopGuarded?: boolean };
+function guardVectorLayer(layer: VectorLayer) {
+  const proto = Object.getPrototypeOf(layer) as GuardedProto;
+  if (proto.__hopGuarded) return;
+  proto.__hopGuarded = true;
+  type Self = { _map?: L.Map | null; _glMap?: unknown };
+  const alive = (self: Self) => !!self._map && !!self._glMap;
+  for (const name of ["_update", "_zoomEnd", "_animateZoom", "_zoomStart"]) {
+    const orig = proto[name];
+    if (typeof orig !== "function") continue;
+    proto[name] = function (this: Self, ...args: unknown[]) {
+      return alive(this) ? (orig as (...a: unknown[]) => unknown).apply(this, args) : undefined;
+    };
+  }
+  const transitionEnd = proto._transitionEnd;
+  if (typeof transitionEnd === "function") {
+    // The original body runs inside requestAnimationFrame; check again when that frame comes.
+    const raf = L.Util.requestAnimFrame;
+    proto._transitionEnd = function (this: Self, e: unknown) {
+      if (!alive(this)) return;
+      const self = this;
+      const util = L.Util as unknown as { requestAnimFrame: typeof raf };
+      util.requestAnimFrame = ((fn: () => void, ctx?: object) =>
+        raf(() => { if (alive(self)) fn.call(ctx); }, undefined)) as typeof raf;
+      try { (transitionEnd as (e: unknown) => void).call(this, e); } finally { util.requestAnimFrame = raf; }
+    };
+  }
+}
 const VECTOR_LOAD_MS = 20_000; // a cold first load (fonts + tiles) can be slow on phones
 
 
@@ -178,6 +211,7 @@ export class OSMMapView implements MapView {
       if (!create) throw new Error("MapLibre layer unavailable");
       if (this.destroyed) return;
       const layer = create({ style: hopVectorStyle(this.look.mode, this.look.night), attribution: VECTOR_ATTRIBUTION, interactive: false });
+      guardVectorLayer(layer);
       layer.addTo(this.map);
       this.vector = layer;
       this.host.classList.add("hop-vector-base");
