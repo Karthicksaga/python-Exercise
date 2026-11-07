@@ -10,9 +10,13 @@ const KEY: Record<PinKind, string> = { pickup: "PICKUP", dropoff: "DROP" };
 const escape = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** HTML for the OpenStreetMap (Leaflet) pin. The root keeps the `hop-marker-pin` class. */
-export function pinHtml(kind: PinKind, note: string | undefined, options: { editable: boolean; waiting: boolean; searching?: boolean; callout?: boolean }) {
-  const label = `${kind === "pickup" ? "Pickup" : "Drop-off"}${note ? `: ${note}` : ""}`;
-  const body = `<span class="hop-pin-key">${KEY[kind]}</span>${note ? `<span class="hop-pin-note">${escape(note)}</span>` : ""}`;
+export function pinHtml(kind: PinKind, note: string | undefined, options: { editable: boolean; waiting: boolean; searching?: boolean; callout?: boolean; near?: string }) {
+  const near = options.near ? `near ${options.near}` : "";
+  const label = `${kind === "pickup" ? "Pickup" : "Drop-off"}${note ? `: ${note}` : ""}${near ? `, ${near}` : ""}`;
+  const text = note && near ? `<span class="hop-pin-lines"><span class="hop-pin-note">${escape(note)}</span><span class="hop-pin-near">${escape(near)}</span></span>`
+    : note ? `<span class="hop-pin-note">${escape(note)}</span>`
+    : near ? `<span class="hop-pin-note hop-pin-near-only">${escape(near)}</span>` : "";
+  const body = `<span class="hop-pin-key">${KEY[kind]}</span>${text}`;
   const callout = options.editable
     ? `<button type="button" class="hop-pin-callout" data-pin-edit="${kind}" aria-label="Change ${label}">${body}<span class="hop-pin-chevron" aria-hidden="true">›</span></button>`
     : `<div class="hop-pin-callout" role="img" aria-label="${escape(label)}">${body}</div>`;

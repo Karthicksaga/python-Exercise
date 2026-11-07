@@ -8,6 +8,7 @@
 // The tile and font servers can be moved (for example to our own server) with
 // VITE_MAP_VECTOR_URL and VITE_MAP_GLYPHS_URL.
 import type { StyleSpecification, LayerSpecification, ExpressionSpecification } from "maplibre-gl";
+import { LANDMARK_ICON } from "./mapIcons";
 
 export type HopMapMode = "browse" | "ride";
 
@@ -53,24 +54,59 @@ export function hopVectorStyle(mode: HopMapMode, night: boolean): StyleSpecifica
     { id: "campus", type: "fill", source: "osm", "source-layer": "landuse", filter: classIs("hospital", "school", "college", "university"), paint: { "fill-color": c.campus, "fill-opacity": ride ? 0.5 : 1 } },
     { id: "water", type: "fill", source: "osm", "source-layer": "water", paint: { "fill-color": c.water } },
     { id: "waterway", type: "line", source: "osm", "source-layer": "waterway", paint: { "line-color": c.water, "line-width": 2 } },
-    ...(ride ? [] : [{ id: "building", type: "fill", source: "osm", "source-layer": "building", minzoom: 15, paint: { "fill-color": c.building, "fill-outline-color": c.buildingLine } } as LayerSpecification]),
+    // 3D buildings (Nov 2026): heights come from the tiles (`render_height`) and grow in from zoom
+    // 15. Seen from above they read as flat blocks; tilted, they stand up. On a trip they are
+    // fainter so the route stays the strongest thing on the map.
+    {
+      id: "building-3d", type: "fill-extrusion", source: "osm", "source-layer": "building", minzoom: 15,
+      paint: {
+        "fill-extrusion-color": c.building,
+        "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 15, 0, 16, ["coalesce", ["get", "render_height"], 6]],
+        "fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 15, 0, 16, ["coalesce", ["get", "render_min_height"], 0]],
+        "fill-extrusion-opacity": ride ? 0.55 : 0.8,
+      },
+    },
     { id: "rail", type: "line", source: "osm", "source-layer": "transportation", filter: classIs("rail", "transit"), paint: { "line-color": c.rail, "line-width": 1.5, "line-dasharray": [3, 2] } },
     { id: "minor-casing", type: "line", source: "osm", "source-layer": "transportation", filter: MINOR, layout: round, paint: { "line-color": c.casing, "line-width": width(0.5, ride ? 4 : 5, ride ? 14 : 18) } },
     { id: "major-casing", type: "line", source: "osm", "source-layer": "transportation", filter: classIs("primary", "secondary", "trunk", "motorway"), layout: round, paint: { "line-color": c.majorCasing, "line-width": width(2, 9, 30) } },
     { id: "minor", type: "line", source: "osm", "source-layer": "transportation", filter: MINOR, layout: round, paint: { "line-color": c.road, "line-width": width(0.3, ride ? 2.6 : 3.4, ride ? 11 : 15) } },
     { id: "major", type: "line", source: "osm", "source-layer": "transportation", filter: MAJOR, layout: round, paint: { "line-color": c.major, "line-width": width(1.5, 7, 26) } },
     { id: "motorway", type: "line", source: "osm", "source-layer": "transportation", filter: FAST, layout: round, paint: { "line-color": c.motorway, "line-width": width(1.8, 8, 28) } },
+    // One-way streets get arrows close up, so a rider doesn't pin a pickup a car can't reach and a
+    // captain sees them before turning. `oneway` is 1 (with the drawing direction) or -1 (against).
+    {
+      id: "oneway-arrows", type: "symbol", source: "osm", "source-layer": "transportation", minzoom: 16,
+      filter: ["match", ["get", "oneway"], [1, -1], true, false],
+      layout: {
+        "symbol-placement": "line", "symbol-spacing": 110, "icon-image": night ? "hop-oneway-night" : "hop-oneway",
+        "icon-rotate": ["match", ["get", "oneway"], -1, 180, 0], "icon-rotation-alignment": "map", "icon-size": 0.85,
+        "icon-padding": 2,
+      },
+      paint: { "icon-opacity": 0.85 },
+    },
     {
       id: "road-names", type: "symbol", source: "osm", "source-layer": "transportation_name", minzoom: ride ? 14 : 13.5,
       ...(ride ? { filter: classIs("primary", "secondary", "trunk", "tertiary") } : {}),
       layout: { "symbol-placement": "line", "text-field": name, "text-font": ["Noto Sans Bold"], "text-size": ["interpolate", ["linear"], ["zoom"], 14, 10.5, 17, 13], "text-letter-spacing": 0.02 },
       paint: { "text-color": c.label, "text-halo-color": c.halo, "text-halo-width": 1.6 },
     },
+    // Landmarks people give directions by (temples, petrol bunks, bus stops, metro, hospitals, malls)
+    // get a Hop badge (mapIcons.ts); other useful places keep a plain label.
+    {
+      id: "landmarks", type: "symbol", source: "osm", "source-layer": "poi", minzoom: ride ? 15 : 14,
+      filter: ["all", ["!=", LANDMARK_ICON as ExpressionSpecification, ""], ["<=", ["get", "rank"], ride ? 12 : 30]],
+      layout: {
+        "icon-image": LANDMARK_ICON as ExpressionSpecification, "icon-size": ["interpolate", ["linear"], ["zoom"], 14, 0.8, 17, 1],
+        "text-field": ["step", ["zoom"], "", 15.5, name], "text-font": ["Noto Sans Regular"], "text-size": 11,
+        "text-max-width": 8, "text-offset": [0, 1.25], "text-anchor": "top", "text-optional": true, "icon-padding": 4,
+      },
+      paint: { "text-color": c.poi, "text-halo-color": c.halo, "text-halo-width": 1.4, "icon-opacity": ride ? 0.85 : 1 },
+    },
     {
       id: "places-of-interest", type: "symbol", source: "osm", "source-layer": "poi", minzoom: 14,
       filter: ride
-        ? ["all", classIs("railway", "hospital", "college"), ["<=", ["get", "rank"], 4]]
-        : ["all", classIs("railway", "hospital", "college", "school", "park", "place_of_worship", "stadium", "attraction", "bus"), ["<=", ["get", "rank"], 20]],
+        ? ["all", classIs("college"), ["<=", ["get", "rank"], 4]]
+        : ["all", classIs("college", "school", "park", "stadium", "attraction"), ["<=", ["get", "rank"], 20]],
       layout: { "text-field": name, "text-font": ["Noto Sans Regular"], "text-size": 11, "text-max-width": 8 },
       paint: { "text-color": c.poi, "text-halo-color": c.halo, "text-halo-width": 1.4, "text-opacity": ride ? 0.8 : 1 },
     },

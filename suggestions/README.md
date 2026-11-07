@@ -24,3 +24,4 @@ Proposals, reviews and recommendations for Hop. These are things suggested, not 
 | 2026-11-05 | [UX review of the compact redesign](2026-11-05-ux-review-compact-redesign.md) | Proposed |
 | 2026-11-06 | [Button placement audit](2026-11-06-button-placement-audit.md) | Approved and built |
 | 2026-11-06 | [Hop originals: UX innovations](2026-11-06-hop-originals.md) | Approved; phases 1–3 built |
+| 2026-11-07 | [Customising the OpenStreetMap map](2026-11-07-openstreetmap-customisation.md) | 1–3 and 3D built |

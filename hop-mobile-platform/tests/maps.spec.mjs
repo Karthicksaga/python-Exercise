@@ -36,7 +36,7 @@ test("Google load failure falls back to OSM and never renders sample cars", asyn
   await expect(page.locator(".hop-map-status")).toContainText("OpenStreetMap");
   await expect(page.locator(".login-screen")).toHaveCount(0);
   await expect(page.locator(".mini-car,.map-pin,.map-bubble")).toHaveCount(0);
-  await expect(page.locator(".leaflet-marker-icon")).toHaveCount(0);
+  await expect(page.locator(".hop-map-marker")).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Where to next?" }),
   ).toBeVisible();
@@ -70,7 +70,7 @@ test("trip markers follow measured backend positions and disappear when stale or
     ),
   );
   await page.goto(base);
-  const marker = page.locator('.leaflet-marker-icon[title="Live captain"]');
+  const marker = page.locator('.hop-map-marker[title="Live captain"]');
   await expect(marker).toHaveCount(1);
   const before = await marker.getAttribute("style");
   lat = 13.008;
@@ -110,12 +110,12 @@ test("nearby vehicles come only from the backend and disappear from the map when
   // Riders see nearby captains only while booking (Nov 2026), not on the home map.
   await expect(page.locator(".hop-map-canvas")).toBeVisible();
   await page.waitForTimeout(2500);
-  await expect(page.locator(".leaflet-marker-icon")).toHaveCount(0);
+  await expect(page.locator(".hop-map-marker")).toHaveCount(0);
   await page.evaluate(() => window.prototypeBridge.go("choose"));
-  await expect(page.locator(".leaflet-marker-icon")).toHaveCount(1);
+  await expect(page.locator(".hop-map-marker")).toHaveCount(1);
   // A nearby vehicle is display-only: it can't be grabbed, clicked or dragged.
-  const vehicle = page.locator(".leaflet-marker-icon").first();
-  await expect(vehicle).not.toHaveClass(/leaflet-interactive/);
+  const vehicle = page.locator(".hop-map-marker").first();
+  expect(await vehicle.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
   await expect(vehicle.locator("img")).toHaveAttribute("draggable", "false");
   const dragBlocked = await vehicle.locator("img").evaluate((img) => {
     const event = new DragEvent("dragstart", { bubbles: true, cancelable: true });
@@ -124,7 +124,7 @@ test("nearby vehicles come only from the backend and disappear from the map when
   });
   expect(dragBlocked).toBe(true);
   drivers = [];
-  await expect(page.locator(".leaflet-marker-icon")).toHaveCount(0);
+  await expect(page.locator(".hop-map-marker")).toHaveCount(0);
   await expect(page.locator(".hop-map-status")).toContainText(
     "No nearby vehicles",
   );
@@ -232,7 +232,7 @@ test('rider opens at measured GPS and keeps the camera and stationary pins after
   await page.route('**/api/config',r=>r.fulfill({json:{areas:[],vehicles:[]}}));
   await page.goto(base);
   await expect(page.locator('.hop-map-status')).toContainText('OpenStreetMap', {timeout:20000});
-  await expect(page.locator('.leaflet-marker-icon[title="Your location"]')).toHaveCount(1);
+  await expect(page.locator('.hop-map-marker[title="Your location"]')).toHaveCount(1);
   await expect(page.locator('.hop-map-status')).toContainText('OpenStreetMap');
   const modulePath = `/@fs${new URL('../shared/maps/osm.ts',import.meta.url).pathname}`;
   const result = await page.evaluate(async modulePath => {

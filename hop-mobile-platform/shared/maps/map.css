@@ -491,3 +491,31 @@ button.hop-pin-callout:focus-visible { outline: 3px solid var(--accent); outline
 .app:has(> .screen-body.map-screen) .screen-body.map-screen:has(.map-controls.hop-compact-controls) .route-preview-badge:not(.sheet *) {
   top: auto; margin-top: 0; bottom: calc(100% - var(--hop-map-height, 60%) + 66px);
 }
+
+/* ── MapLibre map (maplibre.ts, Nov 2026): 3D view, landmarks, Hop layers ──────────────── */
+.hop-maplibre .maplibregl-ctrl-attrib { font-size: 9px; background: #fffffff0; }
+.app.dark .hop-maplibre .maplibregl-ctrl-attrib { background: #1f2130f0; color: #a6a9bd; }
+.app.dark .hop-maplibre .maplibregl-ctrl-attrib a { color: #c3c6d8; }
+.hop-map-canvas .hop-map-marker { position: absolute; top: 0; left: 0; }
+/* Pins are zero-size at the exact spot and draw upwards (as with Leaflet). */
+.hop-map-canvas .hop-custom-pin-icon { width: 0; height: 0; }
+.hop-map-canvas .hop-vehicle-div-icon,
+.hop-map-canvas .hop-current-location-icon { width: 46px; height: 46px; pointer-events: none; }
+.hop-map-canvas .hop-current-location-icon { width: 44px; height: 44px; }
+/* Two lines in the pickup callout: the number, then "near Indian Oil bunk". */
+.hop-pin-lines { display: inline-flex; flex-direction: column; line-height: 1.15; }
+.hop-pin-near { font-size: 10.5px; font-weight: 600; color: var(--muted, #6b6e80); white-space: nowrap; max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+.hop-pin-near-only { font-weight: 600; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Suggested pickup points: a 44 px tap target around a small labelled pill. */
+.hop-pickup-suggest {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 4px; border: 0;
+  background: none; cursor: pointer; font: 700 11.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--ink, #14151f);
+}
+.hop-pickup-suggest i { width: 12px; height: 12px; flex: none; border-radius: 50%; background: #fff; border: 3px solid #4b3fd1; box-shadow: 0 1px 4px rgba(20, 21, 31, 0.25); }
+.hop-pickup-suggest span { padding: 5px 9px; border-radius: 999px; background: var(--surface, #fff); box-shadow: 0 2px 8px rgba(20, 21, 31, 0.16); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app.dark .hop-pickup-suggest span { background: #262938; color: #e8e9f2; }
+.hop-pickup-suggest:focus-visible span { outline: 2px solid #4b3fd1; outline-offset: 2px; }
+/* 3D button in the map controls: pressed while the map is tilted. */
+.map-controls [data-map-3d] { font: 800 12px/1 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: 0.02em; }
+.map-controls [data-map-3d][aria-pressed="true"] { background: #4b3fd1; color: #fff; }
+@media (prefers-reduced-motion: reduce) { .hop-map-canvas .maplibregl-marker { transition: none !important; } }

@@ -129,7 +129,7 @@ test("rider searches actual places, draws road route, obtains quote and submits 
   await page.getByRole("button", { name: "Back", exact: true }).click();
   await selectRoute(page);
   await expect(
-    page.locator('.leaflet-overlay-pane path[fill="none"]'),
+    page.locator('.hop-map-canvas[data-route]'),
   ).toHaveCount(1);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.locator(".confirm-sheet .badge")).toHaveText(
@@ -172,7 +172,7 @@ test("follow me pins current GPS without changing selected route endpoints", asy
   await follow.click();
   await expect(follow).toHaveAttribute("aria-pressed", "true");
   await expect(
-    page.locator('.leaflet-overlay-pane path[fill="#2677df"]'),
+    page.locator('.hop-map-marker[title="Your location"]'),
   ).toHaveCount(1);
   await context.setGeolocation({
     latitude: 13.005,
@@ -221,7 +221,7 @@ test("route failure clears prices and geometry and blocks booking", async ({
   );
   await expect(page.locator('[data-action="review"]')).toBeDisabled();
   await expect(
-    page.locator('.leaflet-overlay-pane path[fill="none"]'),
+    page.locator('.hop-map-canvas[data-route]'),
   ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Retry route and fares" }),

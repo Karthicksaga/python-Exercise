@@ -53,15 +53,17 @@ test("rider picks a route by chip or by tapping it on the map; the price follows
   await expect(chips.nth(1)).toContainText("Shortest");
   await expect(page.locator('[data-vehicle="auto"] .vehicle-price')).toHaveText("₹237");
   // The other route is drawn in grey with a tappable label.
-  await expect(page.locator(".hop-route-alternative")).toHaveCount(1);
+  await expect(page.locator('.hop-map-canvas[data-alternatives="1"]')).toHaveCount(1);
   await expect(page.locator(".hop-route-tag")).toHaveText("Shortest · 29 min");
 
-  await page.locator(".hop-route-tag").click();
+  // This viewport leaves ~100 px of map under the top bars, so the label can sit partly under
+  // them; tap the label itself.
+  await page.locator(".hop-route-tag").dispatchEvent("click");
   await expect(chips.nth(1)).toHaveAttribute("aria-checked", "true");
   await expect(page.locator('[data-vehicle="auto"] .vehicle-price')).toHaveText("₹219");
   expect(quoted).toContain(1);
   // The fastest route stays on the map in grey, ready to switch back.
-  await expect(page.locator(".hop-route-alternative")).toHaveCount(1);
+  await expect(page.locator('.hop-map-canvas[data-alternatives="1"]')).toHaveCount(1);
   await expect(page.locator(".hop-route-tag")).toHaveText("Fastest · 25 min");
 
   await chips.nth(0).click();
@@ -85,7 +87,7 @@ test.describe("with motion allowed", () => {
     await setup(page, () => ({ rides: [trip("in_progress")], driver: [], offers: [] }));
     await page.route("**/api/rides/ride-live/position", (r) => r.fulfill({ json: { ...fix, at: new Date().toISOString(), stale: false, status: "in_progress" } }));
     await page.goto(base);
-    const marker = page.locator('.leaflet-marker-icon[title="Live captain"]');
+    const marker = page.locator('.hop-map-marker[title="Live captain"]');
     await expect(marker).toHaveCount(1);
     // Top-down artwork, display-only.
     await expect(marker.locator("img")).toHaveAttribute("src", /^data:image\/svg\+xml/);
@@ -96,18 +98,18 @@ test.describe("with motion allowed", () => {
     expect(await angle()).toBeLessThan(260);
     // The route line starts at the captain: everything behind them is gone.
     const lineStart = () => page.evaluate(() => {
-      const d = document.querySelector('.leaflet-overlay-pane path[stroke="#4b3fd1"]')?.getAttribute("d") ?? "";
-      const [x, y] = d.replace(/^M/, "").split(/[ L]/).map(Number);
-      const m = document.querySelector('.leaflet-marker-icon[title="Live captain"]').getBoundingClientRect();
-      const pane = document.querySelector(".leaflet-overlay-pane svg").getBoundingClientRect();
-      const box = document.querySelector(".leaflet-overlay-pane svg").viewBox.baseVal;
-      return Math.hypot(pane.left + (x - box.x) - (m.left + m.width / 2), pane.top + (y - box.y) - (m.top + m.height / 2));
+      const host = document.querySelector(".hop-map-canvas"), debug = host.hopDebug;
+      const start = debug.route()[0];
+      if (!start) return Infinity;
+      const p = debug.project(start), box = host.getBoundingClientRect();
+      const m = document.querySelector('.hop-map-marker[title="Live captain"]').getBoundingClientRect();
+      return Math.hypot(box.left + p.x - (m.left + m.width / 2), box.top + p.y - (m.top + m.height / 2));
     });
     await expect.poll(lineStart).toBeLessThan(4);
 
     // Next fix further along: the marker moves through intermediate positions, not one jump.
-    // Position inside the map pane, so camera moves don't count as vehicle moves.
-    const paneX = () => page.evaluate(() => Number(document.querySelector('.leaflet-marker-icon[title="Live captain"]').style.transform.match(/translate3d\(([-\d.]+)px/)[1]));
+    // The marker's map position (longitude), so camera moves don't count as vehicle moves.
+    const paneX = () => page.evaluate(() => document.querySelector(".hop-map-canvas").hopDebug.vehicle().lng * 1e5);
     const positions = [];
     const before = await paneX();
     fix = { lat: 13.0036, lng: 80.212 }; // 290 m further along the same road
@@ -128,7 +130,7 @@ test("with reduced motion, the live captain moves straight to each fix without a
   await setup(page, () => ({ rides: [trip("in_progress")], driver: [], offers: [] }));
   await page.route("**/api/rides/ride-live/position", (r) => r.fulfill({ json: { ...fix, at: new Date().toISOString(), stale: false, status: "in_progress" } }));
   await page.goto(base);
-  const paneX = () => page.evaluate(() => Number(document.querySelector('.leaflet-marker-icon[title="Live captain"]')?.style.transform.match(/translate3d\(([-\d.]+)px/)?.[1] ?? NaN));
+  const paneX = () => page.evaluate(() => (document.querySelector(".hop-map-canvas")?.hopDebug?.vehicle()?.lng ?? NaN) * 1e5);
   await expect.poll(paneX).not.toBeNaN();
   await page.waitForTimeout(2500); // the map frames the trip once when it first appears
   const start = await paneX();
@@ -145,7 +147,7 @@ test("RideCheck checks in when the trip leaves the planned route, and I'm fine d
   // Stamp each fix with the page's (fake) clock, as a live server would with real time.
   await page.route("**/api/rides/ride-live/position", async (r) => r.fulfill({ json: { ...fix, at: await page.evaluate(() => new Date().toISOString()), stale: false, status: "in_progress" } }));
   await page.goto(base);
-  await expect(page.locator('.leaflet-marker-icon[title="Live captain"]')).toHaveCount(1);
+  await expect(page.locator('.hop-map-marker[title="Live captain"]')).toHaveCount(1);
   await expect(page.locator(".hop-ridecheck")).toHaveCount(0);
   // About 1 km north of the planned road.
   fix = { lat: 13.0135, lng: 80.2149 };

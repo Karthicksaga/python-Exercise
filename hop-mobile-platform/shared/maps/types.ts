@@ -40,6 +40,13 @@ export interface MapView {
   setPreviewVehicle?(position: Coordinate | null, heading?: number, category?: string): void;
   pulseDestination?(active: boolean): void;
   setAlternatives?(routes: AlternativeRoute[]): void;
+  /** 3D (MapLibre map only): tilt now, or flatten and stay flat. */
+  setThreeD?(on: boolean): void;
+  isTilted?(): boolean;
+  /** Shade outside Hop's service areas (zone rectangles from /api/config). */
+  setServiceAreas?(areas: { min_lat: number; max_lat: number; min_lng: number; max_lng: number }[]): void;
+  /** Captain demand glow from /api/drivers/demand. */
+  setDemand?(cells: { lat: number; lng: number; requests: number; drivers?: number }[]): void;
   destroy(): void;
 }
 export const validCoordinate = (p: Coordinate) =>

@@ -5,6 +5,7 @@ import { divergencePoint, VehicleMotion } from "./motion";
 import { topDownVehicle, VEHICLE_MARKER_SIZE } from "./vehicleArt";
 import { framePadding, pinHtml, type PinKind } from "./pins";
 import { hopVectorStyle, VECTOR_ATTRIBUTION, type HopMapMode } from "./vectorStyle";
+import { provideIcons } from "./mapIcons";
 
 // Hop's own vector style is the default. VITE_MAP_STYLE=raster (or a VITE_MAP_TILE_URL) keeps
 // plain image tiles, and phones without WebGL, or a vector server that fails to load, fall back to them.
@@ -216,6 +217,7 @@ export class OSMMapView implements MapView {
       this.vector = layer;
       this.host.classList.add("hop-vector-base");
       const gl = layer.getMaplibreMap();
+      provideIcons(gl);
       let loaded = false;
       const giveUp = (reason: string) => {
         if (loaded || this.destroyed || this.vector !== layer) return;

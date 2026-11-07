@@ -189,3 +189,25 @@ All helpers are in `shared/design/tripExtras.ts` unless named; styles are in `an
 - Find styles with `grep -n "\.selector" ../hop-platform/prototypes/mobile-first/style.css`.
 - The design 03 component layer is the last section of `style.css`, marked `/* === Design 03 === */`.
 - Status and audit history live in `docs/`. Read them only when needed.
+
+## OpenStreetMap in 3D, landmarks and Hop layers (Nov 2026)
+- **`shared/maps/maplibre.ts`** is the OpenStreetMap view wherever the phone has WebGL (`webgl.ts`). It uses MapLibre directly, so the map can tilt. `osm.ts` (Leaflet) stays as the fallback (no WebGL, or `VITE_MAP_STYLE=raster`). If the vector server fails, MapLibre switches to image tiles itself.
+- **Style** (`vectorStyle.ts`, used by both views):
+  - 3D buildings (`building-3d`, from the tiles' `render_height`).
+  - Landmark badges (`landmarks`: temples, petrol bunks, bus stops, metro or rail, hospitals, malls).
+  - One-way arrows from zoom 16 (`oneway-arrows`).
+  - Icons are drawn on a canvas in `mapIcons.ts` and supplied on `styleimagemissing`, so no sprite server.
+- **3D:**
+  - A "3D" button in the map controls (`data-map-3d`, `PrototypeMap.decorate3D`) tilts or flattens the map.
+  - On a live trip it also turns on Follow me: the driving view, tilted 55°, heading-up, more road ahead.
+  - Overviews (`fit`) are always flat and north-up, at whole zoom levels like the old map.
+  - Low-data mode keeps the map flat. Choosing "off" is remembered (`localStorage hop-map-3d`).
+- **Pins and vehicles** are HTML markers. Pins stand upright; vehicles and "you are here" lie flat on the road.
+- **Landmarks near the pickup:** the pickup callout adds "near Central Station Bus Terminus" (nearest named landmark within 160 m, read from loaded tiles). It shows while booking, and for the captain until pickup.
+- **Suggested pickup points:** while booking, zoomed in (≥ 15), up to 3 nearby stations, bus stops, hospitals or malls show as tappable pills (`.hop-pickup-suggest`, 44 px targets); a tap moves the pickup there. They come from the map data, not the server.
+- **Hop layers:**
+  - Outside the service area is shaded with a dashed edge (zones from `/api/config`, `setServiceAreas`).
+  - An online captain on Drive with no trip sees the demand glow from `/api/drivers/demand`, refreshed every minute (`setDemand`).
+- **Route labels** for other route options slide along their route until clear of the top bars. Fitting includes the other options.
+- **Tests:** markers are `.hop-map-marker[title=…]`. The canvas has `data-route` and `data-alternatives`, and `hopDebug` (route, project, vehicle, pitch, bearing, nav, overlay). See `tests/map-3d.spec.mjs`.
+- **APKs** still show Google Maps when a Google key is set (CI sets one). The OpenStreetMap map shows when Google is unavailable or with `VITE_MAP_PROVIDER=osm`.

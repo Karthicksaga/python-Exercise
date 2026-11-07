@@ -1,6 +1,7 @@
 import { goOnlineSound, goOfflineSound } from "../sounds";
 import { GoogleMapView, loadGoogle } from "./google";
 import { OSMMapView } from "./osm";
+import { webglAvailable } from "./webgl";
 import { NativeMapView, nativeMapsEnabled } from "./native";
 import { Capacitor } from "@capacitor/core";
 import { LiveFeed } from "./liveFeed";
@@ -312,12 +313,62 @@ export class PrototypeMap {
     window.addEventListener("hop-pin-edit", this.pinEdit);
     window.addEventListener("hop-captain-online", this.captainOnline);
     window.addEventListener("hop-current-location", this.located);
+    window.addEventListener("hop-map-tilt", this.tilted);
     void this.attach();
     void this.feed.start();
   }
 
   private wasOnline?: boolean;
   private wentOnlineAt = 0;
+  private osmPending = 0;
+
+  // ── MapLibre extras: 3D button, service area shading, captain demand glow ──
+  /** The 3D button sits in the map controls only when the map can tilt. */
+  private decorate3D() {
+    const controls = this.root?.parentElement?.querySelector(".map-controls");
+    const existing = controls?.querySelector<HTMLButtonElement>("[data-map-3d]");
+    if (!this.view?.setThreeD) return existing?.remove();
+    if (!controls) return;
+    const button = existing || document.createElement("button");
+    if (!existing) {
+      button.className = "icon-button";
+      button.setAttribute("data-map-3d", "");
+      button.setAttribute("aria-label", "3D view");
+      button.title = "3D view";
+      button.textContent = "3D";
+      controls.append(button);
+    }
+    button.setAttribute("aria-pressed", String(Boolean(this.view.isTilted?.())));
+  }
+  private tilted = (event: Event) => {
+    this.app.querySelector("[data-map-3d]")?.setAttribute("aria-pressed", String(Boolean((event as CustomEvent<boolean>).detail)));
+  };
+  private areas?: Promise<{ min_lat: number; max_lat: number; min_lng: number; max_lng: number }[]>;
+  private async showServiceAreas(view: MapView) {
+    if (!view.setServiceAreas) return;
+    this.areas ??= api.config().then((c) => ((c as { areas?: unknown[] }).areas || []) as { min_lat: number; max_lat: number; min_lng: number; max_lng: number }[]).catch(() => []);
+    const areas = await this.areas;
+    if (this.view === view) view.setServiceAreas(areas);
+  }
+  private demandTimer?: ReturnType<typeof setTimeout>;
+  /** Online captain on the Drive map without a trip: where riders asked for rides lately. */
+  private refreshDemand = () => {
+    clearTimeout(this.demandTimer);
+    const view = this.view;
+    if (this.role !== "captain" || !view?.setDemand) return;
+    const screen = (window as { prototypeBridge?: { read?: () => { screen?: string } } }).prototypeBridge?.read?.().screen;
+    if (screen !== "drive" || !this.wasOnline || this.display().phase) {
+      view.setDemand([]);
+      this.demandTimer = setTimeout(this.refreshDemand, 15_000);
+      return;
+    }
+    void api.request<{ cells?: { lat: number; lng: number; requests: number; drivers?: number }[] }>("/api/drivers/demand").then(
+      (r) => { if (this.view === view) view.setDemand?.(r.cells || []); },
+      () => undefined,
+    ).finally(() => {
+      if (this.view === view) this.demandTimer = setTimeout(this.refreshDemand, 60_000);
+    });
+  };
   // The captain tapped Go online / Go offline: going online is their go-ahead to share location.
   private captainOnline = (event: Event) => {
     if (this.role !== "captain") return;
@@ -375,6 +426,20 @@ export class PrototypeMap {
       if (key === "night" && this.preferences.night) this.preferences.satellite = false;
       this.view?.setPreferences(this.preferences);
       this.decoratePreferences(); this.label();
+      return;
+    }
+    const threeD = (event.target as Element)?.closest<HTMLElement>("[data-map-3d]");
+    if (threeD) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const on = !this.view?.isTilted?.();
+      // On a live trip, 3D is the driving view: follow the vehicle, tilted and heading-up.
+      if (on && ["accepted", "arrived", "in_progress"].includes(this.display().phase || "")) {
+        this.following = true;
+        this.app.querySelector("[data-follow]")?.setAttribute("aria-pressed", "true");
+        this.paint();
+      }
+      this.view?.setThreeD?.(on);
       return;
     }
     const control = (event.target as Element)?.closest<HTMLElement>(
@@ -748,16 +813,35 @@ export class PrototypeMap {
     )
       return;
     this.view?.destroy();
+    this.view = undefined;
     this.canvas.replaceChildren();
-    this.view = new OSMMapView(
-      this.canvas,
-      this.camera?.center || this.current || this.display().center,
-      (message) => {
-        this.message = message;
-        this.label();
-      },
-    );
+    const at = this.camera?.center || this.current || this.display().center;
+    const status = (message: string) => {
+      this.message = message;
+      this.label();
+    };
     this.provider = "OpenStreetMap";
+    // MapLibre (3D, landmarks, Hop layers) where the phone has WebGL; Leaflet otherwise.
+    let view: MapView | undefined;
+    if (webglAvailable()) {
+      if (this.osmPending === revision) return;
+      this.osmPending = revision;
+      try {
+        const { MapLibreMapView } = await import("./maplibre");
+        if (revision !== this.revision || !this.canvas || this.view) return;
+        view = new MapLibreMapView(this.canvas, at, status);
+      } catch (e) {
+        console.warn(`Hop 3D map unavailable (${e instanceof Error ? e.message : e}); using the basic map`);
+        this.canvas?.replaceChildren();
+      } finally {
+        this.osmPending = 0;
+      }
+    }
+    if (!this.canvas || revision !== this.revision) return;
+    this.view = view ?? new OSMMapView(this.canvas, at, status);
+    this.decorate3D();
+    void this.showServiceAreas(this.view);
+    this.refreshDemand();
     this.alternativesKey = "";
     this.preferences.traffic = false; this.preferences.satellite = false;
     this.view.setPreferences(this.preferences);
@@ -893,6 +977,8 @@ export class PrototypeMap {
     window.removeEventListener("hop-pin-edit", this.pinEdit);
     window.removeEventListener("hop-captain-online", this.captainOnline);
     window.removeEventListener("hop-current-location", this.located);
+    window.removeEventListener("hop-map-tilt", this.tilted);
+    clearTimeout(this.demandTimer);
     this.feed.stop();
     this.tracking.stop();
     this.rideCheck.stop();
