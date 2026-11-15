@@ -77,3 +77,32 @@ for (const [role, port] of [
     await expect(page.locator(".home-sheet, .earnings-mini")).toHaveCount(0);
   });
 }
+test("captain: approved captain never sees onboarding while state loads or after a failed first load", async ({ page }) => {
+  await page.route("https://**", (r) => r.abort());
+  await page.route("**/api/**", (r) => r.fulfill({ status: 401, json: { error: "Sign in" } }));
+  await page.route("**/api/config", (r) => r.fulfill({ json: { areas: [], vehicles: [], development: false } }));
+  await page.route("**/api/me", (r) => r.fulfill({ json: { user: { id: "account" }, csrf: "csrf" } }));
+  let calls = 0;
+  await page.route("**/api/state", async (r) => {
+    calls++;
+    // A slow first answer that then fails, as on a weak phone signal.
+    if (calls === 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return r.fulfill({ status: 503, json: { error: "Unavailable" } });
+    }
+    return r.fulfill({ json: { rides: [], offers: [], driver: [{ status: "approved" }] } });
+  });
+  // Record whether onboarding is ever drawn, even for a moment.
+  await page.addInitScript(() => {
+    new MutationObserver(() => {
+      if (document.querySelector("[data-captain-onboarding], .onboarding-steps")) window.__sawOnboarding = true;
+    }).observe(document, { childList: true, subtree: true });
+  });
+  await page.goto("http://127.0.0.1:5184/");
+  await expect(page.locator('#app[data-ready="true"]')).toBeVisible();
+  await expect(page.locator(".earnings-mini")).toBeVisible({ timeout: 10000 });
+  expect(await page.evaluate(() => Boolean(window.__sawOnboarding))).toBe(false);
+  // Back from Drive must not return to an onboarding screen left in the history.
+  expect(await page.evaluate(() => document.querySelector("#app")?.dataset.screen ?? "")).not.toBe("onboarding");
+  expect(calls).toBeGreaterThan(1);
+});

@@ -23,7 +23,9 @@ export class LiveBooking {
   promo = "";
   pink = false;
   share = false;
-  favoriteFirst = false;
+  // Usual captain: on by default. The server only waits for a favourite who is online nearby.
+  favoriteFirst = true;
+  trainNo = "";
   offer = "";
   passengerName = "";
   passengerPhone = "";
@@ -65,7 +67,8 @@ export class LiveBooking {
     this.promo = "";
     this.pink = false;
     this.share = false;
-    this.favoriteFirst = false;
+    this.favoriteFirst = true;
+    this.trainNo = "";
     this.offer = "";
     this.passengerName = "";
     this.passengerPhone = "";
@@ -96,7 +99,9 @@ export class LiveBooking {
   rideOptions(quote: Quote) {
     const out: Record<string, unknown> = {
       share: this.share,
-      favorite_first: this.favoriteFirst,
+      // "Usual captain" is on by default, so it gives way to a shared ride (the server refuses
+      // the combination) instead of blocking the booking.
+      favorite_first: this.favoriteFirst && !this.share,
     };
     if (this.offer) {
       const n = Math.round(Number(this.offer) * 100);
@@ -174,7 +179,7 @@ export class LiveBooking {
         outstation: ["navigation", "Beyond the city", "Plan a one-way or return journey."],
       };
       const [symbol, title, subtitle] = descriptions[this.tripType] || descriptions.city;
-      body = `<div class="plan-intro"><span class="plan-symbol">${icon(symbol)}</span><div><h2>${title}</h2><p>${subtitle}</p></div></div><section class="section-card plan-card"><div class="section-label">YOUR JOURNEY</div><label class="field-label" for="trip-type">Trip type</label><select class="text-input" id="trip-type" data-booking-field="tripType">${[["city", "City ride"], ["rental", "Hourly rental"], ["outstation", "Outstation"]].map(([value, label]) => `<option value="${value}" ${value === this.tripType ? "selected" : ""}>${label}</option>`).join("")}</select>${this.tripType === "rental" ? this.field("rentalHours", "Rental hours (1–12)", this.rentalHours, "number") : ""}${this.tripType === "outstation" ? this.field("tripDays", "Trip days (1–10)", this.tripDays, "number") + this.toggle("roundTrip", "Include a return trip", this.roundTrip) : ""}</section><section class="section-card plan-card"><div class="section-label">PICKUP TIME</div>${this.field("scheduleAt", "Pickup date & time (optional)", this.scheduleAt, "datetime-local")}<p class="small muted">Leave this empty to ride now. Scheduling is available for city rides.</p></section><div class="plan-info">${icon("help")}<p>Scheduled city rides support Cash or UPI. Choose your pickup and destination next to check availability and fares.</p></div>`;
+      body = `<div class="plan-intro"><span class="plan-symbol">${icon(symbol)}</span><div><h2>${title}</h2><p>${subtitle}</p></div></div><section class="section-card plan-card"><div class="section-label">YOUR JOURNEY</div><label class="field-label" for="trip-type">Trip type</label><select class="text-input" id="trip-type" data-booking-field="tripType">${[["city", "City ride"], ["rental", "Hourly rental"], ["outstation", "Outstation"]].map(([value, label]) => `<option value="${value}" ${value === this.tripType ? "selected" : ""}>${label}</option>`).join("")}</select>${this.tripType === "rental" ? this.field("rentalHours", "Rental hours (1–12)", this.rentalHours, "number") : ""}${this.tripType === "outstation" ? this.field("tripDays", "Trip days (1–10)", this.tripDays, "number") + this.toggle("roundTrip", "Include a return trip", this.roundTrip) : ""}</section><section class="section-card plan-card"><div class="section-label">PICKUP TIME</div>${this.field("scheduleAt", "Pickup date & time (optional)", this.scheduleAt, "datetime-local")}<p class="small muted">Leave this empty to ride now. Scheduling is available for city rides.</p>${this.scheduleAt ? this.field("trainNo", "Train number (optional)", this.trainNo) + '<p class="small muted">Arriving by train? If it runs late, move the pickup from Upcoming rides in one tap.</p>' : ""}</section><div class="plan-info">${icon("help")}<p>Scheduled city rides support Cash or UPI. Choose your pickup and destination next to check availability and fares.</p></div>`;
     }
     if (modal === "stops")
       body = `<p>Up to three stops. Select an address returned by the server.</p>${this.stops.map((p, i) => `<div class="list-row"><strong>${escape(p.label)}</strong><button class="text-button" data-booking-remove="${i}">Remove</button></div>`).join("")}${this.stops.length < 3 ? this.field("stopQuery", "Stop address", this.stopQuery) + '<button class="secondary" data-booking-action="search-stop">Search addresses</button>' : ""}${this.places.map((p, i) => `<button class="list-row" data-booking-place="${i}">${escape(p.label)}</button>`).join("")}<button class="primary" data-booking-action="save">Done</button>`;
@@ -271,7 +276,7 @@ export class LiveBooking {
   private change = (e: Event) => {
     this.input(e);
     const el = e.target as HTMLInputElement;
-    if (el.dataset.bookingField === "tripType") this.render(true);
+    if (el.dataset.bookingField === "tripType" || el.dataset.bookingField === "scheduleAt") this.render(true);
   };
   private click = (e: Event) => {
     const b = (e.target as Element).closest<HTMLElement>("button");
@@ -368,8 +373,7 @@ export class LiveBooking {
             this.pink ||
             this.offer ||
             this.passengerName ||
-            this.familyId ||
-            this.favoriteFirst)
+            this.familyId)
         )
           throw new Error(
             "Scheduled city rides don’t support these extra options yet.",

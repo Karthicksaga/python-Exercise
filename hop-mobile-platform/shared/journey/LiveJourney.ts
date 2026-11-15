@@ -20,7 +20,7 @@ import type { Point, Config, Quote, State, Ride } from "../services/contracts";
 import { playMoment } from "../design/tripMoments";
 import { enhanceSlides } from "../design/slideToConfirm";
 import { enableTabSwipe } from "../design/swipe";
-import { riderBeacon, showBeacon, captainBeaconHint, waitClock, notesPicker, notesCard, alertToggles, breakCard } from "../design/tripExtras";
+import { riderBeacon, showBeacon, captainBeaconHint, waitClock, notesPicker, notesCard, alertToggles, breakCard, promiseCard, meterTag, meterFare, cancelNotice } from "../design/tripExtras";
 import { VOICE_LANGS, voiceAvailable, listen } from "../design/voice";
 import { escape, money } from "../helpers";
 import type { Coordinate } from "../maps/types";
@@ -261,11 +261,7 @@ export class LiveJourney {
         if (!session.user?.id) throw new APIError("Sign in to your Hop account.", 401);
         this.signedIn = true;
         this.sessionChecked = true;
-        try {
-          this.sync(await api.state());
-        } catch {
-          // Gracefully continue if initial state fetch fails
-        }
+        await this.loadInitialState();
         if (this.bridge.read().screen === "auth") {
           this.bridge.go(this.role === "rider" ? "home" : "drive");
           this.bridge.assign({ back: [] });
@@ -1334,11 +1330,7 @@ export class LiveJourney {
           await api.verifyOtp(this.phone, this.otp);
           this.signedIn = true;
           this.devCode = "";
-          try {
-          this.sync(await api.state());
-        } catch {
-          // Gracefully continue if initial state fetch fails
-        }
+          await this.loadInitialState();
           this.bridge.go(this.role === "rider" ? "home" : "drive");
           this.bridge.assign({ back: [] });
         }
@@ -1483,6 +1475,7 @@ export class LiveJourney {
             dropoff_label: this.dropoff.label,
             scheduled_for: new Date(this.booking.scheduleAt).toISOString(),
             payment_method: payment,
+            ...(this.booking.trainNo.trim() ? { train_no: this.booking.trainNo.trim() } : {}),
           };
           const account = (await api.session()).user.id;
           const pendingKey = `hop.schedule.pending:${account}:${JSON.stringify(scheduledPayload)}`;
@@ -1654,6 +1647,20 @@ export class LiveJourney {
       );
     }
   };
+  // The first /api/state after sign-in. Until it arrives the Captain's approval is unknown, so
+  // decorate() must not treat "no state yet" as "not approved" (that sent approved Captains to
+  // onboarding on every launch). A failed fetch is retried: onboarding has no map, so nothing
+  // else would poll the state and the Captain would stay stuck there.
+  private stateRetry?: number;
+  private async loadInitialState(attempt = 0): Promise<void> {
+    window.clearTimeout(this.stateRetry);
+    try {
+      this.sync(await api.state());
+    } catch {
+      if (!this.signedIn) return;
+      this.stateRetry = window.setTimeout(() => void this.loadInitialState(attempt + 1), Math.min(15000, 1000 * 2 ** attempt));
+    }
+  }
   private serverState = (event: Event) =>
     this.sync((event as CustomEvent<State>).detail);
   private sync(state: State) {
@@ -1668,7 +1675,10 @@ export class LiveJourney {
     this.signedIn = true;
     const wasApproved = this.state?.driver?.[0]?.status === "approved";
     this.state = state;
-    if (this.role === "captain" && !wasApproved && state.driver?.[0]?.status === "approved" && this.bridge.read().screen === "onboarding") this.bridge.go("drive");
+    if (this.role === "captain" && !wasApproved && state.driver?.[0]?.status === "approved" && this.bridge.read().screen === "onboarding") {
+      this.bridge.go("drive");
+      this.bridge.assign({ back: [] });
+    }
     const ride = this.active();
     if (this.role === "rider" && ride?.status === "requested") startSearchingSound();
     else stopSearchingSound();
@@ -1834,7 +1844,7 @@ export class LiveJourney {
       }
       return;
     }
-    if (this.role === "captain" && this.signedIn && this.state?.driver?.[0]?.status !== "approved") {
+    if (this.role === "captain" && this.signedIn && this.state && this.state.driver?.[0]?.status !== "approved") {
       if (this.bridge.read().screen !== "onboarding") {
         if (!this.onboardingDismissed) {
           this.bridge.go("onboarding");
@@ -2150,6 +2160,9 @@ export class LiveJourney {
               this.estimates[button.dataset.vehicle!] !== undefined
                 ? "Captains checked when you book"
                 : "Not available for this trip";
+          // Meter-honest fare: the official meter fare beside ours, when operations set the tariff.
+          const tariff = this.config?.vehicles.find((v) => v.area_id === this.area()?.id && v.category === button.dataset.vehicle);
+          meterTag(button, this.route && this.estimates[button.dataset.vehicle!] !== undefined ? meterFare(tariff, this.route.meters) : undefined);
         });
       // Compact redesign: when some rides are priced, the unavailable ones fold into one dimmed row
       // ("Cars · Mini cab, Sedan, SUV") instead of a stack of "Unavailable" rows.
@@ -2259,6 +2272,7 @@ export class LiveJourney {
         badge.textContent = this.quote ? "Fare locked" : "Getting fare";
     }
     if (screen === "confirm") {
+      promiseCard(this.app.querySelector(".confirm-sheet"), this.quote ? (this.quote.fare_paise ?? undefined) : undefined, this.quote?.meter_fare_paise);
       const eta = this.app.querySelector(".confirm-sheet > .row p");
       if (eta)
         eta.textContent = "Captain availability is confirmed during matching";
@@ -2269,6 +2283,7 @@ export class LiveJourney {
       if (badge) badge.textContent = "Live prices";
     }
     if (screen === "matching") {
+      cancelNotice(this.app.querySelector(".sheet"), this.active());
       const fare = this.active()?.payable_paise ?? this.active()?.fare_paise;
       this.app.querySelectorAll(".sheet .row").forEach((row) => {
         if (row.textContent?.includes("Requested fare")) {
@@ -2609,6 +2624,7 @@ export class LiveJourney {
     window.removeEventListener("hop-route-pick", this.routePick);
     window.removeEventListener("hop-map-pick", this.mapPick);
     window.removeEventListener("hop-live-state", this.serverState);
+    window.clearTimeout(this.stateRetry);
     window.removeEventListener("hop-here", this.hopHere);
     this.rideChat.close();
   }

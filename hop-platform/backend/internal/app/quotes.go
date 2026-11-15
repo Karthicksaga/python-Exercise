@@ -61,6 +61,10 @@ type VehiclePricing struct {
 	ExtraKM           int64  `json:"extra_km_paise"`
 	OutstationPerKM   *int64 `json:"outstation_per_km_paise"`
 	OutstationAllow   int64  `json:"outstation_allowance_paise"`
+	// The official meter tariff (auto), shown next to Hop's fare; nil when operations haven't set it.
+	MeterBase       *int `json:"meter_base_paise"`
+	MeterBaseMeters *int `json:"meter_base_meters"`
+	MeterPerKM      *int `json:"meter_per_km_paise"`
 }
 
 var vehicleNames = map[string]string{
@@ -85,7 +89,7 @@ func (s *Server) publicConfig(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	vehicles, e := jsonRows(r.Context(), s.DB, `SELECT p.area_id,p.category,p.base_paise,p.per_km_paise,p.minimum_paise,p.pricing_version,p.stop_fee_paise,p.hourly_paise,p.included_km_per_hour,p.extra_km_paise,p.outstation_per_km_paise,p.outstation_allowance_paise
+	vehicles, e := jsonRows(r.Context(), s.DB, `SELECT p.area_id,p.category,p.base_paise,p.per_km_paise,p.minimum_paise,p.pricing_version,p.stop_fee_paise,p.hourly_paise,p.included_km_per_hour,p.extra_km_paise,p.outstation_per_km_paise,p.outstation_allowance_paise,p.meter_base_paise,p.meter_base_meters,p.meter_per_km_paise
  FROM area_vehicle_pricing p JOIN areas a ON a.id=p.area_id
  WHERE a.active AND p.enabled ORDER BY p.area_id, p.category`)
 	if e != nil {
@@ -460,6 +464,11 @@ func (s *Server) buildQuote(ctx context.Context, uid string, input quoteInput) (
 		"vehicle_category": pricing.Category, "vehicle_name": vehicleNames[pricing.Category],
 		"trip_type": input.TripType, "stops": input.Stops, "fare_breakdown": breakdown, "route": route,
 		"surge_multiplier": surge.Multiplier, "surge_reason": surge.Reason, "promo_code": promoCode, "discount_paise": discount, "payable_paise": fare - discount,
+	}
+	if input.TripType == "city" && len(input.Stops) == 0 {
+		if m := meterFareFor(ctx, s.DB, a.ID, pricing.Category, meters); m > 0 {
+			out["meter_fare_paise"] = m
+		}
 	}
 	if shared > 0 {
 		out["shared_fare_paise"], out["shared_payable_paise"] = shared, max(0, shared-discount)
