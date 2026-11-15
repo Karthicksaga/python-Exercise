@@ -1,0 +1,27 @@
+import { defineConfig } from "@playwright/test";
+
+/**
+ * End-to-end tests run the production build (the exact files the Android app ships) in
+ * Chromium with a phone-sized, touch-enabled landscape viewport.
+ */
+export default defineConfig({
+  testDir: "./tests",
+  timeout: 90_000,
+  // One at a time: several software-rendered copies of the game slow each other below real time.
+  workers: 1,
+  reporter: "line",
+  use: {
+    baseURL: "http://127.0.0.1:4173",
+    viewport: { width: 915, height: 412 },
+    hasTouch: true,
+    isMobile: true,
+    // Software WebGL, so the tests also run on machines without a GPU.
+    launchOptions: { args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] },
+  },
+  webServer: {
+    command: "npm run build && npm run preview -- --strictPort",
+    url: "http://127.0.0.1:4173",
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
+});

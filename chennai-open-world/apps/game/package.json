@@ -1,0 +1,30 @@
+{
+  "name": "@cow/game",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host --port 4173",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@cow/game-engine": "*",
+    "@cow/game-world": "*",
+    "@cow/map-data": "*",
+    "@cow/physics": "*",
+    "@cow/player": "*",
+    "@cow/ui": "*",
+    "@dimforge/rapier3d-compat": "^0.21.0",
+    "three": "^0.187.0",
+    "@cow/vehicles": "*",
+    "@cow/missions": "*",
+    "@cow/ai": "*",
+    "@cow/combat": "*",
+    "@cow/audio": "*"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0"
+  }
+}

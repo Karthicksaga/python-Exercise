@@ -1,0 +1,87 @@
+/** Handling and size of each vehicle type. Pure numbers; the look is in `models.ts`. */
+import type { VehicleSpec } from "@cow/physics";
+
+export type VehicleKind = "car" | "auto" | "bike";
+
+export interface VehicleType {
+  readonly kind: VehicleKind;
+  /** Name shown to the player. */
+  readonly label: string;
+  readonly physics: VehicleSpec;
+  /** Height of the chassis centre above the ground when parked. */
+  readonly rideHeight: number;
+  /** Camera distance while driving. */
+  readonly cameraDistance: number;
+  /**
+   * Where a visible rider sits, relative to the chassis centre (the point between their feet
+   * when standing). Omitted for closed vehicles, where the driver is hidden.
+   */
+  readonly seat?: { readonly y: number; readonly z: number };
+  /** Open two-wheelers lean into corners. */
+  readonly leans?: boolean;
+}
+
+export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
+  car: {
+    kind: "car",
+    label: "Hatchback",
+    rideHeight: 0.72,
+    cameraDistance: 8.5,
+    physics: {
+      halfExtents: { x: 0.82, y: 0.42, z: 1.95 },
+      mass: 950,
+      wheels: [
+        { x: -0.74, y: -0.12, z: -1.25, radius: 0.32, steers: true, driven: true },
+        { x: 0.74, y: -0.12, z: -1.25, radius: 0.32, steers: true, driven: true },
+        { x: -0.74, y: -0.12, z: 1.25, radius: 0.32, steers: false, driven: false },
+        { x: 0.74, y: -0.12, z: 1.25, radius: 0.32, steers: false, driven: false },
+      ],
+      engineForce: 5600,
+      maxSpeed: 23, // about 83 km/h
+      maxSteer: 0.6,
+      brakeForce: 95,
+    },
+  },
+  auto: {
+    kind: "auto",
+    label: "Auto-rickshaw",
+    rideHeight: 0.7,
+    cameraDistance: 7,
+    seat: { y: -0.72, z: -0.32 },
+    physics: {
+      halfExtents: { x: 0.66, y: 0.45, z: 1.3 },
+      mass: 420,
+      // Three wheels: one steered at the front, two driven at the back.
+      wheels: [
+        { x: 0, y: -0.14, z: -1.0, radius: 0.24, steers: true, driven: false },
+        { x: -0.6, y: -0.14, z: 0.8, radius: 0.24, steers: false, driven: true },
+        { x: 0.6, y: -0.14, z: 0.8, radius: 0.24, steers: false, driven: true },
+      ],
+      engineForce: 1900,
+      maxSpeed: 14, // about 50 km/h
+      maxSteer: 0.75,
+      brakeForce: 50,
+    },
+  },
+  bike: {
+    kind: "bike",
+    label: "Motorbike",
+    rideHeight: 0.62,
+    cameraDistance: 6.5,
+    seat: { y: -0.7, z: 0.3 },
+    leans: true,
+    physics: {
+      halfExtents: { x: 0.32, y: 0.36, z: 1.0 },
+      mass: 190,
+      // Two wheels in line. The chassis cannot roll, so it stays upright by itself.
+      wheels: [
+        { x: 0, y: -0.02, z: -0.72, radius: 0.3, steers: true, driven: false },
+        { x: 0, y: -0.02, z: 0.68, radius: 0.3, steers: false, driven: true },
+      ],
+      engineForce: 1500,
+      maxSpeed: 26, // about 94 km/h
+      maxSteer: 0.55,
+      brakeForce: 28,
+    },
+  },
+};

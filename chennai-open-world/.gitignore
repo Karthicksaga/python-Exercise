@@ -1,0 +1,12 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+apps/mobile/android/app/src/main/assets/game/
+apps/mobile/android/.gradle/
+apps/mobile/android/build/
+apps/mobile/android/app/build/
+apps/mobile/android/app/.cxx/
+apps/mobile/android/local.properties
+*.log
+.DS_Store

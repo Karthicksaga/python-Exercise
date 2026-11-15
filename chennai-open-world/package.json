@@ -1,0 +1,29 @@
+{
+  "name": "chennai-open-world",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Original open-world game set in real Chennai geography (Android).",
+  "workspaces": [
+    "packages/*",
+    "apps/game"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @cow/game",
+    "build": "npm run build -w @cow/game",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "npm run test:e2e -w @cow/game",
+    "sync:android": "npm run build && node scripts/sync-android.mjs",
+    "android": "npm run sync:android && cd apps/mobile && npx react-native run-android",
+    "build:world": "tsx scripts/build-world.ts",
+    "fetch:osm": "node scripts/fetch-osm.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.0"
+  }
+}
