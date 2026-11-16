@@ -28,6 +28,7 @@ interface PlaceState {
   mode: string;
   target: { x: number; z: number } | null;
   x: number;
+  yaw: number;
   z: number;
 }
 const state = (page: Page) => snapshot(page) as unknown as Promise<PlaceState>;
