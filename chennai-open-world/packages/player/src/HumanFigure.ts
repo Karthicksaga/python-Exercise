@@ -4,6 +4,7 @@
  * shares geometry, textures and animation data.
  */
 import * as THREE from "three";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { PLAYER_HEIGHT } from "./PlayerController";
@@ -66,7 +67,9 @@ export class HumanAssets {
   ) {}
 
   static async load(sources: HumanSources): Promise<HumanAssets> {
-    const loader = new GLTFLoader();
+    // Models from `npm run optimize:assets` use meshopt geometry compression; the decoder embeds
+    // its WebAssembly, so nothing extra is fetched (TD-3, TD-16).
+    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
     const [model, animations] = await Promise.all([loader.loadAsync(sources.model), loader.loadAsync(sources.animations)]);
     const scene = model.scene;
     // Both skeletons are compared in rest pose, before anything is scaled or turned.

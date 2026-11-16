@@ -214,7 +214,10 @@ Difficulty has not been play-tested by a person.
   until it passes, treat APK loading as unverified.
 - **Performance:** about 270–300 draw calls and 290k triangles with everything on screen. Fine on
   the emulator's desktop GPU; unknown on phones. Each pedestrian is a full skinned character.
-- **Bundle:** 8.1 MB, of which about 2.7 MB is the character embedded as base64 (TD-3).
+- **Bundle:** 6.1 MB (16 Nov, night; was 8.1 MB). The character and animations are optimised by
+  `npm run optimize:assets` (607 KB together, was 1,985 KB) and embedded as base64 (TD-3); the
+  world is no longer in the script (TD-16). Checked in the browser: the optimised character
+  loads, walks and animates with no errors.
 - **Not built:** inventory or shops, more weapons, settings screen (including a mute switch),
   interiors, weather, day/night.
 - The release APK is signed with the debug keystore and built for arm64 only.

@@ -23,8 +23,8 @@ import { LandmarkView } from "@cow/game-engine";
 import { landmarkSolids } from "@cow/game-world";
 import { LandmarkLabels } from "@cow/ui";
 import { loadWorld } from "./WorldFiles";
-import playerModel from "../../../assets/models/player.glb?inline";
-import locomotion from "../../../assets/animations/locomotion.glb?inline";
+import playerModel from "../../../assets/optimized/player.glb?inline";
+import locomotion from "../../../assets/optimized/locomotion.glb?inline";
 
 /** What tests and the debug console can read about the running game. */
 export interface GameSnapshot {
