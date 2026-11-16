@@ -18,6 +18,17 @@ first.
 
 ---
 
+## 17 Nov 2026 (later): realism brief received, plan written, nothing implemented yet
+
+The user asked for a realistic Tamil Nadu look (buildings, roads, real vehicles, realistic
+people, PBR, phone performance) in eight phases. The analysis and phase plan are in
+**`docs/realism-plan.md`**. Start there. Before Phase 1 can be done, it needs a real Android
+phone. Before Phase 5 (vehicles), the user must decide on real brand names and the MTC livery
+(section 5 of that file). Blender 5.2 must be installed on whichever machine builds models.
+The "9 fps" the user saw came from headless software-rendered screenshots, not from a phone.
+
+---
+
 ## 17 Nov 2026: street props placed (branch `claude/relaxed-wright-3t1vb2`, merged into `feat/chennai-open-world`)
 
 ### Done (tested; details and measurements in `progress.md`, "Street props in the streets")
