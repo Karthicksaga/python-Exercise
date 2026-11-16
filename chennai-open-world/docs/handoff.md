@@ -227,3 +227,61 @@ desktop instructions.
    to it end at the map edge. The environment now allows the OSM hosts (Overpass,
    download.openstreetmap.fr) for this.
 Avoid these areas until they are merged, or coordinate first.
+
+## Suburban railway (branch `agent/railway`): where I left off, WIP, stopped on the user's instruction
+
+**Done:** only the data fetch. Nothing in the game changed, and no game code was written.
+- `scripts/fetch-rail.mjs`: Overpass query for the railway in the map's box plus about 500 m
+  (rail and light-rail ways, stations and halts, platforms, level crossings, and the route
+  relations that use those ways). It tries overpass-api.de, then overpass.kumi.systems.
+- `assets/osm/rail/chennai-rail.osm.json` (438 KB, committed): 4,379 nodes, 451 ways and 17
+  relations, OSM data 2026-07-15 (kumi mirror). Attribution in `assets/osm/README.md`. This file
+  has the relations' **tags only**. The script was then changed to `out body` (with members),
+  but that re-fetch was stopped before it finished. Run it again first (see the proxy note in the README).
+
+**Tested:** nothing beyond reading the extract with a throwaway Python script. Typecheck, unit
+and browser tests were not run on this branch (no code changed).
+
+**What the extract shows (for the builder):**
+- Suburban stations on the map, in local metres (x, z): Central (7141, 285), Park (6830, 470),
+  Park Town (7177, 599), Egmore (5547, 802), Chetpet (3505, 1178), Nungambakkam (2466, 2118),
+  Kodambakkam (2232, 3686), Mambalam (1917, 5190), Saidapet (1477, 6821), Guindy (272, 8440),
+  St Thomas Mount (-1163, 9978). Most have `name:ta`. Chennai Beach is just off the east edge
+  (x ≈ 8960), so the Beach–Tambaram line leaves the map at **both** ends. Chennai Fort is not
+  tagged as a station in this extract.
+- Route relations: 1289050 "Chennai Beach - Tambaram suburban line" (Beach → Tambaram) and
+  20986091 (Tambaram → Beach), one per direction, so each direction can follow its own track.
+  1289122 is "Chennai Central - Thiruvallur suburban line", and 1289118 is an unnamed train route.
+  The Central lines leave the map northwards soon after Central, with no other station on the map.
+- The MRTS (60 ways named "MRTS", Chintadripet to Kasturiba Nagar) is mostly `bridge=yes`
+  with layer 1 or 2, so it is elevated. Metro stations are `station=subway` (underground or
+  elevated). Leave both out at first: drawing them at ground level would be wrong.
+- The only level crossings in the box are 13 private ones inside the metro depot. The suburban
+  line has **no level crossings on the map**, so crossings and barriers are not needed (roads
+  cross it on bridges or in subways, which the user said need not be modelled).
+
+**Plan for the next engineer (the brief is the task message for this branch):**
+1. Re-run the fetch for relation members. Write a new pure package `packages/rail` (`@cow/rail`,
+   imports `map-data` only; add it to `apps/game/package.json` and run `npm install` so the
+   lockfile updates). It needs: a polyline with arc length, `at(s)` and projection; a builder
+   that chains each direction relation's way members into one line, clipped a little beyond the
+   bounds, with stations snapped to it (`s` along the line), and with which end leaves the map and
+   where it goes (Tambaram south, Chennai Beach north-east); a motion profile (accelerate about
+   0.8 m/s², brake about 0.9 m/s², about 22 m/s top, 30 s stops; trains enter at speed from
+   beyond the map); a timetable (headway about 6 min per direction, train positions derived from
+   one railway clock); and boarding rules (at a stopped train's station, flat fare about ₹5,
+   estimated; the ride ends at the last station on the map with "The line continues to
+   Tambaram beyond the map").
+2. `scripts/build-rail.ts` → `apps/game/public/world/rail.json` (small, committed), loaded by
+   a new `loadRail()` in `WorldFiles.ts` (additive).
+3. Rendering in `packages/game-engine` (new files): track stretches merged per about 250 m
+   (ballast, sleepers, rails in one mesh with vertex colours), platforms (solid, about 0.9 m
+   high, with steps at the ends because the character autosteps only 0.35 m), and English and
+   Tamil name boards. The Tamil glyphs need a **new** font subset file (do not re-cut the shop-sign
+   font that other branches use). Trains are kinematic boxes per coach (`createKinematicBox`).
+4. `apps/game/src/Railway.ts` owns the wiring. Keep `Game.ts` edits to a few lines: create,
+   `fixedUpdate`, `frame`, the action button (BOARD / STEP OFF), `where()` while riding,
+   `snapshot().rail`, and minimap markers. Add a test hook to move the railway clock forward.
+5. Tests as listed in the brief: unit tests for the builder, motion and boarding, a browser
+   test that boards and rides one stop, and draw calls and triangles before and after at Egmore
+   and at the Anna Nagar spawn.

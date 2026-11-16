@@ -31,3 +31,16 @@ Nagar to T. Nagar, Anna Salai, Marina Beach and the start of ECR. Clipped with
 pieces, 535 bus stops, 266 traffic signals and the coastline. `npm run build:world` turns it
 into `apps/game/public/world/` (committed). How to rebuild it: `docs/development-roadmap.md`,
 "J2 status". © OpenStreetMap contributors, ODbL 1.0.
+
+## The railway extract (work in progress)
+
+`rail/chennai-rail.osm.json` (438 KB): Overpass API extract made with `scripts/fetch-rail.mjs`,
+bounding box 12.975,80.19 to 13.10,80.295 (the city clip box plus about 500 m). Fetched 16 Nov
+2026 from the `overpass.kumi.systems` mirror (overpass-api.de reset the connection); that
+mirror's OSM data timestamp is **2026-07-15T15:22:01Z**. It holds `railway=rail` and
+`light_rail` ways with their nodes, stations and halts, platforms, level crossings, and the
+tags (not yet the members) of the train route relations that use those ways. The script now
+asks for the relations' members too (`out body`), but that run was stopped before it finished,
+so the committed file still has tags only. Node's `fetch` needs
+`NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt` behind this container's proxy.
+© OpenStreetMap contributors, ODbL 1.0.
