@@ -235,6 +235,10 @@ handlebar or steering wheel, and new P / R / D gear buttons beside GAS and BRAKE
 Some agent commits could not be pushed (the permission system refused the agents' pushes). If a
 branch on GitHub is behind, the newest work is in the agent's worktree under
 `.claude/worktrees/` on the machine that ran this session.
+**Backups of unfinished work:** `agent/<topic>-snapshot` branches (pedestrian-hits, controls-poses,
+railway, …) hold the agents' worktrees as they were at the last check-in, including uncommitted
+files, as one commit on top of the agent's last commit. They are force-updated at each check-in.
+If an agent branch is behind its snapshot, start from the snapshot.
 If this session stops, continue from those branches. Read the newest entry at the end of this
 file on each branch (its "where I left off"), run `npm run typecheck && npm test` and the
 browser tests, then merge into `feat/chennai-open-world` one at a time.
