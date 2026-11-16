@@ -10,6 +10,17 @@ export class MeshBuilder {
   private readonly uvs: number[] = [];
   private readonly colors: number[] = [];
   private readonly indices: number[] = [];
+  /** Optional extra vec3 per vertex (see `setExtra`), only for builders made with an attribute name. */
+  private readonly extras: number[] = [];
+  private extra: readonly [number, number, number] = [0, 0, 0];
+
+  /** @param extraName name of an extra vec3 attribute that `setExtra` fills (e.g. shutter timing) */
+  constructor(private readonly extraName?: string) {}
+
+  /** Extra attribute value for the vertices added from now on (needs `extraName`). */
+  setExtra(a: number, b: number, c: number): void {
+    this.extra = [a, b, c];
+  }
 
   get vertexCount(): number {
     return this.positions.length / 3;
@@ -21,6 +32,7 @@ export class MeshBuilder {
     this.normals.push(nx, ny, nz);
     this.uvs.push(u, v);
     this.colors.push(r, g, b);
+    if (this.extraName) this.extras.push(this.extra[0], this.extra[1], this.extra[2]);
     return this.positions.length / 3 - 1;
   }
 
@@ -41,6 +53,7 @@ export class MeshBuilder {
     geometry.setAttribute("normal", new THREE.Float32BufferAttribute(this.normals, 3));
     geometry.setAttribute("uv", new THREE.Float32BufferAttribute(this.uvs, 2));
     geometry.setAttribute("color", new THREE.Float32BufferAttribute(this.colors, 3));
+    if (this.extraName) geometry.setAttribute(this.extraName, new THREE.Float32BufferAttribute(this.extras, 3));
     geometry.setIndex(this.indices);
     geometry.computeBoundingSphere();
     return geometry;

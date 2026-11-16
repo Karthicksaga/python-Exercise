@@ -6,6 +6,8 @@
  *
  * The board colours follow the bright painted signs of Chennai streets.
  */
+import type { ShopKind } from "@cow/game-world";
+
 export interface ShopSign {
   /** Tamil line, drawn large. Needs the embedded Tamil font (see `loadSignFont`). */
   readonly tamil: string;
@@ -15,21 +17,23 @@ export interface ShopSign {
   readonly board: string;
   readonly ink: string;
   readonly trim: string;
+  /** What the shop sells, for the street life in front of it (`chunkStreetLife`). */
+  readonly kind: ShopKind;
   /** Wide boards span two shop bays (about 6.4 m), narrow ones one bay (about 3.2 m). */
   readonly wide: boolean;
 }
 
 export const SHOP_SIGNS: readonly ShopSign[] = [
-  { tamil: "மளிகைக் கடை", english: "GROCERY & PROVISIONS", board: "#f6c923", ink: "#b3161b", trim: "#1d5fa8", wide: true },
-  { tamil: "சைவ உணவகம்", english: "VEG MEALS · TIFFIN", board: "#1f7a3a", ink: "#fff7d6", trim: "#f2c230", wide: true },
-  { tamil: "துணிக்கடை", english: "TEXTILES & READYMADES", board: "#1d4fa0", ink: "#ffffff", trim: "#e83f6f", wide: true },
-  { tamil: "நிலா டிபன் சென்டர்", english: "NILA TIFFIN CENTRE", board: "#c8302c", ink: "#fff2a8", trim: "#ffffff", wide: true },
-  { tamil: "மருந்தகம்", english: "MEDICALS", board: "#ffffff", ink: "#0f7a3c", trim: "#0f7a3c", wide: false },
-  { tamil: "தேநீர் கடை", english: "TEA · COFFEE", board: "#e8742a", ink: "#ffffff", trim: "#5a2a12", wide: false },
-  { tamil: "புது ஸ்டோர்ஸ்", english: "NEW STORES", board: "#7a2f8f", ink: "#ffe36b", trim: "#ffe36b", wide: false },
-  { tamil: "பூக்கடை", english: "FLOWERS", board: "#f4e6c8", ink: "#c2185b", trim: "#2e7d32", wide: false },
-  { tamil: "காலணிகள்", english: "FOOTWEAR", board: "#1b1b1b", ink: "#ffd54a", trim: "#ffd54a", wide: false },
-  { tamil: "கைபேசி சேவை", english: "MOBILE SERVICE", board: "#18a0c8", ink: "#ffffff", trim: "#0b3d5c", wide: false },
+  { tamil: "மளிகைக் கடை", english: "GROCERY & PROVISIONS", board: "#f6c923", ink: "#b3161b", trim: "#1d5fa8", kind: "grocery", wide: true },
+  { tamil: "சைவ உணவகம்", english: "VEG MEALS · TIFFIN", board: "#1f7a3a", ink: "#fff7d6", trim: "#f2c230", kind: "eatery", wide: true },
+  { tamil: "துணிக்கடை", english: "TEXTILES & READYMADES", board: "#1d4fa0", ink: "#ffffff", trim: "#e83f6f", kind: "textiles", wide: true },
+  { tamil: "நிலா டிபன் சென்டர்", english: "NILA TIFFIN CENTRE", board: "#c8302c", ink: "#fff2a8", trim: "#ffffff", kind: "eatery", wide: true },
+  { tamil: "மருந்தகம்", english: "MEDICALS", board: "#ffffff", ink: "#0f7a3c", trim: "#0f7a3c", kind: "pharmacy", wide: false },
+  { tamil: "தேநீர் கடை", english: "TEA · COFFEE", board: "#e8742a", ink: "#ffffff", trim: "#5a2a12", kind: "tea", wide: false },
+  { tamil: "புது ஸ்டோர்ஸ்", english: "NEW STORES", board: "#7a2f8f", ink: "#ffe36b", trim: "#ffe36b", kind: "stores", wide: false },
+  { tamil: "பூக்கடை", english: "FLOWERS", board: "#f4e6c8", ink: "#c2185b", trim: "#2e7d32", kind: "flowers", wide: false },
+  { tamil: "காலணிகள்", english: "FOOTWEAR", board: "#1b1b1b", ink: "#ffd54a", trim: "#ffd54a", kind: "footwear", wide: false },
+  { tamil: "கைபேசி சேவை", english: "MOBILE SERVICE", board: "#18a0c8", ink: "#ffffff", trim: "#0b3d5c", kind: "mobile", wide: false },
 ];
 
 /** Generic English shop words the signs may use; checked by a unit test so no brand slips in. */
