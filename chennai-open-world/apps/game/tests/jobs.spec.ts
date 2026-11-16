@@ -88,6 +88,40 @@ test("quitting a job costs reputation and the game goes on", async ({ page }) =>
   expect((await snapshot(page)).mission).toBe("morning-walk");
 });
 
+test("the Marina evening drive is offered only in the evening, and pays for a drive off Anna Salai", async ({ page }) => {
+  await ready(page);
+  const reloadAt = async (hour: number) => {
+    await page.evaluate((h) => localStorage.setItem("cow-hour-v1", String(h)), hour);
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-ready", "true", { timeout: 60_000 });
+  };
+  // In the morning the board says when it is offered.
+  await reloadAt(9);
+  await page.getByTestId("jobs").click();
+  await expect(page.getByTestId("take-marina-evening")).toBeDisabled();
+  await expect(page.getByRole("dialog")).toContainText("16:00–20:30");
+  await page.getByRole("button", { name: "Close" }).click();
+
+  await reloadAt(17);
+  await page.getByTestId("jobs").click();
+  await page.getByTestId("take-marina-evening").click();
+  expect((await jobState(page)).job).toBe("marina-evening");
+  // The hatchback parked in T. Nagar, next to the pick-up.
+  await board(page, "car-tnagar");
+  expect((await snapshot(page)).mode).toBe("car");
+  const pickup = (await jobState(page)).target!;
+  await teleport(page, pickup.x, pickup.z);
+  await expect.poll(async () => (await jobState(page)).jobStop, { timeout: 10_000 }).toBe(1);
+  const drop = (await jobState(page)).target!;
+  expect(Math.hypot(drop.x - pickup.x, drop.z - pickup.z)).toBeGreaterThan(4000);
+  await teleport(page, drop.x, drop.z);
+  await expect(page.getByRole("dialog")).toContainText("Marina evening drive complete", { timeout: 8000 });
+  await expect(page.getByRole("dialog")).toContainText("Kept off Anna Salai");
+  const done = await jobState(page);
+  expect(done.job).toBeNull();
+  expect(done.money).toBeGreaterThan(1000);
+});
+
 test("the board offers every job, and each job's vehicle is parked somewhere", async ({ page }) => {
   await ready(page);
   await page.getByTestId("jobs").click();
@@ -97,6 +131,8 @@ test("the board offers every job, and each job's vehicle is parked somewhere", a
   const needs: Record<string, string> = {
     "ambulance-run": "ambulance", "hospital-transfer": "ambulance", courier: "bike", "food-delivery": "bike", "medicine-run": "bike",
     "cab-ride": "car", "tower-park-visit": "car", "share-auto": "auto", "bus-route": "bus", "evening-bus": "bus",
+    // City jobs added on purpose (T. Nagar to Marina, Egmore to Royapettah, Anna Salai bus).
+    "marina-evening": "car", "egmore-transfer": "ambulance", "mount-road-bus": "bus",
   };
   for (const id of ids) expect(vehicles.has(needs[id] ?? "unknown"), `vehicle for ${id}`).toBe(true);
 });

@@ -8,6 +8,7 @@ import { GeoProjection } from "@cow/map-data";
 import type { EnemySpot } from "@cow/combat";
 import type { Job, Mission, Objective } from "@cow/missions";
 import type { VehicleKind } from "@cow/vehicles";
+import { cityJobs } from "./cityJobs";
 
 export interface Parking {
   readonly id: string;
@@ -490,6 +491,11 @@ export function buildContent(city: WorldMap): GameContent {
       minReputation: 62,
     },
   );
+
+  // Jobs across the whole city (T. Nagar, Marina, Egmore, Anna Salai), placed on the city map.
+  const across = cityJobs(city);
+  parking.push(...across.parking);
+  jobs.push(...across.jobs);
 
   return { spawn, parking, missions, enemies, jobs };
 }

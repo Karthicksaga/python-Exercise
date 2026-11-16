@@ -4,7 +4,7 @@
  * saves reputation. The game asks it for the current marker and HUD panel.
  */
 import type { Sound } from "@cow/audio";
-import { JobRunner, type Job, type JobEvent, type JobPlayer, type JobRecord, type MissionRunner } from "@cow/missions";
+import { hoursText, JobRunner, type Job, type JobEvent, type JobPlayer, type JobRecord, type MissionRunner } from "@cow/missions";
 import type { Hud, MissionView } from "@cow/ui";
 import { VEHICLE_TYPES } from "@cow/vehicles";
 
@@ -27,6 +27,8 @@ export interface DeskHost {
   release(): void;
   /** Money was earned or taken: save the stage progress too. */
   saveMoney(): void;
+  /** Game time, 0–24: some jobs are offered only at certain hours. */
+  hour(): number;
 }
 
 export class JobDesk {
@@ -48,18 +50,19 @@ export class JobDesk {
   openBoard(): void {
     this.host.hold();
     const current = this.runner.job;
+    const hour = this.host.hour();
     this.hud.showOverlay(
       "Job board",
-      current ? `On the job: ${current.title}. Quitting costs ₹${current.fine} and reputation.` : `Everyday work around Anna Nagar. Failing a job costs a fine and reputation, never the game. Reputation ${this.runner.reputation}.`,
+      current ? `On the job: ${current.title}. Quitting costs ₹${current.fine} and reputation.` : `Everyday work around the city. Failing a job costs a fine and reputation, never the game. Reputation ${this.runner.reputation}.`,
     );
     this.hud.addOverlayList(
       this.jobs.map((job) => {
-        const check = this.runner.available(job);
+        const check = this.runner.available(job, hour);
         const best = this.runner.record().best[job.id];
         return {
           title: job.title,
           detail: job.brief,
-          meta: `${VEHICLE_TYPES[job.vehicle].label} · up to ₹${job.payout} · ${Math.round(job.timeLimit / 60)} min${best ? ` · best ₹${best}` : ""}`,
+          meta: `${VEHICLE_TYPES[job.vehicle].label} · up to ₹${job.payout} · ${Math.round(job.timeLimit / 60)} min${job.hours ? ` · ${hoursText(job.hours)}` : ""}${best ? ` · best ₹${best}` : ""}`,
           button: "Take job",
           testId: `take-${job.id}`,
           ...(check.ok ? {} : { disabled: current?.id === job.id ? "On this job now" : check.reason }),
@@ -72,7 +75,7 @@ export class JobDesk {
   }
 
   private take(job: Job): void {
-    this.handle(this.runner.accept(job));
+    this.handle(this.runner.accept(job, this.host.hour()));
     this.close();
   }
 
@@ -110,9 +113,12 @@ export class JobDesk {
       ? `${this.runner.started ? "Get back in" : "Get in"} the ${vehicle}`
       : dwell !== null
         ? `${stop.label}: wait ${Math.ceil(dwell)} s`
-        : stop.label;
+        : !this.runner.started && job.startRadius !== undefined
+          ? `Drive to the start; the clock starts there. ${stop.label}`
+          : stop.label;
     const bumps = this.runner.bumps > 0 ? ` · ${this.runner.bumps} bump${this.runner.bumps === 1 ? "" : "s"}` : "";
-    return { title: `Job · ${job.title}${bumps}`, objective, distance, secondsLeft: this.runner.secondsLeft };
+    const avoided = job.avoid && this.runner.avoidSeconds >= 1 ? ` · ${Math.round(this.runner.avoidSeconds)} s on ${job.avoid.name}` : "";
+    return { title: `Job · ${job.title}${bumps}${avoided}`, objective, distance, secondsLeft: this.runner.secondsLeft };
   }
 
   private handle(events: JobEvent[]): void {
@@ -130,6 +136,9 @@ export class JobDesk {
           break;
         case "bump":
           this.hud.showToast("Bump!", event.job.kind === "ambulance" ? "Careful with the patient" : "That will cost you", 1.4);
+          break;
+        case "avoid":
+          this.hud.showToast(`${event.name} is jammed`, "Cross it, don't drive along it: time on it cuts the pay", 2.5);
           break;
         case "completed": {
           const { result } = event;
