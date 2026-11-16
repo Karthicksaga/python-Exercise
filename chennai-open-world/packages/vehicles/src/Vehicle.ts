@@ -53,13 +53,12 @@ export class Vehicle {
   }
 
   /**
-   * Where a visible rider's feet-origin goes, and the way they face, in world space.
-   * Null for closed vehicles.
+   * Where the driver's hip joints go (a seated figure's root, `VehicleType.driver`) and the way
+   * they face, in world space. Follows the two-wheeler's lean.
    */
-  riderPose(): { x: number; y: number; z: number; quaternion: THREE.Quaternion } | null {
-    const seat = this.type.seat;
-    if (!seat) return null;
-    const at = this.object.localToWorld(this.seatPoint.set(0, seat.y, seat.z));
+  riderPose(): { x: number; y: number; z: number; quaternion: THREE.Quaternion } {
+    const seat = this.type.driver;
+    const at = this.object.localToWorld(this.seatPoint.set(seat.x, seat.y, seat.z));
     return { x: at.x, y: at.y, z: at.z, quaternion: this.object.quaternion };
   }
 

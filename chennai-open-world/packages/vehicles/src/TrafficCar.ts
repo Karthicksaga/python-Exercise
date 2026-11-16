@@ -28,10 +28,12 @@ export class TrafficCar {
 
   private driverFigure: THREE.Object3D | null = null;
 
-  /** Seat a driver (a seated person, root at the feet) where this kind's driver sits. */
+  /**
+   * Seat a driver where this kind's driver sits: a person baked in this kind's riding pose
+   * (`HumanAssets.seatedStatic(tint, type.pose)`), root at the hip joints.
+   */
   setDriver(figure: THREE.Object3D): void {
     const seat = this.type.driver;
-    if (!seat) return;
     if (this.driverFigure) this.model.object.remove(this.driverFigure);
     figure.position.set(seat.x, seat.y, seat.z);
     this.model.object.add(figure);

@@ -499,9 +499,8 @@ export class Game {
     this.avatar.setAiming(false);
     this.player.body.setEnabled(false);
     // Open vehicles show the rider sitting; closed ones hide the driver.
-    const open = vehicle.type.seat !== undefined;
-    this.avatar.visible = open;
-    this.avatar.setSeated(open);
+    this.avatar.visible = vehicle.type.openSeat === true;
+    this.avatar.setSeated(vehicle.type.pose);
     this.camera.reach = vehicle.type.cameraDistance;
     this.controls.setMode("drive");
     this.controls.setHornLabel(vehicle.type.siren ? "SIREN" : "HORN");
@@ -537,7 +536,7 @@ export class Game {
     this.player.body.setEnabled(true);
     this.player.respawn({ x: p.x - Math.sin(exit) * out, y: 0.1, z: p.z - Math.cos(exit) * out }, yaw);
     this.avatar.visible = true;
-    this.avatar.setSeated(false);
+    this.avatar.setSeated(null);
     this.avatar.object.quaternion.identity();
     this.camera.reach = 5.6;
     this.controls.setMode("foot");
@@ -859,10 +858,8 @@ export class Game {
         } else this.sound.horn();
       }
       const seat = this.driving.riderPose();
-      if (seat) {
-        this.avatar.object.position.set(seat.x, seat.y, seat.z);
-        this.avatar.object.quaternion.copy(seat.quaternion);
-      }
+      this.avatar.object.position.set(seat.x, seat.y, seat.z);
+      this.avatar.object.quaternion.copy(seat.quaternion);
       this.nearby = null;
       this.controls.setAction("EXIT");
     } else {
