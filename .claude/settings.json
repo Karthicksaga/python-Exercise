@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push -u origin HEAD:agent/*)",
+      "Bash(git push origin HEAD:agent/*)",
+      "Bash(git push -u origin HEAD:refs/heads/agent/*)",
+      "Bash(git push origin HEAD:refs/heads/agent/*)"
+    ]
+  }
+}
