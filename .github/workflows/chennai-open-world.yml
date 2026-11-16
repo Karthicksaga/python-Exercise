@@ -144,8 +144,68 @@ jobs:
       # arm64 only, as the APKs built so far: modern phones, and a quarter of the native build time.
       - run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
         working-directory: chennai-open-world/apps/mobile/android
+      # Copied out first: the smoke build below writes to the same output path.
+      - run: mkdir -p apk && cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk apk/
       - uses: actions/upload-artifact@v4
         with:
           name: chennai-open-world-apk
-          path: chennai-open-world/apps/mobile/android/app/build/outputs/apk/release/*.apk
+          path: chennai-open-world/apk/app-release.apk
           if-no-files-found: error
+      # Smoke-test APK for the android-smoke job: the same release build, but x86_64 (the emulator)
+      # and with test hooks on (WebView debugging and the TEST_AUTOPLAY launch extra, see
+      # apps/mobile/android/app/build.gradle). Built here rather than in its own job because it
+      # reuses this job's npm installs, game build, Gradle cache, compiled Kotlin and JS bundle;
+      # only the x86_64 native code is new. Not for players: WebView debugging is on.
+      - run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=x86_64 -PcowTestHooks=true
+        working-directory: chennai-open-world/apps/mobile/android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chennai-open-world-apk-smoke
+          path: chennai-open-world/apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  android-smoke:
+    # Installs the smoke-test APK on an Android emulator and checks the game starts from its
+    # WebViewAssetLoader origin and streams the city (scripts/android-smoke.mjs, TD-16).
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      # Node 22: the smoke script uses the built-in fetch and WebSocket (no npm install).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: chennai-open-world-apk-smoke
+          path: chennai-open-world/smoke-apk
+      # Hardware acceleration for the emulator (from the android-emulator-runner README).
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run the smoke test on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: true
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          working-directory: chennai-open-world
+          # One line: the action runs each script line as a separate command.
+          script: node scripts/android-smoke.mjs smoke-apk/app-release.apk android-smoke
+      - name: Upload device log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-smoke-logcat
+          path: chennai-open-world/android-smoke/
+          if-no-files-found: ignore
+          retention-days: 14

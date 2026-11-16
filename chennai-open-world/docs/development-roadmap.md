@@ -75,8 +75,8 @@ Left, in order: the gopuram model at Kapaleeshwarar (data and solids exist, no m
 browser run of the city jobs; visited districts in the save and share text;
 loading from the APK (not run: no Android SDK here; TD-16 says what to check); memory (the
 whole-city road graph and signals are always loaded, heap about 110–125 MB versus 45 MB);
-the open question about stages 7–10. The toolchain audit (`toolchain-audit.md`) proposes
-replacing the interim Android file access with `WebViewAssetLoader`.
+the open question about stages 7–10. The interim Android file access has been replaced with
+`WebViewAssetLoader` (TD-16; code written, verified only once the CI `android-smoke` job passes).
 
 The city extract is git-ignored (58 MB). To rebuild it: `python3 -m venv .venv &&
 .venv/bin/pip install osmium`; download `https://download.openstreetmap.fr/extracts/asia/india/tamil_nadu.osm.pbf`

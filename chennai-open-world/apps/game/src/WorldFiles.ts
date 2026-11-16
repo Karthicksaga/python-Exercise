@@ -2,10 +2,13 @@
  * Reads the streamed world (TD-16): the index and the roads at start-up, one chunk file at a
  * time afterwards, from `world/` next to the page.
  *
- * In a browser (dev server, preview, a hosted build) that is `fetch`. In the Android app the page
- * is a `file://` URL, where Chromium's `fetch` refuses to read files; `XMLHttpRequest` can, when
- * the WebView allows file access from file URLs (`allowFileAccessFromFileURLs` in
- * `apps/mobile/src/GameScreen.tsx`). So `file:` pages use XHR.
+ * Over http(s) that is `fetch`: the dev server, a preview, a hosted build, and the Android app,
+ * which serves the page from its assets at `https://appassets.androidplatform.net/assets/game/`
+ * through WebViewAssetLoader (see `apps/mobile/src/GameScreen.tsx`).
+ *
+ * The `file:` branch is a fallback for someone opening the built `dist/index.html` straight from
+ * disk: Chromium's `fetch` never reads `file:` URLs, but `XMLHttpRequest` can where the browser
+ * allows file pages to read files. The app no longer loads from `file:`.
  */
 import type { ChunkSource } from "@cow/game-engine";
 import { chunkFile, decodeChunk, decodeRoads, worldFromIndex, type ChunkData, type WorldIndexFile, type WorldMap } from "@cow/game-world";

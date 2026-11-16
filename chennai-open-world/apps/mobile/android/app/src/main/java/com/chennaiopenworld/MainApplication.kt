@@ -1,6 +1,7 @@
 package com.chennaiopenworld
 
 import android.app.Application
+import android.webkit.WebView
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -22,6 +23,9 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    // Test builds only (`-PcowTestHooks=true`, the CI smoke APK): lets the smoke test read the
+    // game page through Chrome DevTools. Never on in the normal release APK.
+    if (BuildConfig.TEST_HOOKS) WebView.setWebContentsDebuggingEnabled(true)
     loadReactNative(this)
   }
 }

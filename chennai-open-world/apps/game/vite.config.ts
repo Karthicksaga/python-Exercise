@@ -1,9 +1,10 @@
 import { defineConfig, type Plugin } from "vite";
 
 /**
- * The Android app loads the built game from `file:///android_asset/`. A WebView refuses ES
- * module scripts from `file://` (they count as cross-origin), so the production build is one
- * classic script, and this plugin rewrites the script tag to match.
+ * The production build is one classic script (TD-3), and this plugin rewrites the script tag to
+ * match. It was needed while the Android app loaded the game from `file:///android_asset/`, where
+ * a WebView refuses ES module scripts; the app now uses an https origin (TD-16), but the classic
+ * script and `base: "./"` are kept so the build also opens from disk and from any folder.
  */
 function classicScript(): Plugin {
   return {

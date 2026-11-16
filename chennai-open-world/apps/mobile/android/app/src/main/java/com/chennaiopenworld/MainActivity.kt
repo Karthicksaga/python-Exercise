@@ -1,5 +1,6 @@
 package com.chennaiopenworld
 
+import android.os.Bundle
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -21,7 +22,23 @@ class MainActivity : ReactActivity() {
    * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
-      DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
+      object : DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled) {
+        override fun getLaunchOptions(): Bundle? = testLaunchOptions()
+      }
+
+  /**
+   * Test builds only (`-PcowTestHooks=true`): `--ez com.chennaiopenworld.TEST_AUTOPLAY true` on
+   * the launch intent opens the game without tapping PLAY (used by the CI smoke test). In other
+   * builds the extra is ignored.
+   */
+  private fun testLaunchOptions(): Bundle? {
+    if (!BuildConfig.TEST_HOOKS || !intent.getBooleanExtra(TEST_AUTOPLAY, false)) return null
+    return Bundle().apply { putBoolean("testAutoplay", true) }
+  }
+
+  private companion object {
+    const val TEST_AUTOPLAY = "com.chennaiopenworld.TEST_AUTOPLAY"
+  }
 
   /**
    * The game is full screen: hide the status and navigation bars whenever the window has focus

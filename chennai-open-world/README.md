@@ -42,9 +42,18 @@ folder (and can be started by hand from the Actions tab):
 1. **test**: `npm run typecheck`, `npm test` and `npm run test:e2e` in headless Chromium. On
    failure the Playwright results are attached to the run.
 2. **web**: builds the game; the build is attached as the `chennai-open-world-web` artifact.
-3. **android**: builds the release APK, attached as `chennai-open-world-apk` (debug-signed, for
-   testing only).
-4. **deploy**: on pushes to `feat/chennai-open-world` or `master` (and manual runs), publishes
+3. **android**: builds the release APK (arm64), attached as `chennai-open-world-apk`
+   (debug-signed, for testing only). It also builds a smoke-test APK (x86_64, with
+   `-PcowTestHooks=true`: WebView debugging on and a launch extra that skips the menu), attached
+   as `chennai-open-world-apk-smoke`. That one is for the emulator test only, not for players.
+4. **android-smoke**: installs the smoke-test APK on an Android 14 (API 34) x86_64 emulator,
+   opens the game and fails unless it reaches `data-ready="true"` on its
+   `https://appassets.androidplatform.net` origin and loads at least one city chunk within 120 s
+   (`scripts/android-smoke.mjs`, through Chrome DevTools over adb). On failure the device log is
+   attached as `android-smoke-logcat`. To run it locally against a running emulator:
+   `node scripts/android-smoke.mjs <app-release.apk>` with an APK built with
+   `./gradlew assembleRelease -PreactNativeArchitectures=x86_64 -PcowTestHooks=true`.
+5. **deploy**: on pushes to `feat/chennai-open-world` or `master` (and manual runs), publishes
    the web build to GitHub Pages.
 
 To download the web build or the APK, open the run under **Actions**, scroll to **Artifacts** and
