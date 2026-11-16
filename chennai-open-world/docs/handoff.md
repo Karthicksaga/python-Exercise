@@ -215,3 +215,28 @@ desktop instructions.
 - Next, requested by the user and started in parallel by separate agents: **Share auto** (a
   route job: picking up and dropping passengers anywhere along a fixed route, like the bus) and
   **pedestrians hurt when hit** (knocked down, injured or killed, with consequences).
+
+## 17 Nov 2026: pedestrians hurt when hit (WIP, where I left off)
+- **Built:** rules in `packages/combat/src/PedestrianHits.ts` (`PEDESTRIAN_HIT`: thresholds 2 / 4.5 / 12.5 m/s
+  for stumble / injured / killed, game-design estimates; fines ₹0 / 1,500 / 5,000; reputation 0 / 8 / 20;
+  throw distance, speed kept by momentum, `vehicleTouches` box test with a one-step lead, `Casualties`
+  timers: injured lie 5 s then limp at 0.6 m/s for 30 s, the dead stay 25 s then are removed once the
+  player is 35 m away or after 90 s). `AgentSystem` (`packages/ai`) gained `hold`, `letGo` (optionally
+  respawning), `moveAgent`, `slow`, `scare` (people walking towards a hit stop and step back 1.2 m, others
+  run at 3.8 m/s for 6 s). `Population` detects hits by position and speed before the physics step,
+  removes a lying person's collision box, throws them (ray-checked against walls) and tells traffic about
+  them as a 1 m obstacle. `Game` slows the car (`Vehicle.knock`, not counted as a crash), plays the crash
+  thud, fines (`missions.charge`), takes reputation (`JobRunner.loseReputation`), saves and shows the
+  toast. Test hooks: `__cow.stagePedestrian(x, z, heading)`, snapshot `casualties` and `lastPedestrianHit`.
+- **Tested:** `npm run typecheck` clean; unit tests 205/205 (new: `PedestrianHits.test.ts`,
+  `ai/Reactions.test.ts`, `missions/reputation.test.ts`). Browser test `apps/game/tests/pedestrians.spec.ts`:
+  the **injured** case passed once. The **killed** case failed: the old single-ray `lineUp` picked a line
+  with a solid (probably a pole) inside the car's width, so the car crashed and was deflected past the
+  person. I changed the test's `lineUp` to three parallel rays, but **that rerun was stopped before it
+  finished**.
+- **Not done:** the rerun of `pedestrians.spec.ts`; the full Playwright run (38 existing + 2 new);
+  the `docs/progress.md` update (the "pedestrians can't be hurt" known issue is still listed). Not pushed:
+  the session's permission system refused the push to `agent/pedestrian-hits`.
+- **Next step:** `cd apps/game && PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test tests/pedestrians.spec.ts --trace off`;
+  if the killed case passes, run the full suite, then update `progress.md` (what was built and how it was
+  tested; remove the known issue).

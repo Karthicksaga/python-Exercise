@@ -25,13 +25,20 @@ async function start(page: Page): Promise<void> {
   await ready(page, true);
 }
 
-/** Point the car down the longest clear line near where it is parked (no straight is hard-coded). */
+/**
+ * Point the car down the longest clear line near where it is parked (no straight is hard-coded).
+ * Three parallel rays, down the middle and 1.1 m to each side, so a pole off the centre line
+ * but within the car's width is not missed.
+ */
 async function lineUp(page: Page, needed: number): Promise<{ x: number; z: number }> {
   const at = await state(page);
   let best = { yaw: at.yaw, clear: 0 };
   for (let i = 0; i < 32; i++) {
     const yaw = (i / 32) * Math.PI * 2;
-    const clear = (await probe(page, at.x, at.z, -Math.sin(yaw), -Math.cos(yaw), 200)) ?? 200;
+    const dx = -Math.sin(yaw);
+    const dz = -Math.cos(yaw);
+    let clear = 200;
+    for (const side of [-1.1, 0, 1.1]) clear = Math.min(clear, (await probe(page, at.x - dz * side, at.z + dx * side, dx, dz, 200)) ?? 200);
     if (clear > best.clear) best = { yaw, clear };
   }
   expect(best.clear).toBeGreaterThan(needed);
