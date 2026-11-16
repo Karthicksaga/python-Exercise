@@ -14,6 +14,7 @@ import type { Look } from "./lighting";
 import { addBalcony, addChajja, addShopFronts, createKitMaterial, planFacade, type FacadePlan } from "./FacadeKit";
 import { hash } from "./hash";
 import { MeshBuilder } from "./MeshBuilder";
+import type { Surfaces } from "./surfaces";
 import { applyFurnitureLook, buildStreetFurniture, createFurnitureAssets, type FurnitureAssets } from "./StreetFurniture";
 import { FACADE_LIT, FACADE_TILES, FACADE_TILE_COUNT, ROOF_PLAIN_UV, facadeGlowAtlas, roofTileTexture } from "./textures";
 
@@ -131,8 +132,9 @@ function addTiledRoof(roofs: MeshBuilder, b: Building, baseY: number): boolean {
     return { x: p.x + (dx / d) * OVERHANG, y: baseY, z: p.z + (dz / d) * OVERHANG };
   });
 
-  // Terracotta, a little different on every house.
-  scratch.setHex(0xb0553a).lerp(new THREE.Color(hash(b.id, 43) < 0.5 ? 0x8f4630 : 0xc4704a), hash(b.id, 44) * 0.6);
+  // The photo carries the terracotta; the tint makes every house's tiles a little older
+  // (darker, browner) or newer (brighter).
+  scratch.setHex(0xffffff).lerp(new THREE.Color(hash(b.id, 43) < 0.5 ? 0x9c8478 : 0xfff2e6), hash(b.id, 44) * 0.7);
   const { r, g, b: blue } = scratch;
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
@@ -360,7 +362,11 @@ function palmGeometry(): THREE.BufferGeometry {
   return geometry;
 }
 
-export function createChunkAssets(facade: THREE.Texture): ChunkAssets {
+/**
+ * @param facade the facade atlas (`facadeAtlas`, drawn over the photographed plaster)
+ * @param surfaces the photographed textures (`loadSurfaces`): roof tiles, roads, paths, parks, sand
+ */
+export function createChunkAssets(facade: THREE.Texture, surfaces: Surfaces): ChunkAssets {
   const trunk = new THREE.CylinderGeometry(0.16, 0.26, 4, 6);
   trunk.translate(0, 2, 0);
   // Three overlapping blobs read as a leafy canopy from every side.
@@ -373,8 +379,9 @@ export function createChunkAssets(facade: THREE.Texture): ChunkAssets {
     // The glow atlas lights the "lit" window tiles; its strength follows the night (applyChunkLook).
     walls: new THREE.MeshStandardMaterial({ map: facade, vertexColors: true, roughness: 0.93, emissiveMap: facadeGlowAtlas(), emissive: 0xffffff, emissiveIntensity: 0 }),
     // Clay tiles on the pitched roofs; flat terraces sample a plain white texel of the same map.
-    // Double-sided so the eaves' undersides aren't see-through from the street.
-    roofs: new THREE.MeshStandardMaterial({ map: roofTileTexture(), vertexColors: true, roughness: 1, side: THREE.DoubleSide }),
+    // Double-sided so the eaves' undersides aren't see-through from the street. Walls have no
+    // normal map (fill rate on phones, toolchain audit section 5); the roofs are small on screen.
+    roofs: new THREE.MeshStandardMaterial({ map: roofTileTexture(surfaces.roof.image), normalMap: surfaces.roof.normalMap ?? null, vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }),
     // Drawn after `loadSignFont` has settled, so the signs have their Tamil text.
     kit: createKitMaterial(),
     trunk,
@@ -386,7 +393,7 @@ export function createChunkAssets(facade: THREE.Texture): ChunkAssets {
     tankMaterial: new THREE.MeshStandardMaterial({ color: 0x1d1f22, roughness: 0.6 }),
     palm: palmGeometry(),
     palmMaterial: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }),
-    ground: createGroundAssets(),
+    ground: createGroundAssets(surfaces),
     furniture: createFurnitureAssets(),
   };
 }
@@ -397,7 +404,7 @@ export function applyChunkLook(assets: ChunkAssets, look: Look): void {
   assets.kit.emissiveIntensity = look.night * 1.15;
   assets.walls.color.setScalar(1 - 0.12 * look.rain);
   assets.roofs.color.setScalar(1 - 0.18 * look.rain);
-  assets.roofs.roughness = 1 - 0.45 * look.rain;
+  assets.roofs.roughness = 0.9 - 0.4 * look.rain;
   applyGroundLook(assets.ground, look);
   applyFurnitureLook(assets.furniture, look);
 }

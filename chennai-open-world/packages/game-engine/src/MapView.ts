@@ -6,7 +6,10 @@ import * as THREE from "three";
 import type { Sea, WorldMap } from "@cow/game-world";
 import type { Look } from "./lighting";
 import { MeshBuilder } from "./MeshBuilder";
-import { earthTexture } from "./textures";
+import { surfaceMaps, type Surface } from "./surfaces";
+
+/** Metres per repeat of the laterite photo on the bare ground (the scan is 2 m across). */
+const EARTH_METRES = 5;
 
 /**
  * Sky dome: zenith colour fading to haze at the horizon, a sun disc with a soft glow, a warm
@@ -86,15 +89,17 @@ export class MapView {
   readonly dome: THREE.Mesh;
   private readonly wetSurfaces: WetSurface[] = [];
 
-  constructor(map: WorldMap, horizon: THREE.Color, sunDirection: THREE.Vector3) {
+  /** @param earth the photographed laterite soil for the bare ground (`loadSurfaces`) */
+  constructor(map: WorldMap, horizon: THREE.Color, sunDirection: THREE.Vector3, earth: Surface) {
     const { bounds } = map;
     const width = bounds.maxX - bounds.minX;
     const depth = bounds.maxZ - bounds.minZ;
 
     // Bare ground, reaching past the playable edge so the horizon isn't a hard line.
-    const earth = earthTexture();
-    earth.repeat.set((width + 600) / 12, (depth + 600) / 12);
-    const groundMaterial = new THREE.MeshStandardMaterial({ map: earth, roughness: 1 });
+    const { map: soil, normalMap } = surfaceMaps(earth, 1);
+    soil.repeat.set((width + 600) / EARTH_METRES, (depth + 600) / EARTH_METRES);
+    normalMap?.repeat.copy(soil.repeat);
+    const groundMaterial = new THREE.MeshStandardMaterial({ map: soil, normalMap, roughness: 1 });
     this.wetSurfaces.push({ material: groundMaterial, dry: 1, wet: 0.75, darken: 0.3 });
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(width + 600, depth + 600).rotateX(-Math.PI / 2), groundMaterial);
     ground.position.set((bounds.minX + bounds.maxX) / 2, 0, (bounds.minZ + bounds.maxZ) / 2);

@@ -11,9 +11,7 @@ import * as THREE from "three";
 import { MAIN_ROADS, laneCount, type Area, type Point, type RoadSpan } from "@cow/game-world";
 import type { Look } from "./lighting";
 import { MeshBuilder } from "./MeshBuilder";
-import { asphaltTexture, grassTexture, pavingTexture } from "./textures";
-
-const SAND = 0xe9d6a6;
+import { surfaceMaps, type Surface, type Surfaces } from "./surfaces";
 
 /** Heights of the flat layers above the ground plane, far enough apart not to shimmer. */
 export const LAYER_Y = { park: 0.02, verge: 0.035, road: 0.06, marking: 0.08 } as const;
@@ -39,27 +37,35 @@ export interface GroundAssets {
   readonly wet: readonly WetSurface[];
 }
 
-function flatMaterial(map: THREE.Texture, offset: number): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ map, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -offset, polygonOffsetUnits: -offset });
+/** Metres per UV unit of the layers: road ribbons, verges and footpaths, and area polygons. */
+const UV_METRES = { tarmac: 9, verge: 3, area: 6 } as const;
+
+/**
+ * A flat layer showing a photographed surface. `metres` is how wide one repeat of the photo is
+ * on the ground: about its real size up close, larger where repeats would show (roads).
+ */
+function flatMaterial(surface: Surface, uvMetres: number, metres: number, roughness: number, offset: number): THREE.MeshStandardMaterial {
+  const { map, normalMap } = surfaceMaps(surface, uvMetres / metres);
+  return new THREE.MeshStandardMaterial({ map, normalMap, roughness, polygonOffset: true, polygonOffsetFactor: -offset, polygonOffsetUnits: -offset });
 }
 
-export function createGroundAssets(): GroundAssets {
-  const paving = flatMaterial(pavingTexture(), 2);
-  const asphalt = flatMaterial(asphaltTexture(), 3);
-  // Pale sand, clearly lighter than the bare earth around the city.
-  const sand = new THREE.MeshStandardMaterial({ color: SAND, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+export function createGroundAssets(surfaces: Surfaces): GroundAssets {
+  const paving = flatMaterial(surfaces.paving, UV_METRES.verge, 1.92, 0.9, 2);
+  const asphalt = flatMaterial(surfaces.asphalt, UV_METRES.tarmac, 4.5, 0.92, 3);
+  const sand = flatMaterial(surfaces.sand, UV_METRES.area, 2.5, 1, 1);
   return {
     paving,
     asphalt,
     paint: new THREE.MeshStandardMaterial({ color: 0xf0efe6, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
-    grass: flatMaterial(grassTexture(), 1),
+    grass: flatMaterial(surfaces.grass, UV_METRES.area, 3, 0.95, 1),
     water: new THREE.MeshStandardMaterial({ color: 0x3f7fa6, roughness: 0.2, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
     sand,
     stripe: new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
     // Wet tarmac goes dark and glossy and picks up the sky; paving and sand less so.
     wet: [
-      { material: paving, dry: 0.95, wet: 0.5, darken: 0.25 },
-      { material: asphalt, dry: 0.95, wet: 0.28, darken: 0.4 },
+      { material: paving, dry: 0.9, wet: 0.5, darken: 0.25 },
+      { material: asphalt, dry: 0.92, wet: 0.28, darken: 0.4 },
+      { material: sand, dry: 1, wet: 0.85, darken: 0.2 },
     ],
   };
 }
@@ -69,7 +75,6 @@ export function applyGroundLook(assets: GroundAssets, look: Look): void {
     surface.material.roughness = surface.dry + (surface.wet - surface.dry) * look.rain;
     surface.material.color.setScalar(1 - surface.darken * look.rain);
   }
-  assets.sand.color.setHex(SAND).multiplyScalar(1 - 0.2 * look.rain);
 }
 
 /** Add a flat ribbon following a polyline, with a disc at every vertex to close joints and junctions. */
@@ -168,7 +173,7 @@ function addStripes(out: Stripe[], span: RoadSpan): void {
 
 function addPolygon(builder: MeshBuilder, outline: readonly Point[], y: number): void {
   const base = builder.vertexCount;
-  for (const p of outline) builder.vertex(p.x, y, p.z, 0, 1, 0, p.x / 6, p.z / 6);
+  for (const p of outline) builder.vertex(p.x, y, p.z, 0, 1, 0, p.x / UV_METRES.area, p.z / UV_METRES.area);
   const faces = THREE.ShapeUtils.triangulateShape(outline.map((p) => new THREE.Vector2(p.x, p.z)), []);
   for (const face of faces) {
     const [i0, i1, i2] = face as [number, number, number];
@@ -193,11 +198,11 @@ export function buildGround(spans: readonly RoadSpan[], areas: readonly Area[], 
     const road = span.road;
     const points = road.points.slice(span.start, span.end + 1);
     if (road.kind === "footway") {
-      ribbon(verge, points, road.width, LAYER_Y.verge, 3);
+      ribbon(verge, points, road.width, LAYER_Y.verge, UV_METRES.verge);
       continue;
     }
-    if (MAIN_ROADS.has(road.kind)) ribbon(verge, points, road.width + 5, LAYER_Y.verge, 3);
-    ribbon(tarmac, points, road.width, LAYER_Y.road, 9);
+    if (MAIN_ROADS.has(road.kind)) ribbon(verge, points, road.width + 5, LAYER_Y.verge, UV_METRES.verge);
+    ribbon(tarmac, points, road.width, LAYER_Y.road, UV_METRES.tarmac);
     addStripes(stripes, span);
   }
   const grass = new MeshBuilder();

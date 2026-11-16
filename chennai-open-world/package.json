@@ -18,6 +18,7 @@
     "build:world": "tsx scripts/build-world.ts",
     "fetch:osm": "node scripts/fetch-osm.mjs",
     "optimize:assets": "node scripts/optimize-assets.mjs",
+    "build:textures": "node scripts/build-textures.mjs",
     "blender:props": "node scripts/blender.mjs tools/blender/street_props.py -- assets/models/props"
   },
   "devDependencies": {

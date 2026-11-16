@@ -1,0 +1,203 @@
+[
+  {
+    "surface": "asphalt",
+    "what": "Worn, sun-bleached grey asphalt with faint patches (roads)",
+    "polyHavenId": "asphalt_04",
+    "page": "https://polyhaven.com/a/asphalt_04",
+    "author": "Sergej Majboroda (photography), Jenelle van Heerden (processing)",
+    "licence": "CC0 1.0 Universal (public domain dedication)",
+    "metres": 4,
+    "size": 512,
+    "processing": {
+      "neutral": null,
+      "modulate": {
+        "brightness": 0.72,
+        "saturation": 0.8
+      },
+      "flatten": 0.25,
+      "flattenRadius": null
+    },
+    "files": [
+      {
+        "file": "asphalt-albedo.webp",
+        "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_04/asphalt_04_diff_1k.jpg",
+        "sourceSha256": "837a78bb1e94864c221f847c85480484e953a9ee958772481dd2c501e18def2e",
+        "bytes": 28876
+      },
+      {
+        "file": "asphalt-normal.webp",
+        "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_04/asphalt_04_nor_gl_1k.jpg",
+        "sourceSha256": "18b91c2a6d83a8fbaa8d7fe84e80a66bd6451e4ec2774a09bf4429498c8f3912",
+        "bytes": 14536
+      }
+    ]
+  },
+  {
+    "surface": "paving",
+    "what": "Grey I-shaped interlocking cement pavers (footpaths and verges)",
+    "polyHavenId": "concrete_pavers",
+    "page": "https://polyhaven.com/a/concrete_pavers",
+    "author": "Amal Kumar",
+    "licence": "CC0 1.0 Universal (public domain dedication)",
+    "metres": 1.92,
+    "size": 512,
+    "processing": {
+      "neutral": null,
+      "modulate": {
+        "brightness": 1.25,
+        "saturation": 0.9
+      },
+      "flatten": null,
+      "flattenRadius": null
+    },
+    "files": [
+      {
+        "file": "paving-albedo.webp",
+        "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavers/concrete_pavers_diff_1k.jpg",
+        "sourceSha256": "eea1fb8b498154754f4961ce0792092ef56cadc3d210becbb0dc3bf6c96c261d",
+        "bytes": 32792
+      },
+      {
+        "file": "paving-normal.webp",
+        "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavers/concrete_pavers_nor_gl_1k.jpg",
+        "sourceSha256": "761c8332b4b53ab06931adf83f5f8f4fa5b7559a1a8267bc7ef865f890b17894",
+        "bytes": 20204
+      }
+    ]
+  },
+  {
+    "surface": "earth",
+    "what": "Red laterite soil with stones (bare ground)",
+    "polyHavenId": "red_laterite_soil_stones",
+    "page": "https://polyhaven.com/a/red_laterite_soil_stones",
+    "author": "Amal Kumar",
+    "licence": "CC0 1.0 Universal (public domain dedication)",
+    "metres": 2,
+    "size": 512,
+    "processing": {
+      "neutral": null,
+      "modulate": {
+        "brightness": 1.5,
+        "saturation": 0.55
+      },
+      "flatten": 0.6,
+      "flattenRadius": null
+    },
+    "files": [
+      {
+        "file": "earth-albedo.webp",
+        "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/red_laterite_soil_stones/red_laterite_soil_stones_diff_1k.jpg",
+        "sourceSha256": "949cd648409b30e2267d89066965605d22dba4ce73d601673e155046c41e1219",
+        "bytes": 53188
+      }
+    ]
+  },
+  {
+    "surface": "sand",
+    "what": "Pale fine sand (Marina beach, sand areas)",
+    "polyHavenId": "sand_01",
+    "page": "https://polyhaven.com/a/sand_01",
+    "author": "Rob Tuytel",
+    "licence": "CC0 1.0 Universal (public domain dedication)",
+    "metres": 1.5,
+    "size": 512,
+    "processing": {
+      "neutral": null,
+      "modulate": {
+        "brightness": 1.15,
+        "saturation": 0.85
+      },
+      "flatten": 0.8,
+      "flattenRadius": 12
+    },
+    "files": [
+      {
+        "file": "sand-albedo.webp",
+        "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sand_01/sand_01_diff_1k.jpg",
+        "sourceSha256": "a73b90eaa6d675ef57e7d48a8cf23e1f412e353ab2e29cf73930b8ecd4e76875",
+        "bytes": 46032
+      }
+    ]
+  },
+  {
+    "surface": "grass",
+    "what": "Sparse grass on soil (parks)",
+    "polyHavenId": "sparse_grass",
+    "page": "https://polyhaven.com/a/sparse_grass",
+    "author": "Amal Kumar",
+    "licence": "CC0 1.0 Universal (public domain dedication)",
+    "metres": 2,
+    "size": 512,
+    "processing": {
+      "neutral": null,
+      "modulate": null,
+      "flatten": null,
+      "flattenRadius": null
+    },
+    "files": [
+      {
+        "file": "grass-albedo.webp",
+        "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sparse_grass/sparse_grass_diff_1k.jpg",
+        "sourceSha256": "ae94f2b34597b9108eefd88217f55eccaec6d6b382e858a478ee92df90e66617",
+        "bytes": 41748
+      }
+    ]
+  },
+  {
+    "surface": "plaster",
+    "what": "Painted plaster wall (building walls, drawn into the facade atlas)",
+    "polyHavenId": "painted_plaster_wall",
+    "page": "https://polyhaven.com/a/painted_plaster_wall",
+    "author": "Amal Kumar",
+    "licence": "CC0 1.0 Universal (public domain dedication)",
+    "metres": 2,
+    "size": 512,
+    "processing": {
+      "neutral": 0.9,
+      "modulate": null,
+      "flatten": null,
+      "flattenRadius": null
+    },
+    "files": [
+      {
+        "file": "plaster-albedo.webp",
+        "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/painted_plaster_wall/painted_plaster_wall_diff_1k.jpg",
+        "sourceSha256": "440310f05af089f2c93353167573403cbc3f805948203237b5d26431eeb9e19c",
+        "bytes": 17910
+      }
+    ]
+  },
+  {
+    "surface": "roof",
+    "what": "Mangalore-pattern clay roof tiles (pitched roofs)",
+    "polyHavenId": "clay_roof_tiles_02",
+    "page": "https://polyhaven.com/a/clay_roof_tiles_02",
+    "author": "Amal Kumar",
+    "licence": "CC0 1.0 Universal (public domain dedication)",
+    "metres": 2.5,
+    "size": 512,
+    "processing": {
+      "neutral": null,
+      "modulate": {
+        "brightness": 0.9,
+        "saturation": 0.78
+      },
+      "flatten": null,
+      "flattenRadius": null
+    },
+    "files": [
+      {
+        "file": "roof-albedo.webp",
+        "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/clay_roof_tiles_02/clay_roof_tiles_02_diff_1k.jpg",
+        "sourceSha256": "227a062b38b170e02c27eaa513dae45dc8bc893a62cbd8d0c08e2c32b381fc25",
+        "bytes": 46432
+      },
+      {
+        "file": "roof-normal.webp",
+        "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/clay_roof_tiles_02/clay_roof_tiles_02_nor_gl_1k.jpg",
+        "sourceSha256": "1548d3ebce335a4590d9e421556c4189a7b63852c793a568c71b9e533f8b62d5",
+        "bytes": 48612
+      }
+    ]
+  }
+]

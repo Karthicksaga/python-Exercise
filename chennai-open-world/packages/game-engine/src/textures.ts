@@ -1,6 +1,7 @@
 /**
- * Textures painted on a canvas at start-up. They cost no download and stand in for
- * photographed materials until an art pass replaces them.
+ * Textures painted on a canvas at start-up: the facade atlas (windows, doors and shop fronts
+ * over a photographed plaster), the roof tiles' canvas copy, and light shapes. The ground's
+ * photographed textures are used as they are (`surfaces.ts`).
  */
 import * as THREE from "three";
 
@@ -30,33 +31,14 @@ function noise(seed: number): () => number {
   };
 }
 
-/** Speckle a surface with light and dark grains. */
-function grain(g: CanvasRenderingContext2D, size: number, count: number, strength: number, seed: number): void {
+/**
+ * Weathered plaster: the photographed plaster (neutral grey, so vertex colour tints it), with a
+ * few faint rain streaks from the sunshades and parapet, as on most Chennai walls.
+ */
+function plaster(g: CanvasRenderingContext2D, size: number, photo: CanvasImageSource, seed: number): void {
+  g.drawImage(photo, 0, 0, size, size);
   const random = noise(seed);
-  for (let i = 0; i < count; i++) {
-    const shade = random() < 0.5 ? 0 : 255;
-    g.fillStyle = `rgba(${shade},${shade},${shade},${random() * strength})`;
-    const s = 1 + random() * 2;
-    g.fillRect(random() * size, random() * size, s, s);
-  }
-}
-
-/** Weathered plaster: soft blotches and rain streaks. Drawn in greys so vertex colour tints it. */
-function plaster(g: CanvasRenderingContext2D, size: number, seed: number): void {
-  g.fillStyle = "#f4f4f2";
-  g.fillRect(0, 0, size, size);
-  const random = noise(seed);
-  for (let i = 0; i < 26; i++) {
-    const x = random() * size;
-    const y = random() * size;
-    const r = 14 + random() * 40;
-    const blotch = g.createRadialGradient(x, y, 0, x, y, r);
-    blotch.addColorStop(0, `rgba(90,80,70,${0.03 + random() * 0.05})`);
-    blotch.addColorStop(1, "rgba(90,80,70,0)");
-    g.fillStyle = blotch;
-    g.fillRect(x - r, y - r, r * 2, r * 2);
-  }
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 8; i++) {
     const x = random() * size;
     const streak = g.createLinearGradient(0, 0, 0, size * (0.3 + random() * 0.5));
     streak.addColorStop(0, "rgba(60,55,50,0.10)");
@@ -64,7 +46,6 @@ function plaster(g: CanvasRenderingContext2D, size: number, seed: number): void 
     g.fillStyle = streak;
     g.fillRect(x, 0, 2 + random() * 5, size);
   }
-  grain(g, size, 900, 0.05, seed + 1);
 }
 
 function windowPane(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
@@ -116,10 +97,11 @@ const GLASS: Record<number, readonly [number, number, number, number]> = {
 
 /**
  * All wall variants in one texture, so every building in a chunk shares one material and one
- * draw call. Tiles sit side by side (U); V repeats once per floor. Drawn in near-white so the
- * building's own colour tints it.
+ * draw call. Tiles sit side by side (U); V repeats once per floor. The background of every tile
+ * is the same photographed plaster (`plasterPhoto`, tileable and neutral grey), so neighbouring
+ * bays join without a seam and the building's own colour tints it.
  */
-export function facadeAtlas(): THREE.CanvasTexture {
+export function facadeAtlas(plasterPhoto: CanvasImageSource): THREE.CanvasTexture {
   const size = 256;
   const [element, g] = canvas(size * FACADE_TILE_COUNT, size);
   const tile = (index: number, seed: number, draw: () => void) => {
@@ -128,7 +110,7 @@ export function facadeAtlas(): THREE.CanvasTexture {
     g.beginPath();
     g.rect(0, 0, size, size);
     g.clip();
-    plaster(g, size, seed);
+    plaster(g, size, plasterPhoto, seed);
     draw();
     g.restore();
   };
@@ -227,38 +209,26 @@ export function facadeGlowAtlas(): THREE.CanvasTexture {
   return texture;
 }
 
+const ROOF_PLAIN_TEXELS = 4;
 /**
- * Courses of clay roof tiles in near-white and grey, tinted terracotta by vertex colour.
- * Rows are 16 px; the top of every tile is pure white, so a surface whose UVs all sit on
- * `ROOF_PLAIN_UV` shows its vertex colour unchanged (flat concrete roofs share the material).
+ * The photographed clay tiles (`roof` surface) copied to a canvas with a small white square in
+ * one corner: flat concrete roofs share the roof material and put all their UVs on that square
+ * (`ROOF_PLAIN_UV`), so they show their vertex colour unchanged. On the tiled roofs the square
+ * is 2 cm across, once per 2.4 m, too small to see.
  */
-export function roofTileTexture(): THREE.CanvasTexture {
-  const size = 128;
+export function roofTileTexture(photo: HTMLImageElement): THREE.CanvasTexture {
+  const size = photo.naturalWidth;
   const [element, g] = canvas(size, size);
-  for (let row = 0; row < size / 16; row++) {
-    const y = row * 16;
-    const course = g.createLinearGradient(0, y, 0, y + 16);
-    course.addColorStop(0, "#ffffff");
-    course.addColorStop(0.45, "#ffffff");
-    course.addColorStop(1, "#8a8a8a");
-    g.fillStyle = course;
-    g.fillRect(0, y, size, 16);
-    g.fillStyle = "rgba(40,30,25,0.55)";
-    g.fillRect(0, y + 15, size, 1);
-    // Staggered joints between tiles.
-    for (let x = row % 2 === 0 ? 0 : 8; x < size; x += 16) g.fillRect(x, y + 6, 1, 10);
-  }
-  const random = noise(311);
-  for (let i = 0; i < 60; i++) {
-    g.fillStyle = `rgba(60,40,30,${0.05 + random() * 0.08})`;
-    g.fillRect(Math.floor(random() * 8) * 16 + 2, Math.floor(random() * 8) * 16 + 8, 12, 7);
-  }
-  const texture = finish(element);
-  texture.flipY = false;
-  return texture;
+  g.drawImage(photo, 0, 0);
+  g.fillStyle = "#ffffff";
+  g.fillRect(0, 0, ROOF_PLAIN_TEXELS, ROOF_PLAIN_TEXELS);
+  return finish(element);
 }
-/** A texel inside the white top band of a tile row, away from joints. */
-export const ROOF_PLAIN_UV = [8.5 / 128, 35.5 / 128] as const;
+/**
+ * The middle of the white square, as a UV (the canvas's top row is v = 1). Valid for the
+ * 512 px roof photo; constant UVs sample the full-size texture, so mipmaps don't blur it.
+ */
+export const ROOF_PLAIN_UV = [ROOF_PLAIN_TEXELS / 2 / 512, 1 - ROOF_PLAIN_TEXELS / 2 / 512] as const;
 
 /** Soft cone of light on the road ahead of a car at night: bright near the lamps, fading out. */
 export function headlightTexture(): THREE.CanvasTexture {
@@ -286,95 +256,4 @@ export function headlightTexture(): THREE.CanvasTexture {
   const texture = new THREE.CanvasTexture(element);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
-}
-
-export function asphaltTexture(): THREE.CanvasTexture {
-  const size = 256;
-  const [element, g] = canvas(size, size);
-  g.fillStyle = "#4a4c52";
-  g.fillRect(0, 0, size, size);
-  grain(g, size, 5000, 0.12, 5);
-  const random = noise(9);
-  // Patches and cracks.
-  for (let i = 0; i < 5; i++) {
-    g.fillStyle = `rgba(20,20,22,${0.08 + random() * 0.08})`;
-    g.fillRect(random() * size, random() * size, 20 + random() * 50, 14 + random() * 40);
-  }
-  g.strokeStyle = "rgba(15,15,15,0.35)";
-  g.lineWidth = 1;
-  for (let i = 0; i < 4; i++) {
-    g.beginPath();
-    let x = random() * size;
-    let y = random() * size;
-    g.moveTo(x, y);
-    for (let s = 0; s < 6; s++) {
-      x += (random() - 0.5) * 40;
-      y += (random() - 0.5) * 40;
-      g.lineTo(x, y);
-    }
-    g.stroke();
-  }
-  return finish(element);
-}
-
-/** Interlocking paver blocks for footpaths. */
-export function pavingTexture(): THREE.CanvasTexture {
-  const size = 128;
-  const [element, g] = canvas(size, size);
-  g.fillStyle = "#b9b2a6";
-  g.fillRect(0, 0, size, size);
-  g.strokeStyle = "rgba(70,65,58,0.5)";
-  g.lineWidth = 1.5;
-  for (let y = 0; y <= size; y += 16) {
-    g.beginPath();
-    g.moveTo(0, y);
-    g.lineTo(size, y);
-    g.stroke();
-    for (let x = (y / 16) % 2 === 0 ? 0 : 16; x <= size; x += 32) {
-      g.beginPath();
-      g.moveTo(x, y);
-      g.lineTo(x, y + 16);
-      g.stroke();
-    }
-  }
-  grain(g, size, 900, 0.1, 21);
-  return finish(element);
-}
-
-export function earthTexture(): THREE.CanvasTexture {
-  const size = 256;
-  const [element, g] = canvas(size, size);
-  g.fillStyle = "#b9a37c";
-  g.fillRect(0, 0, size, size);
-  const random = noise(77);
-  for (let i = 0; i < 40; i++) {
-    const x = random() * size;
-    const y = random() * size;
-    const r = 10 + random() * 36;
-    const blotch = g.createRadialGradient(x, y, 0, x, y, r);
-    blotch.addColorStop(0, random() < 0.5 ? "rgba(120,100,70,0.22)" : "rgba(215,200,165,0.22)");
-    blotch.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = blotch;
-    g.fillRect(x - r, y - r, r * 2, r * 2);
-  }
-  grain(g, size, 3500, 0.1, 78);
-  return finish(element);
-}
-
-export function grassTexture(): THREE.CanvasTexture {
-  const size = 256;
-  const [element, g] = canvas(size, size);
-  g.fillStyle = "#5f9a4e";
-  g.fillRect(0, 0, size, size);
-  const random = noise(101);
-  for (let i = 0; i < 2600; i++) {
-    g.strokeStyle = random() < 0.5 ? `rgba(40,90,35,${0.25 + random() * 0.3})` : `rgba(150,195,105,${0.2 + random() * 0.3})`;
-    const x = random() * size;
-    const y = random() * size;
-    g.beginPath();
-    g.moveTo(x, y);
-    g.lineTo(x + (random() - 0.5) * 3, y - 2 - random() * 4);
-    g.stroke();
-  }
-  return finish(element);
 }

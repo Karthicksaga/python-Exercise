@@ -4,7 +4,7 @@
  * and owns the one piece of state they share: whether the player is on foot or driving.
  */
 import * as THREE from "three";
-import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, SceneRenderer, createChunkAssets, facadeAtlas, type Quality } from "@cow/game-engine";
+import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, SceneRenderer, createChunkAssets, facadeAtlas, loadSurfaces, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
 import { Combat, PLAYER_MAX_HEALTH, type CombatEvent, type PlayerState } from "@cow/combat";
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
@@ -27,6 +27,7 @@ import playerModel from "../../../assets/optimized/player.glb?inline";
 import locomotion from "../../../assets/optimized/locomotion.glb?inline";
 import { loadSignFont } from "@cow/game-engine";
 import signFont from "../../../assets/fonts/noto-sans-tamil-signs.woff2?inline";
+import { SURFACE_SOURCES } from "./surfaceTextures";
 
 /** What tests and the debug console can read about the running game. */
 export interface GameSnapshot {
@@ -224,6 +225,8 @@ export class Game {
   static async create(canvas: HTMLCanvasElement, stage: HTMLElement): Promise<Game> {
     // The Tamil font for shop signs loads while the world does; the game starts without it.
     const signFontLoaded = loadSignFont(signFont);
+    // The photographed surfaces decode while the world loads (no normal maps on the lite tier).
+    const surfacesLoaded = loadSurfaces(SURFACE_SOURCES, pickQuality() !== "lite");
     // The world files are produced from OpenStreetMap by `npm run build:world` (TD-16).
     const world = await loadWorld();
     const map = world.map;
@@ -231,7 +234,8 @@ export class Game {
     const { spawn } = content;
 
     const renderer = new SceneRenderer({ canvas, quality: pickQuality() });
-    const mapView = new MapView(map, new THREE.Color(HAZE), renderer.sunOffset);
+    const surfaces = await surfacesLoaded;
+    const mapView = new MapView(map, new THREE.Color(HAZE), renderer.sunOffset, surfaces.earth);
     renderer.scene.add(mapView.object);
     renderer.reflect(mapView.dome);
 
@@ -248,7 +252,7 @@ export class Game {
     const solids = new Map<string, StaticGroup>();
     let minimap: Minimap | undefined;
     await signFontLoaded;
-    const chunks = new ChunkManager(map, world.chunks, renderer.scene, createChunkAssets(facadeAtlas()), {
+    const chunks = new ChunkManager(map, world.chunks, renderer.scene, createChunkAssets(facadeAtlas(surfaces.plaster.image), surfaces), {
       loaded: (chunk) => {
         minimap?.addBuildings(chunk.key, chunk.buildings);
         const group = physics.createStaticGroup();
