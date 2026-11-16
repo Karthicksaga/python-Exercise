@@ -65,7 +65,7 @@ export class Fighters {
   private body(enemy: Enemy): Body {
     let body = this.bodies.get(enemy.id);
     if (!body) {
-      const figure = this.humans.create(enemy.armed ? TINT.armed : TINT.unarmed, true);
+      const figure = this.humans.create(enemy.armed ? TINT.armed : TINT.unarmed, true, this.humans.crowdVariant(enemy.id));
       // A boss is visibly bigger.
       if (enemy.maxHealth > 150) figure.object.scale.setScalar(1.18);
       this.scene.add(figure.object);

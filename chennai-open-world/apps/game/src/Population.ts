@@ -31,14 +31,16 @@ import { TrafficCar, VEHICLE_TYPES, type VehicleKind } from "@cow/vehicles";
 /** Autos are yellow, as in Chennai (the parked autos use the same colour, `content.ts`). */
 const AUTO_YELLOW = 0xf5c400;
 const CAR_COLORS = [0xb8bcc4, 0x2b3f6b, 0x7a1f1f, 0xe6e2d6, 0x30343a, 0x3d6b4f, 0x8a6a2f];
-const CLOTHES = [0xffffff, 0x9fb8e0, 0xe0c29f, 0xa9d6a9, 0xd9a0a0, 0xc9c9c9, 0xe6dd9a, 0xb7a3d6];
 
 /**
  * Shirt tints for drivers. Chennai auto drivers wear a khaki uniform shirt; others vary.
- * The tint multiplies the model's clothing colour (`HumanAssets.create`).
+ * The tint multiplies the model's clothing colour (`HumanAssets.create`). Auto drivers are the
+ * white-shirted older man (`AUTO_DRIVER_VARIANT`, people/elder.glb), so the khaki reads true;
+ * other drivers are any of the pedestrian variants.
  */
 const AUTO_DRIVER = 0xd9c08f;
-const DRIVER_CLOTHES = [0xffffff, 0x9fb8e0, 0xc9c9c9, 0xa9d6a9];
+const AUTO_DRIVER_VARIANT = 1;
+const DRIVER_CLOTHES = [0xffffff, 0xffffff, 0xe6e6e6, 0xf0f4ff];
 /** Drivers further than this from the player are not drawn (each is a few draw calls), metres. */
 const DRIVERS_VISIBLE = 40;
 
@@ -171,12 +173,17 @@ export class Population {
       const kind = isVehicleKind(name) ? name : "car";
       const car = new TrafficCar(kind, kind === "auto" ? AUTO_YELLOW : CAR_COLORS[agent.id % CAR_COLORS.length]!);
       // Every moving vehicle has someone at the wheel (a baked seated person, shared per shirt).
-      car.setDriver(humans.seatedStatic(kind === "auto" ? AUTO_DRIVER : DRIVER_CLOTHES[agent.id % DRIVER_CLOTHES.length]!));
+      car.setDriver(
+        kind === "auto"
+          ? humans.seatedStatic(AUTO_DRIVER, Math.min(AUTO_DRIVER_VARIANT, humans.variantCount - 1))
+          : humans.seatedStatic(DRIVER_CLOTHES[agent.id % DRIVER_CLOTHES.length]!, humans.crowdVariant(agent.id)),
+      );
       scene.add(car.object);
       this.drivers.push({ car, body: physics.createKinematicBox(car.type.physics.halfExtents), generation: -1 });
     }
     for (const agent of this.walkers.agents) {
-      const figure = humans.create(CLOTHES[agent.id % CLOTHES.length]!, true);
+      // Variety comes from the pedestrian variants (different men and clothes), not tints.
+      const figure = humans.create(undefined, true, humans.crowdVariant(agent.id));
       scene.add(figure.object);
       this.people.push({ figure, body: physics.createKinematicBox({ x: 0.25, y: 0.85, z: 0.25 }), generation: -1 });
     }

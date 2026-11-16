@@ -94,7 +94,7 @@ CHARACTERS = [
         "texture": 512,
         "budget": 10000,
         "phenotype": {"age": 0.66, "muscle": 0.6, "weight": 0.45, "height": 0.42, "race": {"african": 0.6, "caucasian": 0.38, "asian": 0.02}},
-        "skin": ("middleage_african_male", "middleage_caucasian_male", 0.85, (0.97, 0.92, 0.88)),
+        "skin": ("young_african_male", "middleage_caucasian_male", 0.85, (0.95, 0.9, 0.86)),
         "proxy": "male1591",
         "hair": ("short04", (0.03, 0.025, 0.022)),
         "eyebrows": "eyebrow001",
@@ -368,30 +368,43 @@ def paint_moustache(pixels, body, size, colour):
     world = body.matrix_world
     ids = [v.index for v in body.data.vertices if any(g.group == lips.index and g.weight > 0.5 for g in v.groups)]
     pos = {i: world @ body.data.vertices[i].co for i in ids}
-    uv_of = {}
+    # Only the outside of the lips (the group also covers the inside of the mouth).
+    front = min(p.y for p in pos.values())
+    ids = [i for i in ids if pos[i].y < front + 0.022]
     uv_layer = body.data.uv_layers.active.data
+    loops_of = {}
     for loop in body.data.loops:
         if loop.vertex_index in pos:
-            uv_of.setdefault(loop.vertex_index, np.array(uv_layer[loop.index].uv) * size)
-    middle = max(ids, key=lambda i: pos[i].z - 3 * abs(pos[i].x))
+            loops_of.setdefault(loop.vertex_index, []).append(np.array(uv_layer[loop.index].uv) * size)
     left = max(ids, key=lambda i: pos[i].x)
     right = min(ids, key=lambda i: pos[i].x)
-    centroid = np.mean([uv_of[i] for i in ids], axis=0)
-    c, l, r = uv_of[middle], uv_of[left], uv_of[right]
-    across = (l - r) / np.linalg.norm(l - r)
-    half = np.linalg.norm(l - r) / 2 * 1.02
-    up = c - centroid
-    up = up - across * np.dot(up, across)
-    up /= np.linalg.norm(up)
+    l, r = loops_of[left][0], loops_of[right][0]
+    # Map face space (x across, z up) to texture pixels with a least-squares fit over the lip
+    # vertices; seam copies far from the mouth are left out.
+    mid = (l + r) / 2
+    reach = 3 * np.linalg.norm(l - r)
+    rows_a, rows_b = [], []
+    for i in ids:
+        uv = min(loops_of[i], key=lambda q: np.linalg.norm(q - mid))
+        if np.linalg.norm(uv - mid) < reach:
+            rows_a.append((pos[i].x, pos[i].z, 1.0))
+            rows_b.append(uv)
+    fit, *_ = np.linalg.lstsq(np.array(rows_a), np.array(rows_b), rcond=None)
+    to_face = np.linalg.inv(fit[:2].T)
+    corner_x = (pos[left].x - pos[right].x) / 2
+    corner_z = (pos[left].z + pos[right].z) / 2
+    middle_z = max(pos[i].z for i in ids if abs(pos[i].x) < corner_x * 0.15)
+    middle_z = min(middle_z, corner_z + 0.005)  # some lip groups reach up into the philtrum
     rows, cols = np.mgrid[0:size, 0:size]
-    rel = np.stack((cols + 0.5, rows + 0.5), axis=-1) - c
-    s = rel @ across / half
-    t = rel @ up / half
-    # Lower edge follows the lip line and droops at the ends; the top edge tapers in.
-    lower = -0.04 + 0.22 * s * s
-    upper = 0.3 - 0.2 * s * s
-    edge = 0.05
-    inside = np.clip((t - lower) / edge, 0, 1) * np.clip((upper - t) / edge, 0, 1) * np.clip((1 - np.abs(s)) / 0.12, 0, 1)
+    rel = np.stack((cols + 0.5, rows + 0.5), axis=-1) - fit[2]
+    face = rel @ to_face.T
+    s = face[..., 0] / (corner_x * 1.12)
+    z = face[..., 1]
+    # Lower edge follows the top of the upper lip; about 9 mm deep, a little thinner at the ends.
+    lower = corner_z + (middle_z - corner_z) * np.clip(1 - s * s, 0, 1) - 0.0015
+    upper = lower + 0.0095 * (1 - 0.3 * s * s)
+    edge = max(0.0012, 1.5 * corner_x / max(1.0, np.linalg.norm(l - r)))
+    inside = np.clip((z - lower) / edge, 0, 1) * np.clip((upper - z) / edge, 0, 1) * np.clip((1.05 - np.abs(s)) / 0.12, 0, 1)
     rng = np.random.default_rng(7)
     strands = blur(rng.random((size, size)).astype(np.float32), 1)
     strands = (strands - strands.mean()) / (strands.std() + 1e-6)
@@ -637,6 +650,8 @@ def material(name, image, alpha):
     tree.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
     bsdf.inputs["Roughness"].default_value = 0.62 if name == "Skin" else 0.85
     bsdf.inputs["Metallic"].default_value = 0.0
+    # Skin is a closed surface (single-sided); hair cards and cloth edges need both sides.
+    mat.use_backface_culling = not alpha
     if alpha:
         # Rounding the alpha makes the glTF exporter write alphaMode MASK (cut-out hair cards).
         cut = tree.nodes.new("ShaderNodeMath")
@@ -695,8 +710,13 @@ def build(spec, human_service, workdir):
     lower = uv_mask(clothes, size, lambda c, uv: not is_upper(c, uv))
     if spec.get("prints"):
         paint_out_prints(garment, upper)
+    if spec["split"] == "uv":
+        # The jeans' waistband faces reach the plain grey margin of the texture: denim there too.
+        rgb = garment[..., :3]
+        grey = lower & ~upper & (rgb.max(axis=2) - rgb.min(axis=2) < 0.08) & (rgb @ LUMA > 0.6)
+        garment[grey, :3] = np.median(rgb[lower & ~upper & ~grey], axis=0)
     if "upper" in spec["garments"]:
-        recolour(garment, upper & ~lower, spec["garments"]["upper"])
+        recolour(garment, upper, spec["garments"]["upper"])
     if "lower" in spec["garments"]:
         recolour(garment, lower & ~upper, spec["garments"]["lower"])
     if spec.get("drop") == "lower":
@@ -706,7 +726,10 @@ def build(spec, human_service, workdir):
     hair_pixels = read_image(image_path(by_kind["hair"]), size)
     recolour(hair_pixels, hair_pixels[..., 3] > 0.05, spec["hair"][1])
     put("hair", hair_pixels)
-    put("eyes", read_image(image_path(by_kind["eyes"]), size))
+    eyes = read_image(image_path(by_kind["eyes"]), size)
+    grey = (eyes[..., :3] @ LUMA)[..., None]
+    eyes[..., :3] = grey + (eyes[..., :3] - grey) * 0.55  # the stock brown iris reads red-brown
+    put("eyes", eyes)
     brows = read_image(image_path(by_kind["eyebrows"]), size)
     recolour(brows, brows[..., 3] > 0.05, tuple(0.85 * c for c in spec["hair"][1]))
     put("eyebrows", brows)
