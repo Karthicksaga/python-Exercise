@@ -56,20 +56,50 @@ export interface RoadHit {
   readonly heading: number;
 }
 
-/** Nearest point on a road centreline, optionally only on roads a vehicle can use. */
-export function nearestRoadPoint(map: WorldMap, p: Point, drivableOnly = true): RoadHit | null {
-  let best: RoadHit | null = null;
-  for (const road of map.roads) {
-    if (drivableOnly && road.kind === "footway") continue;
-    for (let i = 0; i < road.points.length - 1; i++) {
-      const a = road.points[i]!;
-      const b = road.points[i + 1]!;
-      const hit = closestOnSegment(p, a, b);
-      if (!best || hit.d2 < best.distance ** 2) {
-        best = { road, x: hit.x, z: hit.z, distance: Math.sqrt(hit.d2), heading: Math.atan2(-(b.x - a.x), -(b.z - a.z)) };
-      }
+interface Segment {
+  readonly road: Road;
+  readonly i: number;
+}
+/** Road segments by grid cell, built the first time a road list is searched. */
+const segmentGrids = new WeakMap<readonly Road[], SpatialGrid<Segment>>();
+const SEGMENT_CELL = 64;
+
+function segmentGrid(roads: readonly Road[]): SpatialGrid<Segment> {
+  let grid = segmentGrids.get(roads);
+  if (!grid) {
+    grid = new SpatialGrid<Segment>(SEGMENT_CELL);
+    for (const road of roads) {
+      for (let i = 0; i < road.points.length - 1; i++) grid.add({ road, i }, boundsOf([road.points[i]!, road.points[i + 1]!]));
     }
+    segmentGrids.set(roads, grid);
   }
+  return grid;
+}
+
+/** Nearest point on a road centreline, optionally only on roads a vehicle can use. */
+export function nearestRoadPoint(map: Pick<WorldMap, "roads">, p: Point, drivableOnly = true): RoadHit | null {
+  const consider = (best: RoadHit | null, road: Road, i: number): RoadHit | null => {
+    if (drivableOnly && road.kind === "footway") return best;
+    const a = road.points[i]!;
+    const b = road.points[i + 1]!;
+    const hit = closestOnSegment(p, a, b);
+    if (!best || hit.d2 < best.distance ** 2) {
+      return { road, x: hit.x, z: hit.z, distance: Math.sqrt(hit.d2), heading: Math.atan2(-(b.x - a.x), -(b.z - a.z)) };
+    }
+    return best;
+  };
+  // Search a growing neighbourhood first: a hit within the searched radius is the nearest.
+  const grid = segmentGrid(map.roads);
+  for (const radius of [40, 160, 640]) {
+    let best: RoadHit | null = null;
+    grid.near(p.x, p.z, radius, (s) => {
+      best = consider(best, s.road, s.i);
+    });
+    const found = best as RoadHit | null;
+    if (found && found.distance <= radius) return found;
+  }
+  let best: RoadHit | null = null;
+  for (const road of map.roads) for (let i = 0; i < road.points.length - 1; i++) best = consider(best, road, i);
   return best;
 }
 
@@ -134,4 +164,110 @@ function clipSegment(a: Point, b: Point, r: Bounds): [Point, Point, boolean] | n
   }
   const at = (t: number): Point => ({ x: Math.round((a.x + dx * t) * 100) / 100, z: Math.round((a.z + dz * t) * 100) / 100 });
   return [t0 > 0 ? at(t0) : a, t1 < 1 ? at(t1) : b, t1 < 1];
+}
+
+/** Lanes on a road: the mapped count, else about one per 3.5 m of carriageway. */
+export function laneCount(road: Pick<Road, "lanes" | "width" | "kind" | "oneway">): number {
+  if (road.lanes !== undefined && road.lanes > 0) return road.lanes;
+  if (road.kind === "footway") return 1;
+  return Math.max(road.oneway ? 1 : 2, Math.min(8, Math.round(road.width / 3.5)));
+}
+
+/**
+ * Cut a polygon to a rectangle (Sutherland-Hodgman). Works for concave outlines too; a concave
+ * outline cut into two parts comes back as one outline joined along the rectangle's edge, which
+ * triangulates to the same area. Returns an empty array when nothing is inside.
+ */
+export function clipPolygon(outline: readonly Point[], r: Bounds): Point[] {
+  type Edge = { inside: (p: Point) => boolean; cut: (a: Point, b: Point) => Point };
+  const at = (a: Point, b: Point, t: number): Point => ({ x: Math.round((a.x + (b.x - a.x) * t) * 100) / 100, z: Math.round((a.z + (b.z - a.z) * t) * 100) / 100 });
+  const edges: Edge[] = [
+    { inside: (p) => p.x >= r.minX, cut: (a, b) => at(a, b, (r.minX - a.x) / (b.x - a.x)) },
+    { inside: (p) => p.x <= r.maxX, cut: (a, b) => at(a, b, (r.maxX - a.x) / (b.x - a.x)) },
+    { inside: (p) => p.z >= r.minZ, cut: (a, b) => at(a, b, (r.minZ - a.z) / (b.z - a.z)) },
+    { inside: (p) => p.z <= r.maxZ, cut: (a, b) => at(a, b, (r.maxZ - a.z) / (b.z - a.z)) },
+  ];
+  let out: Point[] = [...outline];
+  for (const edge of edges) {
+    if (out.length === 0) break;
+    const input = out;
+    out = [];
+    for (let i = 0; i < input.length; i++) {
+      const current = input[i]!;
+      const previous = input[(i + input.length - 1) % input.length]!;
+      const inNow = edge.inside(current);
+      if (inNow) {
+        if (!edge.inside(previous)) out.push(edge.cut(previous, current));
+        out.push(current);
+      } else if (edge.inside(previous)) out.push(edge.cut(previous, current));
+    }
+  }
+  // Drop repeated points the cuts can leave.
+  const clean = out.filter((p, i) => {
+    const q = out[(i + out.length - 1) % out.length]!;
+    return out.length === 1 || p.x !== q.x || p.z !== q.z;
+  });
+  return clean.length >= 3 && Math.abs(signedArea(clean)) > 0.5 ? clean : [];
+}
+
+/** Bounding box of an outline or line. */
+export function boundsOf(points: readonly Point[]): Bounds {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.z < minZ) minZ = p.z;
+    if (p.z > maxZ) maxZ = p.z;
+  }
+  return { minX, maxX, minZ, maxZ };
+}
+
+/**
+ * A uniform grid of buckets on the ground plane, so "what is near this point" looks at a few
+ * cells instead of the whole city.
+ */
+export class SpatialGrid<T> {
+  private readonly cells = new Map<number, T[]>();
+
+  constructor(readonly cell: number) {}
+
+  private key(cx: number, cz: number): number {
+    return (cx + 32768) * 65536 + (cz + 32768);
+  }
+
+  /** Put an item in every cell its box touches. */
+  add(item: T, box: Bounds): void {
+    const c = this.cell;
+    for (let cx = Math.floor(box.minX / c); cx <= Math.floor(box.maxX / c); cx++) {
+      for (let cz = Math.floor(box.minZ / c); cz <= Math.floor(box.maxZ / c); cz++) {
+        const k = this.key(cx, cz);
+        const list = this.cells.get(k);
+        if (list) list.push(item);
+        else this.cells.set(k, [item]);
+      }
+    }
+  }
+
+  addPoint(item: T, x: number, z: number): void {
+    this.add(item, { minX: x, maxX: x, minZ: z, maxZ: z });
+  }
+
+  /**
+   * Call `visit` for the items in the cells within `radius` of a point (an item in several
+   * cells is visited once per cell). Stops early when `visit` returns true; returns whether it did.
+   */
+  near(x: number, z: number, radius: number, visit: (item: T) => boolean | void): boolean {
+    const c = this.cell;
+    for (let cx = Math.floor((x - radius) / c); cx <= Math.floor((x + radius) / c); cx++) {
+      for (let cz = Math.floor((z - radius) / c); cz <= Math.floor((z + radius) / c); cz++) {
+        const list = this.cells.get(this.key(cx, cz));
+        if (!list) continue;
+        for (const item of list) if (visit(item) === true) return true;
+      }
+    }
+    return false;
+  }
 }

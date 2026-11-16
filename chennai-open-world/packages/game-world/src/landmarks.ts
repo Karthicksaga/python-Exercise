@@ -28,6 +28,13 @@ export interface LandmarkSpec {
    * most circular closed footpath inside the `within` area (paths that circle a monument).
    */
   readonly derive?: "ring-path";
+  /**
+   * Whether a mapped outline is the solid footprint (true for the tower). A temple complex's
+   * outline is the whole walled compound, so the model keeps its own estimated footprint.
+   */
+  readonly outlineIsFootprint?: boolean;
+  /** Other name tags to try besides `name` and `name:en`, e.g. `short_name`. */
+  readonly nameTags?: readonly string[];
   readonly height?: number;
   readonly levels?: number;
   readonly radius?: number;
@@ -61,9 +68,14 @@ export const LANDMARK_SPECS: readonly LandmarkSpec[] = [
     name: "Kapaleeshwarar Temple",
     tags: [{ amenity: "place_of_worship" }, { building: "temple" }],
     names: /kapaleeswarar|kapaleeshwarar|kapali/i,
-    // Estimated: the main gopuram is about 37 m tall. No model or footprint yet, label only.
+    // Estimated: the main gopuram is about 37 m tall with seven tiers above a stone base. The
+    // model (`gopuramProfile`) stands at the centre of the mapped temple complex, which is also
+    // an estimate: OSM maps the compound, not the tower.
     height: 37,
-    estimated: ["height"],
+    levels: 7,
+    radius: 13,
+    outlineIsFootprint: false,
+    estimated: ["height", "levels", "radius", "position"],
   },
   { id: "marina-beach", kind: "beach", name: "Marina Beach", tags: [{ natural: "beach" }], names: /marina/i, estimated: [] },
   {
@@ -71,7 +83,9 @@ export const LANDMARK_SPECS: readonly LandmarkSpec[] = [
     kind: "district",
     name: "T. Nagar",
     tags: [{ place: "suburb" }, { place: "neighbourhood" }, { place: "quarter" }],
-    names: /^(t\.? ?nagar|thyagaraya ?nagar)$/i,
+    // OSM spells it "Thiyagaraya Nagar" (short name "T Nagar") in the 16 Nov 2026 extract.
+    names: /^(t\.? ?nagar|th?i?yagaraya ?nagar)$/i,
+    nameTags: ["short_name", "alt_name", "official_name"],
     estimated: [],
   },
 ];
@@ -113,7 +127,7 @@ function osmFeature(spec: LandmarkSpec, features: OsmFeatures): Candidate | null
   const enclosing = spec.within ? features.areas.filter((a) => spec.within!.test(a.tags.name ?? "")) : [];
   const accept = (tags: Tags, at: Point) => {
     if (!spec.tags.some((wanted) => tagsMatch(tags, wanted))) return false;
-    if (spec.names.test(tags.name ?? "") || spec.names.test(tags["name:en"] ?? "")) return true;
+    for (const tag of ["name", "name:en", ...(spec.nameTags ?? [])]) if (spec.names.test(tags[tag] ?? "")) return true;
     return enclosing.some((area) => pointInPolygon(at.x, at.z, area.outline));
   };
   const polygons: readonly OsmPolygon[] = [...features.buildings, ...features.areas];
@@ -173,7 +187,7 @@ export function findLandmarks(features: OsmFeatures, bounds: Bounds, specs: read
     let at: Candidate | null = osmFeature(spec, features);
     let radius = spec.radius;
     let estimated = [...spec.estimated];
-    if (at?.radius !== undefined && radius !== undefined) {
+    if (at?.radius !== undefined && radius !== undefined && spec.outlineIsFootprint !== false) {
       // A mapped outline is the footprint, so the radius is no longer estimated.
       radius = at.radius;
       estimated = estimated.filter((field) => field !== "radius");
@@ -263,6 +277,66 @@ export function towerProfile(tower: Landmark): TowerProfile {
     shaft: { radius: round(2.3 * scale), top: round(canopyBottom) },
     levels,
     canopy: { bottom: round(canopyBottom), top: round(canopyTop), radius: round(4.3 * scale) },
+    height,
+  };
+}
+
+/** A box-shaped tier: half-sizes at its bottom and top (x across the gateway, z along it). */
+export interface Tier {
+  readonly bottom: number;
+  readonly top: number;
+  /** Half-size along x (east-west, the depth of the tower) at the bottom and top. */
+  readonly hx0: number;
+  readonly hx1: number;
+  /** Half-size along z (north-south, the broad face) at the bottom and top. */
+  readonly hz0: number;
+  readonly hz1: number;
+}
+
+/**
+ * Proportions of a temple gateway tower (gopuram), shared by its model and its collision.
+ * Estimated, not surveyed: a stone base with a gateway passage running east-west, a stack of
+ * tiers tapering towards the top, and a barrel-vaulted crown with a row of finials. The broad
+ * faces look east and west, as the main gopurams of Chennai's temples do.
+ */
+export interface GopuramProfile {
+  /** The stone base: two piers either side of the passage, and the lintel over it. */
+  readonly base: Tier;
+  /** Half-width (along z) and height of the passage through the base. */
+  readonly passage: { readonly half: number; readonly top: number };
+  readonly tiers: readonly Tier[];
+  /** The crown: a half-cylinder along z. */
+  readonly vault: { readonly bottom: number; readonly top: number; readonly hx: number; readonly hz: number };
+  readonly finials: number;
+  readonly height: number;
+}
+
+export function gopuramProfile(temple: Landmark): GopuramProfile {
+  const height = temple.height ?? 37;
+  const count = Math.max(3, temple.levels ?? 7);
+  // About 22 m by 14 m at the base for a 37 m tower; scaled with the height.
+  const s = height / 37;
+  const hz = round(11 * s);
+  const hx = round(7 * s);
+  const baseTop = round(7.5 * s);
+  const vaultHeight = round(3.6 * s);
+  const tiersTop = height - vaultHeight - 1.2 * s;
+  const rise = (tiersTop - baseTop) / count;
+  const tiers: Tier[] = Array.from({ length: count }, (_, i) => {
+    const t0 = i / count;
+    const t1 = (i + 1) / count;
+    // Taper: the broad face narrows to about 45 %, the depth to about 40 %.
+    const z = (t: number) => round(hz * (0.94 - 0.5 * t));
+    const x = (t: number) => round(hx * (0.92 - 0.52 * t));
+    return { bottom: round(baseTop + rise * i), top: round(baseTop + rise * (i + 1)), hx0: x(t0), hx1: x(t1) + 0.15, hz0: z(t0), hz1: z(t1) + 0.15 };
+  });
+  const last = tiers[tiers.length - 1]!;
+  return {
+    base: { bottom: 0, top: baseTop, hx0: hx, hx1: hx, hz0: hz, hz1: hz },
+    passage: { half: round(2 * s), top: round(5.2 * s) },
+    tiers,
+    vault: { bottom: last.top, top: round(last.top + vaultHeight), hx: last.hx1, hz: last.hz1 },
+    finials: 7,
     height,
   };
 }

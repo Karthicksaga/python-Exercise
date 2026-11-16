@@ -69,6 +69,8 @@ export interface OsmFeatures {
   /** Parks, water and other land areas, plus closed outlines of towers, monuments and places of worship that are not buildings. */
   readonly areas: OsmPolygon[];
   readonly points: OsmPoint[];
+  /** Open `natural=coastline` ways (land on their left, as OSM defines it). */
+  readonly coastlines?: OsmLine[];
 }
 
 const round = (value: number) => Math.round(value * 100) / 100;
@@ -91,6 +93,7 @@ export function parseOsm(extract: OsmExtract, origin: LatLng): OsmFeatures {
   const highways: OsmLine[] = [];
   const buildings: OsmPolygon[] = [];
   const areas: OsmPolygon[] = [];
+  const coastlines: OsmLine[] = [];
 
   for (const element of extract.elements) {
     if (element.type !== "way") continue;
@@ -108,6 +111,10 @@ export function parseOsm(extract: OsmExtract, origin: LatLng): OsmFeatures {
       continue;
     }
     const closed = way.nodes.length > 3 && way.nodes[0] === way.nodes[way.nodes.length - 1];
+    if (tags.natural === "coastline" && !closed) {
+      coastlines.push({ id: way.id, tags, points: line });
+      continue;
+    }
     if (!closed) continue;
     const outline = line.slice(0, -1);
     if (outline.length < 3) continue;
@@ -117,5 +124,5 @@ export function parseOsm(extract: OsmExtract, origin: LatLng): OsmFeatures {
     }
   }
 
-  return { timestamp: extract.osm3s?.timestamp_osm_base ?? "unknown", highways, buildings, areas, points };
+  return { timestamp: extract.osm3s?.timestamp_osm_base ?? "unknown", highways, buildings, areas, points, coastlines };
 }

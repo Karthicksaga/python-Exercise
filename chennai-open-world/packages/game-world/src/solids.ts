@@ -2,8 +2,8 @@
  * What is solid in a chunk, as plain numbers: a triangle mesh of every building wall, and a
  * box per tree trunk. Kept separate from rendering so collision is decided by world data alone.
  */
-import { towerProfile } from "./landmarks";
-import type { Bounds, ChunkData, Landmark } from "./types";
+import { gopuramProfile, towerProfile } from "./landmarks";
+import type { Bounds, ChunkData, Landmark, Point, Sea } from "./types";
 
 export interface SolidBox {
   readonly x: number;
@@ -71,7 +71,20 @@ export function landmarkSolids(landmarks: readonly Landmark[]): ChunkSolids {
       indices.push(centre, high + j, high + i);
     }
   };
+  const boxes: SolidBox[] = [];
   for (const landmark of landmarks) {
+    if (landmark.kind === "temple" && landmark.radius !== undefined) {
+      // The gopuram: two piers either side of the walk-through passage, the lintel, and the
+      // tower above as one box about as big as its middle tiers (it keeps the camera outside).
+      const g = gopuramProfile(landmark);
+      const { base, passage } = g;
+      const pier = (base.hz0 - passage.half) / 2;
+      for (const side of [-1, 1]) boxes.push({ x: landmark.x, y: base.top / 2 - 0.5, z: landmark.z + side * (passage.half + pier), hx: base.hx0, hy: base.top / 2 + 0.5, hz: pier, yaw: 0 });
+      boxes.push({ x: landmark.x, y: (passage.top + base.top) / 2, z: landmark.z, hx: base.hx0, hy: (base.top - passage.top) / 2, hz: passage.half + 0.01, yaw: 0 });
+      const middle = g.tiers[Math.floor(g.tiers.length / 2)]!;
+      boxes.push({ x: landmark.x, y: (base.top + g.vault.top) / 2, z: landmark.z, hx: middle.hx0, hy: (g.vault.top - base.top) / 2, hz: middle.hz0, yaw: 0 });
+      continue;
+    }
     if (landmark.kind !== "tower" || landmark.radius === undefined) continue;
     const profile = towerProfile(landmark);
     // Parts start below ground, like building walls, so nothing slips under them.
@@ -81,7 +94,45 @@ export function landmarkSolids(landmarks: readonly Landmark[]): ChunkSolids {
     const balcony = profile.levels[Math.floor(profile.levels.length / 2)]?.radius ?? profile.shaft.radius;
     prism(landmark.x, landmark.z, balcony, profile.drum.top - 0.1, profile.canopy.top);
   }
-  return { vertices: new Float32Array(vertices), indices: new Uint32Array(indices), boxes: [] };
+  return { vertices: new Float32Array(vertices), indices: new Uint32Array(indices), boxes };
+}
+
+/** How far into the water the invisible sea wall stands, metres: past the surf, so the beach is all walkable. */
+const SURF = 6;
+
+/**
+ * An invisible wall along the coast, a few metres out to sea, so nobody walks or drives into
+ * the water. Only the stretch inside (or near) the playable area.
+ */
+export function coastSolids(sea: Sea | undefined, bounds: Bounds): SolidBox[] {
+  if (!sea) return [];
+  const near = (p: Point) => p.x > bounds.minX - 50 && p.x < bounds.maxX + 50 && p.z > bounds.minZ - 50 && p.z < bounds.maxZ + 50;
+  const out: SolidBox[] = [];
+  const { coast } = sea;
+  for (let i = 0; i < coast.length - 1; i++) {
+    const a = coast[i]!;
+    const b = coast[i + 1]!;
+    if (!near(a) && !near(b)) continue;
+    const length = Math.hypot(b.x - a.x, b.z - a.z);
+    if (length < 0.5) continue;
+    const dx = (b.x - a.x) / length;
+    const dz = (b.z - a.z) / length;
+    // Water is on the right of the coast's direction: (-dz, dx) in this frame.
+    const ox = -dz * (SURF + 1);
+    const oz = dx * (SURF + 1);
+    // Long segments (the ends carried past the map) are cut to the part near the map.
+    const pieces = Math.max(1, Math.ceil(length / 200));
+    for (let k = 0; k < pieces; k++) {
+      const t0 = k / pieces;
+      const t1 = (k + 1) / pieces;
+      const p0 = { x: a.x + (b.x - a.x) * t0, z: a.z + (b.z - a.z) * t0 };
+      const p1 = { x: a.x + (b.x - a.x) * t1, z: a.z + (b.z - a.z) * t1 };
+      if (!near(p0) && !near(p1)) continue;
+      const half = (length / pieces) / 2 + 0.6;
+      out.push({ x: (p0.x + p1.x) / 2 + ox, y: 2, z: (p0.z + p1.z) / 2 + oz, hx: 1, hy: 2.5, hz: half, yaw: Math.atan2(-dx, -dz) });
+    }
+  }
+  return out;
 }
 
 /** Side of one ground tile. One slab for the whole map is too big for the solver's precision. */

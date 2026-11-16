@@ -56,6 +56,44 @@ and on the asset loader: the target area is roughly 12 km × 9 km, about 100 tim
 Phone limits to respect: WebView memory (stream and dispose chunks), draw calls (merge per
 chunk), and touch: every new control must fit beside GAS and BRAKE.
 
+## J2 handoff: city build in progress (16 Nov 2026)
+
+The commit after "city jobs, Chennai traffic…" holds unfinished J2 work. The agent building
+it stopped part-way (usage limit) just as it started rewriting the world builder. **That commit
+does not typecheck** (6 errors: `packages/ai/src/presets.ts` has no speed for the new `primary`
+road kind; `packages/game-engine/src/ChunkManager.ts` still expects full `ChunkData` where
+`WorldMap.chunks` is now `ChunkRef[]`). Unit tests still pass. The commit before it is the
+last fully tested state.
+
+What is there:
+- `packages/game-world/src/types.ts`: `primary` road kind and `MAIN_ROADS`, `beach` areas,
+  `ChunkRef` (what the index lists) vs `ChunkData` (a loaded chunk), `District`, `Sea`,
+  `BuiltWorld` (the build step's full world).
+- `packages/game-world/src/codec.ts`: the streamed world format: a JSON index, one binary file
+  with every road's centre line, one small binary file per chunk; coordinates quantised to
+  5 cm. It names the decision "TD-16", which is **not yet written** in
+  `docs/technical-decisions.md`.
+- `packages/game-world/src/coast.ts`: the sea from `natural=coastline` (water on the right of
+  the way), or from beaches when no coastline is mapped (estimated).
+- `buildWorldMap.ts` (rewritten), `geometry.ts` (lane counts and more), `landmarks.ts`
+  (gopuram profile for Kapaleeshwarar Temple), `solids.ts` (gopuram and sea solids),
+  `packages/map-data/src/osm.ts`.
+
+What is left, in order: make the build step write index + roads + chunk files from
+`assets/osm/city/chennai-city.osm.json`; load chunks on demand with `fetch` (browser) and from
+the APK (Android: check whether `file://` fetch works in the WebView, otherwise an asset
+loader; write TD-16); chunk the roads in `MapView`; build the AI road graph for the loaded area
+or from a light city file; render the sea, sand and gopuram; minimap for the city; then the
+Marina evening drive and other city jobs, and visited districts in the save and share text. The
+full brief for this step is in the J2 row above.
+
+The city extract is git-ignored (58 MB). To rebuild it: `python3 -m venv .venv && .venv/bin/pip
+install osmium`, download `https://download.geofabrik.de/asia/india/southern-zone-latest.osm.pbf`
+(about 560 MB), then `.venv/bin/python -I scripts/clip-city.py southern-zone-latest.osm.pbf
+assets/osm/city/chennai-city.osm.json` (about 5 minutes, about 450 MB of memory), and delete the
+download. Box: 12.98–13.095 N, 80.195–80.29 E. Counts on 16 Nov: about 107,000 buildings,
+20,000 road pieces, 535 bus stops, 266 traffic signals.
+
 ## Risks
 
 | Risk | Effect | Mitigation |
