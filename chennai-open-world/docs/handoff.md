@@ -184,3 +184,24 @@ desktop instructions.
   two-wheeler riders), and seated and riding poses. Cost: a skinned person per moving vehicle
   is expensive on phones. Plan: full people near the player, static posed meshes merged into
   the vehicle for traffic further away. `specs.ts` already has a `seat` position per vehicle.
+
+## 17 Nov 2026 (latest): auto-rickshaw modelled in Blender, awaiting review
+- The user rejected the code-built auto. They chose our own model, made realistic in Blender,
+  over downloading one (they declined to give a Sketchfab token; scraping the viewer was refused
+  because it breaks Sketchfab's terms).
+- `tools/blender/auto_rickshaw.py` (`npm run blender:auto`): a subdivided body shell lofted
+  through cross-sections at real dimensions, with the cabin, sides and wheel arches cut out by
+  booleans. Lamps, plates and mirrors are placed by ray casting on the body. The canopy has hoops
+  and a rear window. Outputs `assets/models/vehicles/auto_rickshaw.glb` (16,382 triangles) and
+  `_lod1.glb` (12,306), with wheels as separate nodes (`wheel_front`, `wheel_rear_left`,
+  `wheel_rear_right`) on the game's axle positions (front 1.0 m, rear 0.8 m, track 1.16 m).
+  `--render <dir>` writes three Cycles review renders (about 1 minute on 4 CPUs).
+- **Blender without installing Blender:** `python3.13 -m venv .bvenv && .bvenv/bin/pip install bpy==5.2.4`,
+  then `.bvenv/bin/python tools/blender/auto_rickshaw.py -- <out> [--render <dir>]`. In the `bpy`
+  module, `import bpy` must come before `bmesh`. `transform_apply` applies location too unless
+  told not to.
+- Review page published to the user (private artifact: renders and the GLB in 3D). **Not in the
+  game yet.** After approval: lighten the LOD (under 5k triangles, fewer materials), add
+  canopy fabric and dust textures (bake in Cycles), load it in `packages/vehicles` instead of
+  `autoModel.ts` (wheel nodes by name; `KHR_materials_clearcoat` and transmission are costly on
+  phones, so use MeshStandard in the game), then run the tests and measure as for the props.
