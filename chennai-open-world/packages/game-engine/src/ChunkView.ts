@@ -8,14 +8,15 @@
  * (`FacadeKit.ts`) adds sunshades, balconies and shop fronts with Tamil signboards.
  */
 import * as THREE from "three";
-import { buildingBoxes, inBuilding, type Building, type ChunkData, type ChunkFurniture, type PropPlacement, type RoadSpan, type Tree } from "@cow/game-world";
+import { buildingBoxes, inBuilding, type Building, type ChunkData, type ChunkFurniture, type PropPlacement, type RoadSpan, type ShopFront, type StreetLife, type Tree } from "@cow/game-world";
 import { applyGroundLook, buildGround, createGroundAssets, type GroundAssets } from "./GroundMeshes";
 import type { Look } from "./lighting";
-import { addBalcony, addChajja, addShopFronts, createKitMaterial, planFacade, type FacadePlan } from "./FacadeKit";
+import { addBalcony, addChajja, addShopFronts, chunkShopFronts, createKitMaterial, planFacade, shopAwnings, type FacadePlan } from "./FacadeKit";
 import { hash } from "./hash";
 import { MeshBuilder } from "./MeshBuilder";
 import { applyFurnitureLook, buildStreetFurniture, createFurnitureAssets, type FurnitureAssets } from "./StreetFurniture";
 import { applyPropLook, buildStreetProps, buildingFixtures, pavementInstances, type PropAssets, type PropInstance } from "./StreetProps";
+import { applyKolamLook, buildKolams, cableGeometry, createKolamAssets, lifeInstances, type KolamAssets } from "./StreetLife";
 import { FACADE_LIT, FACADE_TILES, FACADE_TILE_COUNT, ROOF_PLAIN_UV, facadeGlowAtlas, roofTileTexture } from "./textures";
 
 const BAY = 3.2; // metres of wall per window bay
@@ -54,12 +55,14 @@ export interface ChunkAssets {
   readonly furniture: FurnitureAssets;
   /** Blender street props (`StreetProps`); without them chunks have no props. */
   readonly props?: PropAssets;
+  /** Kolam decals (`StreetLife`); created with the props. */
+  readonly kolams?: KolamAssets;
 }
 
 const scratch = new THREE.Color();
 
 /** Low houses that get a clay-tile hip roof instead of a flat terrace. */
-function hasTiledRoof(b: Building): boolean {
+export function hasTiledRoof(b: Building): boolean {
   return b.kind === "house" && b.floors <= 2 && b.outline.length >= 4 && b.outline.length <= 8 && hash(b.id, 41) < TILED_ROOFS && convex(b.outline);
 }
 
@@ -190,7 +193,7 @@ function addTiledRoof(roofs: MeshBuilder, b: Building, baseY: number): boolean {
 /** Plain plaster in the facade atlas (a blank corner of the window tile), for parapets and slabs. */
 const PLASTER = { u: (FACADE_TILES.window + 0.04) / FACADE_TILE_COUNT, v: 0.86 } as const;
 
-function addBuilding(walls: MeshBuilder, roofs: MeshBuilder, b: Building, kit: MeshBuilder, plan: FacadePlan): void {
+function addBuilding(walls: MeshBuilder, roofs: MeshBuilder, b: Building, kit: MeshBuilder, plan: FacadePlan, awnings?: PropInstance[]): void {
   scratch.setHex(b.color);
   const { r, g, b: blue } = scratch;
   const { outline, floors, height } = b;
@@ -218,7 +221,10 @@ function addBuilding(walls: MeshBuilder, roofs: MeshBuilder, b: Building, kit: M
     // Facade kit (FacadeKit.ts): shop fronts on walls facing a road, sunshades and balconies.
     const frame = { x: p.x, z: p.z, ux: dx / length, uz: dz / length, nx, nz };
     const shopWall = plan.shopWalls.has(i);
-    if (shopWall) addShopFronts(kit, b, i, frame, length, bays);
+    if (shopWall) {
+      addShopFronts(kit, b, i, frame, length, bays);
+      awnings?.push(...shopAwnings(b, i, frame, length, bays));
+    }
     const slab = [Math.min(1, cr * 1.06), Math.min(1, cg * 1.06), Math.min(1, cb * 1.06)] as const;
     for (let bay = 0; bay < bays; bay++) {
       const t0 = bay / bays;
@@ -398,7 +404,7 @@ export function createChunkAssets(facade: THREE.Texture, props?: PropAssets): Ch
     palmMaterial: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }),
     ground: createGroundAssets(),
     furniture: createFurnitureAssets(),
-    ...(props ? { props } : {}),
+    ...(props ? { props, kolams: createKolamAssets() } : {}),
   };
 }
 
@@ -412,18 +418,27 @@ export function applyChunkLook(assets: ChunkAssets, look: Look): void {
   applyGroundLook(assets.ground, look);
   applyFurnitureLook(assets.furniture, look);
   if (assets.props) applyPropLook(assets.props, look);
+  if (assets.kolams) applyKolamLook(assets.kolams, look);
 }
 
 export class ChunkView {
   readonly object = new THREE.Group();
   private readonly owned: THREE.BufferGeometry[] = [];
+  /** Small ground detail (kolams) that is only drawn near the player (`setDetail`). */
+  private readonly detail: THREE.Object3D[] = [];
+
+  /** Show or hide the small ground detail; the chunk manager hides it in far chunks. */
+  setDetail(visible: boolean): void {
+    for (const node of this.detail) node.visible = visible;
+  }
 
   /**
    * @param roads the stretches of road whose segments lie in this chunk (`roadSpansByChunk`)
    * @param furniture the chunk's bus shelters, poles and kerbs (`chunkFurniture`)
    * @param props the chunk's pavement props (`chunkProps`); drawn only when `assets.props` is set
+   * @param life works out the chunk's street life from its shop fronts (`chunkStreetLife`); needs `assets.props`
    */
-  constructor(chunk: ChunkData, assets: ChunkAssets, roads: readonly RoadSpan[] = [], furniture?: ChunkFurniture, props: readonly PropPlacement[] = []) {
+  constructor(chunk: ChunkData, assets: ChunkAssets, roads: readonly RoadSpan[] = [], furniture?: ChunkFurniture, props: readonly PropPlacement[] = [], life?: (shops: readonly ShopFront[]) => StreetLife) {
     this.object.name = `chunk:${chunk.key}`;
     const ground = buildGround(roads, chunk.areas, assets.ground);
     this.owned.push(...ground.owned);
@@ -435,21 +450,33 @@ export class ChunkView {
     }
     const walls = new MeshBuilder();
     const roofs = new MeshBuilder();
-    const kit = new MeshBuilder();
+    // Shutter bottoms carry their shop's hours (`aShop`), so they roll on the GPU.
+    const kit = new MeshBuilder("aShop");
     // Wall AC units and rooftop dishes follow each building's facade plan (`buildingFixtures`).
     const fixtures: PropInstance[] = [];
     const boxes = assets.props ? buildingBoxes(chunk.buildings) : [];
     const free = (x: number, z: number) => !inBuilding(chunk.buildings, boxes, { x, z }, 0);
+    const plans = new Map<number, FacadePlan>();
     for (const building of chunk.buildings) {
       const plan = planFacade(building, roads);
-      addBuilding(walls, roofs, building, kit, plan);
+      plans.set(building.id, plan);
+      addBuilding(walls, roofs, building, kit, plan, assets.props ? fixtures : undefined);
       if (assets.props) fixtures.push(...buildingFixtures(building, plan, buildingFrame(building), free));
     }
     if (assets.props) {
-      for (const mesh of [buildStreetProps(pavementInstances(props), assets.props), buildStreetProps(fixtures, assets.props, false)]) {
+      const street = life?.(chunkShopFronts(chunk, plans));
+      const pavement = [...pavementInstances(props), ...(street ? lifeInstances(street) : [])];
+      const cables = street ? cableGeometry(street.cables) : undefined;
+      for (const mesh of [buildStreetProps(pavement, assets.props), buildStreetProps(fixtures, assets.props, false, cables)]) {
         if (!mesh) continue;
         this.owned.push(mesh.geometry);
         this.object.add(mesh);
+      }
+      const kolams = street && assets.kolams ? buildKolams(street.kolams, assets.kolams) : null;
+      if (kolams) {
+        this.owned.push(kolams.geometry);
+        this.object.add(kolams);
+        this.detail.push(kolams);
       }
     }
 

@@ -8,8 +8,9 @@
  * fetch for a chunk no longer wanted is thrown away when it arrives.
  */
 import type * as THREE from "three";
-import { chunkFurniture, chunkProps, roadSpansByChunk, type ChunkData, type ChunkRef, type RoadSpan, type WorldMap } from "@cow/game-world";
+import { PROP_SIZE, chunkFurniture, chunkProps, chunkStreetLife, roadSpansByChunk, type ChunkData, type ChunkRef, type RoadSpan, type ShopFront, type WorldMap } from "@cow/game-world";
 import { ChunkView, applyChunkLook, type ChunkAssets } from "./ChunkView";
+import { setStreetHour } from "./streetHour";
 import type { Look } from "./lighting";
 
 export interface ChunkHooks {
@@ -23,6 +24,9 @@ export interface ChunkHooks {
 export interface ChunkSource {
   load(ref: ChunkRef): Promise<ChunkData>;
 }
+
+/** Kolams and other small ground detail are drawn in chunks whose nearest edge is this close, metres. */
+const DETAIL_DISTANCE = 90;
 
 /** How many chunk files may be in flight at once. */
 const IN_FLIGHT = 4;
@@ -77,6 +81,11 @@ export class ChunkManager {
   /** Loaded chunk data, for systems that read chunk contents (the minimap). */
   *loaded(): Generator<ChunkData> {
     for (const slot of this.slots.values()) if (slot.state === "shown") yield slot.data;
+  }
+
+  /** The game hour for what changes with it on the GPU (shutters, stalls out while shops are open). Call every frame. */
+  setHour(hour: number): void {
+    setStreetHour(hour);
   }
 
   /** Time of day and weather for every chunk (shared materials, so loaded and future chunks alike). */
@@ -137,6 +146,7 @@ export class ChunkManager {
       if (!all) break;
     }
     if (!built || all) this.settle();
+    for (const [key, slot] of this.slots) if (slot.state === "shown") slot.view.setDetail(this.distance(this.refs.get(key)!, x, z) <= DETAIL_DISTANCE);
   }
 
   /** Resolves once every chunk in range of a point has its meshes (start-up, teleport). */
@@ -176,7 +186,12 @@ export class ChunkManager {
   }
 
   private show(key: string, data: ChunkData): void {
-    const view = new ChunkView(data, this.assets, this.spans.get(key) ?? [], chunkFurniture(this.map, data), chunkProps(this.map, data));
+    const furniture = chunkFurniture(this.map, data);
+    const props = chunkProps(this.map, data);
+    // Street life keeps clear of the pavement props and the poles.
+    const obstacles = props.map((p) => ({ x: p.x, z: p.z, r: Math.hypot(PROP_SIZE[p.kind].hx, PROP_SIZE[p.kind].hz) }));
+    const life = (shops: readonly ShopFront[]) => chunkStreetLife(this.map, data, shops, furniture.poles, obstacles);
+    const view = new ChunkView(data, this.assets, this.spans.get(key) ?? [], furniture, props, life);
     this.slots.set(key, { state: "shown", data, view });
     this.scene.add(view.object);
     this.hooks.loaded(data);

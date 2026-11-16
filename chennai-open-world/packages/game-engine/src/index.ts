@@ -13,3 +13,5 @@ export * from "./LandmarkView";
 export * from "./SignalView";
 export * from "./StreetFurniture";
 export * from "./StreetProps";
+export * from "./StreetLife";
+export { setStreetHour } from "./streetHour";

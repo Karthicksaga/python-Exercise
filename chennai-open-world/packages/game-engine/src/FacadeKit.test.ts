@@ -103,10 +103,13 @@ describe("shopsOnWall", () => {
       expect(shopsOnWall(building(id, "commercial"), 0, 5)).toEqual(shops);
     }
   });
-  it("mixes shutters down, open and lit, and open and dim", () => {
-    const states = new Set<string>();
-    for (let id = 0; id < 50; id++) for (const shop of shopsOnWall(building(id, "commercial"), 0, 4)) states.add(shop.state);
-    expect([...states].sort()).toEqual(["dark", "down", "lit"]);
+  it("keeps hours (a few shut all day) and mixes lit and dim interiors", () => {
+    const shops = Array.from({ length: 80 }, (_, id) => shopsOnWall(building(id, "commercial"), 0, 4)).flat();
+    const shut = shops.filter((s) => !s.hours).length;
+    expect(shut).toBeGreaterThan(0);
+    expect(shut).toBeLessThan(shops.length * 0.25);
+    for (const s of shops) if (s.hours) expect(s.hours.opens).toBeLessThan(s.hours.closes);
+    expect(new Set(shops.map((s) => s.lit)).size).toBe(2);
   });
 });
 
@@ -125,9 +128,27 @@ describe("kit geometry", () => {
     expect(triangles(rail)).toBe(6);
     const kit = new MeshBuilder();
     addShopFronts(kit, building(3, "commercial"), 0, frame, 12, 4);
-    // A shutter (2) per bay and a five-sided sign (10) per shop.
+    // Per bay an interior (2), a shutter (2) and the shutter box's front and bottom (4); a
+    // five-sided sign (10) per shop.
     const shops = shopsOnWall(building(3, "commercial"), 0, 4).length;
-    expect(triangles(kit)).toBe(4 * 2 + shops * 10);
+    expect(triangles(kit)).toBe(4 * 8 + shops * 10);
+  });
+  it("gives the shutters' bottom corners their shop's hours, and nothing else", () => {
+    const kit = new MeshBuilder("aShop");
+    const b = building(3, "commercial");
+    addShopFronts(kit, b, 0, frame, 12, 4);
+    const geometry = kit.build()!;
+    const shop = geometry.getAttribute("aShop");
+    const y = geometry.getAttribute("position");
+    const open = shopsOnWall(b, 0, 4).filter((s) => s.hours).reduce((n, s) => n + s.bays, 0);
+    let timed = 0;
+    for (let v = 0; v < shop.count; v++) {
+      if (shop.getZ(v) === 0) continue;
+      timed++;
+      expect(y.getY(v)).toBe(0);
+      expect(shop.getX(v)).toBeLessThan(shop.getY(v));
+    }
+    expect(timed).toBe(open * 2);
   });
   it("puts every face of a sunshade on the outside of the wall, facing out", () => {
     const walls = new MeshBuilder();

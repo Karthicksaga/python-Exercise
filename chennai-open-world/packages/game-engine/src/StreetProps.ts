@@ -13,21 +13,31 @@
  * chunk's props are merged into **two meshes**, whatever the number of props: the pavement props,
  * which cast shadows, and the wall and roof fixtures, which don't (high up and small, their
  * shadows cost a second pass over their triangles for almost nothing on screen). The shutter's and the handcart's animation clips are not used
- * yet (the props stand still); the facade kit already draws the shop shutters and the awning is
- * left for the shop fronts, so neither is placed here.
+ * (the props stand still); the facade kit rolls its own shutters on the GPU.
+ *
+ * Street life (`streetLife.ts` in game-world) adds the realistic set: tea-stall counters, flower
+ * stalls, fruit pushcarts, chair stacks and parked two-wheelers into the pavement mesh, and
+ * awnings over shop fronts (`FacadeKit.shopAwnings`) and overhead cables into the fixtures mesh.
+ * Props that are only out while a shop is open carry its hours in an `aHours` attribute; the
+ * material's vertex shader folds them away outside those hours (one uniform, `STREET_HOUR`).
+ * Bikes and chairs are recoloured per copy: their `paint` material is white in the model.
  */
 import * as THREE from "three";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { pointInPolygon, type Building, type PropKind, type PropPlacement } from "@cow/game-world";
+import { pointInPolygon, type Building, type LifeKind, type PropKind, type PropPlacement, type ShopHours } from "@cow/game-world";
 import type { FacadePlan } from "./FacadeKit";
 import { hash } from "./hash";
 import type { Look } from "./lighting";
+import { STREET_HOUR } from "./streetHour";
 
-export type PropModel = PropKind | "acUnit" | "dish";
+type BaseModel = PropKind | "acUnit" | "dish";
+/** Models of the street-life set; optional, so the game still starts without them. */
+export type ExtraModel = LifeKind | "awning";
+export type PropModel = BaseModel | ExtraModel;
 
 /** Model URLs (data URLs from `?inline` imports in the game, TD-3). */
-export type PropSources = Readonly<Record<PropModel, string>>;
+export type PropSources = Readonly<Record<BaseModel, string>> & Readonly<Partial<Record<ExtraModel, string>>>;
 
 /** One placed model: position of its base, yaw (0 keeps the model's own axes). */
 export interface PropInstance {
@@ -36,6 +46,12 @@ export interface PropInstance {
   readonly y: number;
   readonly z: number;
   readonly yaw: number;
+  /** Stretch along the model's X (an awning across a shop front); 1 by default. */
+  readonly sx?: number;
+  /** 0 to 1: picks the paint colour of models with a `paint` material (bikes, chairs). */
+  readonly tint?: number;
+  /** Only shown between these hours (a stall out while its shop is open); always without. */
+  readonly hours?: ShopHours;
 }
 
 /** A model baked for merging: positions, normals and colours, non-indexed. */
@@ -43,11 +59,15 @@ interface Baked {
   readonly position: Float32Array;
   readonly normal: Float32Array;
   readonly color: Float32Array;
+  /** 1 for vertices of the `paint` material (recoloured per copy), else 0. */
+  readonly paint: Uint8Array;
 }
 
 export interface PropAssets {
-  readonly models: Readonly<Record<PropModel, Baked>>;
+  readonly models: Readonly<Record<BaseModel, Baked>> & Readonly<Partial<Record<ExtraModel, Baked>>>;
   readonly material: THREE.MeshStandardMaterial;
+  /** Shadow pass for props with hours: hidden props cast no shadow. */
+  readonly depth: THREE.MeshDepthMaterial;
 }
 
 /**
@@ -55,7 +75,15 @@ export interface PropAssets {
  * centred on their footprint and face -Z (towards the road). Wall fixtures keep their back at
  * z = 0 (against the wall or the roof's edge) and face +Z, out of it.
  */
-const WALL_MOUNTED: ReadonlySet<PropModel> = new Set<PropModel>(["acUnit", "dish"]);
+const WALL_MOUNTED: ReadonlySet<PropModel> = new Set<PropModel>(["acUnit", "dish", "awning", "teaStall", "flowerStall"]);
+/** Models that keep their own height above the wall's foot (the awning hangs 1.7 to 2.6 m up). */
+const KEEP_HEIGHT: ReadonlySet<PropModel> = new Set<PropModel>(["awning"]);
+
+/** Paint of parked two-wheelers and of moulded chairs (linear RGB), picked per copy by `tint`. */
+const BIKE_PAINT: ReadonlyArray<readonly [number, number, number]> = [
+  [0.02, 0.02, 0.02], [0.02, 0.02, 0.02], [0.45, 0.02, 0.02], [0.03, 0.08, 0.35], [0.35, 0.36, 0.38], [0.18, 0.01, 0.02], [0.7, 0.7, 0.7], [0.12, 0.12, 0.13],
+];
+const CHAIR_PAINT: ReadonlyArray<readonly [number, number, number]> = [[0.5, 0.02, 0.02], [0.5, 0.02, 0.02], [0.75, 0.75, 0.72], [0.03, 0.12, 0.42], [0.04, 0.25, 0.06]];
 
 /** Bake a glTF scene: transforms applied, material colours into vertex colours, one array set. */
 function bake(scene: THREE.Object3D, model: PropModel): { baked: Baked; box: THREE.Box3 } {
@@ -69,14 +97,22 @@ function bake(scene: THREE.Object3D, model: PropModel): { baked: Baked; box: THR
     if (!source.getAttribute("normal")) source.computeVertexNormals();
     const count = source.getAttribute("position").count;
     const color = new Float32Array(count * 3);
+    const paint = new Uint8Array(count);
     const tint = new THREE.Color();
     // Groups map vertex ranges to materials when a mesh has several.
     const groups = source.groups.length > 0 ? source.groups : [{ start: 0, count, materialIndex: 0 }];
     for (const g of groups) {
       const material = materials[g.materialIndex ?? 0] as THREE.MeshStandardMaterial | undefined;
       tint.copy(material?.color ?? new THREE.Color(1, 1, 1));
-      for (let v = g.start; v < Math.min(count, g.start + g.count); v++) tint.toArray(color, v * 3);
+      const painted = material?.name === "prop_paint" ? 1 : 0;
+      for (let v = g.start; v < Math.min(count, g.start + g.count); v++) {
+        tint.toArray(color, v * 3);
+        paint[v] = painted;
+      }
     }
+    // Wear baked in Blender (COLOR_0: darker towards the ground) multiplies the paint.
+    const wear = source.getAttribute("color");
+    if (wear) for (let v = 0; v < count; v++) for (let k = 0; k < 3; k++) color[v * 3 + k] = color[v * 3 + k]! * wear.getComponent(v, k);
     // Quantised attributes (meshopt, KHR_mesh_quantization) are read through getX/Y/Z, which
     // undo the normalisation, into plain floats.
     const floats = (attribute: THREE.BufferAttribute | THREE.InterleavedBufferAttribute) => {
@@ -88,6 +124,7 @@ function bake(scene: THREE.Object3D, model: PropModel): { baked: Baked; box: THR
     part.setAttribute("position", floats(source.getAttribute("position")));
     part.setAttribute("normal", floats(source.getAttribute("normal")));
     part.setAttribute("color", new THREE.BufferAttribute(color, 3));
+    part.setAttribute("paint", new THREE.BufferAttribute(paint, 1));
     parts.push(part);
     source.dispose();
   });
@@ -95,11 +132,13 @@ function bake(scene: THREE.Object3D, model: PropModel): { baked: Baked; box: THR
   const position = new Float32Array(total * 3);
   const normal = new Float32Array(total * 3);
   const color = new Float32Array(total * 3);
+  const paint = new Uint8Array(total);
   let offset = 0;
   for (const part of parts) {
     position.set(part.getAttribute("position").array as Float32Array, offset * 3);
     normal.set(part.getAttribute("normal").array as Float32Array, offset * 3);
     color.set(part.getAttribute("color").array as Float32Array, offset * 3);
+    paint.set(part.getAttribute("paint").array as Uint8Array, offset);
     offset += part.getAttribute("position").count;
     part.dispose();
   }
@@ -109,25 +148,25 @@ function bake(scene: THREE.Object3D, model: PropModel): { baked: Baked; box: THR
   const centre = !WALL_MOUNTED.has(model);
   const cx = centre ? (box.min.x + box.max.x) / 2 : 0;
   const cz = centre ? (box.min.z + box.max.z) / 2 : 0;
-  const y0 = box.min.y;
+  const y0 = KEEP_HEIGHT.has(model) ? 0 : box.min.y;
   for (let i = 0; i < total; i++) {
     position[i * 3] = position[i * 3]! - cx;
     position[i * 3 + 1] = position[i * 3 + 1]! - y0;
     position[i * 3 + 2] = position[i * 3 + 2]! - cz;
   }
   box.translate(new THREE.Vector3(-cx, -y0, -cz));
-  return { baked: { position, normal, color }, box };
+  return { baked: { position, normal, color, paint }, box };
 }
 
 /** Load and bake every prop model once. Rejects if a model is missing or broken. */
 export async function loadPropAssets(sources: PropSources): Promise<PropAssets & { readonly bounds: Readonly<Record<PropModel, THREE.Box3>> }> {
   // The optimised models use meshopt compression; the decoder embeds its WebAssembly (TD-16).
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const names = Object.keys(sources) as PropModel[];
+  const names = (Object.keys(sources) as PropModel[]).filter((name) => sources[name] !== undefined);
   // Fetched, then parsed: the same in the WebView, the browser and Node (unit tests).
   const scenes = await Promise.all(
     names.map(async (name) => {
-      const response = await fetch(sources[name]);
+      const response = await fetch(sources[name]!);
       if (!response.ok) throw new Error(`Prop model ${name} could not be read (${response.status})`);
       return loader.parseAsync(await response.arrayBuffer(), "");
     }),
@@ -139,11 +178,24 @@ export async function loadPropAssets(sources: PropSources): Promise<PropAssets &
     models[name] = baked;
     bounds[name] = box;
   });
-  return { models, bounds, material: createPropMaterial() };
+  const material = createPropMaterial();
+  const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+  depth.onBeforeCompile = hideOutsideHours;
+  return { models, bounds, material, depth };
+}
+
+/** Vertex shader patch: a vertex whose `aHours` (opens, closes) excludes the game hour collapses to a point. */
+function hideOutsideHours(shader: THREE.WebGLProgramParametersWithUniforms): void {
+  shader.uniforms.uStreetHour = STREET_HOUR;
+  shader.vertexShader = shader.vertexShader
+    .replace("#include <common>", "#include <common>\nattribute vec2 aHours;\nuniform float uStreetHour;")
+    .replace("#include <begin_vertex>", "#include <begin_vertex>\nif (aHours.x != aHours.y && (uStreetHour < aHours.x || uStreetHour >= aHours.y)) transformed = vec3(0.0);");
 }
 
 export function createPropMaterial(): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 });
+  const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 });
+  material.onBeforeCompile = hideOutsideHours;
+  return material;
 }
 
 /** Wet props look darker in the rain. */
@@ -229,21 +281,36 @@ export function pavementInstances(props: readonly PropPlacement[]): PropInstance
   return props.map((p) => ({ model: p.kind, x: p.x, y: 0, z: p.z, yaw: p.yaw }));
 }
 
-/** One merged mesh for a chunk's props, or null when it has none. The caller owns the geometry. */
-export function buildStreetProps(instances: readonly PropInstance[], assets: PropAssets, castShadow = true): THREE.Mesh | null {
-  let total = 0;
-  for (const it of instances) total += assets.models[it.model].position.length;
+/** Extra triangles merged into a props mesh as they are (overhead cables), world space, non-indexed. */
+export interface ExtraGeometry {
+  readonly position: Float32Array;
+  readonly normal: Float32Array;
+  readonly color: Float32Array;
+}
+
+/**
+ * One merged mesh for a chunk's props, or null when it has none. The caller owns the geometry.
+ * Instances whose model is not loaded are left out.
+ */
+export function buildStreetProps(instances: readonly PropInstance[], assets: PropAssets, castShadow = true, extra?: ExtraGeometry): THREE.Mesh | null {
+  const models = assets.models as Partial<Record<PropModel, Baked>>;
+  const used = instances.filter((it) => models[it.model]);
+  let total = extra ? extra.position.length : 0;
+  for (const it of used) total += models[it.model]!.position.length;
   if (total === 0) return null;
   const position = new Float32Array(total);
   const normal = new Float32Array(total);
   const color = new Float32Array(total);
+  const timed = used.some((it) => it.hours);
+  const hours = timed ? new Float32Array((total / 3) * 2) : null;
   let o = 0;
-  for (const it of instances) {
-    const m = assets.models[it.model];
+  for (const it of used) {
+    const m = models[it.model]!;
     const c = Math.cos(it.yaw);
     const s = Math.sin(it.yaw);
+    const sx = it.sx ?? 1;
     for (let i = 0; i < m.position.length; i += 3) {
-      const x = m.position[i]!;
+      const x = m.position[i]! * sx;
       const z = m.position[i + 2]!;
       // Rotation about +Y by yaw (three.js convention), then the placement.
       position[o + i] = it.x + x * c + z * s;
@@ -256,16 +323,37 @@ export function buildStreetProps(instances: readonly PropInstance[], assets: Pro
       normal[o + i + 2] = -nx * s + nz * c;
     }
     color.set(m.color, o);
+    if (it.tint !== undefined) {
+      const palette = it.model === "chairStack" ? CHAIR_PAINT : BIKE_PAINT;
+      const paint = palette[Math.floor(it.tint * palette.length) % palette.length]!;
+      for (let v = 0; v < m.paint.length; v++) {
+        if (!m.paint[v]) continue;
+        for (let k = 0; k < 3; k++) color[o + v * 3 + k] = color[o + v * 3 + k]! * paint[k]!;
+      }
+    }
+    if (hours && it.hours) {
+      for (let v = 0; v < m.position.length / 3; v++) {
+        hours[(o / 3 + v) * 2] = it.hours.opens;
+        hours[(o / 3 + v) * 2 + 1] = it.hours.closes;
+      }
+    }
     o += m.position.length;
+  }
+  if (extra) {
+    position.set(extra.position, o);
+    normal.set(extra.normal, o);
+    color.set(extra.color, o);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(position, 3));
   geometry.setAttribute("normal", new THREE.BufferAttribute(normal, 3));
   geometry.setAttribute("color", new THREE.BufferAttribute(color, 3));
+  if (hours) geometry.setAttribute("aHours", new THREE.BufferAttribute(hours, 2));
   geometry.computeBoundingSphere();
   const mesh = new THREE.Mesh(geometry, assets.material);
   mesh.name = "street-props";
   mesh.castShadow = castShadow;
   mesh.receiveShadow = true;
+  if (hours) mesh.customDepthMaterial = assets.depth;
   return mesh;
 }

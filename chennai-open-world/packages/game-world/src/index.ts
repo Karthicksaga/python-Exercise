@@ -10,3 +10,4 @@ export * from "./districts";
 export * from "./codec";
 export * from "./furniture";
 export * from "./props";
+export * from "./streetLife";

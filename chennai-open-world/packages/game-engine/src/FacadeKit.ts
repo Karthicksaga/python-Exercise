@@ -22,6 +22,7 @@ import { KIT_CELLS, kitTextures, kitUV, signRect, type KitRect } from "./kitAtla
 import type { MeshBuilder } from "./MeshBuilder";
 import { NARROW_SIGNS, SHOP_SIGNS, WIDE_SIGNS } from "./shopSigns";
 import { STREET_HOUR } from "./streetHour";
+import type { PropInstance } from "./StreetProps";
 
 /** Share of buildings, by kind, whose windows have sunshades and whose balcony bays stick out. */
 const CHAJJAS = { house: 0.5, apartments: 0.85, commercial: 0.35 } as const;
@@ -246,6 +247,28 @@ export function addShopFronts(kit: MeshBuilder, b: Building, wall: number, f: Wa
     }
     box(kit, f, s0 + 0.05, s1 - 0.05, SIGN_BOTTOM, SIGN_TOP, 0, SIGN_DEPTH, { front: uv(signRect(shop.sign)), top: PLAIN_UV, bottom: PLAIN_UV, ends: PLAIN_UV }, WHITE);
   }
+}
+
+/** Share of shops with a striped canvas awning over the front (invented). */
+const AWNINGS = 0.35;
+/** The awning model's top is 2.6 m up; this hangs it just under the signboard. */
+const AWNING_Y = SHUTTER_TOP - 2.6;
+
+/**
+ * Awnings over the shop fronts of one wall (the Blender awning, stretched to the shop's width),
+ * as instances for the fixtures mesh. Tea stalls and flower shops have their own canopy.
+ */
+export function shopAwnings(b: Building, wall: number, f: WallFrame, length: number, bays: number): PropInstance[] {
+  const bayWidth = length / bays;
+  const out: PropInstance[] = [];
+  for (const shop of shopsOnWall(b, wall, bays)) {
+    const kind = SHOP_SIGNS[shop.sign]!.kind;
+    if (kind === "tea" || kind === "flowers" || hash(b.id, 351 + wall * 13 + shop.firstBay) >= AWNINGS) continue;
+    const width = shop.bays * bayWidth;
+    const mid = shop.firstBay * bayWidth + width / 2;
+    out.push({ model: "awning", x: f.x + f.ux * mid, y: AWNING_Y, z: f.z + f.uz * mid, yaw: Math.atan2(f.nx, f.nz), sx: Math.max(0.5, (width - 0.3) / 2.4) });
+  }
+  return out;
 }
 
 /**

@@ -33,6 +33,12 @@ import clayPots from "../../../assets/optimized/props/clay_pots.glb?inline";
 import crates from "../../../assets/optimized/props/crates.glb?inline";
 import dish from "../../../assets/optimized/props/dish_antenna.glb?inline";
 import handcart from "../../../assets/optimized/props/handcart.glb?inline";
+import awning from "../../../assets/optimized/props/awning.glb?inline";
+import teaStall from "../../../assets/optimized/props/tea_stall.glb?inline";
+import flowerStall from "../../../assets/optimized/props/flower_stall.glb?inline";
+import pushcart from "../../../assets/optimized/props/pushcart.glb?inline";
+import chairStack from "../../../assets/optimized/props/chair_stack.glb?inline";
+import twoWheeler from "../../../assets/optimized/props/two_wheeler.glb?inline";
 import autoRickshaw from "../../../assets/optimized/vehicles/auto_rickshaw_lod1.glb?inline";
 
 /** What tests and the debug console can read about the running game. */
@@ -232,7 +238,7 @@ export class Game {
     // The Tamil font for shop signs loads while the world does; the game starts without it.
     const signFontLoaded = loadSignFont(signFont);
     // Street props made in Blender (assets/README.md), baked once and merged per chunk.
-    const propsLoaded = loadPropAssets({ handcart, crates, barrel, clayPots, acUnit, dish });
+    const propsLoaded = loadPropAssets({ handcart, crates, barrel, clayPots, acUnit, dish, awning, teaStall, flowerStall, pushcart, chairStack, twoWheeler });
     // Vehicles modelled in Blender (tools/blender); ground = ride height plus settled suspension below the chassis centre.
     const vehiclesLoaded = loadVehicleModels({ auto: { url: autoRickshaw, ground: -0.68 } });
     // The world files are produced from OpenStreetMap by `npm run build:world` (TD-16).
@@ -402,7 +408,8 @@ export class Game {
     } catch {
       // Not saved; the game still changes time.
     }
-    // Show the new light behind the pause screen, which is not animating.
+    // Show the new light (and shutters) behind the pause screen, which is not animating.
+    this.chunks.setHour(this.clock.hour);
     this.renderer.setTimeOfDay(this.clock.hour);
     this.renderer.render();
     // Rebuild the pause screen so the button shows the new time.
@@ -935,6 +942,8 @@ export class Game {
     }
     this.population.frame(dt, at);
     this.chunks.update(at.x, at.z);
+    // Shutters, stalls and parked bikes follow the clock on the GPU.
+    this.chunks.setHour(this.clock.hour);
     // Sea haze: thicker air within about 600 m of the coast.
     this.sinceHaze += dt;
     if (this.sinceHaze > 0.5) {
