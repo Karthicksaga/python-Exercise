@@ -38,6 +38,9 @@ See `README.md`. Android builds need `JAVA_HOME` set to JDK 17–21.
 ## Testing notes
 - `window.__cow` is for tests and debugging only: `snapshot()` (position, mode, money, mission,
   traffic…), `teleport(x, z, yaw)` and `probe(...)` (ray cast). Gameplay code must not use it.
+- Tests hold controls for **game** time (`waitGameTime`, `waitFrames` in `support.ts`), never a
+  fixed number of wall-clock milliseconds: software-rendered machines run the game slower than
+  real time. Wall-clock timeouts only bound how long to wait.
 - Browser tests open `/?quality=lite` and run one at a time (TD-12); helpers are in
   `apps/game/tests/support.ts`. They send touch pointer events to `move-zone` and `look-zone`.
 - Places in `apps/game/src/content.ts` are snapped to the nearest road, so tests read targets

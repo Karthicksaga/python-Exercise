@@ -39,9 +39,9 @@ jobs:
       - run: npm test
       # Installs the Chromium build that matches the pinned @playwright/test in package-lock.json.
       - run: npx playwright install --with-deps chromium
-      # Note: two on-foot tests (joystick walk distance, camera drag) hold input for a fixed time
-      # and can fail on a heavily loaded machine (see docs/progress.md). No extra retries are added
-      # on purpose: a failure here should be looked at, not hidden.
+      # The browser tests hold controls for game time, not wall-clock time, so a slow shared
+      # runner with software WebGL gives the same results (see AGENTS.md). No retries are added:
+      # a failure here should be looked at, not hidden.
       - run: npm run test:e2e
       - name: Upload Playwright results
         if: failure()

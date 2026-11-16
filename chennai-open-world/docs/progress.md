@@ -33,8 +33,7 @@ Last updated: 16 Nov 2026 (evening).
   Unit tests check its bounds equal the profile's footprint and height, the triangle budget and
   that rays pass through the passage; seen in headless Chromium (lite quality, golden hour)
   from 16 m, 60 m, 80 m and 100 m. Not checked at night or on a phone.
-- **City jobs across the city (J2, 16 Nov, evening; unit-tested only, not yet run in the
-  browser):** three jobs far from Anna Nagar, built from the city map in
+- **City jobs across the city (J2, 16 Nov, evening; unit tests and one browser test):** three jobs far from Anna Nagar, built from the city map in
   `apps/game/src/cityJobs.ts` (deterministic for a given map), 13 jobs in all.
   *Marina evening drive* (`marina-evening`, car): pick a friend up on Sir Thyagaraya Road where
   it is nearest T. Nagar's centre (about 300 m from it, 3 s wait), drop on Kamarajar Salai
@@ -59,7 +58,7 @@ Last updated: 16 Nov 2026 (evening).
   stars) and `apps/game/src/content.test.ts`, which builds the content from the real world files
   and checks the old job ids and count, the new jobs, parking for every vehicle, stops on drivable
   roads inside the city, and the Marina drive's ends. One browser test was added
-  (`jobs.spec.ts`, Marina drive by teleport) but **not run yet**.
+  (`jobs.spec.ts`, Marina drive by teleport); it passes (38/38 run, 16 Nov, night).
 - **World:** about 1 km² of real Anna Nagar from OpenStreetMap: 136 road pieces, 1,292 building
   footprints, Tower Park and other green areas, 512 trees. Split into 16 chunks of 250 m that
   load and unload (meshes and collision) as the player moves.
@@ -149,6 +148,7 @@ Last updated: 16 Nov 2026 (evening).
 | TypeScript strict | pass | `npm run typecheck`; `cd apps/mobile && npx tsc --noEmit` |
 | Unit tests (51, 16 Nov) | pass | `npm test`: projection, OSM parsing, vehicle physics, mission rules, road graph and agents (including dead ends, people passing each other, pulling over for a siren), combat rules, job rules (clock, dwell, pay, bumps, fines, reputation locks, late bus stops, damaged saves), gear indicator, game clock |
 | Unit tests (103, 16 Nov, later) | pass | `npm test`, 14 files: adds signals, junction turns, density, traffic mix, lighting by hour and rain, drift on a real Rapier world (and no false crash from drifting or braking), chase camera, landmarks from OSM and the ring-path fallback |
+| Browser tests (38, 16 Nov, night) | **pass, 38/38** | `npm run test:e2e` on the same slow host (`PW_CHROMIUM=/opt/pw-browsers/chromium`): the 33 earlier tests, `city.spec.ts` (4) and the Marina evening drive. The timing tests now hold controls for a span of **game** time (`waitGameTime`, from `snapshot().simTime`) and wait for a frame after taps and drags, instead of wall-clock milliseconds; every gameplay threshold is unchanged (the drift test now checks "slide ends within a second" in game time). Wall-clock poll limits were raised where they only bound how long to wait. Before this, the same tests failed on this host and on GitHub's runner (4 of 33) because the game ran behind real time |
 | City build, browser (16 Nov, evening) | 26/33; the baseline also 26/33 on the same machine | `npm run test:e2e` with `PW_CHROMIUM=/opt/pw-browsers/chromium` (the pinned Playwright's own browser was not installed). The 7 failures are all timing tests (distance in a fixed time, camera drag, jump, drift, getting out). The last tested commit 0931329, run on the same machine straight after, failed 7 timing tests too, 6 of them the same: the host renders at 100–300 ms frames in software. Everything else passes, including the updated streaming test (teleport 6 km to T. Nagar: every Anna Nagar chunk freed, the new ones loaded, street name read). **Needs a rerun on a normal machine or in CI** |
 | City measurements, browser (16 Nov, evening) | see note | Headless Chromium, software GPU, `?quality=lite`: ready in 3.5–4.3 s; Anna Nagar spawn 149 draw calls, 165k triangles, 9 chunks (0931329: 154, 175k, 10); T. Nagar 105 / 164k; Anna Salai 90 / 152k; Kapaleeshwarar area 97 / 149k; teleport loads in 0.03–0.9 s; JS heap 110–125 MB (0931329: 45 MB). Frame rates on this host are not meaningful |
 | Unit tests (103, 16 Nov, evening) | pass | `npm test`, unchanged count |

@@ -66,8 +66,9 @@ test("jump lifts the player and gravity brings them back", async ({ page }) => {
   await ready(page);
   await page.waitForTimeout(300);
   await page.getByRole("button", { name: "Jump", exact: true }).dispatchEvent("pointerdown", { pointerId: 33, pointerType: "touch" });
-  await expect.poll(async () => (await snapshot(page)).y, { timeout: 2000, intervals: [30] }).toBeGreaterThan(0.5);
-  await expect.poll(async () => (await snapshot(page)).grounded, { timeout: 3000 }).toBe(true);
+  // Wall-clock limits only: on a slow machine a jump takes longer than its game time.
+  await expect.poll(async () => (await snapshot(page)).y, { timeout: 10_000, intervals: [30] }).toBeGreaterThan(0.5);
+  await expect.poll(async () => (await snapshot(page)).grounded, { timeout: 15_000 }).toBe(true);
   expect(Math.abs((await snapshot(page)).y)).toBeLessThan(0.1);
 });
 

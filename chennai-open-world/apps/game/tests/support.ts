@@ -20,6 +20,8 @@ export interface Snapshot {
   target: { x: number; z: number } | null;
   chunksLoaded: number;
   chunkKeys: string[];
+  simTime: number;
+  frames: number;
   street: string;
   vehicles: Array<{ id: string; kind: string; x: number; z: number }>;
   traffic: Array<{ x: number; z: number; speed: number }>;
@@ -56,14 +58,30 @@ export async function ready(page: Page, keepSave = false): Promise<void> {
   expect(errors).toEqual([]);
 }
 
-/** Hold the joystick at an offset from where the finger first touched, for `ms`. */
+/**
+ * Wait until the game has simulated `seconds` more (its own clock, not the wall clock). On a
+ * slow machine with software rendering the game runs behind real time, and a test that holds a
+ * control for a fixed number of wall-clock milliseconds then measures a fraction of the motion.
+ */
+export async function waitGameTime(page: Page, seconds: number): Promise<void> {
+  const from = (await snapshot(page)).simTime;
+  await expect.poll(async () => (await snapshot(page)).simTime - from, { timeout: Math.max(10_000, seconds * 20_000), intervals: [50] }).toBeGreaterThanOrEqual(seconds);
+}
+
+/** Wait until the game has drawn `count` more frames (camera input is read once per frame). */
+export async function waitFrames(page: Page, count: number): Promise<void> {
+  const from = (await snapshot(page)).frames;
+  await expect.poll(async () => (await snapshot(page)).frames - from, { timeout: 20_000, intervals: [30] }).toBeGreaterThanOrEqual(count);
+}
+
+/** Hold the joystick at an offset from where the finger first touched, for `ms` of game time. */
 export async function holdStick(page: Page, dx: number, dy: number, ms: number): Promise<void> {
   const zone = page.getByTestId("move-zone");
   const start = { x: 150, y: 260 };
   const pointer = { pointerId: 11, pointerType: "touch", isPrimary: true, bubbles: true };
   await zone.dispatchEvent("pointerdown", { ...pointer, clientX: start.x, clientY: start.y });
   await zone.dispatchEvent("pointermove", { ...pointer, clientX: start.x + dx, clientY: start.y + dy });
-  await page.waitForTimeout(ms);
+  await waitGameTime(page, ms / 1000);
   await zone.dispatchEvent("pointerup", { ...pointer, clientX: start.x + dx, clientY: start.y + dy });
 }
 
@@ -75,21 +93,23 @@ export async function dragLook(page: Page, dx: number, dy: number): Promise<void
     await zone.dispatchEvent("pointermove", { ...pointer, clientX: 600 + (dx * i) / 5, clientY: 200 + (dy * i) / 5 });
   }
   await zone.dispatchEvent("pointerup", { ...pointer, clientX: 600 + dx, clientY: 200 + dy });
-  await page.waitForTimeout(150);
+  await waitFrames(page, 2);
 }
 
-/** Press and hold an on-screen button for `ms`. */
+/** Press and hold an on-screen button for `ms` of game time. */
 export async function holdButton(page: Page, name: string, ms: number, pointerId = 31): Promise<void> {
   const button = page.getByRole("button", { name, exact: true });
   await button.dispatchEvent("pointerdown", { pointerId, pointerType: "touch" });
-  await page.waitForTimeout(ms);
+  await waitGameTime(page, ms / 1000);
   await button.dispatchEvent("pointerup", { pointerId, pointerType: "touch" });
 }
 
 /** Tap a button that may relabel or hide itself when pressed (the get in / get out button). */
 export async function tapButton(page: Page, name: string): Promise<void> {
   await page.getByRole("button", { name, exact: true }).dispatchEvent("pointerdown", { pointerId: 41, pointerType: "touch" });
-  await page.waitForTimeout(120);
+  // The press is read on the next physics step and shown on the next frame.
+  await waitGameTime(page, 0.12);
+  await waitFrames(page, 1);
 }
 
 /** Stand next to a parked vehicle and get in. */

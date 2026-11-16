@@ -46,6 +46,9 @@ export interface GameSnapshot {
   readonly mission: string | null;
   readonly objective: string | null;
   readonly target: { x: number; z: number } | null;
+  /** Game seconds simulated, and frames drawn, since start: slow machines run behind the wall clock. */
+  readonly simTime: number;
+  readonly frames: number;
   readonly chunksLoaded: number;
   /** Grid keys ("col,row") of the loaded chunks. */
   readonly chunkKeys: string[];
@@ -157,6 +160,9 @@ export class Game {
   private street = "";
   private sinceStreet = 1;
   private sinceHaze = 1;
+  /** Seconds simulated and frames drawn since start (tests wait on these, not the wall clock). */
+  private simTime = 0;
+  private frames = 0;
   /** Named areas of the city (OSM place points) and the ones the player has been to. */
   private readonly districtIndex: DistrictIndex;
   private readonly visited = loadDistricts();
@@ -586,6 +592,8 @@ export class Game {
       mission: this.missions.mission?.id ?? null,
       objective: objective?.label ?? null,
       target: target ? { x: target.x, z: target.z } : null,
+      simTime: this.simTime,
+      frames: this.frames,
       chunksLoaded: this.chunks.loadedCount,
       chunkKeys: this.chunks.loadedKeys(),
       vehicles: this.vehicles.map((v) => ({ id: v.id, kind: v.kind, x: v.body.position().x, z: v.body.position().z })),
@@ -728,6 +736,7 @@ export class Game {
   }
 
   private fixedUpdate(dt: number): void {
+    this.simTime += dt;
     this.clock.advance(dt);
     const stick = this.controls.state;
     const moveX = stick.moveX || this.keyboard.moveX;
@@ -798,6 +807,7 @@ export class Game {
   }
 
   private frame(dt: number): void {
+    this.frames++;
     if (this.keyboard.consumeBoard()) {
       this.openBoard();
       return;

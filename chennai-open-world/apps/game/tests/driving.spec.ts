@@ -1,6 +1,6 @@
 /** Vehicles, missions and saved progress. */
 import { expect, test } from "@playwright/test";
-import { board, holdButton, holdStick, ready, snapshot, tapButton, teleport } from "./support";
+import { board, holdButton, holdStick, ready, snapshot, tapButton, teleport, waitGameTime } from "./support";
 
 test("get in the car, drive, brake, reverse and get out", async ({ page }) => {
   await ready(page);
@@ -19,7 +19,7 @@ test("get in the car, drive, brake, reverse and get out", async ({ page }) => {
   expect((await snapshot(page)).mode).toBe("car");
 
   await holdButton(page, "Brake", 2500);
-  await expect.poll(async () => (await snapshot(page)).speed, { timeout: 4000 }).toBeLessThan(1);
+  await expect.poll(async () => (await snapshot(page)).speed, { timeout: 20_000 }).toBeLessThan(1);
   await tapButton(page, "Get out");
   const out = await snapshot(page);
   expect(out.mode).toBe("foot");
@@ -52,7 +52,7 @@ test("the motorbike and the auto-rickshaw can be ridden", async ({ page }) => {
     const moving = await snapshot(page);
     expect(moving.speed).toBeGreaterThan(3);
     await holdButton(page, "Brake", 2200);
-    await expect.poll(async () => (await snapshot(page)).speed, { timeout: 4000 }).toBeLessThan(1.5);
+    await expect.poll(async () => (await snapshot(page)).speed, { timeout: 20_000 }).toBeLessThan(1.5);
     await tapButton(page, "Get out");
     expect((await snapshot(page)).mode).toBe("foot");
   }
@@ -61,7 +61,7 @@ test("the motorbike and the auto-rickshaw can be ridden", async ({ page }) => {
 test("AI traffic keeps moving", async ({ page }) => {
   await ready(page);
   const before = (await snapshot(page)).traffic;
-  await page.waitForTimeout(5000);
+  await waitGameTime(page, 5);
   const after = (await snapshot(page)).traffic;
   const moved = after.filter((t, i) => Math.hypot(t.x - before[i]!.x, t.z - before[i]!.z) > 3).length;
   expect(moved).toBeGreaterThan(after.length / 2);

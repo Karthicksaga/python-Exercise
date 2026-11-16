@@ -37,7 +37,8 @@ async function speedUp(page: Page, speed: number): Promise<void> {
   const button = page.getByRole("button", { name: "Accelerate", exact: true });
   await button.dispatchEvent("pointerdown", { pointerId: 31, pointerType: "touch" });
   try {
-    await expect.poll(async () => (await state(page)).speed, { timeout: 9000, intervals: [100] }).toBeGreaterThan(speed);
+    // A wall-clock limit only; slow machines run the game behind real time.
+    await expect.poll(async () => (await state(page)).speed, { timeout: 30_000, intervals: [100] }).toBeGreaterThan(speed);
   } finally {
     await button.dispatchEvent("pointerup", { pointerId: 31, pointerType: "touch" });
   }
@@ -69,8 +70,10 @@ test("the hatchback drifts on full lock at speed, then grips again", async ({ pa
 
   const peak = await peakDrift(page, Promise.all([holdStick(page, 80, 0, 1400), holdButton(page, "Accelerate", 1400)]));
   expect(peak).toBeGreaterThan(0.3);
-  // Stick released: the slide ends within a second.
-  await expect.poll(async () => (await state(page)).drift, { timeout: 1500 }).toBeLessThan(0.1);
+  // Stick released: the slide ends within a second of game time.
+  const released = (await snapshot(page)).simTime;
+  await expect.poll(async () => (await state(page)).drift, { timeout: 20_000, intervals: [50] }).toBeLessThan(0.1);
+  expect((await snapshot(page)).simTime - released).toBeLessThan(1);
 });
 
 test("no drift when turning slowly", async ({ page }) => {
@@ -85,8 +88,10 @@ test("gears climb while accelerating and the chase camera settles behind the dir
   await board(page, "car-start");
   await lineUp(page, 60);
   const seen = new Set<string>();
-  const accelerating = holdButton(page, "Accelerate", 3500);
-  for (let i = 0; i < 30; i++) {
+  let held = false;
+  const accelerating = holdButton(page, "Accelerate", 3500).then(() => (held = true));
+  // Sample the gear for as long as the throttle is held (3.5 s of game time).
+  while (!held) {
     seen.add((await state(page)).gear);
     await page.waitForTimeout(100);
   }
