@@ -205,6 +205,7 @@ export class Game {
       hold: () => this.hold(),
       release: () => this.release(),
       saveMoney: () => saveProgress(this.missions.progress()),
+      hour: () => this.clock.hour,
     });
     this.landmarks = new LandmarkView(map.landmarks ?? []);
     renderer.scene.add(this.landmarks.object);

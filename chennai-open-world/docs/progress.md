@@ -33,6 +33,33 @@ Last updated: 16 Nov 2026 (evening).
   Unit tests check its bounds equal the profile's footprint and height, the triangle budget and
   that rays pass through the passage; seen in headless Chromium (lite quality, golden hour)
   from 16 m, 60 m, 80 m and 100 m. Not checked at night or on a phone.
+- **City jobs across the city (J2, 16 Nov, evening; unit-tested only, not yet run in the
+  browser):** three jobs far from Anna Nagar, built from the city map in
+  `apps/game/src/cityJobs.ts` (deterministic for a given map), 13 jobs in all.
+  *Marina evening drive* (`marina-evening`, car): pick a friend up on Sir Thyagaraya Road where
+  it is nearest T. Nagar's centre (about 300 m from it, 3 s wait), drop on Kamarajar Salai
+  opposite the Marina Beach landmark (about 250 m from it, 2 s wait); offered only 16:00–20:30
+  game time (the board says so otherwise; the desk reads the game clock); 888 s for about 5.4 km
+  straight, 7 km by road; up to ₹1,649. Anna Salai between T. Nagar and the Marina is an avoid
+  corridor: 394 points every 25 m along both carriageways (radius half the width + 3 m, widened
+  so the circles join). Time on it beyond 25 s free (for crossing it) cuts the pay 0.8% a second
+  (at most 50%) and one star, two after a minute; the result says "Stuck on Anna Salai for 40 s:
+  -12%"; keeping off it pays +10%; a toast warns on entering it and the HUD title counts the
+  seconds. *Egmore hospital transfer* (`egmore-transfer`, ambulance, three bumps fail it): from the
+  mapped hospital nearest Egmore's place node to the one nearest Royapettah's (2 km apart; on
+  Pantheon Road and Conron Smith Road; names not shown, clinics and eye/dental/diabetes centres
+  skipped), 425 s, ₹1,000. *Mount Road bus* (`mount-road-bus`, reputation 55): four mapped OSM bus
+  stops in order on Anna Salai's north-east-bound carriageway, SIET, DMS, US Embassy, Thousand
+  Lights (their OSM names are shown), with a timetable, 668 s, ₹1,300. New parked vehicles:
+  `car-tnagar`, `ambulance-egmore`, `bus-mount-road`. These jobs start their clock only once the
+  player is in the vehicle within 300–400 m of the first stop (new `startRadius` rule), so getting
+  across town is free. Real: landmarks, roads, hospital and bus stop positions, stop names. Invented:
+  the stories, times, pay, and the approximate points the searches start from. Tested by unit tests
+  in `packages/missions` (evening window, start radius, avoid timing and its effect on pay and
+  stars) and `apps/game/src/content.test.ts`, which builds the content from the real world files
+  and checks the old job ids and count, the new jobs, parking for every vehicle, stops on drivable
+  roads inside the city, and the Marina drive's ends. One browser test was added
+  (`jobs.spec.ts`, Marina drive by teleport) but **not run yet**.
 - **World:** about 1 km² of real Anna Nagar from OpenStreetMap: 136 road pieces, 1,292 building
   footprints, Tower Park and other green areas, 512 trees. Split into 16 chunks of 250 m that
   load and unload (meshes and collision) as the player moves.

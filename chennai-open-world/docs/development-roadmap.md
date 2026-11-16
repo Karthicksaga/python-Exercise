@@ -46,7 +46,7 @@ Milestones, in order:
 | Milestone | Scope | Status |
 |---|---|---|
 | J1. Jobs on the current map | Job board, ambulance run (siren clears traffic), courier (damage bonus), cab ride (fare by distance and rating), bus route (stops in order, timetable); start point, time limit, payout; failing costs money and reputation, not the game; result screen; crash detection with speed loss and a thud; gear indicator; ambulance and bus vehicles; share progress | done in the browser and on the emulator (10 jobs) |
-| J2. The bigger city | Extract and chunks for Anna Nagar → T. Nagar → Anna Salai → Marina Beach → ECR start; OSM `height`/`building:levels` used, 2 floors when missing; coastline and sea plane; landmark models and labels (Anna Nagar Tower, Kapaleeshwarar Temple, Marina Beach, T. Nagar); chunks streamed from files (TD-3) because the city will not fit in one script; Marina evening drive job | in progress: city streamed from files and playable in the browser (106,619 buildings, 20,625 road pieces, 1,877 chunk files, 4.6 MB); sea and sea haze; gopuram model, city jobs, visited districts and APK loading still to do (see "J2 status") |
+| J2. The bigger city | Extract and chunks for Anna Nagar → T. Nagar → Anna Salai → Marina Beach → ECR start; OSM `height`/`building:levels` used, 2 floors when missing; coastline and sea plane; landmark models and labels (Anna Nagar Tower, Kapaleeshwarar Temple, Marina Beach, T. Nagar); chunks streamed from files (TD-3) because the city will not fit in one script; Marina evening drive job | in progress: city streamed from files and playable in the browser (106,619 buildings, 20,625 road pieces, 1,877 chunk files, 4.6 MB); sea and sea haze; Marina evening drive and two more city jobs done in code and unit-tested, browser run pending; gopuram model, visited districts and APK loading still to do (see "J2 status") |
 | J3. Chennai traffic | Signals at main junctions that traffic and the HUD obey; zebra crossings where traffic yields to pedestrians; buses and two-wheelers in traffic; density by time of day and by area (T. Nagar, Anna Salai heavier); time-of-day setting | done in the browser (no player penalty for red lights, no walk signals, no overtaking) |
 | J4. The look | Golden hour by default, day/night cycle, light rain, sea haze, whitewashed walls and red-tile roofs, palms, draw distance per quality tier, cheap motion blur at speed (high tier only) | done in the browser and seen on the emulator; sea haze is a hook only; no street lights |
 | J5. Driving feel | Drift at high speed, chase camera that looks ahead, gear-change sound | done in the browser |
@@ -65,8 +65,14 @@ markings, parks and sand per chunk, the sea from the OSM coastline with sea haze
 near the player, signals at main-road junctions and mapped OSM signals with only the nearby
 ones drawn, a tiled minimap, and the original stages and jobs kept in Anna Nagar.
 
+Done in code, unit-tested, browser run pending: the Marina evening drive (T. Nagar to the
+Marina beach road, 16:00–20:30 only, time on Anna Salai cuts pay and stars) and two more city
+jobs (Egmore to Royapettah hospital transfer, Mount Road bus along four mapped Anna Salai
+stops), in `apps/game/src/cityJobs.ts`; one browser test for the Marina drive is written in
+`jobs.spec.ts` and has not been run.
+
 Left, in order: the gopuram model at Kapaleeshwarar (data and solids exist, no mesh yet); the
-Marina evening drive and other city jobs; visited districts in the save and share text;
+browser run of the city jobs; visited districts in the save and share text;
 loading from the APK (not run: no Android SDK here; TD-16 says what to check); memory (the
 whole-city road graph and signals are always loaded, heap about 110–125 MB versus 45 MB);
 the open question about stages 7–10. The toolchain audit (`toolchain-audit.md`) proposes

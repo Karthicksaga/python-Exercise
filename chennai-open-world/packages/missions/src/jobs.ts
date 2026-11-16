@@ -38,6 +38,36 @@ export interface Job {
   readonly minReputation?: number;
   /** Bumps that end the job (an ambulance patient can only take so much). */
   readonly maxBumps?: number;
+  /** Game hours when the board offers the job (e.g. evenings only). Always offered when absent. */
+  readonly hours?: JobHours;
+  /** A stretch of road to keep off; time spent on it lowers the pay and the rating. */
+  readonly avoid?: AvoidZone;
+  /**
+   * For jobs far from where the player usually is: the clock starts only once the player is in
+   * the job's vehicle within this many metres of the first stop, so getting there is free.
+   */
+  readonly startRadius?: number;
+}
+
+/** A window of game hours, 0–24. `from` may be later than `to` for a window across midnight. */
+export interface JobHours {
+  readonly from: number;
+  readonly to: number;
+}
+
+/** One sample of a road to avoid: within `radius` of it counts as being on that road. */
+export interface AvoidPoint {
+  readonly x: number;
+  readonly z: number;
+  readonly radius: number;
+}
+
+export interface AvoidZone {
+  /** Name used on the HUD and the result screen, e.g. "Anna Salai". */
+  readonly name: string;
+  readonly points: readonly AvoidPoint[];
+  /** Seconds allowed inside for free (crossing it at a junction, waiting at its signal). */
+  readonly grace: number;
 }
 
 export interface JobResult {
@@ -49,6 +79,8 @@ export interface JobResult {
   readonly seconds: number;
   /** Bus stops reached after their timetable time. */
   readonly late: number;
+  /** Seconds spent inside the job's avoid zone (0 when it has none). */
+  readonly avoided: number;
   /** One line per thing that changed the pay, for the result screen. */
   readonly notes: readonly string[];
   readonly reputation: number;
@@ -59,6 +91,8 @@ export type JobEvent =
   | { readonly type: "started"; readonly job: Job }
   | { readonly type: "stop"; readonly job: Job; readonly label: string; readonly index: number }
   | { readonly type: "bump"; readonly job: Job; readonly count: number }
+  /** The player drove into the job's avoid zone (once each time they enter it). */
+  | { readonly type: "avoid"; readonly job: Job; readonly name: string }
   | { readonly type: "completed"; readonly result: JobResult }
   | { readonly type: "failed"; readonly job: Job; readonly reason: string; readonly fine: number; readonly reputation: number };
 
@@ -87,6 +121,43 @@ const FAIL_REPUTATION = 5;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
+/** Whether a job with these hours is offered at `hour` (game time, 0–24). */
+export function openAt(hours: JobHours | undefined, hour: number): boolean {
+  if (!hours) return true;
+  const h = ((hour % 24) + 24) % 24;
+  return hours.from <= hours.to ? h >= hours.from && h < hours.to : h >= hours.from || h < hours.to;
+}
+
+/** "16:00–20:30" */
+export function hoursText(hours: JobHours): string {
+  const text = (hour: number) => {
+    const minutes = Math.round(hour * 60) % (24 * 60);
+    return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+  };
+  return `${text(hours.from)}–${text(hours.to)}`;
+}
+
+export function insideZone(zone: AvoidZone, x: number, z: number): boolean {
+  return zone.points.some((p) => (p.x - x) ** 2 + (p.z - z) ** 2 <= p.radius ** 2);
+}
+
+/** Share of the pay lost per second over the grace time, and the most that can be lost. */
+const AVOID_RATE = 0.008;
+const AVOID_MAX = 0.5;
+/** Bonus for keeping clear of the zone (inside the grace time). */
+const AVOID_BONUS = 0.1;
+
+/**
+ * What time inside an avoid zone does to a finished job: a share of the pay (negative is a
+ * cut, positive a bonus), stars lost, and the line for the result screen.
+ */
+export function avoidPenalty(zone: AvoidZone, seconds: number): { share: number; stars: number; note: string } {
+  const over = Math.max(0, seconds - zone.grace);
+  if (over <= 0) return { share: AVOID_BONUS, stars: 0, note: `Kept off ${zone.name}: +${Math.round(AVOID_BONUS * 100)}%` };
+  const share = Math.min(AVOID_MAX, over * AVOID_RATE);
+  return { share: -share, stars: over >= 60 ? 2 : 1, note: `Stuck on ${zone.name} for ${Math.round(seconds)} s: -${Math.round(share * 100)}%` };
+}
+
 export class JobRunner {
   private current: Job | null = null;
   private stopIndex = 0;
@@ -95,6 +166,8 @@ export class JobRunner {
   private dwelt = 0;
   private bumpCount = 0;
   private lateCount = 0;
+  private avoidTime = 0;
+  private inAvoid = false;
   private rep: number;
   private doneCount: number;
   private failedCount: number;
@@ -133,6 +206,11 @@ export class JobRunner {
     return this.bumpCount;
   }
 
+  /** Seconds spent so far inside the job's avoid zone. */
+  get avoidSeconds(): number {
+    return this.avoidTime;
+  }
+
   get reputation(): number {
     return this.rep;
   }
@@ -147,15 +225,19 @@ export class JobRunner {
     return dwell && this.dwelt > 0 ? Math.max(0, dwell - this.dwelt) : null;
   }
 
-  /** Whether the board should offer this job, and why not. */
-  available(job: Job): { ok: true } | { ok: false; reason: string } {
+  /**
+   * Whether the board should offer this job, and why not.
+   * @param hour game time; a job with `hours` is offered only inside them (not checked when absent)
+   */
+  available(job: Job, hour?: number): { ok: true } | { ok: false; reason: string } {
     if (this.current) return { ok: false, reason: "Finish or quit the current job first" };
     if ((job.minReputation ?? 0) > this.rep) return { ok: false, reason: `Needs reputation ${job.minReputation}` };
+    if (job.hours && hour !== undefined && !openAt(job.hours, hour)) return { ok: false, reason: `Offered ${hoursText(job.hours)} only` };
     return { ok: true };
   }
 
-  accept(job: Job): JobEvent[] {
-    if (!this.available(job).ok) return [];
+  accept(job: Job, hour?: number): JobEvent[] {
+    if (!this.available(job, hour).ok) return [];
     this.current = job;
     this.stopIndex = 0;
     this.running = false;
@@ -163,6 +245,8 @@ export class JobRunner {
     this.dwelt = 0;
     this.bumpCount = 0;
     this.lateCount = 0;
+    this.avoidTime = 0;
+    this.inAvoid = false;
     return [{ type: "accepted", job }];
   }
 
@@ -188,6 +272,8 @@ export class JobRunner {
     const inVehicle = player.mode === job.vehicle;
     if (!this.running) {
       if (!inVehicle) return events;
+      const first = job.stops[0];
+      if (job.startRadius !== undefined && first && Math.hypot(player.x - first.x, player.z - first.z) > job.startRadius) return events;
       this.running = true;
       events.push({ type: "started", job });
     }
@@ -195,6 +281,14 @@ export class JobRunner {
     if (this.elapsed >= job.timeLimit) {
       events.push(this.fail(job, "Out of time"));
       return events;
+    }
+    if (job.avoid) {
+      const inside = insideZone(job.avoid, player.x, player.z);
+      if (inside) {
+        this.avoidTime += dt;
+        if (!this.inAvoid) events.push({ type: "avoid", job, name: job.avoid.name });
+      }
+      this.inAvoid = inside;
     }
 
     const stop = job.stops[this.stopIndex];
@@ -241,7 +335,14 @@ export class JobRunner {
       pay *= 1 - share;
       notes.push(`${this.lateCount} stop${this.lateCount === 1 ? "" : "s"} late: -${Math.round(share * 100)}%`);
     }
-    const stars = clamp(5 - this.bumpCount - this.lateCount - (timeShare < 0.15 ? 1 : 0), 1, 5);
+    let avoidStars = 0;
+    if (job.avoid) {
+      const penalty = avoidPenalty(job.avoid, this.avoidTime);
+      pay *= 1 + penalty.share;
+      avoidStars = penalty.stars;
+      notes.push(penalty.note);
+    }
+    const stars = clamp(5 - this.bumpCount - this.lateCount - avoidStars - (timeShare < 0.15 ? 1 : 0), 1, 5);
     if (job.kind === "cab") {
       // Passengers tip for a good ride.
       const tip = job.payout * (stars - 3) * 0.08;
@@ -253,7 +354,7 @@ export class JobRunner {
     this.rep = clamp(this.rep + stars - 2, 0, 100);
     this.doneCount++;
     this.best[job.id] = Math.max(this.best[job.id] ?? 0, earned);
-    const result: JobResult = { job, pay: earned, stars, bumps: this.bumpCount, seconds: this.elapsed, late: this.lateCount, notes, reputation: this.rep - before };
+    const result: JobResult = { job, pay: earned, stars, bumps: this.bumpCount, seconds: this.elapsed, late: this.lateCount, avoided: this.avoidTime, notes, reputation: this.rep - before };
     this.current = null;
     this.running = false;
     return result;
