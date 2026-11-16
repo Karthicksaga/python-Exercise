@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, SceneRenderer, createChunkAssets, facadeAtlas, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
 import { Combat, PLAYER_MAX_HEALTH, type CombatEvent, type PlayerState } from "@cow/combat";
-import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkSolids, coastSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
+import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
 import { HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, type HumanFigure } from "@cow/player";
@@ -250,6 +250,8 @@ export class Game {
         const data = chunkSolids(chunk);
         group.addMesh(data.vertices, data.indices);
         for (const box of data.boxes) group.addBox(box);
+        // Poles and bus-shelter posts (kerbs are not solid, TD-8).
+        for (const box of furnitureSolids(chunkFurniture(map, chunk))) group.addBox(box);
         solids.set(chunk.key, group);
       },
       unloaded: (chunk) => {

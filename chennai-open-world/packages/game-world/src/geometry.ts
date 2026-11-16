@@ -76,6 +76,14 @@ function segmentGrid(roads: readonly Road[]): SpatialGrid<Segment> {
   return grid;
 }
 
+/**
+ * Visit the road segments (road and index of the segment's first point) in the grid cells within
+ * `radius` of a point. A segment may be visited more than once; stops early when `visit` returns true.
+ */
+export function roadSegmentsNear(roads: readonly Road[], x: number, z: number, radius: number, visit: (road: Road, i: number) => boolean | void): void {
+  segmentGrid(roads).near(x, z, radius, (s) => visit(s.road, s.i));
+}
+
 /** Nearest point on a road centreline, optionally only on roads a vehicle can use. */
 export function nearestRoadPoint(map: Pick<WorldMap, "roads">, p: Point, drivableOnly = true): RoadHit | null {
   const consider = (best: RoadHit | null, road: Road, i: number): RoadHit | null => {

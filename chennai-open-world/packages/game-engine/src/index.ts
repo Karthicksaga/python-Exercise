@@ -10,3 +10,4 @@ export * from "./RainView";
 export * from "./lighting";
 export * from "./LandmarkView";
 export * from "./SignalView";
+export * from "./StreetFurniture";
