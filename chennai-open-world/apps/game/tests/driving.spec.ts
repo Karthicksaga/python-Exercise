@@ -1,6 +1,6 @@
 /** Vehicles, missions and saved progress. */
 import { expect, test } from "@playwright/test";
-import { board, holdButton, holdStick, ready, snapshot, tapButton, teleport, waitGameTime } from "./support";
+import { board, holdButton, holdStick, ready, snapshot, tapButton, teleport, waitGameTime, GAME_WAIT } from "./support";
 
 test("get in the car, drive, brake, reverse and get out", async ({ page }) => {
   await ready(page);
@@ -78,7 +78,7 @@ test("stage 1 completes on foot, pays its reward, and progress survives a restar
   await teleport(page, target.x + 6, target.z, 0);
   expect((await snapshot(page)).mission).toBe("morning-walk");
   await holdStick(page, -80, 0, 1200); // camera faces north, so left is west, towards the marker
-  await expect.poll(async () => (await snapshot(page)).money, { timeout: 5000 }).toBe(50);
+  await expect.poll(async () => (await snapshot(page)).money, { timeout: GAME_WAIT }).toBe(50);
   await expect(page.getByTestId("money")).toHaveText("₹50");
   await expect(page.getByRole("status")).toContainText("Stage 1 complete");
   const next = await snapshot(page);
@@ -97,14 +97,14 @@ test("stage 2 needs the car and a full stop at the destination", async ({ page }
   // Complete stage 1 first.
   const first = (await snapshot(page)).target!;
   await teleport(page, first.x, first.z);
-  await expect.poll(async () => (await snapshot(page)).mission, { timeout: 5000 }).toBe("borrowed-wheels");
+  await expect.poll(async () => (await snapshot(page)).mission, { timeout: GAME_WAIT }).toBe("borrowed-wheels");
 
   // The marker points at the car; getting in moves the objective on.
   await board(page, "car-start");
   await expect.poll(async () => (await snapshot(page)).objective).toBe("Drive to Anna Nagar Tower Park");
   const park = (await snapshot(page)).target!;
   await teleport(page, park.x, park.z);
-  await expect.poll(async () => (await snapshot(page)).money, { timeout: 6000 }).toBe(200);
+  await expect.poll(async () => (await snapshot(page)).money, { timeout: GAME_WAIT }).toBe(200);
   expect((await snapshot(page)).mission).toBe("auto-shift");
 });
 
@@ -112,7 +112,7 @@ test("new game clears progress", async ({ page }) => {
   await ready(page);
   const first = (await snapshot(page)).target!;
   await teleport(page, first.x, first.z);
-  await expect.poll(async () => (await snapshot(page)).money, { timeout: 5000 }).toBe(50);
+  await expect.poll(async () => (await snapshot(page)).money, { timeout: GAME_WAIT }).toBe(50);
   await page.getByRole("button", { name: "Pause", exact: true }).tap();
   await page.getByRole("button", { name: "New game", exact: true }).tap();
   await expect.poll(async () => (await snapshot(page)).money).toBe(0);

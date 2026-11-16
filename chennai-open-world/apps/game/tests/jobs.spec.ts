@@ -1,6 +1,6 @@
 /** City jobs: the job board, the ambulance run end to end, reputation locks and the bus. */
 import { expect, test, type Page } from "@playwright/test";
-import { board, holdButton, ready, snapshot, tapButton, teleport } from "./support";
+import { board, holdButton, ready, snapshot, tapButton, teleport, GAME_WAIT } from "./support";
 
 interface JobSnapshot {
   job: string | null;
@@ -35,11 +35,11 @@ test("take the ambulance run, use the siren, and get paid", async ({ page }) => 
   // Drive straight to the patient: stop inside the marker and wait for them to be loaded.
   const pickup = moving.target!;
   await teleport(page, pickup.x, pickup.z);
-  await expect.poll(async () => (await jobState(page)).jobStop, { timeout: 8000 }).toBe(1);
+  await expect.poll(async () => (await jobState(page)).jobStop, { timeout: GAME_WAIT }).toBe(1);
   const hospital = (await jobState(page)).target!;
   expect(Math.hypot(hospital.x - pickup.x, hospital.z - pickup.z)).toBeGreaterThan(50);
   await teleport(page, hospital.x, hospital.z);
-  await expect(page.getByRole("dialog")).toContainText("Ambulance run complete", { timeout: 6000 });
+  await expect(page.getByRole("dialog")).toContainText("Ambulance run complete", { timeout: GAME_WAIT });
   const done = await jobState(page);
   expect(done.job).toBeNull();
   expect(done.held).toBe(true);
@@ -111,11 +111,11 @@ test("the Marina evening drive is offered only in the evening, and pays for a dr
   expect((await snapshot(page)).mode).toBe("car");
   const pickup = (await jobState(page)).target!;
   await teleport(page, pickup.x, pickup.z);
-  await expect.poll(async () => (await jobState(page)).jobStop, { timeout: 10_000 }).toBe(1);
+  await expect.poll(async () => (await jobState(page)).jobStop, { timeout: GAME_WAIT }).toBe(1);
   const drop = (await jobState(page)).target!;
   expect(Math.hypot(drop.x - pickup.x, drop.z - pickup.z)).toBeGreaterThan(4000);
   await teleport(page, drop.x, drop.z);
-  await expect(page.getByRole("dialog")).toContainText("Marina evening drive complete", { timeout: 8000 });
+  await expect(page.getByRole("dialog")).toContainText("Marina evening drive complete", { timeout: GAME_WAIT });
   await expect(page.getByRole("dialog")).toContainText("Kept off Anna Salai");
   const done = await jobState(page);
   expect(done.job).toBeNull();

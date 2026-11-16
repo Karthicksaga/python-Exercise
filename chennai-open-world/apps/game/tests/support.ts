@@ -59,6 +59,13 @@ export async function ready(page: Page, keepSave = false): Promise<void> {
 }
 
 /**
+ * Wall-clock limit for polls that wait on something the game does in its own time (a stop's
+ * dwell, a fight starting, a reward paid). It only bounds how long to wait: on a slow runner
+ * a few game seconds can take many real ones. The condition polled is what the test checks.
+ */
+export const GAME_WAIT = 40_000;
+
+/**
  * Wait until the game has simulated `seconds` more (its own clock, not the wall clock). On a
  * slow machine with software rendering the game runs behind real time, and a test that holds a
  * control for a fixed number of wall-clock milliseconds then measures a fraction of the motion.
