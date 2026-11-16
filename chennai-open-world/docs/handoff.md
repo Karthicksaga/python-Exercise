@@ -215,3 +215,15 @@ desktop instructions.
 - Next, requested by the user and started in parallel by separate agents: **Share auto** (a
   route job: picking up and dropping passengers anywhere along a fixed route, like the bus) and
   **pedestrians hurt when hit** (knocked down, injured or killed, with consequences).
+
+## In progress (17 Nov 2026), four parallel agent branches, to be merged into `feat/chennai-open-world`
+1. **Share auto job:** an auto runs a route; passengers wave it down and get off anywhere along it.
+2. **Pedestrians hurt when hit:** knocked down, injured or killed by impact speed; fine,
+   reputation, bystanders react, traffic avoids people lying on the road. Non-graphic.
+3. **Places and activities:** home, hospital, gym, mall and cinema (invented films), with
+   light activities and 2–3 short story missions.
+4. **Suburban railway:** real OSM tracks and stations (Central, Egmore … St Thomas Mount),
+   timetabled EMU trains, board and ride. Tambaram is beyond the map's southern edge, so lines
+   to it end at the map edge. The environment now allows the OSM hosts (Overpass,
+   download.openstreetmap.fr) for this.
+Avoid these areas until they are merged, or coordinate first.
