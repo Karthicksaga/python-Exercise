@@ -34,6 +34,29 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 
 The release APK is signed with the debug key for now; it is for testing, not for the Play Store.
 
+## Continuous integration
+
+`.github/workflows/chennai-open-world.yml` runs on every push and pull request that changes this
+folder (and can be started by hand from the Actions tab):
+
+1. **test**: `npm run typecheck`, `npm test` and `npm run test:e2e` in headless Chromium. On
+   failure the Playwright results are attached to the run.
+2. **web**: builds the game; the build is attached as the `chennai-open-world-web` artifact.
+3. **android**: builds the release APK, attached as `chennai-open-world-apk` (debug-signed, for
+   testing only).
+4. **deploy**: on pushes to `feat/chennai-open-world` or `master` (and manual runs), publishes
+   the web build to GitHub Pages.
+
+To download the web build or the APK, open the run under **Actions**, scroll to **Artifacts** and
+download the zip. To play the web build, unzip it and serve the folder over http (for example
+`python3 -m http.server` inside it), then open the printed address.
+
+To play in the browser through GitHub Pages, enable it once: repository **Settings → Pages →
+Source: GitHub Actions**. The next deploy prints the link on the run page. Until Pages is enabled
+the deploy job fails (the other jobs' results still stand). If the `github-pages` environment
+only allows the default branch, add `feat/chennai-open-world` under **Settings → Environments**. The Pages link is public: anyone with the URL can
+play the build.
+
 ## Layout
 
 ```

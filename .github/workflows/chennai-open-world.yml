@@ -1,0 +1,151 @@
+name: Chennai Open World
+# Tests, web build and Android APK for chennai-open-world/. Nothing else in this repo is built here.
+on:
+  push:
+    paths: ['chennai-open-world/**', '.github/workflows/chennai-open-world.yml']
+  pull_request:
+    paths: ['chennai-open-world/**', '.github/workflows/chennai-open-world.yml']
+  workflow_dispatch:
+
+# A newer push to the same branch or PR cancels the run still in progress.
+concurrency:
+  group: chennai-open-world-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: chennai-open-world
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # Playwright starts its own build + preview server and never reuses one in CI.
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: chennai-open-world/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # Installs the Chromium build that matches the pinned @playwright/test in package-lock.json.
+      - run: npx playwright install --with-deps chromium
+      # Note: two on-foot tests (joystick walk distance, camera drag) hold input for a fixed time
+      # and can fail on a heavily loaded machine (see docs/progress.md). No extra retries are added
+      # on purpose: a failure here should be looked at, not hidden.
+      - run: npm run test:e2e
+      - name: Upload Playwright results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: |
+            chennai-open-world/apps/game/playwright-report/
+            chennai-open-world/apps/game/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  web:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: chennai-open-world/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      # Downloadable build: unzip and serve the folder over http to play it.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chennai-open-world-web
+          path: chennai-open-world/apps/game/dist/
+          if-no-files-found: error
+      # Same files, packaged for GitHub Pages (only where the deploy job below runs).
+      - if: >-
+          github.event_name == 'workflow_dispatch' ||
+          (github.event_name == 'push' &&
+           (github.ref == 'refs/heads/feat/chennai-open-world' || github.ref == 'refs/heads/master'))
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: chennai-open-world/apps/game/dist/
+
+  deploy:
+    # Publishes the web build to GitHub Pages (a public URL).
+    # Requires Pages to be enabled once: repo Settings → Pages → Source: GitHub Actions.
+    # If it is not enabled this job fails (on its own; the test, web and APK results still stand).
+    # The github-pages environment may only allow the default branch: add feat/chennai-open-world
+    # under Settings → Environments → github-pages to deploy from it.
+    needs: web
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+       (github.ref == 'refs/heads/feat/chennai-open-world' || github.ref == 'refs/heads/master'))
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            chennai-open-world/package-lock.json
+            chennai-open-world/apps/mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            chennai-open-world/apps/mobile/android/*.gradle*
+            chennai-open-world/apps/mobile/android/app/*.gradle*
+            chennai-open-world/apps/mobile/android/gradle/wrapper/gradle-wrapper.properties
+      # The runner ships an Android SDK at $ANDROID_HOME. Accepting the licences lets Gradle
+      # download what the project asks for (platform 37, build-tools 37, NDK 27.1, CMake).
+      - name: Accept Android SDK licences
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - run: npm ci
+      # Builds the game and copies it into the Android app's assets.
+      - run: npm run sync:android
+      # The React Native shell has its own lockfile (not part of the root workspaces).
+      - run: npm ci
+        working-directory: chennai-open-world/apps/mobile
+      # The release APK is signed with the debug key (app/debug.keystore): for testing only,
+      # not for the Play Store.
+      # arm64 only, as the APKs built so far: modern phones, and a quarter of the native build time.
+      - run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+        working-directory: chennai-open-world/apps/mobile/android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chennai-open-world-apk
+          path: chennai-open-world/apps/mobile/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
