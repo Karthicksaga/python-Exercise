@@ -215,3 +215,22 @@ desktop instructions.
 - Next, requested by the user and started in parallel by separate agents: **Share auto** (a
   route job: picking up and dropping passengers anywhere along a fixed route, like the bus) and
   **pedestrians hurt when hit** (knocked down, injured or killed, with consequences).
+
+## 17 Nov 2026 (latest): places, everyday activities and short stories (branch `agent/places-activities`)
+- **Done:** home, hospital, gym, mall and cinema with ENTER at their entrances, activities that
+  cost money and game time, fitness that raises sprint speed a little, clothes, three short
+  stories. Details and tests in `progress.md` ("Places, everyday activities and short stories").
+- **Where things are:** rules `packages/missions/src/life.ts`, `stories.ts`; screen
+  `packages/ui/src/PlaceScreen.ts`, `placeIcons.ts`; markers `packages/game-engine/src/PlaceMarkers.ts`;
+  placement and stories `apps/game/src/places.ts`; glue `apps/game/src/PlaceDesk.ts`. Shared
+  files were touched additively only: `Game.ts` (desk, markers, snapshot fields, merging save),
+  `main.ts` (`__cow.setHealth`, tests only), `TouchControls.setAction` (optional spoken name),
+  `Minimap` (optional `icon` on markers), `PlayerController.runScale`, `HumanFigure.setClothes`,
+  and the `index.ts` export lists.
+- **Merge note:** the share-auto and pedestrian branches also edit `Game.ts` and
+  `packages/missions`; this branch does not edit `content.ts`, `cityJobs.ts`, `JobDesk.ts`,
+  `jobs.ts`, `Population.ts` or `packages/combat`.
+- **Not done / next:** play it on the emulator and a phone (the place screen's layout at small
+  heights, the TAP timing by touch); sounds don't play inside places because holding the game
+  suspends audio; a browser test for the gym bet and first-show stories; the knock-out bill could
+  send the player to the hospital place instead of the start.
