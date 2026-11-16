@@ -1,6 +1,6 @@
 /** Fighting, shooting, being knocked out, and the combat stages. */
 import { expect, test, type Page } from "@playwright/test";
-import { ready, snapshot, teleport } from "./support";
+import { ready, snapshot, teleport, GAME_WAIT } from "./support";
 
 const FIRST_SIX = ["morning-walk", "borrowed-wheels", "auto-shift", "parcel-run", "cross-town", "bike-courier"];
 
@@ -51,7 +51,7 @@ test("stage 7: thugs appear at the park, fight back, and are beaten with punches
   expect(await standing(page)).toHaveLength(0); // nobody until the objective begins
 
   await teleport(page, start.target!.x, start.target!.z);
-  await expect.poll(async () => (await standing(page)).length, { timeout: 5000 }).toBe(3);
+  await expect.poll(async () => (await standing(page)).length, { timeout: GAME_WAIT }).toBe(3);
   expect((await state(page)).objective).toContain("Beat the three thugs");
 
   let lowest = 100;
@@ -78,7 +78,7 @@ test("stage 8: the pistol is issued, uses ammunition and takes down armed enemie
   const start = await state(page);
   expect(start.mission).toBe("bike-thieves");
   await teleport(page, start.target!.x, start.target!.z);
-  await expect.poll(async () => (await standing(page)).length, { timeout: 5000 }).toBe(3);
+  await expect.poll(async () => (await standing(page)).length, { timeout: GAME_WAIT }).toBe(3);
   const issued = (await state(page)).ammo;
   expect(issued).toBeGreaterThan(10);
 
@@ -103,16 +103,21 @@ test("stage 8: the pistol is issued, uses ammunition and takes down armed enemie
 });
 
 test("being knocked out costs a hospital bill and restarts the stage", async ({ page }) => {
+  // Four guards wear the player down over many game seconds; a slow runner needs far longer in
+  // real time (the limits below only bound how long to wait, not what is checked).
+  test.setTimeout(240_000);
   await startAt(page, [...FIRST_SIX, "park-trouble", "bike-thieves"], 4300);
   const start = await state(page);
   expect(start.mission).toBe("godown-raid");
   const home = { x: start.x, z: start.z };
   await teleport(page, start.target!.x, start.target!.z);
-  await expect.poll(async () => (await standing(page)).length, { timeout: 5000 }).toBe(4);
+  await expect.poll(async () => (await standing(page)).length, { timeout: GAME_WAIT }).toBe(4);
   // Stand among four armed guards and do nothing.
   const guard = (await standing(page))[0]!;
   await teleport(page, guard.x + 6, guard.z + 6);
-  await expect(page.getByRole("status")).toContainText("Knocked out", { timeout: 60_000 });
+  // Knocked out: the ₹100 hospital bill is charged. Read from the game, not the toast, which
+  // fades after a few real seconds and can be missed by a slow poll.
+  await expect.poll(async () => (await state(page)).money, { timeout: 180_000, intervals: [250] }).toBe(4200);
   const end = await state(page);
   expect(end.money).toBe(4200);
   expect(end.health).toBe(100);
