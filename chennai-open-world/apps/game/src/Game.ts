@@ -658,7 +658,8 @@ export class Game {
   private drivenMotion(vehicle: Vehicle): DrivenVehicle {
     const { body } = vehicle;
     const p = body.position();
-    const v = body.planarVelocity();
+    // The speed it came in at, even if a person's collision box already stopped it.
+    const v = vehicle.approachVelocity();
     const spec = vehicle.type.physics;
     return { x: p.x, z: p.z, yaw: body.yaw(), vx: v.x, vz: v.z, halfWidth: spec.halfExtents.x, halfLength: spec.halfExtents.z, mass: spec.mass, body };
   }

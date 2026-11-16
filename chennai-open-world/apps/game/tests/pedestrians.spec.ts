@@ -1,6 +1,6 @@
 /** Driving into a pedestrian: knocked down, injured or killed, with a fine and lost reputation. */
 import { expect, test, type Page } from "@playwright/test";
-import { board, probe, ready, snapshot, teleport, waitGameTime } from "./support";
+import { board, probe, ready, snapshot, tapButton, teleport, waitGameTime } from "./support";
 
 interface HitSnapshot {
   x: number;
@@ -49,15 +49,21 @@ async function lineUp(page: Page, needed: number): Promise<{ x: number; z: numbe
 const accelerate = (page: Page, down: boolean) =>
   page.getByRole("button", { name: "Accelerate", exact: true }).dispatchEvent(down ? "pointerdown" : "pointerup", { pointerId: 31, pointerType: "touch" });
 
-/** Stand a pedestrian on the car's line, `ahead` metres in front of it. */
-async function placeAhead(page: Page, ahead: number): Promise<void> {
+/**
+ * Stand a pedestrian `ahead` metres in front of the vehicle, `aside` metres to its right of the
+ * centre line (so it is struck off-centre), facing `turn` radians from across the road.
+ */
+async function placeAhead(page: Page, ahead: number, aside = 0, turn = 0): Promise<void> {
   const s = await state(page);
-  const x = s.x - Math.sin(s.yaw) * ahead;
-  const z = s.z - Math.cos(s.yaw) * ahead;
+  const fx = -Math.sin(s.yaw);
+  const fz = -Math.cos(s.yaw);
+  // Right of facing (fx, fz) is (-fz, fx).
+  const x = s.x + fx * ahead - fz * aside;
+  const z = s.z + fz * ahead + fx * aside;
   // Facing across the road, as someone crossing would.
   const placed = await page.evaluate(
     ([px, pz, heading]) => (window as unknown as { __cow: { stagePedestrian(x: number, z: number, h: number): boolean } }).__cow.stagePedestrian(px!, pz!, heading!),
-    [x, z, s.yaw + Math.PI / 2],
+    [x, z, s.yaw + Math.PI / 2 + turn],
   );
   expect(placed).toBe(true);
 }
@@ -155,4 +161,38 @@ test("hitting a pedestrian at medium speed injures them: they lie down, then get
   }
   expect(fastest).toBeGreaterThan(0.1);
   expect(fastest).toBeLessThanOrEqual(0.61);
+});
+
+test("the auto-rickshaw and the motorbike hit people off-centre too, and the hit is counted at the speed they came in at", async ({ page }) => {
+  await start(page);
+  // Struck by a corner (auto) or the very edge (bike, 0.32 m half-width), the person turned at an angle.
+  const cases = [
+    { id: "auto-park", aside: 0.75, injuries: 1 },
+    { id: "bike-start", aside: -0.45, injuries: 2 },
+  ] as const;
+  for (const { id, aside, injuries } of cases) {
+    await board(page, id);
+    await lineUp(page, 70);
+    await accelerate(page, true);
+    try {
+      await expect.poll(async () => (await state(page)).speed, { timeout: 40_000, intervals: [100] }).toBeGreaterThan(7);
+    } finally {
+      await accelerate(page, false);
+    }
+    const before = await state(page);
+    await placeAhead(page, 9, aside, 0.8);
+    await expect.poll(async () => (await state(page)).casualties.length, { timeout: 30_000, intervals: [50] }).toBe(injuries);
+    const after = await state(page);
+    expect(after.lastPedestrianHit).toMatchObject({ outcome: "injured", fine: 1500, reputation: 8 });
+    // Came in above 7 m/s and coasted at most a little: the hit is not read after the body stopped the vehicle.
+    expect(after.lastPedestrianHit!.speed).toBeGreaterThan(5.5);
+    expect(after.lastPedestrianHit!.speed).toBeLessThanOrEqual(before.speed + 0.5);
+    expect(after.money).toBe(MONEY - 1500 * injuries);
+    // Brake to a stop and get out for the next vehicle.
+    await page.getByRole("button", { name: "Brake", exact: true }).dispatchEvent("pointerdown", { pointerId: 32, pointerType: "touch" });
+    await expect.poll(async () => (await state(page)).speed, { timeout: 30_000, intervals: [100] }).toBeLessThan(1);
+    await page.getByRole("button", { name: "Brake", exact: true }).dispatchEvent("pointerup", { pointerId: 32, pointerType: "touch" });
+    await tapButton(page, "Get out");
+  }
+  expect((await state(page)).reputation).toBe(50 - 16);
 });
