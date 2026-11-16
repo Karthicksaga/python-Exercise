@@ -8,10 +8,17 @@
  * from `towerProfile` (shared with the collision), so what you see is what you bump into. One
  * merged mesh per landmark with one shared vertex-coloured material; about 6k triangles.
  * Colours are invented (cream and white with a muted terracotta accent).
+ *
+ * Kapaleeshwarar Temple's gopuram is likewise original and procedural, built from
+ * `gopuramProfile` (shared with the collision; every proportion estimated): a grey stone base
+ * with the open passage running east-west, tapering tiers of painted stucco (a different
+ * invented colour per tier) each with an overhanging ledge and a row of pilasters and niches,
+ * a barrel-vaulted crown and a row of gold finials (kalasams). Broad faces look east and west.
+ * Same merged-mesh, one-material scheme as the tower.
  */
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { towerProfile, type Landmark, type TowerProfile } from "@cow/game-world";
+import { gopuramProfile, towerProfile, type GopuramProfile, type Landmark, type TowerProfile } from "@cow/game-world";
 
 const SEGMENTS = 24; // matches the collision prisms in `landmarkSolids`
 const COLOR = {
@@ -22,6 +29,27 @@ const COLOR = {
   accent: 0xa9654f,
   opening: 0x3b3a38,
   rail: 0x7d7a72,
+} as const;
+
+/** Invented gopuram colours: granite base, a stucco colour and a trim colour per tier, gold finials. */
+const TEMPLE = {
+  stone: 0x9a968c,
+  stoneDark: 0x7d796f,
+  stoneLight: 0xb2ada1,
+  shadow: 0x2f2b27,
+  ledge: 0xf3ead6,
+  gold: 0xd9a531,
+  vault: 0xc8553d,
+  /** [body, pilasters] per tier, bottom first; repeats if there are more tiers. */
+  tiers: [
+    [0xe0b25a, 0xf4e3b8],
+    [0x5f9fb8, 0xe9f0f0],
+    [0xc96f5a, 0xf3d7bf],
+    [0x7fae6e, 0xf0eccd],
+    [0xd88fa0, 0xf6e6e0],
+    [0x4f8f8a, 0xf2e2b0],
+    [0xe7c27a, 0xc96f5a],
+  ],
 } as const;
 
 /** Where a landmark's name goes on screen. Structurally matches `LandmarkLabelPlacement` in `@cow/ui`. */
@@ -127,6 +155,108 @@ function towerGeometry(profile: TowerProfile): THREE.BufferGeometry {
   return parts.merge();
 }
 
+/**
+ * A box tapering from half-sizes (hx0, hz0) at its bottom to (hx1, hz1) at its top, standing
+ * on y = 0. Faces stay flat (the box keeps separate vertices per face).
+ */
+function taperedBox(hx0: number, hx1: number, hz0: number, hz1: number, height: number): THREE.BufferGeometry {
+  const box = new THREE.BoxGeometry(1, 1, 1);
+  const position = box.getAttribute("position");
+  for (let i = 0; i < position.count; i++) {
+    const t = position.getY(i) + 0.5;
+    position.setXYZ(i, Math.sign(position.getX(i)) * (hx0 + (hx1 - hx0) * t), t * height, Math.sign(position.getZ(i)) * (hz0 + (hz1 - hz0) * t));
+  }
+  box.computeVertexNormals();
+  return box;
+}
+
+/** Outline of one finial (kalasam): radius against height, for a finial 1 m tall. */
+const KALASAM: readonly THREE.Vector2[] = ([
+  [0, 0],
+  [0.32, 0.04],
+  [0.4, 0.22],
+  [0.3, 0.42],
+  [0.12, 0.52],
+  [0.2, 0.62],
+  [0.06, 0.86],
+  [0, 1],
+] as const).map(([r, y]) => new THREE.Vector2(r, y));
+
+/** `count` positions spread evenly across -half..half, keeping `margin` clear at each end. */
+const spread = (count: number, half: number, margin: number): number[] =>
+  Array.from({ length: count }, (_, i) => (count === 1 ? 0 : -half + margin + ((2 * (half - margin)) / (count - 1)) * i));
+
+/**
+ * The gopuram model, centred on the origin. Its bounds are exactly the profile's base footprint
+ * and full height, and the passage through the base is left open.
+ */
+export function gopuramGeometry(profile: GopuramProfile): THREE.BufferGeometry {
+  const parts = new Parts();
+  const { base, passage, tiers, vault, finials, height } = profile;
+  const hx = base.hx0;
+  const hz = base.hz0;
+  const pier = (hz - passage.half) / 2;
+  const plinth = Math.min(0.7, base.top * 0.1);
+  const cornice = Math.min(0.6, base.top * 0.08);
+  const wall = base.top - plinth - cornice;
+
+  // Stone base: two piers either side of the passage (a plinth course, a slightly recessed wall
+  // with pilasters on the broad faces, a cornice) and the lintel over the passage.
+  for (const side of [-1, 1]) {
+    const z = side * (passage.half + pier);
+    parts.add(new THREE.BoxGeometry(2 * hx, plinth, 2 * pier), TEMPLE.stoneDark, 0, plinth / 2, z);
+    parts.add(new THREE.BoxGeometry(2 * hx - 0.4, wall, 2 * pier - 0.2), TEMPLE.stone, 0, plinth + wall / 2, z - side * 0.1);
+    for (const face of [-1, 1]) {
+      for (const offset of spread(3, pier, 0.6)) parts.add(new THREE.BoxGeometry(0.2, wall, 0.55), TEMPLE.stoneLight, face * (hx - 0.1), plinth + wall / 2, z + offset);
+    }
+  }
+  parts.add(new THREE.BoxGeometry(2 * hx - 0.4, base.top - cornice - passage.top, 2 * passage.half), TEMPLE.stone, 0, (passage.top + base.top - cornice) / 2, 0);
+  parts.add(new THREE.BoxGeometry(2 * hx, cornice, 2 * hz), TEMPLE.stoneLight, 0, base.top - cornice / 2, 0);
+  // A dark band over each mouth of the passage, so it reads as an opening from afar.
+  for (const face of [-1, 1]) parts.add(new THREE.BoxGeometry(0.12, 0.35, 2 * passage.half + 0.5), TEMPLE.shadow, face * (hx - 0.15), passage.top + 0.18, 0);
+
+  // Tiers: painted stucco, an overhanging ledge on top, and on every face a row of pilasters
+  // with dark niches between them, at mid-height where the sloping wall is half-way in.
+  tiers.forEach((tier, i) => {
+    const [body, trim] = TEMPLE.tiers[i % TEMPLE.tiers.length]!;
+    const rise = tier.top - tier.bottom;
+    const ledge = Math.min(0.35, rise * 0.12);
+    parts.add(taperedBox(tier.hx0, tier.hx1, tier.hz0, tier.hz1, rise - ledge), body, 0, tier.bottom, 0);
+    parts.add(new THREE.BoxGeometry(2 * tier.hx1 + 0.3, ledge, 2 * tier.hz1 + 0.3), TEMPLE.ledge, 0, tier.top - ledge / 2, 0);
+    const midX = (tier.hx0 + tier.hx1) / 2;
+    const midZ = (tier.hz0 + tier.hz1) / 2;
+    const y = tier.bottom + (rise - ledge) / 2;
+    const tall = (rise - ledge) * 0.6;
+    const zs = spread(Math.max(3, Math.round(midZ / 1.3)), midZ, 0.5);
+    const xs = spread(Math.max(2, Math.round(midX / 1.6)), midX, 0.5);
+    for (const face of [-1, 1]) {
+      zs.forEach((z, k) => {
+        parts.add(new THREE.BoxGeometry(0.3, tall, 0.35), trim, face * midX, y, z);
+        const next = zs[k + 1];
+        if (next !== undefined) parts.add(new THREE.BoxGeometry(0.12, tall * 0.7, (next - z) * 0.45), TEMPLE.shadow, face * (midX + 0.02), y, (z + next) / 2);
+      });
+      for (const x of xs) parts.add(new THREE.BoxGeometry(0.35, tall, 0.3), trim, x, y, face * midZ);
+    }
+  });
+
+  // Crown: a barrel vault along z (a half-cylinder with closed ends) with gold finials on its crest.
+  const crown = new THREE.CylinderGeometry(1, 1, 1, 12, 1, false, Math.PI / 2, Math.PI);
+  crown.rotateX(Math.PI / 2);
+  crown.scale(vault.hx, vault.top - vault.bottom, 2 * vault.hz);
+  parts.add(crown, TEMPLE.vault, 0, vault.bottom, 0);
+  const sink = 0.05;
+  const finialHeight = height - vault.top + sink;
+  for (const z of spread(finials, vault.hz, Math.min(1, vault.hz * 0.25))) {
+    const pot = new THREE.LatheGeometry([...KALASAM], 8);
+    pot.scale(finialHeight * 0.75, finialHeight, finialHeight * 0.75);
+    parts.add(pot, TEMPLE.gold, 0, vault.top - sink, z);
+  }
+
+  const merged = parts.merge();
+  merged.computeBoundingBox();
+  return merged;
+}
+
 export class LandmarkView {
   readonly object = new THREE.Group();
   private readonly placements: LandmarkPlacement[];
@@ -135,8 +265,16 @@ export class LandmarkView {
   constructor(private readonly landmarks: readonly Landmark[]) {
     this.object.name = "landmarks";
     for (const landmark of landmarks) {
-      if (landmark.kind !== "tower") continue; // temples, beaches and districts are labels only for now
-      const mesh = new THREE.Mesh(towerGeometry(towerProfile(landmark)), material());
+      // Beaches and districts are labels only. A temple is modelled when it has a footprint,
+      // as its collision in `landmarkSolids` is.
+      const geometry =
+        landmark.kind === "tower"
+          ? towerGeometry(towerProfile(landmark))
+          : landmark.kind === "temple" && landmark.radius !== undefined
+            ? gopuramGeometry(gopuramProfile(landmark))
+            : null;
+      if (!geometry) continue;
+      const mesh = new THREE.Mesh(geometry, material());
       mesh.name = landmark.id;
       mesh.position.set(landmark.x, 0, landmark.z);
       mesh.castShadow = true;
