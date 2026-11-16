@@ -1,6 +1,6 @@
 # Progress, testing and known issues
 
-Last updated: 15 Nov 2026.
+Last updated: 16 Nov 2026.
 
 ## What exists
 
@@ -24,6 +24,58 @@ Last updated: 15 Nov 2026.
   5 cross-town dash, 6 timed bike courier, 7 fist fight in Tower Park, 8 armed bike thieves then
   ride the bike back, 9 four armed guards, 10 the boss and his men at the Roundtana. Money
   rewards; progress is saved on the device.
+- **City jobs (16 Nov):** a job board (JOBS button, or J) with four repeatable jobs: ambulance
+  run (pick up a patient, drive to a real mapped hospital; SIREN makes traffic pull over to the
+  kerb and slow down; five bumps end the run), courier delivery on the motorbike from the real
+  post office (bonus for no damage), cab ride (fare = ₹80 + ₹0.35 a metre of estimated road
+  distance, tip by star rating), and a bus route with four stops in order and a timetable
+  (needs reputation 55). Each job has a start vehicle, stops (some need the vehicle stopped for
+  a few seconds), one time limit from the moment the player gets in, and a payout scaled by time
+  left, bumps and late stops. Failing or quitting costs a fine and 5 reputation, never the
+  game. A result screen shows pay, stars and why. While a job runs, the current stage waits and
+  no enemies appear. Reputation (0–100, starts at 50) and job records are saved
+  (`cow-jobs-v1`). Hospital and post office positions are real; their names are not shown.
+  Bus stop positions are invented points on the main avenues.
+- **More jobs (16 Nov):** ten in all. Added: hospital transfer (ambulance, three bumps fail
+  it), lunch rush (motorbike, one kitchen, three homes), medicine run (motorbike, the chemist
+  and hospital farthest apart), share auto (two pick-ups, one drop at the market), Tower Park
+  visitor (car, fare by distance), and the evening bus round the loop backwards (reputation
+  62). Bus stops are spaced about 260 m apart along the main avenues.
+- **Traffic (J3, 16 Nov):** signals at 35 real junctions (3+ drivable arms, one of them
+  secondary or tertiary; nodes within 16 m merged), two phase groups with 12 s green, 3 s amber
+  and 1 s all-red, offset per junction; zebra crossings and stop lines on each signalled arm.
+  Traffic stops at red, decides at amber, waits for anyone on a crossing, and takes turns at
+  junctions (right turns wait for a gap). Traffic mix: cars, two-wheelers, autos and buses
+  with their own speeds and gaps. Density follows the hour (rush 8–10 and 17–20, about a
+  quarter late at night), road class and nearby shops; extra agents are hidden out of sight,
+  not destroyed. Pedestrians have no walk signal; nothing overtakes; running a red isn't
+  penalised.
+- **The look (J4, 16 Nov):** light, sky, fog and exposure follow the clock: golden hour by
+  default, sunrise and sunset glow, moonlit night with stars; lit windows at night (the same
+  ones every night); brighter vehicle lamps and a headlight pool on the road. Rain (pause menu,
+  saved) with streaks and wet roads. About a third of small houses get clay-tile roofs and
+  about 40% of trees are palms. Draw distance, fog, shadows and rain density per quality tier;
+  a frame-blend speed blur only on the high tier. No street lights; rain falls through roofs.
+- **Driving feel (J5, 16 Nov):** four-wheelers drift at high speed on hard lock (the car
+  most, the bus barely, the auto a twitch), countersteer catches it; the motorbike never
+  drifts and straightens itself after a hard flick. Tyre squeal and a gear-change blip. The
+  chase camera looks ahead of the vehicle, trails the direction of travel (so a slide shows),
+  widens a little at speed and ignores suspension bumps.
+- **Anna Nagar Tower (16 Nov):** outline and opening year (1968) from OSM (way 651861526);
+  height (about 41 m) and 12 levels estimated. Original procedural model (about 5,700
+  triangles), solid base with walkable steps, a name label within 450 m, and a minimap marker.
+  The landmark list also holds Marina Beach, Kapaleeshwarar Temple and T. Nagar, which appear
+  once the map covers them. The extract was refreshed (16 Nov, 03:40 UTC) and now includes bus
+  stops (5), place names and landmark outlines.
+- **New vehicles:** an ambulance (original red-and-yellow livery, flashing light bar) parked at
+  a hospital, and a 10 m city bus (original teal-and-cream livery) on a main avenue.
+- **Crashes:** a velocity change above 1.6 m/s in one physics step counts as a crash: the
+  vehicle keeps 65% of its speed, a thump plays (louder for harder hits), and a job counts a
+  bump. AI traffic sees long vehicles as a row of circles.
+- **HUD:** gear indicator (R, N, 1–5; display only, the engine has no gearbox), reputation,
+  JOBS button. Pause menu: Share progress (system share sheet, else clipboard, else shown on
+  screen) and Time of day (Morning, Noon, Evening, Night; the clock runs one game hour per real
+  minute and is saved).
 - **Sound:** synthesised engine note that rises with speed, horn, doors, gunshots, punches,
   hurt, objective chime, stage fanfare and failure. No sound files.
 - **Interface:** joystick, camera drag, context ENTER/EXIT button; JUMP, HIT and FIRE (with
@@ -39,13 +91,22 @@ Last updated: 15 Nov 2026.
 | Check | Result | How |
 |---|---|---|
 | TypeScript strict | pass | `npm run typecheck`; `cd apps/mobile && npx tsc --noEmit` |
-| Unit tests (38) | pass | `npm test`: projection, OSM parsing, vehicle physics, mission rules, road graph and agents (including dead ends and people passing each other), combat rules |
-| Browser tests (18) | pass | `npm run test:e2e`: production bundle in headless Chromium with touch events. Map streaming, walk/run, camera, jump, collision with a real building, driving all three vehicles, steering, AI traffic moving, stages 1, 2, 7 (fist fight) and 8 (pistol), being knocked out, health bar and street name, saved progress, new game |
+| Unit tests (51, 16 Nov) | pass | `npm test`: projection, OSM parsing, vehicle physics, mission rules, road graph and agents (including dead ends, people passing each other, pulling over for a siren), combat rules, job rules (clock, dwell, pay, bumps, fines, reputation locks, late bus stops, damaged saves), gear indicator, game clock |
+| Unit tests (103, 16 Nov, later) | pass | `npm test`, 14 files: adds signals, junction turns, density, traffic mix, lighting by hour and rain, drift on a real Rapier world (and no false crash from drifting or braking), chase camera, landmarks from OSM and the ring-path fallback |
+| Browser tests (33, 16 Nov, later) | pass | `npm run test:e2e`: adds traffic (signals, mixed kinds, waiting at lights, fewer vehicles at night), look (golden-hour start, night and rain from the pause menu, kept after reload, draw calls under 450), landmarks (tower base solid, steps walkable, label near and on screen only), handling (drift at about 82% of top speed then grip, no drift turning slowly, gears climb, camera follows), and all ten jobs having their vehicle. The drift, traffic and "traffic keeps moving" tests passed three times in a row |
+| Browser tests, rerun before commit (16 Nov, 13:50) | 31/33, then on-foot 20/21 | Host load average was 10–16. The two on-foot timing tests (joystick walk distance, camera drag) failed once each: they hold the stick for a fixed time, and under heavy load the game runs in slow motion. Nothing they cover changed; they passed 33/33 earlier at normal load. Rerun on a quiet machine |
+| Android build (16 Nov) | pass | APK 22.7 MB |
+| Android emulator (16 Nov) | pass, with a caveat | Played on `Medium_Phone_API_35`: golden hour, palms, signals, zebras, job board, an ambulance run started, twilight with lit windows at 60 fps. The first cold start fell to 6–20 fps while the host was busy; it did not happen again, and in the emulator's Chrome both the previous commit and this build held 59–60 fps. In headless Chromium (software GPU) this build is about 25% slower than the previous commit at lite (34 → 25 fps), so the new visuals do cost GPU time: check on a real phone |
+| Browser tests (21, 16 Nov) | pass | `npm run test:e2e`, adds `jobs.spec.ts`: board → ambulance run with the siren and gear shown → pick-up → hospital → paid, reputation up, kept after reload; bus locked below reputation 55, drivable with it; quitting a job fines reputation and the stage remains. The 18 earlier tests still pass |
+| Browser tests (18, 15 Nov) | pass | `npm run test:e2e`: production bundle in headless Chromium with touch events. Map streaming, walk/run, camera, jump, collision with a real building, driving all three vehicles, steering, AI traffic moving, stages 1, 2, 7 (fist fight) and 8 (pistol), being knocked out, health bar and street name, saved progress, new game |
 | Android build | pass | `./gradlew assembleRelease` (JDK 21, arm64-v8a), APK about 23 MB |
 | Android emulator | pass | `Medium_Phone_API_35` (Android 15, WebView 157) on an Apple-silicon host GPU: 57–60 fps with traffic and pedestrians; walked to the hatchback, got in, drove at 55 km/h, objective advanced; saved progress survived a reinstall; no graphics errors in the device log. The build with combat was opened there (60 fps, new buttons, health bar and street name shown) but no fight was played on the emulator.|
 | **Real Android phone** | **not tested** | No phone was connected. Frame rate, heat, memory and two-thumb touch are unknown |
 
-Not covered by any automated test: stages 3 to 6, 9 and 10 end to end (their rules are
+Not covered by any automated test: the courier and cab jobs end to end and a full bus route
+(their rules are unit-tested), Share progress (clipboard and share sheet differ per device),
+traffic actually clearing a path for the siren in the city (unit-tested on a test map only),
+the ambulance and bus on the emulator. Stages 3 to 6, 9 and 10 end to end (their rules are
 unit-tested; the routes are not driven and the last two fights are not played through), sound
 (nothing checks what is heard), the bike and auto on the emulator, and long play sessions.
 Difficulty has not been play-tested by a person.

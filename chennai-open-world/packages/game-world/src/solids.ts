@@ -2,7 +2,8 @@
  * What is solid in a chunk, as plain numbers: a triangle mesh of every building wall, and a
  * box per tree trunk. Kept separate from rendering so collision is decided by world data alone.
  */
-import type { Bounds, ChunkData } from "./types";
+import { towerProfile } from "./landmarks";
+import type { Bounds, ChunkData, Landmark } from "./types";
 
 export interface SolidBox {
   readonly x: number;
@@ -37,6 +38,50 @@ export function chunkSolids(chunk: ChunkData): ChunkSolids {
   }
   const boxes = chunk.trees.map((tree) => ({ x: tree.x, y: 1.5, z: tree.z, hx: 0.28 * tree.scale, hy: 1.5, hz: 0.28 * tree.scale, yaw: 0 }));
   return { vertices: new Float32Array(vertices), indices: new Uint32Array(indices), boxes };
+}
+
+/** Sides of the polygon that stands in for a round landmark part. Matches the model's segments. */
+const ROUND_SIDES = 24;
+
+/**
+ * Landmark collision, built once (landmarks are always loaded): for a tower, each plinth step
+ * as a capped prism you can walk up, the ground-floor drum and the shaft. Landmarks without a
+ * footprint (beaches, districts, temples not modelled yet) add nothing.
+ */
+export function landmarkSolids(landmarks: readonly Landmark[]): ChunkSolids {
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  /** A vertical prism from `bottom` to `top` with a flat lid, centred on x, z. */
+  const prism = (x: number, z: number, radius: number, bottom: number, top: number) => {
+    const ring = (y: number) => {
+      const start = vertices.length / 3;
+      for (let i = 0; i < ROUND_SIDES; i++) {
+        const angle = (i / ROUND_SIDES) * Math.PI * 2;
+        vertices.push(x + Math.cos(angle) * radius, y, z + Math.sin(angle) * radius);
+      }
+      return start;
+    };
+    const low = ring(bottom);
+    const high = ring(top);
+    const centre = vertices.length / 3;
+    vertices.push(x, top, z);
+    for (let i = 0; i < ROUND_SIDES; i++) {
+      const j = (i + 1) % ROUND_SIDES;
+      indices.push(low + i, high + i, low + j, low + j, high + i, high + j);
+      indices.push(centre, high + j, high + i);
+    }
+  };
+  for (const landmark of landmarks) {
+    if (landmark.kind !== "tower" || landmark.radius === undefined) continue;
+    const profile = towerProfile(landmark);
+    // Parts start below ground, like building walls, so nothing slips under them.
+    for (const step of profile.steps) prism(landmark.x, landmark.z, step.radius, -1, step.top);
+    prism(landmark.x, landmark.z, profile.drum.radius, -1, profile.drum.top);
+    // The shaft as wide as the mid-height balconies, so the camera stays outside them.
+    const balcony = profile.levels[Math.floor(profile.levels.length / 2)]?.radius ?? profile.shaft.radius;
+    prism(landmark.x, landmark.z, balcony, profile.drum.top - 0.1, profile.canopy.top);
+  }
+  return { vertices: new Float32Array(vertices), indices: new Uint32Array(indices), boxes: [] };
 }
 
 /** Side of one ground tile. One slab for the whole map is too big for the solver's precision. */

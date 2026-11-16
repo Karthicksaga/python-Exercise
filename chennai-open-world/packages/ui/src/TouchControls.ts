@@ -275,6 +275,13 @@ export class TouchControls {
     this.state.gas = this.state.brake = this.state.fire = false;
   }
 
+  /** Label of the horn button: "HORN", or "SIREN" in an ambulance. */
+  setHornLabel(label: string): void {
+    if (this.hornButton.textContent === label) return;
+    this.hornButton.textContent = label;
+    this.hornButton.setAttribute("aria-label", label === "SIREN" ? "Siren" : "Horn");
+  }
+
   /** Rounds left, shown on the fire button. */
   setAmmo(rounds: number): void {
     const text = String(rounds);

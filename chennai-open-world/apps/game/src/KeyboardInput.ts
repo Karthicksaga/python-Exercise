@@ -1,7 +1,7 @@
 /**
  * Keyboard fallback for development on a desktop: WASD or arrows, Shift to run, Space to jump,
  * E to get in or out of a vehicle, F to fire, Q to punch. When driving, W accelerates, S brakes
- * and H sounds the horn.
+ * and H sounds the horn (or switches the siren). J opens the job board.
  */
 export class KeyboardInput {
   private readonly down = new Set<string>();
@@ -9,6 +9,7 @@ export class KeyboardInput {
   private actionPressed = false;
   private punchPressed = false;
   private hornPressed = false;
+  private boardPressed = false;
 
   constructor() {
     window.addEventListener("keydown", (e) => {
@@ -16,6 +17,7 @@ export class KeyboardInput {
       if (e.code === "KeyE" && !e.repeat) this.actionPressed = true;
       if (e.code === "KeyQ" && !e.repeat) this.punchPressed = true;
       if (e.code === "KeyH" && !e.repeat) this.hornPressed = true;
+      if (e.code === "KeyJ" && !e.repeat) this.boardPressed = true;
       this.down.add(e.code);
     });
     window.addEventListener("keyup", (e) => this.down.delete(e.code));
@@ -52,6 +54,12 @@ export class KeyboardInput {
   consumeHorn(): boolean {
     const pressed = this.hornPressed;
     this.hornPressed = false;
+    return pressed;
+  }
+
+  consumeBoard(): boolean {
+    const pressed = this.boardPressed;
+    this.boardPressed = false;
     return pressed;
   }
 

@@ -6,3 +6,7 @@ export * from "./ChunkManager";
 export * from "./MapView";
 export { facadeAtlas } from "./textures";
 export * from "./Beacon";
+export * from "./RainView";
+export * from "./lighting";
+export * from "./LandmarkView";
+export * from "./SignalView";

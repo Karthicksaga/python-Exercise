@@ -4,7 +4,8 @@
  */
 import type * as THREE from "three";
 import type { ChunkData, WorldMap } from "@cow/game-world";
-import { ChunkView, type ChunkAssets } from "./ChunkView";
+import { ChunkView, applyChunkLook, type ChunkAssets } from "./ChunkView";
+import type { Look } from "./lighting";
 
 export interface ChunkHooks {
   /** Called after a chunk's meshes are in the scene (add its solids here). */
@@ -29,6 +30,11 @@ export class ChunkManager {
 
   get loadedCount(): number {
     return this.views.size;
+  }
+
+  /** Time of day and weather for every chunk (shared materials, so loaded and future chunks alike). */
+  applyLook(look: Look): void {
+    applyChunkLook(this.assets, look);
   }
 
   /** Distance from a point to the nearest edge of a chunk (0 inside it). */

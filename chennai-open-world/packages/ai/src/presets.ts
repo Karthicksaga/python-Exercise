@@ -1,9 +1,21 @@
 /** Ready-made settings for the two kinds of agents. */
-import type { AgentSettings } from "./Agents";
+import type { AgentKind, AgentSettings } from "./Agents";
 
 const ROAD_SPEED = { secondary: 11, tertiary: 9, residential: 6.5, service: 4, footway: 3 } as const;
 
-export function trafficSettings(count: number): AgentSettings {
+/**
+ * Chennai's traffic mix: two-wheelers and cars, plenty of auto-rickshaws, the odd bus.
+ * Sizes here are estimates; the game replaces them with its vehicle models' real footprints.
+ * `name` matches the game's vehicle kinds.
+ */
+export const TRAFFIC_KINDS: readonly AgentKind[] = [
+  { name: "car", share: 0.35, speedFactor: 1, maxSpeed: 16, accelerationFactor: 1, halfWidth: 0.82, halfLength: 1.95, gap: 1.8 },
+  { name: "bike", share: 0.3, speedFactor: 1.12, maxSpeed: 15, accelerationFactor: 1.25, halfWidth: 0.32, halfLength: 1.0, gap: 1.2 },
+  { name: "auto", share: 0.25, speedFactor: 0.82, maxSpeed: 11, accelerationFactor: 0.8, halfWidth: 0.66, halfLength: 1.3, gap: 1.4 },
+  { name: "bus", share: 0.1, speedFactor: 0.78, maxSpeed: 11, accelerationFactor: 0.55, halfWidth: 1.25, halfLength: 5.0, gap: 2.5 },
+];
+
+export function trafficSettings(count: number, kinds: readonly AgentKind[] = TRAFFIC_KINDS): AgentSettings {
   return {
     count,
     speed: (edge, variation) => ROAD_SPEED[edge.kind] * (0.8 + variation * 0.35),
@@ -19,6 +31,9 @@ export function trafficSettings(count: number): AgentSettings {
     spawnMin: 70,
     spawnMax: 230,
     despawn: 300,
+    kinds,
+    takesTurnsAtJunctions: true,
+    retireBeyond: 70,
   };
 }
 
@@ -38,5 +53,7 @@ export function pedestrianSettings(count: number): AgentSettings {
     spawnMin: 25,
     spawnMax: 120,
     despawn: 160,
+    // Beyond the distance people are drawn at.
+    retireBeyond: 90,
   };
 }

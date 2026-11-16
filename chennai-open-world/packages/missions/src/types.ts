@@ -1,6 +1,6 @@
 /** Mission data. Missions are plain data so new ones need no code. */
 
-export type TravelMode = "foot" | "car" | "auto" | "bike";
+export type TravelMode = "foot" | "car" | "auto" | "bike" | "ambulance" | "bus";
 
 export type Objective =
   | {

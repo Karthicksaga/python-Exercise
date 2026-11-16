@@ -5,7 +5,7 @@
  */
 import { centroid, nearestRoadPoint, type Point, type WorldMap } from "@cow/game-world";
 import type { EnemySpot } from "@cow/combat";
-import type { Mission, Objective } from "@cow/missions";
+import type { Job, Mission, Objective } from "@cow/missions";
 import type { VehicleKind } from "@cow/vehicles";
 
 export interface Parking {
@@ -23,9 +23,47 @@ export interface GameContent {
   readonly missions: Mission[];
   /** Enemy groups by name, placed when a "defeat" objective for that group begins. */
   readonly enemies: Record<string, EnemySpot[]>;
+  /** Everyday paid work offered on the job board. Repeatable. */
+  readonly jobs: Job[];
 }
 
 const CAR_COLORS = [0xc0392b, 0x2f6fb5, 0xe8e8ea, 0x2c2f36, 0x1f8a5b, 0xd98e1f];
+
+/**
+ * Stops along the main avenues, each at least `gap` metres from every other and from the
+ * start, visited in a loop that keeps each leg short. Deterministic for a given map.
+ */
+function spacedStops(avenues: WorldMap, start: Point, count: number, gap: number): Point[] {
+  const samples: Point[] = [];
+  for (const road of avenues.roads) {
+    for (let i = 0; i < road.points.length - 1; i++) {
+      const a = road.points[i]!;
+      const b = road.points[i + 1]!;
+      const length = Math.hypot(b.x - a.x, b.z - a.z);
+      for (let d = 0; d < length; d += 30) samples.push({ x: a.x + ((b.x - a.x) * d) / length, z: a.z + ((b.z - a.z) * d) / length });
+    }
+  }
+  const stops: Point[] = [];
+  let from = start;
+  for (let n = 0; n < count; n++) {
+    let best: Point | null = null;
+    let bestScore = Infinity;
+    for (const p of samples) {
+      const far = Math.hypot(p.x - start.x, p.z - start.z) >= gap * 0.6 && stops.every((s) => Math.hypot(p.x - s.x, p.z - s.z) >= gap);
+      if (!far) continue;
+      // Closest acceptable sample to the previous stop: a loop of short legs.
+      const score = Math.abs(Math.hypot(p.x - from.x, p.z - from.z) - gap);
+      if (score < bestScore) {
+        bestScore = score;
+        best = p;
+      }
+    }
+    if (!best) break;
+    stops.push({ x: Math.round(best.x * 10) / 10, z: Math.round(best.z * 10) / 10 });
+    from = best;
+  }
+  return stops;
+}
 
 export function buildContent(map: WorldMap): GameContent {
   /** Nearest point on a drivable road. */
@@ -219,5 +257,210 @@ export function buildContent(map: WorldMap): GameContent {
     boss: around(roundtana, [[0, 0, true, 260], [4, 2, true], [-4, 2, true], [3, -4, false], [-3, -4, false]]),
   };
 
-  return { spawn, parking, missions, enemies };
+  // City jobs. Hospitals and the post office are real places from the map; their names are
+  // not shown (no real business names), only the street they are on. Bus stops are invented
+  // positions on the main avenues (the extract has no bus stops).
+  const streetOf = (p: Point): string => {
+    const hit = nearestRoadPoint(map, p);
+    return hit?.road.name ? ` on ${hit.road.name}` : "";
+  };
+  const place = (kind: string, fallback: Point): Point => {
+    const poi = map.pois.find((p) => p.kind === kind && !/eye|optical/i.test(p.name ?? ""));
+    return poi ? { x: poi.x, z: poi.z } : fallback;
+  };
+  const avenues: WorldMap = { ...map, roads: map.roads.filter((r) => r.kind === "secondary" || r.kind === "tertiary") };
+  const avenueKerb = (p: Point) => {
+    const hit = nearestRoadPoint(avenues, p);
+    return hit ? kerb({ x: hit.x, z: hit.z }) : kerb(p);
+  };
+
+  const ambulanceBay = kerb(place("hospital", { x: 320, z: 55 }));
+  const hospital = onRoad(map.pois.filter((p) => p.kind === "hospital" && !/eye|optical/i.test(p.name ?? ""))[1] ?? { x: -337, z: 314 });
+  const patient = onRoad({ x: -60, z: -260 });
+  const postOffice = onRoad(place("post_office", { x: -100, z: 150 }));
+  const parcelTo = onRoad({ x: maxX - 120, z: maxZ - 140 });
+  const rider = onRoad({ x: minX + 140, z: minZ + 180 });
+  const riderTo = onRoad({ x: 230, z: 280 });
+  const busStand = avenueKerb({ x: -150, z: 20 });
+  const busStops = spacedStops(avenues, busStand, 4, 260);
+  parking.push(
+    { id: "ambulance", kind: "ambulance", ...ambulanceBay, color: 0xffffff },
+    { id: "bus", kind: "bus", ...busStand, color: 0x1f6f78 },
+  );
+
+  const road = (a: Point, b: Point) => distance(a, b) * 1.4;
+  let due = 0;
+  const busRoute = busStops.map((stop, i) => {
+    due += allow(i === 0 ? busStand : busStops[i - 1]!, stop, 8) + 5;
+    return { label: `Bus stop ${i + 1} of ${busStops.length}${streetOf(stop)}`, ...stop, radius: 8, dwell: 4, due };
+  });
+  const jobs: Job[] = [
+    {
+      id: "ambulance-run",
+      kind: "ambulance",
+      title: "Ambulance run",
+      brief: "A patient needs a hospital now. Use the SIREN to clear the traffic, and drive smoothly: every bump hurts.",
+      vehicle: "ambulance",
+      stops: [
+        { label: `Pick up the patient${streetOf(patient)}`, ...patient, radius: 8, dwell: 3 },
+        { label: `Drive the patient to the hospital${streetOf(hospital)}`, ...hospital, radius: 9 },
+      ],
+      timeLimit: allow(ambulanceBay, patient, 11) + allow(patient, hospital, 11),
+      payout: 900,
+      fine: 150,
+      maxBumps: 5,
+    },
+    {
+      id: "courier",
+      kind: "courier",
+      title: "Courier delivery",
+      brief: "Collect a parcel from the post office and get it across town on the motorbike. No damage earns a bonus.",
+      vehicle: "bike",
+      stops: [
+        { label: `Collect the parcel at the post office${streetOf(postOffice)}`, ...postOffice, radius: 6, dwell: 2 },
+        { label: `Deliver the parcel${streetOf(parcelTo)}`, ...parcelTo, radius: 6, dwell: 1 },
+      ],
+      timeLimit: allow(postOffice, parcelTo, 12) + 60,
+      payout: 450,
+      fine: 80,
+    },
+    {
+      id: "cab-ride",
+      kind: "cab",
+      title: "Cab ride",
+      brief: "A passenger is waiting for a car. The fare goes by distance; a smooth ride earns a tip.",
+      vehicle: "car",
+      stops: [
+        { label: `Pick up the passenger${streetOf(rider)}`, ...rider, radius: 7, dwell: 2 },
+        { label: `Drop the passenger${streetOf(riderTo)}`, ...riderTo, radius: 7, dwell: 1 },
+      ],
+      timeLimit: allow(rider, riderTo, 10) + 90,
+      // ₹80 flag fall plus ₹0.35 a metre of road.
+      payout: Math.round(80 + road(rider, riderTo) * 0.35),
+      fine: 60,
+    },
+    {
+      id: "bus-route",
+      kind: "bus",
+      title: "Bus route",
+      brief: "Drive the city bus round its loop. Stop at every stop in order and keep to the timetable.",
+      vehicle: "bus",
+      stops: busRoute,
+      timeLimit: due + 60,
+      payout: 1100,
+      fine: 120,
+      minReputation: 55,
+    },
+  ];
+
+  // More everyday work, from real mapped places (names not shown).
+  const firstHospital = onRoad(place("hospital", { x: 320, z: 55 }));
+  const kitchen = onRoad(place("restaurant", { x: 100, z: -60 }));
+  // The chemist and hospital farthest apart, so the run is a real ride.
+  let medicine = { from: onRoad({ x: -300, z: -250 }), to: firstHospital };
+  for (const shop of map.pois.filter((p) => p.kind === "pharmacy")) {
+    for (const ward of [firstHospital, hospital]) {
+      if (distance(shop, ward) > distance(medicine.from, medicine.to)) medicine = { from: onRoad(shop), to: ward };
+    }
+  }
+  const chemist = medicine.from;
+  const market = onRoad(place("supermarket", { x: -220, z: -120 }));
+  const meals = [onRoad({ x: -280, z: -320 }), onRoad({ x: 60, z: 380 }), onRoad({ x: 330, z: -380 })];
+  const sharers = [onRoad({ x: 120, z: 160 }), onRoad({ x: -60, z: 260 })];
+  const tourist = onRoad({ x: -330, z: -40 });
+  const legs = (points: readonly Point[], speed: number) => points.slice(1).reduce((sum, p, i) => sum + allow(points[i]!, p, speed), 0);
+  jobs.push(
+    {
+      id: "hospital-transfer",
+      kind: "ambulance",
+      title: "Hospital transfer",
+      brief: "A stable patient needs moving between hospitals for a scan. Less rush, but a smooth ride matters even more.",
+      vehicle: "ambulance",
+      stops: [
+        { label: `Collect the patient at the hospital${streetOf(firstHospital)}`, ...firstHospital, radius: 10, dwell: 4 },
+        { label: `Transfer to the hospital${streetOf(hospital)}`, ...hospital, radius: 9, dwell: 2 },
+      ],
+      timeLimit: legs([ambulanceBay, firstHospital, hospital], 9) + 40,
+      payout: 700,
+      fine: 120,
+      maxBumps: 3,
+    },
+    {
+      id: "food-delivery",
+      kind: "courier",
+      title: "Lunch rush",
+      brief: "Three hot lunches from one kitchen to three homes. Ride fast, ride clean.",
+      vehicle: "bike",
+      stops: [
+        { label: `Collect the orders${streetOf(kitchen)}`, ...kitchen, radius: 6, dwell: 2 },
+        ...meals.map((p, i) => ({ label: `Delivery ${i + 1} of 3${streetOf(p)}`, ...p, radius: 6, dwell: 1 })),
+      ],
+      timeLimit: legs([kitchen, ...meals], 12) + 60,
+      payout: 650,
+      fine: 90,
+    },
+    {
+      id: "medicine-run",
+      kind: "courier",
+      title: "Medicine run",
+      brief: "A hospital ward has run short. Take a box of medicine from the chemist, quickly.",
+      vehicle: "bike",
+      stops: [
+        { label: `Collect the medicine${streetOf(chemist)}`, ...chemist, radius: 6, dwell: 2 },
+        { label: `Deliver to the hospital${streetOf(medicine.to)}`, ...medicine.to, radius: 8, dwell: 1 },
+      ],
+      timeLimit: allow(chemist, medicine.to, 13) + 35,
+      payout: 380,
+      fine: 70,
+    },
+    {
+      id: "share-auto",
+      kind: "cab",
+      title: "Share auto",
+      brief: "Two passengers, one auto, both going to the market. Pick them both up, then drop them together.",
+      vehicle: "auto",
+      stops: [
+        ...sharers.map((p, i) => ({ label: `Pick up passenger ${i + 1} of 2${streetOf(p)}`, ...p, radius: 6, dwell: 2 })),
+        { label: `Drop both at the market${streetOf(market)}`, ...market, radius: 7, dwell: 2 },
+      ],
+      timeLimit: legs([...sharers, market], 8) + 90,
+      payout: Math.round(80 + (road(sharers[0]!, sharers[1]!) + road(sharers[1]!, market)) * 0.45),
+      fine: 50,
+    },
+    {
+      id: "tower-park-visit",
+      kind: "cab",
+      title: "Tower Park visitor",
+      brief: "A visitor wants to see Anna Nagar Tower Park before it closes. Take them to the gate.",
+      vehicle: "car",
+      stops: [
+        { label: `Pick up the visitor${streetOf(tourist)}`, ...tourist, radius: 7, dwell: 2 },
+        { label: "Drop them at Anna Nagar Tower Park", ...parkGate, radius: 8, dwell: 1 },
+      ],
+      timeLimit: allow(tourist, parkGate, 10) + 90,
+      payout: Math.round(80 + road(tourist, parkGate) * 0.35),
+      fine: 60,
+    },
+    {
+      id: "evening-bus",
+      kind: "bus",
+      title: "Evening bus, the other way",
+      brief: "The same loop backwards at the busy hour. Tighter timetable, more people waiting.",
+      vehicle: "bus",
+      stops: (() => {
+        let clock = 0;
+        const reversed = [...busStops].reverse();
+        return reversed.map((stop, i) => {
+          clock += allow(i === 0 ? busStand : reversed[i - 1]!, stop, 9) + 6;
+          return { label: `Bus stop ${i + 1} of ${reversed.length}${streetOf(stop)}`, ...stop, radius: 8, dwell: 5, due: clock };
+        });
+      })(),
+      timeLimit: legs([busStand, ...[...busStops].reverse()], 9) + 80,
+      payout: 1400,
+      fine: 150,
+      minReputation: 62,
+    },
+  );
+
+  return { spawn, parking, missions, enemies, jobs };
 }

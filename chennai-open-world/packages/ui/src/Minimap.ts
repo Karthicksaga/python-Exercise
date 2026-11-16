@@ -15,6 +15,8 @@ export interface MinimapSource {
   readonly roads: ReadonlyArray<{ readonly kind: string; readonly width: number; readonly points: readonly MapPoint[] }>;
   readonly areas: ReadonlyArray<{ readonly kind: string; readonly outline: readonly MapPoint[] }>;
   readonly chunks: ReadonlyArray<{ readonly buildings: ReadonlyArray<{ readonly outline: readonly MapPoint[] }> }>;
+  /** Landmarks get their footprint drawn and an upright initial. */
+  readonly landmarks?: ReadonlyArray<{ readonly name: string; readonly x: number; readonly z: number; readonly radius?: number }>;
 }
 
 export interface MinimapMarker extends MapPoint {
@@ -96,6 +98,17 @@ export class Minimap {
         g.fill();
       }
     }
+    // Landmark footprints, under the roads like the buildings.
+    g.fillStyle = "#e9dfc9";
+    g.strokeStyle = "#8c7b5d";
+    g.lineWidth = 1.2;
+    for (const landmark of this.source.landmarks ?? []) {
+      if (landmark.radius === undefined) continue;
+      g.beginPath();
+      g.arc(landmark.x, landmark.z, landmark.radius, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+    }
     g.lineCap = g.lineJoin = "round";
     // Wide roads last so they sit on top of lanes that meet them.
     const order = [...this.source.roads].sort((a, b) => a.width - b.width);
@@ -156,6 +169,29 @@ export class Minimap {
       g.arc(mx, mz, r, 0, Math.PI * 2);
       g.fill();
       g.stroke();
+    }
+
+    // Landmarks in view: a small badge with the name's initial, kept upright as the map turns.
+    for (const landmark of this.source.landmarks ?? []) {
+      if (Math.hypot(landmark.x - x, landmark.z - z) > VIEW_RADIUS - 6) continue;
+      g.save();
+      g.translate(landmark.x, landmark.z);
+      g.rotate(-cameraYaw);
+      g.scale(1 / scale, 1 / scale);
+      const r = 7 * this.ratio;
+      g.fillStyle = "#7a3f2e";
+      g.strokeStyle = "#ffffff";
+      g.lineWidth = 1.4 * this.ratio;
+      g.beginPath();
+      g.arc(0, 0, r, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+      g.fillStyle = "#ffffff";
+      g.font = `700 ${Math.round(9 * this.ratio)}px system-ui,sans-serif`;
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText(landmark.name.charAt(0).toUpperCase(), 0, 0.5 * this.ratio);
+      g.restore();
     }
 
     // The player: an arrow pointing the way they face.

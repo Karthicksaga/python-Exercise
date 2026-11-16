@@ -38,9 +38,27 @@ export interface OsmPolygon {
   /** Outline without a repeated last point. */
   readonly outline: LocalPoint[];
 }
+/**
+ * A tagged node: a mapped tree, shop or amenity, a bus stop, a traffic signal, a tower, a
+ * monument or a place of worship. The tags are kept as they are; `pointKind` sorts them.
+ */
 export interface OsmPoint extends LocalPoint {
   readonly id: number;
   readonly tags: Tags;
+}
+
+export type OsmPointKind = "tree" | "bus_stop" | "traffic_signals" | "place_of_worship" | "landmark" | "place" | "poi";
+
+/** What a tagged node is, for the world builder; null for tags the game has no use for. */
+export function pointKind(tags: Tags): OsmPointKind | null {
+  if (tags.natural === "tree") return "tree";
+  if (tags.highway === "bus_stop" || (tags.public_transport === "platform" && tags.bus === "yes")) return "bus_stop";
+  if (tags.highway === "traffic_signals") return "traffic_signals";
+  if (tags.amenity === "place_of_worship") return "place_of_worship";
+  if (tags.man_made || tags.historic || tags.tourism) return "landmark";
+  if (tags.place) return "place";
+  if (tags.amenity || tags.shop) return "poi";
+  return null;
 }
 
 export interface OsmFeatures {
@@ -48,7 +66,7 @@ export interface OsmFeatures {
   readonly timestamp: string;
   readonly highways: OsmLine[];
   readonly buildings: OsmPolygon[];
-  /** Parks, water and other named land areas. */
+  /** Parks, water and other land areas, plus closed outlines of towers, monuments and places of worship that are not buildings. */
   readonly areas: OsmPolygon[];
   readonly points: OsmPoint[];
 }
@@ -94,7 +112,9 @@ export function parseOsm(extract: OsmExtract, origin: LatLng): OsmFeatures {
     const outline = line.slice(0, -1);
     if (outline.length < 3) continue;
     if (tags.building) buildings.push({ id: way.id, tags, outline });
-    else if (tags.leisure || tags.natural || tags.landuse) areas.push({ id: way.id, tags, outline });
+    else if (tags.leisure || tags.natural || tags.landuse || tags.man_made || tags.historic || tags.tourism || tags.amenity === "place_of_worship") {
+      areas.push({ id: way.id, tags, outline });
+    }
   }
 
   return { timestamp: extract.osm3s?.timestamp_osm_base ?? "unknown", highways, buildings, areas, points };

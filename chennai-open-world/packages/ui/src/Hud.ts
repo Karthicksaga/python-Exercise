@@ -18,6 +18,17 @@ const STYLE = `
 .cow-meta.urgent{color:#ff6b6b}
 .cow-right{display:flex;gap:8px;align-items:flex-start}
 .cow-fps{background:rgba(15,18,30,.55);padding:6px 10px;border-radius:10px;font:600 11px ui-monospace,monospace}
+.cow-jobs{pointer-events:auto;height:44px;padding:0 14px;border-radius:12px;border:0;background:#ffb703;color:#1a1a1a;font:800 13px system-ui,sans-serif;letter-spacing:.5px;touch-action:manipulation}
+.cow-rep{opacity:.9}
+.cow-gear{display:inline-block;margin-left:10px;padding-left:10px;border-left:1px solid rgba(255,255,255,.3);color:#ffd166}
+.cow-list{display:flex;flex-direction:column;gap:8px;width:min(560px,100%);max-height:58vh;overflow-y:auto;text-align:left}
+.cow-row{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 12px}
+.cow-row div{flex:1;min-width:0}
+.cow-row b{display:block;font-size:14px}
+.cow-row span{display:block;font-size:12px;opacity:.8}
+.cow-row em{font-style:normal;color:#ffd166;font:700 12px ui-monospace,monospace}
+.cow-overlay .cow-row button{min-width:92px;min-height:44px}
+.cow-overlay .cow-row button:disabled{background:rgba(255,255,255,.12);color:rgba(255,255,255,.6)}
 .cow-pause{pointer-events:auto;width:44px;height:44px;border-radius:12px;border:0;background:rgba(15,18,30,.6);color:#fff;font-size:16px;touch-action:manipulation}
 .cow-speed{position:absolute;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(15,18,30,.6);
   padding:6px 16px;border-radius:14px;text-align:center;font:700 26px ui-monospace,monospace}
@@ -71,11 +82,13 @@ export class Hud {
   private readonly meta: HTMLDivElement;
   private readonly speed: HTMLDivElement;
   private readonly speedValue: Text;
+  private readonly gear: HTMLSpanElement;
+  private readonly reputation: HTMLSpanElement;
   private readonly toast: HTMLDivElement;
   private overlay: HTMLDivElement | null = null;
   private toastTimer = 0;
 
-  constructor(parent: HTMLElement, place: { title: string; subtitle: string }, onPause: () => void) {
+  constructor(parent: HTMLElement, place: { title: string; subtitle: string }, onPause: () => void, onJobs?: () => void) {
     if (!document.getElementById("cow-hud-style")) {
       const style = document.createElement("style");
       style.id = "cow-hud-style";
@@ -93,6 +106,8 @@ export class Hud {
     this.money = element("span", "cow-money", stats);
     this.money.dataset.testid = "money";
     this.stage = element("span", "", stats);
+    this.reputation = element("span", "cow-rep", stats);
+    this.reputation.dataset.testid = "reputation";
     this.street = element("div", "cow-street", placeBox);
     const health = (this.healthBox = element("div", "cow-health", placeBox));
     health.dataset.testid = "health";
@@ -111,6 +126,14 @@ export class Hud {
     this.fps = element("span", "cow-fps", right);
     this.fps.dataset.testid = "fps";
     this.fps.textContent = "-- fps";
+    if (onJobs) {
+      const jobs = element("button", "cow-jobs", right);
+      jobs.type = "button";
+      jobs.textContent = "JOBS";
+      jobs.dataset.testid = "jobs";
+      jobs.setAttribute("aria-label", "Job board");
+      jobs.addEventListener("click", onJobs);
+    }
     const pause = element("button", "cow-pause", right);
     pause.type = "button";
     pause.textContent = "❚❚";
@@ -121,7 +144,9 @@ export class Hud {
     this.speed.dataset.testid = "speed";
     this.speedValue = document.createTextNode("0");
     this.speed.append(this.speedValue);
-    element("small", "", this.speed).textContent = "KM/H";
+    this.gear = element("span", "cow-gear", this.speed);
+    this.gear.dataset.testid = "gear";
+    element("small", "", this.speed).textContent = "KM/H · GEAR";
     this.speed.hidden = true;
 
     this.toast = element("div", "cow-toast", this.root);
@@ -184,12 +209,38 @@ export class Hud {
     this.meta.classList.toggle("urgent", view.secondsLeft !== null && view.secondsLeft < 10);
   }
 
-  /** Show the speedometer with this speed, or hide it with null. */
-  setSpeed(kmh: number | null): void {
+  /** Show the speedometer with this speed and gear, or hide it with null. */
+  setSpeed(kmh: number | null, gear = ""): void {
     this.speed.hidden = kmh === null;
     if (kmh === null) return;
     const text = String(Math.round(kmh));
     if (this.speedValue.data !== text) this.speedValue.data = text;
+    if (this.gear.textContent !== gear) this.gear.textContent = gear;
+  }
+
+  /** Reputation from city jobs, 0 to 100. */
+  setReputation(points: number): void {
+    const text = `★ ${Math.round(points)}`;
+    if (this.reputation.textContent !== text) this.reputation.textContent = text;
+  }
+
+  /** A list of choices in the overlay that is showing (the job board). */
+  addOverlayList(rows: ReadonlyArray<{ title: string; detail: string; meta: string; button: string; disabled?: string; run: () => void; testId?: string }>): void {
+    if (!this.overlay) return;
+    const list = element("div", "cow-list", this.overlay);
+    for (const row of rows) {
+      const item = element("div", "cow-row", list);
+      const text = element("div", "", item);
+      element("b", "", text).textContent = row.title;
+      element("span", "", text).textContent = row.disabled ?? row.detail;
+      element("em", "", text).textContent = row.meta;
+      const button = element("button", "", item);
+      button.type = "button";
+      button.textContent = row.button;
+      if (row.testId) button.dataset.testid = row.testId;
+      button.disabled = row.disabled !== undefined;
+      button.addEventListener("click", row.run);
+    }
   }
 
   /** A short message in the middle of the screen that fades by itself. */

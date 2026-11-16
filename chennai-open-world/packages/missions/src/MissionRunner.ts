@@ -123,6 +123,11 @@ export class MissionRunner {
     return taken;
   }
 
+  /** Add money earned outside the stages (city jobs). */
+  earn(rupees: number): void {
+    this.money += Math.max(0, Math.floor(rupees));
+  }
+
   /** Forget all progress (new game). */
   reset(): void {
     this.completed.clear();

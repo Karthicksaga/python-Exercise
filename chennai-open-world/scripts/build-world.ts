@@ -33,6 +33,9 @@ const buildings = map.chunks.reduce((n, c) => n + c.buildings.length, 0);
 const trees = map.chunks.reduce((n, c) => n + c.trees.length, 0);
 console.log(
   `World written: ${map.roads.length} road pieces, ${buildings} buildings, ${map.areas.length} areas, ${trees} trees, ` +
-    `${map.pois.length} places, ${map.chunks.length} chunks, data ${map.dataDate}`,
+    `${map.pois.length} places, ${map.busStops?.length ?? 0} bus stops, ${map.signals?.length ?? 0} signals, ${map.chunks.length} chunks, data ${map.dataDate}`,
 );
+for (const landmark of map.landmarks ?? []) {
+  console.log(`Landmark ${landmark.name} at ${landmark.x}, ${landmark.z} (${landmark.source}; estimated: ${landmark.estimated.join(", ") || "nothing"})`);
+}
 console.log(`Bounds x ${bounds.minX}..${bounds.maxX}, z ${bounds.minZ}..${bounds.maxZ}`);

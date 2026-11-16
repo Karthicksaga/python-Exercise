@@ -85,6 +85,25 @@ describe("agents", () => {
     expect(agent.speed).toBeGreaterThan(3);
   });
 
+  it("pull over and slow down for a siren behind them, then carry on", () => {
+    const system = new AgentSystem(graph, map.bounds, trafficSettings(1), 3);
+    system.populate(far);
+    const agent = system.agents[0]!;
+    for (let i = 0; i < 60 * 4; i++) system.update(1 / 60, [], far);
+    expect(agent.speed).toBeGreaterThan(3);
+    for (let i = 0; i < 60 * 3; i++) {
+      // The ambulance follows 20 m behind, facing the same way.
+      const siren = { x: agent.x + Math.sin(agent.heading) * 20, z: agent.z + Math.cos(agent.heading) * 20, heading: agent.heading };
+      system.update(1 / 60, [], far, siren);
+    }
+    expect(agent.speed).toBeLessThanOrEqual(2.01);
+    expect(agent.pullOver).toBeGreaterThan(0.95);
+    // A siren well behind and far away is ignored.
+    for (let i = 0; i < 60 * 4; i++) system.update(1 / 60, [], far, { x: agent.x + 500, z: agent.z + 500, heading: 0 });
+    expect(agent.pullOver).toBe(0);
+    expect(agent.speed).toBeGreaterThan(3);
+  });
+
   it("are recycled near the player when they get too far away", () => {
     const system = new AgentSystem(graph, map.bounds, trafficSettings(3), 5);
     system.populate(far);

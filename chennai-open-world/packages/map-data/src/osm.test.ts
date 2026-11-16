@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseOsm, type OsmExtract } from "./osm";
+import { parseOsm, pointKind, type OsmExtract } from "./osm";
 
 const origin = { lat: 13.085, lng: 80.2101 };
 const extract: OsmExtract = {
@@ -40,6 +40,24 @@ describe("parseOsm", () => {
   it("separates areas and tagged points, and skips open non-highway ways", () => {
     expect(features.areas.map((a) => a.id)).toEqual([12]);
     expect(features.points.map((p) => p.tags.natural)).toEqual(["tree"]);
+  });
+
+  it("sorts tagged nodes into the kinds the world builder uses", () => {
+    expect(pointKind({ natural: "tree" })).toBe("tree");
+    expect(pointKind({ highway: "bus_stop", name: "Stop" })).toBe("bus_stop");
+    expect(pointKind({ public_transport: "platform", bus: "yes" })).toBe("bus_stop");
+    expect(pointKind({ highway: "traffic_signals" })).toBe("traffic_signals");
+    expect(pointKind({ amenity: "place_of_worship", religion: "hindu" })).toBe("place_of_worship");
+    expect(pointKind({ man_made: "tower" })).toBe("landmark");
+    expect(pointKind({ historic: "memorial" })).toBe("landmark");
+    expect(pointKind({ place: "suburb", name: "Somewhere" })).toBe("place");
+    expect(pointKind({ shop: "bakery" })).toBe("poi");
+    expect(pointKind({ highway: "crossing" })).toBeNull();
+  });
+
+  it("keeps closed tower and place-of-worship outlines that are not buildings as areas", () => {
+    const more = parseOsm({ elements: [...extract.elements, { type: "way", id: 14, nodes: [1, 2, 3, 1], tags: { man_made: "tower" } }] }, origin);
+    expect(more.areas.map((a) => a.id)).toEqual([12, 14]);
   });
 
   it("rejects input that is not an Overpass extract", () => {

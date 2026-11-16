@@ -61,10 +61,40 @@ export interface Tree extends Point {
   readonly source: "osm" | "generated";
 }
 
+export interface NamedPoint extends Point {
+  readonly name?: string;
+}
+
 export interface Poi extends Point {
   /** OSM amenity or shop value, e.g. "hospital", "bakery". */
   readonly kind: string;
   readonly name?: string;
+}
+
+export type LandmarkKind = "tower" | "temple" | "beach" | "district";
+
+/**
+ * A famous place that gets its own model or label. Landmarks are always loaded (they are seen
+ * from far away) and nothing generated is placed inside their footprint.
+ */
+export interface Landmark extends Point {
+  /** Stable id, e.g. "anna-nagar-tower". */
+  readonly id: string;
+  readonly kind: LandmarkKind;
+  /** Name shown on the label and the minimap. */
+  readonly name: string;
+  /** Height of the structure in metres, for those that have one. */
+  readonly height?: number;
+  /** Number of storeys or viewing levels, for those that have them. */
+  readonly levels?: number;
+  /** Radius of the solid footprint in metres (towers and temples). */
+  readonly radius?: number;
+  /** Year it opened, when known. */
+  readonly opened?: number;
+  /** Where the position came from: an OSM element, or how it was derived. */
+  readonly source: string;
+  /** Fields that are estimated rather than taken from OpenStreetMap, e.g. ["height", "levels"]. */
+  readonly estimated: readonly string[];
 }
 
 /** One square of the streaming grid: the things loaded and unloaded as the player moves. */
@@ -94,4 +124,13 @@ export interface WorldMap {
   readonly areas: readonly Area[];
   readonly pois: readonly Poi[];
   readonly chunks: readonly ChunkData[];
+  /**
+   * Landmarks found in the extract, always loaded. Always present in a built world file;
+   * optional so hand-made test maps can leave it out.
+   */
+  readonly landmarks?: readonly Landmark[];
+  /** Mapped bus stops (OSM highway=bus_stop), for jobs. Optional like `landmarks`. */
+  readonly busStops?: readonly NamedPoint[];
+  /** Mapped traffic signals (OSM highway=traffic_signals), for traffic. Optional like `landmarks`. */
+  readonly signals?: readonly Point[];
 }

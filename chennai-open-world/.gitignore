@@ -10,3 +10,6 @@ apps/mobile/android/app/.cxx/
 apps/mobile/android/local.properties
 *.log
 .DS_Store
+
+# City extract clipped from Geofabrik (58 MB); rebuild with scripts/clip-city.py
+assets/osm/city/*.osm.json

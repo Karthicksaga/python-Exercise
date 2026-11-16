@@ -7,17 +7,21 @@ import * as THREE from "three";
 import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, SceneRenderer, createChunkAssets, facadeAtlas, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
 import { Combat, PLAYER_MAX_HEALTH, type CombatEvent, type PlayerState } from "@cow/combat";
-import { boundarySolids, chunkSolids, nearestRoadPoint, type WorldMap } from "@cow/game-world";
+import { GameClock, boundarySolids, chunkSolids, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
 import { HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, type HumanFigure } from "@cow/player";
 import { Hud, Minimap, TouchControls, type MinimapMarker } from "@cow/ui";
-import { Vehicle } from "@cow/vehicles";
+import { Vehicle, gearFor, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
 import { buildContent, type GameContent } from "./content";
 import { Fighters, combatWorld } from "./Fighters";
+import { JobDesk } from "./JobDesk";
 import { KeyboardInput } from "./KeyboardInput";
 import { insideShell, onShellMessage, sendToShell } from "./nativeBridge";
 import { Population } from "./Population";
+import { LandmarkView } from "@cow/game-engine";
+import { landmarkSolids } from "@cow/game-world";
+import { LandmarkLabels } from "@cow/ui";
 import worldJson from "./generated/anna-nagar.json";
 import playerModel from "../../../assets/models/player.glb?inline";
 import locomotion from "../../../assets/animations/locomotion.glb?inline";
@@ -37,22 +41,44 @@ export interface GameSnapshot {
   readonly drawCalls: number;
   readonly triangles: number;
   readonly gpu: string;
-  readonly mode: "foot" | "car" | "auto" | "bike";
+  readonly mode: "foot" | "car" | "auto" | "bike" | "ambulance" | "bus";
   readonly money: number;
   readonly mission: string | null;
   readonly objective: string | null;
   readonly target: { x: number; z: number } | null;
   readonly chunksLoaded: number;
   readonly vehicles: Array<{ id: string; kind: string; x: number; z: number }>;
-  readonly traffic: Array<{ x: number; z: number; speed: number }>;
+  readonly traffic: Array<{ x: number; z: number; speed: number; kind: string }>;
   readonly pedestrians: number;
+  /** AI vehicles the time of day and area call for (`traffic` catches up as they go out of sight). */
+  readonly trafficWanted: number;
+  /** Signalled junctions, and AI vehicles held at their lights or crossings. */
+  readonly signals: number;
+  readonly waitingAtSignals: number;
   readonly health: number;
   readonly ammo: number;
   readonly enemies: Array<{ x: number; z: number; health: number; armed: boolean }>;
   readonly street: string;
+  /** City job being worked, its next stop and the reputation. */
+  readonly job: string | null;
+  readonly jobStop: number;
+  readonly reputation: number;
+  readonly gear: string;
+  readonly siren: boolean;
+  /** True while a menu (job board, job result) holds the game. */
+  readonly held: boolean;
+  /** Time of day, 0 to 24. */
+  readonly hour: number;
+  /** Weather chosen in the pause menu. */
+  readonly weather: Weather;
+  /** How much the driven vehicle is sliding, 0 (gripping or on foot) to 1 (a full drift). */
+  readonly drift: number;
+  /** Landmarks on the map and whether each one's name label is on screen. */
+  readonly landmarks: Array<{ id: string; name: string; x: number; z: number; radius: number; label: boolean }>;
 }
 
 const SAVE_KEY = "cow-progress-v1";
+const MINIMAP_COLORS: Record<Vehicle["kind"], string> = { car: "#e9eef5", auto: "#f5c400", bike: "#5aa9ff", ambulance: "#ff5d5d", bus: "#3fc1b0" };
 /** How close the player must be to a vehicle to get in, metres. */
 const ENTER_RANGE = 3.6;
 
@@ -73,6 +99,26 @@ function loadProgress(): Progress | undefined {
     // A missing or damaged save simply starts a new game.
   }
   return undefined;
+}
+
+const HOUR_KEY = "cow-hour-v1";
+function loadHour(): number | undefined {
+  try {
+    const raw = localStorage.getItem(HOUR_KEY);
+    return raw === null ? undefined : Number(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+type Weather = "clear" | "rain";
+const WEATHER_KEY = "cow-weather-v1";
+function loadWeather(): Weather {
+  try {
+    return localStorage.getItem(WEATHER_KEY) === "rain" ? "rain" : "clear";
+  } catch {
+    return "clear";
+  }
 }
 
 function saveProgress(progress: Progress): void {
@@ -97,6 +143,19 @@ export class Game {
   private street = "";
   private sinceStreet = 1;
   private readonly parkedObstacles: Array<{ x: number; z: number; radius: number }> = [];
+  private readonly desk: JobDesk;
+  /** A menu is open over the game (job board or a job's result). */
+  private held = false;
+  private throttle = 0;
+  /** Gear shown last frame, to hear a change up. */
+  private lastGear = "";
+  /** Time of day. Systems that change with it read `clock.hour`. */
+  private readonly clock = new GameClock(loadHour());
+  /** Clear or light rain, from the pause menu; the renderer draws it. */
+  private weather = loadWeather();
+  /** Landmark models (always loaded) and their name labels. */
+  private readonly landmarks: LandmarkView;
+  private readonly landmarkLabels: LandmarkLabels;
 
   private constructor(
     private readonly map: WorldMap,
@@ -121,6 +180,14 @@ export class Game {
     private readonly minimap: Minimap,
   ) {
     this.loop = new GameLoop({ fixedUpdate: (dt) => this.fixedUpdate(dt), frame: (dt) => this.frame(dt) });
+    this.desk = new JobDesk(content.jobs, missions, hud, sound, {
+      hold: () => this.hold(),
+      release: () => this.release(),
+      saveMoney: () => saveProgress(this.missions.progress()),
+    });
+    this.landmarks = new LandmarkView(map.landmarks ?? []);
+    renderer.scene.add(this.landmarks.object);
+    this.landmarkLabels = new LandmarkLabels(hud.root, map.landmarks ?? []);
   }
 
   static async create(canvas: HTMLCanvasElement, stage: HTMLElement): Promise<Game> {
@@ -137,6 +204,9 @@ export class Game {
     const physics = await PhysicsWorld.create();
     const boundary = physics.createStaticGroup();
     for (const box of boundarySolids(map.bounds)) boundary.addBox(box);
+    // Landmarks are always loaded, so their solids are added once.
+    const landmarkData = landmarkSolids(map.landmarks ?? []);
+    physics.createStaticGroup().addMesh(landmarkData.vertices, landmarkData.indices);
 
     // Solids are streamed with the meshes: a chunk is solid exactly while it is visible.
     const solids = new Map<string, StaticGroup>();
@@ -153,7 +223,7 @@ export class Game {
         if (group) physics.removeStaticGroup(group);
         solids.delete(chunk.key);
       },
-    });
+    }, renderer.tier.loadDistance, renderer.tier.unloadDistance);
     chunks.update(spawn.x, spawn.z, true);
 
     const body = physics.createCharacter({ radius: PLAYER_RADIUS, height: PLAYER_HEIGHT, feet: { x: spawn.x, y: 0.1, z: spawn.z } });
@@ -184,21 +254,33 @@ export class Game {
     const keyboard = new KeyboardInput();
 
     let game: Game | undefined;
-    const hud = new Hud(stage, { title: map.name, subtitle: "Chennai" }, () => game?.setPaused(true));
+    const hud = new Hud(
+      stage,
+      { title: map.name, subtitle: "Chennai" },
+      () => game?.setPaused(true),
+      () => game?.openBoard(),
+    );
     const minimap = new Minimap(hud.root, map);
+    // Sky, wet roads, lit windows and vehicle lamps follow the time of day and the weather.
+    renderer.listen((look) => {
+      mapView.applyLook(look);
+      chunks.applyLook(look);
+      setVehicleNightLights(look.night);
+    });
     game = new Game(map, content, renderer, mapView, chunks, physics, player, avatar, vehicles, population, combat, fighters, sound, missions, beacon, camera, controls, keyboard, hud, minimap);
 
     window.addEventListener("resize", () => renderer.resize());
     // Stop simulating while the app is in the background: saves battery and avoids a time jump.
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) game.loop.stop();
-      else if (!game.paused) game.loop.start();
+      else if (!game.paused && !game.held) game.loop.start();
     });
     onShellMessage((message) => game.setPaused(message.type === "pause"));
     return game;
   }
 
   start(): void {
+    this.renderer.setRain(this.weather === "rain", true);
     this.loop.start();
     const mission = this.missions.mission;
     if (mission) this.hud.showToast(`Stage ${mission.stage}: ${mission.title}`, mission.brief, 5);
@@ -206,15 +288,93 @@ export class Game {
     sendToShell({ type: "ready", gpu: this.renderer.gpu() });
   }
 
+  /** Open the job board (the JOBS button, or J on a keyboard). */
+  openBoard(): void {
+    if (!this.paused) this.desk.openBoard();
+  }
+
+  private hold(): void {
+    if (this.held) return;
+    this.held = true;
+    this.loop.stop();
+    this.sound.suspend();
+    this.controls.setVisible(false);
+  }
+
+  private release(): void {
+    if (!this.held) return;
+    this.held = false;
+    this.controls.setVisible(true);
+    if (!this.paused) this.loop.start();
+  }
+
+  /** A short summary of progress, copied or shared so the player can send it to friends. */
+  private share(): void {
+    const record = this.desk.runner.record();
+    const text = `Chennai Open World: ₹${this.missions.balance.toLocaleString("en-IN")} earned, stages ${this.missions.stagesDone}/${this.missions.stageCount}, ${record.done} city jobs done, reputation ${record.reputation}/100.`;
+    const done = () => this.hud.showToast("Progress copied", text, 4);
+    const fallback = () => {
+      const area = document.createElement("textarea");
+      area.value = text;
+      document.body.append(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      area.remove();
+      if (ok) done();
+      else this.hud.showToast("Copy this", text, 8);
+    };
+    const share = (navigator as Navigator & { share?: (data: { text: string }) => Promise<void> }).share;
+    if (share) {
+      share.call(navigator, { text }).catch(() => undefined);
+      return;
+    }
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, fallback);
+    else fallback();
+  }
+
+  /** Pause menu: jump to the next named time of day, and remember it. */
+  private nextTimeOfDay(): void {
+    this.clock.next();
+    try {
+      localStorage.setItem(HOUR_KEY, String(this.clock.hour));
+    } catch {
+      // Not saved; the game still changes time.
+    }
+    // Show the new light behind the pause screen, which is not animating.
+    this.renderer.setTimeOfDay(this.clock.hour);
+    this.renderer.render();
+    // Rebuild the pause screen so the button shows the new time.
+    this.paused = false;
+    this.setPaused(true);
+  }
+
+  /** Pause menu: switch between clear weather and light rain, and remember it. */
+  private toggleWeather(): void {
+    this.weather = this.weather === "rain" ? "clear" : "rain";
+    try {
+      localStorage.setItem(WEATHER_KEY, this.weather);
+    } catch {
+      // Not saved; the weather still changes.
+    }
+    this.renderer.setRain(this.weather === "rain", true);
+    this.renderer.render();
+    this.paused = false;
+    this.setPaused(true);
+  }
+
   setPaused(paused: boolean): void {
     if (paused === this.paused) return;
     this.paused = paused;
+    this.held = false;
     this.controls.setVisible(!paused);
     if (paused) {
       this.loop.stop();
       this.sound.suspend();
-      const help = "On foot: left side moves, right side looks. JUMP, HIT to punch, FIRE to shoot where you look, ENTER to get in a vehicle. Driving: left stick steers, GAS and BRAKE on the right (hold BRAKE to reverse).";
+      const help = "On foot: left side moves, right side looks. JUMP, HIT to punch, FIRE to shoot where you look, ENTER to get in a vehicle. Driving: left stick steers, GAS and BRAKE on the right (hold BRAKE to reverse); SIREN in the ambulance. JOBS opens the job board.";
       this.hud.showOverlay("Paused", `${help} Map data ${this.map.attribution}.`, { label: "Resume", run: () => this.setPaused(false) });
+      this.hud.addOverlayAction({ label: "Share progress", quiet: true, run: () => this.share() });
+      this.hud.addOverlayAction({ label: `Time: ${this.clock.label} (${this.clock.text()})`, quiet: true, run: () => this.nextTimeOfDay() });
+      this.hud.addOverlayAction({ label: `Weather: ${this.weather === "rain" ? "Rain" : "Clear"}`, quiet: true, run: () => this.toggleWeather() });
       this.hud.addOverlayAction({ label: "New game", quiet: true, run: () => this.newGame() });
       if (insideShell()) this.hud.addOverlayAction({ label: "Main menu", quiet: true, run: () => sendToShell({ type: "exit" }) });
     } else {
@@ -228,6 +388,7 @@ export class Game {
   private newGame(): void {
     this.missions.reset();
     saveProgress(this.missions.progress());
+    this.desk.reset();
     this.cleared.clear();
     this.combat.keepOnly([]);
     this.combat.revive();
@@ -272,6 +433,7 @@ export class Game {
     this.avatar.setSeated(open);
     this.camera.reach = vehicle.type.cameraDistance;
     this.controls.setMode("drive");
+    this.controls.setHornLabel(vehicle.type.siren ? "SIREN" : "HORN");
   }
 
   /** Get out beside the vehicle, on whichever side has room. */
@@ -297,6 +459,8 @@ export class Game {
       }
     }
     const out = exit === sides[2] ? vehicle.type.physics.halfExtents.z + 0.9 : reach;
+    vehicle.setSiren(false);
+    this.sound.setSiren(false);
     this.driving = null;
     this.sound.door();
     this.player.body.setEnabled(true);
@@ -326,6 +490,14 @@ export class Game {
     return best;
   }
 
+  /** The marker: the job's next stop or vehicle while on a job, otherwise the stage objective. */
+  private currentTarget(at: { x: number; z: number }): { x: number; z: number; radius: number } | null {
+    const job = this.desk.active;
+    if (!job) return this.target(this.missions.objective, at);
+    if (this.driving?.kind !== job.vehicle) return this.target({ type: "enter", label: "", vehicle: job.vehicle }, at);
+    return this.desk.stopTarget();
+  }
+
   private announce(events: MissionEvent[]): void {
     for (const event of events) {
       if (event.type === "objective") this.sound.chime();
@@ -351,7 +523,7 @@ export class Game {
     const p = this.where();
     const stats = this.renderer.stats();
     const objective = this.missions.objective;
-    const target = this.target(objective, p);
+    const target = this.currentTarget(p);
     return {
       x: p.x,
       y: p.y,
@@ -375,10 +547,23 @@ export class Game {
       vehicles: this.vehicles.map((v) => ({ id: v.id, kind: v.kind, x: v.body.position().x, z: v.body.position().z })),
       traffic: this.population.trafficPositions(),
       pedestrians: this.population.pedestrianCount,
+      trafficWanted: this.population.trafficWanted,
+      signals: this.population.signalCount,
+      waitingAtSignals: this.population.waitingAtSignals,
       health: this.combat.health,
       ammo: this.combat.ammo,
       enemies: this.combat.enemies.map((e) => ({ x: e.x, z: e.z, health: e.health, armed: e.armed })),
       street: this.street,
+      job: this.desk.active?.id ?? null,
+      jobStop: this.desk.runner.stopNumber,
+      reputation: this.desk.runner.reputation,
+      gear: this.driving ? gearFor(this.driving.type, this.driving.body.forwardSpeed(), this.throttle) : "",
+      siren: this.driving?.siren ?? false,
+      held: this.held,
+      hour: this.clock.hour,
+      weather: this.weather,
+      drift: this.driving?.body.drifting() ?? 0,
+      landmarks: (this.map.landmarks ?? []).map((l) => ({ id: l.id, name: l.name, x: l.x, z: l.z, radius: l.radius ?? 0, label: this.landmarkLabels.isShown(l.id) })),
     };
   }
 
@@ -386,7 +571,8 @@ export class Game {
   private fight(dt: number, at: { x: number; z: number }): void {
     // Enemies exist only while their objective is the current one.
     const objective = this.missions.objective;
-    const group = objective?.type === "defeat" ? objective.group : null;
+    // No fights while on a city job.
+    const group = objective?.type === "defeat" && !this.desk.active ? objective.group : null;
     this.combat.keepOnly(group ? [group] : []);
     if (group && !this.cleared.has(group) && this.combat.remaining(group) === 0) {
       const spots = this.content.enemies[group] ?? [];
@@ -469,6 +655,7 @@ export class Game {
   }
 
   private fixedUpdate(dt: number): void {
+    this.clock.advance(dt);
     const stick = this.controls.state;
     const moveX = stick.moveX || this.keyboard.moveX;
     const moveY = stick.moveY || this.keyboard.moveY;
@@ -489,25 +676,41 @@ export class Game {
       // The brake pedal brakes while rolling forwards and reverses once the vehicle has stopped.
       const reversing = brake && speed < 0.8;
       driverInput = { throttle: gas ? 1 : reversing ? -1 : 0, steer: moveX, brake: brake && !reversing ? 1 : 0 };
+      this.throttle = driverInput.throttle;
     } else {
       this.player.update({ moveX, moveY, run: this.keyboard.run, jump, cameraYaw: this.camera.yaw }, dt);
     }
     for (const vehicle of this.vehicles) vehicle.update(vehicle === this.driving ? driverInput : null, dt);
+    // Crashes: a thump, and a bump on the job's record. Parked vehicles' knocks are forgotten.
+    let impact = 0;
+    for (const vehicle of this.vehicles) {
+      const hit = vehicle.consumeImpact();
+      if (vehicle === this.driving) impact = hit;
+    }
+    if (impact > 0) this.sound.crash(impact);
 
     const before = this.where();
     this.parkedObstacles.length = 0;
-    for (const vehicle of this.vehicles) {
-      if (vehicle === this.driving) continue;
-      const p = vehicle.body.position();
-      this.parkedObstacles.push({ x: p.x, z: p.z, radius: 1.3 });
-    }
-    this.population.fixedUpdate(dt, { x: before.x, z: before.z, radius: this.driving ? 1.6 : 0.5 }, this.parkedObstacles);
+    for (const vehicle of this.vehicles) if (vehicle !== this.driving) this.parkedObstacles.push(...vehicle.footprint());
+    const room = this.driving ? this.driving.footprint() : [{ x: before.x, z: before.z, radius: 0.5 }];
+    const siren = this.driving?.siren ? { x: before.x, z: before.z, heading: this.driving.body.yaw() } : null;
+    // Rush hours are busy, late nights quiet.
+    this.population.setHour(this.clock.hour);
+    this.population.fixedUpdate(dt, before, room, this.parkedObstacles, siren);
     this.fight(dt, before);
     this.fighters.fixedUpdate();
     this.physics.step(dt);
 
     const at = this.where();
-    this.announce(
+    const status = {
+      x: at.x,
+      z: at.z,
+      mode: this.driving ? this.driving.kind : ("foot" as const),
+      speed: this.driving ? Math.abs(this.driving.body.forwardSpeed()) : this.player.speed,
+    };
+    // A city job puts the stage on hold until it is finished or quit.
+    if (this.desk.active) this.desk.fixedUpdate(dt, status, impact);
+    else this.announce(
       this.missions.update(dt, {
         x: at.x,
         z: at.z,
@@ -522,6 +725,10 @@ export class Game {
   }
 
   private frame(dt: number): void {
+    if (this.keyboard.consumeBoard()) {
+      this.openBoard();
+      return;
+    }
     const look = this.controls.consumeLook();
     this.camera.look(look.dx, look.dy);
 
@@ -529,12 +736,23 @@ export class Game {
     for (const vehicle of this.vehicles) vehicle.sync(dt);
 
     if (this.driving) {
-      if (Math.abs(this.driving.body.forwardSpeed()) > 1.5) this.camera.trail(this.driving.body.yaw(), dt);
+      const body = this.driving.body;
+      this.camera.chase({ velocity: body.planarVelocity(), heading: body.yaw(), forwardSpeed: body.forwardSpeed(), topSpeed: this.driving.type.physics.maxSpeed }, dt);
       this.camera.update(dt, at, this.physics, this.driving.body);
-      this.hud.setSpeed(this.driving.speedKmh);
+      const gear = gearFor(this.driving.type, this.driving.body.forwardSpeed(), this.throttle);
+      this.hud.setSpeed(this.driving.speedKmh, gear);
+      if (shiftedUp(this.lastGear, gear)) this.sound.gearChange();
+      this.lastGear = gear;
       const top = this.driving.type.physics.maxSpeed;
-      this.sound.setEngine(Math.abs(this.driving.body.forwardSpeed()) / top, this.driving.kind !== "car");
-      if ([this.controls.consumeHorn(), this.keyboard.consumeHorn()].some(Boolean)) this.sound.horn();
+      this.sound.setEngine(Math.abs(this.driving.body.forwardSpeed()) / top, this.driving.kind === "auto" || this.driving.kind === "bike");
+      this.sound.setSkid(body.drifting());
+      if ([this.controls.consumeHorn(), this.keyboard.consumeHorn()].some(Boolean)) {
+        // The ambulance's button switches the siren; everything else has a horn.
+        if (this.driving.type.siren) {
+          this.driving.setSiren(!this.driving.siren);
+          this.sound.setSiren(this.driving.siren);
+        } else this.sound.horn();
+      }
       const seat = this.driving.riderPose();
       if (seat) {
         this.avatar.object.position.set(seat.x, seat.y, seat.z);
@@ -550,6 +768,8 @@ export class Game {
       this.camera.update(dt, at, this.physics, this.player.body);
       this.hud.setSpeed(null);
       this.sound.setEngine(null);
+      this.sound.setSkid(null);
+      this.lastGear = "";
 
       // Offer to get in the closest vehicle within reach.
       this.nearby = null;
@@ -568,13 +788,18 @@ export class Game {
     // Mission marker, panel and minimap.
     const mission = this.missions.mission;
     const objective = this.missions.objective;
-    const target = this.target(objective, at);
+    const target = this.currentTarget(at);
     // Inside the marker its column of light would tint the whole view, so it is hidden there.
     this.beacon.place(target && Math.hypot(target.x - at.x, target.z - at.z) > target.radius ? target : null);
     this.beacon.update(dt);
     this.hud.setMoney(this.missions.balance, this.missions.stagesDone, this.missions.stageCount);
+    this.hud.setReputation(this.desk.runner.reputation);
+    const job = this.desk.active;
+    const distance = target ? Math.hypot(target.x - at.x, target.z - at.z) : null;
     this.hud.setMission(
-      mission && objective
+      job
+        ? this.desk.view(this.driving?.kind === job.vehicle, distance)
+        : mission && objective
         ? {
             title: `Stage ${mission.stage} · ${mission.title}`,
             objective: objective.label,
@@ -585,7 +810,7 @@ export class Game {
     );
     const markers: MinimapMarker[] = this.vehicles
       .filter((v) => v !== this.driving)
-      .map((v) => ({ x: v.body.position().x, z: v.body.position().z, color: v.kind === "auto" ? "#f5c400" : v.kind === "bike" ? "#5aa9ff" : "#e9eef5", size: 3.5 }));
+      .map((v) => ({ x: v.body.position().x, z: v.body.position().z, color: MINIMAP_COLORS[v.kind], size: v.kind === "bus" ? 5 : 3.5 }));
     for (const enemy of this.combat.enemies) if (enemy.health > 0) markers.push({ x: enemy.x, z: enemy.z, color: "#ff4d4d", size: 4 });
     if (target) markers.push({ x: target.x, z: target.z, color: "#ffb703", pinned: true, size: 6 });
     this.minimap.update(dt, at.x, at.z, this.driving ? this.driving.body.yaw() : this.player.yaw, this.camera.yaw, markers);
@@ -605,7 +830,13 @@ export class Game {
     this.chunks.update(at.x, at.z);
     this.mapView.follow(this.renderer.camera);
     this.renderer.focusShadows(at.x, at.z);
+    // Light and sky follow the clock; rain, headlight pool and speed blur follow the player.
+    this.renderer.setTimeOfDay(this.clock.hour);
+    const lamps = this.driving ? { ...this.driving.body.position(), yaw: this.driving.body.yaw() } : null;
+    this.renderer.update(dt, this.driving ? Math.abs(this.driving.body.forwardSpeed()) : 0, lamps);
     this.renderer.render();
+    // After rendering, so the labels use this frame's camera.
+    this.landmarkLabels.update(this.landmarks.place(this.renderer.camera, at));
     this.hud.setFps(this.loop.fps);
   }
 }

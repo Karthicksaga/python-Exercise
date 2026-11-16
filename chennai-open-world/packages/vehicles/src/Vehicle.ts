@@ -5,6 +5,14 @@ import { buildVehicleModel, type VehicleModel } from "./models";
 import { VEHICLE_TYPES, type VehicleKind, type VehicleType } from "./specs";
 
 const IDLE: VehicleControls = { throttle: 0, steer: 0, brake: 0.4 };
+/**
+ * A change of velocity bigger than this in one physics step (m/s) is a crash, not driving:
+ * the tyres' grip limit keeps engine, brakes and cornering under about 0.4 m/s per step, even
+ * in a drift or braking hard while sliding (checked in VehicleBody.test.ts).
+ */
+const IMPACT = 1.6;
+/** Share of speed kept after a crash. */
+const CRASH_KEEP = 0.65;
 
 export class Vehicle {
   readonly type: VehicleType;
@@ -13,6 +21,10 @@ export class Vehicle {
   private roll = 0;
   private lean = 0;
   private readonly seatPoint = new THREE.Vector3();
+  private last: { x: number; z: number; vx: number; vz: number } | null = null;
+  private impact = 0;
+  private sirenOn = false;
+  private sirenClock = 0;
 
   constructor(
     readonly id: string,
@@ -51,13 +63,67 @@ export class Vehicle {
     return { x: at.x, y: at.y, z: at.z, quaternion: this.object.quaternion };
   }
 
+  get siren(): boolean {
+    return this.sirenOn;
+  }
+
+  /** Switch the siren and lights. Ignored on vehicles without them. */
+  setSiren(on: boolean): void {
+    this.sirenOn = on && this.type.siren === true;
+    if (!this.sirenOn) for (const material of this.model.beacons ?? []) material.emissiveIntensity = 0.2;
+  }
+
+  /** Strength of a crash in the last step (change of speed, m/s), then 0 until the next one. */
+  consumeImpact(): number {
+    const impact = this.impact;
+    this.impact = 0;
+    return impact;
+  }
+
+  /**
+   * Points along the vehicle's length with a radius, so AI traffic sees a long bus as a row
+   * of circles instead of one huge one.
+   */
+  footprint(): Array<{ x: number; z: number; radius: number }> {
+    const { x: hx, z: hz } = this.type.physics.halfExtents;
+    const p = this.body.position();
+    const yaw = this.body.yaw();
+    const radius = hx + 0.3;
+    const count = Math.max(1, Math.round(hz / radius));
+    const out: Array<{ x: number; z: number; radius: number }> = [];
+    for (let i = 0; i < count; i++) {
+      const along = count === 1 ? 0 : -hz + radius + ((2 * (hz - radius)) / (count - 1)) * i;
+      out.push({ x: p.x - Math.sin(yaw) * along, z: p.z - Math.cos(yaw) * along, radius });
+    }
+    return out;
+  }
+
   /** Advance one fixed step. Pass null when nobody is driving (handbrake on). */
   update(controls: VehicleControls | null, dt: number): void {
+    // Compare with the previous step: a sudden change of velocity means the vehicle hit something.
+    const p = this.body.position();
+    const v = this.body.planarVelocity();
+    const last = this.last;
+    if (last && Math.hypot(p.x - last.x, p.z - last.z) < 3) {
+      const change = Math.hypot(v.x - last.vx, v.z - last.vz);
+      if (change > IMPACT) {
+        this.impact = Math.max(this.impact, change);
+        this.body.damp(CRASH_KEEP);
+      }
+    }
+    const after = this.body.planarVelocity();
+    this.last = { x: p.x, z: p.z, vx: after.x, vz: after.z };
     this.body.drive(controls ?? IDLE, dt);
   }
 
   /** Copy the physics state onto the model. Call once per rendered frame. */
   sync(dt: number): void {
+    if (this.sirenOn) {
+      // Red and blue take turns, about three flashes a second.
+      this.sirenClock += dt;
+      const phase = Math.floor(this.sirenClock * 6) % 2;
+      this.model.beacons?.forEach((material, i) => (material.emissiveIntensity = i % 2 === phase ? 3 : 0.1));
+    }
     const p = this.body.position();
     const r = this.body.rotation();
     this.object.position.set(p.x, p.y, p.z);

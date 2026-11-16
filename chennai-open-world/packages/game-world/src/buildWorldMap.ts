@@ -2,13 +2,16 @@
  * Turns OpenStreetMap features into the game's world.
  *
  * What comes from OSM: where roads run and their class and name, building footprints, parks,
- * mapped trees and named places. What is invented here, because OSM does not have it for this
- * area: road widths (by class), building heights and floor counts (by footprint size and type),
- * wall colours, and extra trees along avenues and in parks. Everything is deterministic.
+ * mapped trees and named places, bus stops and traffic signals, and where landmarks stand (or
+ * the paths that let us derive it, see `landmarks.ts`). What is invented here, because OSM does
+ * not have it for this area: road widths (by class), building heights and floor counts (by
+ * footprint size and type), wall colours, extra trees along avenues and in parks, and landmark
+ * heights and footprints. Everything is deterministic.
  */
-import type { LatLng, OsmFeatures, Tags } from "@cow/map-data";
+import { pointKind, type LatLng, type OsmFeatures, type Tags } from "@cow/map-data";
+import { findLandmarks, insideLandmark } from "./landmarks";
 import { centroid, clipLine, closestOnSegment, insideBounds, pointInPolygon, signedArea } from "./geometry";
-import type { Area, Bounds, Building, BuildingKind, ChunkData, Poi, Point, Road, RoadKind, Tree, WorldMap } from "./types";
+import type { Area, Bounds, Building, BuildingKind, ChunkData, NamedPoint, Poi, Point, Road, RoadKind, Tree, WorldMap } from "./types";
 
 export interface BuildOptions {
   readonly name: string;
@@ -171,27 +174,38 @@ export function buildWorldMap(features: OsmFeatures, options: BuildOptions): Wor
   const { bounds, chunkSize } = options;
   const roads = toRoads(features, bounds);
   const areas = toAreas(features, bounds);
+  const landmarks = findLandmarks(features, bounds);
 
   const buildings: Building[] = [];
   for (const polygon of features.buildings) {
-    if (!insideBounds(centroid(polygon.outline), bounds, 2)) continue;
+    const middle = centroid(polygon.outline);
+    if (!insideBounds(middle, bounds, 2)) continue;
+    // A landmark has its own model; a mapped outline under it would be a second building.
+    if (insideLandmark(middle, landmarks)) continue;
     const building = toBuilding(polygon.id, polygon.tags, polygon.outline);
     if (building) buildings.push(building);
   }
 
   const trees: Tree[] = [];
   const pois: Poi[] = [];
+  const busStops: NamedPoint[] = [];
+  const signals: Point[] = [];
   for (const point of features.points) {
     if (!insideBounds(point, bounds, 4)) continue;
+    const kind = pointKind(point.tags);
+    if (kind === "bus_stop") busStops.push({ x: point.x, z: point.z, ...(point.tags.name ? { name: point.tags.name } : {}) });
+    if (kind === "traffic_signals") signals.push({ x: point.x, z: point.z });
     // Mapped trees standing on a carriageway are median trees; medians aren't modelled yet, so
     // they are left out rather than planted in the traffic lane.
     if (point.tags.natural === "tree" && !blocked(point, roads, buildings, 0.5)) {
       trees.push({ x: point.x, z: point.z, scale: 0.9 + hash(point.id) * 0.4, source: "osm" });
     }
-    const kind = point.tags.amenity ?? point.tags.shop;
-    if (kind) pois.push({ kind, ...(point.tags.name ? { name: point.tags.name } : {}), x: point.x, z: point.z });
+    const poi = point.tags.amenity ?? point.tags.shop;
+    if (poi) pois.push({ kind: poi, ...(point.tags.name ? { name: point.tags.name } : {}), x: point.x, z: point.z });
   }
   trees.push(...generateTrees(roads, areas, buildings, bounds));
+  // Nothing grows on a landmark's plinth, mapped or generated.
+  const planted = trees.filter((tree) => !insideLandmark(tree, landmarks, 1.5));
 
   // Sort everything into the streaming grid by position.
   const chunks = new Map<string, { col: number; row: number; buildings: Building[]; trees: Tree[] }>();
@@ -207,7 +221,7 @@ export function buildWorldMap(features: OsmFeatures, options: BuildOptions): Wor
     return chunk;
   };
   for (const building of buildings) chunkAt(centroid(building.outline)).buildings.push(building);
-  for (const tree of trees) chunkAt(tree).trees.push(tree);
+  for (const tree of planted) chunkAt(tree).trees.push(tree);
 
   const chunkList: ChunkData[] = [...chunks.entries()].map(([key, c]) => ({ key, ...c })).sort((a, b) => a.row - b.row || a.col - b.col);
 
@@ -222,5 +236,8 @@ export function buildWorldMap(features: OsmFeatures, options: BuildOptions): Wor
     areas,
     pois,
     chunks: chunkList,
+    landmarks,
+    busStops,
+    signals,
   };
 }

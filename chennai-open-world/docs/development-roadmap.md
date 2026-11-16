@@ -28,6 +28,34 @@ Status values: **done** (built and tested as described in `progress.md`), **in p
 7. **Serve assets through a WebView asset loader** so models and chunks stream from files
    instead of being embedded in the script (TD-3).
 
+## City jobs brief (adopted 16 Nov 2026)
+
+The user's six-part brief (real Chennai from Anna Nagar to Marina Beach and the start of ECR,
+believable driving, Chennai traffic, everyday jobs, a golden-hour look, save and share) is
+folded into this project. It keeps this project's stack and rules. Where the brief asks for
+something different, this is what we do instead, and why:
+
+| Brief says | Here | Why |
+|---|---|---|
+| Single HTML file, plain JavaScript | TypeScript packages, bundled into one script (`apps/game/dist`) | Strict types and package boundaries (AGENTS.md); the web build is already one page that can be hosted as one link |
+| Download OSM in the browser, cache in localStorage | Extract fetched at build time and turned into chunks (`npm run build:world`) | Works offline on a phone; the public Overpass servers were overloaded on 16 Nov 2026 (502 on two mirrors); localStorage holds ~5 MB, too little for the city |
+| No glorified violence | New content is jobs only. Stages 7–10 (fights) still exist | **Open question for the user:** keep, tone down or remove the fight stages |
+
+Milestones, in order:
+
+| Milestone | Scope | Status |
+|---|---|---|
+| J1. Jobs on the current map | Job board, ambulance run (siren clears traffic), courier (damage bonus), cab ride (fare by distance and rating), bus route (stops in order, timetable); start point, time limit, payout; failing costs money and reputation, not the game; result screen; crash detection with speed loss and a thud; gear indicator; ambulance and bus vehicles; share progress | done in the browser and on the emulator (10 jobs) |
+| J2. The bigger city | Extract and chunks for Anna Nagar → T. Nagar → Anna Salai → Marina Beach → ECR start; OSM `height`/`building:levels` used, 2 floors when missing; coastline and sea plane; landmark models and labels (Anna Nagar Tower, Kapaleeshwarar Temple, Marina Beach, T. Nagar); chunks streamed from files (TD-3) because the city will not fit in one script; Marina evening drive job | in progress: landmark system and Anna Nagar Tower done; city extract clipped from Geofabrik (16 Nov: about 107,000 buildings, 20,000 road pieces, 535 bus stops, 266 signals, 58 MB) |
+| J3. Chennai traffic | Signals at main junctions that traffic and the HUD obey; zebra crossings where traffic yields to pedestrians; buses and two-wheelers in traffic; density by time of day and by area (T. Nagar, Anna Salai heavier); time-of-day setting | done in the browser (no player penalty for red lights, no walk signals, no overtaking) |
+| J4. The look | Golden hour by default, day/night cycle, light rain, sea haze, whitewashed walls and red-tile roofs, palms, draw distance per quality tier, cheap motion blur at speed (high tier only) | done in the browser and seen on the emulator; sea haze is a hook only; no street lights |
+| J5. Driving feel | Drift at high speed, chase camera that looks ahead, gear-change sound | done in the browser |
+
+J2 depends on Overpass being reachable (or a Geofabrik extract of Tamil Nadu filtered locally)
+and on the asset loader: the target area is roughly 12 km × 9 km, about 100 times today's map.
+Phone limits to respect: WebView memory (stream and dispose chunks), draw calls (merge per
+chunk), and touch: every new control must fit beside GAS and BRAKE.
+
 ## Risks
 
 | Risk | Effect | Mitigation |

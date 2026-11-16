@@ -1,11 +1,16 @@
 /**
  * Meshes of one streamed chunk: every building merged into one mesh for walls and one for
- * roofs, and trees drawn with instancing. Disposing a view frees its GPU memory.
+ * roofs, and trees and palms drawn with instancing. Disposing a view frees its GPU memory.
+ *
+ * Renderer-only variety, chosen deterministically from ids and positions (the world data is
+ * untouched): about a third of the low houses get a red clay-tile hip roof, a share of the
+ * trees are coconut palms, and a scatter of windows light up after dark.
  */
 import * as THREE from "three";
-import type { Building, ChunkData } from "@cow/game-world";
+import type { Building, ChunkData, Tree } from "@cow/game-world";
+import type { Look } from "./lighting";
 import { MeshBuilder } from "./MeshBuilder";
-import { FACADE_TILES, FACADE_TILE_COUNT } from "./textures";
+import { FACADE_LIT, FACADE_TILES, FACADE_TILE_COUNT, ROOF_PLAIN_UV, facadeGlowAtlas, roofTileTexture } from "./textures";
 
 const BAY = 3.2; // metres of wall per window bay
 const GROUND_FLOOR = 3.3;
@@ -13,16 +18,28 @@ const PARAPET = 0.9;
 /** Keep samples away from tile edges so neighbouring tiles don't bleed in at a distance. */
 const INSET = 0.004;
 
+/** Share of low houses with a clay-tile roof, of trees drawn as palms, and of windows lit at night. */
+const TILED_ROOFS = 0.32;
+const PALMS = 0.4;
+const LIT_WINDOWS = 0.35;
+/** Clay-tile roofs: eave overhang, pitch (rise over half-span) and metres per texture repeat. */
+const OVERHANG = 0.35;
+const PITCH = 0.55;
+const TILE_REPEAT = 2.4;
+
 /** Materials and geometries shared by every chunk; created once. */
 export interface ChunkAssets {
-  readonly walls: THREE.Material;
-  readonly roofs: THREE.Material;
+  readonly walls: THREE.MeshStandardMaterial;
+  readonly roofs: THREE.MeshStandardMaterial;
   readonly trunk: THREE.BufferGeometry;
   readonly crown: THREE.BufferGeometry;
   readonly trunkMaterial: THREE.Material;
   readonly crownMaterial: THREE.Material;
   readonly tank: THREE.BufferGeometry;
   readonly tankMaterial: THREE.Material;
+  /** Coconut palm: trunk and fronds in one geometry with vertex colours, so one draw call. */
+  readonly palm: THREE.BufferGeometry;
+  readonly palmMaterial: THREE.Material;
 }
 
 /** Stable pseudo-random number in [0, 1) so a building looks the same every time it loads. */
@@ -35,12 +52,135 @@ function hash(id: number, salt: number): number {
 
 const scratch = new THREE.Color();
 
+/** Low houses that get a clay-tile hip roof instead of a flat terrace. */
+function hasTiledRoof(b: Building): boolean {
+  return b.kind === "house" && b.floors <= 2 && b.outline.length >= 4 && b.outline.length <= 8 && hash(b.id, 41) < TILED_ROOFS && convex(b.outline);
+}
+
+function convex(outline: Building["outline"]): boolean {
+  let sign = 0;
+  for (let i = 0; i < outline.length; i++) {
+    const a = outline[i]!;
+    const b = outline[(i + 1) % outline.length]!;
+    const c = outline[(i + 2) % outline.length]!;
+    const cross = (b.x - a.x) * (c.z - b.z) - (b.z - a.z) * (c.x - b.x);
+    if (Math.abs(cross) < 1e-6) continue;
+    if (sign === 0) sign = Math.sign(cross);
+    else if (Math.sign(cross) !== sign) return false;
+  }
+  return true;
+}
+
+/** Stable [0, 1) from a tree's position, so a tree is a palm every time its chunk loads. */
+function treeHash(tree: Tree, salt: number): number {
+  return hash((Math.round(tree.x * 10) * 73856093) ^ (Math.round(tree.z * 10) * 19349663), salt);
+}
+
+type P3 = { x: number; y: number; z: number };
+
+/**
+ * Hip roof of clay tiles over a convex footprint: a ridge along the long axis of a four-sided
+ * house (a point for other shapes), sloping faces down to eaves that overhang the walls.
+ * Returns false when the footprint is too small, so the caller keeps the flat terrace.
+ */
+function addTiledRoof(roofs: MeshBuilder, b: Building, baseY: number): boolean {
+  const o = b.outline;
+  const n = o.length;
+  let cx = 0;
+  let cz = 0;
+  for (const p of o) {
+    cx += p.x;
+    cz += p.z;
+  }
+  cx /= n;
+  cz /= n;
+  let ax = 1;
+  let az = 0;
+  let half = 0;
+  let span: number;
+  if (n === 4) {
+    const edge = (i: number) => Math.hypot(o[(i + 1) % 4]!.x - o[i]!.x, o[(i + 1) % 4]!.z - o[i]!.z);
+    const longFirst = edge(0) + edge(2) >= edge(1) + edge(3);
+    const [a0, a1, b0, b1] = longFirst ? [o[0]!, o[1]!, o[3]!, o[2]!] : [o[1]!, o[2]!, o[0]!, o[3]!];
+    ax = a1.x - a0.x + (b1.x - b0.x);
+    az = a1.z - a0.z + (b1.z - b0.z);
+    const length = Math.hypot(ax, az) || 1;
+    ax /= length;
+    az /= length;
+    const long = longFirst ? (edge(0) + edge(2)) / 2 : (edge(1) + edge(3)) / 2;
+    span = longFirst ? (edge(1) + edge(3)) / 2 : (edge(0) + edge(2)) / 2;
+    half = Math.max(0, (long - span) / 2);
+  } else {
+    let radius = 0;
+    for (const p of o) radius += Math.hypot(p.x - cx, p.z - cz);
+    span = (radius / n) * 1.4;
+  }
+  if (span < 3) return false;
+  const rise = Math.min(2.4, (span / 2) * PITCH);
+  const ridge = (sign: number): P3 => ({ x: cx + ax * half * sign, y: baseY + rise, z: cz + az * half * sign });
+  const ends = o.map((p) => ((p.x - cx) * ax + (p.z - cz) * az < 0 ? -1 : 1));
+  // A skewed quad whose corners don't split two and two along the axis gets a pyramid instead.
+  if (half > 0 && ends.filter((e) => e < 0).length !== 2) half = 0;
+  const eaves: P3[] = o.map((p) => {
+    const dx = p.x - cx;
+    const dz = p.z - cz;
+    const d = Math.hypot(dx, dz) || 1;
+    return { x: p.x + (dx / d) * OVERHANG, y: baseY, z: p.z + (dz / d) * OVERHANG };
+  });
+
+  // Terracotta, a little different on every house.
+  scratch.setHex(0xb0553a).lerp(new THREE.Color(hash(b.id, 43) < 0.5 ? 0x8f4630 : 0xc4704a), hash(b.id, 44) * 0.6);
+  const { r, g, b: blue } = scratch;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const e0 = eaves[i]!;
+    const e1 = eaves[j]!;
+    const r0 = ridge(half > 0 ? ends[i]! : 0);
+    const r1 = ridge(half > 0 ? ends[j]! : 0);
+    const face: P3[] = r0.x === r1.x && r0.z === r1.z ? [e0, e1, r0] : [e0, e1, r1, r0];
+    // Texture courses run along the eave; v climbs the slope.
+    const ex = e1.x - e0.x;
+    const ez = e1.z - e0.z;
+    const el = Math.hypot(ex, ez) || 1;
+    const ux = ex / el;
+    const uz = ez / el;
+    let inX = -uz;
+    let inZ = ux;
+    if ((cx - e0.x) * inX + (cz - e0.z) * inZ < 0) {
+      inX = -inX;
+      inZ = -inZ;
+    }
+    const a = face[0]!;
+    const bb = face[1]!;
+    const c = face[2]!;
+    let nx = (bb.y - a.y) * (c.z - a.z) - (bb.z - a.z) * (c.y - a.y);
+    let ny = (bb.z - a.z) * (c.x - a.x) - (bb.x - a.x) * (c.z - a.z);
+    let nz = (bb.x - a.x) * (c.y - a.y) - (bb.y - a.y) * (c.x - a.x);
+    const flip = ny < 0;
+    const nl = Math.hypot(nx, ny, nz) || 1;
+    nx = (flip ? -nx : nx) / nl;
+    ny = (flip ? -ny : ny) / nl;
+    nz = (flip ? -nz : nz) / nl;
+    const shade = 0.9 + 0.1 * hash(b.id, 50 + i);
+    const ids = face.map((p) => {
+      const along = (p.x - e0.x) * ux + (p.z - e0.z) * uz;
+      const inward = (p.x - e0.x) * inX + (p.z - e0.z) * inZ;
+      return roofs.vertex(p.x, p.y, p.z, nx, ny, nz, along / TILE_REPEAT, Math.hypot(inward, p.y - baseY) / TILE_REPEAT, r * shade, g * shade, blue * shade);
+    });
+    const order = flip ? [...ids].reverse() : ids;
+    if (order.length === 3) roofs.triangle(order[0]!, order[1]!, order[2]!);
+    else roofs.quad(order[0]!, order[1]!, order[2]!, order[3]!);
+  }
+  return true;
+}
+
 function addBuilding(walls: MeshBuilder, roofs: MeshBuilder, b: Building): void {
   scratch.setHex(b.color);
   const { r, g, b: blue } = scratch;
   const { outline, floors, height } = b;
   const upperTop = height - PARAPET;
   const upperFloors = floors - 1;
+  const tiled = hasTiledRoof(b);
 
   for (let i = 0; i < outline.length; i++) {
     const p = outline[i]!;
@@ -81,14 +221,20 @@ function addBuilding(walls: MeshBuilder, roofs: MeshBuilder, b: Building): void 
       };
 
       const groundTop = upperFloors > 0 ? GROUND_FLOOR : upperTop;
+      // The "lit" copy of a tile glows after dark; chosen per bay and floor.
+      const lit = (floor: number) => (hash(b.id, i * 7919 + bay * 61 + floor * 13 + 5) < LIT_WINDOWS ? FACADE_LIT : 0);
       const groundTile = b.kind === "commercial" ? (pick < 0.75 ? FACADE_TILES.shop : FACADE_TILES.window) : pick < 0.3 ? FACADE_TILES.door : FACADE_TILES.window;
-      band(0, groundTop, groundTile, 0, 1);
+      band(0, groundTop, groundTile + lit(0), 0, 1);
       if (upperFloors > 0) {
         const upperTile = hash(b.id, i * 131 + bay + 7) < (b.kind === "house" ? 0.25 : 0.45) ? FACADE_TILES.balcony : FACADE_TILES.window;
-        band(GROUND_FLOOR, upperTop, upperTile, 0, upperFloors);
+        // One band per floor, so each floor's window can be lit on its own.
+        const storey = (upperTop - GROUND_FLOOR) / upperFloors;
+        for (let floor = 0; floor < upperFloors; floor++) band(GROUND_FLOOR + floor * storey, GROUND_FLOOR + (floor + 1) * storey, upperTile + lit(floor + 1), 0, 1);
       }
     }
 
+    // A tiled roof sits on the wall tops, so there is no parapet.
+    if (tiled) continue;
     // Parapet: plain plaster, sampled from a blank corner of the window tile.
     const u = (FACADE_TILES.window + 0.04) / FACADE_TILE_COUNT;
     const a = walls.vertex(p.x, upperTop, p.z, nx, 0, nz, u, 0.86, cr, cg, cb);
@@ -98,13 +244,16 @@ function addBuilding(walls: MeshBuilder, roofs: MeshBuilder, b: Building): void 
     walls.quad(a, e, d, c);
   }
 
-  // Roof slab a little below the parapet top.
-  const roofY = height - 0.35;
+  if (tiled && addTiledRoof(roofs, b, upperTop)) return;
+  // Roof slab a little below the parapet top (shows the roof material's plain texel); on the
+  // wall tops for a tiny house that was meant to be tiled but has no parapet.
+  const roofY = tiled ? upperTop - 0.05 : height - 0.35;
   const contour = outline.map((p) => new THREE.Vector2(p.x, p.z));
   const faces = THREE.ShapeUtils.triangulateShape(contour, []);
   const base = roofs.vertexCount;
   const tone = 0.55 + hash(b.id, 3) * 0.2;
-  for (const p of outline) roofs.vertex(p.x, roofY, p.z, 0, 1, 0, p.x / 6, p.z / 6, tone, tone * 0.98, tone * 0.95);
+  const [pu, pv] = ROOF_PLAIN_UV;
+  for (const p of outline) roofs.vertex(p.x, roofY, p.z, 0, 1, 0, pu, pv, tone, tone * 0.98, tone * 0.95);
   for (const face of faces) {
     const [i0, i1, i2] = face as [number, number, number];
     const p0 = outline[i0]!;
@@ -117,6 +266,79 @@ function addBuilding(walls: MeshBuilder, roofs: MeshBuilder, b: Building): void 
   }
 }
 
+/**
+ * A coconut palm about 8 m tall: a gently curving trunk and nine drooping, folded fronds, with
+ * vertex colours. Non-indexed with flat normals; drawn double-sided so the fronds read from below.
+ */
+function palmGeometry(): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const color = new THREE.Color();
+  const tri = (a: P3, b: P3, c: P3, hex: number) => {
+    positions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+    color.setHex(hex);
+    for (let k = 0; k < 3; k++) colors.push(color.r, color.g, color.b);
+  };
+  // Trunk: six-sided rings, thinner and bending away as it rises.
+  const HEIGHT = 7.2;
+  const RINGS = 5;
+  const SIDES = 6;
+  const bend = (y: number) => 0.55 * (y / HEIGHT) ** 2;
+  const ring = (k: number): P3[] => {
+    const y = (k / (RINGS - 1)) * HEIGHT;
+    const radius = 0.24 - 0.09 * (k / (RINGS - 1));
+    return Array.from({ length: SIDES }, (_, s) => {
+      const angle = (s / SIDES) * Math.PI * 2;
+      return { x: bend(y) + Math.cos(angle) * radius, y, z: Math.sin(angle) * radius };
+    });
+  };
+  for (let k = 0; k < RINGS - 1; k++) {
+    const lower = ring(k);
+    const upper = ring(k + 1);
+    for (let s = 0; s < SIDES; s++) {
+      const t = (s + 1) % SIDES;
+      const bark = k % 2 === 0 ? 0x7f6c57 : 0x736250;
+      tri(lower[s]!, upper[s]!, upper[t]!, bark);
+      tri(lower[s]!, upper[t]!, lower[t]!, bark);
+    }
+  }
+  // Fronds radiating from the crown, rising a little and then drooping.
+  const top: P3 = { x: bend(HEIGHT), y: HEIGHT, z: 0 };
+  const FRONDS = 9;
+  const SEGMENTS = 4;
+  for (let f = 0; f < FRONDS; f++) {
+    const angle = (f / FRONDS) * Math.PI * 2 + (f % 3) * 0.21;
+    const dx = Math.cos(angle);
+    const dz = Math.sin(angle);
+    const length = 3.1 + (f % 2) * 0.5;
+    const spine: P3[] = [];
+    const left: P3[] = [];
+    const right: P3[] = [];
+    for (let i = 0; i <= SEGMENTS; i++) {
+      const t = i / SEGMENTS;
+      const reach = length * t;
+      const p = { x: top.x + dx * reach, y: top.y + 0.7 * t - 2.1 * t * t, z: top.z + dz * reach };
+      const width = 0.6 * Math.sin(Math.PI * (0.12 + 0.88 * t));
+      spine.push(p);
+      // The two halves of the leaf fold down a little from the midrib.
+      left.push({ x: p.x - dz * width, y: p.y - width * 0.35, z: p.z + dx * width });
+      right.push({ x: p.x + dz * width, y: p.y - width * 0.35, z: p.z - dx * width });
+    }
+    for (let i = 0; i < SEGMENTS; i++) {
+      const leaf = i < SEGMENTS - 1 ? 0x3f7a2e : 0x6f9436;
+      tri(spine[i]!, left[i]!, left[i + 1]!, leaf);
+      tri(spine[i]!, left[i + 1]!, spine[i + 1]!, leaf);
+      tri(spine[i]!, spine[i + 1]!, right[i + 1]!, leaf);
+      tri(spine[i]!, right[i + 1]!, right[i]!, leaf);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 export function createChunkAssets(facade: THREE.Texture): ChunkAssets {
   const trunk = new THREE.CylinderGeometry(0.16, 0.26, 4, 6);
   trunk.translate(0, 2, 0);
@@ -127,8 +349,11 @@ export function createChunkAssets(facade: THREE.Texture): ChunkAssets {
   const tank = new THREE.CylinderGeometry(0.75, 0.75, 1.5, 10);
   tank.translate(0, 0.75, 0);
   return {
-    walls: new THREE.MeshStandardMaterial({ map: facade, vertexColors: true, roughness: 0.93 }),
-    roofs: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }),
+    // The glow atlas lights the "lit" window tiles; its strength follows the night (applyChunkLook).
+    walls: new THREE.MeshStandardMaterial({ map: facade, vertexColors: true, roughness: 0.93, emissiveMap: facadeGlowAtlas(), emissive: 0xffffff, emissiveIntensity: 0 }),
+    // Clay tiles on the pitched roofs; flat terraces sample a plain white texel of the same map.
+    // Double-sided so the eaves' undersides aren't see-through from the street.
+    roofs: new THREE.MeshStandardMaterial({ map: roofTileTexture(), vertexColors: true, roughness: 1, side: THREE.DoubleSide }),
     trunk,
     crown,
     trunkMaterial: new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: 0.95 }),
@@ -136,7 +361,17 @@ export function createChunkAssets(facade: THREE.Texture): ChunkAssets {
     tank,
     // The black rooftop water tanks seen on almost every Chennai house.
     tankMaterial: new THREE.MeshStandardMaterial({ color: 0x1d1f22, roughness: 0.6 }),
+    palm: palmGeometry(),
+    palmMaterial: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }),
   };
+}
+
+/** Follow the time of day and weather: windows glow after dark, roofs and walls darken and shine when wet. */
+export function applyChunkLook(assets: ChunkAssets, look: Look): void {
+  assets.walls.emissiveIntensity = look.night * 1.15;
+  assets.walls.color.setScalar(1 - 0.12 * look.rain);
+  assets.roofs.color.setScalar(1 - 0.18 * look.rain);
+  assets.roofs.roughness = 1 - 0.45 * look.rain;
 }
 
 export class ChunkView {
@@ -164,7 +399,7 @@ export class ChunkView {
     const up = new THREE.Vector3(0, 1, 0);
 
     // Water tanks on most roofs, placed at the footprint's centre of mass.
-    const tanked = chunk.buildings.filter((b) => hash(b.id, 21) < 0.7);
+    const tanked = chunk.buildings.filter((b) => hash(b.id, 21) < 0.7 && !hasTiledRoof(b));
     if (tanked.length > 0) {
       const tanks = new THREE.InstancedMesh(assets.tank, assets.tankMaterial, tanked.length);
       tanked.forEach((b, i) => {
@@ -182,11 +417,29 @@ export class ChunkView {
       this.object.add(tanks);
     }
 
-    if (chunk.trees.length > 0) {
-      const trunks = new THREE.InstancedMesh(assets.trunk, assets.trunkMaterial, chunk.trees.length);
-      const crowns = new THREE.InstancedMesh(assets.crown, assets.crownMaterial, chunk.trees.length);
-      const tint = new THREE.Color();
-      chunk.trees.forEach((tree, i) => {
+    const palms = chunk.trees.filter((tree) => treeHash(tree, 51) < PALMS);
+    const trees = chunk.trees.filter((tree) => treeHash(tree, 51) >= PALMS);
+    const tint = new THREE.Color();
+    if (palms.length > 0) {
+      const mesh = new THREE.InstancedMesh(assets.palm, assets.palmMaterial, palms.length);
+      palms.forEach((tree, i) => {
+        rotation.setFromAxisAngle(up, treeHash(tree, 52) * Math.PI * 2);
+        const size = tree.scale * (0.85 + treeHash(tree, 53) * 0.35);
+        matrix.compose(new THREE.Vector3(tree.x, 0, tree.z), rotation, new THREE.Vector3(size, size, size));
+        mesh.setMatrixAt(i, matrix);
+        const v = 0.85 + treeHash(tree, 54) * 0.3;
+        mesh.setColorAt(i, tint.setRGB(v, v, v * 0.92));
+      });
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.computeBoundingSphere();
+      this.object.add(mesh);
+    }
+
+    if (trees.length > 0) {
+      const trunks = new THREE.InstancedMesh(assets.trunk, assets.trunkMaterial, trees.length);
+      const crowns = new THREE.InstancedMesh(assets.crown, assets.crownMaterial, trees.length);
+      trees.forEach((tree, i) => {
         rotation.setFromAxisAngle(up, (tree.x * 13.7 + tree.z * 7.3) % 6.28);
         matrix.compose(new THREE.Vector3(tree.x, 0, tree.z), rotation, new THREE.Vector3(tree.scale, tree.scale, tree.scale));
         trunks.setMatrixAt(i, matrix);

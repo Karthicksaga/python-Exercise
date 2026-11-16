@@ -11,6 +11,8 @@ export class Sound {
   private master: GainNode | null = null;
   private noise: AudioBuffer | null = null;
   private engine: { oscillator: OscillatorNode; rumble: OscillatorNode; gain: GainNode } | null = null;
+  private siren: { oscillator: OscillatorNode; wobble: OscillatorNode; gain: GainNode } | null = null;
+  private skid: { source: AudioBufferSourceNode; whine: OscillatorNode; filter: BiquadFilterNode; gain: GainNode } | null = null;
   private muted = false;
 
   /** Start the audio system. Safe to call many times; must be called from a touch or key press. */
@@ -43,6 +45,106 @@ export class Sound {
   /** Silence everything that is sustained (when the game pauses). */
   suspend(): void {
     this.setEngine(null);
+    this.setSiren(false);
+    this.setSkid(null);
+  }
+
+  /**
+   * Tyre squeal while the vehicle slides, or silence with null (on foot, paused). Filtered
+   * noise with a faint high whine; louder and a little higher the harder it slides.
+   * @param level 0 (gripping) to 1 (a full drift)
+   */
+  setSkid(level: number | null): void {
+    const { context, master, noise } = this;
+    if (!context || !master || !noise) return;
+    if (level === null) {
+      if (!this.skid) return;
+      const { source, whine, gain } = this.skid;
+      gain.gain.setTargetAtTime(0, context.currentTime, 0.05);
+      source.stop(context.currentTime + 0.3);
+      whine.stop(context.currentTime + 0.3);
+      this.skid = null;
+      return;
+    }
+    const amount = Math.max(0, Math.min(1, level));
+    if (!this.skid) {
+      if (amount < 0.05) return; // nothing to hear yet: don't start the nodes
+      const source = context.createBufferSource();
+      source.buffer = noise;
+      source.loop = true;
+      const whine = context.createOscillator();
+      whine.type = "triangle";
+      const whineGain = context.createGain();
+      whineGain.gain.value = 0.25;
+      const filter = context.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.Q.value = 6;
+      const gain = context.createGain();
+      gain.gain.value = 0;
+      source.connect(filter);
+      whine.connect(whineGain).connect(filter);
+      filter.connect(gain).connect(master);
+      source.start();
+      whine.start();
+      this.skid = { source, whine, filter, gain };
+    }
+    const now = context.currentTime;
+    // Quiet below a small slide, so ordinary cornering is silent.
+    const loud = amount < 0.15 ? 0 : (amount - 0.15) / 0.85;
+    this.skid.filter.frequency.setTargetAtTime(1500 + amount * 700, now, 0.08);
+    this.skid.whine.frequency.setTargetAtTime(1500 + amount * 700, now, 0.08);
+    this.skid.gain.gain.setTargetAtTime(loud * 0.22, now, loud > 0 ? 0.05 : 0.12);
+  }
+
+  /** A short blip as the gearbox changes up: the engine note dips and catches. */
+  gearChange(): void {
+    this.tone({ frequency: 150, slideTo: 95, duration: 0.09, type: "square", volume: 0.07 });
+    this.burst(0.05, 0.12, 900);
+  }
+
+  /** A crash: a dull thump, louder for harder hits. @param strength change of speed, m/s */
+  crash(strength: number): void {
+    const loud = Math.max(0.25, Math.min(1, strength / 8));
+    this.burst(0.25, 0.9 * loud, 600);
+    this.tone({ frequency: 70, slideTo: 38, duration: 0.25, volume: 0.45 * loud });
+    if (strength > 4) this.burst(0.18, 0.3 * loud, 5000); // glass and metal
+  }
+
+  /** Two-tone wail of an ambulance siren, on until switched off. */
+  setSiren(on: boolean): void {
+    const { context, master } = this;
+    if (!context || !master) return;
+    if (!on) {
+      if (!this.siren) return;
+      const { oscillator, wobble, gain } = this.siren;
+      gain.gain.setTargetAtTime(0, context.currentTime, 0.05);
+      oscillator.stop(context.currentTime + 0.3);
+      wobble.stop(context.currentTime + 0.3);
+      this.siren = null;
+      return;
+    }
+    if (this.siren) return;
+    // A slow oscillator sweeps the pitch between about 650 and 1050 Hz.
+    const oscillator = context.createOscillator();
+    const wobble = context.createOscillator();
+    const depth = context.createGain();
+    const gain = context.createGain();
+    oscillator.type = "triangle";
+    oscillator.frequency.value = 850;
+    wobble.type = "sine";
+    wobble.frequency.value = 0.55;
+    depth.gain.value = 200;
+    wobble.connect(depth).connect(oscillator.frequency);
+    gain.gain.value = 0.07;
+    oscillator.connect(gain).connect(master);
+    oscillator.start();
+    wobble.start();
+    this.siren = { oscillator, wobble, gain };
+  }
+
+  /** Coins for a paid job. */
+  cash(): void {
+    [1318, 1568].forEach((frequency, i) => this.tone({ frequency, duration: 0.16, type: "square", volume: 0.08, delay: i * 0.08 }));
   }
 
   private tone(tone: Tone): void {
