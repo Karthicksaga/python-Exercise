@@ -1,8 +1,45 @@
 # Progress, testing and known issues
 
-Last updated: 17 Nov 2026.
+Last updated: 17 Nov 2026 (share auto).
 
 ## What exists
+
+- **Share auto (17 Nov; unit tests and one browser test, looked at in headless Chromium, not on a
+  phone):** the job board's *Share auto* (`share-auto`, the id kept so saved best fares carry on)
+  is now a route job. It replaced the earlier version (two fixed pick-ups, one drop at the market).
+  Route: the eastbound carriageway of 2nd Avenue, Anna Nagar West, Thirumangalam to Anna Nagar
+  East (2,078 m, past the Roundtana), chained from its OSM pieces in `apps/game/src/shareAutoRoute.ts`;
+  the area names are the nearest OSM place points. An auto (`auto-share`) is parked at its start
+  and the clock starts in any auto within 150 m of it. While the shift runs, up to 3 people wait
+  at the kerb 60–320 m ahead (placed along the route from a seeded random generator, not fixed
+  stops); stopping (under 1.2 m/s) within 6 m of one for 1.5 s lets them in, 4 seats (three in the
+  back, one beside the driver). Each has a drop point 250–1,200 m further on (pink dot on the
+  minimap, the beacon and the HUD point at whichever comes first, a pick-up or a drop); stopping
+  within 8 m of it for 1 s drops them and they pay then: ₹10 plus ₹5 a km ridden. **The fares
+  are estimates**, not a published tariff; all numbers are in `SHARE_AUTO`
+  (`packages/missions/src/shareAuto.ts`). The shift ends at the end of the route or when the
+  566 s run out (then it is paid, not failed); the result screen shows people carried, fares,
+  people carried past their stop or left waiting with a seat free, and the reputation change:
+  +1 for 1–2 carried, +2 for 3–5, +3 for 6 or more, minus 1 per missed drop and per person left
+  waiting, kept between -5 and +3. Passing people while full costs nothing. Quitting costs the
+  usual 5 reputation and a ₹30 fine; fares already paid are kept. Shown: the route as a yellow
+  line on the minimap (`Minimap.setRoute`), waiting people as green dots, the kerb figures
+  (`HumanAssets` pedestrian figures, at most 3, within 160 m) and baked seated riders in the auto
+  (`apps/game/src/ShareRiders.ts`; seat positions estimated by eye). Measured at lite quality on
+  2nd Avenue: 137 draw calls with one figure at the kerb, 185 with three aboard and one waiting.
+  **Tested:** `packages/missions/src/shareAuto.test.ts` (13: fares, route measure and windowed
+  projection, people appear ahead within the limits and the same for a seed, boarding only when
+  stopped beside them in the auto and after the wait, capacity 4 and no fault for passing while
+  full, drop and fare by distance, missed drops and people left waiting, end of route, rating and
+  reputation, and in `JobRunner`: clock start near the route start, paid at the end, time up ends
+  the shift without failing, quitting); `apps/game/src/content.test.ts` (route on 2nd Avenue
+  with no gaps, its ends, kerb and lane, parking within the start radius, fare level);
+  `apps/game/tests/shareAuto.spec.ts` (board → get in the auto at the start → stopped 20 m short:
+  nobody boards, a kerb figure is drawn → teleport beside them: one aboard and seated → teleport to
+  their drop: carried 1, money up by exactly the fare → teleport to the end: "Share auto shift
+  over", "1 passenger carried", reputation within 45–53 → figures gone). Seen in screenshots: the
+  waiting figure at the kerb beside the beacon, riders inside the cabin from the side. Not tested:
+  a whole shift driven with the controls, on the emulator or a phone.
 
 - **Facade kit: sunshades, balconies, shop fronts and Tamil signboards (Phase 3, 16 Nov;
   unit-tested, and looked at in headless Chromium by day and at 21:00, not on a phone):**
@@ -152,7 +189,7 @@ Last updated: 17 Nov 2026.
   Bus stop positions are invented points on the main avenues.
 - **More jobs (16 Nov):** ten in all. Added: hospital transfer (ambulance, three bumps fail
   it), lunch rush (motorbike, one kitchen, three homes), medicine run (motorbike, the chemist
-  and hospital farthest apart), share auto (two pick-ups, one drop at the market), Tower Park
+  and hospital farthest apart), share auto (two pick-ups, one drop at the market; replaced on 17 Nov by the route job above), Tower Park
   visitor (car, fare by distance), and the evening bus round the loop backwards (reputation
   62). Bus stops are spaced about 260 m apart along the main avenues.
 - **Traffic (J3, 16 Nov):** signals at 35 real junctions (3+ drivable arms, one of them
@@ -204,6 +241,7 @@ Last updated: 17 Nov 2026.
 
 | Check | Result | How |
 |---|---|---|
+| Share auto (17 Nov) | **pass**: unit 202/202, browser PENDING_BROWSER | `npm run typecheck && npm test`; `cd apps/game && PW_PORT=4273 PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off` (the 38 earlier tests plus `shareAuto.spec.ts`). `PW_PORT` was needed because another checkout's preview server held 4173 |
 | TypeScript strict | pass | `npm run typecheck`; `cd apps/mobile && npx tsc --noEmit` |
 | Unit tests (51, 16 Nov) | pass | `npm test`: projection, OSM parsing, vehicle physics, mission rules, road graph and agents (including dead ends, people passing each other, pulling over for a siren), combat rules, job rules (clock, dwell, pay, bumps, fines, reputation locks, late bus stops, damaged saves), gear indicator, game clock |
 | Unit tests (103, 16 Nov, later) | pass | `npm test`, 14 files: adds signals, junction turns, density, traffic mix, lighting by hour and rain, drift on a real Rapier world (and no false crash from drifting or braking), chase camera, landmarks from OSM and the ring-path fallback |

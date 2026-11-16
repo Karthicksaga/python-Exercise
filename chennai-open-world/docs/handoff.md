@@ -216,35 +216,14 @@ desktop instructions.
   route job: picking up and dropping passengers anywhere along a fixed route, like the bus) and
   **pedestrians hurt when hit** (knocked down, injured or killed, with consequences).
 
-## 17 Nov 2026 (latest): Share auto job, WIP: where I left off / next steps
-Stopped on the user's instruction before the full browser suite and the docs pass.
-- **Done:** the old `share-auto` job (two fixed pick-ups, one drop) is replaced, same id, by a
-  route job. Rules: `packages/missions/src/shareAuto.ts` (`ShareShift`, `RouteLine`, `shareFare`,
-  `shareReputation`, `shareStars`, all numbers in `SHARE_AUTO`; fares ₹10 + ₹5/km, estimates).
-  `JobRunner` runs it when `job.share` is set: the clock starts within 150 m of the route start,
-  time up ends the shift (paid, not failed), stopping at the route end completes it. Route:
-  `apps/game/src/shareAutoRoute.ts` chains the OSM pieces of 2nd Avenue's eastbound carriageway,
-  Thirumangalam to Anna Nagar East (2,078 m), and parks `auto-share` at its start. Up to 3
-  people wait at the kerb ahead (60–320 m), board when the auto is stopped within 6 m for 1.5 s
-  (capacity 4), get off within 8 m of their drop point and pay then (`JobDesk` credits each
-  fare). Missing a drop, or driving past someone with a free seat, costs reputation (-5 to +3
-  per shift). HUD title shows aboard/4 and fares; the minimap shows the route line (new
-  `Minimap.setRoute`), waiting people (green) and drops (pink). `apps/game/src/ShareRiders.ts`
-  draws kerb figures (`HumanAssets.create`, at most 3, within 160 m) and baked seated riders in
-  the auto. `snapshot().share` for tests. `playwright.config.ts` takes `PW_PORT` (another
-  checkout's preview server was on 4173).
-- **Tested:** `npm run typecheck` passes; `npm test` 202/202 (13 new in `shareAuto.test.ts`, one
-  new content test on the real map). New browser test `apps/game/tests/shareAuto.spec.ts`
-  passes alone (1/1, `PW_PORT=4273`): board, stopped-but-far gives no boarding, boarding, drop
-  and fare paid, end of route result.
-- **Not done:** the full browser suite (38 + 1) was not run after these changes. Nothing was
-  checked by eye that works: in a headless screenshot the waiting kerb figure did not show
-  14 m ahead of the auto (the rules and HUD did work), and the seated riders' `SEATS` positions
-  were never seen, so both are unverified. `docs/progress.md` is not updated. Not pushed:
-  the push to `agent/share-auto` was refused by the permission system.
-- **Next steps:** 1) find out why the kerb figures don't render (try a figure in front of the
-  auto with no route filter; check `ShareRiders.frame` gets a non-null shift and that
-  `object.visible` sticks), then look at the seated riders from the side and adjust `SEATS`.
-  2) Run the full suite: `cd apps/game && PW_PORT=4273 PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off`.
-  3) Update `docs/progress.md`. 4) Measure draw calls with a full auto (seen: 132 with one kerb
-  figure, 159 with two aboard, lite quality).
+## 17 Nov 2026 (latest): Share auto job done
+- Built and tested; details in `progress.md` (first entry). Unit 202/202, browser PENDING_BROWSER.
+- The "kerb figures don't render" note from the WIP stop was wrong: they render; in that
+  screenshot they were under the HUD toast. `snapshot().shareFigures` now counts the figures
+  drawn and the browser test checks them.
+- Browser tests take `PW_PORT` (`apps/game/playwright.config.ts`) so two checkouts can run them at
+  once; another agent's preview server held 4173.
+- Not done: a full shift driven with the controls, the emulator, a phone. The seat positions in
+  the auto (`SEATS` in `ShareRiders.ts`) were only looked at from 7–10 m at lite quality.
+- Ideas: show the destination as a street name in the "Passenger in" toast; a few people waving
+  in groups of two; the opposite direction as a second route.
