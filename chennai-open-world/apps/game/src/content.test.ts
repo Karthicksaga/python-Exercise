@@ -5,9 +5,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { decodeRoads, insideBounds, nearestRoadPoint, worldFromIndex, type Point, type WorldIndexFile } from "@cow/game-world";
-import { insideZone } from "@cow/missions";
+import { insideZone, RouteLine, SHARE_AUTO, shareFare } from "@cow/missions";
 import { buildContent } from "./content";
 import { ANNA_SALAI } from "./cityJobs";
+import { SHARE_ROAD } from "./shareAutoRoute";
 
 const file = (name: string) => new URL(`../public/world/${name}`, import.meta.url);
 const index = JSON.parse(readFileSync(file("index.json"), "utf8")) as WorldIndexFile & { readonly roadNames: readonly string[] };
@@ -130,5 +131,42 @@ describe("content on the city map", () => {
     expect(span).toBeGreaterThan(1500);
     expect(span).toBeLessThan(4000);
     expect(bus.timeLimit).toBeGreaterThan(last);
+  });
+
+  it("runs the share auto along 2nd Avenue, Thirumangalam to Anna Nagar East, with its auto parked at the start", () => {
+    const share = job("share-auto");
+    expect(share.kind).toBe("share");
+    expect(share.vehicle).toBe("auto");
+    const route = share.share!;
+    expect(route.from).toBe("Thirumangalam");
+    expect(route.to).toBe("Anna Nagar East");
+    const avenue = { roads: city.roads.filter((r) => r.name === SHARE_ROAD) };
+    // Every point is on the avenue, with no jumps between them (one carriageway, chained).
+    for (const p of route.points) expect(nearestRoadPoint(avenue, p)!.distance).toBeLessThan(0.5);
+    for (let i = 1; i < route.points.length; i++) expect(distance(route.points[i]!, route.points[i - 1]!)).toBeLessThan(400);
+    const line = new RouteLine(route.points);
+    expect(line.length).toBeGreaterThan(1500);
+    expect(line.length).toBeLessThan(3000);
+    // Heads east, through the home square near the Roundtana.
+    expect(route.points[route.points.length - 1]!.x - route.points[0]!.x).toBeGreaterThan(1500);
+    expect(Math.min(...route.points.map((p) => distance(p, { x: 0, z: 0 })))).toBeLessThan(60);
+    const district = (name: string) => city.districts!.find((d) => d.name === name)!;
+    expect(distance(route.points[0]!, district("Thirumangalam"))).toBeLessThan(400);
+    expect(distance(route.points[route.points.length - 1]!, district("Anna Nagar East"))).toBeLessThan(600);
+    // People wait beyond the kerb, the auto pulls up in the left lane.
+    const width = nearestRoadPoint(avenue, route.points[0]!)!.road.width;
+    expect(route.kerb).toBeGreaterThan(width / 2);
+    expect(route.lane).toBeLessThan(width / 2);
+    expect(route.lane).toBeGreaterThan(0.5);
+    // The one stop is the end of the route; the clock starts near its beginning.
+    expect(share.stops).toHaveLength(1);
+    expect(distance(share.stops[0]!, route.points[route.points.length - 1]!)).toBeLessThan(1);
+    const spot = content.parking.find((p) => p.id === "auto-share")!;
+    expect(spot.kind).toBe("auto");
+    expect(distance(spot, route.points[0]!)).toBeLessThan(share.startRadius!);
+    // Low fares: the whole route costs one passenger about ₹20.
+    expect(shareFare(line.length)).toBeLessThan(30);
+    expect(share.payout).toBeLessThan(SHARE_AUTO.capacity * 100);
+    expect(share.timeLimit).toBeGreaterThan(line.length / 8);
   });
 });

@@ -1,5 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
+// PW_PORT: serve on another port, e.g. when another checkout's tests already use 4173.
+const port = Number(process.env.PW_PORT ?? 4173);
+
 /**
  * End-to-end tests run the production build (the exact files the Android app ships) in
  * Chromium with a phone-sized, touch-enabled landscape viewport.
@@ -11,7 +14,7 @@ export default defineConfig({
   workers: 1,
   reporter: "line",
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: `http://127.0.0.1:${port}`,
     viewport: { width: 915, height: 412 },
     hasTouch: true,
     isMobile: true,
@@ -20,8 +23,8 @@ export default defineConfig({
     launchOptions: { ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}), args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] },
   },
   webServer: {
-    command: "npm run build && npm run preview -- --strictPort",
-    url: "http://127.0.0.1:4173",
+    command: port === 4173 ? "npm run build && npm run preview -- --strictPort" : `npm run build && npx vite preview --host --port ${port} --strictPort`,
+    url: `http://127.0.0.1:${port}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
