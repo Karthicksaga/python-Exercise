@@ -5,6 +5,7 @@ export * from "./ChunkView";
 export * from "./ChunkManager";
 export * from "./MapView";
 export { facadeAtlas } from "./textures";
+export { loadSignFont } from "./kitAtlas";
 export * from "./Beacon";
 export * from "./RainView";
 export * from "./lighting";

@@ -4,12 +4,15 @@
  *
  * Renderer-only variety, chosen deterministically from ids and positions (the world data is
  * untouched): about a third of the low houses get a red clay-tile hip roof, a share of the
- * trees are coconut palms, and a scatter of windows light up after dark.
+ * trees are coconut palms, and a scatter of windows light up after dark. The facade kit
+ * (`FacadeKit.ts`) adds sunshades, balconies and shop fronts with Tamil signboards.
  */
 import * as THREE from "three";
 import type { Building, ChunkData, RoadSpan, Tree } from "@cow/game-world";
 import { applyGroundLook, buildGround, createGroundAssets, type GroundAssets } from "./GroundMeshes";
 import type { Look } from "./lighting";
+import { addBalcony, addChajja, addShopFronts, createKitMaterial, planFacade, type FacadePlan } from "./FacadeKit";
+import { hash } from "./hash";
 import { MeshBuilder } from "./MeshBuilder";
 import { FACADE_LIT, FACADE_TILES, FACADE_TILE_COUNT, ROOF_PLAIN_UV, facadeGlowAtlas, roofTileTexture } from "./textures";
 
@@ -32,6 +35,8 @@ const TILE_REPEAT = 2.4;
 export interface ChunkAssets {
   readonly walls: THREE.MeshStandardMaterial;
   readonly roofs: THREE.MeshStandardMaterial;
+  /** Shutters, signboards and balcony railings (`FacadeKit`). */
+  readonly kit: THREE.MeshStandardMaterial;
   readonly trunk: THREE.BufferGeometry;
   readonly crown: THREE.BufferGeometry;
   readonly trunkMaterial: THREE.Material;
@@ -43,14 +48,6 @@ export interface ChunkAssets {
   readonly palmMaterial: THREE.Material;
   /** Road surface, markings, parks, water and sand. */
   readonly ground: GroundAssets;
-}
-
-/** Stable pseudo-random number in [0, 1) so a building looks the same every time it loads. */
-function hash(id: number, salt: number): number {
-  let t = (id ^ Math.imul(salt + 1, 0x9e3779b9)) >>> 0;
-  t = Math.imul(t ^ (t >>> 16), 0x21f0aaad);
-  t = Math.imul(t ^ (t >>> 15), 0x735a2d97);
-  return ((t ^ (t >>> 15)) >>> 0) / 4294967296;
 }
 
 const scratch = new THREE.Color();
@@ -177,7 +174,10 @@ function addTiledRoof(roofs: MeshBuilder, b: Building, baseY: number): boolean {
   return true;
 }
 
-function addBuilding(walls: MeshBuilder, roofs: MeshBuilder, b: Building): void {
+/** Plain plaster in the facade atlas (a blank corner of the window tile), for parapets and slabs. */
+const PLASTER = { u: (FACADE_TILES.window + 0.04) / FACADE_TILE_COUNT, v: 0.86 } as const;
+
+function addBuilding(walls: MeshBuilder, roofs: MeshBuilder, b: Building, kit: MeshBuilder, plan: FacadePlan): void {
   scratch.setHex(b.color);
   const { r, g, b: blue } = scratch;
   const { outline, floors, height } = b;
@@ -202,6 +202,11 @@ function addBuilding(walls: MeshBuilder, roofs: MeshBuilder, b: Building): void 
     const cb = blue * shade;
 
     const bays = Math.max(1, Math.round(length / BAY));
+    // Facade kit (FacadeKit.ts): shop fronts on walls facing a road, sunshades and balconies.
+    const frame = { x: p.x, z: p.z, ux: dx / length, uz: dz / length, nx, nz };
+    const shopWall = plan.shopWalls.has(i);
+    if (shopWall) addShopFronts(kit, b, i, frame, length, bays);
+    const slab = [Math.min(1, cr * 1.06), Math.min(1, cg * 1.06), Math.min(1, cb * 1.06)] as const;
     for (let bay = 0; bay < bays; bay++) {
       const t0 = bay / bays;
       const t1 = (bay + 1) / bays;
@@ -213,9 +218,9 @@ function addBuilding(walls: MeshBuilder, roofs: MeshBuilder, b: Building): void 
 
       // Narrow leftovers of wall get plain plaster instead of a squeezed window.
       const plain = length / bays < 1.6;
-      const band = (y0: number, y1: number, tile: number, v0: number, v1: number) => {
-        const u0 = plain ? (tile + 0.03) / FACADE_TILE_COUNT : tile / FACADE_TILE_COUNT + INSET;
-        const u1 = plain ? (tile + 0.06) / FACADE_TILE_COUNT : (tile + 1) / FACADE_TILE_COUNT - INSET;
+      const band = (y0: number, y1: number, tile: number, v0: number, v1: number, flat = plain) => {
+        const u0 = flat ? (tile + 0.03) / FACADE_TILE_COUNT : tile / FACADE_TILE_COUNT + INSET;
+        const u1 = flat ? (tile + 0.06) / FACADE_TILE_COUNT : (tile + 1) / FACADE_TILE_COUNT - INSET;
         const a = walls.vertex(x0, y0, z0, nx, 0, nz, u0, v0, cr, cg, cb);
         const c = walls.vertex(x1, y0, z1, nx, 0, nz, u1, v0, cr, cg, cb);
         const d = walls.vertex(x1, y1, z1, nx, 0, nz, u1, v1, cr, cg, cb);
@@ -227,19 +232,29 @@ function addBuilding(walls: MeshBuilder, roofs: MeshBuilder, b: Building): void 
       // The "lit" copy of a tile glows after dark; chosen per bay and floor.
       const lit = (floor: number) => (hash(b.id, i * 7919 + bay * 61 + floor * 13 + 5) < LIT_WINDOWS ? FACADE_LIT : 0);
       const groundTile = b.kind === "commercial" ? (pick < 0.75 ? FACADE_TILES.shop : FACADE_TILES.window) : pick < 0.3 ? FACADE_TILES.door : FACADE_TILES.window;
-      band(0, groundTop, groundTile + lit(0), 0, 1);
+      // Behind a shop front the ground floor is plain plaster: the shutters and sign cover it.
+      band(0, groundTop, shopWall ? FACADE_TILES.window : groundTile + lit(0), 0, 1, plain || shopWall);
+      const bayFrame = { ...frame, x: x0, z: z0 };
+      const bayWidth = length / bays;
+      if (plan.chajjas && !plain && !shopWall && groundTile === FACADE_TILES.window) addChajja(walls, bayFrame, bayWidth, 0, groundTop, PLASTER, slab);
       if (upperFloors > 0) {
         const upperTile = hash(b.id, i * 131 + bay + 7) < (b.kind === "house" ? 0.25 : 0.45) ? FACADE_TILES.balcony : FACADE_TILES.window;
         // One band per floor, so each floor's window can be lit on its own.
         const storey = (upperTop - GROUND_FLOOR) / upperFloors;
-        for (let floor = 0; floor < upperFloors; floor++) band(GROUND_FLOOR + floor * storey, GROUND_FLOOR + (floor + 1) * storey, upperTile + lit(floor + 1), 0, 1);
+        for (let floor = 0; floor < upperFloors; floor++) {
+          const y0 = GROUND_FLOOR + floor * storey;
+          band(y0, y0 + storey, upperTile + lit(floor + 1), 0, 1);
+          if (plain) continue;
+          if (upperTile === FACADE_TILES.window && plan.chajjas) addChajja(walls, bayFrame, bayWidth, y0, storey, PLASTER, slab);
+          else if (upperTile === FACADE_TILES.balcony && plan.balconies) addBalcony(walls, kit, bayFrame, bayWidth, y0, PLASTER, slab);
+        }
       }
     }
 
     // A tiled roof sits on the wall tops, so there is no parapet.
     if (tiled) continue;
     // Parapet: plain plaster, sampled from a blank corner of the window tile.
-    const u = (FACADE_TILES.window + 0.04) / FACADE_TILE_COUNT;
+    const u = PLASTER.u;
     const a = walls.vertex(p.x, upperTop, p.z, nx, 0, nz, u, 0.86, cr, cg, cb);
     const c = walls.vertex(q.x, upperTop, q.z, nx, 0, nz, u + 0.01, 0.86, cr, cg, cb);
     const d = walls.vertex(q.x, height, q.z, nx, 0, nz, u + 0.01, 0.9, cr, cg, cb);
@@ -357,6 +372,8 @@ export function createChunkAssets(facade: THREE.Texture): ChunkAssets {
     // Clay tiles on the pitched roofs; flat terraces sample a plain white texel of the same map.
     // Double-sided so the eaves' undersides aren't see-through from the street.
     roofs: new THREE.MeshStandardMaterial({ map: roofTileTexture(), vertexColors: true, roughness: 1, side: THREE.DoubleSide }),
+    // Drawn after `loadSignFont` has settled, so the signs have their Tamil text.
+    kit: createKitMaterial(),
     trunk,
     crown,
     trunkMaterial: new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: 0.95 }),
@@ -373,6 +390,7 @@ export function createChunkAssets(facade: THREE.Texture): ChunkAssets {
 /** Follow the time of day and weather: windows glow after dark, roofs and walls darken and shine when wet. */
 export function applyChunkLook(assets: ChunkAssets, look: Look): void {
   assets.walls.emissiveIntensity = look.night * 1.15;
+  assets.kit.emissiveIntensity = look.night * 1.15;
   assets.walls.color.setScalar(1 - 0.12 * look.rain);
   assets.roofs.color.setScalar(1 - 0.18 * look.rain);
   assets.roofs.roughness = 1 - 0.45 * look.rain;
@@ -393,14 +411,16 @@ export class ChunkView {
     for (const mesh of ground.meshes) this.object.add(mesh);
     const walls = new MeshBuilder();
     const roofs = new MeshBuilder();
-    for (const building of chunk.buildings) addBuilding(walls, roofs, building);
+    const kit = new MeshBuilder();
+    for (const building of chunk.buildings) addBuilding(walls, roofs, building, kit, planFacade(building, roads));
 
-    for (const [builder, material] of [[walls, assets.walls], [roofs, assets.roofs]] as const) {
+    for (const [builder, material] of [[walls, assets.walls], [roofs, assets.roofs], [kit, assets.kit]] as const) {
       const geometry = builder.build();
       if (!geometry) continue;
       this.owned.push(geometry);
       const mesh = new THREE.Mesh(geometry, material);
-      mesh.castShadow = true;
+      // Shutters and signs sit flat on the walls; their shadows would cost a draw call for little.
+      mesh.castShadow = material !== assets.kit;
       mesh.receiveShadow = true;
       this.object.add(mesh);
     }
