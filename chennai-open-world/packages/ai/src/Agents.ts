@@ -179,7 +179,7 @@ export class AgentSystem {
   private readonly cells = new Map<number, number[]>();
   /** Edges near the focus's cell with their cumulative weights; rebuilt when the focus moves cell. */
   private pool: { key: number; edges: Int32Array; cumulative: Float64Array } | null = null;
-  private readonly radius: Float32Array;
+  private radius: Float32Array;
   private readonly claims = new Map<number, Claim[]>();
   /** Junction nodes each agent has claimed, by agent id. */
   private readonly holding: number[][] = [];
@@ -187,7 +187,7 @@ export class AgentSystem {
   private retireNow = false;
 
   constructor(
-    private readonly graph: RoadGraph,
+    private graph: RoadGraph,
     private readonly bounds: Bounds,
     private readonly settings: AgentSettings,
     seed = 1,
@@ -196,16 +196,10 @@ export class AgentSystem {
     this.kinds = settings.kinds ?? [
       { name: "default", share: 1, speedFactor: 1, maxSpeed: Infinity, accelerationFactor: 1, halfWidth: settings.halfWidth, halfLength: settings.halfWidth, gap: settings.gap },
     ];
-    this.radius = settings.takesTurnsAtJunctions ? junctionRadii(graph) : new Float32Array(graph.nodes.length);
+    this.radius = new Float32Array(0);
     this.wanted = graph.edges.length === 0 ? 0 : settings.count;
     if (graph.edges.length === 0) return; // nothing to drive on: no agents
-    graph.edges.forEach((edge, i) => {
-      const from = graph.nodes[edge.from]!;
-      const key = cellKey(Math.floor((from.x + edge.dx * edge.length * 0.5) / CELL), Math.floor((from.z + edge.dz * edge.length * 0.5) / CELL));
-      const list = this.cells.get(key);
-      if (list) list.push(i);
-      else this.cells.set(key, [i]);
-    });
+    this.index(graph);
     for (let id = 0; id < settings.count; id++) {
       this.agents.push({
         id,
@@ -226,6 +220,59 @@ export class AgentSystem {
       });
       this.holding.push([]);
     }
+  }
+
+  /** Junction sizes and the spawn cells for a graph. */
+  private index(graph: RoadGraph): void {
+    this.graph = graph;
+    this.radius = this.settings.takesTurnsAtJunctions ? junctionRadii(graph) : new Float32Array(graph.nodes.length);
+    this.cells.clear();
+    this.pool = null;
+    graph.edges.forEach((edge, i) => {
+      const from = graph.nodes[edge.from]!;
+      const key = cellKey(Math.floor((from.x + edge.dx * edge.length * 0.5) / CELL), Math.floor((from.z + edge.dz * edge.length * 0.5) / CELL));
+      const list = this.cells.get(key);
+      if (list) list.push(i);
+      else this.cells.set(key, [i]);
+    });
+  }
+
+  /**
+   * Move to a new road graph (the roads round a new area of a big map) without disturbing anyone:
+   * every agent keeps the stretch of road it is on, found in the new graph by its end points.
+   * Agents whose road is not in the new graph are moved to the spawn ring round `focus`.
+   * Junction claims start afresh. Spawn weights must be set again for the new graph.
+   * A graph with no edges is ignored (the agents stay where they are).
+   */
+  rebase(graph: RoadGraph, focus: { x: number; z: number }): void {
+    if (graph.edges.length === 0 || this.agents.length === 0) return;
+    const keyOf = (g: RoadGraph, e: number) => {
+      const edge = g.edges[e]!;
+      const a = g.nodes[edge.from]!;
+      const b = g.nodes[edge.to]!;
+      return `${a.x},${a.z}>${b.x},${b.z}`;
+    };
+    const byKey = new Map<string, number>();
+    graph.edges.forEach((_, i) => byKey.set(keyOf(graph, i), i));
+    const old = this.graph;
+    const moved = this.agents.map((agent) => {
+      const edge = byKey.get(keyOf(old, agent.edge));
+      const next = byKey.get(keyOf(old, agent.next));
+      return { edge, next };
+    });
+    this.claims.clear();
+    for (const held of this.holding) held.length = 0;
+    this.weights = null;
+    this.index(graph);
+    this.agents.forEach((agent, i) => {
+      const { edge, next } = moved[i]!;
+      if (edge === undefined) {
+        this.place(agent, focus, false);
+        return;
+      }
+      agent.edge = edge;
+      agent.next = next ?? nextEdge(graph, edge, this.random);
+    });
   }
 
   /** Obey these signals and crossings (vehicles only). */

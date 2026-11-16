@@ -155,3 +155,43 @@ describe("agents", () => {
     expect(new AgentSystem(empty, map.bounds, trafficSettings(5)).agents).toHaveLength(0);
   });
 });
+
+describe("moving to a new area's road graph", () => {
+  it("keeps every agent on its stretch of road when the new graph has it", () => {
+    const map = town();
+    const streets = (road: { kind: string }) => road.kind !== "footway";
+    const all = buildRoadGraph(map, streets);
+    const system = new AgentSystem(all, map.bounds, trafficSettings(4), 3);
+    system.populate({ x: 0, z: 0 });
+    for (let i = 0; i < 60; i++) system.update(1 / 30, [], { x: 0, z: 0 });
+    const before = system.agents.map((a) => {
+      const e = all.edges[a.edge]!;
+      return { x: a.x, z: a.z, from: all.nodes[e.from]!, to: all.nodes[e.to]!, generation: a.generation };
+    });
+    // The same streets in another order (as a graph built from another area's road list is).
+    const reordered = buildRoadGraph({ ...map, roads: [...map.roads].reverse() }, streets);
+    system.rebase(reordered, { x: 0, z: 0 });
+    system.agents.forEach((a, i) => {
+      const e = reordered.edges[a.edge]!;
+      expect(reordered.nodes[e.from]).toMatchObject({ x: before[i]!.from.x, z: before[i]!.from.z });
+      expect(reordered.nodes[e.to]).toMatchObject({ x: before[i]!.to.x, z: before[i]!.to.z });
+      expect(a.x).toBe(before[i]!.x);
+      expect(a.generation).toBe(before[i]!.generation); // not moved
+    });
+    // And they keep driving on it.
+    for (let i = 0; i < 60; i++) system.update(1 / 30, [], { x: 0, z: 0 });
+    expect(system.agents.some((a) => a.speed > 1)).toBe(true);
+  });
+
+  it("moves agents whose road is gone, and ignores an empty graph", () => {
+    const map = town();
+    const system = new AgentSystem(buildRoadGraph(map, () => true), map.bounds, trafficSettings(4), 3);
+    system.populate({ x: 0, z: 0 });
+    const generations = system.agents.map((a) => a.generation);
+    system.rebase(buildRoadGraph({ ...map, roads: [] }, () => true), { x: 0, z: 0 });
+    expect(system.agents.map((a) => a.generation)).toEqual(generations);
+    const north = buildRoadGraph({ ...map, roads: map.roads.slice(0, 1) }, () => true); // only the north street
+    system.rebase(north, { x: 0, z: 0 });
+    for (const a of system.agents) expect(north.edges[a.edge]).toBeDefined();
+  });
+});

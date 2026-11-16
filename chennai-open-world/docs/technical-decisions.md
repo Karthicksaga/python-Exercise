@@ -189,3 +189,21 @@ empty streets and `snapshot().chunksLoaded` stays 0).
 **Revisit when** the first streamed model or KTX2 texture is added (they need `fetch`), or
 when XHR from `file:` stops working in a WebView release. Either way the answer is
 `WebViewAssetLoader`.
+
+## TD-17: The AI works on the roads round the player, not the whole city
+
+**Decision.** Traffic and pedestrians navigate road graphs built from the roads within 1.2 km
+of the player (a 2.4 km square), with spawn weights and signals for the same area. When the
+player is 500 m from the square's centre, the graphs are rebuilt round them.
+`AgentSystem.rebase` finds each agent's stretch of road in the new graph by its end points
+(junction coordinates are the same in both), so nobody on screen moves; agents whose road is
+not in the new area are sent to the spawn ring. The signal clock carries over and each
+junction's phase offset comes from its position, so the lights don't jump.
+
+**Why.** Whole-city graphs (105,000 drive and 128,000 walk edges) and 13,500 signal approaches
+took about 70 MB of the JS heap, for agents that only ever exist within 300 m of the player.
+With areas the heap went from 110–125 MB to 51–62 MB (headless Chromium, measured at four
+places). A rebuild costs a short pause (tens of milliseconds) every 500 m.
+
+**Revisit when** agents need to plan routes longer than about 700 m (route planning would
+need a light whole-city graph, for example in typed arrays).

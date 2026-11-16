@@ -243,6 +243,11 @@ export class Hud {
     }
   }
 
+  /** True while a toast is on screen (so a less important one can wait its turn). */
+  get toastShowing(): boolean {
+    return !this.toast.hidden && this.toast.style.opacity !== "0";
+  }
+
   /** A short message in the middle of the screen that fades by itself. */
   showToast(title: string, detail = "", seconds = 3.2): void {
     this.toast.textContent = title;

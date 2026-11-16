@@ -6,4 +6,5 @@ export * from "./clock";
 export * from "./landmarks";
 export * from "./coast";
 export * from "./roadChunks";
+export * from "./districts";
 export * from "./codec";

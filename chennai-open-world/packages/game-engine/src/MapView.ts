@@ -150,8 +150,10 @@ export class MapView {
     }
     const geometry = builder.build();
     if (!geometry) return;
-    const material = new THREE.MeshStandardMaterial({ color: 0x2f6f8f, roughness: 0.25, metalness: 0.1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
-    this.wetSurfaces.push({ material, dry: 0.25, wet: 0.35, darken: 0.15 });
+    // Rough enough and only faintly reflective: a glossy sea mirrors the hazy horizon and
+    // reads as more sky (seen on the first try). Bay of Bengal blue-green.
+    const material = new THREE.MeshStandardMaterial({ color: 0x2c7f99, roughness: 0.55, metalness: 0, envMapIntensity: 0.3, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    // Not a "wet surface": that look resets the colour to white (it suits textured ground only).
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = "sea";
     mesh.receiveShadow = true;

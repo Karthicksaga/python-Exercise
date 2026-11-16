@@ -35,6 +35,9 @@ const CLOTHES = [0xffffff, 0x9fb8e0, 0xe0c29f, 0xa9d6a9, 0xd9a0a0, 0xc9c9c9, 0xe
 const PEOPLE_VISIBLE = 90;
 /** Put-away agents' bodies wait this far below the street, metres. */
 const PARKED_Y = -200;
+/** Half the side of the square of roads the AI works on, and how far the player may move before it is rebuilt, metres. */
+const AREA_HALF = 1200;
+const AREA_REBUILD = 500;
 /** Signal models are drawn within this distance, and rebuilt when the player has moved this far. */
 const SIGNAL_REACH = 420;
 const SIGNAL_REBUILD = 150;
@@ -71,32 +74,80 @@ export class Population {
   private readonly people: Walker[] = [];
   private readonly trafficObstacles: Obstacle[] = [];
   private readonly walkerSpots: Spot[] = [];
-  private readonly driveGraph: RoadGraph;
-  private readonly busyness: Float32Array;
-  /** Traffic signals at the main junctions, which the AI traffic obeys. */
-  readonly signals: TrafficSignals;
+  /**
+   * Road graphs, spawn weights and signals for the area round the player (AREA_HALF each way),
+   * not the whole city: about a twentieth of the memory. Rebuilt when the player moves
+   * AREA_REBUILD from the centre; agents keep their road (`AgentSystem.rebase`) and the signal
+   * clock carries on, so nothing on screen changes.
+   */
+  private driveGraph: RoadGraph;
+  private busyness: Float32Array;
+  private areaCentre: { x: number; z: number };
+  /** Traffic signals at the main junctions of the area, which the AI traffic obeys. */
+  signals: TrafficSignals;
+  /** Graphs, busyness and signals for the roads within AREA_HALF of a point. */
+  private areaGraphs(at: { x: number; z: number }): { drive: RoadGraph; walk: RoadGraph; busyness: Float32Array; walkBusyness: Float32Array; signals: TrafficSignals } {
+    const box = { minX: at.x - AREA_HALF, maxX: at.x + AREA_HALF, minZ: at.z - AREA_HALF, maxZ: at.z + AREA_HALF };
+    const inside = (p: { x: number; z: number }) => p.x >= box.minX && p.x <= box.maxX && p.z >= box.minZ && p.z <= box.maxZ;
+    const roads = this.map.roads.filter((road) => road.points.some(inside));
+    const pois = this.map.pois.filter(inside);
+    const local: WorldMap = { ...this.map, roads, pois };
+    // Vehicles keep to real carriageways; small service lanes are left to the player.
+    const drive = buildRoadGraph(local, (road) => road.kind !== "footway" && road.kind !== "service");
+    const walk = buildRoadGraph(local, (road) => road.kind !== "service", false);
+    return {
+      drive,
+      walk,
+      // Busier on the main avenues and round the shops, by the map's own road classes and POIs.
+      busyness: edgeBusyness(drive, pois),
+      walkBusyness: edgeBusyness(walk, pois),
+      // Signals at main-road junctions, and wherever OSM maps a traffic signal.
+      signals: new TrafficSignals(drive, undefined, (this.map.signals ?? []).filter(inside)),
+    };
+  }
+
+  /** Rebuild the area's graphs once the player is far enough from its centre. */
+  private followArea(focus: { x: number; z: number }): void {
+    if (Math.hypot(focus.x - this.areaCentre.x, focus.z - this.areaCentre.z) < AREA_REBUILD) return;
+    const area = this.areaGraphs(focus);
+    // Open sea, or a corner with no roads: keep the old area.
+    if (area.drive.edges.length === 0) return;
+    this.areaCentre = { x: focus.x, z: focus.z };
+    area.signals.time = this.signals.time;
+    this.driveGraph = area.drive;
+    this.busyness = area.busyness;
+    this.signals = area.signals;
+    this.traffic.rebase(area.drive, focus);
+    this.traffic.setSpawnWeights(area.busyness);
+    this.traffic.useSignals(area.signals);
+    this.walkers.rebase(area.walk, focus);
+    this.walkers.setSpawnWeights(area.walkBusyness);
+    // Signal models belong to the old area's signal list.
+    this.signalCentre = { x: Infinity, z: Infinity };
+  }
+
   /** Signal models near the player only (the city has thousands); rebuilt as the player moves. */
   private signalView: SignalView;
   /** Indices into `signals.approaches` of the heads `signalView` draws. */
   private shownApproaches: number[] = [];
   private signalCentre = { x: 0, z: 0 };
   private readonly scene: THREE.Object3D;
+  private readonly map: WorldMap;
   private hour: number | null = null;
   private sinceDensity = DENSITY_EVERY;
   private firstDensity = true;
 
   constructor(map: WorldMap, scene: THREE.Object3D, physics: PhysicsWorld, humans: HumanAssets, focus: { x: number; z: number }, counts: { traffic: number; pedestrians: number }) {
-    // Vehicles keep to real carriageways; small service lanes are left to the player.
-    this.driveGraph = buildRoadGraph(map, (road) => road.kind !== "footway" && road.kind !== "service");
-    const walkGraph = buildRoadGraph(map, (road) => road.kind !== "service", false);
-    this.traffic = new AgentSystem(this.driveGraph, map.bounds, trafficSettings(counts.traffic, trafficKinds()), 2026);
-    this.walkers = new AgentSystem(walkGraph, map.bounds, pedestrianSettings(counts.pedestrians), 600040);
-    // Busier on the main avenues and round the shops, by the map's own road classes and POIs.
-    this.busyness = edgeBusyness(this.driveGraph, map.pois);
-    this.traffic.setSpawnWeights(this.busyness);
-    this.walkers.setSpawnWeights(edgeBusyness(walkGraph, map.pois));
-    // Signals at main-road junctions, and wherever OSM maps a traffic signal.
-    this.signals = new TrafficSignals(this.driveGraph, undefined, map.signals ?? []);
+    this.map = map;
+    this.areaCentre = { x: focus.x, z: focus.z };
+    const area = this.areaGraphs(focus);
+    this.driveGraph = area.drive;
+    this.traffic = new AgentSystem(area.drive, map.bounds, trafficSettings(counts.traffic, trafficKinds()), 2026);
+    this.walkers = new AgentSystem(area.walk, map.bounds, pedestrianSettings(counts.pedestrians), 600040);
+    this.busyness = area.busyness;
+    this.traffic.setSpawnWeights(area.busyness);
+    this.walkers.setSpawnWeights(area.walkBusyness);
+    this.signals = area.signals;
     this.traffic.useSignals(this.signals);
     this.traffic.populate(focus);
     this.walkers.populate(focus);
@@ -178,6 +229,7 @@ export class Population {
    * @param siren the player's ambulance while its siren is on: traffic pulls over
    */
   fixedUpdate(dt: number, focus: { x: number; z: number }, player: readonly Obstacle[], parked: readonly Obstacle[], siren: Siren | null = null): void {
+    this.followArea(focus);
     this.density(dt, focus);
     // Traffic gives way to the player, parked vehicles and people on the road.
     this.trafficObstacles.length = 0;

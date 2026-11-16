@@ -14,9 +14,15 @@ Last updated: 16 Nov 2026 (evening).
   chunk with lane lines by lane count and solid edge lines on primary roads. Sea haze thickens
   within 600 m of the coast. Traffic spawns near the player anywhere in the city; signals stand
   at main-road junctions and at mapped OSM signals (4,775 junctions; only those within 420 m are
-  drawn). The minimap is painted in tiles. The player still starts in Anna Nagar and the ten
-  stages and ten jobs are where they were. **Not done yet:** the gopuram model, the Marina
-  evening drive and other city jobs, visited districts, and loading from the APK (not run).
+  drawn). The AI works on the 2.4 km of roads round the player (TD-17). The minimap is
+  painted in tiles. The sea is a flat blue-green surface (no waves yet). The player still starts in Anna Nagar and the ten
+  stages and ten jobs are where they were. **Not done yet:** loading from the APK (not run).
+- **Visited areas (16 Nov, evening; tested in the browser):** the game notes which named area of
+  the city the player is in (the nearest of 238 OSM place points within 1.5 km: an estimate of
+  the boundaries, which OSM maps as points), saves each new one (`cow-districts-v1`), shows
+  "New area: …" once no other message is on screen, and adds "Explored N areas of Chennai: …"
+  to Share progress. New game clears it. `city.spec.ts` checks it survives a reload, and that
+  the Marina Beach, Kapaleeshwarar Temple and T. Nagar labels show from 150 m.
 - **World:** about 1 km² of real Anna Nagar from OpenStreetMap: 136 road pieces, 1,292 building
   footprints, Tower Park and other green areas, 512 trees. Split into 16 chunks of 250 m that
   load and unload (meshes and collision) as the player moves.
@@ -159,8 +165,11 @@ Difficulty has not been play-tested by a person.
   are instant and never hit pedestrians or vehicles. Balance is a first guess.
 - **Vehicles:** cannot roll or pitch (by design, TD-8); no damage; no collision or tyre sound.
 - **Sound:** synthesised tones, not recordings, and no music or city ambience.
-- **City memory:** the road graph, signals and road centre lines for the whole city stay in
-  memory (heap about 110–125 MB in the browser). Building them per area is planned.
+- **City memory:** road centre lines, places and the chunk table for the whole city stay in
+  memory; the AI's road graphs, spawn weights and signals cover only 2.4 km round the player
+  and are rebuilt every 500 m (agents keep their road; the signal clock carries on). JS heap
+  51–62 MB in the browser at Anna Nagar, T. Nagar, Anna Salai and Marina (110–125 MB with
+  whole-city graphs; 45 MB for the old 1 km² map).
 - **APK loading of the city is untested**: it reads files with XMLHttpRequest from
   `file://` (TD-16, interim). If the city doesn't appear in the APK, that is the first suspect.
 - **Performance:** about 270–300 draw calls and 290k triangles with everything on screen. Fine on

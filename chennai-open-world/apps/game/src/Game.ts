@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, SceneRenderer, createChunkAssets, facadeAtlas, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
 import { Combat, PLAYER_MAX_HEALTH, type CombatEvent, type PlayerState } from "@cow/combat";
-import { GameClock, boundarySolids, chunkSolids, coastSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
+import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkSolids, coastSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
 import { HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, type HumanFigure } from "@cow/player";
@@ -61,6 +61,9 @@ export interface GameSnapshot {
   readonly ammo: number;
   readonly enemies: Array<{ x: number; z: number; health: number; armed: boolean }>;
   readonly street: string;
+  /** Named area the player is in (nearest OSM place point, estimated), and those visited. */
+  readonly district: string;
+  readonly visitedDistricts: string[];
   /** City job being worked, its next stop and the reputation. */
   readonly job: string | null;
   readonly jobStop: number;
@@ -101,6 +104,15 @@ function loadProgress(): Progress | undefined {
     // A missing or damaged save simply starts a new game.
   }
   return undefined;
+}
+
+const DISTRICTS_KEY = "cow-districts-v1";
+function loadDistricts(): VisitedDistricts {
+  try {
+    return new VisitedDistricts(JSON.parse(localStorage.getItem(DISTRICTS_KEY) ?? "[]"));
+  } catch {
+    return new VisitedDistricts();
+  }
 }
 
 const HOUR_KEY = "cow-hour-v1";
@@ -145,6 +157,12 @@ export class Game {
   private street = "";
   private sinceStreet = 1;
   private sinceHaze = 1;
+  /** Named areas of the city (OSM place points) and the ones the player has been to. */
+  private readonly districtIndex: DistrictIndex;
+  private readonly visited = loadDistricts();
+  private district = "";
+  /** A new-area message waiting for the screen to be free of other messages. */
+  private areaNews: string | null = null;
   private readonly parkedObstacles: Array<{ x: number; z: number; radius: number }> = [];
   private readonly desk: JobDesk;
   /** A menu is open over the game (job board or a job's result). */
@@ -191,6 +209,7 @@ export class Game {
     this.landmarks = new LandmarkView(map.landmarks ?? []);
     renderer.scene.add(this.landmarks.object);
     this.landmarkLabels = new LandmarkLabels(hud.root, map.landmarks ?? []);
+    this.districtIndex = new DistrictIndex(map.districts ?? []);
   }
 
   static async create(canvas: HTMLCanvasElement, stage: HTMLElement): Promise<Game> {
@@ -324,7 +343,8 @@ export class Game {
   /** A short summary of progress, copied or shared so the player can send it to friends. */
   private share(): void {
     const record = this.desk.runner.record();
-    const text = `Chennai Open World: ₹${this.missions.balance.toLocaleString("en-IN")} earned, stages ${this.missions.stagesDone}/${this.missions.stageCount}, ${record.done} city jobs done, reputation ${record.reputation}/100.`;
+    const areas = this.visited.count > 0 ? ` Explored ${this.visited.count} ${this.visited.count === 1 ? "area" : "areas"} of Chennai: ${this.visited.summary()}.` : "";
+    const text = `Chennai Open World: ₹${this.missions.balance.toLocaleString("en-IN")} earned, stages ${this.missions.stagesDone}/${this.missions.stageCount}, ${record.done} city jobs done, reputation ${record.reputation}/100.${areas}`;
     const done = () => this.hud.showToast("Progress copied", text, 4);
     const fallback = () => {
       const area = document.createElement("textarea");
@@ -402,6 +422,10 @@ export class Game {
     this.missions.reset();
     saveProgress(this.missions.progress());
     this.desk.reset();
+    this.visited.clear();
+    this.saveDistricts();
+    this.district = "";
+    this.areaNews = null;
     this.cleared.clear();
     this.combat.keepOnly([]);
     this.combat.revive();
@@ -573,6 +597,8 @@ export class Game {
       ammo: this.combat.ammo,
       enemies: this.combat.enemies.map((e) => ({ x: e.x, z: e.z, health: e.health, armed: e.armed })),
       street: this.street,
+      district: this.district,
+      visitedDistricts: [...this.visited.list()],
       job: this.desk.active?.id ?? null,
       jobStop: this.desk.runner.stopNumber,
       reputation: this.desk.runner.reputation,
@@ -584,6 +610,33 @@ export class Game {
       drift: this.driving?.body.drifting() ?? 0,
       landmarks: (this.map.landmarks ?? []).map((l) => ({ id: l.id, name: l.name, x: l.x, z: l.z, radius: l.radius ?? 0, label: this.landmarkLabels.isShown(l.id) })),
     };
+  }
+
+  /** Note the named area the player is in; a first visit gets a toast and is saved. */
+  private trackDistrict(at: { x: number; z: number }): void {
+    const district = this.districtIndex.at(at);
+    if (!district || district.name === this.district) return;
+    this.district = district.name;
+    if (this.visited.visit(district.name)) {
+      this.saveDistricts();
+      // The first area is where the game starts: no need to announce it.
+      if (this.visited.count > 1) this.areaNews = district.name;
+    }
+  }
+
+  /** Show a waiting new-area message once no stage or job message is on screen. */
+  private announceArea(): void {
+    if (!this.areaNews || this.hud.toastShowing) return;
+    this.hud.showToast(`New area: ${this.areaNews}`, `${this.visited.count} areas of Chennai explored`, 3);
+    this.areaNews = null;
+  }
+
+  private saveDistricts(): void {
+    try {
+      localStorage.setItem(DISTRICTS_KEY, JSON.stringify(this.visited.list()));
+    } catch {
+      // Not saved; the game goes on.
+    }
   }
 
   /** One step of combat: place the enemies an objective calls for, the player's attacks, the enemies' turn. */
@@ -844,6 +897,8 @@ export class Game {
       const road = nearestRoadPoint(this.map, at, false);
       this.street = road && road.distance < road.road.width / 2 + 6 && road.road.name ? road.road.name : "";
       this.hud.setStreet(this.street);
+      this.trackDistrict(at);
+      this.announceArea();
     }
     this.population.frame(dt, at);
     this.chunks.update(at.x, at.z);
