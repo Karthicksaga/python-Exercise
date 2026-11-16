@@ -210,7 +210,8 @@ Figma connector exists but needs signing in. So no tool in sections 1–6 has be
   - GitHub Actions for every push (in progress).
   - Emulator smoke test in CI (`reactivecircus/android-emulator-runner` on Linux runners
     with KVM) that installs the APK and checks the game reaches `data-ready` and loads chunks
-    (proves TD-16's XHR loading). Proposed for Phase 1.
+    (proves TD-16's asset loading). Written (`android-smoke` job, `scripts/android-smoke.mjs`);
+    verified only once it passes on CI.
   - Real phone: a mid-range Android (e.g. 4–6 GB RAM) with Chrome remote debugging
     (`chrome://inspect`) for fps, memory and heat. Only you can do this.
 - **Performance:** none in the game; CI minutes only.
@@ -260,7 +261,7 @@ Each phase ends playable, tested in the browser, with measurements recorded in
 | Phase | What | Tools | Needs from you |
 |---|---|---|---|
 | **0. Finish J2 (in progress)** | Commit the streamed city (done in the browser), gopuram model, Marina evening drive and city jobs, visited districts in Share progress, docs | Code only | Answer: keep, tone down or remove fight stages 7–10? |
-| **1. Foundations** | CI (in progress); serve the game through `WebViewAssetLoader` (native code in the shell, replaces the interim file-access setting, TD-16); emulator smoke test for file loading; asset optimisation script; memory: road graph and signals built per area instead of the whole city; performance overlay | glTF Transform, toktx, GitHub Actions | Enable GitHub Pages; run the APK on a real phone once |
+| **1. Foundations** (in progress) | CI (in progress); serve the game through `WebViewAssetLoader` (**code written**: react-native-webview patch, file access off, TD-16; verified only when the CI smoke job passes); emulator smoke test for file loading (**code written**: `android-smoke` CI job, not yet run); asset optimisation script; memory: road graph and signals built per area instead of the whole city; performance overlay | glTF Transform, toktx, GitHub Actions | Enable GitHub Pages; run the APK on a real phone once |
 | **2. Character pipeline** | Base character (MPFB2 or a licensed character), clothing, Mixamo rig and clip set, `HumanFigure` state machine (locomotion blend, jump/fall/land, enter/exit, sit, punch/kick/block/hit), player foot IK on steps; 3–4 pedestrian variants | Blender, MPFB2, Mixamo | A Mixamo/Adobe account to download clips; character look approval |
 | **3. World look** | Facade kits (balconies, sunshades, shop fronts, invented Tamil signboards), electricity poles, bus shelters at the 533 real stops, kerbs and medians, PBR ground textures, water shader, street lights | Blender (kits), Poly Haven/ambientCG, Noto Sans Tamil | Look approval on screenshots |
 | **4. Landmarks** | Blender models: Kapaleeshwarar gopuram, Marina lighthouse, Central station, Ripon building, LIC building | Blender | Reference photo choices |

@@ -161,8 +161,11 @@ Difficulty has not been play-tested by a person.
 - **Sound:** synthesised tones, not recordings, and no music or city ambience.
 - **City memory:** the road graph, signals and road centre lines for the whole city stay in
   memory (heap about 110–125 MB in the browser). Building them per area is planned.
-- **APK loading of the city is untested**: it reads files with XMLHttpRequest from
-  `file://` (TD-16, interim). If the city doesn't appear in the APK, that is the first suspect.
+- **APK loading of the city is untested**: the APK now serves the game through
+  `WebViewAssetLoader` at `https://appassets.androidplatform.net/assets/game/` with file access
+  off (TD-16), but that code (a react-native-webview patch and shell changes) has not been
+  compiled or run here (no Android SDK). The CI job `android-smoke` checks it on an emulator;
+  until it passes, treat APK loading as unverified.
 - **Performance:** about 270–300 draw calls and 290k triangles with everything on screen. Fine on
   the emulator's desktop GPU; unknown on phones. Each pedestrian is a full skinned character.
 - **Bundle:** 8.1 MB, of which about 2.7 MB is the character embedded as base64 (TD-3).

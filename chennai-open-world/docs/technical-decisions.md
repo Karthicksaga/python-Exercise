@@ -56,8 +56,9 @@ bundle and we use `@dimforge/rapier3d-compat`, which embeds the WebAssembly in t
 bundle is about 8.1 MB: Rapier, Three.js, the world file and the character model. Binary assets
 are imported with `?inline` and embedded as base64 for the same `file://` reason. It is read from
 the APK, not downloaded.
-The alternative, serving assets through `WebViewAssetLoader` on a fake https origin, needs
-native code and is worth doing when streamed world chunks are added (Phase 2/7).
+The Android app now serves the game through `WebViewAssetLoader` on an https origin (TD-16),
+where module scripts and `fetch` would work. The classic script and `base: "./"` stay anyway: the
+build still opens from disk, and changing them buys nothing yet.
 
 ## TD-4: Workspace packages are TypeScript source, not built libraries
 
@@ -162,30 +163,51 @@ the first frame. Meshes and solids are built one chunk per frame; chunks beyond 
 distance are disposed and a fetch for a chunk no longer wanted is thrown away. Road surface,
 markings, parks and sand are built per chunk too (`roadSpansByChunk`, `GroundMeshes`).
 
-**Loading on Android.** The APK page is `file:///android_asset/game/index.html`. Chromium's
-`fetch` never reads `file:` URLs, whatever the WebView settings. `XMLHttpRequest` does, when
-the WebView allows file access from file URLs (deprecated since Android 11, still working).
-So `apps/game/src/WorldFiles.ts` uses `fetch` on http(s) and XHR on `file:`, and the shell
-sets `allowFileAccessFromFileURLs` (a `react-native-webview` prop) on its WebView. **This is
-an interim choice.** It needs no native code, but:
-- That setting lets script in a `file:` page read any file the app can read, including
-  app-private data. Our WebView loads only our own bundled page (`originWhitelist` is
-  `file://*`, no multiple windows, no external navigation), which limits the risk; it does not
-  remove it. Android's own guidance is to use `WebViewAssetLoader` instead.
-- Three.js loaders (GLTF, KTX2 and its Basis transcoder `.wasm`) use `fetch`, so streamed
-  models and compressed textures will not load this way.
+**Loading on Android.** The APK serves the game at
+`https://appassets.androidplatform.net/assets/game/index.html` through
+`androidx.webkit.WebViewAssetLoader` with an `AssetsPathHandler` on `/assets/`: requests to that
+host are answered from the APK's `assets/` folder (where `npm run sync:android` copies the
+build), on the device, and never reach the network (the host is reserved by Android for this;
+paths outside `/assets/` get a 404). The page has a normal https origin, so
+`apps/game/src/WorldFiles.ts` reads the world with `fetch`, as in the browser, and later
+fetch-based three.js loaders (GLTF, KTX2 with its `.wasm` transcoder) will work too. File access
+is off: the shell no longer sets `allowFileAccess` or `allowFileAccessFromFileURLs`
+(react-native-webview defaults both to off), so a page in the WebView cannot read app-private
+files.
 
-The intended replacement is `androidx.webkit.WebViewAssetLoader`, serving the game from
-`https://appassets.androidplatform.net/assets/game/`: one origin for `fetch`, XHR and wasm,
-and no file access. `react-native-webview` has no support for it, so it needs native code
-(a patch of its WebView client or a small native WebView module). It is Phase 1 of
-`docs/toolchain-audit.md`, waiting for approval.
+How it is wired:
+- `react-native-webview` (14.0.1, pinned) has no hook for this, so
+  `apps/mobile/patches/react-native-webview+14.0.1.patch` (applied by `patch-package` on
+  `npm install`, a `postinstall` script) adds `shouldInterceptRequest` to its `RNCWebViewClient`.
+  It handles only `https://appassets.androidplatform.net` and passes every other request to the
+  default (unchanged behaviour). The library already depends on `androidx.webkit` 1.14, so the
+  app needs no new dependency. A patch was chosen over a native module or a WebView subclass
+  because `RNCWebViewClient` is shared by the old and new architecture managers (the app runs
+  with `newArchEnabled=true`), while replacing the Fabric view manager would mean registering a
+  second `RNCWebView` component against the autolinked one. Cost: the patch must be redone when
+  react-native-webview is upgraded (patch-package fails the install if it no longer applies).
+- `apps/mobile/src/GameScreen.tsx` loads that URL, whitelists only that origin and also checks the
+  exact origin in `onShouldStartLoadWithRequest` (the whitelist is a prefix match), so the
+  WebView never navigates elsewhere.
+- `WorldFiles.ts` keeps an XHR branch for `file:` pages, only for someone opening the built
+  `dist/index.html` from disk; the app no longer uses it.
 
-**Not yet verified.** Browser loading is tested (`npm run test:e2e`, headless Chromium). Loading
-from the APK has **not** been run: there was no Android SDK or emulator where this was built.
-First thing to check on the emulator: the city appears (if chunk files fail, the game shows
-empty streets and `snapshot().chunksLoaded` stays 0).
+This replaced an interim setup (page at `file:///android_asset/game/index.html`, world files read
+with XHR under `allowFileAccessFromFileURLs`), which let file pages read app-private data and
+could not serve `fetch`.
 
-**Revisit when** the first streamed model or KTX2 texture is added (they need `fetch`), or
-when XHR from `file:` stops working in a WebView release. Either way the answer is
-`WebViewAssetLoader`.
+**Not yet verified.** Browser loading is tested (`npm run test:e2e`, headless Chromium). The
+asset loader is written but has **not** been run: there was no Android SDK, Gradle or emulator
+where it was built, so neither the patch's Java nor the new Kotlin has been compiled. The CI job
+`android-smoke` (`.github/workflows/chennai-open-world.yml`, `scripts/android-smoke.mjs`) is
+the first test: it installs an x86_64 test APK on an API 34 emulator, opens the game and fails
+unless the page on the appassets origin reaches `data-ready="true"` with
+`snapshot().chunksLoaded > 0` within 120 s. Treat this as verified only once that job passes
+(an emulator; a phone is a separate test). The test APK is built with `-PcowTestHooks=true`,
+which turns on WebView debugging (Chrome DevTools, which the smoke script reads) and a
+`com.chennaiopenworld.TEST_AUTOPLAY` launch extra that skips the menu; the normal release APK
+has neither (`BuildConfig.TEST_HOOKS` is false). Debug builds have WebView debugging on anyway
+(react-native-webview enables it).
+
+**Revisit when** react-native-webview gains built-in asset-loader support (drop the patch), or
+the patch stops applying after an upgrade.

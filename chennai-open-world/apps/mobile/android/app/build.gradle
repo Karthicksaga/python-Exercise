@@ -72,6 +72,14 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+/**
+ * Test hooks, off unless the build is started with `-PcowTestHooks=true` (only the CI smoke APK
+ * is). They turn on WebView remote debugging (Chrome DevTools over adb) and let a launch intent
+ * extra open the game straight away (see MainActivity). Debug builds already have WebView
+ * debugging on (react-native-webview does that); the extra still needs this flag.
+ */
+def cowTestHooks = (findProperty("cowTestHooks") ?: "false").toString().toBoolean()
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -84,6 +92,10 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        buildConfigField "boolean", "TEST_HOOKS", cowTestHooks.toString()
+    }
+    buildFeatures {
+        buildConfig true
     }
     signingConfigs {
         debug {

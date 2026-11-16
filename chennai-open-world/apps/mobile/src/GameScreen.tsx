@@ -6,9 +6,25 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import type { ShouldStartLoadRequest } from 'react-native-webview/lib/WebViewTypes';
 
-/** Built by `npm run sync:android` into android/app/src/main/assets/game. */
-const GAME_URL = 'file:///android_asset/game/index.html';
+/**
+ * Built by `npm run sync:android` into android/app/src/main/assets/game, and served from the APK's
+ * assets on this https origin by androidx.webkit's WebViewAssetLoader (a patch of
+ * react-native-webview's WebView client, `patches/`; TD-16). Nothing goes to the network: the
+ * host is reserved for this and every request to it is answered on the device.
+ */
+const GAME_ORIGIN = 'https://appassets.androidplatform.net';
+const GAME_URL = `${GAME_ORIGIN}/assets/game/index.html`;
+
+/**
+ * The WebView only ever shows our own page. `originWhitelist` is a prefix match on the origin, so
+ * this also checks the exact origin (a lookalike host such as `appassets.androidplatform.net.x`
+ * would pass the whitelist). Anything else is refused (react-native-webview hands non-whitelisted
+ * links to the system browser; the game has none).
+ */
+const stayOnGameOrigin = (request: ShouldStartLoadRequest) =>
+  request.url === 'about:blank' || request.url.startsWith(`${GAME_ORIGIN}/`);
 
 type GameMessage =
   | { type: 'ready'; gpu: string }
@@ -80,10 +96,10 @@ export function GameScreen({ onExit }: { onExit: () => void }) {
       ref={web}
       style={styles.web}
       source={{ uri: GAME_URL }}
-      originWhitelist={['file://*']}
-      allowFileAccess
-      // The game reads its world files with XMLHttpRequest from file:// (TD-16).
-      allowFileAccessFromFileURLs
+      originWhitelist={[GAME_ORIGIN]}
+      onShouldStartLoadWithRequest={stayOnGameOrigin}
+      // No file access: the game reads its world files with fetch from its https origin (TD-16).
+      // react-native-webview already defaults allowFileAccess and allowFileAccessFromFileURLs to off.
       javaScriptEnabled
       domStorageEnabled
       onMessage={onMessage}
