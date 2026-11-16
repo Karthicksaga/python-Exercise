@@ -274,6 +274,31 @@ export class HumanFigure {
     this.object.visible = value;
   }
 
+  /** Clothing materials and their original colours, made on the first `setClothes`. */
+  private clothes: Array<{ material: THREE.MeshStandardMaterial; base: THREE.Color }> | null = null;
+
+  /** Change the clothes' colour: the original colour multiplied by `tint` (0xffffff restores it). */
+  setClothes(tint: number): void {
+    if (!this.clothes) {
+      const clothes: Array<{ material: THREE.MeshStandardMaterial; base: THREE.Color }> = [];
+      this.object.traverse((node) => {
+        if (!(node instanceof THREE.Mesh) || !/Outfit|Headwear|Mesh$/.test(node.name) || !(node.material instanceof THREE.MeshStandardMaterial)) return;
+        // Own copies, so other figures made from the same model keep their colours.
+        const material = node.material.clone();
+        node.material = material;
+        clothes.push({ material, base: material.color.clone() });
+      });
+      this.clothes = clothes;
+    }
+    const color = new THREE.Color(tint);
+    for (const { material, base } of this.clothes) material.color.copy(base).multiply(color);
+  }
+
+  /** The current clothing colour of the first clothing material, as a hex number (for tests). */
+  get clothesColor(): number | null {
+    return this.clothes?.[0]?.material.color.getHex() ?? null;
+  }
+
   /** Sit (riding a bike or driving an auto) or stand up again. */
   setSeated(seated: boolean): void {
     if (seated === this.seated) return;

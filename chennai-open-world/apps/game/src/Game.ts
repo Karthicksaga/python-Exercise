@@ -16,6 +16,10 @@ import { Vehicle, gearFor, loadVehicleModels, setVehicleNightLights, shiftedUp }
 import { buildContent, type GameContent } from "./content";
 import { Fighters, combatWorld } from "./Fighters";
 import { JobDesk } from "./JobDesk";
+import { PlaceDesk, type PlaceSnapshot } from "./PlaceDesk";
+import { buildPlaces } from "./places";
+import { PlaceMarkers } from "@cow/game-engine";
+import { PLACE_COLORS, placeIconCanvas } from "@cow/ui";
 import { KeyboardInput } from "./KeyboardInput";
 import { insideShell, onShellMessage, sendToShell } from "./nativeBridge";
 import { Population } from "./Population";
@@ -35,8 +39,8 @@ import dish from "../../../assets/optimized/props/dish_antenna.glb?inline";
 import handcart from "../../../assets/optimized/props/handcart.glb?inline";
 import autoRickshaw from "../../../assets/optimized/vehicles/auto_rickshaw_lod1.glb?inline";
 
-/** What tests and the debug console can read about the running game. */
-export interface GameSnapshot {
+/** What tests and the debug console can read about the running game (places and life included). */
+export interface GameSnapshot extends PlaceSnapshot {
   readonly x: number;
   readonly y: number;
   readonly z: number;
@@ -92,6 +96,9 @@ export interface GameSnapshot {
   readonly drift: number;
   /** Landmarks on the map and whether each one's name label is on screen. */
   readonly landmarks: Array<{ id: string; name: string; x: number; z: number; radius: number; label: boolean }>;
+  /** The player's top running speed (m/s, raised by fitness) and clothing colour. */
+  readonly runSpeed: number;
+  readonly clothes: number | null;
 }
 
 const SAVE_KEY = "cow-progress-v1";
@@ -149,7 +156,15 @@ function loadWeather(): Weather {
 
 function saveProgress(progress: Progress): void {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(progress));
+    // Keep the save's other fields (the life state from places, under `life`).
+    let saved: unknown = null;
+    try {
+      saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? "null");
+    } catch {
+      saved = null;
+    }
+    const rest = saved !== null && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ ...rest, ...progress }));
   } catch {
     // Storage can be unavailable (private mode); the game still plays, without saving.
   }
@@ -192,6 +207,11 @@ export class Game {
   /** Landmark models (always loaded) and their name labels. */
   private readonly landmarks: LandmarkView;
   private readonly landmarkLabels: LandmarkLabels;
+  /** Places the player can go into (home, hospital, gym, mall, cinema) and the short stories. */
+  private readonly placeDesk: PlaceDesk;
+  private readonly placeMarkers: PlaceMarkers;
+  /** A place whose entrance ENTER was pressed at; its screen opens on the next frame. */
+  private enteringPlace: PlaceDesk["places"][number] | null = null;
 
   private constructor(
     private readonly map: WorldMap,
@@ -226,6 +246,47 @@ export class Game {
     renderer.scene.add(this.landmarks.object);
     this.landmarkLabels = new LandmarkLabels(hud.root, map.landmarks ?? []);
     this.districtIndex = new DistrictIndex(map.districts ?? []);
+    const placeContent = buildPlaces(map, content);
+    this.placeDesk = new PlaceDesk(placeContent.places, placeContent.stories, missions, hud, sound, {
+      hold: () => this.hold(),
+      release: () => this.release(),
+      health: () => this.combat.health,
+      setHealth: (health) => {
+        this.combat.health = health;
+      },
+      hour: () => this.clock.hour,
+      passHours: (hours) => {
+        this.clock.hour = this.clock.hour + hours;
+        this.saveHour();
+      },
+      saveMoney: () => saveProgress(this.missions.progress()),
+      saveAll: () => {
+        saveProgress(this.missions.progress());
+        this.desk.save();
+        this.saveHour();
+        this.saveDistricts();
+      },
+      dress: (tint) => this.avatar.setClothes(tint),
+      sprint: (factor) => {
+        this.player.runScale = factor;
+      },
+      jobActive: () => this.desk.active !== null,
+    });
+    this.placeMarkers = new PlaceMarkers(placeContent.places.map((p) => ({ x: p.x, z: p.z, radius: p.radius, icon: placeIconCanvas(p.kind), color: Number.parseInt(PLACE_COLORS[p.kind].slice(1), 16) })));
+    renderer.scene.add(this.placeMarkers.object);
+  }
+
+  private saveHour(): void {
+    try {
+      localStorage.setItem(HOUR_KEY, String(this.clock.hour));
+    } catch {
+      // Not saved; the game still keeps time.
+    }
+  }
+
+  /** For tests and debugging only: set the player's health. */
+  debugSetHealth(health: number): void {
+    this.combat.health = Math.max(1, Math.min(PLAYER_MAX_HEALTH, health));
   }
 
   static async create(canvas: HTMLCanvasElement, stage: HTMLElement): Promise<Game> {
@@ -451,6 +512,7 @@ export class Game {
     this.missions.reset();
     saveProgress(this.missions.progress());
     this.desk.reset();
+    this.placeDesk.reset();
     this.visited.clear();
     this.saveDistricts();
     this.district = "";
@@ -564,7 +626,7 @@ export class Game {
   /** The marker: the job's next stop or vehicle while on a job, otherwise the stage objective. */
   private currentTarget(at: { x: number; z: number }): { x: number; z: number; radius: number } | null {
     const job = this.desk.active;
-    if (!job) return this.target(this.missions.objective, at);
+    if (!job) return this.target(this.placeDesk.objective() ?? this.missions.objective, at);
     if (this.driving?.kind !== job.vehicle) return this.target({ type: "enter", label: "", vehicle: job.vehicle }, at);
     return this.desk.stopTarget();
   }
@@ -640,6 +702,9 @@ export class Game {
       weather: this.weather,
       drift: this.driving?.body.drifting() ?? 0,
       landmarks: (this.map.landmarks ?? []).map((l) => ({ id: l.id, name: l.name, x: l.x, z: l.z, radius: l.radius ?? 0, label: this.landmarkLabels.isShown(l.id) })),
+      ...this.placeDesk.snapshot(),
+      runSpeed: this.player.runSpeed,
+      clothes: this.avatar.clothesColor,
     };
   }
 
@@ -674,8 +739,8 @@ export class Game {
   private fight(dt: number, at: { x: number; z: number }): void {
     // Enemies exist only while their objective is the current one.
     const objective = this.missions.objective;
-    // No fights while on a city job.
-    const group = objective?.type === "defeat" && !this.desk.active ? objective.group : null;
+    // No fights while on a city job or a story.
+    const group = objective?.type === "defeat" && !this.desk.active && !this.placeDesk.story ? objective.group : null;
     this.combat.keepOnly(group ? [group] : []);
     if (group && !this.cleared.has(group) && this.combat.remaining(group) === 0) {
       const spots = this.content.enemies[group] ?? [];
@@ -770,6 +835,7 @@ export class Game {
     if (action) {
       if (this.driving) this.leaveVehicle();
       else if (this.nearby) this.enterVehicle(this.nearby);
+      else this.enteringPlace = this.placeDesk.near(this.player.position);
     }
 
     let driverInput: VehicleControls | null = null;
@@ -812,9 +878,10 @@ export class Game {
       mode: this.driving ? this.driving.kind : ("foot" as const),
       speed: this.driving ? Math.abs(this.driving.body.forwardSpeed()) : this.player.speed,
     };
-    // A city job puts the stage on hold until it is finished or quit.
+    // A city job or a story puts the stage on hold until it is finished or quit.
+    this.placeDesk.fixedUpdate(dt, status);
     if (this.desk.active) this.desk.fixedUpdate(dt, status, impact);
-    else this.announce(
+    else if (!this.placeDesk.story) this.announce(
       this.missions.update(dt, {
         x: at.x,
         z: at.z,
@@ -833,6 +900,14 @@ export class Game {
     if (this.keyboard.consumeBoard()) {
       this.openBoard();
       return;
+    }
+    if (this.enteringPlace) {
+      const place = this.enteringPlace;
+      this.enteringPlace = null;
+      if (!this.driving && !this.paused) {
+        this.placeDesk.enter(place);
+        return;
+      }
     }
     const look = this.controls.consumeLook();
     this.camera.look(look.dx, look.dy);
@@ -887,7 +962,9 @@ export class Game {
           this.nearby = vehicle;
         }
       }
-      this.controls.setAction(this.nearby ? "ENTER" : null);
+      // A vehicle within reach comes first; otherwise a place's entrance.
+      const place = this.nearby ? null : this.placeDesk.near(at);
+      this.controls.setAction(this.nearby || place ? "ENTER" : null, place ? "Go inside" : undefined);
     }
 
     // Mission marker, panel and minimap.
@@ -897,6 +974,7 @@ export class Game {
     // Inside the marker its column of light would tint the whole view, so it is hidden there.
     this.beacon.place(target && Math.hypot(target.x - at.x, target.z - at.z) > target.radius ? target : null);
     this.beacon.update(dt);
+    this.placeMarkers.update(dt);
     this.hud.setMoney(this.missions.balance, this.missions.stagesDone, this.missions.stageCount);
     this.hud.setReputation(this.desk.runner.reputation);
     const job = this.desk.active;
@@ -904,6 +982,8 @@ export class Game {
     this.hud.setMission(
       job
         ? this.desk.view(this.driving?.kind === job.vehicle, distance)
+        : this.placeDesk.story
+        ? this.placeDesk.view(distance)
         : mission && objective
         ? {
             title: `Stage ${mission.stage} · ${mission.title}`,
@@ -917,6 +997,7 @@ export class Game {
       .filter((v) => v !== this.driving)
       .map((v) => ({ x: v.body.position().x, z: v.body.position().z, color: MINIMAP_COLORS[v.kind], size: v.kind === "bus" ? 5 : 3.5 }));
     for (const enemy of this.combat.enemies) if (enemy.health > 0) markers.push({ x: enemy.x, z: enemy.z, color: "#ff4d4d", size: 4 });
+    markers.push(...this.placeDesk.markers());
     if (target) markers.push({ x: target.x, z: target.z, color: "#ffb703", pinned: true, size: 6 });
     this.minimap.update(dt, at.x, at.z, this.driving ? this.driving.body.yaw() : this.player.yaw, this.camera.yaw, markers);
 

@@ -9,6 +9,8 @@ declare global {
       setPaused(paused: boolean): void;
       teleport(x: number, z: number, yaw?: number): Promise<void>;
       probe(x: number, z: number, dx: number, dz: number, max: number): number | null;
+      /** Tests only: set the player's health (to check that treatment and rest restore it). */
+      setHealth(health: number): void;
     };
   }
 }
@@ -27,6 +29,7 @@ async function boot(): Promise<void> {
       // For tests and debugging only: missions need long drives that tests skip with this.
       teleport: (x, z, yaw) => game.teleport(x, z, yaw),
       probe: (x, z, dx, dz, max) => game.probe(x, z, dx, dz, max),
+      setHealth: (health) => game.debugSetHealth(health),
     };
     game.start();
     loading.remove();

@@ -13,3 +13,4 @@ export * from "./LandmarkView";
 export * from "./SignalView";
 export * from "./StreetFurniture";
 export * from "./StreetProps";
+export * from "./PlaceMarkers";
