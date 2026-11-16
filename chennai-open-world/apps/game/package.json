@@ -22,7 +22,8 @@
     "@cow/missions": "*",
     "@cow/ai": "*",
     "@cow/combat": "*",
-    "@cow/audio": "*"
+    "@cow/audio": "*",
+    "@cow/rail": "*"
   },
   "devDependencies": {
     "@types/three": "^0.187.0"

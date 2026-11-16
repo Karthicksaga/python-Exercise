@@ -8,6 +8,7 @@
   "dependencies": {
     "three": "^0.187.0",
     "@cow/game-world": "*",
-    "@cow/physics": "*"
+    "@cow/physics": "*",
+    "@cow/rail": "*"
   }
 }

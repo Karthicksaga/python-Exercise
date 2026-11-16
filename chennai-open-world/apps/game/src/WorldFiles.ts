@@ -11,6 +11,7 @@
  * allows file pages to read files. The app no longer loads from `file:`.
  */
 import type { ChunkSource } from "@cow/game-engine";
+import type { RailFile } from "@cow/rail";
 import { chunkFile, decodeChunk, decodeRoads, worldFromIndex, type ChunkData, type WorldIndexFile, type WorldMap } from "@cow/game-world";
 
 const BASE = "world/";
@@ -56,4 +57,18 @@ export async function loadWorld(): Promise<LoadedWorld> {
     },
   };
   return { map, chunks, startupBytes: indexText.length + roadBytes.byteLength };
+}
+
+/**
+ * The railway (`world/rail.json`, built by `npm run build:rail`): tracks, lines and stations.
+ * Read like the chunk files, so the APK serves it from its assets (TD-16). The game still
+ * starts without it (a broken install loses the railway, not the city).
+ */
+export async function loadRail(): Promise<RailFile | null> {
+  try {
+    return JSON.parse((await readFile("rail.json", "text")) as string) as RailFile;
+  } catch (error) {
+    console.warn("Railway file unavailable; the game runs without trains.", error);
+    return null;
+  }
 }

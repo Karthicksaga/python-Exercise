@@ -102,6 +102,7 @@ export class Minimap {
   private readonly chunkBuildings = new Map<string, Array<{ outline: readonly MapPoint[]; keys: string[] }>>();
   /** Painted tiles, most recently used last. */
   private readonly painted = new Map<string, HTMLCanvasElement>();
+  private readonly lines = new TileIndex<{ readonly points: readonly MapPoint[]; readonly width: number }>();
 
   constructor(parent: HTMLElement, private readonly source: MinimapSource) {
     if (!document.getElementById("cow-minimap-style")) {
@@ -128,6 +129,11 @@ export class Minimap {
     this.context = context;
     for (const road of source.roads) this.roads.add(road, boxOf(road.points));
     for (const area of source.areas) this.areas.add(area, boxOf(area.outline));
+  }
+
+  /** Lines drawn over the roads on every tile they cross (railway tracks). Call once. */
+  addLines(lines: ReadonlyArray<{ readonly points: readonly MapPoint[]; readonly width: number }>): void {
+    for (const line of lines) for (const k of this.lines.add(line, boxOf(line.points))) this.painted.delete(k);
   }
 
   /** A chunk's buildings arrived: draw them on the tiles they touch. */
@@ -206,6 +212,20 @@ export class Minimap {
       g.beginPath();
       road.points.forEach((p, i) => (i === 0 ? g.moveTo(p.x, p.z) : g.lineTo(p.x, p.z)));
       g.stroke();
+    }
+    // Railway tracks: a grey line with white dashes, over the roads.
+    for (const line of this.lines.get(key)) {
+      g.beginPath();
+      line.points.forEach((p, i) => (i === 0 ? g.moveTo(p.x, p.z) : g.lineTo(p.x, p.z)));
+      g.strokeStyle = "#5b5e66";
+      g.lineWidth = line.width;
+      g.setLineDash([]);
+      g.stroke();
+      g.strokeStyle = "#f4f4f4";
+      g.lineWidth = line.width * 0.4;
+      g.setLineDash([line.width * 2, line.width * 2]);
+      g.stroke();
+      g.setLineDash([]);
     }
     this.painted.set(key, canvas);
     return canvas;

@@ -16,6 +16,7 @@
     "sync:android": "npm run build && node scripts/sync-android.mjs",
     "android": "npm run sync:android && cd apps/mobile && npx react-native run-android",
     "build:world": "tsx scripts/build-world.ts",
+    "build:rail": "tsx scripts/build-rail.ts",
     "fetch:osm": "node scripts/fetch-osm.mjs",
     "optimize:assets": "node scripts/optimize-assets.mjs",
     "blender:props": "node scripts/blender.mjs tools/blender/street_props.py -- assets/models/props",
