@@ -164,6 +164,23 @@ function kindFor(id: number, kinds: readonly AgentKind[]): number {
   return kinds.length - 1;
 }
 
+/** Speed of someone running away from danger, m/s. */
+const FLEE_SPEED = 3.8;
+/** How far, metres, and how fast, m/s, someone facing the danger steps back from it. */
+const STEP_BACK = 1.2;
+const STEP_BACK_SPEED = 1.5;
+
+/** Someone frightened by something at (x, z): stops and steps back, or runs off. */
+interface Fear {
+  readonly x: number;
+  readonly z: number;
+  /** True for those who were heading towards it: they stop and step back. */
+  readonly facing: boolean;
+  left: number;
+  /** Metres still to step back. */
+  back: number;
+}
+
 /** Side of a spawn cell, metres. */
 const CELL = 100;
 const cellKey = (cx: number, cz: number) => (cx + 32768) * 65536 + (cz + 32768);
@@ -185,6 +202,12 @@ export class AgentSystem {
   private readonly holding: number[][] = [];
   private wanted: number;
   private retireNow = false;
+  /** Agents the game holds still (people knocked down), by id. */
+  private readonly held = new Set<number>();
+  /** Agents slowed for a while (limping), by id. */
+  private readonly slowed = new Map<number, { speed: number; left: number }>();
+  /** Agents frightened by something nearby, by id. */
+  private readonly fears = new Map<number, Fear>();
 
   constructor(
     private graph: RoadGraph,
@@ -387,6 +410,72 @@ export class AgentSystem {
     agent.speed = 0;
     agent.stuck = 0;
     agent.generation++;
+    this.slowed.delete(agent.id);
+    this.fears.delete(agent.id);
+  }
+
+  /**
+   * Hold an agent still where it is: not steered, moved, recycled or put away until released.
+   * It stays in everyone's way (traffic stops for it). Used for people knocked down.
+   */
+  hold(agent: Agent): void {
+    this.held.add(agent.id);
+    this.releaseAll(agent);
+    agent.speed = 0;
+    agent.stuck = 0;
+    this.fears.delete(agent.id);
+  }
+
+  isHeld(agent: Agent): boolean {
+    return this.held.has(agent.id);
+  }
+
+  /**
+   * Let a held agent go. It walks on along its road from where it is, or, given `respawnNear`,
+   * is moved to a new place out of sight round that point (as recycled agents are).
+   */
+  letGo(agent: Agent, respawnNear?: { x: number; z: number }): void {
+    this.held.delete(agent.id);
+    if (respawnNear && agent.active && this.graph.edges.length > 0) this.place(agent, respawnNear, false);
+  }
+
+  /** Put an agent at a point at once, facing `heading` (its road stays the same). */
+  moveAgent(agent: Agent, x: number, z: number, heading = agent.heading): void {
+    agent.x = x;
+    agent.z = z;
+    agent.heading = heading;
+    agent.generation++;
+  }
+
+  /** Keep an agent below `speed` (m/s) for `seconds` (someone limping). */
+  slow(agent: Agent, speed: number, seconds: number): void {
+    this.slowed.set(agent.id, { speed, left: seconds });
+  }
+
+  /** Speed limit on an agent from `slow`, or Infinity. */
+  speedLimit(agent: Agent): number {
+    return this.slowed.get(agent.id)?.speed ?? Infinity;
+  }
+
+  /**
+   * Something frightening happened at (x, z). Agents within `radius` react for `seconds`: those
+   * walking towards it stop and step back from it, the others run off along their way.
+   * Held agents don't react.
+   */
+  scare(x: number, z: number, radius: number, seconds: number): void {
+    for (const agent of this.agents) {
+      if (!agent.active || this.held.has(agent.id)) continue;
+      const rx = x - agent.x;
+      const rz = z - agent.z;
+      if (Math.hypot(rx, rz) > radius) continue;
+      const facing = rx * -Math.sin(agent.heading) + rz * -Math.cos(agent.heading) > 0;
+      this.fears.set(agent.id, { x, z, facing, left: seconds, back: facing ? STEP_BACK : 0 });
+    }
+  }
+
+  /** True while an agent is reacting to a `scare`. */
+  isScared(agent: Agent): boolean {
+    return this.fears.has(agent.id);
   }
 
   /**
@@ -522,7 +611,7 @@ export class AgentSystem {
       if (wanted && !agent.active) {
         agent.active = true;
         this.place(agent, focus, this.retireNow);
-      } else if (!wanted && agent.active && (this.retireNow || Math.hypot(agent.x - focus.x, agent.z - focus.z) > retireBeyond)) {
+      } else if (!wanted && agent.active && !this.held.has(agent.id) && (this.retireNow || Math.hypot(agent.x - focus.x, agent.z - focus.z) > retireBeyond)) {
         agent.active = false;
         agent.speed = 0;
         agent.atSignal = false;
@@ -544,7 +633,7 @@ export class AgentSystem {
     const { graph, settings, kinds } = this;
     this.applyActive(focus);
     for (const agent of this.agents) {
-      if (!agent.active) continue;
+      if (!agent.active || this.held.has(agent.id)) continue;
       const kind = kinds[agent.kind]!;
       const edge = graph.edges[agent.edge]!;
       const from = graph.nodes[edge.from]!;
@@ -603,6 +692,31 @@ export class AgentSystem {
       agent.pullOver += Math.max(-dt, Math.min(dt, (yielding ? 1 : 0) - agent.pullOver));
       if (yielding) target = Math.min(target, YIELD_SPEED);
 
+      // Limping, or frightened: stop and step back, or run off.
+      const slowed = this.slowed.get(agent.id);
+      if (slowed) {
+        target = Math.min(target, slowed.speed);
+        slowed.left -= dt;
+        if (slowed.left <= 0) this.slowed.delete(agent.id);
+      }
+      const fear = this.fears.get(agent.id);
+      if (fear) {
+        if (fear.facing) {
+          target = 0;
+          if (fear.back > 0) {
+            const ax = agent.x - fear.x;
+            const az = agent.z - fear.z;
+            const d = Math.hypot(ax, az) || 1;
+            const step = Math.min(fear.back, STEP_BACK_SPEED * dt);
+            agent.x += (ax / d) * step;
+            agent.z += (az / d) * step;
+            fear.back -= step;
+          }
+        } else if (!slowed && clear === Infinity) target = Math.max(target, FLEE_SPEED);
+        fear.left -= dt;
+        if (fear.left <= 0) this.fears.delete(agent.id);
+      }
+
       const rate = target > agent.speed ? settings.acceleration * kind.accelerationFactor : settings.braking;
       agent.speed += Math.max(-rate * dt, Math.min(rate * dt, target - agent.speed));
 
@@ -635,7 +749,7 @@ export class AgentSystem {
 
       // Recycle agents that are far away, or jammed for a long time out of the player's sight.
       // Waiting at the lights is not being jammed.
-      agent.stuck = agent.speed < 0.2 && !agent.atSignal ? agent.stuck + dt : 0;
+      agent.stuck = agent.speed < 0.2 && !agent.atSignal && !fear ? agent.stuck + dt : 0;
       const distance = Math.hypot(agent.x - focus.x, agent.z - focus.z);
       if (distance > settings.despawn || (agent.stuck > 8 && distance > 45)) this.place(agent, focus, false);
     }

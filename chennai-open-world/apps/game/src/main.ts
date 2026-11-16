@@ -9,6 +9,8 @@ declare global {
       setPaused(paused: boolean): void;
       teleport(x: number, z: number, yaw?: number): Promise<void>;
       probe(x: number, z: number, dx: number, dz: number, max: number): number | null;
+      /** Hold a pedestrian standing at a point until a vehicle hits them; false when nobody is free. */
+      stagePedestrian(x: number, z: number, heading: number): boolean;
     };
   }
 }
@@ -27,6 +29,7 @@ async function boot(): Promise<void> {
       // For tests and debugging only: missions need long drives that tests skip with this.
       teleport: (x, z, yaw) => game.teleport(x, z, yaw),
       probe: (x, z, dx, dz, max) => game.probe(x, z, dx, dz, max),
+      stagePedestrian: (x, z, heading) => game.stagePedestrian(x, z, heading),
     };
     game.start();
     loading.remove();

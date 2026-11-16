@@ -81,6 +81,15 @@ export class Vehicle {
   }
 
   /**
+   * Lose some speed without it counting as a crash (hitting a person): scales the velocity and
+   * the crash detector's memory of it alike. @param keep share of speed kept, 0 to 1
+   */
+  knock(keep: number): void {
+    this.body.damp(keep);
+    if (this.last) this.last = { ...this.last, vx: this.last.vx * keep, vz: this.last.vz * keep };
+  }
+
+  /**
    * Points along the vehicle's length with a radius, so AI traffic sees a long bus as a row
    * of circles instead of one huge one.
    */

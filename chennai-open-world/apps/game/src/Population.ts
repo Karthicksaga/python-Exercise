@@ -22,9 +22,10 @@ import {
   type Siren,
   type Walker as Spot,
 } from "@cow/ai";
+import { Casualties, PEDESTRIAN_HIT, hitOutcome, restingSpot, speedKept, vehicleTouches, type CasualtyState, type HitOutcome, type VehicleMotion } from "@cow/combat";
 import { SignalView } from "@cow/game-engine";
 import type { WorldMap } from "@cow/game-world";
-import type { KinematicBox, PhysicsWorld } from "@cow/physics";
+import type { KinematicBox, PhysicsWorld, VehicleBody } from "@cow/physics";
 import type { HumanAssets, HumanFigure } from "@cow/player";
 import { TrafficCar, VEHICLE_TYPES, type VehicleKind } from "@cow/vehicles";
 
@@ -57,6 +58,29 @@ const DENSITY_EVERY = 1;
 /** The area around the player that sets how busy it is, metres. */
 const AREA_RADIUS = 250;
 
+/** Room a person lying on the road takes up, for traffic to stop short of, metres. */
+const LYING_RADIUS = 1.0;
+/** A person is also caught by a vehicle this many seconds of travel ahead of touching it. */
+const HIT_LEAD = 1 / 30;
+
+/** The player's vehicle, for hitting pedestrians. */
+export interface DrivenVehicle extends VehicleMotion {
+  readonly mass: number;
+  /** Its body, so the wall check ignores it. */
+  readonly body: VehicleBody;
+}
+
+/** The player's vehicle hit someone. */
+export interface PedestrianHit {
+  readonly outcome: HitOutcome;
+  /** Impact speed, m/s. */
+  readonly speed: number;
+  readonly x: number;
+  readonly z: number;
+  /** Share of its speed the vehicle keeps. */
+  readonly keep: number;
+}
+
 interface Driver {
   readonly car: TrafficCar;
   readonly body: KinematicBox;
@@ -66,6 +90,8 @@ interface Walker {
   readonly figure: HumanFigure;
   readonly body: KinematicBox;
   generation: number;
+  /** Height the body was last put at (it is put away below the street while the person lies down). */
+  y: number;
 }
 
 const isVehicleKind = (name: string): name is VehicleKind => name in VEHICLE_TYPES;
@@ -85,6 +111,9 @@ export class Population {
   private readonly people: Walker[] = [];
   private readonly trafficObstacles: Obstacle[] = [];
   private readonly walkerSpots: Spot[] = [];
+  /** People the player has hit, by agent id (`@cow/combat` rules). */
+  private readonly casualties = new Casualties();
+  private readonly physics: PhysicsWorld;
   /**
    * Road graphs, spawn weights and signals for the area round the player (AREA_HALF each way),
    * not the whole city: about a twentieth of the memory. Rebuilt when the player moves
@@ -150,6 +179,7 @@ export class Population {
 
   constructor(map: WorldMap, scene: THREE.Object3D, physics: PhysicsWorld, humans: HumanAssets, focus: { x: number; z: number }, counts: { traffic: number; pedestrians: number }) {
     this.map = map;
+    this.physics = physics;
     this.areaCentre = { x: focus.x, z: focus.z };
     const area = this.areaGraphs(focus);
     this.driveGraph = area.drive;
@@ -178,7 +208,7 @@ export class Population {
     for (const agent of this.walkers.agents) {
       const figure = humans.create(CLOTHES[agent.id % CLOTHES.length]!, true);
       scene.add(figure.object);
-      this.people.push({ figure, body: physics.createKinematicBox({ x: 0.25, y: 0.85, z: 0.25 }), generation: -1 });
+      this.people.push({ figure, body: physics.createKinematicBox({ x: 0.25, y: 0.85, z: 0.25 }), generation: -1, y: PARKED_Y });
     }
   }
 
@@ -195,6 +225,26 @@ export class Population {
   /** People out walking now. */
   get pedestrianCount(): number {
     return this.walkers.activeCount;
+  }
+
+  /** People the player has hit and what became of them, for tests and debugging. */
+  casualtyList(): Array<{ x: number; z: number; state: CasualtyState; speed: number }> {
+    return this.casualties.list().map((c) => {
+      const agent = this.walkers.agents[c.id]!;
+      return { x: agent.x, z: agent.z, state: c.state, speed: agent.speed };
+    });
+  }
+
+  /**
+   * Tests and debugging only: hold a pedestrian standing still at a point, facing `heading`,
+   * until a vehicle hits them. Returns false when nobody is free.
+   */
+  stagePedestrian(x: number, z: number, heading: number): boolean {
+    const agent = this.walkers.agents.find((a) => a.active && !this.walkers.isHeld(a) && !this.casualties.get(a.id));
+    if (!agent) return false;
+    this.walkers.hold(agent);
+    this.walkers.moveAgent(agent, x, z, heading);
+    return true;
   }
 
   /** Signalled junctions on the map. */
@@ -241,8 +291,10 @@ export class Population {
    * @param player the room the player (or their vehicle) takes up
    * @param parked the player's vehicles, which traffic must drive round or wait behind
    * @param siren the player's ambulance while its siren is on: traffic pulls over
+   * @param driven the player's vehicle, which can hit pedestrians
+   * @returns the pedestrians the player's vehicle hit this step
    */
-  fixedUpdate(dt: number, focus: { x: number; z: number }, player: readonly Obstacle[], parked: readonly Obstacle[], siren: Siren | null = null): void {
+  fixedUpdate(dt: number, focus: { x: number; z: number }, player: readonly Obstacle[], parked: readonly Obstacle[], siren: Siren | null = null, driven: DrivenVehicle | null = null): PedestrianHit[] {
     this.followArea(focus);
     this.density(dt, focus);
     // Traffic gives way to the player, parked vehicles and people on the road.
@@ -251,7 +303,8 @@ export class Population {
     this.trafficObstacles.push(...player, ...parked);
     for (const walker of this.walkers.agents) {
       if (!walker.active) continue;
-      this.trafficObstacles.push({ x: walker.x, z: walker.z, radius: 0.4 });
+      // Someone lying on the road takes up more room; traffic stops short of them.
+      this.trafficObstacles.push({ x: walker.x, z: walker.z, radius: this.casualties.isDown(walker.id) ? LYING_RADIUS : 0.4 });
       this.walkerSpots.push(walker);
     }
     // Traffic doesn't run over the player on a crossing either.
@@ -260,6 +313,8 @@ export class Population {
     this.traffic.update(dt, this.trafficObstacles, focus, siren);
     // Pedestrians only step round the player.
     this.walkers.update(dt, player, focus);
+    this.tendCasualties(dt, focus);
+    const hits = driven ? this.runOver(driven) : [];
 
     this.traffic.agents.forEach((agent, i) => {
       const driver = this.drivers[i]!;
@@ -273,14 +328,68 @@ export class Population {
     });
     this.walkers.agents.forEach((agent, i) => {
       const walker = this.people[i]!;
-      const y = agent.active ? 0.87 : PARKED_Y;
-      if (agent.generation !== walker.generation) {
+      // Someone lying on the road is no wall: the player's vehicle rolls past (TD-8 vehicles can't climb).
+      const y = agent.active && !this.casualties.isDown(agent.id) ? 0.87 : PARKED_Y;
+      if (agent.generation !== walker.generation || y !== walker.y) {
         walker.generation = agent.generation;
+        walker.y = y;
         walker.body.teleport(agent.x, y, agent.z, agent.heading);
       } else if (agent.active) {
         walker.body.moveTo(agent.x, y, agent.z, agent.heading);
       }
     });
+    return hits;
+  }
+
+  /** Timers of the people hit: getting up and limping off, or being removed. */
+  private tendCasualties(dt: number, focus: { x: number; z: number }): void {
+    const agents = this.walkers.agents;
+    for (const change of this.casualties.update(dt, (id) => Math.hypot(agents[id]!.x - focus.x, agents[id]!.z - focus.z))) {
+      const agent = agents[change.id]!;
+      if (change.type === "getsUp") {
+        this.walkers.letGo(agent);
+        this.walkers.slow(agent, PEDESTRIAN_HIT.limpSpeed, PEDESTRIAN_HIT.limpFor);
+      } else if (change.type === "remove") {
+        // Respawns elsewhere, out of sight, like any recycled pedestrian.
+        this.walkers.letGo(agent, focus);
+      }
+    }
+  }
+
+  /** Pedestrians the player's vehicle touches this step: knocked aside or down (`@cow/combat` rules). */
+  private runOver(vehicle: DrivenVehicle): PedestrianHit[] {
+    const speed = Math.hypot(vehicle.vx, vehicle.vz);
+    const outcome = hitOutcome(speed);
+    if (!outcome) return [];
+    const hits: PedestrianHit[] = [];
+    for (const agent of this.walkers.agents) {
+      if (!agent.active || !this.casualties.canHit(agent.id)) continue;
+      if (Math.hypot(agent.x - vehicle.x, agent.z - vehicle.z) > vehicle.halfLength + vehicle.halfWidth + 2) continue;
+      if (!vehicleTouches(vehicle, agent.x, agent.z, HIT_LEAD)) continue;
+      const rest = restingSpot(vehicle, agent.x, agent.z, outcome);
+      // Not through a wall: stop 0.4 m short of anything solid on the way. The ray starts
+      // 0.4 m out, outside the person's own collision box.
+      const wall = rest.distance > 0.4 ? this.physics.raycast({ x: agent.x + rest.dx * 0.4, y: 0.5, z: agent.z + rest.dz * 0.4 }, { x: rest.dx, y: 0, z: rest.dz }, rest.distance, vehicle.body) : null;
+      const distance = wall === null ? rest.distance : Math.max(0, wall);
+      const hitX = agent.x;
+      const hitZ = agent.z;
+      const x = hitX + rest.dx * distance;
+      const z = hitZ + rest.dz * distance;
+      if (outcome === "stumble") {
+        // Knocked aside: steps away, keeps their heading, and walks on.
+        this.walkers.letGo(agent);
+        this.walkers.moveAgent(agent, x, z);
+      } else {
+        this.walkers.hold(agent);
+        // Lies along the direction they were thrown.
+        this.walkers.moveAgent(agent, x, z, Math.atan2(-rest.dx, -rest.dz));
+      }
+      this.casualties.hit(agent.id, outcome);
+      // Everyone nearby stops and steps back, or runs off.
+      this.walkers.scare(hitX, hitZ, PEDESTRIAN_HIT.scareRadius, PEDESTRIAN_HIT.scareFor);
+      hits.push({ outcome, speed, x: hitX, z: hitZ, keep: speedKept(vehicle.mass) });
+    }
+    return hits;
   }
 
   /** Once per rendered frame: place the models, advance the walk animations, light the signals. */
@@ -300,6 +409,7 @@ export class Population {
       if (!figure.object.visible) return;
       figure.object.position.set(agent.x, 0, agent.z);
       figure.object.rotation.y = agent.heading;
+      figure.setDown(this.casualties.isDown(agent.id));
       figure.update(dt, agent.speed, true);
     });
     if (Math.hypot(viewer.x - this.signalCentre.x, viewer.z - this.signalCentre.z) > SIGNAL_REBUILD) {

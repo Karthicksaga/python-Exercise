@@ -369,6 +369,13 @@ export class JobRunner {
     return { type: "failed", job, reason, fine: job.fine, reputation: this.rep - before };
   }
 
+  /** Lose reputation outside a job (hitting a pedestrian). Never below 0. Returns the points lost. */
+  loseReputation(points: number): number {
+    const before = this.rep;
+    this.rep = clamp(this.rep - Math.max(0, Math.round(points)), 0, 100);
+    return before - this.rep;
+  }
+
   record(): JobRecord {
     return { reputation: this.rep, done: this.doneCount, failed: this.failedCount, best: { ...this.best } };
   }

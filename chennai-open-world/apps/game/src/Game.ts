@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
-import { Combat, PLAYER_MAX_HEALTH, type CombatEvent, type PlayerState } from "@cow/combat";
+import { Combat, PLAYER_MAX_HEALTH, hitPenalty, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState } from "@cow/combat";
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
@@ -18,7 +18,7 @@ import { Fighters, combatWorld } from "./Fighters";
 import { JobDesk } from "./JobDesk";
 import { KeyboardInput } from "./KeyboardInput";
 import { insideShell, onShellMessage, sendToShell } from "./nativeBridge";
-import { Population } from "./Population";
+import { Population, type DrivenVehicle, type PedestrianHit } from "./Population";
 import { LandmarkView } from "@cow/game-engine";
 import { landmarkSolids } from "@cow/game-world";
 import { LandmarkLabels } from "@cow/ui";
@@ -92,6 +92,9 @@ export interface GameSnapshot {
   readonly drift: number;
   /** Landmarks on the map and whether each one's name label is on screen. */
   readonly landmarks: Array<{ id: string; name: string; x: number; z: number; radius: number; label: boolean }>;
+  /** People the player's vehicle has hit and their state, and the last hit with what it cost (tests). */
+  readonly casualties: Array<{ x: number; z: number; state: CasualtyState; speed: number }>;
+  readonly lastPedestrianHit: { outcome: HitOutcome; speed: number; fine: number; reputation: number } | null;
 }
 
 const SAVE_KEY = "cow-progress-v1";
@@ -192,6 +195,7 @@ export class Game {
   /** Landmark models (always loaded) and their name labels. */
   private readonly landmarks: LandmarkView;
   private readonly landmarkLabels: LandmarkLabels;
+  private lastPedestrianHit: GameSnapshot["lastPedestrianHit"] = null;
 
   private constructor(
     private readonly map: WorldMap,
@@ -640,7 +644,41 @@ export class Game {
       weather: this.weather,
       drift: this.driving?.body.drifting() ?? 0,
       landmarks: (this.map.landmarks ?? []).map((l) => ({ id: l.id, name: l.name, x: l.x, z: l.z, radius: l.radius ?? 0, label: this.landmarkLabels.isShown(l.id) })),
+      casualties: this.population.casualtyList(),
+      lastPedestrianHit: this.lastPedestrianHit,
     };
+  }
+
+  /** Tests and debugging only: hold a pedestrian standing at a point until a vehicle hits them. */
+  stagePedestrian(x: number, z: number, heading: number): boolean {
+    return this.population.stagePedestrian(x, z, heading);
+  }
+
+  /** The driven vehicle as the pedestrian-hit rules see it. */
+  private drivenMotion(vehicle: Vehicle): DrivenVehicle {
+    const { body } = vehicle;
+    const p = body.position();
+    const v = body.planarVelocity();
+    const spec = vehicle.type.physics;
+    return { x: p.x, z: p.z, yaw: body.yaw(), vx: v.x, vz: v.z, halfWidth: spec.halfExtents.x, halfLength: spec.halfExtents.z, mass: spec.mass, body };
+  }
+
+  /** The player's vehicle hit a pedestrian: it slows a little, a thud, and a fine and lost reputation. */
+  private pedestrianHit(hit: PedestrianHit): void {
+    this.driving?.knock(hit.keep);
+    this.sound.crash(Math.min(8, 1 + hit.speed * 0.4));
+    if (hit.outcome === "stumble") {
+      this.lastPedestrianHit = { outcome: hit.outcome, speed: hit.speed, fine: 0, reputation: 0 };
+      this.hud.showToast("You bumped a pedestrian", "They step out of the way.", 2.5);
+      return;
+    }
+    const penalty = hitPenalty(hit.outcome);
+    const fine = this.missions.charge(penalty.fine);
+    const lost = this.desk.runner.loseReputation(penalty.reputation);
+    saveProgress(this.missions.progress());
+    this.desk.save();
+    this.lastPedestrianHit = { outcome: hit.outcome, speed: hit.speed, fine, reputation: lost };
+    this.hud.showToast(`You hit a pedestrian: ${hit.outcome}`, `${fine > 0 ? `Fine ₹${fine.toLocaleString("en-IN")}` : "No money for the fine"} · reputation -${lost}`, 4);
   }
 
   /** Note the named area the player is in; a first visit gets a toast and is saved. */
@@ -800,7 +838,8 @@ export class Game {
     const siren = this.driving?.siren ? { x: before.x, z: before.z, heading: this.driving.body.yaw() } : null;
     // Rush hours are busy, late nights quiet.
     this.population.setHour(this.clock.hour);
-    this.population.fixedUpdate(dt, before, room, this.parkedObstacles, siren);
+    const driven = this.driving ? this.drivenMotion(this.driving) : null;
+    for (const hit of this.population.fixedUpdate(dt, before, room, this.parkedObstacles, siren, driven)) this.pedestrianHit(hit);
     this.fight(dt, before);
     this.fighters.fixedUpdate();
     this.physics.step(dt);
