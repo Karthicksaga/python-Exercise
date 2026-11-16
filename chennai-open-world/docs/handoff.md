@@ -230,6 +230,11 @@ Avoid these areas until they are merged, or coordinate first.
 
 **Where their work is saved:** each agent commits and pushes as it goes to its own branch:
 `agent/share-auto`, `agent/pedestrian-hits`, `agent/places-activities`, `agent/railway`.
+A fifth branch, `agent/controls-poses`, fixes the user's phone-test reports: riders don't grip the
+handlebar or steering wheel, and new P / R / D gear buttons beside GAS and BRAKE.
+Some agent commits could not be pushed (the permission system refused the agents' pushes). If a
+branch on GitHub is behind, the newest work is in the agent's worktree under
+`.claude/worktrees/` on the machine that ran this session.
 If this session stops, continue from those branches. Read the newest entry at the end of this
 file on each branch (its "where I left off"), run `npm run typecheck && npm test` and the
 browser tests, then merge into `feat/chennai-open-world` one at a time.
