@@ -227,3 +227,9 @@ desktop instructions.
    to it end at the map edge. The environment now allows the OSM hosts (Overpass,
    download.openstreetmap.fr) for this.
 Avoid these areas until they are merged, or coordinate first.
+
+**Where their work is saved:** each agent commits and pushes as it goes to its own branch:
+`agent/share-auto`, `agent/pedestrian-hits`, `agent/places-activities`, `agent/railway`.
+If this session stops, continue from those branches. Read the newest entry at the end of this
+file on each branch (its "where I left off"), run `npm run typecheck && npm test` and the
+browser tests, then merge into `feat/chennai-open-world` one at a time.
