@@ -4,12 +4,14 @@
 |---|---|---|---|
 | `models/player.glb` | Human character (player and pedestrians) | Ready Player Me sample avatar, as distributed with the three.js examples (`readyplayer.me.glb`) | **Development placeholder.** Ready Player Me avatars are not cleared for commercial release without their agreement. Replace before publishing |
 | `animations/locomotion.glb` | Idle, walk and run clips | Extracted from the three.js example `Xbot.glb` (Mixamo animations) with `scripts/extract-animations.py` | Mixamo animations may be used in games royalty-free under Adobe's terms; check them before a commercial release |
+| `fonts/noto-sans-tamil-signs.woff2` | Tamil text on the invented shop signboards (7 KB, embedded with `?inline`, TD-3) | Noto Sans Tamil Bold (v31, via `@fontsource/noto-sans-tamil` 5.3.0, file `noto-sans-tamil-tamil-700-normal.woff2`), cut to the 30 characters the signs use (plus their layout tables) with `pyftsubset <file> --text="<signGlyphs()>" --layout-features='*' --flavor=woff2` | SIL Open Font Licence 1.1, © 2022 The Noto Project Authors; licence text in `fonts/OFL.txt`. Re-cut it when the sign text in `packages/game-engine/src/shopSigns.ts` changes (a unit test lists the glyphs) |
 | `osm/anna-nagar.osm.json` | Map extract | OpenStreetMap via Overpass API | ODbL 1.0, © OpenStreetMap contributors; see `osm/README.md` |
 
 | `models/props/*.glb` | Street props: barrel, crates, clay pots, AC unit, dish antenna, awning, rolling shutter (`ShutterOpen` clip), vegetable handcart (`Roll` clip) | Original, made by `tools/blender/street_props.py` in Blender 5.2 LTS (`npm run blender:props`) | Original work for this project |
 | `optimized/*.glb` | What the game embeds: the two files above after `npm run optimize:assets` (blend shapes dropped, textures 512 px WebP, meshopt-compressed geometry) | Generated from the sources above | Same licences as their sources |
 
-Vehicles, buildings, trees and all textures are generated in code and are original.
+Vehicles, buildings, trees and all textures are generated in code and are original, including
+the shop signboards: their words and names are invented (see `shopSigns.ts`), not real businesses.
 
 ## Optimising
 `npm run optimize:assets` (`scripts/optimize-assets.mjs`, glTF Transform 4.5, MIT; meshoptimizer,

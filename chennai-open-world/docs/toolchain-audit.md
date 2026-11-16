@@ -110,13 +110,14 @@ Figma connector exists but needs signing in. So no tool in sections 1–6 has be
 
 - **Exists:** OSM footprints extruded to OSM `height` / `building:levels` or 2 floors
   (estimated and labelled), procedural facade atlas, clay-tile roofs, water tanks, one merged
-  mesh per chunk for walls and one for roofs (TD-11), Anna Nagar Tower model.
-- **Missing:** balconies, sunshades (chajjas), grilles, shop fronts with shutters and awnings,
-  Tamil signage, compound walls and gates, street furniture still missing: electricity wires,
-  raised medians, temple car streets (bus shelters at the mapped stops, street-light poles and
-  kerbs now exist, Phase 3 part 1, see progress.md), landmark models for Kapaleeshwarar
-  (gopuram profile data exists), Marina lighthouse, LIC building, Central station, Ripon
-  building.
+  mesh per chunk for walls and one for roofs (TD-11), Anna Nagar Tower model. Facade kit
+  (`FacadeKit.ts`): sunshades, balconies with railings, shop fronts with rolling shutters and
+  invented Tamil/English signboards (embedded Noto Sans Tamil subset), lit shops at night.
+  Street furniture: bus shelters at the mapped stops, street-light poles and kerbs.
+- **Missing:** grilles, awnings on buildings (a Blender awning prop exists, not placed),
+  compound walls and gates, electricity wires, raised medians, temple car streets, landmark
+  models for the Marina lighthouse, LIC building, Central station and Ripon building (the
+  Kapaleeshwarar gopuram is built, procedurally).
 - **Recommended (two tiers, as you suggested):**
   1. **Ordinary buildings stay procedural, in the game.** Extend `ChunkView` with facade
      "kits" chosen by building kind and district: residential (balconies, grilles, sunshades),
@@ -267,7 +268,7 @@ Each phase ends playable, tested in the browser, with measurements recorded in
 | **0. Finish J2 (in progress)** | Commit the streamed city (done in the browser), gopuram model, Marina evening drive and city jobs, visited districts in Share progress, docs | Code only | Answer: keep, tone down or remove fight stages 7–10? |
 | **1. Foundations** (in progress) | CI (in progress); serve the game through `WebViewAssetLoader` (done: react-native-webview patch, file access off, TD-16; passes on the CI emulator); emulator smoke test (done: `android-smoke`, passing); asset optimisation script (done: `npm run optimize:assets`, glTF Transform + meshopt + WebP, character 1.8 MB → 0.5 MB; KTX2 later); memory: road graph and signals built per area instead of the whole city (done, TD-17); performance overlay | glTF Transform, toktx, GitHub Actions | Enable GitHub Pages; run the APK on a real phone once |
 | **2. Character pipeline** | Base character (MPFB2 or a licensed character), clothing, Mixamo rig and clip set, `HumanFigure` state machine (locomotion blend, jump/fall/land, enter/exit, sit, punch/kick/block/hit), player foot IK on steps; 3–4 pedestrian variants | Blender, MPFB2, Mixamo | A Mixamo/Adobe account to download clips; character look approval |
-| **3. World look** (in progress) | Facade kits (balconies, sunshades, shop fronts, invented Tamil signboards), electricity poles (**done in the browser**: invented concrete poles with lamps along main roads, no wires yet), bus shelters at the 533 real stops (**done in the browser**: 478 placed), kerbs (**done in the browser**, visual only, not solid) and medians (not yet), PBR ground textures, water shader, street lights (**done in the browser**: lamps glow and light the road at night). Part 1 measured: at most +16 draw calls and +8.6k triangles (Anna Nagar spawn, night); not yet run on a phone | Blender (kits), Poly Haven/ambientCG, Noto Sans Tamil | Look approval on screenshots |
+| **3. World look** (in progress) | Facade kits (balconies, sunshades, shop fronts, invented Tamil signboards: **done** procedurally, measured +1 draw call per chunk and +33k triangles at T. Nagar, see `progress.md`), electricity poles (**done in the browser**: invented concrete poles with lamps along main roads, no wires yet), bus shelters at the 533 real stops (**done in the browser**: 478 placed), kerbs (**done in the browser**, visual only, not solid) and medians (not yet), PBR ground textures, water shader, street lights (**done in the browser**: lamps glow and light the road at night). Part 1 measured: at most +16 draw calls and +8.6k triangles (Anna Nagar spawn, night); not yet run on a phone | Blender (kits), Poly Haven/ambientCG, Noto Sans Tamil | Look approval on screenshots |
 | **4. Landmarks** | Blender models: Kapaleeshwarar gopuram, Marina lighthouse, Central station, Ripon building, LIC building | Blender | Reference photo choices |
 | **5. Vehicles** | Blender models with LODs, lamps and indicators by input, steering and door animation, recorded engine sounds | Blender, Freesound (CC0) | — |
 | **6. Gameplay** | Story and side missions across the city, exploration rewards, progression; pedestrians crossing at zebras and reacting to the player; traffic variety (police, emergency) | Code | Story direction, and the violence decision |

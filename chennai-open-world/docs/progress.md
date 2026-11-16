@@ -4,6 +4,36 @@ Last updated: 16 Nov 2026 (evening).
 
 ## What exists
 
+- **Facade kit: sunshades, balconies, shop fronts and Tamil signboards (Phase 3, 16 Nov;
+  unit-tested, and looked at in headless Chromium by day and at 21:00, not on a phone):**
+  `packages/game-engine/src/FacadeKit.ts` decides at render time, from the `Building` record,
+  the roads of its chunk and the building id (deterministic; world files and builder unchanged),
+  which details a building gets. All of it is invented (estimated), not mapped:
+  concrete sunshades over windows (85 % of apartment blocks, 50 % of houses, 35 % of commercial
+  buildings), balconies with a slab and an open railing on the balcony bays (70 % of apartment
+  blocks and 30 % of houses of two floors or more), and ground-floor shop fronts on the walls that
+  face a road within 12 m of its edge: every commercial building, and on main roads half the
+  apartment blocks and 40 % of two-storey-or-more houses (OSM tags only 9 of 1,233 buildings
+  round Sir Thyagaraya Road as commercial, so tagged commercial alone left T. Nagar bare). Shops are
+  one or two bays under one painted board; shutters are down (40 %, five paint colours), up with
+  the lights on (38 %) or up and dim. Ten **invented** boards (`shopSigns.ts`): generic words for
+  kinds of shop in Tamil with a small English line (மளிகைக் கடை grocery, சைவ உணவகம் veg eatery,
+  துணிக்கடை, மருந்தகம், தேநீர் கடை, பூக்கடை, காலணிகள், கைபேசி சேவை) and two made-up generic
+  names (புது ஸ்டோர்ஸ் "New Stores", நிலா டிபன் சென்டர் "Nila Tiffin Centre"); no real business
+  or brand. Drawn at start-up into a 1024 px kit atlas with a 7 KB subset of Noto Sans Tamil Bold
+  (SIL OFL 1.1, `assets/fonts`, embedded, loaded with `FontFace`); if the font fails the game
+  still starts and the boards are English only (checked by blocking `FontFace.load`). At night
+  the open, lit shops glow and the boards glow faintly, through a glow atlas like the windows'.
+  Slabs merge into the walls mesh; shutters, boards and railings are one extra mesh per chunk
+  (one material, alpha-tested, not casting shadows). **Measured** (production build, lite
+  quality, 915×412, 2.5 s after teleport; before → after): spawn 149 → 154 draw calls,
+  164,652 → 203,558 triangles; T. Nagar Sir Thyagaraya Road 128 → 133, 180,108 → 213,288
+  (+33k); Pondy Bazaar 87 → 91, 139,198 → 167,816; Anna Salai 94 → 98, 122,527 → 158,767.
+  Headless Chromium here has no Tamil system font; with the embedded subset the Tamil renders
+  with correct vowel signs and conjuncts in screenshots. Unit tests (`FacadeKit.test.ts`): road
+  facing, shares, determinism, shop bays and sign widths, per-piece triangle counts, sunshade
+  winding, the curated sign list (English words from an allowlist of generic shop words, Tamil
+  lines Tamil-only), atlas layout, and the glyph list the font was cut to.
 - **The city (J2, 16 Nov, evening; tested in the browser only):** the map is now Anna Nagar to
   T. Nagar, Anna Salai, Marina Beach and the start of ECR (about 10 km × 13 km), from an OSM
   extract of 15 Nov: 20,625 road pieces, 106,619 buildings (3,593 with an OSM height or floor

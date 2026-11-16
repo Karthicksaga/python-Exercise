@@ -25,6 +25,8 @@ import { LandmarkLabels } from "@cow/ui";
 import { loadWorld } from "./WorldFiles";
 import playerModel from "../../../assets/optimized/player.glb?inline";
 import locomotion from "../../../assets/optimized/locomotion.glb?inline";
+import { loadSignFont } from "@cow/game-engine";
+import signFont from "../../../assets/fonts/noto-sans-tamil-signs.woff2?inline";
 
 /** What tests and the debug console can read about the running game. */
 export interface GameSnapshot {
@@ -220,6 +222,8 @@ export class Game {
   }
 
   static async create(canvas: HTMLCanvasElement, stage: HTMLElement): Promise<Game> {
+    // The Tamil font for shop signs loads while the world does; the game starts without it.
+    const signFontLoaded = loadSignFont(signFont);
     // The world files are produced from OpenStreetMap by `npm run build:world` (TD-16).
     const world = await loadWorld();
     const map = world.map;
@@ -243,6 +247,7 @@ export class Game {
     // Solids are streamed with the meshes: a chunk is solid exactly while it is visible.
     const solids = new Map<string, StaticGroup>();
     let minimap: Minimap | undefined;
+    await signFontLoaded;
     const chunks = new ChunkManager(map, world.chunks, renderer.scene, createChunkAssets(facadeAtlas()), {
       loaded: (chunk) => {
         minimap?.addBuildings(chunk.key, chunk.buildings);
