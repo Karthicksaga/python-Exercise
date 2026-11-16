@@ -141,3 +141,31 @@ desktop instructions.
   installed. This cloud container has no Blender. The repository's pipeline stays
   script-first either way: whatever is built through MCP should end up as a
   `tools/blender/*.py` script, so the models can be rebuilt without the agent.
+
+## 17 Nov 2026 (latest): realistic auto in the game; open requests
+
+- **Done:** `packages/vehicles/src/autoModel.ts` (+ `autoModel.test.ts`), wired in `models.ts`.
+  Unit tests 184/184; screenshot at the spawn parking spot; measured in `progress.md`.
+  **Not yet run:** the 38 browser tests on this change. Run them first.
+- **User asked: "use the real auto, like other games do".** Other games either license real
+  vehicles from the makers (racing games), or make look-alikes with invented brands (most open-world
+  games), or use bought/CC-BY 3D models by professional artists. The look the user wants comes
+  from modelling quality (an artist in Blender, textures, many hours per vehicle), which
+  code-built geometry cannot match. Options to put to the user: (a) download legally usable
+  models (Sketchfab CC-BY or CC0, CGTrader or TurboSquid with a game licence) of a generic
+  Indian auto, bus, scooter and motorbike, with logos removed and the author credited in
+  `assets/README.md`; (b) commission or build them in Blender (Blender MCP on the user's
+  computer); (c) license real brands. The loader is ready for (a) and (b): any GLB with wheels as
+  separate nodes can replace `buildAutoParts` the way `StreetProps.ts` loads props.
+- **User asked for realistic Chennai roads.** OpenStreetMap is a crowd-mapped snapshot (our extract
+  is from 15 Nov 2026), not real-time, and it does not map road condition: in the Anna Nagar
+  extract only 10 of 136 road pieces have `lanes` and 20 have `surface`; none have
+  `smoothness`, `traffic_calming` (speed breakers) or `sidewalk`. So road wear has to be invented
+  by rule, and described as estimated (AGENTS.md). Proposed for realism-plan Phase 2: worn,
+  patched asphalt textures by road class; broken and dusty edges where there is no kerb; potholes
+  and patches on residential and service roads (by road id, more after rain); speed breakers
+  painted black and yellow near schools, temples and junctions; faded or missing lane paint on
+  minor roads; concrete medians with gaps on main roads; open storm-water drains with slab
+  covers along the kerb; lane counts from OSM `lanes` where tagged, from road width otherwise.
+  Research the real look (Chennai Corporation road standards, IRC codes for markings and speed
+  breakers, street photos) before modelling.

@@ -275,6 +275,17 @@ Difficulty has not been play-tested by a person.
   frame rate, memory and touch on a phone are still unknown.
 - **Performance:** about 270–300 draw calls and 290k triangles with everything on screen. Fine on
   the emulator's desktop GPU; unknown on phones. Each pedestrian is a full skinned character.
+- **Realistic auto-rickshaw in the game (17 Nov; unit tests, looked at and measured in
+  headless Chromium, not on a phone):** `packages/vehicles/src/autoModel.ts` replaces the boxy
+  procedural auto with the reviewed prototype (`prototypes/auto-rickshaw.html`): 2.63 m body,
+  1.30 m wide, 1.71 m tall, twin headlamps, raked windscreen, fabric canopy with a rear window,
+  open sides, grab rails, saddle and bench, mirrors, yellow commercial plates (no real number),
+  and torus tyres with steel rims. Colours are in the vertices, so all autos share seven
+  materials (paint, trim, metal, glass, lamp, tail, plate), plus three wheels: 10 meshes and
+  under 9k triangles per auto (unit test). A green paint colour gets the yellow band of a battery
+  auto (TN rules), any other the green band. The physics (`specs.ts`) is unchanged. Spawn at
+  `?quality=lite`: 178 → 181 draw calls, 248k → 265k triangles. Not run through the browser
+  tests yet: the next engineer should run `cd apps/game && PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off`.
 - **Street props in the streets (17 Nov; unit tests, real-city test, measured and looked at
   in headless Chromium; not on a phone):** the Blender props (original, `npm run blender:props`)
   are now placed. Pavement props (`packages/game-world/src/props.ts`, `chunkProps`): groups of a
