@@ -23,6 +23,16 @@ Last updated: 16 Nov 2026 (evening).
   "New area: …" once no other message is on screen, and adds "Explored N areas of Chennai: …"
   to Share progress. New game clears it. `city.spec.ts` checks it survives a reload, and that
   the Marina Beach, Kapaleeshwarar Temple and T. Nagar labels show from 150 m.
+- **Kapaleeshwarar Temple gopuram (16 Nov; unit-tested, and looked at in the browser):** an
+  original procedural gateway tower built from `gopuramProfile`, the same estimated proportions
+  as its collision (37 m, seven tiers; position, size and colours are estimated, not surveyed).
+  A grey stone base with the passage open east-west, tapering stucco tiers in a different
+  invented colour each with a ledge and a row of pilasters and dark niches, a barrel-vault crown
+  and seven gold finials; broad faces look east and west. One merged vertex-coloured mesh with
+  the tower's shared material (one draw call, 3,544 triangles), casting and receiving shadows.
+  Unit tests check its bounds equal the profile's footprint and height, the triangle budget and
+  that rays pass through the passage; seen in headless Chromium (lite quality, golden hour)
+  from 16 m, 60 m, 80 m and 100 m. Not checked at night or on a phone.
 - **World:** about 1 km² of real Anna Nagar from OpenStreetMap: 136 road pieces, 1,292 building
   footprints, Tower Park and other green areas, 512 trees. Split into 16 chunks of 250 m that
   load and unload (meshes and collision) as the player moves.

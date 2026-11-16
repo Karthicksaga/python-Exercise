@@ -45,8 +45,8 @@ const ROUND_SIDES = 24;
 
 /**
  * Landmark collision, built once (landmarks are always loaded): for a tower, each plinth step
- * as a capped prism you can walk up, the ground-floor drum and the shaft. Landmarks without a
- * footprint (beaches, districts, temples not modelled yet) add nothing.
+ * as a capped prism you can walk up, the ground-floor drum and the shaft; for a temple, its gopuram.
+ * Landmarks without a footprint (beaches, districts) add nothing.
  */
 export function landmarkSolids(landmarks: readonly Landmark[]): ChunkSolids {
   const vertices: number[] = [];
