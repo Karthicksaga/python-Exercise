@@ -146,7 +146,7 @@ desktop instructions.
 
 - **Done:** `packages/vehicles/src/autoModel.ts` (+ `autoModel.test.ts`), wired in `models.ts`.
   Unit tests 184/184; screenshot at the spawn parking spot; measured in `progress.md`.
-  **Not yet run:** the 38 browser tests on this change. Run them first.
+  Browser tests 38/38 on this change (7.1 min, headless Chromium).
 - **User asked: "use the real auto, like other games do".** Other games either license real
   vehicles from the makers (racing games), or make look-alikes with invented brands (most open-world
   games), or use bought/CC-BY 3D models by professional artists. The look the user wants comes
@@ -169,3 +169,18 @@ desktop instructions.
   covers along the kerb; lane counts from OSM `lanes` where tagged, from road width otherwise.
   Research the real look (Chennai Corporation road standards, IRC codes for markings and speed
   breakers, street photos) before modelling.
+
+### User feedback, 17 Nov 2026 (latest): not started
+- **The user does not like the code-built auto** (prototype and in game) and wants vehicles
+  that look like the real ones, as in other games: auto, bus, truck, motorbike. Code-built
+  geometry will not get there. Next step: get artist-quality models, either downloaded with a
+  game-usable licence (Sketchfab CC-BY/CC0, CGTrader, TurboSquid; needs the user's account or
+  files, since this container cannot sign in) or built in Blender by a person, or through Blender
+  MCP on the user's computer. Then publish a review page of the downloaded models
+  (three.js GLTF viewer, side by side, triangle counts) before putting any in the game.
+- **Drivers and riders, men and women, in Tamil Nadu dress** for every moving vehicle: possible.
+  It needs realistic rigged humans (MakeHuman/MPFB CC0 bodies in Blender, or licensed scanned
+  people), clothing variants (shirt and veshti or trousers, lungi, saree, salwar, helmets on
+  two-wheeler riders), and seated and riding poses. Cost: a skinned person per moving vehicle
+  is expensive on phones. Plan: full people near the player, static posed meshes merged into
+  the vehicle for traffic further away. `specs.ts` already has a `seat` position per vehicle.
