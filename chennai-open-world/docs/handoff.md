@@ -125,3 +125,19 @@ features. It cannot mean removing the web build: the APK is made from it, and th
 removed yet. Confirm with the user which of these to drop: (1) the Pages deploy job in
 `.github/workflows/chennai-open-world.yml`, (2) `apps/game/src/KeyboardInput.ts` and the README's
 desktop instructions.
+
+## 17 Nov 2026 (later): vehicle prototype 1 for review
+- `prototypes/auto-rickshaw.html`: a page-only three.js prototype (not part of the game build)
+  of an original Chennai auto-rickshaw: real proportions (2.63 × 1.30 × 1.71 m, 2.00 m
+  wheelbase), clearcoat paint, chrome, glass, fabric canopy, tyres; petrol yellow, battery
+  green with the 15 cm yellow band, and pink liveries; noon haze and golden hour. About
+  19k triangles and 178 meshes as built, so the game version needs merging by material and a
+  low-detail version for traffic. Published for the user's review as a private artifact. Wait
+  for their feedback before building vehicles in Blender.
+- **Blender MCP:** the user pointed out that Blender can be driven over MCP (a Blender add-on
+  plus an MCP server, so an agent can inspect scenes and run Python in Blender). That needs
+  Blender running on a machine the agent can reach: the user's own computer (a local Claude
+  Code session, or a cloud session connected to that computer) or a build host with Blender
+  installed. This cloud container has no Blender. The repository's pipeline stays
+  script-first either way: whatever is built through MCP should end up as a
+  `tools/blender/*.py` script, so the models can be rebuilt without the agent.

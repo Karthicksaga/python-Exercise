@@ -1,0 +1,489 @@
+<title>Chennai Auto Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta+Malar:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a review sheet. The 3D viewer leads; controls, measurements and review questions sit beside it (stacked on phones). */
+:root {
+  --bg: #f3f1ea;
+  --panel: #fffdf7;
+  --fg: #1f2124;
+  --muted: #5d6066;
+  --line: #ddd8c8;
+  --accent: #c98a00;        /* auto-rickshaw yellow, darkened for text */
+  --accent-fill: #f2b705;
+  --chip: #ece7d6;
+  --stage: #d9d4c7;
+  --display: "Mukta Malar", "Noto Sans Tamil", system-ui, sans-serif;
+  --body: "Mukta Malar", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a; --panel: #1d2024; --fg: #ecebe6; --muted: #a3a6ab; --line: #30343a;
+    --accent: #f2b705; --accent-fill: #f2b705; --chip: #272b30; --stage: #23272c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a; --panel: #1d2024; --fg: #ecebe6; --muted: #a3a6ab; --line: #30343a;
+  --accent: #f2b705; --accent-fill: #f2b705; --chip: #272b30; --stage: #23272c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--fg); }
+body {
+  font-family: var(--body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 32px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: grid; gap: 4px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(26px, 4vw, 38px); line-height: 1.1; margin: 0; text-wrap: balance; }
+h1 .ta { color: var(--accent); font-weight: 600; margin-left: .3em; }
+.lede { margin: 0; max-width: 68ch; color: var(--muted); }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+@media (max-width: 880px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.stage { position: relative; background: var(--stage); border-radius: 10px; overflow: hidden; aspect-ratio: 16 / 10; max-width: 100%; min-height: 300px; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hud { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.hud span { font-family: var(--mono); font-size: 11.5px; background: rgba(20,22,25,.72); color: #f4f2ea; padding: 3px 8px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+.hint { position: absolute; right: 10px; top: 10px; font-size: 12px; background: rgba(20,22,25,.6); color: #f4f2ea; padding: 3px 8px; border-radius: 4px; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-family: var(--mono); font-size: 13px; }
+aside { display: grid; gap: 14px; min-width: 0; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.panel h2 { font-family: var(--display); font-size: 17px; font-weight: 700; margin: 0; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button {
+  font: 600 14px/1 var(--body); padding: 8px 11px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--chip); color: var(--fg); cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+}
+.seg button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--panel); }
+.seg button:focus-visible, .toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.25); flex: none; }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 14px; }
+dt { color: var(--muted); }
+dd { margin: 0; font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+ol.review { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; font-size: 14px; }
+.toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.foot { font-size: 13px; color: var(--muted); max-width: 80ch; margin: 0; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Chennai Open World · vehicle prototype 1 · for review</div>
+    <h1>Chennai auto-rickshaw<span class="ta">ஆட்டோ</span></h1>
+    <p class="lede">A first realistic vehicle for the game: a three-wheeler at real Chennai proportions, with physically based paint, chrome, glass, a fabric canopy and rubber tyres. It is an original design with no maker's badge or grille, and it shows how the game's vehicles would look after the change from procedural shapes. Drag to turn it, pinch or scroll to zoom.</p>
+  </header>
+
+  <div class="grid">
+    <div class="stage" id="stage">
+      <div class="loading" id="loading">Loading the 3D viewer…</div>
+      <span class="hint">Drag to orbit · scroll to zoom</span>
+      <div class="hud" aria-live="polite">
+        <span id="tris">— triangles</span><span id="calls">— draw calls</span><span id="fps">— fps</span>
+      </div>
+    </div>
+
+    <aside>
+      <section class="panel" aria-labelledby="liv-h">
+        <h2 id="liv-h">Livery</h2>
+        <div class="seg" id="livery" role="group" aria-label="Livery">
+          <button id="liv-petrol" data-v="petrol" aria-pressed="true"><span class="sw" style="background:#f2b705"></span>Petrol, yellow</button>
+          <button id="liv-ev" data-v="ev" aria-pressed="false"><span class="sw" style="background:#0f5132"></span>Battery, green</button>
+          <button id="liv-pink" data-v="pink" aria-pressed="false"><span class="sw" style="background:#e0559a"></span>Pink auto</button>
+        </div>
+        <p class="note" id="liv-note">Yellow body and black canopy, the common Chennai auto.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="light-h">
+        <h2 id="light-h">Light</h2>
+        <div class="seg" id="light" role="group" aria-label="Light">
+          <button id="light-noon" data-v="noon" aria-pressed="true">Chennai noon haze</button>
+          <button id="light-gold" data-v="gold" aria-pressed="false">Golden hour</button>
+        </div>
+        <label class="toggle" for="spin"><input type="checkbox" id="spin" checked> Turn slowly</label>
+      </section>
+
+      <section class="panel" aria-labelledby="dim-h">
+        <h2 id="dim-h">Measurements</h2>
+        <dl>
+          <dt>Length</dt><dd>2.63 m</dd>
+          <dt>Width</dt><dd>1.30 m</dd>
+          <dt>Height</dt><dd>1.71 m</dd>
+          <dt>Wheelbase</dt><dd>2.00 m</dd>
+          <dt>Tyres</dt><dd>4.00-8 (0.42 m)</dd>
+          <dt>Seats</dt><dd>driver + 3</dd>
+        </dl>
+        <p class="note">Typical dimensions of the three-wheelers on Chennai roads. The model is built to them.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="rev-h">
+        <h2 id="rev-h">What to review</h2>
+        <ol class="review">
+          <li>Do the proportions and canopy shape read as a Chennai auto?</li>
+          <li>Paint, chrome and fabric: realistic enough, or more wear and dust?</li>
+          <li>Is an original design with no badge right, or do you want to license a real model?</li>
+          <li>Cost: is the triangle count under the viewer acceptable for one auto? The phone budget is 300k triangles for the whole scene, so traffic autos far away would use a simpler version.</li>
+        </ol>
+      </section>
+    </aside>
+  </div>
+
+  <p class="foot">Built in code for this preview (three.js, the same renderer as the game). In the game, the final model would come from a Blender script, through the asset pipeline (GLB, meshopt, 512 px textures), with a lower-detail version for distance. The number plate format is real, but its number is not a real registration.</p>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+
+const stage = document.getElementById("stage");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+stage.prepend(renderer.domElement);
+document.getElementById("loading").remove();
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(36, 1.6, 0.1, 120);
+camera.position.set(4.4, 1.9, 4.2);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.85, 0);
+controls.enableDamping = true;
+controls.minDistance = 2.2;
+controls.maxDistance = 11;
+controls.maxPolarAngle = Math.PI * 0.495;
+
+// ---------- Procedural textures (canvas): asphalt, fabric, plate ----------
+function canvasTexture(w, h, draw, repeat) {
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  draw(c.getContext("2d"), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
+  return t;
+}
+function rand(seed) { let s = seed >>> 0; return () => ((s = Math.imul(s ^ (s >>> 15), 0x2c1b3c6d) + 0x6d2b79f5 >>> 0) / 4294967296); }
+
+const asphalt = canvasTexture(512, 512, (g, w, h) => {
+  const r = rand(7);
+  g.fillStyle = "#57585a"; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 26000; i++) { const v = 60 + r() * 70; g.fillStyle = `rgb(${v},${v},${v + 2})`; g.fillRect(r() * w, r() * h, 1 + r() * 1.6, 1 + r() * 1.6); }
+  // Patches and dust, as on worn Chennai roads.
+  for (let i = 0; i < 7; i++) { g.fillStyle = `rgba(${40 + r() * 20},${40 + r() * 20},${42},.35)`; g.beginPath(); g.ellipse(r() * w, r() * h, 20 + r() * 60, 12 + r() * 40, r() * 3, 0, 7); g.fill(); }
+  for (let i = 0; i < 5; i++) { g.fillStyle = "rgba(160,140,110,.10)"; g.beginPath(); g.ellipse(r() * w, r() * h, 60 + r() * 80, 30 + r() * 50, r() * 3, 0, 7); g.fill(); }
+}, [6, 6]);
+const asphaltRough = canvasTexture(256, 256, (g, w, h) => {
+  const r = rand(11); g.fillStyle = "#e6e6e6"; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 6000; i++) { const v = 150 + r() * 105; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(r() * w, r() * h, 2, 2); }
+}, [6, 6]);
+asphaltRough.colorSpace = THREE.NoColorSpace;
+
+const fabric = canvasTexture(256, 256, (g, w, h) => {
+  g.fillStyle = "#1c1d1f"; g.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 2) { g.fillStyle = y % 4 ? "rgba(255,255,255,.035)" : "rgba(0,0,0,.18)"; g.fillRect(0, y, w, 1); }
+  for (let x = 0; x < w; x += 2) { g.fillStyle = x % 4 ? "rgba(255,255,255,.03)" : "rgba(0,0,0,.12)"; g.fillRect(x, 0, 1, h); }
+}, [3, 3]);
+const fabricBump = canvasTexture(128, 128, (g, w, h) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = ((x >> 1) + (y >> 1)) % 2 ? 200 : 90; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(x, y, 1, 1); }
+}, [10, 10]);
+fabricBump.colorSpace = THREE.NoColorSpace;
+
+const plateTex = canvasTexture(512, 112, (g, w, h) => {
+  g.fillStyle = "#f4c400"; g.fillRect(0, 0, w, h);
+  g.strokeStyle = "#111"; g.lineWidth = 8; g.strokeRect(6, 6, w - 12, h - 12);
+  g.fillStyle = "#111"; g.font = "700 66px JetBrains Mono, monospace"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText("TN 00 X 0000", w / 2, h / 2 + 4);
+});
+
+// ---------- Materials ----------
+const paint = new THREE.MeshPhysicalMaterial({ color: 0xf2b705, roughness: 0.38, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.12 });
+const band = new THREE.MeshPhysicalMaterial({ color: 0x1f7a3a, roughness: 0.45, clearcoat: 0.6 });
+const canopyMat = new THREE.MeshStandardMaterial({ map: fabric, bumpMap: fabricBump, bumpScale: 0.6, roughness: 0.95, color: 0xffffff, side: THREE.DoubleSide });
+const blackPlastic = new THREE.MeshStandardMaterial({ color: 0x161718, roughness: 0.55 });
+const seatVinyl = new THREE.MeshPhysicalMaterial({ color: 0x232426, roughness: 0.42, clearcoat: 0.3 });
+const chrome = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1, roughness: 0.16 });
+const steel = new THREE.MeshStandardMaterial({ color: 0x8a8e92, metalness: 0.85, roughness: 0.35 });
+const rubber = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.92 });
+const glass = new THREE.MeshPhysicalMaterial({ color: 0xbfd6dd, metalness: 0, roughness: 0.04, transmission: 0.92, thickness: 0.01, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+const lampLens = new THREE.MeshPhysicalMaterial({ color: 0xfaf6ea, roughness: 0.05, transmission: 0.6, emissive: 0xfff3d0, emissiveIntensity: 0.15, transparent: true, opacity: 0.9 });
+const redLens = new THREE.MeshPhysicalMaterial({ color: 0xb3121b, roughness: 0.1, emissive: 0x5a0000, emissiveIntensity: 0.4 });
+const amberLens = new THREE.MeshPhysicalMaterial({ color: 0xf08a00, roughness: 0.1, emissive: 0x402000, emissiveIntensity: 0.3 });
+const plateMat = new THREE.MeshStandardMaterial({ map: plateTex, roughness: 0.5 });
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x2a2b2c, roughness: 0.8, metalness: 0.2 });
+
+const auto = new THREE.Group();
+scene.add(auto);
+const add = (geo, mat, x = 0, y = 0, z = 0, parent = auto) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+
+// Side profile in the XY plane (x forward), extruded across Z.
+function profile(points, depth, bevel, mat, z) {
+  const s = new THREE.Shape();
+  s.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i++) {
+    const p = points[i];
+    if (p.length === 4) s.quadraticCurveTo(p[0], p[1], p[2], p[3]); else s.lineTo(p[0], p[1]);
+  }
+  s.closePath();
+  const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: bevel > 0, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 4, curveSegments: 14 });
+  g.translate(0, 0, -depth / 2);
+  g.computeVertexNormals();
+  return add(g, mat, 0, 0, z);
+}
+
+const W = 1.24; // body width between the outer skins
+// Nose and cowl: rounded front shell.
+profile([[0.74, 0.34], [1.04, 0.36, 1.18, 0.52], [1.27, 0.66, 1.26, 0.86], [1.25, 0.98, 1.12, 1.03], [0.96, 1.06], [0.84, 1.0, 0.8, 0.9], [0.74, 0.34]], W - 0.2, 0.035, paint, 0);
+// Side skins with the passenger opening.
+for (const side of [1, -1]) {
+  profile([[-1.31, 0.34], [-1.31, 1.02], [-1.3, 1.12, -1.18, 1.13], [-0.74, 1.12], [-0.6, 1.1, -0.6, 0.92], [-0.58, 0.68], [0.5, 0.66], [0.7, 0.66, 0.78, 0.86], [0.8, 0.98], [0.86, 0.36], [0.74, 0.34]], 0.03, 0.012, paint, side * (W / 2));
+  // Waist band (green on the petrol auto, yellow on the battery auto).
+  const bandGeo = new THREE.BoxGeometry(1.36, 0.075, 0.012);
+  add(bandGeo, band, 0.08, 0.5, side * (W / 2 + 0.024));
+  add(new THREE.BoxGeometry(0.56, 0.075, 0.012), band, -1.0, 0.5, side * (W / 2 + 0.024));
+}
+// Rear tub over the engine.
+profile([[-1.32, 0.33], [-1.32, 1.0], [-1.31, 1.12, -1.18, 1.12], [-0.62, 1.12], [-0.6, 0.62], [-0.6, 0.33]], W - 0.1, 0.05, paint, 0);
+// Floor.
+add(new THREE.BoxGeometry(1.36, 0.04, W - 0.04), floorMat, 0.08, 0.36, 0);
+// Lower skirt and engine-side vents.
+for (const side of [1, -1]) for (let i = 0; i < 5; i++) add(new THREE.BoxGeometry(0.16, 0.018, 0.01), blackPlastic, -1.08 + i * 0.03, 0.74 - i * 0.035, side * (W / 2 + 0.03));
+
+// Windscreen: black frame and glass, raked back.
+const screenH = 0.56;
+const screen = new THREE.Group();
+screen.position.set(0.93, 1.06, 0);
+screen.rotation.z = 0.32;
+auto.add(screen);
+add(new THREE.PlaneGeometry(0.03, screenH).rotateY(Math.PI / 2).scale(1, 1, (W - 0.08) / 0.03), glass, 0, screenH / 2, 0, screen);
+for (const z of [-1, 1]) add(new THREE.BoxGeometry(0.04, screenH + 0.02, 0.04), blackPlastic, 0, screenH / 2, z * (W / 2 - 0.04), screen);
+add(new THREE.BoxGeometry(0.04, 0.04, W - 0.04), blackPlastic, 0, screenH, 0, screen);
+add(new THREE.BoxGeometry(0.05, 0.05, W - 0.04), blackPlastic, 0, 0.0, 0, screen);
+// Wiper.
+const wiper = add(new THREE.BoxGeometry(0.012, 0.42, 0.012), blackPlastic, -0.025, 0.24, 0.12, screen);
+wiper.rotation.x = 0.5;
+
+// Canopy: fabric arch over steel hoops, sloping down at the back.
+const canopyLen = 2.16;
+{
+  const outer = new THREE.Shape();
+  const hw = 0.665, base = 1.22, top = 1.71, r = 0.22;
+  outer.moveTo(-hw, base);
+  outer.lineTo(-hw, top - r);
+  outer.quadraticCurveTo(-hw, top, -hw + r, top);
+  outer.lineTo(hw - r, top);
+  outer.quadraticCurveTo(hw, top, hw, top - r);
+  outer.lineTo(hw, base);
+  outer.lineTo(hw - 0.025, base);
+  outer.lineTo(hw - 0.025, top - r);
+  outer.quadraticCurveTo(hw - 0.025, top - 0.025, hw - r, top - 0.025);
+  outer.lineTo(-hw + r, top - 0.025);
+  outer.quadraticCurveTo(-hw + 0.025, top - 0.025, -hw + 0.025, top - r);
+  outer.lineTo(-hw + 0.025, base);
+  outer.closePath();
+  const g = new THREE.ExtrudeGeometry(outer, { depth: canopyLen, bevelEnabled: false, curveSegments: 12 });
+  g.rotateY(Math.PI / 2);
+  g.translate(-1.3, 0, 0);
+  add(g, canopyMat);
+  // Rear fabric panel with a small window, and the roll at the canopy's front edge.
+  const back = new THREE.Shape();
+  back.moveTo(-hw, 1.08); back.lineTo(-hw, top - r); back.quadraticCurveTo(-hw, top, -hw + r, top); back.lineTo(hw - r, top); back.quadraticCurveTo(hw, top, hw, top - r); back.lineTo(hw, 1.08); back.closePath();
+  const win = new THREE.Path(); win.moveTo(-0.32, 1.34); win.lineTo(0.32, 1.34); win.lineTo(0.32, 1.55); win.lineTo(-0.32, 1.55); win.closePath();
+  back.holes.push(win);
+  const bg = new THREE.ShapeGeometry(back, 12); bg.rotateY(Math.PI / 2);
+  add(bg, canopyMat, -1.305, 0, 0);
+  const rw = new THREE.PlaneGeometry(0.64, 0.21); rw.rotateY(Math.PI / 2);
+  add(rw, glass, -1.30, 1.445, 0);
+  const roll = new THREE.CylinderGeometry(0.035, 0.035, 1.26, 14); roll.rotateX(Math.PI / 2);
+  add(roll, canopyMat, 0.86, 1.69, 0);
+}
+// Hoops and pillars.
+const tube = (x0, y0, z0, x1, y1, z1, rad = 0.018, mat = blackPlastic) => {
+  const a = new THREE.Vector3(x0, y0, z0), b = new THREE.Vector3(x1, y1, z1);
+  const g = new THREE.CylinderGeometry(rad, rad, a.distanceTo(b), 10);
+  const m = add(g, mat, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+  return m;
+};
+for (const z of [1, -1]) {
+  tube(0.28, 0.72, z * 0.6, 0.26, 1.66, z * 0.64);        // pillar behind the driver
+  tube(-1.24, 1.1, z * 0.61, -1.24, 1.66, z * 0.64);       // rear pillar
+  tube(-0.58, 1.13, z * 0.63, 0.28, 1.13, z * 0.63, 0.014, chrome); // passenger grab rail
+}
+
+// Seats: driver's saddle and the passenger bench with backrest.
+add(new RoundedBoxGeometry(0.42, 0.1, 0.5, 4, 0.04), seatVinyl, 0.46, 0.86, 0);
+add(new RoundedBoxGeometry(0.12, 0.42, 0.36, 4, 0.04), seatVinyl, 0.32, 1.08, 0).rotation.z = 0.12;
+add(new RoundedBoxGeometry(0.5, 0.11, W - 0.1, 4, 0.04), seatVinyl, -0.82, 0.74, 0);
+add(new RoundedBoxGeometry(0.12, 0.44, W - 0.1, 4, 0.04), seatVinyl, -1.12, 1.0, 0).rotation.z = -0.15;
+add(new THREE.BoxGeometry(0.5, 0.36, W - 0.12), floorMat, -0.82, 0.53, 0); // bench base (engine cover)
+
+// Handlebar, with grips, mirrors and the meter.
+const bar = new THREE.CylinderGeometry(0.014, 0.014, 0.66, 10); bar.rotateX(Math.PI / 2);
+add(bar, chrome, 0.78, 1.15, 0);
+tube(0.86, 0.95, 0, 0.78, 1.15, 0, 0.026, blackPlastic);
+for (const z of [1, -1]) {
+  const grip = new THREE.CylinderGeometry(0.02, 0.02, 0.11, 12); grip.rotateX(Math.PI / 2);
+  add(grip, rubber, 0.78, 1.15, z * 0.36);
+  tube(0.94, 1.08, z * 0.62, 0.98, 1.24, z * 0.72, 0.008, chrome);
+  const m = add(new THREE.CylinderGeometry(0.06, 0.06, 0.015, 16), blackPlastic, 0.98, 1.27, z * 0.74);
+  m.rotation.z = Math.PI / 2;
+}
+add(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 20), blackPlastic, 0.86, 1.13, 0).rotation.z = 1.25;
+
+// Front fascia: twin headlamps with chrome bezels, a black intake, indicators, horn grille.
+for (const z of [1, -1]) {
+  const bezel = new THREE.TorusGeometry(0.078, 0.014, 10, 24); bezel.rotateY(Math.PI / 2);
+  add(bezel, chrome, 1.305, 0.8, z * 0.29);
+  const lens = new THREE.SphereGeometry(0.075, 20, 12, 0, Math.PI); lens.rotateY(Math.PI / 2); lens.scale(0.35, 1, 1);
+  add(lens, lampLens, 1.298, 0.8, z * 0.29);
+  add(new RoundedBoxGeometry(0.03, 0.05, 0.09, 2, 0.012), amberLens, 1.285, 0.94, z * 0.44);
+  add(new RoundedBoxGeometry(0.05, 0.06, 0.08, 2, 0.015), redLens, -1.36, 0.7, z * 0.48);
+  add(new RoundedBoxGeometry(0.03, 0.04, 0.06, 2, 0.01), amberLens, -1.35, 0.8, z * 0.48);
+}
+add(new RoundedBoxGeometry(0.03, 0.07, 0.34, 3, 0.02), blackPlastic, 1.275, 0.62, 0);
+for (let i = 0; i < 4; i++) add(new THREE.BoxGeometry(0.01, 0.008, 0.3), steel, 1.292, 0.6 + i * 0.016, 0);
+// Number plates: front on the nose, rear on the tub.
+const plate = new THREE.PlaneGeometry(0.36, 0.08); plate.rotateY(Math.PI / 2);
+add(plate, plateMat, 1.19, 0.47, 0).rotation.z = 0.75;
+const rear = new THREE.PlaneGeometry(0.4, 0.09); rear.rotateY(-Math.PI / 2);
+add(rear, plateMat, -1.385, 0.52, 0);
+add(new THREE.BoxGeometry(0.04, 0.05, 1.12), blackPlastic, -1.37, 0.36, 0); // rear bumper bar
+add(new THREE.BoxGeometry(0.05, 0.05, 1.0), steel, 1.24, 0.36, 0);        // front bumper guard
+
+// Wheels: tyre (torus with tread grooves), steel rim, hub.
+function wheel(x, y, z) {
+  const g = new THREE.Group(); g.position.set(x, y, z); auto.add(g);
+  const r = 0.21;
+  const tyre = new THREE.TorusGeometry(r - 0.045, 0.055, 18, 40); tyre.scale(1, 1, 1.25);
+  add(tyre, rubber, 0, 0, 0, g);
+  for (let i = 0; i < 28; i++) {
+    const a = (i / 28) * Math.PI * 2;
+    const t = add(new THREE.BoxGeometry(0.012, 0.025, 0.12), rubber, Math.cos(a) * (r - 0.004), Math.sin(a) * (r - 0.004), 0, g);
+    t.rotation.z = a;
+  }
+  const rim = new THREE.CylinderGeometry(0.115, 0.115, 0.09, 28); rim.rotateX(Math.PI / 2);
+  add(rim, steel, 0, 0, 0, g);
+  const hub = new THREE.CylinderGeometry(0.045, 0.045, 0.12, 16); hub.rotateX(Math.PI / 2);
+  add(hub, chrome, 0, 0, 0, g);
+  for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2; const n = new THREE.CylinderGeometry(0.008, 0.008, 0.13, 6); n.rotateX(Math.PI / 2); add(n, chrome, Math.cos(a) * 0.07, Math.sin(a) * 0.07, 0, g); }
+  return g;
+}
+const wheels = [wheel(1.0, 0.21, 0), wheel(-1.0, 0.21, 0.6), wheel(-1.0, 0.21, -0.6)];
+// Front fork, mudguard and shock absorbers; rear mudguards.
+for (const z of [1, -1]) tube(1.0, 0.21, z * 0.07, 0.9, 0.62, z * 0.07, 0.022, steel);
+{
+  const guard = new THREE.CylinderGeometry(0.255, 0.255, 0.16, 24, 1, true, -0.2, Math.PI * 0.95);
+  guard.rotateX(Math.PI / 2); guard.rotateZ(Math.PI / 2 + 0.1);
+  add(guard, paint, 1.0, 0.22, 0);
+  for (const z of [1, -1]) {
+    const rg = new THREE.CylinderGeometry(0.25, 0.25, 0.17, 24, 1, true, 0.25, Math.PI * 0.85);
+    rg.rotateX(Math.PI / 2); rg.rotateZ(Math.PI / 2);
+    add(rg, blackPlastic, -1.0, 0.22, z * 0.6);
+  }
+}
+auto.traverse((o) => { if (o.isMesh && o.geometry.attributes.normal && o.material === paint) o.geometry = mergeVertices(o.geometry, 1e-4); });
+auto.traverse((o) => { if (o.isMesh && o.material === paint) o.geometry.computeVertexNormals(); });
+
+// ---------- Street slice: asphalt, lane paint, kerb, pavement ----------
+const road = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ map: asphalt, roughnessMap: asphaltRough, roughness: 0.95 }));
+road.rotation.x = -Math.PI / 2; road.receiveShadow = true; scene.add(road);
+for (let i = -6; i <= 6; i++) {
+  const dash = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.12), new THREE.MeshStandardMaterial({ color: 0xd9d6cc, roughness: 0.8 }));
+  dash.rotation.x = -Math.PI / 2; dash.position.set(i * 3.4, 0.003, 1.9); dash.receiveShadow = true; scene.add(dash);
+}
+const kerbTex = canvasTexture(64, 8, (g) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? "#1d1d1d" : "#e2b91e"; g.fillRect(i * 8, 0, 8, 8); } }, [10, 1]);
+const kerb = new THREE.Mesh(new THREE.BoxGeometry(40, 0.16, 0.22), new THREE.MeshStandardMaterial({ map: kerbTex, roughness: 0.85 }));
+kerb.position.set(0, 0.08, -1.7); kerb.castShadow = kerb.receiveShadow = true; scene.add(kerb);
+const paveTex = canvasTexture(256, 256, (g, w, h) => { const r = rand(3); g.fillStyle = "#a9a39a"; g.fillRect(0, 0, w, h); g.strokeStyle = "rgba(60,55,50,.45)"; g.lineWidth = 2; for (let x = 0; x <= w; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); } for (let y = 0; y <= h; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); } for (let i = 0; i < 3000; i++) { const v = 130 + r() * 60; g.fillStyle = `rgba(${v},${v - 5},${v - 12},.5)`; g.fillRect(r() * w, r() * h, 2, 2); } }, [20, 2]);
+const pave = new THREE.Mesh(new THREE.BoxGeometry(40, 0.15, 4), new THREE.MeshStandardMaterial({ map: paveTex, roughness: 0.9 }));
+pave.position.set(0, 0.075, -3.81); pave.receiveShadow = true; scene.add(pave);
+
+// ---------- Light ----------
+const sun = new THREE.DirectionalLight(0xffffff, 3);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 1, far: 30 });
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; sun.shadow.radius = 4;
+scene.add(sun, sun.target);
+const hemi = new THREE.HemisphereLight(0xdfe6ea, 0x6b6457, 0.6);
+scene.add(hemi);
+const LIGHTS = {
+  noon: { sky: 0xd8dcdc, fog: 0xd2d4d0, sun: 0xfff6e8, sunI: 3.1, pos: [3, 9, 4], hemi: 0.75, exp: 0.95, env: 0.55 },
+  gold: { sky: 0xe7b77f, fog: 0xd9a978, sun: 0xffb46b, sunI: 2.6, pos: [8, 2.6, 3], hemi: 0.45, exp: 1.05, env: 0.45 },
+};
+function setLight(k) {
+  const L = LIGHTS[k];
+  scene.background = new THREE.Color(L.sky);
+  scene.fog = new THREE.Fog(L.fog, 12, 34);
+  sun.color.setHex(L.sun); sun.intensity = L.sunI; sun.position.set(...L.pos);
+  hemi.intensity = L.hemi; renderer.toneMappingExposure = L.exp; scene.environmentIntensity = L.env;
+}
+
+// ---------- Liveries (Tamil Nadu: battery autos bottle green with a 15 cm yellow band) ----------
+const LIVERIES = {
+  petrol: { body: 0xf2b705, band: 0x1f7a3a, note: "Yellow body and black canopy, the common Chennai auto." },
+  ev: { body: 0x0f5132, band: 0xf2c200, note: "Battery auto: bottle green with a yellow band round the middle, as the Tamil Nadu rules require." },
+  pink: { body: 0xe0559a, band: 0xf2b705, note: "Pink auto, driven by women, at railway stations and bus stands." },
+};
+function setLivery(k) { paint.color.setHex(LIVERIES[k].body); band.color.setHex(LIVERIES[k].band); document.getElementById("liv-note").textContent = LIVERIES[k].note; }
+
+function group(id, fn) {
+  const el = document.getElementById(id);
+  el.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    for (const x of el.querySelectorAll("button")) x.setAttribute("aria-pressed", String(x === b));
+    fn(b.dataset.v);
+  });
+}
+group("livery", setLivery);
+group("light", setLight);
+setLight("noon");
+setLivery("petrol");
+
+// Triangles and draw calls for the auto alone (the street is not part of its cost).
+let autoTris = 0, autoCalls = 0;
+auto.traverse((o) => { if (o.isMesh) { autoCalls++; const g = o.geometry; autoTris += (g.index ? g.index.count : g.attributes.position.count) / 3; } });
+document.getElementById("tris").textContent = `${Math.round(autoTris).toLocaleString("en-IN")} triangles (auto)`;
+document.getElementById("calls").textContent = `${autoCalls} meshes here, about 12 draw calls in the game (one per material)`;
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+
+const spin = document.getElementById("spin");
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+if (reduce) spin.checked = false;
+let last = performance.now(), frames = 0, acc = 0;
+renderer.setAnimationLoop((now) => {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (spin.checked) auto.rotation.y += dt * 0.25;
+  controls.update();
+  renderer.render(scene, camera);
+  frames++; acc += dt;
+  if (acc > 0.5) { document.getElementById("fps").textContent = `${Math.round(frames / acc)} fps here`; frames = 0; acc = 0; }
+});
+</script>
