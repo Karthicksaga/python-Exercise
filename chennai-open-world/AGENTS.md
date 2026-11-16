@@ -1,6 +1,7 @@
 # Instructions for AI coding agents
 
-Read this, then `docs/architecture.md` and `docs/progress.md`, before changing anything.
+Read this, then `docs/handoff.md` (who did what last, what is next), `docs/architecture.md` and
+`docs/progress.md`, before changing anything. Update `docs/handoff.md` when you stop.
 
 ## What this is
 An original Android open-world game set in real Chennai. TypeScript game runtime (Three.js +
