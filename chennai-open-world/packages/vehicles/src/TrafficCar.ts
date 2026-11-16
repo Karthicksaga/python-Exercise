@@ -26,6 +26,23 @@ export class TrafficCar {
     return this.model.object;
   }
 
+  private driverFigure: THREE.Object3D | null = null;
+
+  /** Seat a driver (a seated person, root at the feet) where this kind's driver sits. */
+  setDriver(figure: THREE.Object3D): void {
+    const seat = this.type.driver;
+    if (!seat) return;
+    if (this.driverFigure) this.model.object.remove(this.driverFigure);
+    figure.position.set(seat.x, seat.y, seat.z);
+    this.model.object.add(figure);
+    this.driverFigure = figure;
+  }
+
+  /** Show or hide the driver (drawn only near the player: a person is several draw calls). */
+  set driverVisible(visible: boolean) {
+    if (this.driverFigure) this.driverFigure.visible = visible;
+  }
+
   /**
    * @param generation changes when the AI moved the vehicle to a new place: snap, don't glide
    */

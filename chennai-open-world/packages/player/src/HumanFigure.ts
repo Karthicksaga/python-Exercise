@@ -132,6 +132,55 @@ export class HumanAssets {
     }
     return new HumanFigure(copy, this.clips, this.scale, this.lift);
   }
+
+  private readonly seatedTemplates = new Map<number, THREE.Group>();
+
+  /**
+   * A seated person as plain meshes (no skeleton): the sitting pose baked once per clothing
+   * tint, then shared by every copy. For drivers and riders of AI traffic: much cheaper than an
+   * animated figure, and a seated driver doesn't move. Root at the feet, facing like `create`.
+   */
+  seatedStatic(tint: number): THREE.Group {
+    let template = this.seatedTemplates.get(tint);
+    if (!template) {
+      const figure = this.create(tint, true);
+      figure.setSeated(true);
+      figure.object.updateMatrixWorld(true);
+      const toRoot = figure.object.matrixWorld.clone().invert();
+      template = new THREE.Group();
+      template.name = "seated-person";
+      const v = new THREE.Vector3();
+      const meshes: THREE.SkinnedMesh[] = [];
+      figure.object.traverse((node) => {
+        if (node instanceof THREE.SkinnedMesh) meshes.push(node);
+      });
+      for (const node of meshes) {
+        const source = node.geometry;
+        const position = source.getAttribute("position");
+        const baked = new Float32Array(position.count * 3);
+        const toFigure = toRoot.clone().multiply(node.matrixWorld);
+        for (let i = 0; i < position.count; i++) {
+          v.fromBufferAttribute(position, i);
+          node.applyBoneTransform(i, v);
+          v.applyMatrix4(toFigure);
+          baked.set([v.x, v.y, v.z], i * 3);
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.BufferAttribute(baked, 3));
+        const uv = source.getAttribute("uv");
+        if (uv) geometry.setAttribute("uv", uv);
+        if (source.index) geometry.setIndex(source.index);
+        geometry.computeVertexNormals();
+        geometry.computeBoundingSphere();
+        const mesh = new THREE.Mesh(geometry, node.material);
+        mesh.castShadow = false;
+        template.add(mesh);
+      }
+      this.seatedTemplates.set(tint, template);
+    }
+    // Copies share geometry and materials with the template.
+    return template.clone(true);
+  }
 }
 
 export class HumanFigure {

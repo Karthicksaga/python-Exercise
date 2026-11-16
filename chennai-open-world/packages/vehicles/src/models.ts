@@ -5,6 +5,8 @@
  */
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { AUTO_SIZE, autoPlateTexture, buildAutoParts, type AutoRole } from "./autoModel";
+import { vehicleTemplate } from "./glbModels";
 import type { VehicleKind } from "./specs";
 
 export interface VehicleModel {
@@ -193,47 +195,46 @@ function car(color: number): VehicleModel {
   return { object, wheels };
 }
 
-function auto(): VehicleModel {
+/**
+ * The auto-rickshaw at real proportions (`autoModel.ts`). Its colours are in the vertices, so
+ * every auto shares the same seven materials whatever its livery: about seven draw calls per auto
+ * plus its wheels.
+ */
+function auto(color: number): VehicleModel {
   const object = new THREE.Group();
-  const yellow = standard("auto-yellow", { color: 0xf5c400, roughness: 0.45, metalness: 0.15 });
-  const black = standard("auto-black", { color: 0x1a1a1c, roughness: 0.75 });
-  const seat = standard("auto-seat", { color: 0x5b2f22, roughness: 0.9 });
-
-  // Body tub: rounded nose rising to the windscreen, flat floor, upright back.
-  object.add(
-    extruded(
-      [
-        [-1.35, -0.32], [-1.42, -0.05], [-1.2, 0.28], [-0.72, 0.36], [-0.7, 0.05], [1.2, 0.05], [1.3, 0.5], [1.3, -0.32],
-      ],
-      1.3,
-      0.06,
-      yellow,
-    ),
-  );
-  // Soft-top hood on a frame.
-  object.add(
-    extruded(
-      [
-        [-0.78, 1.16], [-0.6, 1.26], [1.22, 1.26], [1.34, 1.1], [1.34, 0.5], [1.24, 0.5], [1.24, 1.14], [-0.74, 1.14],
-      ],
-      1.34,
-      0.03,
-      black,
-    ),
-  );
-  for (const x of [-0.6, 0.6]) object.add(box(0.05, 0.84, 0.05, black, x, 0.75, -0.76)); // windscreen posts
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.14, 0.7), standard("auto-screen", { color: 0xa9cbdc, roughness: 0.1, transparent: true, opacity: 0.4, side: THREE.DoubleSide }));
-  screen.position.set(0, 0.78, -0.77);
-  object.add(screen);
-  object.add(box(0.5, 0.1, 0.42, seat, 0, 0.18, -0.35)); // driver's seat
-  object.add(box(1.16, 0.12, 0.5, seat, 0, 0.2, 0.72), box(1.16, 0.5, 0.1, seat, 0, 0.48, 1.0)); // passenger bench
-  object.add(box(0.5, 0.05, 0.05, black, 0, 0.6, -0.62)); // handlebar
-  object.add(box(0.22, 0.16, 0.05, lampMaterial(), 0, 0.1, -1.42));
-  // Meter-style green stripe: an original livery, not any operator's.
-  object.add(box(1.32, 0.07, 1.9, standard("auto-stripe", { color: 0x1f7a4d, roughness: 0.5 }), 0, -0.02, 0.2));
-
-  mergeParts(object, []);
-  const wheels = [0, 1, 2].map(() => wheel(0.24, 0.14));
+  const plate = autoPlateTexture();
+  const blender = vehicleTemplate("auto");
+  const byRole: Record<AutoRole, THREE.Material> = {
+    paint: standard("auto-paint", { vertexColors: true, roughness: 0.35, metalness: 0.1 }),
+    trim: standard("auto-trim", { vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }),
+    metal: standard("auto-metal", { vertexColors: true, roughness: 0.25, metalness: 0.9 }),
+    glass: standard("auto-glass", { color: 0xbfd6dd, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }),
+    lamp: lampMaterial(),
+    tail: tailMaterial(),
+    plate: standard("auto-plate", plate ? { map: plate, roughness: 0.5 } : { color: 0xf4c400, roughness: 0.5 }),
+  };
+  // The Blender model when it has been loaded (`loadVehicleModels`), else the code-built one.
+  const { parts, wheel: wheelGeometry } = blender
+    ? { parts: blender.body(color), wheel: blender.wheel(AUTO_SIZE.wheelRadius) }
+    : buildAutoParts(color);
+  for (const part of parts) {
+    const mesh = new THREE.Mesh(part.geometry, byRole[part.role]);
+    mesh.castShadow = part.role !== "glass";
+    mesh.receiveShadow = true;
+    object.add(mesh);
+  }
+  // Blender parts are already merged per role and shared between autos of one colour.
+  if (!blender) mergeParts(object, []);
+  const wheelMaterial = standard("auto-wheel", { vertexColors: true, roughness: 0.75, metalness: 0.3 });
+  const wheels = [0, 1, 2].map(() => {
+    const pivot = new THREE.Group();
+    const mesh = new THREE.Mesh(wheelGeometry, wheelMaterial);
+    mesh.castShadow = true;
+    // The spinning part is a child, so steering (on the pivot) and rolling don't interfere.
+    mesh.name = "spin";
+    pivot.add(mesh);
+    return pivot;
+  });
   object.add(...wheels);
   return { object, wheels };
 }
@@ -357,7 +358,7 @@ export function buildVehicleModel(kind: VehicleKind, color: number): VehicleMode
     case "bike":
       return bike(color);
     case "auto":
-      return auto();
+      return auto(color);
     case "ambulance":
       return ambulance();
     case "bus":

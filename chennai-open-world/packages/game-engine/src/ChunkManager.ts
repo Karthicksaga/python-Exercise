@@ -8,7 +8,7 @@
  * fetch for a chunk no longer wanted is thrown away when it arrives.
  */
 import type * as THREE from "three";
-import { chunkFurniture, roadSpansByChunk, type ChunkData, type ChunkRef, type RoadSpan, type WorldMap } from "@cow/game-world";
+import { chunkFurniture, chunkProps, roadSpansByChunk, type ChunkData, type ChunkRef, type RoadSpan, type WorldMap } from "@cow/game-world";
 import { ChunkView, applyChunkLook, type ChunkAssets } from "./ChunkView";
 import type { Look } from "./lighting";
 
@@ -176,7 +176,7 @@ export class ChunkManager {
   }
 
   private show(key: string, data: ChunkData): void {
-    const view = new ChunkView(data, this.assets, this.spans.get(key) ?? [], chunkFurniture(this.map, data));
+    const view = new ChunkView(data, this.assets, this.spans.get(key) ?? [], chunkFurniture(this.map, data), chunkProps(this.map, data));
     this.slots.set(key, { state: "shown", data, view });
     this.scene.add(view.object);
     this.hooks.loaded(data);
