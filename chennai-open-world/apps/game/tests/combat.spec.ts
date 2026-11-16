@@ -33,7 +33,8 @@ test("the health bar, fire and punch buttons and the street name are shown on fo
   await expect(page.getByRole("button", { name: "Fire", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Horn", exact: true })).toBeHidden();
   // The start is on a named Anna Nagar street; the name comes from the map data.
-  await expect.poll(async () => (await state(page)).street, { timeout: 4000 }).not.toBe("");
+  // Wall-clock limit only: the name is looked up twice a second of game time.
+  await expect.poll(async () => (await state(page)).street, { timeout: 20_000 }).not.toBe("");
   // With no pistol rounds, firing does nothing.
   const before = await state(page);
   expect(before.ammo).toBe(0);
