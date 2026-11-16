@@ -81,3 +81,36 @@ markers: the objective is a dot pinned to the rim, and there is no path to it. P
    the HUD.
 4. Tests: unit tests for A* (one-way streets, unreachable targets) and a browser test that a
    job's route starts at the player and ends at the objective.
+
+### Chennai vehicle reference for A (web research, 17 Nov 2026; check before modelling)
+Use these as generic types only. No makes, logos or real liveries (TD-18, AGENTS.md).
+- **Mix:** two-wheelers dominate. In Chennai, about 36 lakh of 49 lakh vehicles are two-wheelers
+  and about 13 lakh are four-wheelers (DT Next, undated). Across Tamil Nadu, two-wheelers and cars
+  together are about 94 % of 4 crore vehicles (DT Next, 2026). Traffic should be mostly scooters and
+  commuter motorbikes, then small hatchbacks and sedans, then autos, buses and goods vehicles.
+- **Autos:** over one lakh autos operate in the city. Most are yellow with a black canopy.
+  Battery autos must be bottle green with a 15 cm highway-yellow band round the middle of the
+  body (TN Motor Vehicles Rules amendment, Dec 2021), but they are still rare. "Pink autos"
+  driven by women serve railway stations and bus stands.
+- **Buses (MTC):** low-floor electric buses are being added (625 in phase 1, 225 of them with AC;
+  750 more planned), alongside older diesel high-floor buses, plus 5 m and 7 m AC feeder minibuses
+  for the Metro. Model a high-floor diesel bus, a 12 m low-floor e-bus and a small feeder bus, each
+  with an invented livery (no MTC logo).
+- **Still to research:** goods vehicles (small three-wheeler and four-wheeler loaders, tempos,
+  water tankers), cycles, delivery scooters with top boxes, and taxi plate colours (Indian
+  commercial plates are yellow with black text, private plates white with black text; plates show
+  no real numbers).
+
+Sources: dtnext.in "TN's vehicle count crosses 4 crore" and "Chennai's vehicle population rivals
+Tamil Nadu's count in 2000"; dtnext.in "Green autos, red signal"; stationeryprinting.tn.gov.in
+gazette 2021/48 III 1a; dtnext.in MTC e-bus reports; sustainable-bus.com (Chennai MTC e-buses).
+
+## Decision pending: mobile only (user, 17 Nov 2026)
+The user wants to support the Android app only, not the browser. Note that the Android app
+**is** the web build running in a WebView (TD-1). So "no browser support" can only mean:
+dropping the public GitHub Pages deploy and the desktop keyboard and mouse controls as player
+features. It cannot mean removing the web build: the APK is made from it, and the browser tests
+(`npm run test:e2e`, touch input at phone size) are the main automated check. Nothing has been
+removed yet. Confirm with the user which of these to drop: (1) the Pages deploy job in
+`.github/workflows/chennai-open-world.yml`, (2) `apps/game/src/KeyboardInput.ts` and the README's
+desktop instructions.
