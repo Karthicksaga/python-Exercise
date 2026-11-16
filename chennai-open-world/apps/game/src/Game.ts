@@ -83,6 +83,8 @@ export interface GameSnapshot {
   readonly reputation: number;
   /** The share auto shift being worked (people waiting and aboard, fares), or null. */
   readonly share: ShareSnapshot | null;
+  /** Share auto passengers drawn: figures at the kerb and seated in the auto. */
+  readonly shareFigures: { waiting: number; seated: number };
   readonly gear: string;
   readonly siren: boolean;
   /** True while a menu (job board, job result) holds the game. */
@@ -639,6 +641,7 @@ export class Game {
       jobStop: this.desk.runner.stopNumber,
       reputation: this.desk.runner.reputation,
       share: this.desk.shareSnapshot(),
+      shareFigures: this.riders.drawn,
       gear: this.driving ? gearFor(this.driving.type, this.driving.body.forwardSpeed(), this.throttle) : "",
       siren: this.driving?.siren ?? false,
       held: this.held,

@@ -1,6 +1,6 @@
 /** The share auto job: people waiting along 2nd Avenue get in when the auto stops beside them, get out where they asked, and pay. */
 import { expect, test, type Page } from "@playwright/test";
-import { board, ready, snapshot, teleport, waitGameTime } from "./support";
+import { board, ready, snapshot, teleport, waitFrames, waitGameTime } from "./support";
 
 interface Point {
   x: number;
@@ -12,6 +12,7 @@ interface ShareState {
   reputation: number;
   held: boolean;
   mode: string;
+  shareFigures: { waiting: number; seated: number };
   share: {
     aboard: number;
     fares: number;
@@ -48,17 +49,22 @@ test("share auto: a passenger waved down at the kerb gets in, gets out further o
   // East along the avenue.
   const yaw = Math.atan2(-(share.end.x - share.start.x), -(share.end.z - share.start.z));
 
-  // Stopped, but not beside them: nobody gets in.
+  // Stopped, but not beside them: nobody gets in. They stand at the kerb as a figure (only a few are drawn).
   const passenger = share.waiting[0]!;
   const before = { x: passenger.stop.x - 20, z: passenger.stop.z };
   await teleport(page, before.x, before.z, yaw);
   await waitGameTime(page, 2.5);
-  expect((await state(page)).share!.aboard).toBe(0);
+  const waiting = await state(page);
+  expect(waiting.share!.aboard).toBe(0);
+  expect(waiting.shareFigures.waiting).toBeGreaterThanOrEqual(1);
+  expect(waiting.shareFigures.waiting).toBeLessThanOrEqual(3);
+  expect(waiting.shareFigures.seated).toBe(0);
 
   // Pull up beside them and stop: they get in.
   await teleport(page, passenger.stop.x, passenger.stop.z, yaw);
   await expect.poll(async () => (await state(page)).share!.aboard, { timeout: 15_000 }).toBe(1);
   await expect(page.getByTestId("mission")).toContainText("1/4 aboard");
+  await expect.poll(async () => (await state(page)).shareFigures.seated, { timeout: 5000 }).toBe(1);
   const aboard = (await state(page)).share!;
   expect(aboard.waiting.some((p) => p.id === passenger.id)).toBe(false);
   const rider = aboard.riding.find((p) => p.id === passenger.id)!;
@@ -91,4 +97,7 @@ test("share auto: a passenger waved down at the kerb gets in, gets out further o
   expect(done.reputation).toBeLessThanOrEqual(53);
   await page.getByRole("button", { name: "Continue" }).click();
   expect((await state(page)).held).toBe(false);
+  // With the shift over, nobody waits at the kerb or sits in the auto any more.
+  await waitFrames(page, 3);
+  expect((await state(page)).shareFigures).toEqual({ waiting: 0, seated: 0 });
 });

@@ -27,11 +27,17 @@ export class ShareRiders {
   private readonly seated: THREE.Object3D[] = [];
   /** The auto the seated people are in. */
   private seatedIn: THREE.Object3D | null = null;
+  private shownCount = 0;
 
   constructor(
     private readonly scene: THREE.Object3D,
     private readonly humans: HumanAssets,
   ) {}
+
+  /** People drawn now: waiting at the kerb, and seated in the auto (for tests). */
+  get drawn(): { waiting: number; seated: number } {
+    return { waiting: this.shownCount, seated: this.seated.length };
+  }
 
   /**
    * Once per rendered frame.
@@ -52,6 +58,7 @@ export class ShareRiders {
       }
     }
     for (let i = shown; i < this.standing.length; i++) this.standing[i]!.object.visible = false;
+    this.shownCount = shown;
     this.seat(shift && auto ? shift.aboard : 0, auto);
   }
 
