@@ -8,6 +8,7 @@
 | `osm/anna-nagar.osm.json` | Map extract | OpenStreetMap via Overpass API | ODbL 1.0, © OpenStreetMap contributors; see `osm/README.md` |
 
 | `models/props/*.glb` | Street props: barrel, crates, clay pots, AC unit, dish antenna, awning, rolling shutter (`ShutterOpen` clip), vegetable handcart (`Roll` clip) | Original, made by `tools/blender/street_props.py` in Blender 5.2 LTS (`npm run blender:props`) | Original work for this project |
+| `models/vehicles/auto_rickshaw.glb`, `auto_rickshaw_lod1.glb` | Auto-rickshaw (detailed 16k triangles; traffic 12k), wheels as separate nodes | Original, made by `tools/blender/auto_rickshaw.py` in Blender 5.2 LTS (`npm run blender:auto`) | Original work for this project. Not used by the game yet (awaiting review) |
 | `optimized/*.glb` | What the game embeds: the two files above after `npm run optimize:assets` (blend shapes dropped, textures 512 px WebP, meshopt-compressed geometry) | Generated from the sources above | Same licences as their sources |
 
 Vehicles, buildings, trees and all textures are generated in code and are original, including

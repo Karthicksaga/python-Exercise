@@ -48,6 +48,7 @@ const folders = [
   ["assets/models", ""],
   ["assets/animations", ""],
   ["assets/models/props", "props"],
+  ["assets/models/vehicles", "vehicles"],
 ];
 const sources = folders.flatMap(([dir, sub]) =>
   readdirSync(resolve(root, dir))

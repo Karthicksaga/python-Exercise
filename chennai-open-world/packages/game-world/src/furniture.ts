@@ -182,7 +182,7 @@ export function placeShelter(map: Pick<WorldMap, "roads">, stop: NamedPoint): Sh
 }
 
 /** Whether a point is on the carriageway of a drivable road other than `except`. */
-function onOtherRoad(roads: readonly Road[], p: Point, except: number, margin: number): boolean {
+export function onOtherRoad(roads: readonly Road[], p: Point, except: number, margin: number): boolean {
   let found = false;
   roadSegmentsNear(roads, p.x, p.z, 30, (road, i) => {
     if (road.id === except || road.kind === "footway") return false;
@@ -194,13 +194,30 @@ function onOtherRoad(roads: readonly Road[], p: Point, except: number, margin: n
 }
 
 /** Whether a point is inside any of the buildings (bounding box first, so this stays cheap). */
-function inBuilding(buildings: readonly Building[], boxes: readonly Bounds[], p: Point, margin: number): boolean {
+export function inBuilding(buildings: readonly Building[], boxes: readonly Bounds[], p: Point, margin: number): boolean {
   for (let k = 0; k < buildings.length; k++) {
     const b = boxes[k]!;
     if (p.x < b.minX - margin || p.x > b.maxX + margin || p.z < b.minZ - margin || p.z > b.maxZ + margin) continue;
     if (pointInPolygon(p.x, p.z, buildings[k]!.outline)) return true;
   }
   return false;
+}
+
+/** Bounding box of each building's footprint, for `inBuilding`. */
+export function buildingBoxes(buildings: readonly Building[]): Bounds[] {
+  return buildings.map((b) => {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (const p of b.outline) {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minZ = Math.min(minZ, p.z);
+      maxZ = Math.max(maxZ, p.z);
+    }
+    return { minX, maxX, minZ, maxZ };
+  });
 }
 
 /**
@@ -370,19 +387,7 @@ export function chunkFurniture(map: FurnitureMap, chunk: ChunkData): ChunkFurnit
   const cached = results.get(chunk);
   if (cached) return cached;
   const ctx = context(map);
-  const boxes = chunk.buildings.map((b) => {
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minZ = Infinity;
-    let maxZ = -Infinity;
-    for (const p of b.outline) {
-      minX = Math.min(minX, p.x);
-      maxX = Math.max(maxX, p.x);
-      minZ = Math.min(minZ, p.z);
-      maxZ = Math.max(maxZ, p.z);
-    }
-    return { minX, maxX, minZ, maxZ };
-  });
+  const boxes = buildingBoxes(chunk.buildings);
   // A shelter whose footprint reaches into a building of this chunk is left out.
   const shelters = (ctx.shelters.get(chunk.key) ?? []).filter((s) => !shelterCorners(s).some((p) => inBuilding(chunk.buildings, boxes, p, 0)) && !inBuilding(chunk.buildings, boxes, s, 0));
   // Shelters here and in the neighbouring chunks, which poles keep clear of.

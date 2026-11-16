@@ -1,6 +1,6 @@
 # Progress, testing and known issues
 
-Last updated: 16 Nov 2026 (evening).
+Last updated: 17 Nov 2026.
 
 ## What exists
 
@@ -207,6 +207,7 @@ Last updated: 16 Nov 2026 (evening).
 | TypeScript strict | pass | `npm run typecheck`; `cd apps/mobile && npx tsc --noEmit` |
 | Unit tests (51, 16 Nov) | pass | `npm test`: projection, OSM parsing, vehicle physics, mission rules, road graph and agents (including dead ends, people passing each other, pulling over for a siren), combat rules, job rules (clock, dwell, pay, bumps, fines, reputation locks, late bus stops, damaged saves), gear indicator, game clock |
 | Unit tests (103, 16 Nov, later) | pass | `npm test`, 14 files: adds signals, junction turns, density, traffic mix, lighting by hour and rain, drift on a real Rapier world (and no false crash from drifting or braking), chase camera, landmarks from OSM and the ring-path fallback |
+| Street props (17 Nov) | **pass**: unit 180/180, browser 38/38 | `npm test` (adds `props.test.ts`, `StreetProps.test.ts`, real-city `apps/game/src/props.test.ts`); `cd apps/game && PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off`, 38/38 in 6.9 min on a software-rendered host. Not run on the emulator or a phone |
 | Browser tests (38, 16 Nov, night) | **pass, 38/38** | `npm run test:e2e` on the same slow host (`PW_CHROMIUM=/opt/pw-browsers/chromium`): the 33 earlier tests, `city.spec.ts` (4) and the Marina evening drive. The timing tests now hold controls for a span of **game** time (`waitGameTime`, from `snapshot().simTime`) and wait for a frame after taps and drags, instead of wall-clock milliseconds; every gameplay threshold is unchanged (the drift test now checks "slide ends within a second" in game time). Wall-clock poll limits were raised where they only bound how long to wait. Before this, the same tests failed on this host and on GitHub's runner (4 of 33) because the game ran behind real time |
 | City build, browser (16 Nov, evening) | 26/33; the baseline also 26/33 on the same machine | `npm run test:e2e` with `PW_CHROMIUM=/opt/pw-browsers/chromium` (the pinned Playwright's own browser was not installed). The 7 failures are all timing tests (distance in a fixed time, camera drag, jump, drift, getting out). The last tested commit 0931329, run on the same machine straight after, failed 7 timing tests too, 6 of them the same: the host renders at 100–300 ms frames in software. Everything else passes, including the updated streaming test (teleport 6 km to T. Nagar: every Anna Nagar chunk freed, the new ones loaded, street name read). **Needs a rerun on a normal machine or in CI** |
 | City measurements, browser (16 Nov, evening) | see note | Headless Chromium, software GPU, `?quality=lite`: ready in 3.5–4.3 s; Anna Nagar spawn 149 draw calls, 165k triangles, 9 chunks (0931329: 154, 175k, 10); T. Nagar 105 / 164k; Anna Salai 90 / 152k; Kapaleeshwarar area 97 / 149k; teleport loads in 0.03–0.9 s; JS heap 110–125 MB (0931329: 45 MB). Frame rates on this host are not meaningful |
@@ -274,12 +275,54 @@ Difficulty has not been play-tested by a person.
   frame rate, memory and touch on a phone are still unknown.
 - **Performance:** about 270–300 draw calls and 290k triangles with everything on screen. Fine on
   the emulator's desktop GPU; unknown on phones. Each pedestrian is a full skinned character.
-- **Street props made in Blender (16 Nov, night; not yet placed in the game):** eight original,
-  stylised low-poly props built by a Blender 5.2 script (`npm run blender:props`): barrel,
-  crates, clay pots, wall AC unit, dish antenna, striped awning, rolling shop shutter with a
-  `ShutterOpen` clip, and a vegetable handcart with a `Roll` clip on its axle (100–644
-  triangles each, 4–21 KB each after `optimize:assets`). Checked by Cycles renders and by
-  reading the exported clips back. Placing them in the streets comes after the facade kits.
+- **Blender auto in the game, and drivers in traffic (17 Nov; unit tests, browser tests 38/38,
+  screenshots in headless Chromium; not on a phone):** the auto-rickshaw from
+  `tools/blender/auto_rickshaw.py` (optimised `assets/optimized/vehicles/auto_rickshaw_lod1.glb`,
+  107 KB, 12k triangles) replaces the code-built auto for the player's, parked and traffic autos.
+  `packages/vehicles/src/glbModels.ts` loads it once and merges its parts into seven roles with
+  colours in the vertices (shared buffers per livery), and one wheel scaled to the physics radius.
+  The code-built auto (`autoModel.ts`) is the fallback before loading and in unit tests. Every
+  AI vehicle (auto, car, bike, bus) now has a driver: the game's human model with the seated pose
+  baked into static meshes once per shirt colour (`HumanAssets.seatedStatic`), seated at
+  `VehicleType.driver` (right-hand drive; estimated positions), auto drivers in a khaki shirt.
+  Drivers are drawn within 40 m of the player. Spawn at `?quality=lite`, with drivers drawn
+  within 60 m: 181 → 188 draw calls, 265k → 299k triangles (the 300k budget). Then cut to 40 m,
+  not re-measured. The bus driver's seat is not checked by eye yet.
+- **Realistic auto-rickshaw in the game (17 Nov; unit tests, looked at and measured in
+  headless Chromium, not on a phone):** `packages/vehicles/src/autoModel.ts` replaces the boxy
+  procedural auto with the reviewed prototype (`prototypes/auto-rickshaw.html`): 2.63 m body,
+  1.30 m wide, 1.71 m tall, twin headlamps, raked windscreen, fabric canopy with a rear window,
+  open sides, grab rails, saddle and bench, mirrors, yellow commercial plates (no real number),
+  and torus tyres with steel rims. Colours are in the vertices, so all autos share seven
+  materials (paint, trim, metal, glass, lamp, tail, plate), plus three wheels: 10 meshes and
+  under 9k triangles per auto (unit test). A green paint colour gets the yellow band of a battery
+  auto (TN rules), any other the green band. The physics (`specs.ts`) is unchanged. Spawn at
+  `?quality=lite`: 178 → 181 draw calls, 248k → 265k triangles. Browser tests 38/38
+  (`cd apps/game && PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off`).
+- **Street props in the streets (17 Nov; unit tests, real-city test, measured and looked at
+  in headless Chromium; not on a phone):** the Blender props (original, `npm run blender:props`)
+  are now placed. Pavement props (`packages/game-world/src/props.ts`, `chunkProps`): groups of a
+  vegetable handcart, stacked crates, oil barrels or clay pots at the back of the pavement of
+  main roads, every 13 m from the road's id with a 14 % chance per side, front edge 2.25 m
+  outside the carriageway (pedestrians walk at 1.4 m), never round junctions or road ends, in a
+  building, on another road, within 2 m of a pole or 4.5 m of a bus shelter; each is a solid
+  box (`propSolids`). Fixtures (`packages/game-engine/src/StreetProps.ts`, `buildingFixtures`):
+  wall AC units on upper floors of buildings without balconies (not on shop walls, not against
+  a neighbouring building) and dish antennas near a corner of flat roofs, all pointing south;
+  not solid. All of it is invented. Models are baked once into vertex-coloured geometry and a
+  chunk's props are merged into two meshes (pavement props cast shadows, fixtures don't). The
+  shutter, the awning and the `ShutterOpen`/`Roll` clips are not used yet. Measured with a
+  production build in headless Chromium (`?quality=lite`, 915×412), `snapshot()` before → after:
+  Anna Nagar spawn 168 → 178 draw calls, 210,011 → 247,935 triangles; T. Nagar (3269, 4960)
+  135 → 141, 196,491 → 213,295; Anna Salai (5033, 3180) 102 → 109, 164,821 → 177,939. A first
+  version at twice the density reached 303k at spawn, over the TD-18 budget, and was cut back.
+  Tested by unit tests (`props.test.ts` in game-world: setback, facing, both sides, chunk
+  independence, junctions, poles and shelters, buildings, solids; `StreetProps.test.ts` in
+  game-engine: loads the real optimised models, footprints match `PROP_SIZE`, merging and
+  turning, AC and dish rules; `apps/game/src/props.test.ts` on the real city files: nothing in a
+  building or on a carriageway round spawn, T. Nagar and Anna Salai, under 40k prop triangles per
+  3 × 3 chunks) and screenshots (handcarts on Sir Thyagaraya Road, barrel and crates on 5th
+  Avenue).
 - **Bundle:** 6.1 MB (16 Nov, night; was 8.1 MB). The character and animations are optimised by
   `npm run optimize:assets` (607 KB together, was 1,985 KB) and embedded as base64 (TD-3); the
   world is no longer in the script (TD-16). Checked in the browser: the optimised character

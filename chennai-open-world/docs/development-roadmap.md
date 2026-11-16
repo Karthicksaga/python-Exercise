@@ -28,6 +28,10 @@ Status values: **done** (built and tested as described in `progress.md`), **in p
 7. **Serve assets through a WebView asset loader** so models and chunks stream from files
    instead of being embedded in the script (TD-3).
 
+## Realism brief (17 Nov 2026)
+
+Phases and decisions: `docs/realism-plan.md`. Supersedes "Art pass" in the next steps above.
+
 ## City jobs brief (adopted 16 Nov 2026)
 
 The user's six-part brief (real Chennai from Anna Nagar to Marina Beach and the start of ECR,

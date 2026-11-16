@@ -19,7 +19,8 @@
     "fetch:osm": "node scripts/fetch-osm.mjs",
     "optimize:assets": "node scripts/optimize-assets.mjs",
     "build:textures": "node scripts/build-textures.mjs",
-    "blender:props": "node scripts/blender.mjs tools/blender/street_props.py -- assets/models/props"
+    "blender:props": "node scripts/blender.mjs tools/blender/street_props.py -- assets/models/props",
+    "blender:auto": "node scripts/blender.mjs tools/blender/auto_rickshaw.py -- assets/models/vehicles"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.5.1",

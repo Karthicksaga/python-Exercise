@@ -4,15 +4,15 @@
  * and owns the one piece of state they share: whether the player is on foot or driving.
  */
 import * as THREE from "three";
-import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, SceneRenderer, createChunkAssets, facadeAtlas, loadSurfaces, type Quality } from "@cow/game-engine";
+import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, loadSurfaces, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
 import { Combat, PLAYER_MAX_HEALTH, type CombatEvent, type PlayerState } from "@cow/combat";
-import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
+import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
 import { HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, type HumanFigure } from "@cow/player";
 import { Hud, Minimap, TouchControls, type MinimapMarker } from "@cow/ui";
-import { Vehicle, gearFor, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
+import { Vehicle, gearFor, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
 import { buildContent, type GameContent } from "./content";
 import { Fighters, combatWorld } from "./Fighters";
 import { JobDesk } from "./JobDesk";
@@ -28,6 +28,13 @@ import locomotion from "../../../assets/optimized/locomotion.glb?inline";
 import { loadSignFont } from "@cow/game-engine";
 import signFont from "../../../assets/fonts/noto-sans-tamil-signs.woff2?inline";
 import { SURFACE_SOURCES } from "./surfaceTextures";
+import acUnit from "../../../assets/optimized/props/ac_unit.glb?inline";
+import barrel from "../../../assets/optimized/props/barrel.glb?inline";
+import clayPots from "../../../assets/optimized/props/clay_pots.glb?inline";
+import crates from "../../../assets/optimized/props/crates.glb?inline";
+import dish from "../../../assets/optimized/props/dish_antenna.glb?inline";
+import handcart from "../../../assets/optimized/props/handcart.glb?inline";
+import autoRickshaw from "../../../assets/optimized/vehicles/auto_rickshaw_lod1.glb?inline";
 
 /** What tests and the debug console can read about the running game. */
 export interface GameSnapshot {
@@ -227,6 +234,10 @@ export class Game {
     const signFontLoaded = loadSignFont(signFont);
     // The photographed surfaces decode while the world loads (no normal maps on the lite tier).
     const surfacesLoaded = loadSurfaces(SURFACE_SOURCES, pickQuality() !== "lite");
+    // Street props made in Blender (assets/README.md), baked once and merged per chunk.
+    const propsLoaded = loadPropAssets({ handcart, crates, barrel, clayPots, acUnit, dish });
+    // Vehicles modelled in Blender (tools/blender); ground = ride height plus settled suspension below the chassis centre.
+    const vehiclesLoaded = loadVehicleModels({ auto: { url: autoRickshaw, ground: -0.68 } });
     // The world files are produced from OpenStreetMap by `npm run build:world` (TD-16).
     const world = await loadWorld();
     const map = world.map;
@@ -252,7 +263,8 @@ export class Game {
     const solids = new Map<string, StaticGroup>();
     let minimap: Minimap | undefined;
     await signFontLoaded;
-    const chunks = new ChunkManager(map, world.chunks, renderer.scene, createChunkAssets(facadeAtlas(surfaces.plaster.image), surfaces), {
+    const props = await propsLoaded;
+    const chunks = new ChunkManager(map, world.chunks, renderer.scene, createChunkAssets(facadeAtlas(surfaces.plaster.image), surfaces, props), {
       loaded: (chunk) => {
         minimap?.addBuildings(chunk.key, chunk.buildings);
         const group = physics.createStaticGroup();
@@ -261,6 +273,8 @@ export class Game {
         for (const box of data.boxes) group.addBox(box);
         // Poles and bus-shelter posts (kerbs are not solid, TD-8).
         for (const box of furnitureSolids(chunkFurniture(map, chunk))) group.addBox(box);
+        // Handcarts, crates, barrels and pots on the pavement.
+        for (const box of propSolids(chunkProps(map, chunk))) group.addBox(box);
         solids.set(chunk.key, group);
       },
       unloaded: (chunk) => {
@@ -281,6 +295,7 @@ export class Game {
     const avatar = humans.create();
     renderer.scene.add(avatar.object);
 
+    await vehiclesLoaded;
     const vehicles = content.parking.map((spot) => new Vehicle(spot.id, spot.kind, physics, spot, spot.yaw, spot.color));
     for (const vehicle of vehicles) renderer.scene.add(vehicle.object);
 
