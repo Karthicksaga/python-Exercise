@@ -21,3 +21,13 @@ In this extract: Anna Nagar Tower is mapped as a closed `man_made=tower` way (65
 `tourism=viewpoint` node; there are 5 bus stops and no traffic-signal nodes. The tower's
 outline and opening year (`start_date`, 1968) come from OSM; its height (about 41 m) and level
 count (12) are not mapped, so the game uses estimates (`packages/game-world/src/landmarks.ts`).
+
+## The city extract (J2)
+
+`city/chennai-city.osm.json` (58 MB, **git-ignored**): 12.98–13.095 N, 80.195–80.29 E, Anna
+Nagar to T. Nagar, Anna Salai, Marina Beach and the start of ECR. Clipped with
+`scripts/clip-city.py` from the openstreetmap.fr Tamil Nadu extract, OSM data timestamp
+2026-11-15T00:16:27Z (downloaded 16 Nov 2026). It holds 107,360 buildings, about 20,000 road
+pieces, 535 bus stops, 266 traffic signals and the coastline. `npm run build:world` turns it
+into `apps/game/public/world/` (committed). How to rebuild it: `docs/development-roadmap.md`,
+"J2 status". © OpenStreetMap contributors, ODbL 1.0.

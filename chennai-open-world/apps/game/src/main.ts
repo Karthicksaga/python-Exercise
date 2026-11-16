@@ -7,7 +7,7 @@ declare global {
     __cow?: {
       snapshot(): GameSnapshot;
       setPaused(paused: boolean): void;
-      teleport(x: number, z: number, yaw?: number): void;
+      teleport(x: number, z: number, yaw?: number): Promise<void>;
       probe(x: number, z: number, dx: number, dz: number, max: number): number | null;
     };
   }

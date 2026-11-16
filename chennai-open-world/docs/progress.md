@@ -1,9 +1,22 @@
 # Progress, testing and known issues
 
-Last updated: 16 Nov 2026.
+Last updated: 16 Nov 2026 (evening).
 
 ## What exists
 
+- **The city (J2, 16 Nov, evening; tested in the browser only):** the map is now Anna Nagar to
+  T. Nagar, Anna Salai, Marina Beach and the start of ECR (about 10 km × 13 km), from an OSM
+  extract of 15 Nov: 20,625 road pieces, 106,619 buildings (3,593 with an OSM height or floor
+  count; the rest are 2 floors, estimated, or a little more for tagged apartments and
+  commercial blocks), 44,541 trees, 553 parks, water and beach areas, 533 bus stops, 266 mapped
+  signals, 238 districts, and the sea from the OSM coastline. Streamed from 1,877 chunk files
+  (4.6 MB in all, TD-16), nearest first; chunks out of range are freed. Roads are drawn per
+  chunk with lane lines by lane count and solid edge lines on primary roads. Sea haze thickens
+  within 600 m of the coast. Traffic spawns near the player anywhere in the city; signals stand
+  at main-road junctions and at mapped OSM signals (4,775 junctions; only those within 420 m are
+  drawn). The minimap is painted in tiles. The player still starts in Anna Nagar and the ten
+  stages and ten jobs are where they were. **Not done yet:** the gopuram model, the Marina
+  evening drive and other city jobs, visited districts, and loading from the APK (not run).
 - **World:** about 1 km² of real Anna Nagar from OpenStreetMap: 136 road pieces, 1,292 building
   footprints, Tower Park and other green areas, 512 trees. Split into 16 chunks of 250 m that
   load and unload (meshes and collision) as the player moves.
@@ -93,6 +106,9 @@ Last updated: 16 Nov 2026.
 | TypeScript strict | pass | `npm run typecheck`; `cd apps/mobile && npx tsc --noEmit` |
 | Unit tests (51, 16 Nov) | pass | `npm test`: projection, OSM parsing, vehicle physics, mission rules, road graph and agents (including dead ends, people passing each other, pulling over for a siren), combat rules, job rules (clock, dwell, pay, bumps, fines, reputation locks, late bus stops, damaged saves), gear indicator, game clock |
 | Unit tests (103, 16 Nov, later) | pass | `npm test`, 14 files: adds signals, junction turns, density, traffic mix, lighting by hour and rain, drift on a real Rapier world (and no false crash from drifting or braking), chase camera, landmarks from OSM and the ring-path fallback |
+| City build, browser (16 Nov, evening) | 26/33; the baseline also 26/33 on the same machine | `npm run test:e2e` with `PW_CHROMIUM=/opt/pw-browsers/chromium` (the pinned Playwright's own browser was not installed). The 7 failures are all timing tests (distance in a fixed time, camera drag, jump, drift, getting out). The last tested commit 0931329, run on the same machine straight after, failed 7 timing tests too, 6 of them the same: the host renders at 100–300 ms frames in software. Everything else passes, including the updated streaming test (teleport 6 km to T. Nagar: every Anna Nagar chunk freed, the new ones loaded, street name read). **Needs a rerun on a normal machine or in CI** |
+| City measurements, browser (16 Nov, evening) | see note | Headless Chromium, software GPU, `?quality=lite`: ready in 3.5–4.3 s; Anna Nagar spawn 149 draw calls, 165k triangles, 9 chunks (0931329: 154, 175k, 10); T. Nagar 105 / 164k; Anna Salai 90 / 152k; Kapaleeshwarar area 97 / 149k; teleport loads in 0.03–0.9 s; JS heap 110–125 MB (0931329: 45 MB). Frame rates on this host are not meaningful |
+| Unit tests (103, 16 Nov, evening) | pass | `npm test`, unchanged count |
 | Browser tests (33, 16 Nov, later) | pass | `npm run test:e2e`: adds traffic (signals, mixed kinds, waiting at lights, fewer vehicles at night), look (golden-hour start, night and rain from the pause menu, kept after reload, draw calls under 450), landmarks (tower base solid, steps walkable, label near and on screen only), handling (drift at about 82% of top speed then grip, no drift turning slowly, gears climb, camera follows), and all ten jobs having their vehicle. The drift, traffic and "traffic keeps moving" tests passed three times in a row |
 | Browser tests, rerun before commit (16 Nov, 13:50) | 31/33, then on-foot 20/21 | Host load average was 10–16. The two on-foot timing tests (joystick walk distance, camera drag) failed once each: they hold the stick for a fixed time, and under heavy load the game runs in slow motion. Nothing they cover changed; they passed 33/33 earlier at normal load. Rerun on a quiet machine |
 | Android build (16 Nov) | pass | APK 22.7 MB |
@@ -143,6 +159,10 @@ Difficulty has not been play-tested by a person.
   are instant and never hit pedestrians or vehicles. Balance is a first guess.
 - **Vehicles:** cannot roll or pitch (by design, TD-8); no damage; no collision or tyre sound.
 - **Sound:** synthesised tones, not recordings, and no music or city ambience.
+- **City memory:** the road graph, signals and road centre lines for the whole city stay in
+  memory (heap about 110–125 MB in the browser). Building them per area is planned.
+- **APK loading of the city is untested**: it reads files with XMLHttpRequest from
+  `file://` (TD-16, interim). If the city doesn't appear in the APK, that is the first suspect.
 - **Performance:** about 270–300 draw calls and 290k triangles with everything on screen. Fine on
   the emulator's desktop GPU; unknown on phones. Each pedestrian is a full skinned character.
 - **Bundle:** 8.1 MB, of which about 2.7 MB is the character embedded as base64 (TD-3).

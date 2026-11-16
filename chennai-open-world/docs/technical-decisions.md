@@ -80,7 +80,7 @@ physics run in fixed 1/60 s steps, rendering once per display frame.
 
 ## TD-7: The world is built from OSM at build time, with invented detail clearly separated
 
-`npm run build:world` turns the saved extract into `apps/game/src/generated/anna-nagar.json`.
+`npm run build:world` turns the saved extract into the world files (TD-16; originally one bundled `anna-nagar.json`).
 `packages/map-data` only translates OSM into geometry with its tags; `packages/game-world`
 decides what things look like. Where OSM has no data for this area the game invents it
 deterministically and says so in the code: road widths from the road class, building heights
@@ -144,3 +144,48 @@ move towards the agent as it approached, and it would orbit without arriving; so
 at the end of the current stretch and turns after reaching it. Pedestrians do not treat people
 walking the other way as obstacles, or two of them would stand face to face indefinitely. Both
 were real bugs seen in play and are covered by tests on a dead-end street.
+
+## TD-16: The city is streamed from files: a JSON index, one roads file, one small file per chunk
+
+**Decision.** `npm run build:world` turns the city extract into `apps/game/public/world/`:
+`index.json` (bounds, origin, places, landmarks, districts, bus stops, mapped signals, the sea
+and the chunk table, about 0.5 MB), `roads.bin` (every road's centre line, 0.8 MB) and
+`c/<col>_<row>.bin`, one per 250 m square that has buildings, trees or areas (1,877 files,
+3.4 MB). Binary files are little-endian with coordinates quantised to 5 cm
+(`packages/game-world/src/codec.ts`). Squares with only road surface are listed with size 0
+and have no file. The generated files are committed, so the game builds without the 58 MB
+extract.
+
+At start-up the game reads the index and the roads, then `ChunkManager` fetches the chunks
+in range, nearest first, four at a time, and waits only for the ones round the spawn before
+the first frame. Meshes and solids are built one chunk per frame; chunks beyond the unload
+distance are disposed and a fetch for a chunk no longer wanted is thrown away. Road surface,
+markings, parks and sand are built per chunk too (`roadSpansByChunk`, `GroundMeshes`).
+
+**Loading on Android.** The APK page is `file:///android_asset/game/index.html`. Chromium's
+`fetch` never reads `file:` URLs, whatever the WebView settings. `XMLHttpRequest` does, when
+the WebView allows file access from file URLs (deprecated since Android 11, still working).
+So `apps/game/src/WorldFiles.ts` uses `fetch` on http(s) and XHR on `file:`, and the shell
+sets `allowFileAccessFromFileURLs` (a `react-native-webview` prop) on its WebView. **This is
+an interim choice.** It needs no native code, but:
+- That setting lets script in a `file:` page read any file the app can read, including
+  app-private data. Our WebView loads only our own bundled page (`originWhitelist` is
+  `file://*`, no multiple windows, no external navigation), which limits the risk; it does not
+  remove it. Android's own guidance is to use `WebViewAssetLoader` instead.
+- Three.js loaders (GLTF, KTX2 and its Basis transcoder `.wasm`) use `fetch`, so streamed
+  models and compressed textures will not load this way.
+
+The intended replacement is `androidx.webkit.WebViewAssetLoader`, serving the game from
+`https://appassets.androidplatform.net/assets/game/`: one origin for `fetch`, XHR and wasm,
+and no file access. `react-native-webview` has no support for it, so it needs native code
+(a patch of its WebView client or a small native WebView module). It is Phase 1 of
+`docs/toolchain-audit.md`, waiting for approval.
+
+**Not yet verified.** Browser loading is tested (`npm run test:e2e`, headless Chromium). Loading
+from the APK has **not** been run: there was no Android SDK or emulator where this was built.
+First thing to check on the emulator: the city appears (if chunk files fail, the game shows
+empty streets and `snapshot().chunksLoaded` stays 0).
+
+**Revisit when** the first streamed model or KTX2 texture is added (they need `fetch`), or
+when XHR from `file:` stops working in a WebView release. Either way the answer is
+`WebViewAssetLoader`.

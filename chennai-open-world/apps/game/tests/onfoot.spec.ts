@@ -18,16 +18,19 @@ test("loads the real map around the player with traffic and pedestrians", async 
   await expect(page.getByTestId("minimap")).toBeVisible();
 });
 
-test("streams chunks in and out as the player crosses the map", async ({ page }) => {
+test("streams chunks in and out as the player crosses the city", async ({ page }) => {
   await ready(page);
   const before = await snapshot(page);
-  await teleport(page, 420, -430);
-  await page.waitForTimeout(600);
+  // The map became the whole city (J2), so the old "corner of the map" point is now mid-city.
+  // Instead: jump about 6 km to T. Nagar (Sir Thyagaraya Road) and check that every chunk from
+  // Anna Nagar was freed and the ones there were fetched from their files.
+  await teleport(page, 3269, 4960);
   const after = await snapshot(page);
-  // A corner of the map has fewer chunks in range than the middle.
-  expect(after.chunksLoaded).toBeLessThan(before.chunksLoaded);
-  expect(after.chunksLoaded).toBeGreaterThan(0);
+  expect(after.chunksLoaded).toBeGreaterThan(3);
+  expect(after.chunksLoaded).toBeLessThan(16);
+  expect(after.chunkKeys.some((key) => before.chunkKeys.includes(key))).toBe(false);
   expect(after.grounded).toBe(true);
+  expect(after.street).toBe("Sir Thyagaraya Road");
 });
 
 test("the joystick walks and runs relative to the camera, and stays on the ground", async ({ page }) => {

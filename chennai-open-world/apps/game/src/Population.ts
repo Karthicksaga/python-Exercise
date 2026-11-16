@@ -35,6 +35,9 @@ const CLOTHES = [0xffffff, 0x9fb8e0, 0xe0c29f, 0xa9d6a9, 0xd9a0a0, 0xc9c9c9, 0xe
 const PEOPLE_VISIBLE = 90;
 /** Put-away agents' bodies wait this far below the street, metres. */
 const PARKED_Y = -200;
+/** Signal models are drawn within this distance, and rebuilt when the player has moved this far. */
+const SIGNAL_REACH = 420;
+const SIGNAL_REBUILD = 150;
 /** How often the number of agents out is worked out again, seconds. */
 const DENSITY_EVERY = 1;
 /** The area around the player that sets how busy it is, metres. */
@@ -72,7 +75,12 @@ export class Population {
   private readonly busyness: Float32Array;
   /** Traffic signals at the main junctions, which the AI traffic obeys. */
   readonly signals: TrafficSignals;
-  private readonly signalView: SignalView;
+  /** Signal models near the player only (the city has thousands); rebuilt as the player moves. */
+  private signalView: SignalView;
+  /** Indices into `signals.approaches` of the heads `signalView` draws. */
+  private shownApproaches: number[] = [];
+  private signalCentre = { x: 0, z: 0 };
+  private readonly scene: THREE.Object3D;
   private hour: number | null = null;
   private sinceDensity = DENSITY_EVERY;
   private firstDensity = true;
@@ -87,13 +95,14 @@ export class Population {
     this.busyness = edgeBusyness(this.driveGraph, map.pois);
     this.traffic.setSpawnWeights(this.busyness);
     this.walkers.setSpawnWeights(edgeBusyness(walkGraph, map.pois));
-    this.signals = new TrafficSignals(this.driveGraph);
+    // Signals at main-road junctions, and wherever OSM maps a traffic signal.
+    this.signals = new TrafficSignals(this.driveGraph, undefined, map.signals ?? []);
     this.traffic.useSignals(this.signals);
     this.traffic.populate(focus);
     this.walkers.populate(focus);
 
-    this.signalView = new SignalView(this.signals.approaches, this.signals.approaches.map((a) => a.crossing));
-    scene.add(this.signalView.object);
+    this.scene = scene;
+    this.signalView = this.signalsNear(focus);
 
     for (const agent of this.traffic.agents) {
       const name = this.traffic.kinds[agent.kind]!.name;
@@ -225,7 +234,28 @@ export class Population {
       figure.object.rotation.y = agent.heading;
       figure.update(dt, agent.speed, true);
     });
+    if (Math.hypot(viewer.x - this.signalCentre.x, viewer.z - this.signalCentre.z) > SIGNAL_REBUILD) {
+      this.scene.remove(this.signalView.object);
+      this.signalView.dispose();
+      this.signalView = this.signalsNear(viewer);
+    }
     const { approaches } = this.signals;
-    this.signalView.update((i) => this.signals.lightFor(approaches[i]!));
+    const shown = this.shownApproaches;
+    this.signalView.update((i) => this.signals.lightFor(approaches[shown[i]!]!));
+  }
+
+  /** Models for the signal heads within SIGNAL_REACH of a point. */
+  private signalsNear(at: { x: number; z: number }): SignalView {
+    this.signalCentre = { x: at.x, z: at.z };
+    const near = this.signals.approaches.filter((a) => Math.hypot(a.x - at.x, a.z - at.z) < SIGNAL_REACH);
+    this.shownApproaches = near.map((a) => a.index);
+    const view = new SignalView(near, near.map((a) => a.crossing));
+    this.scene.add(view.object);
+    return view;
+  }
+
+  /** Signal heads drawn now (the ones near the player). */
+  get signalHeadsShown(): number {
+    return this.shownApproaches.length;
   }
 }

@@ -1,6 +1,8 @@
 /**
- * Round minimap that turns with the camera. The whole map is drawn once to an off-screen
- * canvas; each refresh only copies and rotates the part around the player.
+ * Round minimap that turns with the camera. The map is painted in square tiles around the
+ * player, each to its own small off-screen canvas, kept while it is near and repainted when a
+ * chunk's buildings arrive or leave; each refresh only copies and rotates the tiles in view. A
+ * whole-city canvas would be far beyond phone memory (12 km at 1.5 px a metre).
  */
 
 interface MapPoint {
@@ -14,9 +16,10 @@ export interface MinimapSource {
   readonly attribution: string;
   readonly roads: ReadonlyArray<{ readonly kind: string; readonly width: number; readonly points: readonly MapPoint[] }>;
   readonly areas: ReadonlyArray<{ readonly kind: string; readonly outline: readonly MapPoint[] }>;
-  readonly chunks: ReadonlyArray<{ readonly buildings: ReadonlyArray<{ readonly outline: readonly MapPoint[] }> }>;
+  /** The sea's outline, drawn under everything else. */
+  readonly sea?: { readonly outline: readonly MapPoint[] } | undefined;
   /** Landmarks get their footprint drawn and an upright initial. */
-  readonly landmarks?: ReadonlyArray<{ readonly name: string; readonly x: number; readonly z: number; readonly radius?: number }>;
+  readonly landmarks?: ReadonlyArray<{ readonly name: string; readonly x: number; readonly z: number; readonly radius?: number | undefined }> | undefined;
 }
 
 export interface MinimapMarker extends MapPoint {
@@ -29,6 +32,58 @@ export interface MinimapMarker extends MapPoint {
 const SIZE = 132; // CSS pixels
 const PIXELS_PER_METRE = 1.5; // resolution of the off-screen map
 const VIEW_RADIUS = 110; // metres shown from centre to rim
+const TILE = 250; // metres per off-screen tile
+const KEEP_TILES = 16;
+
+interface Box {
+  readonly minX: number;
+  readonly maxX: number;
+  readonly minZ: number;
+  readonly maxZ: number;
+}
+function boxOf(points: readonly MapPoint[]): Box {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const p of points) {
+    minX = Math.min(minX, p.x);
+    maxX = Math.max(maxX, p.x);
+    minZ = Math.min(minZ, p.z);
+    maxZ = Math.max(maxZ, p.z);
+  }
+  return { minX, maxX, minZ, maxZ };
+}
+
+/** Lists of things by the tiles their boxes touch. */
+class TileIndex<T> {
+  readonly tiles = new Map<string, T[]>();
+  add(item: T, box: Box): string[] {
+    const keys: string[] = [];
+    for (let c = Math.floor(box.minX / TILE); c <= Math.floor(box.maxX / TILE); c++) {
+      for (let r = Math.floor(box.minZ / TILE); r <= Math.floor(box.maxZ / TILE); r++) {
+        const key = `${c},${r}`;
+        const list = this.tiles.get(key);
+        if (list) list.push(item);
+        else this.tiles.set(key, [item]);
+        keys.push(key);
+      }
+    }
+    return keys;
+  }
+  remove(item: T, keys: readonly string[]): void {
+    for (const key of keys) {
+      const list = this.tiles.get(key);
+      if (!list) continue;
+      const i = list.indexOf(item);
+      if (i >= 0) list.splice(i, 1);
+      if (list.length === 0) this.tiles.delete(key);
+    }
+  }
+  get(key: string): readonly T[] {
+    return this.tiles.get(key) ?? [];
+  }
+}
 
 const STYLE = `
 .cow-minimap{position:absolute;right:calc(14px + env(safe-area-inset-right));top:calc(64px + env(safe-area-inset-top));width:${SIZE}px;pointer-events:none}
@@ -38,9 +93,15 @@ const STYLE = `
 
 export class Minimap {
   private readonly context: CanvasRenderingContext2D;
-  private readonly world: HTMLCanvasElement;
   private readonly ratio: number;
   private sinceDraw = 1;
+  private readonly roads = new TileIndex<MinimapSource["roads"][number]>();
+  private readonly areas = new TileIndex<MinimapSource["areas"][number]>();
+  private readonly buildings = new TileIndex<readonly MapPoint[]>();
+  /** Buildings of each loaded chunk and the tiles they were filed under, to take them out again. */
+  private readonly chunkBuildings = new Map<string, Array<{ outline: readonly MapPoint[]; keys: string[] }>>();
+  /** Painted tiles, most recently used last. */
+  private readonly painted = new Map<string, HTMLCanvasElement>();
 
   constructor(parent: HTMLElement, private readonly source: MinimapSource) {
     if (!document.getElementById("cow-minimap-style")) {
@@ -65,40 +126,68 @@ export class Minimap {
     const context = canvas.getContext("2d");
     if (!context) throw new Error("2D canvas is not available for the minimap.");
     this.context = context;
-    this.world = this.paintWorld();
+    for (const road of source.roads) this.roads.add(road, boxOf(road.points));
+    for (const area of source.areas) this.areas.add(area, boxOf(area.outline));
   }
 
-  /** Draw the whole map once. */
-  private paintWorld(): HTMLCanvasElement {
-    const { bounds } = this.source;
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.ceil((bounds.maxX - bounds.minX) * PIXELS_PER_METRE);
-    canvas.height = Math.ceil((bounds.maxZ - bounds.minZ) * PIXELS_PER_METRE);
+  /** A chunk's buildings arrived: draw them on the tiles they touch. */
+  addBuildings(key: string, outlines: ReadonlyArray<{ readonly outline: readonly MapPoint[] }>): void {
+    this.removeBuildings(key);
+    const filed = outlines.map(({ outline }) => ({ outline, keys: this.buildings.add(outline, boxOf(outline)) }));
+    this.chunkBuildings.set(key, filed);
+    for (const f of filed) for (const k of f.keys) this.painted.delete(k);
+  }
+
+  /** A chunk was unloaded: forget its buildings. */
+  removeBuildings(key: string): void {
+    const filed = this.chunkBuildings.get(key);
+    if (!filed) return;
+    for (const f of filed) {
+      this.buildings.remove(f.outline, f.keys);
+      for (const k of f.keys) this.painted.delete(k);
+    }
+    this.chunkBuildings.delete(key);
+  }
+
+  /** The tile's canvas, painted now if it isn't cached. */
+  private tile(col: number, row: number): HTMLCanvasElement {
+    const key = `${col},${row}`;
+    const cached = this.painted.get(key);
+    if (cached) {
+      this.painted.delete(key);
+      this.painted.set(key, cached);
+      return cached;
+    }
+    const canvas = this.painted.size >= KEEP_TILES ? this.recycle() : document.createElement("canvas");
+    canvas.width = canvas.height = Math.ceil(TILE * PIXELS_PER_METRE);
     const g = canvas.getContext("2d");
     if (!g) throw new Error("2D canvas is not available for the minimap.");
-    g.scale(PIXELS_PER_METRE, PIXELS_PER_METRE);
-    g.translate(-bounds.minX, -bounds.minZ);
+    g.setTransform(PIXELS_PER_METRE, 0, 0, PIXELS_PER_METRE, -col * TILE * PIXELS_PER_METRE, -row * TILE * PIXELS_PER_METRE);
+    const { bounds } = this.source;
+    g.fillStyle = "#b9ab8a";
+    g.fillRect(col * TILE, row * TILE, TILE, TILE);
     g.fillStyle = "#cdbf9c";
     g.fillRect(bounds.minX, bounds.minZ, bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ);
-
     const trace = (outline: readonly MapPoint[]) => {
       g.beginPath();
       outline.forEach((p, i) => (i === 0 ? g.moveTo(p.x, p.z) : g.lineTo(p.x, p.z)));
       g.closePath();
     };
-    for (const area of this.source.areas) {
-      g.fillStyle = area.kind === "water" ? "#7fb2d0" : "#8fc07a";
+    if (this.source.sea) {
+      g.fillStyle = "#6fa6c6";
+      trace(this.source.sea.outline);
+      g.fill();
+    }
+    for (const area of this.areas.get(key)) {
+      g.fillStyle = area.kind === "water" ? "#7fb2d0" : area.kind === "beach" ? "#eedcae" : "#8fc07a";
       trace(area.outline);
       g.fill();
     }
     g.fillStyle = "#a89a80";
-    for (const chunk of this.source.chunks) {
-      for (const building of chunk.buildings) {
-        trace(building.outline);
-        g.fill();
-      }
+    for (const outline of this.buildings.get(key)) {
+      trace(outline);
+      g.fill();
     }
-    // Landmark footprints, under the roads like the buildings.
     g.fillStyle = "#e9dfc9";
     g.strokeStyle = "#8c7b5d";
     g.lineWidth = 1.2;
@@ -110,15 +199,22 @@ export class Minimap {
       g.stroke();
     }
     g.lineCap = g.lineJoin = "round";
-    // Wide roads last so they sit on top of lanes that meet them.
-    const order = [...this.source.roads].sort((a, b) => a.width - b.width);
+    const order = [...this.roads.get(key)].sort((a, b) => a.width - b.width);
     for (const road of order) {
-      g.strokeStyle = road.kind === "footway" ? "#e6dcc6" : road.kind === "secondary" || road.kind === "tertiary" ? "#ffffff" : "#f3efe6";
+      g.strokeStyle = road.kind === "footway" ? "#e6dcc6" : road.kind === "primary" ? "#ffe9a8" : road.kind === "secondary" || road.kind === "tertiary" ? "#ffffff" : "#f3efe6";
       g.lineWidth = Math.max(2.5, road.width);
       g.beginPath();
       road.points.forEach((p, i) => (i === 0 ? g.moveTo(p.x, p.z) : g.lineTo(p.x, p.z)));
       g.stroke();
     }
+    this.painted.set(key, canvas);
+    return canvas;
+  }
+
+  /** Reuse the least recently used tile's canvas. */
+  private recycle(): HTMLCanvasElement {
+    const [oldest, canvas] = this.painted.entries().next().value as [string, HTMLCanvasElement];
+    this.painted.delete(oldest);
     return canvas;
   }
 
@@ -135,7 +231,6 @@ export class Minimap {
     const g = this.context;
     const size = SIZE * this.ratio;
     const scale = size / 2 / VIEW_RADIUS; // canvas pixels per metre on screen
-    const { bounds } = this.source;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, size, size);
     g.save();
@@ -149,7 +244,13 @@ export class Minimap {
     g.rotate(cameraYaw);
     g.scale(scale, scale);
     g.translate(-x, -z);
-    g.drawImage(this.world, bounds.minX, bounds.minZ, bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ);
+    // The view is a circle of VIEW_RADIUS turned any way: the tiles its square covers.
+    for (let c = Math.floor((x - VIEW_RADIUS) / TILE); c <= Math.floor((x + VIEW_RADIUS) / TILE); c++) {
+      for (let r = Math.floor((z - VIEW_RADIUS) / TILE); r <= Math.floor((z + VIEW_RADIUS) / TILE); r++) {
+        // A hair over size, so the seams between tiles never show.
+        g.drawImage(this.tile(c, r), c * TILE, r * TILE, TILE + 0.4, TILE + 0.4);
+      }
+    }
 
     for (const marker of markers) {
       let mx = marker.x;

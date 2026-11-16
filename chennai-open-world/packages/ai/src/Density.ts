@@ -5,7 +5,7 @@
  *
  * Pure logic: no rendering and no physics engine.
  */
-import type { Point } from "@cow/game-world";
+import type { Point, RoadKind } from "@cow/game-world";
 import type { RoadGraph } from "./RoadGraph";
 
 type Curve = ReadonlyArray<readonly [hour: number, share: number]>;
@@ -41,7 +41,7 @@ export function pedestrianDensity(hour: number): number {
 }
 
 /** How much more traffic a road class carries than a residential street. */
-const CLASS_WEIGHT = { secondary: 2.6, tertiary: 1.8, residential: 1, service: 0.5, footway: 0.5 } as const;
+const CLASS_WEIGHT: Record<RoadKind, number> = { primary: 3.2, secondary: 2.6, tertiary: 1.8, residential: 1, service: 0.5, footway: 0.5 };
 /** Shops and services within this distance of a road make it busier, metres. */
 const SHOP_RADIUS = 120;
 
@@ -51,12 +51,27 @@ const SHOP_RADIUS = 120;
  */
 export function edgeBusyness(graph: RoadGraph, pois: readonly Point[]): Float32Array {
   const weights = new Float32Array(graph.edges.length);
+  // Shops are bucketed by SHOP_RADIUS cells, so each edge looks at nine cells, not the whole city.
+  const cells = new Map<number, Point[]>();
+  const cellKey = (cx: number, cz: number) => (cx + 32768) * 65536 + (cz + 32768);
+  for (const p of pois) {
+    const k = cellKey(Math.floor(p.x / SHOP_RADIUS), Math.floor(p.z / SHOP_RADIUS));
+    const list = cells.get(k);
+    if (list) list.push(p);
+    else cells.set(k, [p]);
+  }
   graph.edges.forEach((edge, i) => {
     const from = graph.nodes[edge.from]!;
     const mx = from.x + edge.dx * edge.length * 0.5;
     const mz = from.z + edge.dz * edge.length * 0.5;
     let shops = 0;
-    for (const p of pois) if (Math.abs(p.x - mx) < SHOP_RADIUS && Math.abs(p.z - mz) < SHOP_RADIUS && Math.hypot(p.x - mx, p.z - mz) < SHOP_RADIUS) shops++;
+    const cx = Math.floor(mx / SHOP_RADIUS);
+    const cz = Math.floor(mz / SHOP_RADIUS);
+    for (let i2 = -1; i2 <= 1; i2++) {
+      for (let k2 = -1; k2 <= 1; k2++) {
+        for (const p of cells.get(cellKey(cx + i2, cz + k2)) ?? []) if (Math.hypot(p.x - mx, p.z - mz) < SHOP_RADIUS) shops++;
+      }
+    }
     weights[i] = CLASS_WEIGHT[edge.kind] * (1 + Math.min(shops, 6) * 0.15);
   });
   return weights;

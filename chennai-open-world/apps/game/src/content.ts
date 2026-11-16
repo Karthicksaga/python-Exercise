@@ -3,7 +3,8 @@
  * the mission stages. Places are given approximately and snapped to the nearest real road, so
  * they stay valid when the OpenStreetMap extract is refreshed.
  */
-import { centroid, nearestRoadPoint, type Point, type WorldMap } from "@cow/game-world";
+import { boundsOf, centroid, nearestRoadPoint, type Bounds, type Point, type WorldMap } from "@cow/game-world";
+import { GeoProjection } from "@cow/map-data";
 import type { EnemySpot } from "@cow/combat";
 import type { Job, Mission, Objective } from "@cow/missions";
 import type { VehicleKind } from "@cow/vehicles";
@@ -65,7 +66,35 @@ function spacedStops(avenues: WorldMap, start: Point, count: number, gap: number
   return stops;
 }
 
-export function buildContent(map: WorldMap): GameContent {
+/**
+ * The first map's square of Anna Nagar (13.0805–13.0895 N, 80.2056–80.2146 E, about 1 km round
+ * the Roundtana). The ten stages and the first ten jobs were laid out in it, relative to its
+ * edges, so they stay exactly where they were now that the map is the whole city.
+ */
+export function homeBounds(map: WorldMap): Bounds {
+  const projection = new GeoProjection(map.origin);
+  const sw = projection.toLocal({ lat: 13.0805, lng: 80.2056 });
+  const ne = projection.toLocal({ lat: 13.0895, lng: 80.2146 });
+  return { minX: Math.ceil(sw.x), maxX: Math.floor(ne.x), minZ: Math.ceil(ne.z), maxZ: Math.floor(sw.z) };
+}
+
+const inside = (p: Point, b: Bounds) => p.x >= b.minX && p.x <= b.maxX && p.z >= b.minZ && p.z <= b.maxZ;
+const overlaps = (a: Bounds, b: Bounds) => a.minX <= b.maxX && a.maxX >= b.minX && a.minZ <= b.maxZ && a.maxZ >= b.minZ;
+
+/** The part of the city map inside the home square: what the original content is placed on. */
+export function homeMap(map: WorldMap): WorldMap {
+  const bounds = homeBounds(map);
+  return {
+    ...map,
+    bounds,
+    roads: map.roads.filter((road) => overlaps(boundsOf(road.points), bounds)),
+    areas: map.areas.filter((area) => inside(centroid(area.outline), bounds)),
+    pois: map.pois.filter((poi) => inside(poi, bounds)),
+  };
+}
+
+export function buildContent(city: WorldMap): GameContent {
+  const map = homeMap(city);
   /** Nearest point on a drivable road. */
   const onRoad = (p: Point): Point => {
     const hit = nearestRoadPoint(map, p);

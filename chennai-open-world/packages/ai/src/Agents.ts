@@ -164,13 +164,21 @@ function kindFor(id: number, kinds: readonly AgentKind[]): number {
   return kinds.length - 1;
 }
 
+/** Side of a spawn cell, metres. */
+const CELL = 100;
+const cellKey = (cx: number, cz: number) => (cx + 32768) * 65536 + (cz + 32768);
+
 export class AgentSystem {
   readonly agents: Agent[] = [];
   readonly kinds: readonly AgentKind[];
   private readonly random: () => number;
   private signals: TrafficSignals | null = null;
-  /** Cumulative spawn weights per edge, or null for an even spread. */
-  private cumulative: Float64Array | null = null;
+  /** Spawn weight per edge, or null for an even spread. */
+  private weights: ArrayLike<number> | null = null;
+  /** Edges by the 100 m cell holding their midpoint, so spawning looks only near the focus. */
+  private readonly cells = new Map<number, number[]>();
+  /** Edges near the focus's cell with their cumulative weights; rebuilt when the focus moves cell. */
+  private pool: { key: number; edges: Int32Array; cumulative: Float64Array } | null = null;
   private readonly radius: Float32Array;
   private readonly claims = new Map<number, Claim[]>();
   /** Junction nodes each agent has claimed, by agent id. */
@@ -191,6 +199,13 @@ export class AgentSystem {
     this.radius = settings.takesTurnsAtJunctions ? junctionRadii(graph) : new Float32Array(graph.nodes.length);
     this.wanted = graph.edges.length === 0 ? 0 : settings.count;
     if (graph.edges.length === 0) return; // nothing to drive on: no agents
+    graph.edges.forEach((edge, i) => {
+      const from = graph.nodes[edge.from]!;
+      const key = cellKey(Math.floor((from.x + edge.dx * edge.length * 0.5) / CELL), Math.floor((from.z + edge.dz * edge.length * 0.5) / CELL));
+      const list = this.cells.get(key);
+      if (list) list.push(i);
+      else this.cells.set(key, [i]);
+    });
     for (let id = 0; id < settings.count; id++) {
       this.agents.push({
         id,
@@ -220,14 +235,8 @@ export class AgentSystem {
 
   /** Make agents appear more often on some edges (one weight per edge; see `edgeBusyness`). */
   setSpawnWeights(weights: ArrayLike<number> | null): void {
-    if (!weights || weights.length !== this.graph.edges.length) {
-      this.cumulative = null;
-      return;
-    }
-    const cumulative = new Float64Array(weights.length);
-    let sum = 0;
-    for (let i = 0; i < weights.length; i++) cumulative[i] = sum += Math.max(0, weights[i]!);
-    this.cumulative = sum > 0 ? cumulative : null;
+    this.weights = weights && weights.length === this.graph.edges.length ? weights : null;
+    this.pool = null;
   }
 
   /**
@@ -256,10 +265,28 @@ export class AgentSystem {
     for (const agent of this.agents) if (agent.active) this.place(agent, focus, true);
   }
 
-  private pickEdge(): number {
-    const { cumulative } = this;
-    if (!cumulative) return Math.floor(this.random() * this.graph.edges.length);
-    const r = this.random() * cumulative[cumulative.length - 1]!;
+  /** The edges within reach of the spawn ring around `focus`, weighted by busyness. */
+  private poolAt(focus: { x: number; z: number }): { key: number; edges: Int32Array; cumulative: Float64Array } {
+    const cx = Math.floor(focus.x / CELL);
+    const cz = Math.floor(focus.z / CELL);
+    const key = cellKey(cx, cz);
+    if (this.pool?.key === key) return this.pool;
+    const reach = Math.ceil(this.settings.spawnMax / CELL) + 1;
+    const edges: number[] = [];
+    for (let i = -reach; i <= reach; i++) for (let k = -reach; k <= reach; k++) edges.push(...(this.cells.get(cellKey(cx + i, cz + k)) ?? []));
+    const cumulative = new Float64Array(edges.length);
+    let sum = 0;
+    edges.forEach((e, i) => (cumulative[i] = sum += this.weights ? Math.max(0, this.weights[e]!) : 1));
+    this.pool = { key, edges: Int32Array.from(edges), cumulative };
+    return this.pool;
+  }
+
+  /** A random edge near the focus (weighted), or anywhere when nothing is near. */
+  private pickEdge(focus: { x: number; z: number }): number {
+    const { edges, cumulative } = this.poolAt(focus);
+    const total = cumulative.length > 0 ? cumulative[cumulative.length - 1]! : 0;
+    if (total <= 0) return Math.floor(this.random() * this.graph.edges.length);
+    const r = this.random() * total;
     let lo = 0;
     let hi = cumulative.length - 1;
     while (lo < hi) {
@@ -267,7 +294,7 @@ export class AgentSystem {
       if (cumulative[mid]! > r) hi = mid;
       else lo = mid + 1;
     }
-    return lo;
+    return edges[lo]!;
   }
 
   /** Move an agent to a random stretch of road in the spawn ring around the focus. */
@@ -277,7 +304,7 @@ export class AgentSystem {
     let chosen = -1;
     let chosenAlong = 0.5;
     for (let attempt = 0; attempt < 40; attempt++) {
-      const candidate = this.pickEdge();
+      const candidate = this.pickEdge(focus);
       const edge = graph.edges[candidate]!;
       const from = graph.nodes[edge.from]!;
       if (edge.length < 6) continue;
@@ -298,7 +325,7 @@ export class AgentSystem {
       chosenAlong = t;
       break;
     }
-    if (chosen === -1) chosen = this.pickEdge();
+    if (chosen === -1) chosen = this.pickEdge(focus);
 
     const edge = graph.edges[chosen]!;
     const from = graph.nodes[edge.from]!;

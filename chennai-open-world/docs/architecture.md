@@ -58,7 +58,7 @@ Dependency direction is one way: data → physics/rendering → gameplay → app
 ## Build pipeline
 
 ```
-assets/osm/*.osm.json ──(npm run build:world)──► apps/game/src/generated/anna-nagar.json
+assets/osm/city/chennai-city.osm.json ──(npm run build:world)──► apps/game/public/world/ (index, roads, chunk files; TD-16)
 packages + assets ──(npm run build)──► apps/game/dist (one script) ──(sync:android)──► APK assets
 ```
 
@@ -76,9 +76,12 @@ the two in step.
 
 ## World streaming
 
-The map is a grid of 250 m chunks holding buildings and trees. `ChunkManager` loads chunks
-whose nearest edge is within 260 m of the player (one per frame, all at once after a teleport)
-and frees those beyond 340 m. A chunk's collision (`chunkSolids` → one static group) is added
-and removed with its meshes. Roads, parks and the ground are light and always loaded. Adding a
-neighbourhood means a bigger extract and more chunks; nothing else changes. Chunk data is
-still bundled in the script; streaming it from files needs TD-3's asset loader.
+The city (Anna Nagar to Marina and ECR) is a grid of 250 m chunks stored as files (TD-16):
+`index.json` and `roads.bin` load at start-up; `ChunkManager` fetches the chunk files in
+range (nearest first, four at a time), builds one chunk's meshes and solids per frame, and
+frees chunks beyond the unload distance (meshes, GPU buffers, solids, minimap buildings).
+Each chunk draws its buildings, trees, and the road surface, markings, parks and sand inside
+it (`GroundMeshes`). Always loaded: the ground, the sea, the sky, landmarks, road centre lines
+(AI, street names, minimap), places, districts and bus stops. Load distances come from the
+quality tier. The original ten stages and jobs are placed in the first map's square of Anna
+Nagar (`homeMap` in `apps/game/src/content.ts`).

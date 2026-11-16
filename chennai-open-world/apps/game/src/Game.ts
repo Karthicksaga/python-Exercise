@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, SceneRenderer, createChunkAssets, facadeAtlas, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
 import { Combat, PLAYER_MAX_HEALTH, type CombatEvent, type PlayerState } from "@cow/combat";
-import { GameClock, boundarySolids, chunkSolids, nearestRoadPoint, type WorldMap } from "@cow/game-world";
+import { GameClock, boundarySolids, chunkSolids, coastSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
 import { HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, type HumanFigure } from "@cow/player";
@@ -22,7 +22,7 @@ import { Population } from "./Population";
 import { LandmarkView } from "@cow/game-engine";
 import { landmarkSolids } from "@cow/game-world";
 import { LandmarkLabels } from "@cow/ui";
-import worldJson from "./generated/anna-nagar.json";
+import { loadWorld } from "./WorldFiles";
 import playerModel from "../../../assets/models/player.glb?inline";
 import locomotion from "../../../assets/animations/locomotion.glb?inline";
 
@@ -47,6 +47,8 @@ export interface GameSnapshot {
   readonly objective: string | null;
   readonly target: { x: number; z: number } | null;
   readonly chunksLoaded: number;
+  /** Grid keys ("col,row") of the loaded chunks. */
+  readonly chunkKeys: string[];
   readonly vehicles: Array<{ id: string; kind: string; x: number; z: number }>;
   readonly traffic: Array<{ x: number; z: number; speed: number; kind: string }>;
   readonly pedestrians: number;
@@ -142,6 +144,7 @@ export class Game {
   private sinceClick = 1;
   private street = "";
   private sinceStreet = 1;
+  private sinceHaze = 1;
   private readonly parkedObstacles: Array<{ x: number; z: number; radius: number }> = [];
   private readonly desk: JobDesk;
   /** A menu is open over the game (job board or a job's result). */
@@ -191,8 +194,9 @@ export class Game {
   }
 
   static async create(canvas: HTMLCanvasElement, stage: HTMLElement): Promise<Game> {
-    // The world file is produced from OpenStreetMap by `npm run build:world`.
-    const map = worldJson as unknown as WorldMap;
+    // The world files are produced from OpenStreetMap by `npm run build:world` (TD-16).
+    const world = await loadWorld();
+    const map = world.map;
     const content = buildContent(map);
     const { spawn } = content;
 
@@ -204,14 +208,18 @@ export class Game {
     const physics = await PhysicsWorld.create();
     const boundary = physics.createStaticGroup();
     for (const box of boundarySolids(map.bounds)) boundary.addBox(box);
+    // An invisible wall a few metres out to sea.
+    for (const box of coastSolids(map.sea, map.bounds)) boundary.addBox(box);
     // Landmarks are always loaded, so their solids are added once.
     const landmarkData = landmarkSolids(map.landmarks ?? []);
     physics.createStaticGroup().addMesh(landmarkData.vertices, landmarkData.indices);
 
     // Solids are streamed with the meshes: a chunk is solid exactly while it is visible.
     const solids = new Map<string, StaticGroup>();
-    const chunks = new ChunkManager(map, renderer.scene, createChunkAssets(facadeAtlas()), {
+    let minimap: Minimap | undefined;
+    const chunks = new ChunkManager(map, world.chunks, renderer.scene, createChunkAssets(facadeAtlas()), {
       loaded: (chunk) => {
+        minimap?.addBuildings(chunk.key, chunk.buildings);
         const group = physics.createStaticGroup();
         const data = chunkSolids(chunk);
         group.addMesh(data.vertices, data.indices);
@@ -219,12 +227,16 @@ export class Game {
         solids.set(chunk.key, group);
       },
       unloaded: (chunk) => {
+        minimap?.removeBuildings(chunk.key);
         const group = solids.get(chunk.key);
         if (group) physics.removeStaticGroup(group);
         solids.delete(chunk.key);
       },
     }, renderer.tier.loadDistance, renderer.tier.unloadDistance);
+    // Start with the chunks round the spawn in place, so the player stands in a finished street.
+    const nearby = chunks.whenLoaded(spawn.x, spawn.z);
     chunks.update(spawn.x, spawn.z, true);
+    await nearby;
 
     const body = physics.createCharacter({ radius: PLAYER_RADIUS, height: PLAYER_HEIGHT, feet: { x: spawn.x, y: 0.1, z: spawn.z } });
     const player = new PlayerController(body, spawn.yaw);
@@ -260,7 +272,8 @@ export class Game {
       () => game?.setPaused(true),
       () => game?.openBoard(),
     );
-    const minimap = new Minimap(hud.root, map);
+    minimap = new Minimap(hud.root, map);
+    for (const chunk of chunks.loaded()) minimap.addBuildings(chunk.key, chunk.buildings);
     // Sky, wet roads, lit windows and vehicle lamps follow the time of day and the weather.
     renderer.listen((look) => {
       mapView.applyLook(look);
@@ -408,12 +421,17 @@ export class Game {
     return { x: p.x, y: p.y - this.driving.type.rideHeight, z: p.z };
   }
 
-  /** Move the player (and the vehicle they are in) somewhere else at once. */
-  teleport(x: number, z: number, yaw = 0): void {
+  /**
+   * Move the player (and the vehicle they are in) somewhere else at once. Resolves when the
+   * chunks around the new place are loaded (tests wait for it).
+   */
+  teleport(x: number, z: number, yaw = 0): Promise<void> {
+    const ready = this.chunks.whenLoaded(x, z);
     this.chunks.update(x, z, true);
     if (this.driving) this.driving.body.teleport({ x, y: this.driving.type.rideHeight + 0.1, z }, yaw);
     else this.player.respawn({ x, y: 0.1, z }, yaw);
     this.camera.yaw = yaw;
+    return ready;
   }
 
   /** Distance to the first solid from a point 1 m above the ground, for tests and debugging. */
@@ -544,6 +562,7 @@ export class Game {
       objective: objective?.label ?? null,
       target: target ? { x: target.x, z: target.z } : null,
       chunksLoaded: this.chunks.loadedCount,
+      chunkKeys: this.chunks.loadedKeys(),
       vehicles: this.vehicles.map((v) => ({ id: v.id, kind: v.kind, x: v.body.position().x, z: v.body.position().z })),
       traffic: this.population.trafficPositions(),
       pedestrians: this.population.pedestrianCount,
@@ -828,6 +847,13 @@ export class Game {
     }
     this.population.frame(dt, at);
     this.chunks.update(at.x, at.z);
+    // Sea haze: thicker air within about 600 m of the coast.
+    this.sinceHaze += dt;
+    if (this.sinceHaze > 0.5) {
+      this.sinceHaze = 0;
+      const coast = distanceToCoast(this.map.sea, at);
+      this.renderer.setHaze(1 + 0.6 * Math.max(0, 1 - coast / 600));
+    }
     this.mapView.follow(this.renderer.camera);
     this.renderer.focusShadows(at.x, at.z);
     // Light and sky follow the clock; rain, headlight pool and speed blur follow the player.

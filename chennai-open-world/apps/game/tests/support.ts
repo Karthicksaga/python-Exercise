@@ -19,6 +19,8 @@ export interface Snapshot {
   objective: string | null;
   target: { x: number; z: number } | null;
   chunksLoaded: number;
+  chunkKeys: string[];
+  street: string;
   vehicles: Array<{ id: string; kind: string; x: number; z: number }>;
   traffic: Array<{ x: number; z: number; speed: number }>;
   pedestrians: number;
@@ -26,7 +28,7 @@ export interface Snapshot {
 
 interface DebugHandle {
   snapshot(): Snapshot;
-  teleport(x: number, z: number, yaw?: number): void;
+  teleport(x: number, z: number, yaw?: number): Promise<void>;
   probe(x: number, z: number, dx: number, dz: number, max: number): number | null;
 }
 const handle = () => (window as unknown as { __cow: DebugHandle }).__cow;

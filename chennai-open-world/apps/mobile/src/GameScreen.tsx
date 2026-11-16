@@ -82,6 +82,8 @@ export function GameScreen({ onExit }: { onExit: () => void }) {
       source={{ uri: GAME_URL }}
       originWhitelist={['file://*']}
       allowFileAccess
+      // The game reads its world files with XMLHttpRequest from file:// (TD-16).
+      allowFileAccessFromFileURLs
       javaScriptEnabled
       domStorageEnabled
       onMessage={onMessage}

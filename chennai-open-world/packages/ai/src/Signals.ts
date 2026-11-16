@@ -93,7 +93,9 @@ export interface Walker {
   readonly z: number;
 }
 
-const isMain = (edge: GraphEdge) => edge.kind === "secondary" || edge.kind === "tertiary";
+const isMain = (edge: GraphEdge) => edge.kind === "primary" || edge.kind === "secondary" || edge.kind === "tertiary";
+/** A junction this close to a mapped OSM traffic_signals node is signalled whatever its roads, metres. */
+const MAPPED_REACH = 20;
 
 /** The other end of each edge's node, both directions, so one-way streets still count as arms. */
 function neighbours(graph: RoadGraph): { incoming: number[][]; arms: Array<Set<number>> } {
@@ -149,6 +151,8 @@ export class TrafficSignals {
   constructor(
     graph: RoadGraph,
     readonly timing: SignalTiming = SIGNAL_TIMING,
+    /** Mapped OSM `highway=traffic_signals` nodes: junctions near one get signals too. */
+    mapped: ReadonlyArray<{ readonly x: number; readonly z: number }> = [],
   ) {
     this.cycle = 2 * (timing.green + timing.amber + timing.allRed);
     const { incoming, arms } = neighbours(graph);
@@ -158,7 +162,7 @@ export class TrafficSignals {
     graph.nodes.forEach((node, n) => {
       if (arms[n]!.size < 3) return;
       const touching = [...node.out, ...incoming[n]!].map((e) => graph.edges[e]!);
-      if (touching.some(isMain)) candidates.push(n);
+      if (touching.some(isMain) || mapped.some((m) => Math.abs(m.x - node.x) < MAPPED_REACH && Math.abs(m.z - node.z) < MAPPED_REACH)) candidates.push(n);
     });
 
     // 2. Join those close together (grid buckets keep this linear on a big map).
@@ -286,8 +290,21 @@ export class TrafficSignals {
     this.time += dt;
     this.occupied.fill(0);
     if (walkers.length === 0) return;
+    // Only crossings near someone matter: a box round all the walkers rules out the rest of the city.
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (const w of walkers) {
+      minX = Math.min(minX, w.x);
+      maxX = Math.max(maxX, w.x);
+      minZ = Math.min(minZ, w.z);
+      maxZ = Math.max(maxZ, w.z);
+    }
     for (const a of this.approaches) {
       const c = a.crossing;
+      const reach = c.span + c.depth;
+      if (c.x < minX - reach || c.x > maxX + reach || c.z < minZ - reach || c.z > maxZ + reach) continue;
       for (const w of walkers) {
         const rx = w.x - c.x;
         const rz = w.z - c.z;

@@ -1,7 +1,8 @@
 /** Ready-made settings for the two kinds of agents. */
+import type { RoadKind } from "@cow/game-world";
 import type { AgentKind, AgentSettings } from "./Agents";
 
-const ROAD_SPEED = { secondary: 11, tertiary: 9, residential: 6.5, service: 4, footway: 3 } as const;
+const ROAD_SPEED: Record<RoadKind, number> = { primary: 13, secondary: 11, tertiary: 9, residential: 6.5, service: 4, footway: 3 };
 
 /**
  * Chennai's traffic mix: two-wheelers and cars, plenty of auto-rickshaws, the odd bus.

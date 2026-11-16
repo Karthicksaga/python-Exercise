@@ -136,7 +136,7 @@ export function coastSolids(sea: Sea | undefined, bounds: Bounds): SolidBox[] {
 }
 
 /** Side of one ground tile. One slab for the whole map is too big for the solver's precision. */
-const GROUND_TILE = 125;
+const GROUND_TILE = 500;
 
 /** Ground tiles and four invisible walls around the playable area. */
 export function boundarySolids(bounds: Bounds): SolidBox[] {

@@ -7,6 +7,9 @@ import osmium
 
 S, W, N, E = 12.98, 80.195, 13.095, 80.29
 src, out = sys.argv[1], sys.argv[2]
+# Optional: a label for the source and its OSM data timestamp (from the mirror's state file).
+source = sys.argv[3] if len(sys.argv) > 3 else "Geofabrik southern-zone"
+stamp = sys.argv[4] if len(sys.argv) > 4 else "unknown"
 WAY_KEYS = ("building", "highway", "leisure", "landuse", "natural", "waterway")
 NODE_KEYS = ("amenity", "shop", "tourism", "historic", "place", "man_made")
 
@@ -88,7 +91,7 @@ ways = Ways(nodes.loc)
 ways.apply_file(src)
 elements = nodes.tagged + ways.ways + [{"type": "node", "id": i, "lat": nodes.loc[i][0], "lon": nodes.loc[i][1]} for i in ways.used]
 with open(out, "w") as f:
-    json.dump({"version": 0.6, "generator": "Geofabrik southern-zone-261115, clipped", "osm3s": {"timestamp_osm_base": "2026-11-16T00:05:41Z"}, "elements": elements}, f, separators=(",", ":"))
+    json.dump({"version": 0.6, "generator": source + ", clipped", "osm3s": {"timestamp_osm_base": stamp}, "elements": elements}, f, separators=(",", ":"))
 print("ways", len(ways.ways), "tagged nodes", len(nodes.tagged), "geometry nodes", len(ways.used))
 for k, v in sorted((nodes.count + ways.count).items(), key=lambda kv: -kv[1])[:50]:
     print(f"{v:8d} {k}")

@@ -4,3 +4,6 @@ export * from "./buildWorldMap";
 export * from "./solids";
 export * from "./clock";
 export * from "./landmarks";
+export * from "./coast";
+export * from "./roadChunks";
+export * from "./codec";

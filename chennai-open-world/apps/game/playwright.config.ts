@@ -16,7 +16,8 @@ export default defineConfig({
     hasTouch: true,
     isMobile: true,
     // Software WebGL, so the tests also run on machines without a GPU.
-    launchOptions: { args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] },
+    // PW_CHROMIUM: use an already installed Chromium instead of Playwright's own download.
+    launchOptions: { ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}), args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] },
   },
   webServer: {
     command: "npm run build && npm run preview -- --strictPort",
