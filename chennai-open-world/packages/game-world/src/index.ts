@@ -8,3 +8,4 @@ export * from "./coast";
 export * from "./roadChunks";
 export * from "./districts";
 export * from "./codec";
+export * from "./furniture";

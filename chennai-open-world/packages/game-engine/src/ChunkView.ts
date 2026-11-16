@@ -7,10 +7,11 @@
  * trees are coconut palms, and a scatter of windows light up after dark.
  */
 import * as THREE from "three";
-import type { Building, ChunkData, RoadSpan, Tree } from "@cow/game-world";
+import type { Building, ChunkData, ChunkFurniture, RoadSpan, Tree } from "@cow/game-world";
 import { applyGroundLook, buildGround, createGroundAssets, type GroundAssets } from "./GroundMeshes";
 import type { Look } from "./lighting";
 import { MeshBuilder } from "./MeshBuilder";
+import { applyFurnitureLook, buildStreetFurniture, createFurnitureAssets, type FurnitureAssets } from "./StreetFurniture";
 import { FACADE_LIT, FACADE_TILES, FACADE_TILE_COUNT, ROOF_PLAIN_UV, facadeGlowAtlas, roofTileTexture } from "./textures";
 
 const BAY = 3.2; // metres of wall per window bay
@@ -43,6 +44,8 @@ export interface ChunkAssets {
   readonly palmMaterial: THREE.Material;
   /** Road surface, markings, parks, water and sand. */
   readonly ground: GroundAssets;
+  /** Bus shelters, street-light poles and kerbs. */
+  readonly furniture: FurnitureAssets;
 }
 
 /** Stable pseudo-random number in [0, 1) so a building looks the same every time it loads. */
@@ -367,6 +370,7 @@ export function createChunkAssets(facade: THREE.Texture): ChunkAssets {
     palm: palmGeometry(),
     palmMaterial: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }),
     ground: createGroundAssets(),
+    furniture: createFurnitureAssets(),
   };
 }
 
@@ -377,6 +381,7 @@ export function applyChunkLook(assets: ChunkAssets, look: Look): void {
   assets.roofs.color.setScalar(1 - 0.18 * look.rain);
   assets.roofs.roughness = 1 - 0.45 * look.rain;
   applyGroundLook(assets.ground, look);
+  applyFurnitureLook(assets.furniture, look);
 }
 
 export class ChunkView {
@@ -385,12 +390,18 @@ export class ChunkView {
 
   /**
    * @param roads the stretches of road whose segments lie in this chunk (`roadSpansByChunk`)
+   * @param furniture the chunk's bus shelters, poles and kerbs (`chunkFurniture`)
    */
-  constructor(chunk: ChunkData, assets: ChunkAssets, roads: readonly RoadSpan[] = []) {
+  constructor(chunk: ChunkData, assets: ChunkAssets, roads: readonly RoadSpan[] = [], furniture?: ChunkFurniture) {
     this.object.name = `chunk:${chunk.key}`;
     const ground = buildGround(roads, chunk.areas, assets.ground);
     this.owned.push(...ground.owned);
     for (const mesh of ground.meshes) this.object.add(mesh);
+    if (furniture) {
+      const street = buildStreetFurniture(furniture, assets.furniture);
+      this.owned.push(...street.owned);
+      for (const mesh of street.meshes) this.object.add(mesh);
+    }
     const walls = new MeshBuilder();
     const roofs = new MeshBuilder();
     for (const building of chunk.buildings) addBuilding(walls, roofs, building);

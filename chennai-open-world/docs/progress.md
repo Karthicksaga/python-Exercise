@@ -17,6 +17,35 @@ Last updated: 16 Nov 2026 (evening).
   drawn). The AI works on the 2.4 km of roads round the player (TD-17). The minimap is
   painted in tiles. The sea is a flat blue-green surface (no waves yet). The player still starts in Anna Nagar and the ten
   stages and ten jobs are where they were. **Not done yet:** loading from the APK (not run).
+- **Street furniture (Phase 3 part 1, 16 Nov; unit tests, measured and looked at in the browser):**
+  bus shelters, street-light poles and kerbs, worked out per chunk at run time from data already
+  in memory (`packages/game-world/src/furniture.ts`; no change to the world files) and drawn by
+  `packages/game-engine/src/StreetFurniture.ts`. *Real:* the shelter positions are the mapped OSM
+  bus stops (478 of the 533 get one; stops mapped twice, more than 30 m from a drivable road, on
+  another road's carriageway or inside a building are skipped). *Invented:* the shelter design
+  (posts, roof, back panel, bench, a blank route board; no names shown) and its spot at the kerb
+  (nearest drivable road, on the side the stop is mapped, else the left of the road's direction,
+  facing the road); every pole (OSM does not map Chennai's street lights): concrete poles with a
+  cross-arm and a lamp every 38 m along primary, secondary and tertiary roads, from the road's id
+  and the distance along it (one-way roads on their left edge, two-way primary roads alternating,
+  others one side), never within 10 m of a road's end or of a junction, inside a building, on
+  another road or within 4.5 m of a shelter; kerbs 0.15 m high, painted black and yellow, along
+  both edges of the main roads' carriageway, broken round junctions (where 3 or more road arms
+  meet) and continuous where one way of a road runs into the next. Lamps glow after dark and
+  throw a soft pool of light on the road (additive, hidden by day). Poles and shelter posts and
+  back panels are solid boxes in the chunk's solids; **kerbs are not solid** on purpose: the
+  arcade vehicles (TD-8) cannot climb a step and would get stuck. Per chunk at most 3 extra
+  draw calls by day (shelters, poles, kerbs) and 4 at night (light pools). Measured with a
+  production build in headless Chromium (`?quality=lite`, 915×412), `snapshot()` before → after:
+  Anna Nagar spawn 149 → 160 draw calls, 164,652 → 172,300 triangles; T. Nagar (3269, 4960)
+  115 → 121, 165,943 → 168,231; Anna Salai (5033, 3180) 92 → 102, 122,343 → 128,375. At 21:00:
+  spawn 149 → 165, 164,652 → 173,238; T. Nagar 97 → 106, 149,766 → 152,334; Anna Salai 92 → 106,
+  122,343 → 129,033. Working out the city-wide part (junctions, shelters) takes about 0.1 s once,
+  when the first chunk loads (Node on a desktop; a phone will be slower). Tested by unit tests
+  (`furniture.test.ts` in game-world: sides, spacing, junction and end clearance, buildings and
+  shelters, kerbs breaking and continuing, solids; `apps/game/src/furniture.test.ts` on the real
+  city files) and screenshots (shelters at Anna Nagar Tower and Thousand Lights stops, poles and
+  kerbs on Anna Salai by day and at 21:00). Not run on a phone or in `npm run test:e2e` yet.
 - **Visited areas (16 Nov, evening; tested in the browser):** the game notes which named area of
   the city the player is in (the nearest of 238 OSM place points within 1.5 km: an estimate of
   the boundaries, which OSM maps as points), saves each new one (`cow-districts-v1`), shows
