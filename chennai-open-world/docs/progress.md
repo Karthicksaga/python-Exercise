@@ -207,13 +207,20 @@ Difficulty has not been play-tested by a person.
   and are rebuilt every 500 m (agents keep their road; the signal clock carries on). JS heap
   51–62 MB in the browser at Anna Nagar, T. Nagar, Anna Salai and Marina (110–125 MB with
   whole-city graphs; 45 MB for the old 1 km² map).
-- **APK loading of the city is untested**: the APK now serves the game through
-  `WebViewAssetLoader` at `https://appassets.androidplatform.net/assets/game/` with file access
-  off (TD-16), but that code (a react-native-webview patch and shell changes) has not been
-  compiled or run here (no Android SDK). The CI job `android-smoke` checks it on an emulator;
-  until it passes, treat APK loading as unverified.
+- **APK loading of the city: works on the emulator, not tested on a phone.** The APK serves the
+  game through `WebViewAssetLoader` at `https://appassets.androidplatform.net/assets/game/`
+  with file access off (TD-16). Verified by the CI job `android-smoke` (CI run 43842951826 on 8009db6, 16 Nov 2026: Android 14 (API 34, x86_64, software GPU) emulator; the page at `https://appassets.androidplatform.net/assets/game/index.html` reached `data-ready="true"` with 9 chunks loaded about 60 s after launch). That
+  is an x86_64 test build with test hooks (WebView debugging, skip the menu); the arm64 release
+  APK built in the same run is the same code otherwise. Not played on the emulator by a person;
+  frame rate, memory and touch on a phone are still unknown.
 - **Performance:** about 270–300 draw calls and 290k triangles with everything on screen. Fine on
   the emulator's desktop GPU; unknown on phones. Each pedestrian is a full skinned character.
+- **Street props made in Blender (16 Nov, night; not yet placed in the game):** eight original,
+  stylised low-poly props built by a Blender 5.2 script (`npm run blender:props`): barrel,
+  crates, clay pots, wall AC unit, dish antenna, striped awning, rolling shop shutter with a
+  `ShutterOpen` clip, and a vegetable handcart with a `Roll` clip on its axle (100–644
+  triangles each, 4–21 KB each after `optimize:assets`). Checked by Cycles renders and by
+  reading the exported clips back. Placing them in the streets comes after the facade kits.
 - **Bundle:** 6.1 MB (16 Nov, night; was 8.1 MB). The character and animations are optimised by
   `npm run optimize:assets` (607 KB together, was 1,985 KB) and embedded as base64 (TD-3); the
   world is no longer in the script (TD-16). Checked in the browser: the optimised character

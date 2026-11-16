@@ -196,14 +196,12 @@ This replaced an interim setup (page at `file:///android_asset/game/index.html`,
 with XHR under `allowFileAccessFromFileURLs`), which let file pages read app-private data and
 could not serve `fetch`.
 
-**Not yet verified.** Browser loading is tested (`npm run test:e2e`, headless Chromium). The
-asset loader is written but has **not** been run: there was no Android SDK, Gradle or emulator
-where it was built, so neither the patch's Java nor the new Kotlin has been compiled. The CI job
-`android-smoke` (`.github/workflows/chennai-open-world.yml`, `scripts/android-smoke.mjs`) is
-the first test: it installs an x86_64 test APK on an API 34 emulator, opens the game and fails
-unless the page on the appassets origin reaches `data-ready="true"` with
-`snapshot().chunksLoaded > 0` within 120 s. Treat this as verified only once that job passes
-(an emulator; a phone is a separate test). The test APK is built with `-PcowTestHooks=true`,
+**Verified on an emulator** (not yet on a phone). Browser loading is tested (`npm run
+test:e2e`, headless Chromium). The CI job `android-smoke` (`.github/workflows/chennai-open-world.yml`,
+`scripts/android-smoke.mjs`) installs an x86_64 test APK on an API 34 emulator, opens the game
+and fails unless the page on the appassets origin reaches `data-ready="true"` with
+`snapshot().chunksLoaded > 0` within 120 s. It passed: CI run 43842951826 on 8009db6, 16 Nov 2026: Android 14 (API 34, x86_64, software GPU) emulator; the page at `https://appassets.androidplatform.net/assets/game/index.html` reached `data-ready="true"` with 9 chunks loaded about 60 s after launch. The patch's Java and the new
+Kotlin compiled in the same run. The test APK is built with `-PcowTestHooks=true`,
 which turns on WebView debugging (Chrome DevTools, which the smoke script reads) and a
 `com.chennaiopenworld.TEST_AUTOPLAY` launch extra that skips the menu; the normal release APK
 has neither (`BuildConfig.TEST_HOOKS` is false). Debug builds have WebView debugging on anyway

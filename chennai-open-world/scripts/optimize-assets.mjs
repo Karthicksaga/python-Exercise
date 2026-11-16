@@ -3,6 +3,7 @@
  *
  *   assets/models/*.glb, assets/animations/*.glb  (sources, as exported from Blender or Mixamo)
  *     -> assets/optimized/<same name>.glb          (what the game embeds, TD-3)
+ *   assets/models/props/*.glb (made by tools/blender/street_props.py) -> assets/optimized/props/
  *
  * For every file: drop unused data (dedup, prune), drop facial blend shapes (the game never
  * uses them, `HumanAssets` threw them away at load), weld vertices, resample animation keys,
@@ -42,16 +43,22 @@ function dropMorphTargets() {
   };
 }
 
-const sources = ["assets/models", "assets/animations"].flatMap((dir) =>
+// Each source folder maps to a folder under assets/optimized (props keep their own folder).
+const folders = [
+  ["assets/models", ""],
+  ["assets/animations", ""],
+  ["assets/models/props", "props"],
+];
+const sources = folders.flatMap(([dir, sub]) =>
   readdirSync(resolve(root, dir))
     .filter((name) => name.endsWith(".glb"))
-    .map((name) => resolve(root, dir, name)),
+    .map((name) => ({ path: resolve(root, dir, name), sub })),
 );
 
 mkdirSync(out, { recursive: true });
 let before = 0;
 let after = 0;
-for (const source of sources) {
+for (const { path: source, sub } of sources) {
   const document = await io.read(source);
   await document.transform(
     dropMorphTargets(),
@@ -64,7 +71,8 @@ for (const source of sources) {
     meshopt({ encoder: MeshoptEncoder, level: "medium" }),
   );
   document.createExtension(EXTMeshoptCompression).setRequired(true);
-  const target = join(out, basename(source));
+  mkdirSync(join(out, sub), { recursive: true });
+  const target = join(out, sub, basename(source));
   await io.write(target, document);
   const a = statSync(source).size;
   const b = statSync(target).size;

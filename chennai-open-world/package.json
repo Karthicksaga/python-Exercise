@@ -17,7 +17,8 @@
     "android": "npm run sync:android && cd apps/mobile && npx react-native run-android",
     "build:world": "tsx scripts/build-world.ts",
     "fetch:osm": "node scripts/fetch-osm.mjs",
-    "optimize:assets": "node scripts/optimize-assets.mjs"
+    "optimize:assets": "node scripts/optimize-assets.mjs",
+    "blender:props": "node scripts/blender.mjs tools/blender/street_props.py -- assets/models/props"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.5.1",

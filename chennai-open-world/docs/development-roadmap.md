@@ -46,7 +46,7 @@ Milestones, in order:
 | Milestone | Scope | Status |
 |---|---|---|
 | J1. Jobs on the current map | Job board, ambulance run (siren clears traffic), courier (damage bonus), cab ride (fare by distance and rating), bus route (stops in order, timetable); start point, time limit, payout; failing costs money and reputation, not the game; result screen; crash detection with speed loss and a thud; gear indicator; ambulance and bus vehicles; share progress | done in the browser and on the emulator (10 jobs) |
-| J2. The bigger city | Extract and chunks for Anna Nagar → T. Nagar → Anna Salai → Marina Beach → ECR start; OSM `height`/`building:levels` used, 2 floors when missing; coastline and sea plane; landmark models and labels (Anna Nagar Tower, Kapaleeshwarar Temple, Marina Beach, T. Nagar); chunks streamed from files (TD-3) because the city will not fit in one script; Marina evening drive job | done in the browser (city streamed from 1,877 chunk files, 4.6 MB; sea; gopuram; labels; Marina evening drive and two more city jobs; visited areas; 38/38 browser tests); APK loading written, waiting for the CI emulator job (see "J2 status") |
+| J2. The bigger city | Extract and chunks for Anna Nagar → T. Nagar → Anna Salai → Marina Beach → ECR start; OSM `height`/`building:levels` used, 2 floors when missing; coastline and sea plane; landmark models and labels (Anna Nagar Tower, Kapaleeshwarar Temple, Marina Beach, T. Nagar); chunks streamed from files (TD-3) because the city will not fit in one script; Marina evening drive job | done in the browser (city streamed from 1,877 chunk files, 4.6 MB; sea; gopuram; labels; Marina evening drive and two more city jobs; visited areas; 38/38 browser tests); APK loading verified on the CI emulator, not on a phone (see "J2 status") |
 | J3. Chennai traffic | Signals at main junctions that traffic and the HUD obey; zebra crossings where traffic yields to pedestrians; buses and two-wheelers in traffic; density by time of day and by area (T. Nagar, Anna Salai heavier); time-of-day setting | done in the browser (no player penalty for red lights, no walk signals, no overtaking) |
 | J4. The look | Golden hour by default, day/night cycle, light rain, sea haze, whitewashed walls and red-tile roofs, palms, draw distance per quality tier, cheap motion blur at speed (high tier only) | done in the browser and seen on the emulator; sea haze is a hook only; no street lights |
 | J5. Driving feel | Drift at high speed, chase camera that looks ahead, gear-change sound | done in the browser |
@@ -68,9 +68,8 @@ Kapaleeshwarar Temple and T. Nagar, visited areas in the save and Share progress
 evening drive and two more city jobs (Egmore hospital transfer, Mount Road bus), and the
 original stages and jobs kept in Anna Nagar.
 
-Left: **loading from the APK.** The game is now served through `WebViewAssetLoader` (TD-16);
-the code has not been compiled here (no Android SDK) and is verified only once the CI
-`android-smoke` job passes on an emulator; a phone is a separate test. Also open: stages 7–10
+APK loading works on an emulator (CI `android-smoke`, 16 Nov: game ready, 9 chunks loaded from
+the APK through `WebViewAssetLoader`, TD-16); a phone is a separate test. Open: stages 7–10
 (the question to the user); a mapped building overlapping the gopuram's estimated footprint
 (the world rule drops buildings only within 13 m of a landmark's centre); the landmark label
 sits over the gopuram's middle tiers when close.
