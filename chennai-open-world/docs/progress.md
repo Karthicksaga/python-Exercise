@@ -4,6 +4,36 @@ Last updated: 17 Nov 2026.
 
 ## What exists
 
+- **Pedestrians hurt when the player's vehicle hits them (17 Nov; unit tests and browser tests in
+  headless Chromium, not on a phone):** any vehicle the player drives (car, auto, bike, ambulance, bus)
+  that touches a pedestrian above 2 m/s knocks them aside or down. A hit is found from the vehicle's
+  box, position and velocity against each person's position, a step ahead of contact, not from physics
+  contacts; if the person's collision box stopped the vehicle first, the speed it came in at is used
+  (`Vehicle.approachVelocity`). Rules in `packages/combat/src/PedestrianHits.ts`, every number in
+  `PEDESTRIAN_HIT` and all **game-design estimates**, not a crash or medical model: 2–4.5 m/s (7–16 km/h)
+  the person stumbles and steps aside, no penalty ("You bumped a pedestrian"); 4.5–12.5 m/s (16–45 km/h)
+  knocked down and injured: lies 5 s, then gets up and limps off at 0.6 m/s for 30 s, ₹1,500 fine and
+  8 reputation; from 12.5 m/s (45 km/h) killed: lies on the road and does not get up, ₹5,000 and 20
+  reputation, removed after 25 s once the player is 35 m away (or after 90 s) and their agent respawns
+  out of sight as recycled pedestrians do. The person is thrown along the direction of travel (1 m plus
+  0.035 × speed², at most 8 m) and pushed clear of the vehicle's path, stopping short of walls (ray cast);
+  the vehicle keeps vehicle mass / (mass + 70 kg) of its speed, which is not counted as a crash or a job
+  bump. Message "You hit a pedestrian: injured/killed" with the fine and reputation lost, the existing
+  crash thud; fines never take more than the player has; both are saved. Non-graphic: a person is only
+  knocked down (the combat "down" pose) and lies still; no blood. Pedestrians within 16 m react for 6 s
+  (`AgentSystem.scare`): those walking towards the spot stop and step back 1.2 m, the others run off at
+  3.8 m/s. People lying on the road have no collision box (vehicles can't climb, TD-8) and are a 1 m
+  obstacle for AI traffic, which stops short of them; nothing else about how traffic treats pedestrians
+  changed. "Limping" is the walk clip played slowly, not a limp animation. Tested by unit tests
+  (`combat/PedestrianHits.test.ts`: thresholds, outcomes, fines and reputation, throw, speed kept, box
+  contact at angles, casualty and respawn timers; `ai/Reactions.test.ts`: holding, letting go and
+  respawning, limping, stepping back and running off, traffic stopping for someone lying down;
+  `missions/reputation.test.ts`) and `apps/game/tests/pedestrians.spec.ts`, which stands a pedestrian
+  in the vehicle's way with the test-only `__cow.stagePedestrian` and checks: killed at over 15 m/s in the
+  car (message, ₹5,000, reputation 50 → 30, saved, still lying 8 s later, removed after the player drives
+  off), injured at about 7 m/s (lies down, gets up after 5 s, limps at no more than 0.6 m/s), the auto and
+  the bike hitting people off-centre and turned at an angle, and an injured hit with Chromium's CPU slowed
+  six times (about 17 fps). Not checked on a phone or the emulator.
 - **Facade kit: sunshades, balconies, shop fronts and Tamil signboards (Phase 3, 16 Nov;
   unit-tested, and looked at in headless Chromium by day and at 21:00, not on a phone):**
   `packages/game-engine/src/FacadeKit.ts` decides at render time, from the `Building` record,

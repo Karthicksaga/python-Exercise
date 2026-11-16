@@ -196,3 +196,30 @@ test("the auto-rickshaw and the motorbike hit people off-centre too, and the hit
   }
   expect((await state(page)).reputation).toBe(50 - 16);
 });
+
+test("hits still register at a low frame rate (CPU slowed six times)", async ({ page }) => {
+  await start(page);
+  await board(page, "car-start");
+  await lineUp(page, 80);
+  // Chromium's CPU throttling: the game draws a few frames a second and runs several physics steps per frame.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
+  try {
+    await accelerate(page, true);
+    try {
+      await expect.poll(async () => (await state(page)).speed, { timeout: 120_000, intervals: [100] }).toBeGreaterThan(7);
+    } finally {
+      await accelerate(page, false);
+    }
+    const slow = (await snapshot(page)) as unknown as { fps: number };
+    await placeAhead(page, 10, 0.5, 0.5);
+    const hit = await waitForHit(page);
+    expect(hit.outcome).toBe("injured");
+    expect(hit.speed).toBeGreaterThan(5.5);
+    expect((await state(page)).casualties.map((c) => c.state)).toEqual(["down"]);
+    console.log(`frame rate while throttled: ${slow.fps.toFixed(1)} fps`);
+    expect(slow.fps).toBeLessThan(30);
+  } finally {
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  }
+});
