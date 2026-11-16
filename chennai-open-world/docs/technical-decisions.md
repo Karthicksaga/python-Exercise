@@ -227,3 +227,20 @@ places). A rebuild costs a short pause (tens of milliseconds) every 500 m.
 
 **Revisit when** agents need to plan routes longer than about 700 m (route planning would
 need a light whole-city graph, for example in typed arrays).
+
+## TD-18: Realistic art direction, modelled on real Chennai streets
+
+**Decision (the user's, 16 Nov 2026).** The game aims for a realistic look, not a stylised or
+cartoon one: real proportions and materials, photographic CC0 textures (Poly Haven,
+ambientCG), realistic humans (MakeHuman/MPFB base bodies in Blender, Mixamo-compatible rigs),
+and the details that make Chennai streets recognisable: petty shops and tea stalls, flower
+sellers, kolam at doorways, Tamil signboards, cable tangles, parked two-wheelers, autos and
+buses. Reference is real-life Chennai, from knowledge and general observation, but the
+content stays original: no real business names, logos or brand liveries, no copied photos
+or models, and no real people's likenesses.
+
+**Within the phone budget.** Realism is pursued with materials, proportions and detail
+placement first, not with polygon counts: every change is measured against about 230–300
+draw calls and 300k triangles in dense T. Nagar, and textures default to 512 px on phones.
+
+**Revisit when** phone profiling shows the budget cannot hold, or the user asks for another style.
