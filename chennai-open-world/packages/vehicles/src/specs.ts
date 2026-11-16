@@ -17,6 +17,12 @@ export interface VehicleType {
    * when standing). Omitted for closed vehicles, where the driver is hidden.
    */
   readonly seat?: { readonly y: number; readonly z: number };
+  /**
+   * Where the driver of an AI vehicle sits (the point between their feet, relative to the chassis
+   * centre). Indian vehicles are right-hand drive: +X is the right side when facing forward (-Z).
+   * Estimated per model, not measured.
+   */
+  readonly driver?: { readonly x: number; readonly y: number; readonly z: number };
   /** Open two-wheelers lean into corners. */
   readonly leans?: boolean;
   /** Forward gears shown on the HUD. */
@@ -30,6 +36,7 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     kind: "car",
     label: "Hatchback",
     rideHeight: 0.72,
+    driver: { x: 0.36, y: -0.8, z: -0.15 },
     cameraDistance: 8.5,
     gears: 5,
     physics: {
@@ -55,6 +62,7 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     cameraDistance: 7,
     gears: 4,
     seat: { y: -0.72, z: -0.32 },
+    driver: { x: 0, y: -0.72, z: -0.4 },
     physics: {
       halfExtents: { x: 0.66, y: 0.45, z: 1.3 },
       mass: 420,
@@ -78,6 +86,7 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     cameraDistance: 6.5,
     gears: 5,
     seat: { y: -0.7, z: 0.3 },
+    driver: { x: 0, y: -0.7, z: 0.3 },
     leans: true,
     physics: {
       halfExtents: { x: 0.32, y: 0.36, z: 1.0 },
@@ -121,6 +130,7 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     kind: "bus",
     label: "City bus",
     rideHeight: 1.25,
+    driver: { x: 0.8, y: -0.45, z: -4.15 },
     cameraDistance: 15,
     gears: 5,
     physics: {

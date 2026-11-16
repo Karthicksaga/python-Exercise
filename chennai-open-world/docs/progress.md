@@ -275,6 +275,19 @@ Difficulty has not been play-tested by a person.
   frame rate, memory and touch on a phone are still unknown.
 - **Performance:** about 270–300 draw calls and 290k triangles with everything on screen. Fine on
   the emulator's desktop GPU; unknown on phones. Each pedestrian is a full skinned character.
+- **Blender auto in the game, and drivers in traffic (17 Nov; unit tests, browser tests 38/38,
+  screenshots in headless Chromium; not on a phone):** the auto-rickshaw from
+  `tools/blender/auto_rickshaw.py` (optimised `assets/optimized/vehicles/auto_rickshaw_lod1.glb`,
+  107 KB, 12k triangles) replaces the code-built auto for the player's, parked and traffic autos.
+  `packages/vehicles/src/glbModels.ts` loads it once and merges its parts into seven roles with
+  colours in the vertices (shared buffers per livery), and one wheel scaled to the physics radius.
+  The code-built auto (`autoModel.ts`) is the fallback before loading and in unit tests. Every
+  AI vehicle (auto, car, bike, bus) now has a driver: the game's human model with the seated pose
+  baked into static meshes once per shirt colour (`HumanAssets.seatedStatic`), seated at
+  `VehicleType.driver` (right-hand drive; estimated positions), auto drivers in a khaki shirt.
+  Drivers are drawn within 40 m of the player. Spawn at `?quality=lite`, with drivers drawn
+  within 60 m: 181 → 188 draw calls, 265k → 299k triangles (the 300k budget). Then cut to 40 m,
+  not re-measured. The bus driver's seat is not checked by eye yet.
 - **Realistic auto-rickshaw in the game (17 Nov; unit tests, looked at and measured in
   headless Chromium, not on a phone):** `packages/vehicles/src/autoModel.ts` replaces the boxy
   procedural auto with the reviewed prototype (`prototypes/auto-rickshaw.html`): 2.63 m body,

@@ -173,7 +173,8 @@ def box(name, size, centre, mat, bevel=0.0, rot=(0, 0, 0)):
     obj = bpy.context.object
     obj.name = name
     obj.scale = size
-    bpy.ops.object.transform_apply(scale=True)
+    # Only the scale: applying location too would make later rotations swing round the origin.
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     if bevel:
         b = obj.modifiers.new("bevel", "BEVEL")
         b.width = bevel

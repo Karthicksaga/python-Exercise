@@ -5,7 +5,8 @@
  */
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { autoPlateTexture, buildAutoParts, type AutoRole } from "./autoModel";
+import { AUTO_SIZE, autoPlateTexture, buildAutoParts, type AutoRole } from "./autoModel";
+import { vehicleTemplate } from "./glbModels";
 import type { VehicleKind } from "./specs";
 
 export interface VehicleModel {
@@ -202,6 +203,7 @@ function car(color: number): VehicleModel {
 function auto(color: number): VehicleModel {
   const object = new THREE.Group();
   const plate = autoPlateTexture();
+  const blender = vehicleTemplate("auto");
   const byRole: Record<AutoRole, THREE.Material> = {
     paint: standard("auto-paint", { vertexColors: true, roughness: 0.35, metalness: 0.1 }),
     trim: standard("auto-trim", { vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }),
@@ -211,14 +213,18 @@ function auto(color: number): VehicleModel {
     tail: tailMaterial(),
     plate: standard("auto-plate", plate ? { map: plate, roughness: 0.5 } : { color: 0xf4c400, roughness: 0.5 }),
   };
-  const { parts, wheel: wheelGeometry } = buildAutoParts(color);
+  // The Blender model when it has been loaded (`loadVehicleModels`), else the code-built one.
+  const { parts, wheel: wheelGeometry } = blender
+    ? { parts: blender.body(color), wheel: blender.wheel(AUTO_SIZE.wheelRadius) }
+    : buildAutoParts(color);
   for (const part of parts) {
     const mesh = new THREE.Mesh(part.geometry, byRole[part.role]);
     mesh.castShadow = part.role !== "glass";
     mesh.receiveShadow = true;
     object.add(mesh);
   }
-  mergeParts(object, []);
+  // Blender parts are already merged per role and shared between autos of one colour.
+  if (!blender) mergeParts(object, []);
   const wheelMaterial = standard("auto-wheel", { vertexColors: true, roughness: 0.75, metalness: 0.3 });
   const wheels = [0, 1, 2].map(() => {
     const pivot = new THREE.Group();

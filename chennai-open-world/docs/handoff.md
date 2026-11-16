@@ -205,3 +205,13 @@ desktop instructions.
   canopy fabric and dust textures (bake in Cycles), load it in `packages/vehicles` instead of
   `autoModel.ts` (wheel nodes by name; `KHR_materials_clearcoat` and transmission are costly on
   phones, so use MeshStandard in the game), then run the tests and measure as for the props.
+
+## 17 Nov 2026 (latest): Blender auto in the game, drivers in all traffic
+- Done and tested (unit 188/188, browser 38/38); details in `progress.md`. Assets: `npm run optimize:assets`
+  now also handles `assets/models/vehicles`.
+- Two lessons for loading optimised GLBs: convert quantised attributes to floats **before**
+  applying a matrix (in-place transforms clamp to [-1, 1]); and mesh names inside wheel nodes
+  repeat, so match wheel nodes by exact name.
+- Next, requested by the user and started in parallel by separate agents: **Share auto** (a
+  route job: picking up and dropping passengers anywhere along a fixed route, like the bus) and
+  **pedestrians hurt when hit** (knocked down, injured or killed, with consequences).

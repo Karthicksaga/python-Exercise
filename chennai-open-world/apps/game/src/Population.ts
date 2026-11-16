@@ -28,8 +28,19 @@ import type { KinematicBox, PhysicsWorld } from "@cow/physics";
 import type { HumanAssets, HumanFigure } from "@cow/player";
 import { TrafficCar, VEHICLE_TYPES, type VehicleKind } from "@cow/vehicles";
 
+/** Autos are yellow, as in Chennai (the parked autos use the same colour, `content.ts`). */
+const AUTO_YELLOW = 0xf5c400;
 const CAR_COLORS = [0xb8bcc4, 0x2b3f6b, 0x7a1f1f, 0xe6e2d6, 0x30343a, 0x3d6b4f, 0x8a6a2f];
 const CLOTHES = [0xffffff, 0x9fb8e0, 0xe0c29f, 0xa9d6a9, 0xd9a0a0, 0xc9c9c9, 0xe6dd9a, 0xb7a3d6];
+
+/**
+ * Shirt tints for drivers. Chennai auto drivers wear a khaki uniform shirt; others vary.
+ * The tint multiplies the model's clothing colour (`HumanAssets.create`).
+ */
+const AUTO_DRIVER = 0xd9c08f;
+const DRIVER_CLOTHES = [0xffffff, 0x9fb8e0, 0xc9c9c9, 0xa9d6a9];
+/** Drivers further than this from the player are not drawn (each is a few draw calls), metres. */
+const DRIVERS_VISIBLE = 40;
 
 /** Pedestrians further than this from the player are not drawn, metres. */
 const PEOPLE_VISIBLE = 90;
@@ -157,7 +168,10 @@ export class Population {
 
     for (const agent of this.traffic.agents) {
       const name = this.traffic.kinds[agent.kind]!.name;
-      const car = new TrafficCar(isVehicleKind(name) ? name : "car", CAR_COLORS[agent.id % CAR_COLORS.length]!);
+      const kind = isVehicleKind(name) ? name : "car";
+      const car = new TrafficCar(kind, kind === "auto" ? AUTO_YELLOW : CAR_COLORS[agent.id % CAR_COLORS.length]!);
+      // Every moving vehicle has someone at the wheel (a baked seated person, shared per shirt).
+      car.setDriver(humans.seatedStatic(kind === "auto" ? AUTO_DRIVER : DRIVER_CLOTHES[agent.id % DRIVER_CLOTHES.length]!));
       scene.add(car.object);
       this.drivers.push({ car, body: physics.createKinematicBox(car.type.physics.halfExtents), generation: -1 });
     }
@@ -274,7 +288,9 @@ export class Population {
     this.traffic.agents.forEach((agent, i) => {
       const { car } = this.drivers[i]!;
       car.object.visible = agent.active;
-      if (agent.active) car.sync(dt, agent.x, agent.z, agent.heading, agent.speed, agent.generation);
+      if (!agent.active) return;
+      car.sync(dt, agent.x, agent.z, agent.heading, agent.speed, agent.generation);
+      car.driverVisible = Math.hypot(agent.x - viewer.x, agent.z - viewer.z) < DRIVERS_VISIBLE;
     });
     this.walkers.agents.forEach((agent, i) => {
       const { figure } = this.people[i]!;
