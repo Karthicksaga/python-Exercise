@@ -59,8 +59,12 @@ export const WANTED = {
   sightOfficer: 45,
   /** Arrest: only up to this level (above it the police shoot instead)... */
   bustUpTo: 2,
-  /** ...when an officer is this close, metres, to a player on foot moving slower than `stillBelow` m/s... */
-  bustRange: 2.2,
+  /**
+   * ...when an officer is this close, metres, to a player on foot moving slower than `stillBelow` m/s...
+   * (officers on foot stop about 2.8 m away: the enemy walking rules treat the player's body as
+   * something to step round, so the range reaches them there).
+   */
+  bustRange: 3.2,
   stillBelow: 0.6,
   /** ...for this long, seconds. */
   bustAfter: 2,
