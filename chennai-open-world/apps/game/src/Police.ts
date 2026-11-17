@@ -26,6 +26,13 @@ const OWN_VEHICLES = ["car-start", "bike-start", "auto-park"];
 
 /** Tuning, game-design estimates. */
 const POLICE = {
+  /**
+   * The first car counts as having reached a reported crime within this many metres of it; until
+   * then the wanted level can't fade (the police haven't looked yet). Game-design estimate.
+   */
+  arrivedWithin: 30,
+  /** ...but at most this many game seconds, so a car that can't get there doesn't hold the level up for ever. Estimate. */
+  responseMax: 45,
   /** Top speed of a police car by wanted level, m/s (13 m/s is about 47 km/h). */
   topSpeed: [0, 13, 15, 17, 19, 20],
   /** Cars appear this far from where the player was last seen, metres, and never nearer the player than `spawnClear`. */
@@ -181,6 +188,8 @@ export class Police {
   /** Where the police last saw the player, and how long ago (seconds). */
   private lastSeen: { x: number; z: number } | null = null;
   private sinceSeen = 99;
+  /** A crime was reported and no car has reached the spot yet (seconds since the report). */
+  private responding: number | null = null;
   private seenNow = false;
   private sinceLook = 99;
   private spawnIn = 0;
@@ -231,6 +240,7 @@ export class Police {
     if (this.player && this.wanted.stars > 0) {
       this.lastSeen = { x: this.player.x, z: this.player.z };
       this.sinceSeen = 0;
+      this.responding = 0;
     }
   }
 
@@ -295,6 +305,21 @@ export class Police {
     return best ? { x: best.pursuer.x, z: best.pursuer.z, heading: best.pursuer.heading } : null;
   }
 
+  /**
+   * True while the police are still on their way to a reported crime: until a car gets near the
+   * spot (or sees the player, or `responseMax` passes), the wanted level can't fade. Otherwise a
+   * car with a long drive in would be called off before it had looked, and the player would lose
+   * the star without doing anything.
+   */
+  private stillResponding(dt: number): boolean {
+    if (this.responding === null) return false;
+    this.responding += dt;
+    const spot = this.lastSeen;
+    const arrived = spot !== null && this.units.some((u) => u.active && Math.hypot(u.pursuer.x - spot.x, u.pursuer.z - spot.z) < POLICE.arrivedWithin);
+    if (arrived || this.seenNow || this.wanted.stars === 0 || this.responding > POLICE.responseMax) this.responding = null;
+    return this.responding !== null;
+  }
+
   /** Everything gone: not wanted, no cars, no officers (after an arrest, a knock-out, a new game). */
   clear(): void {
     this.wanted.clear();
@@ -304,6 +329,7 @@ export class Police {
     this.lastSeen = null;
     this.sinceSeen = 99;
     this.seenNow = false;
+    this.responding = null;
   }
 
   /** Tests and debugging: set the level directly. */
@@ -516,7 +542,7 @@ export class Police {
     if (!p.vehicle && p.speed < WANTED.stillBelow) {
       for (const officer of this.officers()) if (officer.health > 0 && Math.hypot(officer.x - p.x, officer.z - p.z) < WANTED.bustRange) held = true;
     }
-    const event = this.wanted.update(dt, { seen: this.seenNow, held });
+    const event = this.wanted.update(dt, { seen: this.seenNow, held, responding: this.stillResponding(dt) });
     if (event?.type === "busted") {
       this.arrest(event.fine, event.stars, p);
       return;

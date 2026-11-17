@@ -80,8 +80,9 @@ test("losing the police: far away and out of sight, the star fades", async ({ pa
   const far = s.vehicles.find((v) => v.id === "car-tnagar")!;
   expect(Math.hypot(far.x - s.x, far.z - s.z)).toBeGreaterThan(1000);
   await teleport(page, far.x + 3, far.z);
-  // The police search where the shot was fired; nobody sees the player, so the star is lost,
-  // but not before its time (counted from the shot, the last time the police knew where they were).
+  // The police search where the shot was fired; nobody sees the player, so the star is lost, but
+  // not before its time: the wait starts once the first car has reached the spot (it can't fade
+  // while they are still on their way), so at least the full wait after the shot.
   const unseen = (await state(page)).police.unseenFor;
   expect(unseen).toBeLessThan(LOSE_ONE_STAR - 6);
   await waitGameTime(page, LOSE_ONE_STAR - unseen - 4);

@@ -97,6 +97,11 @@ export interface WantedSight {
   readonly seen: boolean;
   /** An officer is within `bustRange` of the player, who is on foot and keeping still. */
   readonly held: boolean;
+  /**
+   * The police are still on their way to where the crime was reported: no unit has got there
+   * yet. The player can't lose them before they have looked, so the wait doesn't run.
+   */
+  readonly responding?: boolean;
 }
 
 /** Stars for a number of heat points. */
@@ -203,6 +208,7 @@ export class Wanted {
       this.unseenFor = 0;
       return null;
     }
+    if (sight.responding) return null;
     this.unseenFor += dt;
     if (this.unseenFor < WANTED.loseAfter[this.stars]!) return null;
     // Lost: down one star, the heat to the bottom of that level, and the next wait begins.

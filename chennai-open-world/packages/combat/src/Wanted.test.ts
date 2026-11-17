@@ -129,6 +129,18 @@ describe("losing the police", () => {
     expect(w.stars).toBe(1);
   });
 
+  it("doesn't decay while the police are still on their way to the crime, then counts from their arrival", () => {
+    const w = new Wanted();
+    w.report("gunfire");
+    const responding: WantedSight = { seen: false, held: false, responding: true };
+    expect(run(w, WANTED.loseAfter[1]! * 2, responding)).toEqual([]);
+    expect(w.stars).toBe(1);
+    expect(w.unseenFor).toBe(0);
+    run(w, WANTED.loseAfter[1]! - 1, unseen);
+    expect(w.stars).toBe(1);
+    expect(run(w, 2, unseen)).toEqual([{ type: "lowered", stars: 0 }]);
+  });
+
   it("never decays while seen", () => {
     const w = new Wanted();
     w.set(2);
