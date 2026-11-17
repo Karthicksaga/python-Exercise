@@ -287,3 +287,27 @@ tests (`npm run test:e2e`) stay too: they drive that same build at phone size wi
 and are the main automated check, alongside the CI emulator job.
 
 **Revisit when** an iOS or desktop release is wanted.
+
+## TD-21: Police officers are combat enemies; police cars are kinematic chasers on the road graph
+
+**Decision (17 Nov 2026, `agent/police`).** Officers on foot are ordinary `Combat` enemies in
+groups named `police:<car>-<n>` (`isPoliceGroup` in `@cow/combat`), not a second kind of fighter.
+The player's punches and pistol, being run over, the enemy shooting rules at three stars and up,
+health, knock-downs and the figures (`Fighters`, khaki for police) all come for free and stay
+identical to the story fights. Below three stars `Police.ts` holds their attack cooldown each
+step, so they walk up to make an arrest instead of punching. `Game.fight` keeps the police groups
+when it tidies story enemies, and the snapshot's `enemies` lists story enemies only (officers are
+under `police`).
+
+Police cars are kinematic, like the AI traffic: `Pursuer` (`@cow/ai`, pure) follows an A* route
+on the same drive graph as the traffic, replanned every 1.5 s, and drives straight at the player
+once within 35 m with a clear line; the game moves a kinematic box there, which shoves the
+player's car when it rams. A physical (Rapier) police car with an AI driver was not chosen: it
+would need steering and grip tuning and a vehicle simulation per unit on a phone.
+
+**Rules apart from glue.** What counts as a crime, how stars rise and fall, busted, unit caps and
+the theft rule are pure (`packages/combat/src/Wanted.ts`, unit-tested); `apps/game/src/Police.ts`
+only connects them to the scene, physics, HUD and sound.
+
+**Revisit when** officers need behaviour of their own (cover, an arrest animation), or when a
+weapon inventory replaces `Combat.ammo` (an arrest must then empty it too: see `Game.arrested`).

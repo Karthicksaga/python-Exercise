@@ -52,8 +52,11 @@ export const WANTED = {
     officerAssaulted: { points: 4, minStars: 2, every: 1 },
     officerDown: { points: 10, minStars: 3, every: 0 },
   } satisfies Record<Crime, CrimeRule>,
-  /** Seconds unseen by any police unit before the level drops one star (index = stars). */
-  loseAfter: [0, 25, 35, 50, 65, 80],
+  /**
+   * Seconds unseen by any police unit before the level drops one star (index = stars). One star
+   * lasts long enough for the first car (sent from 80-140 m away, about 15 s) to arrive.
+   */
+  loseAfter: [0, 30, 40, 55, 70, 85],
   /** How far a unit sees the player (with a clear line), metres: from a car, and on foot. */
   sightCar: 70,
   sightOfficer: 45,
