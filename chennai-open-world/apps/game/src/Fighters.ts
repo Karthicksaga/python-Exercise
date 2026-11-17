@@ -29,7 +29,10 @@ export function combatWorld(physics: PhysicsWorld): CombatWorld {
       return physics.raycast({ x: ax + dx * 0.6, y: CHEST, z: az + dz * 0.6 }, { x: dx, y: 0, z: dz }, Math.max(0, distance - 1.2)) === null;
     },
     wallDistance(x, z, dx, dz, max) {
-      return physics.raycast({ x: x + dx * 0.6, y: CHEST, z: z + dz * 0.6 }, { x: dx, y: 0, z: dz }, max);
+      // Distance from the point itself; the ray starts 0.6 m out so it misses the person standing
+      // there (it reaches 0.6 m further than `max`, which only matters for a null "clear" answer).
+      const hit = physics.raycast({ x: x + dx * 0.6, y: CHEST, z: z + dz * 0.6 }, { x: dx, y: 0, z: dz }, max);
+      return hit === null ? null : hit + 0.6;
     },
   };
 }
@@ -65,7 +68,12 @@ export class Fighters {
   private body(enemy: Enemy): Body {
     let body = this.bodies.get(enemy.id);
     if (!body) {
-      const figure = this.humans.create(isPoliceGroup(enemy.group) ? TINT.police : enemy.armed ? TINT.armed : TINT.unarmed, true);
+      // Gang members wear their gang's colours.
+      const figure = this.humans.create(isPoliceGroup(enemy.group) ? TINT.police : enemy.tint ?? (enemy.armed ? TINT.armed : TINT.unarmed), true);
+      // Guns are drawn while aiming; a bat is carried in the hand. Fists: nothing held.
+      if (enemy.weapon === "bat") figure.setWeapon("bat", true);
+      else if (enemy.weapon === "shotgun" || enemy.weapon === "smg") figure.setWeapon(enemy.weapon);
+      else if (!enemy.armed) figure.setWeapon(null);
       // A boss is visibly bigger.
       if (enemy.maxHealth > 150) figure.object.scale.setScalar(1.18);
       this.scene.add(figure.object);
@@ -106,6 +114,16 @@ export class Fighters {
   /** An enemy throws a punch (arm animation). */
   enemyPunch(enemy: Enemy): void {
     this.bodies.get(enemy.id)?.figure.punch();
+  }
+
+  /** What the enemies hold in their hands now (tests): weapon ids, one per enemy shown with one. */
+  heldWeapons(): string[] {
+    const held: string[] = [];
+    for (const body of this.bodies.values()) {
+      const weapon = body.figure.shownWeapon;
+      if (weapon) held.push(weapon);
+    }
+    return held;
   }
 
   /** Draw a bullet's path for a moment. */

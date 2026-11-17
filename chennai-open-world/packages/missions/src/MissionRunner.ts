@@ -3,6 +3,7 @@
  * which stages are done. Pure logic with no rendering or input, so it is fully unit-tested.
  */
 import type { Mission, MissionEvent, Objective, PlayerStatus, Progress } from "./types";
+import { pathLength, pointAlong, quarrySpeed, type QuarryPlace } from "./chase";
 
 /** Below this speed (m/s) a vehicle counts as stopped. */
 const STOPPED = 1.2;
@@ -13,6 +14,8 @@ export class MissionRunner {
   private missionIndex: number;
   private objectiveIndex = 0;
   private timeLeft: number | null = null;
+  /** Metres the quarry of a chase objective has gone along its path. */
+  private chased = 0;
 
   constructor(
     private readonly missions: readonly Mission[],
@@ -45,6 +48,12 @@ export class MissionRunner {
     return this.timeLeft;
   }
 
+  /** Where the quarry of the current chase objective is, or null when the objective is not a chase. */
+  get quarry(): QuarryPlace | null {
+    const objective = this.objective;
+    return objective?.type === "chase" ? pointAlong(objective.path, this.chased) : null;
+  }
+
   get balance(): number {
     return this.money;
   }
@@ -64,11 +73,17 @@ export class MissionRunner {
   private armTimer(): void {
     const objective = this.objective;
     this.timeLeft = objective?.type === "reach" && objective.timeLimit ? objective.timeLimit : null;
+    this.chased = 0;
   }
 
   private met(objective: Objective, player: PlayerStatus): boolean {
     if (objective.type === "enter") return player.mode === objective.vehicle;
     if (objective.type === "defeat") return player.cleared?.has(objective.group) ?? false;
+    if (objective.type === "chase") {
+      // Caught: alongside the quarry in a vehicle.
+      const quarry = pointAlong(objective.path, this.chased);
+      return player.mode !== "foot" && Math.hypot(player.x - quarry.x, player.z - quarry.z) <= objective.radius;
+    }
     if (objective.mode && player.mode !== objective.mode) return false;
     if (Math.hypot(player.x - objective.x, player.z - objective.z) > objective.radius) return false;
     return !objective.stop || player.speed < STOPPED;
@@ -89,6 +104,17 @@ export class MissionRunner {
         this.armTimer();
         return [{ type: "failed", mission, reason: "Out of time" }];
       }
+    }
+    if (objective.type === "chase" && !this.met(objective, player)) {
+      const quarry = pointAlong(objective.path, this.chased);
+      this.chased += quarrySpeed(objective.speed, Math.hypot(player.x - quarry.x, player.z - quarry.z)) * dt;
+      if (this.chased >= pathLength(objective.path)) {
+        // Got away: the stage starts again from its first objective.
+        this.objectiveIndex = 0;
+        this.armTimer();
+        return [{ type: "failed", mission, reason: "They got away" }];
+      }
+      return events;
     }
     if (!this.met(objective, player)) return events;
 

@@ -1,3 +1,4 @@
+import type { WeaponId } from "@cow/combat";
 import { Game, type GameSnapshot } from "./Game";
 import { sendToShell } from "./nativeBridge";
 
@@ -19,6 +20,8 @@ declare global {
       setWanted(stars: number): void;
       /** Tests only: give the player this many pistol rounds (to fire in the street). */
       giveAmmo(rounds: number): void;
+      /** Tests only: give a weapon with rounds and take it in hand (skips finding a pickup). */
+      giveWeapon(id: WeaponId, ammo: number): void;
     };
   }
 }
@@ -44,6 +47,8 @@ async function boot(): Promise<void> {
       // For tests only (police.spec.ts): jump to a wanted level, and have rounds to fire.
       setWanted: (stars) => game.debugSetWanted(stars),
       giveAmmo: (rounds) => game.debugGiveAmmo(rounds),
+      // For tests only: the later stages need guns the player would have found by then.
+      giveWeapon: (id, ammo) => game.debugGiveWeapon(id, ammo),
     };
     game.start();
     loading.remove();

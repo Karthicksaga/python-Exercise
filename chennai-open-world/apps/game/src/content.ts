@@ -5,11 +5,12 @@
  */
 import { boundsOf, centroid, nearestRoadPoint, type Bounds, type Point, type WorldMap } from "@cow/game-world";
 import { GeoProjection } from "@cow/map-data";
-import type { EnemySpot } from "@cow/combat";
+import type { EnemySpot, PickupSpot } from "@cow/combat";
 import type { Job, Mission, Objective } from "@cow/missions";
 import type { VehicleKind } from "@cow/vehicles";
 import { cityJobs } from "./cityJobs";
 import { shareAutoJob } from "./shareAutoRoute";
+import { buildStreetWar, type Crew, type Gang } from "./streetWar";
 
 export interface Parking {
   readonly id: string;
@@ -28,6 +29,10 @@ export interface GameContent {
   readonly enemies: Record<string, EnemySpot[]>;
   /** Everyday paid work offered on the job board. Repeatable. */
   readonly jobs: Job[];
+  /** Rival gangs, the crews on their corners, and weapons lying in the world (`streetWar.ts`). */
+  readonly gangs: readonly Gang[];
+  readonly crews: Crew[];
+  readonly pickups: PickupSpot[];
 }
 
 const CAR_COLORS = [0xc0392b, 0x2f6fb5, 0xe8e8ea, 0x2c2f36, 0x1f8a5b, 0xd98e1f];
@@ -488,5 +493,11 @@ export function buildContent(city: WorldMap): GameContent {
   parking.push(...across.parking);
   jobs.push(...across.jobs);
 
-  return { spawn, parking, missions, enemies, jobs };
+  // Stages 11 to 15 and the gangs, across central Chennai (the first ten stay as they were).
+  const war = buildStreetWar(city);
+  missions.push(...war.missions);
+  Object.assign(enemies, war.enemies);
+  parking.push(...war.parking);
+
+  return { spawn, parking, missions, enemies, jobs, gangs: war.gangs, crews: war.crews, pickups: war.pickups };
 }

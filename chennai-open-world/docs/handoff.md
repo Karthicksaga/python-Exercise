@@ -542,8 +542,8 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - **Next:** try it on a phone (timings, camera), a simple cabin so drivers stay visible, and
   steering animation.
 ## 17 Nov 2026: police and wanted level (branch `agent/police`): where I left off
-- **Done and tested** (details in `progress.md`, decision TD-21 — the gangs branch also added a
-  TD-21; renumber one at merge): 0–5 star wanted level, rules pure in
+- **Done and tested** (details in `progress.md`, decision TD-21; the gangs branch's weapon decision is
+  TD-22 after the merge): 0–5 star wanted level, rules pure in
   `packages/combat/src/Wanted.ts` (unit-tested); police cars chasing on the road graph
   (`packages/ai/src/Pursuit.ts`, A*, unit-tested); `apps/game/src/Police.ts` glue (cars, officers as
   `Combat` enemies in `police:` groups, HUD stars, minimap dots, siren, busted, theft);
@@ -563,3 +563,39 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   collision between agents); the khaki tint reads brownish at golden hour; the wanted level is
   not saved. Triangles go over the 300k budget at the spawn street during a chase (see
   `progress.md`). Not tried on the emulator or a phone.
+## 17 Nov 2026: weapons, rival gangs, stages 11–15 (branch `agent/gangs`): where I left off
+- **Done and tested** (details in `progress.md`, decision TD-22, numbered TD-21 on the branch): weapon table and arsenal
+  (fists, cricket bat, pistol, shotgun, SMG) in `packages/combat/src/Weapons.ts`; gang hostility
+  and crew fielding in `Gangs.ts`; pickups in `Pickups.ts`; held weapon meshes in
+  `packages/player/src/weaponModels.ts`; the weapon button; three invented gangs and stages 11–15
+  in `apps/game/src/streetWar.ts`; game wiring in `apps/game/src/Arms.ts`.
+- **For the police branch:** `Combat` emits `{ type: "playerShot", x, z, weapon }` on every shot,
+  plus `crewWarning` / `crewProvoked` for gangs. `Combat.ammo` is still the pistol's rounds; other
+  guns are in `combat.arsenal`. Gang members are `Enemy` entries with `group` `gang:<gang>:<n>`
+  and `calm`.
+- **Bugs found by the browser tests and fixed:** spread weapons never hit in the real game (the
+  wall ray stops at the target's own collision box; `CombatWorld.wallDistance` in `Fighters.ts`
+  now measures from the point itself, and pellets allow a body's depth); stage enemies placed 2 m
+  off the kerb stood inside building solids on some streets and could not be beaten (now 0.5–1 m).
+- **Shared files touched:** `Game.ts` (Arms wiring in `fight`, `frame`, `announce`, `snapshot`,
+  `newGame`, `setPaused`, `target`; `debugGiveWeapon`), `main.ts` (`__cow.giveWeapon`, tests only),
+  `content.ts` (append stages 11–15, `gangs` / `crews` / `pickups` in `GameContent`),
+  `content.test.ts` (10 → 15 stages on purpose), `Fighters.ts`, `HumanFigure.ts` (weapon in the
+  right-hand bone, `setWeapon`, `shownWeapon`), `TouchControls.ts` (weapon button),
+  `packages/missions` `types.ts` (`chase` objective, `hostiles`, `weapons` reward),
+  `MissionRunner.ts` (`quarry`), `stories.ts` (one line), index export lists, `docs/*.md`.
+- **Tests:** typecheck clean; unit 351/351; my specs `weapons.spec.ts` 4/4, `gangs.spec.ts` 4/4,
+  `missions2.spec.ts` 5/5; `combat.spec.ts` 4/4. **Full browser suite on this branch: 69/69
+  (21.5 min, run alone with the lock).** An earlier full run was 68/69: stage 12 ended mid-burst
+  and the reward shotgun, then put straight in the hand, fired a shell; rewards are no longer put
+  in the hand (commit 827fa60).
+- **Measured at `?quality=lite`** (preview build, software GPU): gang corners 107 draw calls /
+  208k triangles (Royapettah), 162 / 164k (Triplicane), 129 / 254k (Egmore); the gangs spec saw
+  130 / 237k at Royapettah.
+- **Checked by eye** (screenshots, not committed): the weapon button sits left of FIRE / HIT, clear
+  of them; crews stand at the kerb in their colours with the bat in hand; the player's bat is in
+  the hand. Guns are small and dark at lite quality: visible as a dark shape at the hand, hard to
+  judge closely.
+- **Not done:** the back-street dealer (needs a new place kind across shared files); a holster
+  (a loaded gun always counts as armed near gangs); two-handed poses for the shotgun and SMG;
+  nothing tried on the emulator or a phone.

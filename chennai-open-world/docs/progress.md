@@ -68,6 +68,52 @@ Last updated: 17 Nov 2026 (police and wanted level).
   **Jobs:** from 2 stars the job board takes no new jobs ("Lose them first"); a job already
   running can still be finished or quit; an arrest doesn't quit it (its clock usually runs out).
   The wanted level is not saved. Test hooks: `__cow.setWanted`, `__cow.giveAmmo`.
+Last updated: 17 Nov 2026 (weapons, rival gangs, stages 11–15).
+
+## What exists
+
+- **Weapons, rival gangs and stages 11–15 (17 Nov, branch `agent/gangs`; unit-tested and
+  browser-tested in headless Chromium, not on the emulator or a phone):**
+  - *Weapons* (`packages/combat/src/Weapons.ts`, TD-22): fists, a cricket bat, the pistol, a pump
+    shotgun and a compact SMG, each a row of game-design estimates (damage, range, fire interval,
+    pellets, spread, aim assist, fall-off, rounds carried, a price for a future dealer). Fists and
+    pistol keep their old numbers, so stages 7–10 play as before. Bat: 50 a swing, 2.3 m, 0.7 s.
+    Shotgun: six pellets of 20, full to 5 m, 40% at 14 m, nothing beyond, 0.95 s, ±0.13 rad spread,
+    40 rounds carried. SMG: 14 a round, about 11 a second, ±0.07 rad, 30 m, 360 carried. HIT swings
+    the bat once it is owned; FIRE fires the gun in hand; a new **weapon button** (left of FIRE and
+    HIT, e.g. "PISTOL / 24") cycles the guns owned. Pellets and stray bullets hit whoever they pass
+    within a body's width, before any wall. Every shot emits `playerShot {x, z, weapon}` for the
+    wanted level. Held weapons are a few boxes merged into one vertex-coloured mesh each, sharing one
+    material (`packages/player/src/weaponModels.ts`), placed relative to the right-hand bone so they
+    follow the hand in every pose; the player carries a loaded gun (or the bat), enemies show guns
+    while aiming and carry bats. The arsenal is saved in `localStorage["cow-weapons-v1"]`.
+  - *Weapons in the world*: glowing rings with the weapon turning above them; walking over one on
+    foot takes it (1.6 m, back after 240 game s; estimates): a bat and pistol rounds in Anna Nagar,
+    pistol rounds in Triplicane, shotguns in Royapettah and Egmore, an SMG in Egmore. Stages 12–15
+    also hand over guns and rounds (added to the arsenal, not put in the hand). **No back-street dealer**: the place screens need a new place
+    kind in shared files (`life.ts`, `places.ts`, `PlaceDesk.ts`, place icons); left for later.
+  - *Rival gangs* (invented, `apps/game/src/streetWar.ts`): Manjal Puli (yellow, Royapettah),
+    Neela Nandu (blue, Triplicane), Pachai Paambu (green, Egmore), wearing their colours as clothing
+    tints. Two crews of three (pistol, bat, fists) on street corners in each district. Crews are
+    calm until provoked (`packages/combat/src/Gangs.ts`): hitting one of them, a gunshot within
+    22 m, or standing armed within 7 m for 4 s (a warning at 1.5 s) turns the whole crew. At most
+    two crews are out at once (within 110 m of the player, removed past 160 m); a beaten crew's
+    corner is empty for 180 s; crews within 150 m of the current stage objective stay off.
+  - *Stages 11–15* after the Roundtana showdown (stages 1–10 unchanged): 11 *Courier chase*
+    (Peters Road, Royapettah: a new `chase` objective; the courier rides a real road, eases off when
+    far ahead, and reaching its end fails the stage), 12 *Protection money* (defend a mapped tea
+    shop on Triplicane High Road; reward a shotgun), 13 *Hot wheels* (an ambush appears as you ride
+    off on a bike from KMS Street; reach the Marina beach road in time; a reach objective can now
+    bring `hostiles`; reward an SMG), 14 *Snake pit* (six Pachai Paambu with shotguns and an SMG in
+    an Egmore back street), 15 *Turf war* (a 320-health boss and seven more at the Royapettah clock
+    tower). Rewards ₹2,200 / 2,500 / 2,000 / 3,500 / 6,000.
+  - *Tested:* unit tests `combat/Weapons.test.ts`, `combat/Gangs.test.ts`, `missions/chase.test.ts`,
+    `apps/game/src/streetWar.test.ts` (on the real world files); browser specs `weapons.spec.ts`
+    (weapon button clear of every on-foot control and the minimap, shotgun pickup, switching,
+    rounds used, SMG against pistol fire rate, bat pickup, saving), `gangs.spec.ts` (calm crew,
+    hostile when punched, armed lingering, draw cost) and `missions2.spec.ts` (each of stages
+    11–15 played to the end with teleports and the `giveWeapon` / `setHealth` hooks). Counts and
+    measurements: the handoff entry of the same day.
 
 - **Suburban railway with trains you can ride (17 Nov; unit-tested and browser-tested in headless
   Chromium, not on the emulator or a phone):** the Beach–Tambaram line from OpenStreetMap (the

@@ -36,7 +36,7 @@ Why the game runs in a WebView: `docs/technical-decisions.md`, TD-1.
 | `vehicles` | Vehicle types, procedural models, `Vehicle` (player-drivable), `TrafficCar` (AI-driven view) | `three`, `physics` |
 | `ai` | Road graph, road-following agents, traffic and pedestrian presets. Pure logic | `game-world` |
 | `missions` | Mission data types and `MissionRunner`. Pure logic | nothing |
-| `combat` | Health, ammunition, punches, shots, enemy behaviour. Pure logic; asks the game two questions about the world | nothing |
+| `combat` | Health, weapons and the arsenal (`Weapons.ts`), punches, shots, enemy behaviour, gang hostility (`Gangs.ts`), weapon pickups. Pure logic; asks the game two questions about the world | nothing |
 | `audio` | Synthesised sound effects (Web Audio) | nothing |
 | `rail` | Railway data model, OSM extract → rail file (`buildRail`), track geometry, train motion, timetable, boarding rules. Pure logic | `map-data` |
 | `ui` | Touch controls, HUD, minimap, railway ride panel (DOM and 2D canvas) | nothing |
