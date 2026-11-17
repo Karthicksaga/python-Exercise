@@ -436,4 +436,9 @@ export class Population {
   get signalHeadsShown(): number {
     return this.shownApproaches.length;
   }
+
+  /** The roads traffic drives on round the player (police cars chase along them; rebuilt as the player moves). */
+  get roadGraph(): RoadGraph {
+    return this.driveGraph;
+  }
 }

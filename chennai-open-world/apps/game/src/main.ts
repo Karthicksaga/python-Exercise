@@ -15,6 +15,10 @@ declare global {
       setHealth(health: number): void;
       /** Hold a pedestrian standing at a point until a vehicle hits them; false when nobody is free. */
       stagePedestrian(x: number, z: number, heading: number): boolean;
+      /** Tests only: set the wanted level (0 to 5 stars), e.g. to look at a three-star chase. */
+      setWanted(stars: number): void;
+      /** Tests only: give the player this many pistol rounds (to fire in the street). */
+      giveAmmo(rounds: number): void;
     };
   }
 }
@@ -37,6 +41,9 @@ async function boot(): Promise<void> {
       railAdvance: (seconds) => game.railway?.advance(seconds),
       setHealth: (health) => game.debugSetHealth(health),
       stagePedestrian: (x, z, heading) => game.stagePedestrian(x, z, heading),
+      // For tests only (police.spec.ts): jump to a wanted level, and have rounds to fire.
+      setWanted: (stars) => game.debugSetWanted(stars),
+      giveAmmo: (rounds) => game.debugGiveAmmo(rounds),
     };
     game.start();
     loading.remove();

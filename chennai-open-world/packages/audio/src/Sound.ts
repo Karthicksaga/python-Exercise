@@ -46,6 +46,7 @@ export class Sound {
   suspend(): void {
     this.setEngine(null);
     this.setSiren(false);
+    this.setPoliceSiren(null);
     this.setSkid(null);
   }
 
@@ -140,6 +141,46 @@ export class Sound {
     oscillator.start();
     wobble.start();
     this.siren = { oscillator, wobble, gain };
+  }
+
+  private policeSiren: { oscillator: OscillatorNode; wobble: OscillatorNode; gain: GainNode } | null = null;
+
+  /**
+   * A police car's siren somewhere near: a faster wail than the ambulance's, as loud as the car
+   * is near. Null switches it off.
+   * @param level 0 (barely heard) to 1 (right beside the player)
+   */
+  setPoliceSiren(level: number | null): void {
+    const { context, master } = this;
+    if (!context || !master) return;
+    if (level === null || level <= 0) {
+      if (!this.policeSiren) return;
+      const { oscillator, wobble, gain } = this.policeSiren;
+      gain.gain.setTargetAtTime(0, context.currentTime, 0.08);
+      oscillator.stop(context.currentTime + 0.4);
+      wobble.stop(context.currentTime + 0.4);
+      this.policeSiren = null;
+      return;
+    }
+    if (!this.policeSiren) {
+      // A square-ish wobble flips the pitch quickly between about 700 and 1100 Hz.
+      const oscillator = context.createOscillator();
+      const wobble = context.createOscillator();
+      const depth = context.createGain();
+      const gain = context.createGain();
+      oscillator.type = "sawtooth";
+      oscillator.frequency.value = 900;
+      wobble.type = "triangle";
+      wobble.frequency.value = 1.6;
+      depth.gain.value = 200;
+      wobble.connect(depth).connect(oscillator.frequency);
+      gain.gain.value = 0;
+      oscillator.connect(gain).connect(master);
+      oscillator.start();
+      wobble.start();
+      this.policeSiren = { oscillator, wobble, gain };
+    }
+    this.policeSiren.gain.gain.setTargetAtTime(0.05 * Math.min(1, level), context.currentTime, 0.1);
   }
 
   /** Coins for a paid job. */

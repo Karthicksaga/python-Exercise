@@ -3,13 +3,13 @@
  * and the answers to the two questions the combat rules ask about the world.
  */
 import * as THREE from "three";
-import type { Combat, CombatWorld, Enemy } from "@cow/combat";
+import { isPoliceGroup, type Combat, type CombatWorld, type Enemy } from "@cow/combat";
 import type { KinematicBox, PhysicsWorld } from "@cow/physics";
 import type { HumanAssets, HumanFigure } from "@cow/player";
 
 const CHEST = 1.2;
-/** Enemy clothing tints: unarmed thugs in maroon, armed ones in near-black. */
-const TINT = { unarmed: 0xb04a4a, armed: 0x4a4a55 } as const;
+/** Enemy clothing tints: unarmed thugs in maroon, armed ones in near-black, police officers in khaki. */
+const TINT = { unarmed: 0xb04a4a, armed: 0x4a4a55, police: 0xa88e5c } as const;
 
 interface Body {
   readonly figure: HumanFigure;
@@ -65,7 +65,7 @@ export class Fighters {
   private body(enemy: Enemy): Body {
     let body = this.bodies.get(enemy.id);
     if (!body) {
-      const figure = this.humans.create(enemy.armed ? TINT.armed : TINT.unarmed, true);
+      const figure = this.humans.create(isPoliceGroup(enemy.group) ? TINT.police : enemy.armed ? TINT.armed : TINT.unarmed, true);
       // A boss is visibly bigger.
       if (enemy.maxHealth > 150) figure.object.scale.setScalar(1.18);
       this.scene.add(figure.object);
