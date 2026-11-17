@@ -242,3 +242,14 @@ If an agent branch is behind its snapshot, start from the snapshot.
 If this session stops, continue from those branches. Read the newest entry at the end of this
 file on each branch (its "where I left off"), run `npm run typecheck && npm test` and the
 browser tests, then merge into `feat/chennai-open-world` one at a time.
+
+## 17 Nov 2026: all agents stopped by the user; state of each branch
+Every agent's work is committed and pushed. None is merged into `feat/chennai-open-world` yet.
+| Branch | Head | State |
+|---|---|---|
+| `agent/places-activities` | 2768287 | Ready: typecheck, unit 219/219, own browser spec 6/6. Risk: `jobs.spec.ts` (ambulance run, Marina drive) failed in a loaded shared-port run; check it first |
+| `agent/railway` | 1b036f9 | Ready: typecheck, unit 218/218, own browser spec 3/3; +5 draw calls, +23k triangles beside Egmore |
+| `agent/share-auto` | ae9a205 | Unfinished: rules and own spec passed earlier; kerb passengers were not showing; full suite not passed |
+| `agent/pedestrian-hits` | 45c680f | Unfinished (WIP): injured case passed; the killed-case browser test had not passed |
+| `agent/controls-poses` | fa15c1f | Unfinished (WIP): riding poses and P/R/D gear buttons in progress; edits to `handling.spec.ts` and `jobs.spec.ts` uncommitted until the stop, unverified |
+Each branch's own `docs/handoff.md` has the agent's "where I left off" notes. The `*-snapshot` branches are older backups; the branches above supersede them.
