@@ -1,8 +1,39 @@
 # Progress, testing and known issues
 
-Last updated: 17 Nov 2026 (suburban railway).
+Last updated: 17 Nov 2026 (police and wanted level).
 
 ## What exists
+
+- **Police and a wanted level (17 Nov, `agent/police`; unit-tested and browser-tested in headless
+  Chromium, not on the emulator or a phone):** 0–5 stars. Rules in `packages/combat/src/Wanted.ts`
+  (pure); every number is a game-design estimate. Crimes and heat points: a gun fired in the
+  street 1 (one report per 3 s of firing; not counted within 60 m of a story fight's enemies),
+  hurting a pedestrian 3 (at least 1 star), killing one 6 (at least 2), taking a vehicle that
+  isn't yours 1, driving into a police car 2, shooting one 2, hitting an officer 4 (at least 2),
+  knocking one out 10 (at least 3); stars start at 1, 5, 12, 22, 35 points. **Theft:** the start
+  hatchback, bike and auto are the player's; any other parked vehicle (free-roam extras, the
+  ambulance, the bus, job vehicles) is theft unless the current job or story step asks for that
+  kind; each vehicle is reported once. **Losing them:** one star drops after 30/40/55/70/85 s
+  (by level) with no police unit seeing the player (cars see 70 m, officers 45 m, with a clear
+  line); a sighting or a new crime restarts the wait. **Busted** (1–2 stars): kept still on foot
+  within 3.2 m of an officer for 2 s: fine ₹500/1,000 (₹2,000–5,000 at higher levels, unused
+  since arrests stop at 2), pistol rounds taken, released on the pavement outside the nearest
+  police station (the 37 OSM `amenity=police` points; names not shown), the stage objective
+  starts again. **Wasted** (knocked out) clears the level too. **Units** (`apps/game/src/Police.ts`):
+  at most 1/2/2/3/3 cars and 2/2/3/4/4 officers by level. Cars appear 80–140 m from where the
+  player was last seen, out of the player's sight, and chase on the traffic's road graph
+  (`Pursuer`, A*, `packages/ai/src/Pursuit.ts`), straight at the player within 35 m; they stop
+  9 m short and two officers get out (Combat enemies, khaki tint). Below 3 stars officers walk up
+  to arrest; from 3 they come out armed and shoot with the enemy rules, and cars ram a moving
+  vehicle (shunts) and box in a stopped one. Unseen for 3 s, cars search the streets within
+  120 m of the last sighting. Traffic gives way to police cars and pulls over for the nearest
+  one's siren. Livery: white body, khaki band with POLICE on both sides, red/blue light bar
+  (invented; no real force's emblem). **HUD:** five stars under the money line, flashing red/blue
+  while seen; police cars flash red/blue and officers are blue dots on the minimap; a synthesised
+  siren (`Sound.setPoliceSiren`) as loud as the nearest chasing car is near (within 250 m).
+  **Jobs:** from 2 stars the job board takes no new jobs ("Lose them first"); a job already
+  running can still be finished or quit; an arrest doesn't quit it (its clock usually runs out).
+  The wanted level is not saved. Test hooks: `__cow.setWanted`, `__cow.giveAmmo`.
 
 - **Suburban railway with trains you can ride (17 Nov; unit-tested and browser-tested in headless
   Chromium, not on the emulator or a phone):** the Beach–Tambaram line from OpenStreetMap (the
