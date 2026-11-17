@@ -23,6 +23,8 @@ export class Vehicle {
   private readonly seatPoint = new THREE.Vector3();
   private last: { x: number; z: number; vx: number; vz: number } | null = null;
   private impact = 0;
+  /** Velocity before anything was hit in the last step (see `approachVelocity`). */
+  private approach = { x: 0, z: 0 };
   private sirenOn = false;
   private sirenClock = 0;
 
@@ -73,11 +75,30 @@ export class Vehicle {
     if (!this.sirenOn) for (const material of this.model.beacons ?? []) material.emissiveIntensity = 0.2;
   }
 
+  /**
+   * Velocity over the ground as it was before the last step's collision, if there was one
+   * (otherwise the current velocity). A person's body can stop the vehicle in the physics step
+   * before the game sees the hit; the hit's speed is the speed the vehicle came in at.
+   */
+  approachVelocity(): { x: number; z: number } {
+    return this.approach;
+  }
+
   /** Strength of a crash in the last step (change of speed, m/s), then 0 until the next one. */
   consumeImpact(): number {
     const impact = this.impact;
     this.impact = 0;
     return impact;
+  }
+
+  /**
+   * Lose some speed without it counting as a crash (hitting a person): scales the velocity and
+   * the crash detector's memory of it alike. @param keep share of speed kept, 0 to 1
+   */
+  knock(keep: number): void {
+    this.body.damp(keep);
+    if (this.last) this.last = { ...this.last, vx: this.last.vx * keep, vz: this.last.vz * keep };
+    this.approach = { x: this.approach.x * keep, z: this.approach.z * keep };
   }
 
   /**
@@ -111,6 +132,7 @@ export class Vehicle {
         this.body.damp(CRASH_KEEP);
       }
     }
+    this.approach = last && Math.hypot(v.x - last.vx, v.z - last.vz) > IMPACT ? { x: last.vx, z: last.vz } : { x: v.x, z: v.z };
     const after = this.body.planarVelocity();
     this.last = { x: p.x, z: p.z, vx: after.x, vz: after.z };
     this.body.drive(controls ?? IDLE, dt);

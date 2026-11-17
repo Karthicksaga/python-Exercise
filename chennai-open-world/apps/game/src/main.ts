@@ -13,6 +13,8 @@ declare global {
       railAdvance(seconds: number): void;
       /** Tests only: set the player's health (to check that treatment and rest restore it). */
       setHealth(health: number): void;
+      /** Hold a pedestrian standing at a point until a vehicle hits them; false when nobody is free. */
+      stagePedestrian(x: number, z: number, heading: number): boolean;
     };
   }
 }
@@ -34,6 +36,7 @@ async function boot(): Promise<void> {
       // For tests only: trains run on a timetable; a test skips the wait for the next one.
       railAdvance: (seconds) => game.railway?.advance(seconds),
       setHealth: (health) => game.debugSetHealth(health),
+      stagePedestrian: (x, z, heading) => game.stagePedestrian(x, z, heading),
     };
     game.start();
     loading.remove();
