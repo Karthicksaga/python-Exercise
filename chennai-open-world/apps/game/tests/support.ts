@@ -26,6 +26,8 @@ export interface Snapshot {
   vehicles: Array<{ id: string; kind: string; x: number; z: number }>;
   traffic: Array<{ x: number; z: number; speed: number }>;
   pedestrians: number;
+  /** HUD gear while driving: P, R, N (a shift waiting for the vehicle to stop), D or D1…D5; "" on foot. */
+  gear: string;
 }
 
 interface DebugHandle {

@@ -193,9 +193,9 @@ export function gearFor(type: VehicleType, forwardSpeed: number, throttle: numbe
   return String(Math.min(type.gears, 1 + Math.floor(share * type.gears * 1.05)));
 }
 
-/** True when the HUD gear went up a forward gear (2 → 3), for the gear-change sound. */
+/** True when the HUD gear went up a forward gear (2 → 3, or D2 → D3), for the gear-change sound. */
 export function shiftedUp(from: string, to: string): boolean {
-  const a = Number(from);
-  const b = Number(to);
+  const a = Number(from.replace(/^D(?=\d)/, ""));
+  const b = Number(to.replace(/^D(?=\d)/, ""));
   return from !== "" && Number.isInteger(a) && Number.isInteger(b) && a >= 1 && b > a;
 }

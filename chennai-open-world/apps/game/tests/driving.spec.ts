@@ -1,8 +1,8 @@
 /** Vehicles, missions and saved progress. */
 import { expect, test } from "@playwright/test";
-import { board, holdButton, holdStick, ready, snapshot, tapButton, teleport, waitGameTime, GAME_WAIT } from "./support";
+import { board, holdButton, holdStick, ready, snapshot, tapButton, teleport, waitGameTime, GAME_WAIT, type Snapshot } from "./support";
 
-test("get in the car, drive, brake, reverse and get out", async ({ page }) => {
+test("get in the car, drive, brake and get out", async ({ page }) => {
   await ready(page);
   await board(page, "car-start");
   const start = await snapshot(page);
@@ -29,6 +29,82 @@ test("get in the car, drive, brake, reverse and get out", async ({ page }) => {
   const gap = Math.hypot(out.x - car.x, out.z - car.z);
   expect(gap).toBeGreaterThan(1.2);
   expect(gap).toBeLessThan(4);
+});
+
+/** Metres moved along the vehicle's heading between two snapshots (negative = backwards). */
+const along = (from: Snapshot, to: Snapshot) => (to.x - from.x) * -Math.sin(from.yaw) + (to.z - from.z) * -Math.cos(from.yaw);
+
+test("the gear selector: R reverses with GAS, P holds the car, D drives forwards", async ({ page }) => {
+  await ready(page);
+  await board(page, "car-start");
+  await expect(page.getByTestId("gear-selector")).toBeVisible();
+  // Getting in selects D.
+  expect((await snapshot(page)).gear).toBe("D");
+  await expect(page.getByRole("button", { name: "Drive", exact: true })).toHaveAttribute("aria-pressed", "true");
+
+  // R, then GAS: the car goes backwards.
+  await tapButton(page, "Reverse");
+  expect((await snapshot(page)).gear).toBe("R");
+  const start = await snapshot(page);
+  await holdButton(page, "Accelerate", 1500);
+  const reversed = await snapshot(page);
+  expect(reversed.gear).toBe("R");
+  expect(along(start, reversed)).toBeLessThan(-1.5);
+  await holdButton(page, "Brake", 1500);
+  await expect.poll(async () => (await snapshot(page)).speed, { timeout: GAME_WAIT }).toBeLessThan(0.5);
+
+  // P: GAS does nothing, and the car stays put.
+  await tapButton(page, "Park");
+  const parked = await snapshot(page);
+  expect(parked.gear).toBe("P");
+  await expect(page.getByRole("button", { name: "Park", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await holdButton(page, "Accelerate", 1500);
+  const held = await snapshot(page);
+  expect(Math.hypot(held.x - parked.x, held.z - parked.z)).toBeLessThan(0.2);
+  expect(held.speed).toBeLessThan(0.3);
+
+  // D, then GAS: forwards again.
+  await tapButton(page, "Drive");
+  const drive = await snapshot(page);
+  expect(drive.gear).toBe("D");
+  await holdButton(page, "Accelerate", 1500);
+  const ahead = await snapshot(page);
+  expect(along(drive, ahead)).toBeGreaterThan(2);
+  expect(ahead.gear).toMatch(/^D\d$/);
+});
+
+test("asking for R while moving brakes to a stop first, then reverses", async ({ page }) => {
+  await ready(page);
+  await board(page, "car-start");
+  await holdButton(page, "Accelerate", 2000);
+  expect((await snapshot(page)).speed).toBeGreaterThan(5);
+  await tapButton(page, "Reverse");
+  // Not engaged yet: the gearbox brakes (N on the HUD) and R blinks on the selector.
+  expect((await snapshot(page)).gear).toBe("N");
+  await expect(page.getByRole("button", { name: "Reverse", exact: true })).toHaveClass(/\bwait\b/);
+  await expect.poll(async () => (await snapshot(page)).gear, { timeout: GAME_WAIT }).toBe("R");
+  // Holding BRAKE once stopped does not reverse any more; GAS in R does.
+  const stopped = await snapshot(page);
+  expect(stopped.speed).toBeLessThan(1);
+  await holdButton(page, "Brake", 800);
+  expect(along(stopped, await snapshot(page))).toBeGreaterThan(-0.3);
+  const before = await snapshot(page);
+  await holdButton(page, "Accelerate", 1200);
+  expect(along(before, await snapshot(page))).toBeLessThan(-0.8);
+});
+
+test("in P the car can be left and stays where it was parked", async ({ page }) => {
+  await ready(page);
+  await board(page, "car-start");
+  await tapButton(page, "Park");
+  await tapButton(page, "Get out");
+  const out = await snapshot(page);
+  expect(out.mode).toBe("foot");
+  await expect(page.getByTestId("gear-selector")).toBeHidden();
+  const car = out.vehicles.find((v) => v.id === "car-start")!;
+  await waitGameTime(page, 1);
+  const later = (await snapshot(page)).vehicles.find((v) => v.id === "car-start")!;
+  expect(Math.hypot(later.x - car.x, later.z - car.z)).toBeLessThan(0.05);
 });
 
 test("the stick steers the car", async ({ page }) => {
