@@ -503,3 +503,26 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - **Next:** asked by the user: an animated get-in / get-out (doors opening and closing on the car,
   bus and train) and more missions with police, gangsters and more weapons. Then profile
   triangles at spawn; play on a phone (selector reach, poses, frame rate).
+
+## 17 Nov 2026: police and wanted level (branch `agent/police`): where I left off
+- **Done and tested** (details in `progress.md`, decision TD-21 — the gangs branch also added a
+  TD-21; renumber one at merge): 0–5 star wanted level, rules pure in
+  `packages/combat/src/Wanted.ts` (unit-tested); police cars chasing on the road graph
+  (`packages/ai/src/Pursuit.ts`, A*, unit-tested); `apps/game/src/Police.ts` glue (cars, officers as
+  `Combat` enemies in `police:` groups, HUD stars, minimap dots, siren, busted, theft);
+  `packages/ui/src/WantedStars.ts`; `apps/game/tests/police.spec.ts` (4 tests).
+- **Shared files touched (small, additive):** `Game.ts` (police field made in `create`,
+  `policeView`, `arrested`, `debugSetWanted`/`debugGiveAmmo`, calls in `fixedUpdate`, `fight`
+  (keeps police groups, reports gunfire), `pedestrianHit`, `knockedOut`, `newGame`, `openBoard`,
+  `frame`, minimap markers, snapshot `police` and story-only `enemies`); `main.ts` (`setWanted`,
+  `giveAmmo` test hooks); `Fighters.ts` (khaki tint for police groups); `Population.ts` (`roadGraph`
+  getter); `Sound.ts` (`setPoliceSiren`, and `suspend` stops it); index exports of `combat`, `ai`,
+  `ui`. `enterVehicle`/`leaveVehicle` untouched (theft is noticed from the driven vehicle's id).
+- **For the gangs merge:** shots within 60 m of a live non-police enemy are not reported (story
+  fights). An arrest sets `combat.ammo = 0`; if the weapons branch adds an inventory, empty it in
+  `Game.arrested` too.
+- **Not done / uncertain:** officers have no arrest animation (they stand beside the player);
+  police cars drive through other traffic when it doesn't pull over in time (kinematic, no
+  collision between agents); the khaki tint reads brownish at golden hour; the wanted level is
+  not saved. Triangles go over the 300k budget at the spawn street during a chase (see
+  `progress.md`). Not tried on the emulator or a phone.
