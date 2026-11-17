@@ -41,7 +41,8 @@ describe("rival gangs", () => {
           // Beside a street: on the pavement, not in the middle of the carriageway.
           const road = nearestRoadPoint(city, m)!;
           expect(road.distance, `${crew.id} member`).toBeGreaterThan(road.road.width / 2 - 0.5);
-          expect(road.distance, `${crew.id} member`).toBeLessThan(road.road.width / 2 + 4);
+          // ...and within a pavement's depth of it (8 m: the nearest street can be a lane beside the corner).
+          expect(road.distance, `${crew.id} member`).toBeLessThan(Math.max(8, road.road.width / 2 + 4));
         }
         // One with a pistol, one with a bat, one with bare fists.
         expect(crew.members.map((m) => m.weapon).sort()).toEqual(["bat", "fists", "pistol"]);

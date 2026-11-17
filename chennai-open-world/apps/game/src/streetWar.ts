@@ -146,7 +146,7 @@ export function buildStreetWar(city: WorldMap): StreetWar {
     // [road, metres along it from the point nearest the district centre, side]
     puli: [["Royapettah High Road", 0, 1], ["Bharathi Salai", -60, -1]],
     nandu: [["Triplicane High Road", 40, 1], ["KMS Street", 0, -1]],
-    paambu: [["Pantheon Road", -40, 1], ["Halls Road", 30, -1]],
+    paambu: [["Casa Major Road", 0, 1], ["Halls Road", 30, -1]],
   };
   // Each crew: someone with a pistol, someone with a bat, and one with bare fists.
   const crewArms: ReadonlyArray<readonly [WeaponId]> = [["pistol"], ["bat"], ["fists"]];
@@ -154,8 +154,17 @@ export function buildStreetWar(city: WorldMap): StreetWar {
     const centre = district(g.district);
     (corners[g.id] ?? []).forEach(([road, metres, side], i) => {
       const base = snap(centre, road);
-      const spot = snap(along(base, metres), road);
-      const members = huddle(spot, side, crewArms, g.colour, true);
+      // Slide along the road until the whole crew stands beside it, not out in a junction
+      // where another road is nearer.
+      let members = huddle(snap(along(base, metres), road), side, crewArms, g.colour, true);
+      for (const slide of [30, -30, 60, -60, 90, -90]) {
+        const clear = members.every((m) => {
+          const hit = nearestRoadPoint(city, m);
+          return hit !== null && hit.distance > hit.road.width / 2 - 0.5;
+        });
+        if (clear) break;
+        members = huddle(snap(along(base, metres + slide), road), side, crewArms, g.colour, true);
+      }
       crews.push({ id: `gang:${g.id}:${i}`, gang: g.id, ...round(members[1]!), members });
     });
   }
