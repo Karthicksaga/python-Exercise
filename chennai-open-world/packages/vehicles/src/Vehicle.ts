@@ -27,6 +27,7 @@ export class Vehicle {
   private approach = { x: 0, z: 0 };
   private sirenOn = false;
   private sirenClock = 0;
+  private doorAmount = 0;
 
   constructor(
     readonly id: string,
@@ -62,6 +63,18 @@ export class Vehicle {
     const seat = this.type.driver;
     const at = this.object.localToWorld(this.seatPoint.set(seat.x, seat.y, seat.z));
     return { x: at.x, y: at.y, z: at.z, quaternion: this.object.quaternion };
+  }
+
+  /** How far the driver's door is open, 0 shut to 1 fully open (always 0 without a door). */
+  get door(): number {
+    return this.doorAmount;
+  }
+
+  /** Swing the driver's door (`Boarding` decides how far). Ignored on vehicles without one. */
+  setDoor(amount: number): void {
+    if (!this.model.door) return;
+    this.doorAmount = Math.min(1, Math.max(0, amount));
+    this.model.door(this.doorAmount);
   }
 
   get siren(): boolean {

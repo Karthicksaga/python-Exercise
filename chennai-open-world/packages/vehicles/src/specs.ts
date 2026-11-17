@@ -22,6 +22,30 @@ export interface RidePose {
 /** Hands at ten to two on a steering wheel in front of the chest, feet on the pedals. */
 const STEERING: RidePose = { lean: -0.1, hand: { x: 0.17, y: 0.3, z: -0.42 }, foot: { x: 0.12, y: -0.15, z: -0.78 } };
 
+/** How a vehicle's door opens: on a hinge at its front edge, two folding leaves (a bus), or no door. */
+export type DoorType = "hinged" | "folding" | "none";
+
+/**
+ * How the driver gets in and out (`Boarding.ts`). Chassis frame, metres: +X right, -Z forwards,
+ * y up from the chassis centre. India drives on the left, so car and ambulance drivers get in on
+ * the right; the bus driver uses the front door on the kerb (left) side. Positions are measured
+ * off `models.ts`; where a real vehicle's is not known (floor heights) they are estimates.
+ */
+export interface VehicleEntry {
+  /** Side the driver gets in: 1 right, -1 left. */
+  readonly side: 1 | -1;
+  /** Where the driver stands outside, beside the door, on the ground. */
+  readonly point: { readonly x: number; readonly z: number };
+  readonly door: DoorType;
+  /**
+   * How the body gets onto the seat: "door" sit down through a doorway, "step" step in sideways
+   * (the open-sided auto), "swing" swing a leg over the seat (motorbike).
+   */
+  readonly style: "door" | "step" | "swing";
+  /** Standing points on the floor inside (y above the chassis centre), walked between the door and the seat (the bus). */
+  readonly aisle?: ReadonlyArray<{ readonly x: number; readonly y: number; readonly z: number }>;
+}
+
 export interface VehicleType {
   readonly kind: VehicleKind;
   /** Name shown to the player. */
@@ -48,6 +72,8 @@ export interface VehicleType {
   readonly gears: number;
   /** Has a siren and lights (the horn button switches them). */
   readonly siren?: boolean;
+  /** Where and how the driver gets in. */
+  readonly entry: VehicleEntry;
 }
 
 export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
@@ -57,6 +83,8 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     rideHeight: 0.72,
     driver: { x: 0.36, y: -0.03, z: 0.1 },
     pose: STEERING,
+    // Driver's door: front edge (hinge) at z -0.55, rear edge 0.5. Stand behind the open door.
+    entry: { side: 1, point: { x: 1.25, z: 0.35 }, door: "hinged", style: "door" },
     cameraDistance: 8.5,
     gears: 5,
     physics: {
@@ -88,6 +116,8 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     // figure's head clears the canopy (inside 1.016 m up). Real drivers duck under it too.
     driver: { x: 0, y: 0.22, z: -0.4 },
     pose: { lean: 0.45, hand: { x: 0.335, y: 0.25, z: -0.38 }, foot: { x: 0.16, y: -0.37, z: -0.24 } },
+    // Open sides, no door: the driver steps in from the kerb (left) side (estimated; either side is used).
+    entry: { side: -1, point: { x: -0.95, z: -0.4 }, door: "none", style: "step" },
     physics: {
       halfExtents: { x: 0.66, y: 0.45, z: 1.3 },
       mass: 420,
@@ -114,6 +144,8 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     // Front of the seat (top 0.245 m), grips at (±0.33, 0.52, -0.42), pegs at (±0.24, -0.265, 0.12): `models.ts`.
     driver: { x: 0, y: 0.345, z: 0.2 },
     pose: { lean: 0.5, hand: { x: 0.33, y: 0.175, z: -0.62 }, foot: { x: 0.23, y: -0.5, z: -0.03 }, knees: 1 },
+    // Riders mount from the left, the side stand's side, and swing the right leg over.
+    entry: { side: -1, point: { x: -0.7, z: 0.2 }, door: "none", style: "swing" },
     leans: true,
     physics: {
       halfExtents: { x: 0.32, y: 0.36, z: 1.0 },
@@ -139,6 +171,8 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     siren: true,
     driver: { x: 0.45, y: 0.15, z: -0.7 },
     pose: { lean: -0.05, hand: { x: 0.17, y: 0.3, z: -0.42 }, foot: { x: 0.12, y: -0.38, z: -0.7 } },
+    // Cab door on the right: hinge at z -1.25 (behind the windscreen), rear edge at the seam, z -0.42.
+    entry: { side: 1, point: { x: 1.5, z: -0.5 }, door: "hinged", style: "door" },
     physics: {
       halfExtents: { x: 0.98, y: 0.8, z: 2.5 },
       mass: 2300,
@@ -161,6 +195,18 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     rideHeight: 1.25,
     driver: { x: 0.8, y: 0.3, z: -4.0 },
     pose: { lean: 0, hand: { x: 0.2, y: 0.25, z: -0.42 }, foot: { x: 0.12, y: -0.42, z: -0.62 } },
+    // Front door on the kerb (left) side, 1.1 m wide at z -3.6; then across the floor to the
+    // driver's seat on the right. Floor 0.9 m above the ground (estimated: one step up).
+    entry: {
+      side: -1,
+      point: { x: -1.85, z: -3.6 },
+      door: "folding",
+      style: "door",
+      aisle: [
+        { x: -0.8, y: -0.35, z: -3.6 },
+        { x: 0.25, y: -0.35, z: -3.85 },
+      ],
+    },
     cameraDistance: 15,
     gears: 5,
     physics: {
