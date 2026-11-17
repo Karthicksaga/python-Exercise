@@ -488,13 +488,18 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - **Done:** the five merged features plus Android only (TD-20) pass the full browser suite run alone:
   55/55 on the first run, no test changed to pass. Then HORN / SIREN moved out from under the
   minimap (it was unreachable while driving) with a new layout test that fails on the old CSS; the
-  rerun is FINAL_RUN. Unit 301/301 (four keyboard Gearbox tests removed with the keyboard), typecheck clean.
+  final run is 56/56 (16.6 min). Unit 303/303 (four keyboard Gearbox tests removed with the keyboard,
+  two grip tests added), typecheck clean.
 - **Checked by eye** (screenshots, not committed): bike, auto and share-auto poses and seats, the
   P / R / D column at 915×412; details in `progress.md`. The kerb passengers and the pedestrian
   killed case pass in the suite.
 - **Cost at `?quality=lite`** (production build, software GPU): spawn 207 draw calls / 300k
   triangles, T. Nagar 158 / 271k, Anna Salai 154 / 230k, Egmore 164 / 216k. Spawn is at the
   300k triangle budget: profile which meshes grew since 16 Nov (165k) before adding more there.
+- **Fixed after a screenshot from the user:** the hands sat open and flat on the auto's handlebar; the
+  solver now closes the fingers round the grip (`RidingPose.grip`).
 - **Not done:** steering animation (hands do not turn the bars or wheel); no modelled steering
   wheel, so car and bus drivers stay hidden; nothing tried on a real phone.
-- **Next:** profile triangles at spawn; play on a phone (selector reach, poses, frame rate).
+- **Next:** asked by the user: an animated get-in / get-out (doors opening and closing on the car,
+  bus and train) and more missions with police, gangsters and more weapons. Then profile
+  triangles at spawn; play on a phone (selector reach, poses, frame rate).
