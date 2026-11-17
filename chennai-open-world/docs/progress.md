@@ -48,7 +48,15 @@ Last updated: 17 Nov 2026.
     `apps/game/tests/places.spec.ts` (6, pass): old save + home sleep and clothes + reload;
     hospital fee and free after the ambulance; gym fitness once a day and run speed; mall
     escalator time, snack, shirt and socks; cinema ticket, scenes, popcorn and hours passed;
-    the Paati story end to end by teleport. Not covered in the browser: the gym bet and first-show
+    the Paati story end to end by teleport (6/6 again on 18 Nov with `PW_PORT=4293`, 3.6 min).
+    One full run on this branch (17 Nov, 44 tests, 18.3 min at load average about 19 with
+    other agents' suites running): 42 passed; the ambulance run and the T. Nagar street-name
+    check failed on wall-clock limits, and the job tests failed again on reruns. Those runs used
+    the shared port 4173 with `reuseExistingServer`, so they may have tested another checkout's
+    build (base and branch measured identical draw calls, which the entrance markers by the spawn
+    should change). `playwright.config.ts` now takes `PW_PORT`. **The full suite on this branch
+    still needs a clean run on its own port** (the coordinator runs it on the merged code).
+    Not covered in the browser: the gym bet and first-show
     stories (unit-tested), the 3D markers' look, and whether the sprint boost is felt.
 - **Facade kit: sunshades, balconies, shop fronts and Tamil signboards (Phase 3, 16 Nov;
   unit-tested, and looked at in headless Chromium by day and at 21:00, not on a phone):**

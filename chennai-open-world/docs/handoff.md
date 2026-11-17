@@ -230,6 +230,14 @@ desktop instructions.
 - **Merge note:** the share-auto and pedestrian branches also edit `Game.ts` and
   `packages/missions`; this branch does not edit `content.ts`, `cityJobs.ts`, `JobDesk.ts`,
   `jobs.ts`, `Population.ts` or `packages/combat`.
+- **Test status:** typecheck clean, unit 219/219, `places.spec.ts` 6/6 on its own port
+  (`PW_PORT=4293`, new in `playwright.config.ts`). The full browser suite has not passed on
+  this branch yet: one loaded run was 42/44 and reruns of `jobs.spec.ts` failed the two jobs
+  whose first stop needs a wait. Those runs shared port 4173 with other agents'
+  `reuseExistingServer` servers, so they may not have tested this build. First step for whoever
+  picks this up: `PW_PORT=4294 npx playwright test tests/jobs.spec.ts` on a quiet machine. If
+  it still fails, look at `Game.fixedUpdate` (the `placeDesk.fixedUpdate` call and the
+  story check before `missions.update`).
 - **Not done / next:** play it on the emulator and a phone (the place screen's layout at small
   heights, the TAP timing by touch); sounds don't play inside places because holding the game
   suspends audio; a browser test for the gym bet and first-show stories; the knock-out bill could
