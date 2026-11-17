@@ -236,6 +236,8 @@ export class Game {
   private lastPedestrianHit: GameSnapshot["lastPedestrianHit"] = null;
   /** Getting in and out of vehicles as an animated sequence (`Boarder.ts`). */
   private readonly boarder: Boarder;
+  /** The controls are hidden for a walk through a train's doorway. */
+  private railWalk = false;
 
   private constructor(
     private readonly map: WorldMap,
@@ -1109,7 +1111,16 @@ export class Game {
       this.camera.update(dt, at, this.physics, this.player.body);
       this.hud.setSpeed(null);
       this.nearby = null;
+      if (!this.railWalk) this.controls.setMode("busy");
+      this.railWalk = true;
       this.controls.setAction(this.railway.action);
+    } else if (this.railWalk) {
+      // The walk through the doorway is over: the foot controls come back.
+      this.railWalk = false;
+      this.controls.setMode("foot");
+    }
+    if (this.boarder.busy || this.railway?.walking) {
+      // Drawn above.
     } else if (ride) {
       // On a train: the camera follows it; the rider is inside, out of sight.
       this.camera.chase(ride, dt);
