@@ -1,6 +1,6 @@
 /** Weapons: the weapon button, pickups in the world, switching, ammunition and saving. */
 import { expect, test, type Page } from "@playwright/test";
-import { GAME_WAIT, holdButton, ready, snapshot, tapButton, teleport, waitGameTime } from "./support";
+import { GAME_WAIT, board, holdButton, ready, snapshot, tapButton, teleport, waitGameTime } from "./support";
 
 interface Arms {
   x: number;
@@ -42,9 +42,8 @@ test("on foot the weapon button sits clear of every other control and the minima
   // The joystick's half of the screen stays free of it.
   expect(boxes[3]![1].x).toBeGreaterThan(viewport.width * 0.45);
   // Hidden while driving (the gear selector is there then).
-  const car = (await snapshot(page)).vehicles.find((v) => v.id === "car-start")!;
-  await teleport(page, car.x + 2, car.z);
-  await tapButton(page, "Get in");
+  // Seated and driving, not just mid-way through getting in (when every button is hidden).
+  await board(page, "car-start");
   await expect(weapon).toBeHidden();
 });
 

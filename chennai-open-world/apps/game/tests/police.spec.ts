@@ -1,6 +1,6 @@
 /** Police and the wanted level: crimes give stars, police cars come, the stars fade when lost, arrests. */
 import { expect, test, type Page } from "@playwright/test";
-import { board, ready, snapshot, teleport, waitGameTime } from "./support";
+import { board, getOut, ready, snapshot, teleport, waitGameTime } from "./support";
 
 interface PoliceState {
   stars: number;
@@ -117,8 +117,8 @@ test("standing still next to an officer at one star gets the player busted", asy
 test("taking someone else's parked car gives a star, and at two stars the job board is closed", async ({ page }) => {
   await start(page);
   await board(page, "car-start"); // the player's own hatchback: no crime
-  await page.getByRole("button", { name: "Get out", exact: true }).dispatchEvent("pointerdown", { pointerId: 41, pointerType: "touch" });
-  await expect.poll(async () => (await state(page)).mode).toBe("foot");
+  // Getting out is an animated sequence now (door, step out): wait for it in game time.
+  await getOut(page);
   expect((await state(page)).police.stars).toBe(0);
   await board(page, "car-1"); // parked by someone else, for free roaming
   await expect.poll(async () => (await state(page)).police.stars).toBe(1);
