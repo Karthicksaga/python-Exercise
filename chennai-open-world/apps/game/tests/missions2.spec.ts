@@ -3,7 +3,7 @@
  * the long drives across town, as `combat.spec.ts` does for stages 7 and 8).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { GAME_WAIT, board, holdButton, ready, snapshot, teleport, waitGameTime } from "./support";
+import { GAME_WAIT, board, holdButton, probe, ready, snapshot, teleport, waitGameTime } from "./support";
 
 const FIRST_TEN = ["morning-walk", "borrowed-wheels", "auto-shift", "parcel-run", "cross-town", "bike-courier", "park-trouble", "bike-thieves", "godown-raid", "roundtana-showdown"];
 const LATER = ["courier-chase", "tea-shop", "drive-by", "snake-pit", "turf-war"];
@@ -45,7 +45,7 @@ async function goToTarget(page: Page): Promise<void> {
   await teleport(page, s.target!.x, s.target!.z);
 }
 
-/** Beat the stage's group: stand 7 m from each enemy in turn, facing it, and hold FIRE. */
+/** Beat the stage's group: stand 6 m from each enemy in turn, facing it, and hold FIRE. */
 async function shootItOut(page: Page, objective: string, group: string, restart: string): Promise<void> {
   for (let round = 0; round < 80; round++) {
     const s = await state(page);
@@ -61,9 +61,19 @@ async function shootItOut(page: Page, objective: string, group: string, restart:
       await waitGameTime(page, 0.3);
       continue;
     }
-    // From the side the player is on, so the shot isn't through a wall.
-    const away = Math.hypot(s.x - enemy.x, s.z - enemy.z) || 1;
-    const from = { x: enemy.x + ((s.x - enemy.x) / away) * 6, z: enemy.z + ((s.z - enemy.z) / away) * 6 };
+    // Stand 6 m off in a direction with nothing solid between (the ray starts clear of the
+    // enemy's own collision box), trying the side the player is on first.
+    const toward = Math.atan2(s.x - enemy.x, s.z - enemy.z);
+    let from = { x: enemy.x + Math.sin(toward) * 6, z: enemy.z + Math.cos(toward) * 6 };
+    for (let k = 0; k < 8; k++) {
+      const a = toward + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 4);
+      const dx = Math.sin(a);
+      const dz = Math.cos(a);
+      if ((await probe(page, enemy.x + dx * 0.7, enemy.z + dz * 0.7, dx, dz, 6)) === null) {
+        from = { x: enemy.x + dx * 6, z: enemy.z + dz * 6 };
+        break;
+      }
+    }
     await teleport(page, from.x, from.z, Math.atan2(-(enemy.x - from.x), -(enemy.z - from.z)));
     await heal(page);
     // A line per few rounds, so a failure shows how the fight went.

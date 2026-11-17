@@ -87,7 +87,9 @@ export function buildStreetWar(city: WorldMap): StreetWar {
   /** People a few metres apart along the pavement round a point, facing the road. */
   const huddle = (centre: Hit, side: 1 | -1, people: ReadonlyArray<readonly [WeaponId, number?]>, tint: number, calm: boolean): EnemySpot[] =>
     people.map(([weapon, health], i) => {
-      const spot = pavement({ ...centre, ...along(centre, (i - (people.length - 1) / 2) * 2.2) }, side, 1.2 + (i % 2) * 0.9);
+      // Just off the carriageway: pavements are not mapped and on many streets the buildings
+      // start a metre or two further back (a figure placed inside one could never be reached).
+      const spot = pavement({ ...centre, ...along(centre, (i - (people.length - 1) / 2) * 2.2) }, side, 0.5 + (i % 2) * 0.5);
       return { ...spot, armed: weapon === "pistol" || weapon === "shotgun" || weapon === "smg", weapon, tint, ...(calm ? { calm } : {}), ...(health ? { health } : {}) };
     });
 
