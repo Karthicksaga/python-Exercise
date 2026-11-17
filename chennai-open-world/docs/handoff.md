@@ -447,3 +447,21 @@ and browser tests were not run on this branch (no code changed).
   hidden there). Seen in the screenshots, not fixed: the HORN button sits under the minimap's
   lower edge while driving (it was there before this change).
 - **Not tested on a phone.** Check the selector's reach and the poses on a real device.
+
+## 17 Nov 2026: all five agent branches merged into `feat/chennai-open-world` (browser tests NOT run)
+Merged on the user's instruction, in this order, with typecheck, unit tests and build after each
+(final: typecheck clean, unit **305/305**, build OK): `agent/railway`, `agent/places-activities`,
+`agent/share-auto`, `agent/pedestrian-hits`, `agent/controls-poses`. **The browser suite was not
+run on the merged code** (the user chose to skip it); other agents are expected to fix what breaks.
+
+Conflict resolutions to check (all are in the merge commits' messages):
+- Context button: the train's BOARD / STEP OFF first, then a vehicle's ENTER, then a place's "Go inside".
+- Driving input now goes through the Gearbox (P / R / D) from `agent/controls-poses`; the
+  railway's "not while riding" branch is kept. Existing driving and job tests were edited on that
+  branch and never verified.
+- `ShareRiders.ts`: seated figures are now placed by their hips with a pose; share-auto passengers
+  got an estimated `PASSENGER` pose and hip-height seats. Not checked by eye.
+
+Run first: `cd apps/game && PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off`
+(one run at a time on this machine). Known risks: `jobs.spec.ts` (ambulance run, Marina drive),
+`pedestrians.spec.ts` killed case, `shareAuto.spec.ts` kerb passengers, `handling.spec.ts`.
