@@ -29,6 +29,8 @@ export interface ControlState {
   horn: boolean;
   /** Gear asked for on the selector (driving); cleared by `consumeGear()`. */
   gear: GearButton | null;
+  /** Set when the weapon button is pressed (on foot); cleared by `consumeWeaponSwitch()`. */
+  weaponSwitch: boolean;
 }
 
 /** The gear selector's positions: park, reverse, drive. */
@@ -58,6 +60,9 @@ const STYLE = `
 .cow-button.fire{right:calc(124px + env(safe-area-inset-right));bottom:calc(92px + env(safe-area-inset-bottom));width:68px;height:68px;background:rgba(170,40,40,.6)}
 .cow-button.fire small{display:block;font:600 10px ui-monospace,monospace;opacity:.9}
 .cow-button.hit{right:calc(122px + env(safe-area-inset-right));bottom:calc(16px + env(safe-area-inset-bottom));width:64px;height:64px;background:rgba(60,70,110,.6)}
+.cow-button.weapon{right:calc(208px + env(safe-area-inset-right));bottom:calc(40px + env(safe-area-inset-bottom));width:78px;height:50px;border-radius:14px;
+  background:rgba(25,28,40,.6);font:700 11px system-ui,sans-serif;letter-spacing:.3px;line-height:1.15}
+.cow-button.weapon small{display:block;font:600 10px ui-monospace,monospace;opacity:.85}
 .cow-button.horn{right:calc(144px + env(safe-area-inset-right));bottom:calc(124px + env(safe-area-inset-bottom));width:52px;height:52px;font-size:10px}
 .cow-gears{position:absolute;right:calc(222px + env(safe-area-inset-right));bottom:calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:4px;
   padding:5px;border-radius:14px;background:rgba(15,18,30,.45);border:1px solid rgba(255,255,255,.35)}
@@ -82,7 +87,10 @@ function capture(element: HTMLElement, pointerId: number): void {
 }
 
 export class TouchControls {
-  readonly state: ControlState = { moveX: 0, moveY: 0, lookDX: 0, lookDY: 0, jump: false, gas: false, brake: false, action: false, fire: false, punch: false, horn: false, gear: null };
+  readonly state: ControlState = { moveX: 0, moveY: 0, lookDX: 0, lookDY: 0, jump: false, gas: false, brake: false, action: false, fire: false, punch: false, horn: false, gear: null, weaponSwitch: false };
+  private readonly weaponButton: HTMLButtonElement;
+  private readonly weaponName: Text;
+  private readonly weaponAmmo: HTMLElement;
   private readonly gearPanel: HTMLDivElement;
   private readonly gearButtons = new Map<GearButton, HTMLButtonElement>();
   private readonly fireButton: HTMLButtonElement;
@@ -145,6 +153,12 @@ export class TouchControls {
     this.fireButton.append(this.ammoLabel);
     this.hitButton = button("hit", "HIT", "Punch");
     this.hornButton = button("horn", "HORN", "Horn");
+    // Weapon switch, left of FIRE and HIT: the gun in hand and its rounds; a tap takes the next gun.
+    this.weaponButton = button("weapon", "", "Switch weapon");
+    this.weaponButton.dataset.testid = "weapon-switch";
+    this.weaponName = document.createTextNode("PISTOL");
+    this.weaponAmmo = document.createElement("small");
+    this.weaponButton.append(this.weaponName, this.weaponAmmo);
     this.gasButton.hidden = this.brakeButton.hidden = this.actionButton.hidden = this.hornButton.hidden = true;
     // Gear selector beside the brake, in a real lever's order: P at the top, then R, then D.
     this.gearPanel = document.createElement("div");
@@ -165,7 +179,7 @@ export class TouchControls {
       this.gearPanel.append(element);
     }
 
-    this.root.append(moveZone, lookZone, this.stick, jump, this.gasButton, this.brakeButton, this.gearPanel, this.actionButton, this.fireButton, this.hitButton, this.hornButton);
+    this.root.append(moveZone, lookZone, this.stick, jump, this.gasButton, this.brakeButton, this.gearPanel, this.actionButton, this.fireButton, this.hitButton, this.hornButton, this.weaponButton);
     parent.append(this.root);
 
     // Where the stick rests when no finger is down.
@@ -258,6 +272,10 @@ export class TouchControls {
     };
     press(this.hitButton, "punch");
     press(this.hornButton, "horn");
+    this.weaponButton.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      this.state.weaponSwitch = true;
+    });
     this.actionButton.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       this.state.action = true;
@@ -294,6 +312,21 @@ export class TouchControls {
     return pressed;
   }
 
+  /** Read and clear a pending press of the weapon button. */
+  consumeWeaponSwitch(): boolean {
+    const pressed = this.state.weaponSwitch;
+    this.state.weaponSwitch = false;
+    return pressed;
+  }
+
+  /** The weapon button's label: the gun in hand and its rounds. */
+  setWeapon(name: string, rounds: number): void {
+    const label = name.toUpperCase();
+    if (this.weaponName.data !== label) this.weaponName.data = label;
+    const text = String(rounds);
+    if (this.weaponAmmo.textContent !== text) this.weaponAmmo.textContent = text;
+  }
+
   consumeHorn(): boolean {
     const pressed = this.state.horn;
     this.state.horn = false;
@@ -320,10 +353,11 @@ export class TouchControls {
 
   /** Swap the button set: jump, punch and fire on foot; accelerator, brake, gears and horn when driving. */
   setMode(mode: ControlMode): void {
-    this.jumpButton.hidden = this.fireButton.hidden = this.hitButton.hidden = mode !== "foot";
+    this.jumpButton.hidden = this.fireButton.hidden = this.hitButton.hidden = this.weaponButton.hidden = mode !== "foot";
     this.gasButton.hidden = this.brakeButton.hidden = this.hornButton.hidden = this.gearPanel.hidden = mode !== "drive";
     this.state.gas = this.state.brake = this.state.fire = false;
     this.state.gear = null;
+    this.state.weaponSwitch = false;
   }
 
   /** Label of the horn button: "HORN", or "SIREN" in an ambulance. */

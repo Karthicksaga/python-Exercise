@@ -10,6 +10,7 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 import { PLAYER_HEIGHT } from "./PlayerController";
 import { retargetClips } from "./retarget";
 import { captureRig, solveRidingPose, type Rig, type RidingPose, type SolvedPose } from "./ridingPose";
+import { weaponGeometry, weaponMaterial, type HeldWeapon } from "./weaponModels";
 
 export interface HumanSources {
   /** URL of the character model (.glb). */
@@ -31,6 +32,20 @@ const AIMING: Readonly<Record<string, readonly [number, number, number]>> = {
   RightArm: [-0.1, -0.06, 1],
   RightForeArm: [0.02, 0.02, 1],
 };
+
+/**
+ * How each weapon sits in the right hand, set in the aiming pose (model space, the figure facing
+ * +Z): the direction its barrel or blade points. Guns carry on the line of the arm; the bat is
+ * raised, ready to swing. Estimates, judged by eye.
+ */
+const WEAPON_POINTS: Readonly<Record<HeldWeapon, readonly [number, number, number]>> = {
+  pistol: [-0.1, -0.06, 1],
+  smg: [-0.1, -0.04, 1],
+  shotgun: [-0.08, -0.02, 1],
+  bat: [-0.15, 0.85, 0.5],
+};
+/** From the wrist joint to the middle of the palm, metres (estimate). */
+const PALM = 0.085;
 
 /** The bone below each posed limb, which defines the way the limb points at rest. */
 const LIMB_CHILD: Readonly<Record<string, string>> = {
@@ -181,7 +196,13 @@ export class HumanFigure {
   private readonly model: THREE.Object3D;
   private readonly ridingPoses = new Map<RidingPose, SolvedPose>();
   private readonly aimPose: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>;
+  /** The weapon in the right hand (a pistol unless told otherwise). */
   private readonly gun: THREE.Mesh;
+  /** Where each weapon sits relative to the hand bone, or null when the model has no hand bone. */
+  private readonly grips: Map<HeldWeapon, THREE.Matrix4> | null;
+  private weapon: HeldWeapon | null = "pistol";
+  /** Shown whenever standing (the player's weapon), not only while aiming. */
+  private carried = false;
   private readonly standingLift: number;
   private gait: Gait = "idle";
   private seated: RidingPose | null = null;
@@ -199,12 +220,22 @@ export class HumanFigure {
     const aimBones = new Set(Object.keys(AIMING));
     this.aimPose = HumanFigure.solvePose(model, AIMING).filter((entry) => aimBones.has(entry.bone.name));
 
-    // A simple pistol held out in front of the right shoulder, shown only while aiming.
-    // (Model space: +Z is forwards, -X is the figure's right.)
-    this.gun = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.11, 0.2), new THREE.MeshStandardMaterial({ color: 0x1a1b1e, roughness: 0.5, metalness: 0.6 }));
-    this.gun.position.set(-0.2, 1.36, 0.62);
+    // The weapon is held in the right hand and moves with it; enemies show their pistol only
+    // while aiming. Geometry and material are shared by every figure (`weaponModels.ts`).
+    this.gun = new THREE.Mesh(weaponGeometry("pistol"), weaponMaterial());
+    this.gun.name = "held-weapon";
     this.gun.visible = false;
-    model.add(this.gun);
+    const hand = model.getObjectByName("RightHand");
+    this.grips = hand ? HumanFigure.solveGrips(model, this.aimPose, hand, scale) : null;
+    if (hand && this.grips) {
+      hand.add(this.gun);
+      this.placeGun("pistol");
+    } else {
+      // No hand bone: out in front of the right shoulder, as the pistol always was.
+      // (Model space: +Z is forwards, -X is the figure's right.)
+      this.gun.position.set(-0.2, 1.36, 0.62);
+      model.add(this.gun);
+    }
 
     model.scale.setScalar(scale);
     model.position.y = lift;
@@ -218,6 +249,8 @@ export class HumanFigure {
       node.frustumCulled = false;
     });
     this.object.add(model);
+    // Too small to be worth a shadow pass of its own.
+    this.gun.castShadow = false;
 
     this.mixer = new THREE.AnimationMixer(model);
     const action = (name: Gait) => {
@@ -231,6 +264,64 @@ export class HumanFigure {
     this.actions = { idle: action("idle"), walk: action("walk"), run: action("run") };
     // Start each figure at a different point of the cycle so a crowd isn't in step.
     this.mixer.setTime(Math.random() * 2);
+  }
+
+  /**
+   * Each weapon's place relative to the hand bone: worked out once in the aiming pose (the arm
+   * straight out), so that from then on the weapon follows the hand in every pose.
+   */
+  private static solveGrips(model: THREE.Object3D, aimPose: ReadonlyArray<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>, hand: THREE.Object3D, scale: number): Map<HeldWeapon, THREE.Matrix4> {
+    const saved = aimPose.map(({ bone }) => bone.quaternion.clone());
+    for (const { bone, quaternion } of aimPose) bone.quaternion.copy(quaternion);
+    model.updateMatrixWorld(true);
+    const toModel = model.matrixWorld.clone().invert();
+    const handInModel = toModel.clone().multiply(hand.matrixWorld);
+    const fromHand = handInModel.clone().invert();
+    const wrist = new THREE.Vector3().setFromMatrixPosition(handInModel);
+    const elbow = new THREE.Vector3().setFromMatrixPosition(toModel.clone().multiply(hand.parent?.matrixWorld ?? hand.matrixWorld));
+    const forearm = wrist.clone().sub(elbow).normalize();
+    // Model units to metres: weapons are sized in metres, the model is scaled by `scale`.
+    const palm = wrist.clone().addScaledVector(forearm, PALM / scale);
+    const grips = new Map<HeldWeapon, THREE.Matrix4>();
+    const forward = new THREE.Vector3(0, 0, 1);
+    for (const [weapon, point] of Object.entries(WEAPON_POINTS) as Array<[HeldWeapon, readonly [number, number, number]]>) {
+      const turn = new THREE.Quaternion().setFromUnitVectors(forward, new THREE.Vector3(...point).normalize());
+      const inModel = new THREE.Matrix4().compose(palm, turn, new THREE.Vector3(1, 1, 1).divideScalar(scale));
+      grips.set(weapon, fromHand.clone().multiply(inModel));
+    }
+    aimPose.forEach(({ bone }, i) => bone.quaternion.copy(saved[i]!));
+    model.updateMatrixWorld(true);
+    return grips;
+  }
+
+  private placeGun(weapon: HeldWeapon): void {
+    const grip = this.grips?.get(weapon);
+    if (grip) grip.decompose(this.gun.position, this.gun.quaternion, this.gun.scale);
+  }
+
+  /** Show the weapon when there is one and the figure is standing and aiming, carrying it, or swinging the bat. */
+  private showGun(): void {
+    const up = this.weapon !== null && !this.down && this.seated === null;
+    this.gun.visible = up && (this.aiming || this.carried || (this.weapon === "bat" && this.punching > 0));
+  }
+
+  /**
+   * The weapon in the right hand, or none.
+   * @param carried shown whenever standing (the player), rather than only while aiming (enemies with guns)
+   */
+  setWeapon(weapon: HeldWeapon | null, carried = false): void {
+    if (weapon !== this.weapon && weapon) {
+      this.gun.geometry = weaponGeometry(weapon);
+      this.placeGun(weapon);
+    }
+    this.weapon = weapon;
+    this.carried = carried;
+    this.showGun();
+  }
+
+  /** The weapon shown in the hand right now (for tests and debugging), or null. */
+  get shownWeapon(): HeldWeapon | null {
+    return this.gun.visible ? this.weapon : null;
   }
 
   /** Local rotations that make each limb point the way a pose asks (directions in model space). */
@@ -300,6 +391,7 @@ export class HumanFigure {
   setSeated(pose: RidingPose | null): void {
     if (pose === this.seated) return;
     this.seated = pose;
+    this.showGun();
     if (pose) {
       let solved = this.ridingPoses.get(pose);
       if (!solved) {
@@ -323,7 +415,7 @@ export class HumanFigure {
   /** Hold the pistol out (true) or put it away. */
   setAiming(aiming: boolean): void {
     this.aiming = aiming;
-    this.gun.visible = aiming && !this.down;
+    this.showGun();
   }
 
   /** Throw the right arm forwards for a moment. */
@@ -335,7 +427,7 @@ export class HumanFigure {
   setDown(down: boolean): void {
     if (down === this.down) return;
     this.down = down;
-    this.gun.visible = this.aiming && !down;
+    this.showGun();
     // Tip the whole figure onto its back.
     const model = this.object.children[0];
     if (model) {
@@ -366,6 +458,7 @@ export class HumanFigure {
 
     // Arm poses are laid over the walk cycle after it has been applied.
     this.punching = Math.max(0, this.punching - dt);
+    this.showGun();
     if (this.aiming || this.punching > 0) {
       for (const { bone, quaternion } of this.aimPose) bone.quaternion.copy(quaternion);
     }

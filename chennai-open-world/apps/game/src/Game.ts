@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
-import { Combat, PLAYER_MAX_HEALTH, hitPenalty, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState } from "@cow/combat";
+import { Combat, PLAYER_MAX_HEALTH, hitPenalty, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState, type WeaponId } from "@cow/combat";
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
@@ -15,6 +15,7 @@ import { Hud, Minimap, TouchControls, type MinimapMarker } from "@cow/ui";
 import { Gearbox, Vehicle, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
 import { buildContent, type GameContent } from "./content";
 import { Fighters, combatWorld } from "./Fighters";
+import { Arms, type ArmsSnapshot } from "./Arms";
 import { JobDesk, type ShareSnapshot } from "./JobDesk";
 import { PlaceDesk, type PlaceSnapshot } from "./PlaceDesk";
 import { buildPlaces } from "./places";
@@ -44,7 +45,7 @@ import handcart from "../../../assets/optimized/props/handcart.glb?inline";
 import autoRickshaw from "../../../assets/optimized/vehicles/auto_rickshaw_lod1.glb?inline";
 
 /** What tests and the debug console can read about the running game (places and life included). */
-export interface GameSnapshot extends PlaceSnapshot {
+export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
   readonly x: number;
   readonly y: number;
   readonly z: number;
@@ -79,7 +80,7 @@ export interface GameSnapshot extends PlaceSnapshot {
   readonly waitingAtSignals: number;
   readonly health: number;
   readonly ammo: number;
-  readonly enemies: Array<{ x: number; z: number; health: number; armed: boolean }>;
+  readonly enemies: Array<{ x: number; z: number; health: number; armed: boolean; group: string; calm: boolean; weapon: string }>;
   readonly street: string;
   /** Named area the player is in (nearest OSM place point, estimated), and those visited. */
   readonly district: string;
@@ -230,6 +231,8 @@ export class Game {
   /** A place whose entrance ENTER was pressed at; its screen opens on the next frame. */
   private enteringPlace: PlaceDesk["places"][number] | null = null;
   private lastPedestrianHit: GameSnapshot["lastPedestrianHit"] = null;
+  /** Weapons in the world, gang crews, the chase courier and the weapon button (set in `create`). */
+  private arms!: Arms;
 
   private constructor(
     private readonly map: WorldMap,
@@ -305,6 +308,12 @@ export class Game {
   /** For tests and debugging only: set the player's health. */
   debugSetHealth(health: number): void {
     this.combat.health = Math.max(1, Math.min(PLAYER_MAX_HEALTH, health));
+  }
+
+  /** For tests and debugging only: give a weapon and rounds, and take it in hand if it is a gun. */
+  debugGiveWeapon(id: WeaponId, ammo: number): void {
+    this.combat.arsenal.give(id, ammo);
+    this.combat.arsenal.select(id);
   }
 
   static async create(canvas: HTMLCanvasElement, stage: HTMLElement): Promise<Game> {
@@ -411,6 +420,7 @@ export class Game {
     });
     const riders = new ShareRiders(renderer.scene, humans);
     game = new Game(map, content, renderer, mapView, chunks, physics, player, avatar, vehicles, population, combat, fighters, sound, missions, beacon, camera, controls, hud, minimap, riders);
+    game.arms = new Arms(content, combat, renderer.scene, humans, hud, controls);
     const railFile = await railLoaded;
     if (railFile) {
       const railway = new Railway(railFile, renderer.scene, physics, new RidePanel(hud.root), {
@@ -526,6 +536,7 @@ export class Game {
   setPaused(paused: boolean): void {
     if (paused === this.paused) return;
     this.paused = paused;
+    if (paused) this.arms.save();
     this.held = false;
     this.controls.setVisible(!paused);
     if (paused) {
@@ -558,7 +569,7 @@ export class Game {
     this.cleared.clear();
     this.combat.keepOnly([]);
     this.combat.revive();
-    this.combat.ammo = 0;
+    this.arms.reset();
     if (this.driving) this.leaveVehicle(true);
     this.content.parking.forEach((spot, i) => this.vehicles[i]?.body.teleport({ x: spot.x, y: (this.vehicles[i]?.type.rideHeight ?? 0.7) + 0.1, z: spot.z }, spot.yaw));
     this.teleport(this.content.spawn.x, this.content.spawn.z, this.content.spawn.yaw);
@@ -650,6 +661,10 @@ export class Game {
   private target(objective: Objective | null, at: { x: number; z: number }): { x: number; z: number; radius: number } | null {
     if (!objective) return null;
     if (objective.type === "reach" || objective.type === "defeat") return { x: objective.x, z: objective.z, radius: objective.radius };
+    if (objective.type === "chase") {
+      const quarry = this.missions.quarry;
+      return quarry ? { x: quarry.x, z: quarry.z, radius: objective.radius } : null;
+    }
     let best: { x: number; z: number; radius: number } | null = null;
     let bestDistance = Infinity;
     for (const vehicle of this.vehicles) {
@@ -678,8 +693,11 @@ export class Game {
       if (event.type === "completed") {
         this.sound.fanfare();
         this.cleared.clear();
-        this.hud.showToast(`Stage ${event.mission.stage} complete`, `${event.mission.title} · +₹${event.mission.reward}`, 4);
+        // Weapons the stage hands over are given (and saved) by `Arms`, and named in the message.
+        const weapons = this.arms.reward(event.mission);
+        this.hud.showToast(`Stage ${event.mission.stage} complete`, `${event.mission.title} · +₹${event.mission.reward}${weapons}`, 4);
         saveProgress(this.missions.progress());
+        this.arms.save();
         const next = this.missions.mission;
         if (next) window.setTimeout(() => this.hud.showToast(`Stage ${next.stage}: ${next.title}`, next.brief, 5), 4200);
       } else if (event.type === "failed") {
@@ -729,7 +747,7 @@ export class Game {
       waitingAtSignals: this.population.waitingAtSignals,
       health: this.combat.health,
       ammo: this.combat.ammo,
-      enemies: this.combat.enemies.map((e) => ({ x: e.x, z: e.z, health: e.health, armed: e.armed })),
+      enemies: this.combat.enemies.map((e) => ({ x: e.x, z: e.z, health: e.health, armed: e.armed, group: e.group, calm: e.calm, weapon: e.weapon })),
       street: this.street,
       district: this.district,
       visitedDistricts: [...this.visited.list()],
@@ -751,6 +769,7 @@ export class Game {
       clothes: this.avatar.clothesColor,
       casualties: this.population.casualtyList(),
       lastPedestrianHit: this.lastPedestrianHit,
+      ...this.arms.snapshot(this.avatar, this.fighters.heldWeapons(), this.missions.quarry),
     };
   }
 
@@ -818,9 +837,13 @@ export class Game {
   private fight(dt: number, at: { x: number; z: number }): void {
     // Enemies exist only while their objective is the current one.
     const objective = this.missions.objective;
-    // No fights while on a city job or a story.
-    const group = objective?.type === "defeat" && !this.desk.active && !this.placeDesk.story ? objective.group : null;
-    this.combat.keepOnly(group ? [group] : []);
+    // No fights while on a city job or a story. A reach objective can bring an ambush with it.
+    const free = !this.desk.active && !this.placeDesk.story;
+    const group = !free ? null : objective?.type === "defeat" ? objective.group : objective?.type === "reach" ? (objective.hostiles ?? null) : null;
+    // Gang crews on their corners near the player, kept clear of the stage's own fight.
+    const marker = free && (objective?.type === "reach" || objective?.type === "defeat") ? objective : null;
+    const crews = this.arms.fixedUpdate(dt, at, !this.driving, marker);
+    this.combat.keepOnly(group ? [group, ...crews] : crews);
     if (group && !this.cleared.has(group) && this.combat.remaining(group) === 0) {
       const spots = this.content.enemies[group] ?? [];
       this.combat.spawnGroup(group, spots);
@@ -836,7 +859,9 @@ export class Game {
       heading: this.player.yaw,
       inVehicle: this.driving !== null,
       speed: this.driving ? Math.abs(this.driving.body.forwardSpeed()) : this.player.speed,
+      armed: !this.driving && this.arms.armed(),
     };
+    if (this.controls.consumeWeaponSwitch() && !this.driving) this.arms.switchWeapon();
     const punch = this.controls.consumePunch();
     const fire = this.controls.state.fire;
     this.aimFor = Math.max(0, this.aimFor - dt);
@@ -849,6 +874,7 @@ export class Game {
       if (punch) {
         const hit = this.combat.punch(facing, events);
         if (hit !== undefined) {
+          this.arms.swung();
           this.avatar.punch();
           if (hit) this.sound.punch();
           else this.sound.whiff();
@@ -860,8 +886,9 @@ export class Game {
           this.aimFor = 0.7;
           this.sound.shot();
           const muzzle = { x: at.x - Math.sin(this.camera.yaw) * 0.7, z: at.z - Math.cos(this.camera.yaw) * 0.7 };
-          this.fighters.tracer(muzzle.x, muzzle.z, shot.toX, shot.toZ);
-        } else if (this.combat.ammo === 0 && this.sinceClick > 0.4) {
+          // One tracer per pellet: the shotgun's spread is visible.
+          for (const pellet of shot.pellets) this.fighters.tracer(muzzle.x, muzzle.z, pellet.toX, pellet.toZ);
+        } else if (this.combat.arsenal.ammoOf(this.combat.arsenal.gun.id) === 0 && this.sinceClick > 0.4) {
           this.sinceClick = 0;
           this.sound.click();
         }
@@ -885,6 +912,7 @@ export class Game {
         this.knockedOut();
       }
     }
+    this.arms.handle(events);
   }
 
   /** The player ran out of health: a hospital bill, and the stage starts again. */
@@ -1094,7 +1122,9 @@ export class Game {
 
     this.fighters.frame(dt);
     this.hud.setHealth(this.combat.health / PLAYER_MAX_HEALTH);
-    this.controls.setAmmo(this.combat.ammo);
+    const quarry = this.missions.quarry;
+    const chase = objective?.type === "chase" ? objective : null;
+    this.arms.frame(dt, at, this.avatar, !this.driving && !ride, quarry && chase ? { ...quarry, kind: chase.quarry } : null);
     // The name of the street underfoot, from the map. Looked up twice a second.
     this.sinceStreet += dt;
     if (this.sinceStreet > 0.5) {

@@ -32,7 +32,10 @@ const NEW_JOBS = ["marina-evening", "egmore-transfer", "mount-road-bus"];
 describe("content on the city map", () => {
   it("keeps the ten original jobs and stages, and adds the city jobs", () => {
     expect(content.jobs.map((j) => j.id)).toEqual([...OLD_JOBS, ...NEW_JOBS]);
-    expect(content.missions).toHaveLength(10);
+    // Stages 11 to 15 (the street war) follow the first ten, which are unchanged.
+    expect(content.missions.slice(0, 10).map((m) => m.stage)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(content.missions.slice(0, 10).map((m) => m.id)).toEqual(["morning-walk", "borrowed-wheels", "auto-shift", "parcel-run", "cross-town", "bike-courier", "park-trouble", "bike-thieves", "godown-raid", "roundtana-showdown"]);
+    expect(content.missions).toHaveLength(15);
     expect(new Set(content.jobs.map((j) => j.id)).size).toBe(content.jobs.length);
   });
 

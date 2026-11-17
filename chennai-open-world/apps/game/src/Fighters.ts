@@ -65,7 +65,12 @@ export class Fighters {
   private body(enemy: Enemy): Body {
     let body = this.bodies.get(enemy.id);
     if (!body) {
-      const figure = this.humans.create(enemy.armed ? TINT.armed : TINT.unarmed, true);
+      // Gang members wear their gang's colours.
+      const figure = this.humans.create(enemy.tint ?? (enemy.armed ? TINT.armed : TINT.unarmed), true);
+      // Guns are drawn while aiming; a bat is carried in the hand. Fists: nothing held.
+      if (enemy.weapon === "bat") figure.setWeapon("bat", true);
+      else if (enemy.weapon === "shotgun" || enemy.weapon === "smg") figure.setWeapon(enemy.weapon);
+      else if (!enemy.armed) figure.setWeapon(null);
       // A boss is visibly bigger.
       if (enemy.maxHealth > 150) figure.object.scale.setScalar(1.18);
       this.scene.add(figure.object);
@@ -106,6 +111,16 @@ export class Fighters {
   /** An enemy throws a punch (arm animation). */
   enemyPunch(enemy: Enemy): void {
     this.bodies.get(enemy.id)?.figure.punch();
+  }
+
+  /** What the enemies hold in their hands now (tests): weapon ids, one per enemy shown with one. */
+  heldWeapons(): string[] {
+    const held: string[] = [];
+    for (const body of this.bodies.values()) {
+      const weapon = body.figure.shownWeapon;
+      if (weapon) held.push(weapon);
+    }
+    return held;
   }
 
   /** Draw a bullet's path for a moment. */

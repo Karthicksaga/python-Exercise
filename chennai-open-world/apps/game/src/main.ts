@@ -1,3 +1,4 @@
+import type { WeaponId } from "@cow/combat";
 import { Game, type GameSnapshot } from "./Game";
 import { sendToShell } from "./nativeBridge";
 
@@ -15,6 +16,8 @@ declare global {
       setHealth(health: number): void;
       /** Hold a pedestrian standing at a point until a vehicle hits them; false when nobody is free. */
       stagePedestrian(x: number, z: number, heading: number): boolean;
+      /** Tests only: give a weapon with rounds and take it in hand (skips finding a pickup). */
+      giveWeapon(id: WeaponId, ammo: number): void;
     };
   }
 }
@@ -37,6 +40,8 @@ async function boot(): Promise<void> {
       railAdvance: (seconds) => game.railway?.advance(seconds),
       setHealth: (health) => game.debugSetHealth(health),
       stagePedestrian: (x, z, heading) => game.stagePedestrian(x, z, heading),
+      // For tests only: the later stages need guns the player would have found by then.
+      giveWeapon: (id, ammo) => game.debugGiveWeapon(id, ammo),
     };
     game.start();
     loading.remove();
