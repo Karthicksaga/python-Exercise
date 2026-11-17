@@ -4,6 +4,39 @@ Last updated: 17 Nov 2026.
 
 ## What exists
 
+- **Riding poses and the P / R / D gear selector (17 Nov; unit tests, browser tests and
+  screenshots in headless Chromium, not on a phone):**
+  - *Poses:* every vehicle kind has a riding pose (`VehicleType.pose` in
+    `packages/vehicles/src/specs.ts`): the driver's hip point on the seat, hands on the grips or a
+    steering wheel, feet on the footboard, pegs or pedals, and a torso lean. `@cow/player`
+    (`ridingPose.ts`) solves it on the skeleton's rest pose with two-bone IK for the arms and
+    legs, hands turned to close round the grip; a seated figure's root is its hip joints. The
+    player and every AI driver use the same pose (`HumanAssets.seatedStatic(tint, pose)`). Auto:
+    hands on the Blender model's grips (0.47 m above the chassis centre, 0.78 m ahead), feet on
+    the floor; the driver hunches and sits deep in the cushion so a 1.75 m figure clears the
+    1.71 m canopy. Motorbike: the forks were raked the wrong way; now raked back to a steering
+    head with the bar on top, the tank is narrower and the knees splay round it. Car, ambulance
+    and bus: hands at ten to two, legs to the pedals, all joints inside the body (closed
+    vehicles still hide the player's driver). Closed cabins' seat positions are estimated.
+  - *Gears:* driving works like an automatic (`packages/vehicles/src/Gearbox.ts`). D: GAS drives
+    forwards; R: GAS drives backwards; P: the vehicle is held still. BRAKE only brakes (it no
+    longer reverses once stopped). A gear change needs the vehicle under 1 m/s; asked for while
+    moving, it brakes first (HUD shows N, the gear blinks, a short hint) and engages once stopped.
+    Getting in selects D. HUD gear: P, R, N, D, or D1–D5 by speed. Touch: a small vertical
+    P / R / D selector left of BRAKE, only while driving, clear of the minimap, speedometer and
+    EXIT. Keyboard: W/S drive and reverse as before (S brakes, then shifts to R once stopped; W
+    in R brakes, then shifts to D); P, R and G select park, reverse and drive.
+  - *Tested:* unit tests `apps/game/src/ridingPose.test.ts` (the real character model: both
+    palms and ankles within 3 cm of their targets for all five kinds; the auto's palms on the
+    Blender grips and the head under the canopy; the bike's hands on the bar and ankles over the
+    pegs; car, ambulance and bus drivers' joints inside the body) and
+    `packages/vehicles/src/Gearbox.test.ts` (14 tests: pedals per gear, P holds, shifting when
+    stopped, braking first when moving, cancelling, keyboard two-key driving, HUD labels).
+    Browser tests in `apps/game/tests/driving.spec.ts` with touch events on the new buttons: R
+    reverses on GAS, P holds the car, D drives forwards; R while moving shows N and brakes, then
+    reverses; getting out in P leaves the car where it stood. Screenshots (side and front, plus
+    see-through views of the closed vehicles) of every kind, and the HUD at 915 × 412.
+
 - **Facade kit: sunshades, balconies, shop fronts and Tamil signboards (Phase 3, 16 Nov;
   unit-tested, and looked at in headless Chromium by day and at 21:00, not on a phone):**
   `packages/game-engine/src/FacadeKit.ts` decides at render time, from the `Building` record,
@@ -124,7 +157,7 @@ Last updated: 17 Nov 2026.
 - **Player:** a rigged human with idle, walk and run animations, walking, running, jumping,
   collision with buildings and trees, and a third-person camera that avoids walls.
 - **Vehicles:** hatchback, auto-rickshaw and motorbike with suspension, steering, braking and
-  reverse. Get in and out; the rider is visible, seated, on the bike and in the auto; the bike
+  reverse (P / R / D selector). Get in and out; the rider is visible, holding the grips, on the bike and in the auto; the bike
   leans into corners. Eleven are parked around the map.
 - **AI:** traffic that follows the real road network in the left-hand lane, slows for corners
   and stops for the player, parked vehicles and pedestrians; pedestrians walking beside the
@@ -186,14 +219,14 @@ Last updated: 17 Nov 2026.
 - **Crashes:** a velocity change above 1.6 m/s in one physics step counts as a crash: the
   vehicle keeps 65% of its speed, a thump plays (louder for harder hits), and a job counts a
   bump. AI traffic sees long vehicles as a row of circles.
-- **HUD:** gear indicator (R, N, 1–5; display only, the engine has no gearbox), reputation,
+- **HUD:** gear indicator (P, R, N, D or D1–D5; the numbers are display only, the engine has no gearbox), reputation,
   JOBS button. Pause menu: Share progress (system share sheet, else clipboard, else shown on
   screen) and Time of day (Morning, Noon, Evening, Night; the clock runs one game hour per real
   minute and is saved).
 - **Sound:** synthesised engine note that rises with speed, horn, doors, gunshots, punches,
   hurt, objective chime, stage fanfare and failure. No sound files.
 - **Interface:** joystick, camera drag, context ENTER/EXIT button; JUMP, HIT and FIRE (with
-  rounds left) on foot; GAS, BRAKE and HORN when driving; money and stage, health bar, the real
+  rounds left) on foot; GAS, BRAKE, the P / R / D selector and HORN when driving; money and stage, health bar, the real
   name of the street underfoot, objective with distance and countdown, speedometer, rotating
   minimap with the objective, vehicles and enemies, a light beacon at the target, pause with
   New game.
@@ -235,8 +268,10 @@ Difficulty has not been play-tested by a person.
 2. PLAY loads the street within about ten seconds.
 3. Left thumb moves, right thumb looks, both at once. JUMP works while moving.
 4. Walk into a wall and a tree: the player stops.
-5. ENTER a car: steer with the left thumb while holding GAS with the right. BRAKE, then hold
-   BRAKE to reverse. EXIT only works when nearly stopped.
+5. ENTER a car: steer with the left thumb while holding GAS with the right. BRAKE to stop, tap R
+   and hold GAS to reverse, tap P and check the car holds still, tap D to drive on. Tap R while
+   moving: it brakes to a stop first. EXIT only works when nearly stopped. Check the selector is
+   easy to hit with the right thumb and the rider's hands sit on the bars (bike, auto).
 6. Note the fps on foot and at speed, and the phone model. Play for ten minutes and note heat.
    Check that sound plays (engine, horn, shots) and isn't too loud or harsh.
 7. Finish stage 1, close the app, reopen: money and stage are kept.
@@ -249,7 +284,8 @@ Difficulty has not been play-tested by a person.
   procedural textures, not photographs. Mapped building coverage is patchy in places, which
   shows as empty lots.
 - **Character:** placeholder with an unsuitable licence for release; see `assets/README.md`.
-  No jump, get-in or driving animations (the seated pose is a fixed pose).
+  No jump, get-in or driving animations (riding poses are fixed: no steering with the bars or
+  wheel, no foot down at a stop).
 - **Roads:** flat, no kerb height, no medians (trees mapped on medians are left out), no
   traffic signals or signs. One-way streets are respected by traffic, not enforced on the player.
 - **AI:** traffic does not overtake or plan routes, and can queue behind a vehicle the player
