@@ -187,6 +187,22 @@ describe("Combat with the new weapons", () => {
     expect(combat.arsenal.ammoOf("smg")).toBe(8);
   });
 
+  it("pellets hit people whose own collision box is what the wall ray meets (found in the browser test)", () => {
+    // In the game the wall ray also stops at the front of the target's box, 0.28 m before its centre.
+    const boxes: CombatWorld = { lineOfSight: () => true, wallDistance: (_x, _z, _dx, dz) => (dz < 0 ? 8 - 0.28 : null) };
+    const combat = new Combat(boxes, () => 0.5);
+    combat.arsenal.give("smg", 5);
+    combat.arsenal.select("smg");
+    combat.spawnGroup("a", [{ x: 0, z: -8, armed: false }]);
+    expect(combat.shoot(player(), []).hit).not.toBeNull();
+    // A real wall a metre in front of them still stops the bullet.
+    const walled = new Combat({ lineOfSight: () => true, wallDistance: () => 7 }, () => 0.5);
+    walled.arsenal.give("smg", 5);
+    walled.arsenal.select("smg");
+    walled.spawnGroup("a", [{ x: 0, z: -8, armed: false }]);
+    expect(walled.shoot(player(), []).hit).toBeNull();
+  });
+
   it("a gun does not reach past its range", () => {
     const combat = new Combat(open, () => 0.5);
     combat.arsenal.give("shotgun", 5);

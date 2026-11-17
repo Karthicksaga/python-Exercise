@@ -29,7 +29,7 @@ export interface ArmsSnapshot {
   /** Weapons enemies are holding now (one entry per enemy with something in hand). */
   readonly enemyWeapons: string[];
   readonly pickups: Array<{ id: string; weapon: WeaponId; x: number; z: number; available: boolean }>;
-  readonly crews: Array<{ id: string; gang: string; x: number; z: number; out: boolean }>;
+  readonly crews: Array<{ id: string; gang: string; x: number; z: number; street: { x: number; z: number }; out: boolean }>;
   /** The quarry of a chase stage, or null. */
   readonly quarry: { x: number; z: number } | null;
 }
@@ -252,7 +252,7 @@ export class Arms {
       inHand: avatar.shownWeapon,
       enemyWeapons,
       pickups: this.content.pickups.map((p) => ({ id: p.id, weapon: p.weapon, x: p.x, z: p.z, available: this.pickups.available(p.id) })),
-      crews: this.content.crews.map((c) => ({ id: c.id, gang: c.gang, x: c.x, z: c.z, out: this.out.has(c.id) })),
+      crews: this.content.crews.map((c) => ({ id: c.id, gang: c.gang, x: c.x, z: c.z, street: c.street, out: this.out.has(c.id) })),
       quarry: quarry ? { x: quarry.x, z: quarry.z } : null,
     };
   }

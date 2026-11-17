@@ -40,6 +40,8 @@ export interface Crew {
   readonly x: number;
   readonly z: number;
   readonly members: EnemySpot[];
+  /** The middle of the street beside the corner, where someone walking up would be. */
+  readonly street: Point;
 }
 
 export interface StreetWar {
@@ -165,7 +167,8 @@ export function buildStreetWar(city: WorldMap): StreetWar {
         if (clear) break;
         members = huddle(snap(along(base, metres + slide), road), side, crewArms, g.colour, true);
       }
-      crews.push({ id: `gang:${g.id}:${i}`, gang: g.id, ...round(members[1]!), members });
+      const street = nearestRoadPoint(city, members[1]!);
+      crews.push({ id: `gang:${g.id}:${i}`, gang: g.id, ...round(members[1]!), members, street: street ? round(street) : round(members[1]!) });
     });
   }
 

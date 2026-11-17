@@ -114,6 +114,8 @@ export const ENEMY_GUNS: Readonly<Partial<Record<WeaponId, EnemyGun>>> = {
 export const ENEMY_MELEE: Readonly<Partial<Record<WeaponId, number>>> = { fists: 6, bat: 10 };
 /** Half the width of a person, metres: a pellet passing closer than this to someone hits them. */
 const BODY_HALF_WIDTH = 0.35;
+/** Front to centre of a person's collision box, with a margin (metres). */
+const BODY_DEPTH = 0.45;
 
 export const PLAYER_MAX_HEALTH = 100;
 const ENEMY_HEALTH = 100;
@@ -292,7 +294,7 @@ export class Combat {
   private pellet(player: PlayerState, gun: WeaponSpec, angle: number, events: CombatEvent[]): Pellet {
     const dx = -Math.sin(angle);
     const dz = -Math.cos(angle);
-    const wall = this.world.wallDistance(player.x, player.z, dx, dz, gun.range) ?? gun.range;
+    const wall = Math.min(gun.range, this.world.wallDistance(player.x, player.z, dx, dz, gun.range) ?? gun.range);
     let hit: Enemy | null = null;
     let nearest = wall;
     for (const enemy of this.enemies) {
@@ -300,7 +302,9 @@ export class Combat {
       const ex = enemy.x - player.x;
       const ez = enemy.z - player.z;
       const along = ex * dx + ez * dz;
-      if (along <= 0.3 || along >= nearest) continue;
+      // The ray that measured the wall also stops at people's own collision boxes, just in front of
+      // them: someone up to a body's depth past the "wall" is that box, and is hit.
+      if (along <= 0.3 || along >= nearest + BODY_DEPTH) continue;
       if (Math.abs(ex * dz - ez * dx) <= BODY_HALF_WIDTH) {
         hit = enemy;
         nearest = along;

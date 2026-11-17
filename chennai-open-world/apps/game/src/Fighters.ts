@@ -29,7 +29,10 @@ export function combatWorld(physics: PhysicsWorld): CombatWorld {
       return physics.raycast({ x: ax + dx * 0.6, y: CHEST, z: az + dz * 0.6 }, { x: dx, y: 0, z: dz }, Math.max(0, distance - 1.2)) === null;
     },
     wallDistance(x, z, dx, dz, max) {
-      return physics.raycast({ x: x + dx * 0.6, y: CHEST, z: z + dz * 0.6 }, { x: dx, y: 0, z: dz }, max);
+      // Distance from the point itself; the ray starts 0.6 m out so it misses the person standing
+      // there (it reaches 0.6 m further than `max`, which only matters for a null "clear" answer).
+      const hit = physics.raycast({ x: x + dx * 0.6, y: CHEST, z: z + dz * 0.6 }, { x: dx, y: 0, z: dz }, max);
+      return hit === null ? null : hit + 0.6;
     },
   };
 }

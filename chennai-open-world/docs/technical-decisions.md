@@ -287,3 +287,29 @@ tests (`npm run test:e2e`) stay too: they drive that same build at phone size wi
 and are the main automated check, alongside the CI emulator job.
 
 **Revisit when** an iOS or desktop release is wanted.
+
+## TD-21: Weapons are a table plus an arsenal inside `Combat`; gangs are calm enemy groups
+
+**Decision (17 Nov 2026, branch `agent/gangs`).** Every weapon is a row of numbers in
+`packages/combat/src/Weapons.ts` (`WEAPONS`: damage, range, fire interval, pellets, spread, aim
+assist, damage fall-off, rounds carried, price; all game-design estimates) read by one
+`Arsenal` (owned weapons, rounds per gun, the gun in hand, cooldowns) that `Combat` owns.
+`Combat.shoot` and `Combat.punch` take their numbers from it. Rival gang members are ordinary
+`Enemy` entries with `calm: true` and a `group` of `gang:<gang>:<corner>`: the rules in
+`Gangs.ts` decide when a calm group turns (`provoke`) and which crews are on the street
+(`crewsToField`). No new enemy system, no new figure type.
+
+**Why.** One code path for all fights keeps stages 7–10 exactly as they were (the pistol row
+holds the old constants; `Combat.ammo` is still the pistol's rounds) while new weapons are only
+data. Gangs reusing `Enemy` and `Fighters` means the police branch, which reads `Combat`, sees
+gang members and stage enemies the same way, and a gang member costs what any enemy figure
+costs to draw. `Combat` emits `playerShot {x, z, weapon}` for every shot, for the wanted level.
+
+**Trade-offs.** FIRE always uses the gun in hand and HIT the best melee weapon (the bat once
+owned), so there is no holster: a player carrying a loaded gun or the bat counts as armed near
+gang corners. The weapon button cycles guns only. The arsenal is saved under its own key
+(`cow-weapons-v1`) rather than inside `cow-progress-v1`, so the many `saveProgress` calls and
+the tests that seed progress stay unchanged.
+
+**Revisit when** weapons need their own poses (two-handed shotgun) or the police need to tell
+gang members from other people.
