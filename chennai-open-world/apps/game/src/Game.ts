@@ -22,7 +22,11 @@ import { Population } from "./Population";
 import { LandmarkView } from "@cow/game-engine";
 import { landmarkSolids } from "@cow/game-world";
 import { LandmarkLabels } from "@cow/ui";
-import { loadWorld } from "./WorldFiles";
+import { loadRail, loadWorld } from "./WorldFiles";
+import { Railway, type RailSnapshot } from "./Railway";
+import { RidePanel } from "@cow/ui";
+import { loadStationFont } from "@cow/game-engine";
+import stationFont from "../../../assets/fonts/noto-sans-tamil-stations.woff2?inline";
 import playerModel from "../../../assets/optimized/player.glb?inline";
 import locomotion from "../../../assets/optimized/locomotion.glb?inline";
 import { loadSignFont } from "@cow/game-engine";
@@ -92,6 +96,8 @@ export interface GameSnapshot {
   readonly drift: number;
   /** Landmarks on the map and whether each one's name label is on screen. */
   readonly landmarks: Array<{ id: string; name: string; x: number; z: number; radius: number; label: boolean }>;
+  /** The suburban railway: trains near the player, stops, and the ride (null without the rail file). */
+  readonly rail: RailSnapshot | null;
 }
 
 const SAVE_KEY = "cow-progress-v1";
@@ -192,6 +198,8 @@ export class Game {
   /** Landmark models (always loaded) and their name labels. */
   private readonly landmarks: LandmarkView;
   private readonly landmarkLabels: LandmarkLabels;
+  /** Suburban trains and stations (`Railway.ts`); null if the rail file could not be read. */
+  railway: Railway | null = null;
 
   private constructor(
     private readonly map: WorldMap,
@@ -235,6 +243,9 @@ export class Game {
     const propsLoaded = loadPropAssets({ handcart, crates, barrel, clayPots, acUnit, dish });
     // Vehicles modelled in Blender (tools/blender); ground = ride height plus settled suspension below the chassis centre.
     const vehiclesLoaded = loadVehicleModels({ auto: { url: autoRickshaw, ground: -0.68 } });
+    // Station names in Tamil on the platform boards (a separate subset of the font).
+    const stationFontLoaded = loadStationFont(stationFont);
+    const railLoaded = loadRail();
     // The world files are produced from OpenStreetMap by `npm run build:world` (TD-16).
     const world = await loadWorld();
     const map = world.map;
@@ -329,6 +340,23 @@ export class Game {
       setVehicleNightLights(look.night);
     });
     game = new Game(map, content, renderer, mapView, chunks, physics, player, avatar, vehicles, population, combat, fighters, sound, missions, beacon, camera, controls, keyboard, hud, minimap);
+    const railFile = await railLoaded;
+    if (railFile) {
+      const railway = new Railway(railFile, renderer.scene, physics, new RidePanel(hud.root), {
+        player,
+        avatar,
+        camera,
+        money: () => missions.balance,
+        pay: (rupees) => {
+          missions.charge(rupees);
+          saveProgress(missions.progress());
+        },
+        toast: (title, detail, seconds) => hud.showToast(title, detail, seconds),
+        door: () => sound.door(),
+      }, { drawDistance: renderer.tier.loadDistance, tamil: await stationFontLoaded });
+      minimap.addLines(railway.minimapLines());
+      game.railway = railway;
+    }
 
     window.addEventListener("resize", () => renderer.resize());
     // Stop simulating while the app is in the background: saves battery and avoids a time jump.
@@ -469,6 +497,8 @@ export class Game {
 
   /** Where the player is: their vehicle when driving, otherwise their feet. */
   private where(): { x: number; y: number; z: number } {
+    const riding = this.railway?.ridePosition();
+    if (riding) return riding;
     if (!this.driving) return this.player.position;
     const p = this.driving.body.position();
     return { x: p.x, y: p.y - this.driving.type.rideHeight, z: p.z };
@@ -479,6 +509,7 @@ export class Game {
    * chunks around the new place are loaded (tests wait for it).
    */
   teleport(x: number, z: number, yaw = 0): Promise<void> {
+    this.railway?.endRide(null);
     const ready = this.chunks.whenLoaded(x, z);
     this.chunks.update(x, z, true);
     if (this.driving) this.driving.body.teleport({ x, y: this.driving.type.rideHeight + 0.1, z }, yaw);
@@ -640,6 +671,7 @@ export class Game {
       weather: this.weather,
       drift: this.driving?.body.drifting() ?? 0,
       landmarks: (this.map.landmarks ?? []).map((l) => ({ id: l.id, name: l.name, x: l.x, z: l.z, radius: l.radius ?? 0, label: this.landmarkLabels.isShown(l.id) })),
+      rail: this.railway?.snapshot(p) ?? null,
     };
   }
 
@@ -767,7 +799,9 @@ export class Game {
     const jump = [this.controls.consumeJump(), this.keyboard.consumeJump()].some(Boolean);
     const action = [this.controls.consumeAction(), this.keyboard.consumeAction()].some(Boolean);
 
-    if (action) {
+    if (action && !this.driving && this.railway?.act(this.where())) {
+      // Boarded or stepped off a train.
+    } else if (action) {
       if (this.driving) this.leaveVehicle();
       else if (this.nearby) this.enterVehicle(this.nearby);
     }
@@ -781,7 +815,7 @@ export class Game {
       const reversing = brake && speed < 0.8;
       driverInput = { throttle: gas ? 1 : reversing ? -1 : 0, steer: moveX, brake: brake && !reversing ? 1 : 0 };
       this.throttle = driverInput.throttle;
-    } else {
+    } else if (!this.railway?.riding) {
       this.player.update({ moveX, moveY, run: this.keyboard.run, jump, cameraYaw: this.camera.yaw }, dt);
     }
     for (const vehicle of this.vehicles) vehicle.update(vehicle === this.driving ? driverInput : null, dt);
@@ -803,6 +837,7 @@ export class Game {
     this.population.fixedUpdate(dt, before, room, this.parkedObstacles, siren);
     this.fight(dt, before);
     this.fighters.fixedUpdate();
+    this.railway?.fixedUpdate(dt, before);
     this.physics.step(dt);
 
     const at = this.where();
@@ -840,7 +875,17 @@ export class Game {
     const at = this.where();
     for (const vehicle of this.vehicles) vehicle.sync(dt);
 
-    if (this.driving) {
+    const ride = this.railway?.rideChase();
+    if (ride) {
+      // On a train: the camera follows it; the rider is inside, out of sight.
+      this.camera.chase(ride, dt);
+      this.camera.update(dt, at, this.physics, this.player.body);
+      this.hud.setSpeed(null);
+      this.sound.setEngine(null);
+      this.sound.setSkid(null);
+      this.nearby = null;
+      this.controls.setAction(this.railway?.action ?? null);
+    } else if (this.driving) {
       const body = this.driving.body;
       this.camera.chase({ velocity: body.planarVelocity(), heading: body.yaw(), forwardSpeed: body.forwardSpeed(), topSpeed: this.driving.type.physics.maxSpeed }, dt);
       this.camera.update(dt, at, this.physics, this.driving.body);
@@ -887,7 +932,7 @@ export class Game {
           this.nearby = vehicle;
         }
       }
-      this.controls.setAction(this.nearby ? "ENTER" : null);
+      this.controls.setAction(this.railway?.action ?? (this.nearby ? "ENTER" : null));
     }
 
     // Mission marker, panel and minimap.
@@ -917,6 +962,7 @@ export class Game {
       .filter((v) => v !== this.driving)
       .map((v) => ({ x: v.body.position().x, z: v.body.position().z, color: MINIMAP_COLORS[v.kind], size: v.kind === "bus" ? 5 : 3.5 }));
     for (const enemy of this.combat.enemies) if (enemy.health > 0) markers.push({ x: enemy.x, z: enemy.z, color: "#ff4d4d", size: 4 });
+    if (this.railway) markers.push(...this.railway.stations);
     if (target) markers.push({ x: target.x, z: target.z, color: "#ffb703", pinned: true, size: 6 });
     this.minimap.update(dt, at.x, at.z, this.driving ? this.driving.body.yaw() : this.player.yaw, this.camera.yaw, markers);
 
@@ -934,6 +980,7 @@ export class Game {
       this.announceArea();
     }
     this.population.frame(dt, at);
+    this.railway?.frame(at);
     this.chunks.update(at.x, at.z);
     // Sea haze: thicker air within about 600 m of the coast.
     this.sinceHaze += dt;
