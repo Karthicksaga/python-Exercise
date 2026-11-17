@@ -627,3 +627,8 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - **Specs written before the animated get out:** `police.spec` now uses `getOut()`;
   `weapons.spec` boards with `board()` for its "hidden while driving" check.
 - Results: typecheck clean, unit 434/434, full browser suite 78/78 (29.4 min, run alone).
+- **Later CI fixes (same day):** `android-smoke` no longer disables Android animations (that step
+  failed with "can't fork" before the app ran). Police: after a crime the wait to lose a star
+  doesn't run until the first car gets within 30 m of the spot (or sees the player), at most 45 s
+  (`POLICE.arrivedWithin`, `responseMax`; `WantedSight.responding`): on a slow CI runner the
+  star faded before the car arrived. Unit 435/435, browser 78/78 (28.1 min).
