@@ -145,7 +145,10 @@ jobs:
           arch: x86_64
           force-avd-creation: true
           emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: true
+          # Off: the smoke script only installs the APK and checks the game loads; Android's window
+          # animations don't matter to it. The step that turns them off runs `adb shell settings`
+          # straight after boot and once failed the job with "can't fork" before the app ran.
+          disable-animations: false
           working-directory: chennai-open-world
           # One line: the action runs each script line as a separate command.
           script: node scripts/android-smoke.mjs smoke-apk/app-release.apk android-smoke
