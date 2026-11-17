@@ -173,6 +173,44 @@ export function platformSide(path: RailPath, s: number, tracks: ReadonlyArray<re
   return room(1) >= room(-1) ? 1 : -1;
 }
 
+/**
+ * Where the two directions' tracks run a few metres apart at a station and both platforms would
+ * face the gap, make them one island platform filling it (estimated): the first line's stop draws
+ * it, the other's is its twin (the same platform, not drawn or made solid twice).
+ */
+export function islands(lines: RailLineData[], tracks: ReadonlyArray<readonly Point2[]> = []): void {
+  for (let i = 0; i < lines.length; i++) {
+    for (let j = i + 1; j < lines.length; j++) {
+      const a = lines[i]!;
+      const b = lines[j]!;
+      const pathA = RailPath.fromFlat(a.points);
+      const pathB = RailPath.fromFlat(b.points);
+      const stopsA = [...a.stops];
+      const stopsB = [...b.stops];
+      stopsA.forEach((stopA, ia) => {
+        const ib = stopsB.findIndex((s) => s.id === stopA.id);
+        if (ib < 0) return;
+        const stopB = stopsB[ib]!;
+        // Where each direction's track lies seen from the other (positive: on the left).
+        const trackB = pathA.project(pathB.at(stopB.s)).lateral;
+        const trackA = pathB.project(pathA.at(stopA.s)).lateral;
+        const gap = Math.abs(trackB) - 2 * PLATFORM_EDGE;
+        if (gap < 3 || gap > 14) return;
+        // Not where another track runs through the gap (a main line between the suburban pair).
+        const clear = [-40, 0, 40].every((ds) => {
+          const p = pathA.beside(stopA.s + ds, trackB / 2);
+          return tracks.every((track) => distanceToPolyline(p, track) > gap / 2 - 0.5);
+        });
+        if (!clear) return;
+        stopsA[ia] = { ...stopA, side: trackB > 0 ? 1 : -1, width: round(gap) };
+        stopsB[ib] = { ...stopB, side: trackA > 0 ? 1 : -1, width: round(gap), twin: true };
+      });
+      lines[i] = { ...a, stops: stopsA };
+      lines[j] = { ...b, stops: stopsB };
+    }
+  }
+}
+
 export function buildRail(extract: RailExtract, options: BuildOptions): RailFile {
   const projection = new GeoProjection(options.origin);
   const margin = options.margin ?? 150;
@@ -243,7 +281,7 @@ export function buildRail(extract: RailExtract, options: BuildOptions): RailFile
       if (stops.some((s) => s.id === String(node.id))) return;
       // Keep the platform whole on the line (and on the map).
       const s = Math.max(60, Math.min(path.length - 60, path.project(at).s));
-      stops.push({ id: String(node.id), name, nameTa, s: round(s), side: platformSide(path, s, trackLines) });
+      stops.push({ id: String(node.id), name, nameTa, s: round(s), side: platformSide(path, s, trackLines), width: PLATFORM_WIDTH });
       if (!stations.has(String(node.id))) stations.set(String(node.id), { id: String(node.id), name, nameTa, x: round(p.x), z: round(p.z) });
     };
     const stopPositions = stopRefs.filter((p) => inside(p, options.bounds, 0) && path.project(p).distance < 15);
@@ -285,6 +323,7 @@ export function buildRail(extract: RailExtract, options: BuildOptions): RailFile
     });
   }
 
+  islands(lines, trackLines);
   const date = extract.osm3s?.timestamp_osm_base?.slice(0, 10) ?? "unknown date";
   return { attribution: `© OpenStreetMap contributors (railway data ${date})`, tracks, lines, stations: [...stations.values()] };
 }

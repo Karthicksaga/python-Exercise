@@ -10,7 +10,7 @@
  * English and Tamil names and a yellow rule), not the real railway's signage.
  */
 import * as THREE from "three";
-import { PLATFORM_EDGE, PLATFORM_HEIGHT, PLATFORM_LENGTH, PLATFORM_WIDTH, RailPath, type RailFile, type RailLineData, type RailStopData } from "@cow/rail";
+import { PLATFORM_EDGE, PLATFORM_HEIGHT, PLATFORM_LENGTH, RailPath, platformOffset, type RailFile, type RailLineData, type RailStopData } from "@cow/rail";
 import { MeshBuilder } from "./MeshBuilder";
 
 export const RAIL_CELL = 250;
@@ -241,7 +241,9 @@ export class RailView {
     for (const line of file.lines) {
       const path = RailPath.fromFlat(line.points);
       for (const stop of line.stops) {
-        const centre = path.beside(stop.s, stop.side * (PLATFORM_EDGE + PLATFORM_WIDTH / 2));
+        // An island platform is drawn once, for the first direction's stop.
+        if (stop.twin) continue;
+        const centre = path.beside(stop.s, stop.side * platformOffset(stop));
         cell(centre.x, centre.z).platforms.push({ line, path, stop, row: this.rows.get(stop.id) ?? 0 });
       }
     }
@@ -339,11 +341,17 @@ export class RailView {
   private platform(b: MeshBuilder, boards: MeshBuilder, p: PlatformPiece): void {
     const { path, stop } = p;
     const pose = path.at(stop.s);
-    const across = stop.side * (PLATFORM_EDGE + PLATFORM_WIDTH / 2);
+    const width = stop.width;
+    const across = stop.side * platformOffset(stop);
     const centre = path.beside(stop.s, across);
     const half = PLATFORM_LENGTH / 2;
     // Concrete deck, then the yellow safety line along the track edge.
-    orientedBox(b, centre.x, centre.z, pose.yaw, half, PLATFORM_WIDTH / 2, -0.05, PLATFORM_HEIGHT, 0xb7b0a3);
+    orientedBox(b, centre.x, centre.z, pose.yaw, half, width / 2, -0.05, PLATFORM_HEIGHT, 0xb7b0a3);
+    if (width > 6) {
+      // An island platform: a safety line along the other track's edge too.
+      const far = path.beside(stop.s, stop.side * (PLATFORM_EDGE + width - 0.25));
+      orientedBox(b, far.x, far.z, pose.yaw, half, 0.22, PLATFORM_HEIGHT - 0.02, PLATFORM_HEIGHT + 0.01, 0xe8c12c, "top-sides");
+    }
     const edge = path.beside(stop.s, stop.side * (PLATFORM_EDGE + 0.25));
     orientedBox(b, edge.x, edge.z, pose.yaw, half, 0.22, PLATFORM_HEIGHT - 0.02, PLATFORM_HEIGHT + 0.01, 0xe8c12c, "top-sides");
     // Steps down at both ends (three 0.3 m steps; the player climbs 0.35 m at a time).
@@ -351,21 +359,22 @@ export class RailView {
       for (let k = 0; k < 3; k++) {
         const along = stop.s + end * (half + 0.4 + k * 0.8);
         const step = path.beside(along, across);
-        orientedBox(b, step.x, step.z, pose.yaw, 0.4, PLATFORM_WIDTH / 2, -0.05, PLATFORM_HEIGHT - 0.3 * (k + 1), 0xa9a296);
+        orientedBox(b, step.x, step.z, pose.yaw, 0.4, width / 2, -0.05, PLATFORM_HEIGHT - 0.3 * (k + 1), 0xa9a296);
       }
     }
     // A short shelter in the middle: posts on the far side, a sloping-looking flat roof.
     const roofCentre = path.beside(stop.s, across);
     for (const u of [-16, -8, 0, 8, 16]) {
-      const post = path.beside(stop.s + u, stop.side * (PLATFORM_EDGE + PLATFORM_WIDTH - 0.6));
+      // On an island the posts stand down the middle; on a side platform at its back.
+      const post = path.beside(stop.s + u, width > 6 ? across : stop.side * (PLATFORM_EDGE + width - 0.6));
       orientedBox(b, post.x, post.z, pose.yaw, 0.1, 0.1, PLATFORM_HEIGHT, PLATFORM_HEIGHT + 3.2, 0x4a6b5c);
     }
-    orientedBox(b, roofCentre.x, roofCentre.z, pose.yaw, 18, PLATFORM_WIDTH / 2 + 0.3, PLATFORM_HEIGHT + 3.2, PLATFORM_HEIGHT + 3.35, 0x6b8a7a);
+    orientedBox(b, roofCentre.x, roofCentre.z, pose.yaw, 18, width / 2 + 0.3, PLATFORM_HEIGHT + 3.2, PLATFORM_HEIGHT + 3.35, 0x6b8a7a);
     // Name boards on two posts, near each end, facing the track.
     for (const u of [-34, 34]) {
-      const at = path.beside(stop.s + u, stop.side * (PLATFORM_EDGE + PLATFORM_WIDTH / 2));
+      const at = path.beside(stop.s + u, across);
       for (const w of [-1.1, 1.1]) {
-        const leg = path.beside(stop.s + u + w, stop.side * (PLATFORM_EDGE + PLATFORM_WIDTH / 2));
+        const leg = path.beside(stop.s + u + w, across);
         orientedBox(b, leg.x, leg.z, pose.yaw, 0.05, 0.05, PLATFORM_HEIGHT, PLATFORM_HEIGHT + 2.6, 0x30343a);
       }
       this.board(boards, at.x, at.z, pose.yaw, PLATFORM_HEIGHT + 1.9, p.row);

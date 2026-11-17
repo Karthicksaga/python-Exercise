@@ -230,6 +230,8 @@ Avoid these areas until they are merged, or coordinate first.
 
 ## Suburban railway (branch `agent/railway`): where I left off, WIP, stopped on the user's instruction
 
+*Superseded by the next entry (the railway is now built); kept for the data notes.*
+
 **Done:** only the data fetch. Nothing in the game changed, and no game code was written.
 - `scripts/fetch-rail.mjs`: Overpass query for the railway in the map's box plus about 500 m
   (rail and light-rail ways, stations and halts, platforms, level crossings, and the route
@@ -285,3 +287,38 @@ and browser tests were not run on this branch (no code changed).
 5. Tests as listed in the brief: unit tests for the builder, motion and boarding, a browser
    test that boards and rides one stop, and draw calls and triangles before and after at Egmore
    and at the Anna Nagar spawn.
+
+## 17 Nov 2026: suburban railway built (branch `agent/railway`), ready to merge
+
+### Done (tested; details and measurements in `progress.md`, "Suburban railway")
+- Data: `scripts/clip-rail.py` cuts the railway from the openstreetmap.fr Tamil Nadu PBF (same
+  15 Nov extract as the city; Overpass was unreliable, `scripts/fetch-rail.mjs` kept as the
+  other way), `assets/osm/rail/chennai-rail.osm.json` (466 KB), `npm run build:rail` →
+  `apps/game/public/world/rail.json` (40 KB). How to rebuild: `assets/osm/README.md`.
+- `packages/rail` (new, pure): types, `RailPath`, `buildRail` (route relations chained per
+  direction, stops at the relation's stop positions, platform sides and islands, beyond-map ends),
+  `RunProfile`, `RailLine`/`RailNetwork` timetable, `boarding`/`canStepOff`/`rideEndsAt` (TD-19).
+- `packages/game-engine`: `RailView.ts` (tracks, platforms, boards in 250 m cells near the
+  player), `TrainView.ts` (code-built EMU coaches, instanced). `packages/ui`: `RidePanel.ts`,
+  `Minimap.addLines` (additive), `TouchControls.setAction` aria labels for BOARD and STEP OFF.
+- `apps/game/src/Railway.ts` does the wiring; `Game.ts` has small additive hooks (create, action,
+  `where()` while riding, ride camera, frame, minimap stations, `snapshot().rail`, teleport ends a
+  ride); `WorldFiles.loadRail`; `main.ts` test hook `railAdvance(seconds)`.
+- `apps/game/playwright.config.ts`: optional `PW_PORT`. **Why:** several checkouts on one machine;
+  without it, `reuseExistingServer` silently tests whichever build holds port 4173.
+- Tests: unit 218/218 (`npm test`), `railway.spec.ts` 3/3 (`PW_PORT=4294`). Full browser suite
+  not run here (coordinator's instruction, to save CPU); run it after merging.
+
+### Not done / known limits
+1. **Level crossings and barriers:** none needed by the data (none on the suburban line in the
+   map). Roads that cross on bridges or in subways are drawn at grade, so trains pass over them
+   and AI traffic does not stop. Bridges would fix it (not requested).
+2. **Trains do not react** to anything on the track (the player's car is pushed aside; a player
+   on foot on the track is not hit). Coaches are kinematic boxes.
+3. Only Beach–Tambaram. The Central lines (to Arakkonam/Tiruvallur and Gummidipoondi) leave the
+   map soon after Central with no other stop on it; the MRTS (viaduct) and Metro need elevated
+   or underground track.
+4. The train is built in code, not in Blender. A Blender script like `tools/blender/auto_rickshaw.py`
+   would look better; `TrainView` only needs a coach geometry (cab and trailer) facing -Z.
+5. Not checked on the emulator or a phone (the APK serves `world/rail.json` like the chunk files;
+   if the read fails the game starts without the railway).

@@ -244,3 +244,31 @@ placement first, not with polygon counts: every change is measured against about
 draw calls and 300k triangles in dense T. Nagar, and textures default to 512 px on phones.
 
 **Revisit when** phone profiling shows the budget cannot hold, or the user asks for another style.
+
+## TD-19: Trains are a function of a railway clock; the railway is one small file
+
+**Decision.** The suburban railway is data like the rest of the world: `npm run build:rail`
+turns the OSM railway extract into `apps/game/public/world/rail.json` (40 KB, committed, loaded
+with the world and through the APK's asset loader, TD-16). A passenger line is one direction of
+an OSM route relation (its ways chained in order, its stop positions named after the nearest
+station), so each direction runs on its own mapped track. Each line's run (enter at line speed or
+leave a terminus, brake to each stop, 30 s there, accelerate away, leave at the far end) is worked
+out once as phases of constant acceleration (`RunProfile`); a timetable (headway and offset per
+line, estimated) then gives every train's position as a function of one railway clock. Nothing
+about a train is simulated or stored: the game asks "which trains are on the line now, and
+where", builds instanced models for those within 900 m and kinematic boxes per coach for those
+within 400 m, and drops them when they go. Riding a train is just "follow train *k* of line *L*".
+
+**Why.** Trains on a timetable cannot drift, bunch or collide (identical profiles shifted in
+time; a unit test checks the spacing over three hours), cost nothing when out of sight, survive
+a teleport or a pause unchanged, and a test can move the clock forward (`railAdvance`, tests
+only) instead of waiting minutes for a train. A merged railway in the chunk files would have
+meant rebuilding the whole world (and the 58 MB extract) for every railway change.
+
+**Estimated, not real:** headways (8 min each way), the motion figures, 4-coach trains, platform
+length, height, width and side (island platforms where the two directions' tracks are 6.5–17.5 m
+apart with no other track between), the fare (₹5), the train and its livery, and the board design.
+
+**Revisit when** more lines are wanted (the MRTS and Metro need viaducts and tunnels), when
+trains should react to the player (they do not brake for anything on the track), or when a
+real timetable is used.

@@ -10,7 +10,7 @@ import type * as THREE from "three";
 import { COACH_HEIGHT, COACH_LENGTH, COACH_WIDTH, RAIL_TOP, RailView, TrainView, type ChaseTarget, type CoachPose, type FollowCamera } from "@cow/game-engine";
 import type { KinematicBox, PhysicsWorld, StaticBox } from "@cow/physics";
 import type { HumanFigure, PlayerController } from "@cow/player";
-import { FARE, PLATFORM_EDGE, PLATFORM_HEIGHT, PLATFORM_LENGTH, PLATFORM_WIDTH, RailNetwork, boarding, canStepOff, platformOf, rideEndsAt, stopAt, type RailFile, type RailLine, type TrainAt } from "@cow/rail";
+import { FARE, PLATFORM_HEIGHT, PLATFORM_LENGTH, RailNetwork, boarding, canStepOff, platformOf, platformOffset, rideEndsAt, stopAt, type RailFile, type RailLine, type TrainAt } from "@cow/rail";
 import type { MinimapMarker, RidePanel } from "@cow/ui";
 
 /** Coaches per train (estimated: real Chennai EMUs run 9 or 12 cars). */
@@ -117,14 +117,16 @@ export class Railway {
     const boxes: StaticBox[] = [];
     for (const line of this.network.lines) {
       for (const stop of line.stops) {
+        // An island platform is solid once, for the first direction's stop.
+        if (stop.twin) continue;
         const { x, z, yaw } = platformOf(line, stop);
-        boxes.push({ x, y: PLATFORM_HEIGHT / 2, z, hx: PLATFORM_WIDTH / 2, hy: PLATFORM_HEIGHT / 2, hz: PLATFORM_LENGTH / 2, yaw });
-        const across = stop.side * (PLATFORM_EDGE + PLATFORM_WIDTH / 2);
+        boxes.push({ x, y: PLATFORM_HEIGHT / 2, z, hx: stop.width / 2, hy: PLATFORM_HEIGHT / 2, hz: PLATFORM_LENGTH / 2, yaw });
+        const across = stop.side * platformOffset(stop);
         for (const end of [-1, 1]) {
           for (let k = 0; k < 3; k++) {
             const at = line.path.beside(stop.s + end * (PLATFORM_LENGTH / 2 + 0.4 + k * 0.8), across);
             const top = PLATFORM_HEIGHT - 0.3 * (k + 1);
-            boxes.push({ x: at.x, y: top / 2, z: at.z, hx: PLATFORM_WIDTH / 2, hy: top / 2, hz: 0.4, yaw });
+            boxes.push({ x: at.x, y: top / 2, z: at.z, hx: stop.width / 2, hy: top / 2, hz: 0.4, yaw });
           }
         }
       }
@@ -259,7 +261,7 @@ export class Railway {
     const line = train.line;
     const stop = line.stops[train.state.stoppedAt ?? 0]!;
     const s = Math.max(stop.s - PLATFORM_LENGTH / 2 + 5, Math.min(stop.s + PLATFORM_LENGTH / 2 - 5, train.state.s));
-    const spot = line.path.beside(s, stop.side * (PLATFORM_EDGE + PLATFORM_WIDTH / 2));
+    const spot = line.path.beside(s, stop.side * platformOffset(stop));
     const facing = line.path.at(s).yaw + (stop.side > 0 ? Math.PI / 2 : -Math.PI / 2);
     this.endRide({ x: spot.x, y: PLATFORM_HEIGHT + 0.05, z: spot.z, yaw: facing });
   }

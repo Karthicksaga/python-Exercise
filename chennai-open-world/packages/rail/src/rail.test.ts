@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ANNA_NAGAR_ORIGIN, GeoProjection } from "@cow/map-data";
-import { buildRail, chainWays, clipLine, type RailExtract } from "./build";
+import { buildRail, chainWays, clipLine, islands, type RailExtract } from "./build";
 import { EMU_MOTION, RunProfile } from "./motion";
 import { FARE, PLATFORM_EDGE, PLATFORM_WIDTH, RailLine, RailNetwork, boarding, canStepOff, platformOf, rideEndsAt, stopAt } from "./network";
 import { RailPath } from "./path";
@@ -136,6 +136,41 @@ describe("building the rail file", () => {
     expect(file.tracks.map((t) => t.id).sort()).toEqual([100, 101, 102, 103]);
   });
 
+  it("makes one island platform where the two directions' tracks run a few metres apart", () => {
+    const stop = (side: 1 | -1, s: number) => ({ id: "x", name: "X", nameTa: "எ", s, side, width: 4 });
+    // Southbound on x = 0, northbound on x = 12: the gap between the platform edges is 8.5 m.
+    const lines: RailLineData[] = [
+      { ...lineData, id: "down", points: [0, 0, 0, 1000], stops: [stop(-1, 500)] },
+      { ...lineData, id: "up", points: [12, 1000, 12, 0], stops: [stop(-1, 500)] },
+    ];
+    islands(lines);
+    const [down, up] = [lines[0]!.stops[0]!, lines[1]!.stops[0]!];
+    expect(down.width).toBeCloseTo(12 - 2 * PLATFORM_EDGE, 1);
+    expect(up.width).toBe(down.width);
+    expect(up.twin).toBe(true);
+    expect(down.twin).toBeUndefined();
+    // Both describe the same platform, between the tracks (running south, left is east).
+    const a = platformOf(new RailLine(lines[0]!), down);
+    const b = platformOf(new RailLine(lines[1]!), up);
+    expect(a.x).toBeCloseTo(6, 1);
+    expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeLessThan(0.5);
+    // Tracks far apart keep their own side platforms.
+    const apart: RailLineData[] = [
+      { ...lineData, id: "down", points: [0, 0, 0, 1000], stops: [stop(-1, 500)] },
+      { ...lineData, id: "up", points: [40, 1000, 40, 0], stops: [stop(-1, 500)] },
+    ];
+    islands(apart);
+    expect(apart[1]!.stops[0]!.twin).toBeUndefined();
+    expect(apart[0]!.stops[0]!.width).toBe(4);
+    // Nor where another track runs through the gap.
+    const blocked: RailLineData[] = [
+      { ...lineData, id: "down", points: [0, 0, 0, 1000], stops: [stop(-1, 500)] },
+      { ...lineData, id: "up", points: [12, 1000, 12, 0], stops: [stop(-1, 500)] },
+    ];
+    islands(blocked, [[{ x: 6, z: 0 }, { x: 6, z: 1000 }]]);
+    expect(blocked[1]!.stops[0]!.twin).toBeUndefined();
+  });
+
   it("fails clearly when the extract has no relation members", () => {
     expect(() => buildRail({ elements: [] }, { origin: ANNA_NAGAR_ORIGIN, bounds: { minX: 0, maxX: 1, minZ: 0, maxZ: 1 }, lines: [{ id: "x", relation: 1, name: "x", from: "a", to: "b", headwayMinutes: 5, offsetMinutes: 0 }] })).toThrow(/fetch-rail/);
   });
@@ -187,9 +222,9 @@ const lineData: RailLineData = {
   name: "Beach – Tambaram",
   points: [0, 0, 0, 5000],
   stops: [
-    { id: "a", name: "A", nameTa: "அ", s: 1000, side: 1 },
-    { id: "b", name: "B", nameTa: "ஆ", s: 2200, side: -1 },
-    { id: "c", name: "C", nameTa: "இ", s: 4000, side: 1 },
+    { id: "a", name: "A", nameTa: "அ", s: 1000, side: 1, width: 4 },
+    { id: "b", name: "B", nameTa: "ஆ", s: 2200, side: -1, width: 4 },
+    { id: "c", name: "C", nameTa: "இ", s: 4000, side: 1, width: 4 },
   ],
   from: { name: "Chennai Beach", beyond: true },
   to: { name: "Tambaram", beyond: true },

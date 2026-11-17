@@ -1,9 +1,51 @@
 # Progress, testing and known issues
 
-Last updated: 17 Nov 2026.
+Last updated: 17 Nov 2026 (suburban railway).
 
 ## What exists
 
+- **Suburban railway with trains you can ride (17 Nov; unit-tested and browser-tested in headless
+  Chromium, not on the emulator or a phone):** the Beach–Tambaram line from OpenStreetMap (the
+  openstreetmap.fr Tamil Nadu extract of 15 Nov, the same as the city; route relations 1289050 and
+  20986091, one per direction) with its nine stations on the map: Park, Chennai Egmore, Chetpet,
+  Nungambakkam, Kodambakkam, Mambalam, Saidapet, Guindy, St. Thomas Mount. Both ends run off the
+  map (Chennai Beach to the north-east, Tambaram to the south). All 223 rail tracks on the map
+  (running lines, sidings, yards; not the MRTS viaduct or the Metro) are drawn: ballast, concrete
+  sleepers (within about 260 m), two rails, in 250 m cells built only near the player (one merged
+  mesh per cell, plus one for name boards). Platforms (estimated: 110 m, 0.9 m high, side or
+  island, yellow edge line, steps at both ends, a short shelter) are solid, with name boards in
+  English and Tamil (OSM `name:ta`, drawn with a 6 KB subset of Noto Sans Tamil Bold; invented
+  blue-and-yellow board design). Trains: an original four-coach EMU-style model built in code
+  (`TrainView.ts`, under 1,000 triangles a coach, invented cream, teal and saffron livery), all
+  coaches as instances of two meshes; timetabled every 8 min each way (estimated), entering at
+  line speed from beyond the map, braking at 0.9 m/s², 30 s at each station, accelerating at
+  0.8 m/s² to 80 km/h; solid (kinematic boxes per coach) within 400 m, drawn within 900 m (TD-19).
+  Riding: on a platform the panel shows the station and when the next trains come; when a train
+  stands there, BOARD (the context button, or E) takes a ₹5 ticket (estimated; refused without
+  the money), the camera follows the train and the panel shows the destination, the next station,
+  the distance and the speed; STEP OFF at any station puts the player on that platform. A ride
+  towards Tambaram (or Chennai Beach) ends at the last station on the map with "The line
+  continues to Tambaram beyond the map." The minimap draws the running lines and marks the
+  stations. **No level crossings:** the only ones in the box are inside the Metro depot; the
+  line crosses roads on bridges or in subways, which are not modelled (trains run at ground level
+  over the roads there, and AI traffic does not stop for them). **Measured** (production build,
+  headless Chromium, `?quality=lite`, 915×412, 2.5 s of game time after teleport; "before" is the
+  same build without `rail.json`, so the game runs without the railway): Anna Nagar spawn
+  175 → 175 draw calls, 253,610 → 253,610 triangles (no railway within range); beside Chennai Egmore's
+  platforms (5622, 703) 133 → 138 draw calls, 176,686 → 199,958 triangles (+23k) with no train in
+  sight, and 140 draw calls, 201,142 triangles with two trains (8 coaches) standing there. Both
+  runs repeated with identical numbers. **Tested:** unit tests (`packages/rail/src/rail.test.ts`:
+  path geometry, chaining and clipping ways, projection, stations snapped to stop positions,
+  Metro and MRTS stations left out, platform sides and islands, beyond-map ends, the run profile's
+  stops and limits, timetable spacing over three hours, next arrival, boarding and step-off rules;
+  `apps/game/src/rail.test.ts` on the real file; `packages/game-engine/src/RailView.test.ts`:
+  cells streamed and freed, triangle budget, instancing); browser tests
+  (`apps/game/tests/railway.spec.ts`, 3/3): teleport to Egmore, wait for a train (the clock moved on
+  with the test hook, then waiting on game time), board (₹100 → ₹95), the train pulls away, ride to
+  Chetpet, step off onto the platform (within its length, at 0.9 m, standing); a ride from Guindy
+  ending at St. Thomas Mount with the beyond-the-map message; no money, no ticket.
+  `npm run typecheck`, `npm test` 218/218. The full browser suite was **not** run on this branch
+  (the coordinator runs it on the merged code to save CPU).
 - **Facade kit: sunshades, balconies, shop fronts and Tamil signboards (Phase 3, 16 Nov;
   unit-tested, and looked at in headless Chromium by day and at 21:00, not on a phone):**
   `packages/game-engine/src/FacadeKit.ts` decides at render time, from the `Building` record,
@@ -207,6 +249,7 @@ Last updated: 17 Nov 2026.
 | TypeScript strict | pass | `npm run typecheck`; `cd apps/mobile && npx tsc --noEmit` |
 | Unit tests (51, 16 Nov) | pass | `npm test`: projection, OSM parsing, vehicle physics, mission rules, road graph and agents (including dead ends, people passing each other, pulling over for a siren), combat rules, job rules (clock, dwell, pay, bumps, fines, reputation locks, late bus stops, damaged saves), gear indicator, game clock |
 | Unit tests (103, 16 Nov, later) | pass | `npm test`, 14 files: adds signals, junction turns, density, traffic mix, lighting by hour and rain, drift on a real Rapier world (and no false crash from drifting or braking), chase camera, landmarks from OSM and the ring-path fallback |
+| Suburban railway (17 Nov) | **pass**: unit 218/218, railway browser spec 3/3 | `npm test`; `cd apps/game && PW_PORT=4294 PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test railway --trace off` (2.3 min). The full browser suite was not run on this branch. Not run on the emulator or a phone |
 | Street props (17 Nov) | **pass**: unit 180/180, browser 38/38 | `npm test` (adds `props.test.ts`, `StreetProps.test.ts`, real-city `apps/game/src/props.test.ts`); `cd apps/game && PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off`, 38/38 in 6.9 min on a software-rendered host. Not run on the emulator or a phone |
 | Browser tests (38, 16 Nov, night) | **pass, 38/38** | `npm run test:e2e` on the same slow host (`PW_CHROMIUM=/opt/pw-browsers/chromium`): the 33 earlier tests, `city.spec.ts` (4) and the Marina evening drive. The timing tests now hold controls for a span of **game** time (`waitGameTime`, from `snapshot().simTime`) and wait for a frame after taps and drags, instead of wall-clock milliseconds; every gameplay threshold is unchanged (the drift test now checks "slide ends within a second" in game time). Wall-clock poll limits were raised where they only bound how long to wait. Before this, the same tests failed on this host and on GitHub's runner (4 of 33) because the game ran behind real time |
 | City build, browser (16 Nov, evening) | 26/33; the baseline also 26/33 on the same machine | `npm run test:e2e` with `PW_CHROMIUM=/opt/pw-browsers/chromium` (the pinned Playwright's own browser was not installed). The 7 failures are all timing tests (distance in a fixed time, camera drag, jump, drift, getting out). The last tested commit 0931329, run on the same machine straight after, failed 7 timing tests too, 6 of them the same: the host renders at 100–300 ms frames in software. Everything else passes, including the updated streaming test (teleport 6 km to T. Nagar: every Anna Nagar chunk freed, the new ones loaded, street name read). **Needs a rerun on a normal machine or in CI** |

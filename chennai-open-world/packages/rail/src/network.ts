@@ -112,9 +112,14 @@ export class RailNetwork {
   }
 }
 
+/** Distance from the track's centre to the middle of a stop's platform. */
+export function platformOffset(stop: RailStopData): number {
+  return PLATFORM_EDGE + (stop.width ?? PLATFORM_WIDTH) / 2;
+}
+
 /** Where a stop's platform is: its centre, the way the track runs and the side it lies on. */
 export function platformOf(line: RailLine, stop: RailStopData): { x: number; z: number; yaw: number; s: number; lateral: number } {
-  const lateral = stop.side * (PLATFORM_EDGE + PLATFORM_WIDTH / 2);
+  const lateral = stop.side * platformOffset(stop);
   const centre = line.path.beside(stop.s, lateral);
   return { ...centre, yaw: line.path.at(stop.s).yaw, s: stop.s, lateral };
 }

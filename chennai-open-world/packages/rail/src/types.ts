@@ -22,6 +22,10 @@ export interface RailStopData {
   readonly s: number;
   /** Platform side: 1 on the left of the direction of travel, -1 on the right (estimated). */
   readonly side: 1 | -1;
+  /** Platform width, metres (estimated; an island platform fills the space between two tracks). */
+  readonly width: number;
+  /** True when this stop uses the island platform drawn (and made solid) for the other direction's stop. */
+  readonly twin?: boolean;
 }
 
 /** Where one end of a line goes. */
