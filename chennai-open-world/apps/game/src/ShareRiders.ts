@@ -25,8 +25,8 @@ const SEATS: ReadonlyArray<{ x: number; y: number; z: number }> = [
   { x: -0.3, y: 0.22, z: -0.4 },
 ];
 
-/** Passengers sit back with their hands on their laps and feet on the floor (estimated). */
-const PASSENGER: Parameters<HumanAssets["seatedStatic"]>[1] = { lean: -0.08, hand: { x: 0.15, y: 0.05, z: -0.28 }, foot: { x: 0.15, y: -0.37, z: -0.42 } };
+/** Passengers sit back with their hands loosely closed on their laps and feet on the floor (estimated). */
+const PASSENGER: Parameters<HumanAssets["seatedStatic"]>[1] = { lean: -0.08, hand: { x: 0.15, y: 0.05, z: -0.28 }, foot: { x: 0.15, y: -0.37, z: -0.42 }, grip: 0.35 };
 
 export class ShareRiders {
   private readonly standing: HumanFigure[] = [];

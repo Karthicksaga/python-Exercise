@@ -85,6 +85,21 @@ describe("riding poses", async () => {
     expect(point(figure, "HeadTop_End").y).toBeLessThan(1.71 - 0.014 - 0.68 - 0.01);
   });
 
+  it.each(["auto", "bike"] as const)("%s: the fingers close round the grips instead of lying flat", (kind) => {
+    // Grips: a bar across the vehicle through the palm targets (auto: tools/blender/auto_rickshaw.py,
+    // 20 mm radius rubber; bike: models.ts). A closed hand keeps every fingertip near the bar's
+    // axis; an open, flat hand reaches 8 cm or more past it.
+    const { driver, pose } = posed(kind);
+    const y = driver.y + pose.hand.y;
+    const z = driver.z + pose.hand.z;
+    for (const side of ["Left", "Right"]) {
+      for (const finger of ["Index", "Middle", "Ring", "Pinky"]) {
+        const tip = point(figure, `${side}Hand${finger}4`);
+        expect(Math.hypot(tip.y - y, tip.z - z), `${kind} ${side} ${finger} tip from the bar`).toBeLessThan(0.045);
+      }
+    }
+  });
+
   it("puts the motorbike rider's hands on the grips and feet on the pegs", () => {
     posed("bike");
     for (const [name, x] of [["RightPalm", 0.33], ["LeftPalm", -0.33]] as const) {

@@ -29,6 +29,11 @@ export interface RidingPose {
   readonly foot: PosePoint;
   /** How far the knees splay outwards (0 straight ahead, 1 about 45°); default 0.25. */
   readonly knees?: number;
+  /**
+   * How far the fingers close: 1 a fist round a grip or the wheel rim (default), 0 the rest pose's
+   * flat hand; in between for hands resting on a lap.
+   */
+  readonly grip?: number;
 }
 
 /** Rest pose of one bone in the model's own space (unscaled, unturned). */
@@ -87,6 +92,38 @@ const CHAINS = [
   { upper: "LeftUpLeg", middle: "LeftLeg", end: "LeftFoot", side: 1, arm: false },
   { upper: "RightUpLeg", middle: "RightLeg", end: "RightFoot", side: -1, arm: false },
 ] as const;
+
+/**
+ * Finger bend at a full grip, radians, for the knuckle, middle and end joints: the fingers wrap
+ * round a grip about 4 cm across (estimated from a hand on a handlebar). The thumb closes less.
+ */
+const CURL = [1.25, 1.45, 0.95];
+const THUMB_CURL = [0.25, 0.55, 0.45];
+const FINGER = /^(Left|Right)Hand(Thumb|Index|Middle|Ring|Pinky)([123])$/;
+
+/**
+ * Close one finger joint round the grip: turn it about the line across the knuckles (index to
+ * pinky, as the hand is posed), the way that sends the middle finger downwards, which is round
+ * the front of the bar and under it for a hand aimed forwards and down.
+ */
+function curl(rig: Rig, name: string, q: THREE.Quaternion, world: ReadonlyMap<THREE.Bone, THREE.Quaternion>, grip: number): THREE.Quaternion {
+  const match = FINGER.exec(name);
+  if (!match || grip <= 0) return q;
+  const [, side, finger, joint] = match;
+  const hand = rig.byName.get(`${side}Hand`);
+  const index = rig.byName.get(`${side}HandIndex1`);
+  const pinky = rig.byName.get(`${side}HandPinky1`);
+  const middle = rig.byName.get(`${side}HandMiddle1`);
+  const handWorld = hand && world.get(hand.bone);
+  if (!hand || !index || !pinky || !middle || !handWorld) return q;
+  const toPosed = hand.rotation.clone().invert().premultiply(handWorld);
+  const across = pinky.position.clone().sub(index.position).applyQuaternion(toPosed).normalize();
+  const along = middle.position.clone().sub(hand.position).applyQuaternion(toPosed);
+  // Turning `along` about `across` moves it by across × along: pick the sign that moves it down.
+  const sign = across.clone().cross(along).y < 0 ? 1 : -1;
+  const angle = (finger === "Thumb" ? THUMB_CURL : CURL)[Number(joint) - 1]! * grip * sign;
+  return new THREE.Quaternion().setFromAxisAngle(across, angle).multiply(q);
+}
 
 /** Palm centre: this share of the way from the wrist to the middle knuckle. */
 const PALM = 0.6;
@@ -178,6 +215,7 @@ function pass(rig: Rig, pose: RidingPose, ends: ReadonlyMap<string, THREE.Vector
         q = aim(rig, rest, `${chain.end}Middle1`, q, new THREE.Vector3(-chain.side * 0.3, -0.45, 1));
       }
     }
+    q = curl(rig, name, q, world, pose.grip ?? 1);
     world.set(rest.bone, q);
     at.set(rest.bone, position);
   }
