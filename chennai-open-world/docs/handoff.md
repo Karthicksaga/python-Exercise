@@ -599,3 +599,21 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - **Not done:** the back-street dealer (needs a new place kind across shared files); a holster
   (a loaded gun always counts as armed near gangs); two-handed poses for the shotgun and SMG;
   nothing tried on the emulator or a phone.
+
+## 17 Nov 2026: vehicle entry, police and weapons/gangs merged (branch `agent/merge-features`)
+- Merged `agent/vehicle-entry`, `agent/police` and `agent/gangs` (each passed its own full suite:
+  61, 60 and 69). On the merged code: typecheck clean, unit **430/430**, full browser suite
+  **78/78** (28.4 min, run alone). Then merged into `feat/chennai-open-world`.
+- Resolutions to know (merge commit messages have the details): an arrest confiscates the whole
+  arsenal via `Arms.confiscate()` (pickups stay); `Police.gunfire` is called for every shot;
+  `combat.keepOnly` keeps the stage's group, gang crews and police groups together; the snapshot's
+  `enemies` excludes police; police kept TD-21, weapons/gangs became TD-22.
+- **Interaction to tune:** the police ignore shots within 60 m of a live gang enemy (meant for
+  story fights). With crews standing in Royapettah, Triplicane and Egmore, firing near a crew never
+  raises the wanted level. Decide whether gang-turf shooting should bring the police.
+- **Budget:** a 3-star chase at the spawn street peaks at 333k triangles (budget 300k); spawn is
+  already at ~300k. Profile spawn before adding more there.
+- **Not done** (from the three reports): no car/bus interior (the driver vanishes into the
+  doorway); auto rider's legs brush the front panel stepping in; long train-door walks are rushed;
+  no arrest animation; police cars can pass through traffic that has not pulled over; wanted level
+  not saved; no weapon dealer place; no two-handed shotgun/SMG pose; nothing tried on a phone.
