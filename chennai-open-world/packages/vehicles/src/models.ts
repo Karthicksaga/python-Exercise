@@ -252,7 +252,7 @@ function bike(color: number): VehicleModel {
       [
         [-0.5, 0.12], [-0.42, 0.34], [-0.05, 0.38], [0.18, 0.2], [0.2, 0.02], [-0.4, 0.0],
       ],
-      0.34,
+      0.28,
       0.06,
       paint,
     ),
@@ -261,19 +261,21 @@ function bike(color: number): VehicleModel {
   object.add(box(0.26, 0.26, 0.4, frame, 0, -0.12, -0.08)); // engine block
   object.add(box(0.2, 0.06, 0.5, paint, 0, 0.12, 0.92)); // tail
   object.add(box(0.14, 0.07, 0.03, tailMaterial(), 0, 0.12, 1.18));
-  // Front forks, handlebar, headlamp.
+  // Front forks raked back from the axle to the steering head, handlebar on top, headlamp.
   for (const x of [-0.09, 0.09]) {
-    const fork = box(0.04, 0.78, 0.04, steel, x, 0.06, -0.62);
-    fork.rotation.x = -0.36;
+    const fork = box(0.04, 0.78, 0.04, steel, x, 0.06, -0.583);
+    fork.rotation.x = 0.36;
     object.add(fork);
   }
-  object.add(box(0.66, 0.035, 0.035, frame, 0, 0.5, -0.5));
-  for (const x of [-0.33, 0.33]) object.add(box(0.1, 0.045, 0.045, seat, x, 0.5, -0.5));
-  object.add(box(0.17, 0.17, 0.1, lampMaterial(), 0, 0.34, -0.66));
+  // Grips at (±0.33, 0.52, -0.42): the rider's hands (`VEHICLE_TYPES.bike.pose`).
+  object.add(box(0.06, 0.1, 0.06, frame, 0, 0.47, -0.43)); // stem
+  object.add(box(0.66, 0.035, 0.035, frame, 0, 0.52, -0.42));
+  for (const x of [-0.33, 0.33]) object.add(box(0.1, 0.045, 0.045, seat, x, 0.52, -0.42));
+  object.add(box(0.17, 0.17, 0.1, lampMaterial(), 0, 0.38, -0.56));
   // Exhaust, mudguards, footpegs.
   object.add(box(0.07, 0.07, 0.86, steel, 0.17, -0.2, 0.42));
   object.add(box(0.13, 0.03, 0.5, paint, 0, 0.0, -0.74), box(0.13, 0.03, 0.46, paint, 0, 0.02, 0.76));
-  object.add(box(0.5, 0.03, 0.05, frame, 0, -0.28, 0.12));
+  object.add(box(0.5, 0.03, 0.05, frame, 0, -0.28, 0.12)); // footpegs, ±0.24 m
 
   mergeParts(object, []);
   const wheels = [0, 1].map(() => wheel(0.3, 0.1));

@@ -201,7 +201,7 @@ export class Population {
       const kind = isVehicleKind(name) ? name : "car";
       const car = new TrafficCar(kind, kind === "auto" ? AUTO_YELLOW : CAR_COLORS[agent.id % CAR_COLORS.length]!);
       // Every moving vehicle has someone at the wheel (a baked seated person, shared per shirt).
-      car.setDriver(humans.seatedStatic(kind === "auto" ? AUTO_DRIVER : DRIVER_CLOTHES[agent.id % DRIVER_CLOTHES.length]!));
+      car.setDriver(humans.seatedStatic(kind === "auto" ? AUTO_DRIVER : DRIVER_CLOTHES[agent.id % DRIVER_CLOTHES.length]!, car.type.pose));
       scene.add(car.object);
       this.drivers.push({ car, body: physics.createKinematicBox(car.type.physics.halfExtents), generation: -1 });
     }

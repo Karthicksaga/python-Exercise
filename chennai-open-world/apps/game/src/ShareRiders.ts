@@ -16,11 +16,17 @@ const CLOTHES = [0xe0c29f, 0x9fb8e0, 0xd9a0a0, 0xa9d6a9, 0xe6dd9a, 0xb7a3d6];
  * three across the rear bench, then the fourth squeezed beside the driver. Estimated by eye.
  */
 const SEATS: ReadonlyArray<{ x: number; y: number; z: number }> = [
-  { x: -0.36, y: -0.62, z: 0.42 },
-  { x: 0.36, y: -0.62, z: 0.42 },
-  { x: 0, y: -0.62, z: 0.42 },
-  { x: -0.34, y: -0.72, z: -0.36 },
+  // Hip centres (seated figures are placed by their hips, as `VehicleType.driver` is), estimated from
+  // the Blender auto: bench top about 0.07 m and floor about -0.30 m in the model frame, bench 0.88 m
+  // behind the centre; the fourth passenger shares the driver's saddle, on the left.
+  { x: -0.36, y: 0.17, z: 0.8 },
+  { x: 0.36, y: 0.17, z: 0.8 },
+  { x: 0, y: 0.17, z: 0.8 },
+  { x: -0.3, y: 0.22, z: -0.4 },
 ];
+
+/** Passengers sit back with their hands on their laps and feet on the floor (estimated). */
+const PASSENGER: Parameters<HumanAssets["seatedStatic"]>[1] = { lean: -0.08, hand: { x: 0.15, y: 0.05, z: -0.28 }, foot: { x: 0.15, y: -0.37, z: -0.42 } };
 
 export class ShareRiders {
   private readonly standing: HumanFigure[] = [];
@@ -84,7 +90,7 @@ export class ShareRiders {
     while (this.seated.length < Math.min(count, SEATS.length)) {
       const seat = SEATS[this.seated.length]!;
       // Copies share the baked geometry per tint, so a passenger costs a few draw calls and no skeleton.
-      const person = this.humans.seatedStatic(CLOTHES[(this.seated.length + 3) % CLOTHES.length]!);
+      const person = this.humans.seatedStatic(CLOTHES[(this.seated.length + 3) % CLOTHES.length]!, PASSENGER);
       person.position.set(seat.x, seat.y, seat.z);
       auto.add(person);
       this.seated.push(person);

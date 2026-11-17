@@ -427,3 +427,23 @@ and browser tests were not run on this branch (no code changed).
   were rerun on their own.
 - Not tested on a phone. Next: try it on the phone build the user reported from ("hitting NPC does not work
   properly" was before this feature).
+
+## 17 Nov 2026: riding poses and P / R / D gears (branch `agent/controls-poses`)
+- **Done and tested** (details and tests in `progress.md`): a riding pose per vehicle kind solved
+  with two-bone IK (`packages/player/src/ridingPose.ts`, data in `VehicleType.pose` and
+  `VehicleType.driver`, now the hip point for every kind; `seat` was removed and `openSeat` says
+  whether the rider is drawn), used by the player and AI drivers; the motorbike's forks fixed;
+  a P / R / D selector with the rules in `packages/vehicles/src/Gearbox.ts`.
+- **Behaviour change:** holding BRAKE no longer reverses on the touch controls; select R. The
+  keyboard's W/S still drive and reverse by themselves.
+- **For merging:** shared files touched: `Game.ts` (gearbox wiring, seated pose), `Vehicle.ts`
+  (`riderPose` uses `driver`), `TrafficCar.ts`, `Population.ts` (one line: `seatedStatic` takes
+  the pose), `TouchControls.ts` (selector), `KeyboardInput.ts`, `specs.ts`, `models.ts` (bike).
+  `HumanFigure.setSeated` now takes a pose or null instead of a boolean. A seated figure's root
+  is its hip joints, not its feet: code that seats people (Share auto passengers) should give
+  a hip point and a `RidingPose`. `playwright.config.ts` takes `PW_PORT` (default 4173).
+- **Not done:** no steering animation (the bars and wheel don't turn the hands); passengers
+  have no pose of their own; closed vehicles have no modelled steering wheel (the driver is
+  hidden there). Seen in the screenshots, not fixed: the HORN button sits under the minimap's
+  lower edge while driving (it was there before this change).
+- **Not tested on a phone.** Check the selector's reach and the poses on a real device.

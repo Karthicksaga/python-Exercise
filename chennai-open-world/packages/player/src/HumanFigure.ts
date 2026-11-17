@@ -9,6 +9,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { PLAYER_HEIGHT } from "./PlayerController";
 import { retargetClips } from "./retarget";
+import { captureRig, solveRidingPose, type Rig, type RidingPose, type SolvedPose } from "./ridingPose";
 
 export interface HumanSources {
   /** URL of the character model (.glb). */
@@ -25,21 +26,6 @@ const RUN_FROM = 3.2;
 
 type Gait = "idle" | "walk" | "run";
 
-/**
- * Sitting pose, as the direction each limb points in the figure's own space
- * (+X = the figure's left, +Y = up, +Z = forwards). Thighs forward, shins down, arms reaching
- * ahead to a handlebar.
- */
-const SEATED: Readonly<Record<string, readonly [number, number, number]>> = {
-  LeftUpLeg: [0.18, -0.2, 1],
-  RightUpLeg: [-0.18, -0.2, 1],
-  LeftLeg: [0, -1, -0.12],
-  RightLeg: [0, -1, -0.12],
-  LeftArm: [0.28, -0.55, 0.8],
-  RightArm: [-0.28, -0.55, 0.8],
-  LeftForeArm: [-0.1, -0.12, 1],
-  RightForeArm: [0.1, -0.12, 1],
-};
 /** Right arm straight out in front: aiming a pistol, or the end of a punch. */
 const AIMING: Readonly<Record<string, readonly [number, number, number]>> = {
   RightArm: [-0.1, -0.06, 1],
@@ -48,10 +34,6 @@ const AIMING: Readonly<Record<string, readonly [number, number, number]>> = {
 
 /** The bone below each posed limb, which defines the way the limb points at rest. */
 const LIMB_CHILD: Readonly<Record<string, string>> = {
-  LeftUpLeg: "LeftLeg",
-  RightUpLeg: "RightLeg",
-  LeftLeg: "LeftFoot",
-  RightLeg: "RightFoot",
   LeftArm: "LeftForeArm",
   RightArm: "RightForeArm",
   LeftForeArm: "LeftHand",
@@ -133,18 +115,24 @@ export class HumanAssets {
     return new HumanFigure(copy, this.clips, this.scale, this.lift);
   }
 
-  private readonly seatedTemplates = new Map<number, THREE.Group>();
+  private readonly seatedTemplates = new Map<RidingPose, Map<number, THREE.Group>>();
 
   /**
-   * A seated person as plain meshes (no skeleton): the sitting pose baked once per clothing
-   * tint, then shared by every copy. For drivers and riders of AI traffic: much cheaper than an
-   * animated figure, and a seated driver doesn't move. Root at the feet, facing like `create`.
+   * A seated person as plain meshes (no skeleton): the riding pose baked once per pose and
+   * clothing tint, then shared by every copy. For drivers and riders of AI traffic: much cheaper
+   * than an animated figure, and a seated driver doesn't move. Root at the hip joints (like a
+   * seated `HumanFigure`), facing like `create`.
    */
-  seatedStatic(tint: number): THREE.Group {
-    let template = this.seatedTemplates.get(tint);
+  seatedStatic(tint: number, pose: RidingPose): THREE.Group {
+    let byTint = this.seatedTemplates.get(pose);
+    if (!byTint) {
+      byTint = new Map();
+      this.seatedTemplates.set(pose, byTint);
+    }
+    let template = byTint.get(tint);
     if (!template) {
       const figure = this.create(tint, true);
-      figure.setSeated(true);
+      figure.setSeated(pose);
       figure.object.updateMatrixWorld(true);
       const toRoot = figure.object.matrixWorld.clone().invert();
       template = new THREE.Group();
@@ -176,7 +164,7 @@ export class HumanAssets {
         mesh.castShadow = false;
         template.add(mesh);
       }
-      this.seatedTemplates.set(tint, template);
+      byTint.set(tint, template);
     }
     // Copies share geometry and materials with the template.
     return template.clone(true);
@@ -188,12 +176,15 @@ export class HumanFigure {
   readonly object = new THREE.Group();
   private readonly mixer: THREE.AnimationMixer;
   private readonly actions: Record<Gait, THREE.AnimationAction>;
-  private readonly seatedPose: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>;
+  private readonly rig: Rig;
+  private readonly scale: number;
+  private readonly model: THREE.Object3D;
+  private readonly ridingPoses = new Map<RidingPose, SolvedPose>();
   private readonly aimPose: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>;
   private readonly gun: THREE.Mesh;
   private readonly standingLift: number;
   private gait: Gait = "idle";
-  private seated = false;
+  private seated: RidingPose | null = null;
   private aiming = false;
   private down = false;
   /** Seconds left of a punch (arm thrown forwards). */
@@ -201,8 +192,10 @@ export class HumanFigure {
 
   /** @internal Use `HumanAssets.create`. */
   constructor(model: THREE.Object3D, clips: THREE.AnimationClip[], scale: number, lift: number) {
-    // Work out the sitting pose while the model is still unscaled and unturned.
-    this.seatedPose = HumanFigure.solvePose(model, SEATED);
+    // Capture the rest pose (for riding poses) while the model is still unscaled and unturned.
+    this.rig = captureRig(model);
+    this.scale = scale;
+    this.model = model;
     const aimBones = new Set(Object.keys(AIMING));
     this.aimPose = HumanFigure.solvePose(model, AIMING).filter((entry) => aimBones.has(entry.bone.name));
 
@@ -299,14 +292,26 @@ export class HumanFigure {
     return this.clothes?.[0]?.material.color.getHex() ?? null;
   }
 
-  /** Sit (riding a bike or driving an auto) or stand up again. */
-  setSeated(seated: boolean): void {
-    if (seated === this.seated) return;
-    this.seated = seated;
-    if (seated) {
+  /**
+   * Sit in a vehicle's riding pose (hands on the grips or wheel, feet on the footboard or
+   * pedals), or stand up again with null. While seated the figure's root is the centre of its
+   * hip joints, so the game places the root on the vehicle's seat point.
+   */
+  setSeated(pose: RidingPose | null): void {
+    if (pose === this.seated) return;
+    this.seated = pose;
+    if (pose) {
+      let solved = this.ridingPoses.get(pose);
+      if (!solved) {
+        solved = solveRidingPose(this.rig, pose, this.scale);
+        this.ridingPoses.set(pose, solved);
+      }
       this.mixer.stopAllAction();
-      for (const { bone, quaternion } of this.seatedPose) bone.quaternion.copy(quaternion);
+      for (const { bone, quaternion } of solved.rotations) bone.quaternion.copy(quaternion);
+      // The model is turned half a turn and scaled: put its hip joints on the root.
+      this.model.position.set(solved.hips.x * this.scale, -solved.hips.y * this.scale, solved.hips.z * this.scale);
     } else {
+      this.model.position.set(0, this.standingLift, 0);
       this.gait = "idle";
       for (const [name, action] of Object.entries(this.actions)) {
         action.reset().play();

@@ -29,8 +29,8 @@ test("take the ambulance run, use the siren, and get paid", async ({ page }) => 
   expect((await jobState(page)).siren).toBe(true);
   await holdButton(page, "Accelerate", 1200);
   const moving = await jobState(page);
-  expect(moving.gear).toMatch(/^[1-5]$/);
-  await expect(page.getByTestId("gear")).toHaveText(/^[1-5]$/);
+  expect(moving.gear).toMatch(/^D[1-5]$/);
+  await expect(page.getByTestId("gear")).toHaveText(/^D[1-5]$/);
 
   // Drive straight to the patient: stop inside the marker and wait for them to be loaded.
   const pickup = moving.target!;

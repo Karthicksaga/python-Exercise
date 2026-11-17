@@ -96,8 +96,9 @@ test("gears climb while accelerating and the chase camera settles behind the dir
     await page.waitForTimeout(100);
   }
   await accelerating;
-  expect(seen.has("1")).toBe(true);
-  expect(seen.has("2")).toBe(true);
+  // In D the HUD shows the gear number after the D (D1, D2…).
+  expect(seen.has("D1")).toBe(true);
+  expect(seen.has("D2")).toBe(true);
   const s = await state(page);
   expect(s.speed).toBeGreaterThan(8);
   expect(Math.abs(wrap(s.cameraYaw - s.yaw))).toBeLessThan(0.2);

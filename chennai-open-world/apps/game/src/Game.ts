@@ -12,7 +12,7 @@ import { MissionRunner, type MissionEvent, type Objective, type Progress } from 
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
 import { HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, type HumanFigure } from "@cow/player";
 import { Hud, Minimap, TouchControls, type MinimapMarker } from "@cow/ui";
-import { Vehicle, gearFor, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
+import { Gearbox, Vehicle, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
 import { buildContent, type GameContent } from "./content";
 import { Fighters, combatWorld } from "./Fighters";
 import { JobDesk, type ShareSnapshot } from "./JobDesk";
@@ -211,7 +211,8 @@ export class Game {
   private readonly desk: JobDesk;
   /** A menu is open over the game (job board or a job's result). */
   private held = false;
-  private throttle = 0;
+  /** The P / R / D selector of whatever the player drives (reset to D on getting in). */
+  private readonly gearbox = new Gearbox();
   /** Gear shown last frame, to hear a change up. */
   private lastGear = "";
   /** Time of day. Systems that change with it read `clock.hour`. */
@@ -603,10 +604,10 @@ export class Game {
     this.avatar.setAiming(false);
     this.player.body.setEnabled(false);
     // Open vehicles show the rider sitting; closed ones hide the driver.
-    const open = vehicle.type.seat !== undefined;
-    this.avatar.visible = open;
-    this.avatar.setSeated(open);
+    this.avatar.visible = vehicle.type.openSeat === true;
+    this.avatar.setSeated(vehicle.type.pose);
     this.camera.reach = vehicle.type.cameraDistance;
+    this.gearbox.reset("D");
     this.controls.setMode("drive");
     this.controls.setHornLabel(vehicle.type.siren ? "SIREN" : "HORN");
   }
@@ -641,7 +642,7 @@ export class Game {
     this.player.body.setEnabled(true);
     this.player.respawn({ x: p.x - Math.sin(exit) * out, y: 0.1, z: p.z - Math.cos(exit) * out }, yaw);
     this.avatar.visible = true;
-    this.avatar.setSeated(false);
+    this.avatar.setSeated(null);
     this.avatar.object.quaternion.identity();
     this.camera.reach = 5.6;
     this.controls.setMode("foot");
@@ -739,7 +740,7 @@ export class Game {
       reputation: this.desk.runner.reputation,
       share: this.desk.shareSnapshot(),
       shareFigures: this.riders.drawn,
-      gear: this.driving ? gearFor(this.driving.type, this.driving.body.forwardSpeed(), this.throttle) : "",
+      gear: this.driving ? this.gearbox.label(this.driving.type, this.driving.body.forwardSpeed()) : "",
       siren: this.driving?.siren ?? false,
       held: this.held,
       hour: this.clock.hour,
@@ -911,6 +912,8 @@ export class Game {
     // Read both sources every step, so a press on one is never left pending.
     const jump = [this.controls.consumeJump(), this.keyboard.consumeJump()].some(Boolean);
     const action = [this.controls.consumeAction(), this.keyboard.consumeAction()].some(Boolean);
+    const gearAsked = this.controls.consumeGear();
+    const keyGear = this.keyboard.consumeGear();
 
     if (action && !this.driving && this.railway?.act(this.where())) {
       // Boarded or stepped off a train.
@@ -923,12 +926,12 @@ export class Game {
     let driverInput: VehicleControls | null = null;
     if (this.driving) {
       const speed = this.driving.body.forwardSpeed();
-      const gas = stick.gas || this.keyboard.moveY > 0;
-      const brake = stick.brake || this.keyboard.moveY < 0;
-      // The brake pedal brakes while rolling forwards and reverses once the vehicle has stopped.
-      const reversing = brake && speed < 0.8;
-      driverInput = { throttle: gas ? 1 : reversing ? -1 : 0, steer: moveX, brake: brake && !reversing ? 1 : 0 };
-      this.throttle = driverInput.throttle;
+      // Gear rules (P / R / D, braking before a shift) are in the Gearbox (@cow/vehicles).
+      const asked = gearAsked ?? keyGear;
+      if (asked) this.gearbox.select(asked, speed);
+      driverInput = this.gearbox.controls({ gas: stick.gas, brake: stick.brake, steer: moveX, keys: this.keyboard.moveY }, speed);
+      const hint = this.gearbox.consumeHint();
+      if (hint) this.hud.showToast(hint, "", 2.4);
     } else if (!this.railway?.riding) {
       this.player.update({ moveX, moveY, run: this.keyboard.run, jump, cameraYaw: this.camera.yaw }, dt);
     }
@@ -1013,7 +1016,8 @@ export class Game {
       const body = this.driving.body;
       this.camera.chase({ velocity: body.planarVelocity(), heading: body.yaw(), forwardSpeed: body.forwardSpeed(), topSpeed: this.driving.type.physics.maxSpeed }, dt);
       this.camera.update(dt, at, this.physics, this.driving.body);
-      const gear = gearFor(this.driving.type, this.driving.body.forwardSpeed(), this.throttle);
+      const gear = this.gearbox.label(this.driving.type, this.driving.body.forwardSpeed());
+      this.controls.setGear(this.gearbox.gear, this.gearbox.pending);
       this.hud.setSpeed(this.driving.speedKmh, gear);
       if (shiftedUp(this.lastGear, gear)) this.sound.gearChange();
       this.lastGear = gear;
@@ -1028,10 +1032,8 @@ export class Game {
         } else this.sound.horn();
       }
       const seat = this.driving.riderPose();
-      if (seat) {
-        this.avatar.object.position.set(seat.x, seat.y, seat.z);
-        this.avatar.object.quaternion.copy(seat.quaternion);
-      }
+      this.avatar.object.position.set(seat.x, seat.y, seat.z);
+      this.avatar.object.quaternion.copy(seat.quaternion);
       this.nearby = null;
       this.controls.setAction("EXIT");
     } else {
