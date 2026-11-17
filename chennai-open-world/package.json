@@ -12,7 +12,7 @@
     "build": "npm run build -w @cow/game",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:e2e": "npm run test:e2e -w @cow/game",
+    "test:e2e": "node scripts/e2e.mjs",
     "sync:android": "npm run build && node scripts/sync-android.mjs",
     "android": "npm run sync:android && cd apps/mobile && npx react-native run-android",
     "build:world": "tsx scripts/build-world.ts",

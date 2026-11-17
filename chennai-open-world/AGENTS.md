@@ -29,12 +29,32 @@ Do not move rendering into React Native/Hermes: Rapier (WebAssembly) cannot run 
 ## Before a major feature
 1. Read the relevant packages and docs. 2. List dependencies and Android/WebView limits.
 3. Write the plan in `docs/development-roadmap.md`. 4. Build in small steps.
-5. `npm run typecheck && npm test && npm run test:e2e`. 6. Build the APK and run it
+5. `npm run typecheck && npm test && npm run test:e2e` (alone on the machine; see below when
+several agents work at once). 6. Build the APK and run it
 (emulator at least; a real phone for anything touching performance or touch input).
 7. Update `docs/progress.md`, and `docs/technical-decisions.md` if a decision was made.
 
 ## Commands
 See `README.md`. Android builds need `JAVA_HOME` set to JDK 17–21.
+
+## Several agents at once (read this if you were started alongside others)
+Browser tests are the bottleneck: each run is software-rendered Chromium and uses most of the CPU.
+- **Always run browser tests with `npm run test:e2e`** (never `npx playwright test` directly). It
+  holds a machine-wide lock, so runs take turns instead of slowing each other into flaky timing
+  failures, and it picks a free port, so you never test another checkout's build.
+- **Run only your own browser specs** while you work: `npm run test:e2e -- tests/<yours>.spec.ts`,
+  plus any existing spec your change touches (for example the driving specs if you change
+  driving input). Typecheck and unit tests are cheap: run them as often as you like.
+- **Don't run the full browser suite in a feature branch.** Whoever merges runs it once, on the
+  merged code, before pushing to `feat/chennai-open-world`.
+- **Branches:** work on `agent/<topic>` made from the latest `feat/chennai-open-world`; push it
+  after every working milestone (`git push -u origin HEAD:agent/<topic>`); only the coordinator
+  merges into `feat/chennai-open-world`.
+- **Shared files** (`apps/game/src/Game.ts`, `main.ts`, `Population.ts`, `packages/ui`, `index.ts`
+  export lists, `docs/*.md`): keep edits small and additive (append, don't reorganise) so branches
+  merge cleanly.
+- **Stopping:** commit and push what you have (WIP is fine), and add a "where I left off" entry at
+  the end of `docs/handoff.md`.
 
 ## Testing notes
 - `window.__cow` is for tests and debugging only: `snapshot()` (position, mode, money, mission,

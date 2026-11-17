@@ -462,6 +462,6 @@ Conflict resolutions to check (all are in the merge commits' messages):
 - `ShareRiders.ts`: seated figures are now placed by their hips with a pose; share-auto passengers
   got an estimated `PASSENGER` pose and hip-height seats. Not checked by eye.
 
-Run first: `cd apps/game && PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off`
-(one run at a time on this machine). Known risks: `jobs.spec.ts` (ambulance run, Marina drive),
+Run first: `PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e` from `chennai-open-world/` (it
+waits for any other run on the machine and picks a free port; see AGENTS.md). Known risks: `jobs.spec.ts` (ambulance run, Marina drive),
 `pedestrians.spec.ts` killed case, `shareAuto.spec.ts` kerb passengers, `handling.spec.ts`.
