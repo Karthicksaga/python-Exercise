@@ -503,3 +503,41 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - **Next:** asked by the user: an animated get-in / get-out (doors opening and closing on the car,
   bus and train) and more missions with police, gangsters and more weapons. Then profile
   triangles at spawn; play on a phone (selector reach, poses, frame rate).
+
+## 17 Nov 2026: animated get in / get out and train doors (branch `agent/vehicle-entry`): where I left off
+- **Done and tested** (details in `progress.md`): ENTER and EXIT run a sequence instead of switching at once.
+  Getting in: walk to the door, open it, sit down, shut it. Getting out is the reverse, and control comes
+  back while the door closes. Car and ambulance driver's doors (right side, front hinge, 65°) and the bus's
+  kerb-side folding door (two leaves) are separate meshes with a dark doorway behind them. The auto and
+  the bike have no door. Trains: sliding doors on the coach nearest the player open at a stop and shut
+  before it leaves; BOARD and STEP OFF walk through a doorway.
+- **Results:** typecheck clean, unit 348/348, full browser suite 61/61 (21.9 min) on 8f7b5bd.
+- **Behaviour changes (tests updated on purpose):** `board()` waits for the sequence, and the new
+  `getOut(page)` helper in `apps/game/tests/support.ts` taps EXIT and waits in game time for `mode === "foot"`.
+  Use them in new specs: `mode` stays `"foot"` for a few game seconds after ENTER, and the vehicle's
+  mode for about a second after EXIT. `snapshot()` now has `boarding` and, per vehicle, `yaw` and
+  `door`. `rail` has `doors` and `walking`. `ControlMode` gains `"busy"` (both button sets hidden).
+- **For merging: shared files touched.**
+  - `Game.ts`: new methods `getIn`, `getOut`, `boardingStep`, `cancelBoarding` and `standUp`, plus a
+    boarding branch and a train-walk branch at the top of `frame()`. In `fixedUpdate`, input is ignored
+    while busy; `where()`, `teleport()` and `snapshot()` changed. `leaveVehicle(force)` is still the
+    instant exit.
+  - Other shared files: `models.ts` (`DoorMesh`, doors and doorways for the car, ambulance and bus),
+    `specs.ts` (`VehicleType.entry`), `Vehicle.ts` (`door`, `setDoor`), `HumanFigure.ts`
+    (`sitting`, `sitWeight`), `Railway.ts` (door walks, `TrainDoors`), `TrainView.ts`
+    (`TrainDoors`, `coachDoorways`), `TouchControls.ts` (one type line), `index.ts` export lists
+    (vehicles, rail), and the tests `support.ts`, `driving.spec.ts`, `places.spec.ts`,
+    `pedestrians.spec.ts` and `railway.spec.ts`.
+  - New files: `Boarder.ts`, `Boarding.ts`, `packages/rail/src/doors.ts`, `boarding.spec.ts`.
+- **Not done / known:**
+  - There is no modelled cabin, so the figure vanishes into the dark doorway as it sits, and closed
+    vehicles hide the driver after the door shuts, as before.
+  - The auto rider's legs brush the front cowl while stepping in.
+  - A far walk to a train doorway (e.g. from the foot of the platform steps) is hurried to about 4 s,
+    so it is a sprint.
+  - BOARD can still pick a train standing at the other track of an island or adjacent platform (old
+    rule); the figure then walks across that track at platform height.
+  - If the door's side is blocked, EXIT falls back to the old instant exit on another side.
+  - Not tried on the emulator or a phone.
+- **Next:** try it on a phone (timings, camera), a simple cabin so drivers stay visible, and
+  steering animation.
