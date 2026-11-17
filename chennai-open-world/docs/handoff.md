@@ -617,3 +617,13 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   doorway); auto rider's legs brush the front panel stepping in; long train-door walks are rushed;
   no arrest animation; police cars can pass through traffic that has not pulled over; wanted level
   not saved; no weapon dealer place; no two-handed shotgun/SMG pose; nothing tried on a phone.
+
+## 17 Nov 2026: CI fixes after the feature merge (branch `agent/enemy-walls`)
+- CI on dd4a490 failed stage 15 (`missions2.spec`) and, on a slower runner, a police spec.
+- **Stage 15 was a real bug:** enemies looked for walls with a ray that starts 0.6 m out; buildings
+  are hollow, so an enemy closer than that to a wall walked into the building and could never be
+  shot. Enemies now use `CombatWorld.solidDistance` (from their own centre, through people;
+  `PhysicsWorld.raycastSolid`). Test: `apps/game/src/enemyWalls.test.ts` (real Rapier world).
+- **Specs written before the animated get out:** `police.spec` now uses `getOut()`;
+  `weapons.spec` boards with `board()` for its "hidden while driving" check.
+- Results: typecheck clean, unit 434/434, full browser suite 78/78 (29.4 min, run alone).
