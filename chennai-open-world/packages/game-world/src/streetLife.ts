@@ -133,7 +133,7 @@ export const LIFE_CAPS: Readonly<Record<LifeKind, number>> = {
   flowerStall: 6,
   pushcart: 3,
   chairStack: 4,
-  twoWheeler: 20,
+  twoWheeler: 12,
 };
 export const KOLAM_CAP = 60;
 export const CABLE_CAP = 50;
@@ -307,8 +307,8 @@ function shopLife(ground: Ground, out: Placed, shop: ShopFront, temple: boolean)
   // A fruit and vegetable pushcart along the front of a few shops.
   if (!stall && r(441) < 0.08) place(ground, out, shop, "pushcart", mid, 1.6, yawFacing(shop.ux, shop.uz), 0, { opens: 7 + r(442), closes: 20.5 + r(443) });
   // Two-wheelers parked nose-in or nose-out in front of the shop.
-  if (r(451) >= 0.6) return;
-  const bikes = 1 + Math.floor(r(452) * 3);
+  if (r(451) >= 0.45) return;
+  const bikes = 1 + Math.floor(r(452) * 2);
   for (let k = 0; k < bikes; k++) {
     const s = mid + (k - (bikes - 1) / 2) * 0.95 + (r(453 + k) - 0.5) * 0.2;
     if (s < 0.3 || s > shop.width - 0.3) continue;
@@ -372,7 +372,7 @@ function kolamFor(ground: Ground, b: Building, roads: readonly Road[], shopWalls
 }
 
 /**
- * Cables: three lines from each pole to the next pole of the same road (within 48 m), and on
+ * Cables: two lines from each pole to the next pole of the same road (within 48 m), and on
  * about three poles in four a service drop of one or two lines to the nearest building corner
  * within 22 m (pole tops estimated at the cross-arm, houses fed at 5 to 6.5 m).
  */
@@ -394,7 +394,7 @@ export function cablesFor(poles: readonly PolePlacement[], buildings: readonly B
       }
     }
     // Each pair once: from the pole further west (or north) to its neighbour.
-    if (next && (a.x < next.x || (a.x === next.x && a.z < next.z))) out.push({ ax: a.x, ay: top, az: a.z, bx: next.x, by: top, bz: next.z, sag: sag(gap), count: 3 });
+    if (next && (a.x < next.x || (a.x === next.x && a.z < next.z))) out.push({ ax: a.x, ay: top, az: a.z, bx: next.x, by: top, bz: next.z, sag: sag(gap), count: 2 });
     const id = (Math.round(a.x * 10) * 73856093) ^ (Math.round(a.z * 10) * 19349663);
     if (hash(id, 801) > 0.75 || out.length >= CABLE_CAP) continue;
     let corner: { x: number; z: number; h: number } | null = null;

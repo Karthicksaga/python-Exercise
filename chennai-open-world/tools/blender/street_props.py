@@ -138,8 +138,8 @@ def cylinder(name, radius, depth, at, mat, vertices=12, rotation=(0, 0, 0)):
     return finish(bpy.context.active_object, mat, name)
 
 
-def sphere(name, radius, at, mat, squash=1.0):
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=5, radius=radius, location=at)
+def sphere(name, radius, at, mat, squash=1.0, segments=8, rings=5):
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=segments, ring_count=rings, radius=radius, location=at)
     obj = bpy.context.active_object
     obj.scale = (1, 1, squash)
     bpy.ops.object.transform_apply(scale=True)
@@ -170,6 +170,12 @@ def lathe(name, profile, mat, sides=12):
 
 
 def join(objects, name):
+    # Bake every part's own turn and place first: joining parts whose rotation was only set on
+    # the object (rotation_euler) left them displaced (the awning's canopy floated 1 m out and its
+    # struts lay on the ground).
+    bpy.context.view_layer.update()
+    for obj in objects:
+        bake(obj)
     bpy.ops.object.select_all(action="DESELECT")
     for obj in objects:
         obj.select_set(True)
@@ -220,6 +226,14 @@ def wear():
 
 def export(name):
     path = os.path.join(OUT, name + ".glb")
+    # Static single-object props: bake their transform into the mesh, so the GLB's node carries
+    # none (a joined object keeps its first part's turn, which read back wrongly in the game).
+    for obj in list(bpy.context.scene.objects):
+        if obj.type == "MESH" and obj.parent is None and not obj.children and not obj.animation_data:
+            bpy.ops.object.select_all(action="DESELECT")
+            obj.select_set(True)
+            bpy.context.view_layer.objects.active = obj
+            bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     wear()
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.export_scene.gltf(
@@ -473,22 +487,21 @@ def tea_stall():
     parts = [box("counter", (w, d, h - 0.04), (cx, -d / 2, (h - 0.04) / 2), "cabinet", 0.01)]
     parts.append(box("top", (w + 0.04, d + 0.04, 0.04), (cx, -d / 2, h - 0.02), "steel"))
     parts.append(box("plinth", (w + 0.02, d + 0.02, 0.08), (cx, -d / 2, 0.04), "wood"))
-    # Glass jars along the front edge: glass shell, contents showing through, lid.
+    # Glass jars of biscuits and rusks along the front edge (the contents show through the glass), lids.
     fill = ["biscuit", "rusk", "sweets", "biscuit", "rusk"]
     for i in range(5):
         x = cx - w / 2 + 0.18 + i * 0.2
         y = -d + 0.14
-        parts.append(cylinder(f"jar{i}", 0.085, 0.26, (x, y, h + 0.13), "glass", 10))
-        parts.append(cylinder(f"fill{i}", 0.087, 0.16, (x, y, h + 0.09), fill[i], 10))
-        parts.append(cylinder(f"lid{i}", 0.07, 0.05, (x, y, h + 0.285), "lid_red" if i % 2 else "lid_blue", 10))
+        parts.append(cylinder(f"fill{i}", 0.085, 0.24, (x, y, h + 0.12), fill[i], 8))
+        parts.append(cylinder(f"lid{i}", 0.07, 0.05, (x, y, h + 0.265), "lid_red" if i % 2 else "lid_blue", 8))
     # Tea boiler: a tall steel urn with a domed lid and a tap, on a squat stove; a kettle beside it.
     bx, by = cx + w / 2 - 0.22, -0.2
     parts.append(box("stove", (0.32, 0.32, 0.16), (bx, by, h + 0.08), "iron"))
-    urn = lathe("boiler", [(0.0, 0.0), (0.15, 0.0), (0.16, 0.05), (0.16, 0.42), (0.13, 0.47), (0.05, 0.52), (0.0, 0.53)], "steel", 12)
+    urn = lathe("boiler", [(0.0, 0.0), (0.15, 0.0), (0.16, 0.05), (0.16, 0.42), (0.13, 0.47), (0.05, 0.52), (0.0, 0.53)], "steel", 8)
     urn.location = (bx, by, h + 0.16)
     parts.append(urn)
     parts.append(cylinder("tap", 0.015, 0.1, (bx, by - 0.2, h + 0.24), "rusk", 6, rotation=(math.pi / 2, 0, 0)))
-    parts.append(cylinder("kettle", 0.08, 0.16, (bx - 0.3, by, h + 0.08), "steel", 10))
+    parts.append(cylinder("kettle", 0.08, 0.16, (bx - 0.3, by, h + 0.08), "steel", 8))
     # Frame: posts at the corners, a bar for the sachet strips, a tin sheet on top.
     for i, x in enumerate((cx - w / 2 - 0.02, cx + w / 2 + 0.02)):
         parts.append(box(f"post{i}", (0.04, 0.04, 2.1), (x, -d - 0.05, 1.05), "iron"))
@@ -519,13 +532,13 @@ def flower_stall():
         parts.append(box(f"leg{i}", (0.05, 0.05, h - 0.06), (x, y, (h - 0.06) / 2), "iron"))
     parts.append(box("leaf", (w - 0.1, d - 0.1, 0.01), (0, -d / 2, h + 0.005), "banana_leaf"))
     for i, (x, y, r, mat) in enumerate(((-0.42, -0.5, 0.2, "marigold"), (-0.05, -0.55, 0.17, "marigold_y"), (0.3, -0.5, 0.15, "rose"))):
-        parts.append(sphere(f"heap{i}", r, (x, y, h + 0.02), mat, 0.45))
+        parts.append(sphere(f"heap{i}", r, (x, y, h + 0.02), mat, 0.45, 6, 3))
     basket = lathe("basket", [(0.0, 0.0), (0.16, 0.0), (0.2, 0.12), (0.21, 0.14), (0.0, 0.14)], "basket", 10)
     basket.location = (0.45, -0.22, h)
     parts.append(basket)
-    parts.append(sphere("jasmine_heap", 0.17, (0.45, -0.22, h + 0.12), "jasmine", 0.35))
+    parts.append(sphere("jasmine_heap", 0.17, (0.45, -0.22, h + 0.12), "jasmine", 0.35, 6, 3))
     for i, x in enumerate((-0.4, -0.05)):
-        parts.append(cylinder(f"coil{i}", 0.12, 0.05, (x, -0.2, h + 0.03), "jasmine", 10))
+        parts.append(cylinder(f"coil{i}", 0.12, 0.05, (x, -0.2, h + 0.03), "jasmine", 8))
     # Bamboo pole on two posts at the back, with jasmine strings hanging from it.
     for i, x in enumerate((-w / 2 + 0.03, w / 2 - 0.03)):
         parts.append(box(f"pole{i}", (0.04, 0.04, 1.75), (x, -0.04, 0.875), "bamboo"))
@@ -562,7 +575,7 @@ def pushcart():
     parts.append(cylinder("pushbar", 0.02, W, (0, L / 2 + 0.41, top + 0.18), "iron", 6, rotation=(0, math.pi / 2, 0)))
     heaps = [(-0.3, -0.6, "orange"), (0.3, -0.6, "apple"), (-0.3, 0.0, "onion"), (0.3, 0.05, "tomato"), (-0.3, 0.6, "lime"), (0.3, 0.6, "grape")]
     for i, (x, y, mat) in enumerate(heaps):
-        parts.append(sphere(f"heap{i}", 0.2, (x, y, top + 0.06), mat, 0.5))
+        parts.append(sphere(f"heap{i}", 0.2, (x, y, top + 0.06), mat, 0.5, 6, 3))
     for i, y in enumerate((-0.45, -0.15, 0.15, 0.45)):
         parts.append(rbox(f"banana{i}", (0.3, 0.12, 0.07), (0, y, top + 0.2), "banana", rot=(0, math.radians(15), 0), bevel=0.02))
     # Umbrella on a pole at the front corner.
@@ -582,7 +595,7 @@ def pushcart():
     cart = join(parts, "pushcart")
     for i, y in enumerate((-0.55, 0.55)):
         for k, x in enumerate((-W / 2 - 0.03, W / 2 + 0.03)):
-            cart = place_wheel(spoked_wheel(f"wheel{i}{k}", 0.26, 0.04, 4, sides=10), (x, y, 0.26), cart, "pushcart")
+            cart = place_wheel(spoked_wheel(f"wheel{i}{k}", 0.26, 0.04, 3, sides=8), (x, y, 0.26), cart, "pushcart")
     export("pushcart")
 
 
@@ -618,9 +631,9 @@ def two_wheeler():
     fy, ry = -wb / 2, wb / 2
     parts = [box("frame", (0.08, 0.9, 0.08), (0, 0.0, 0.62), "iron")]
     parts.append(rbox("tank", (0.26, 0.42, 0.18), (0, -0.25, 0.8), "paint", rot=(math.radians(6), 0, 0), bevel=0.04))
-    parts.append(box("seat", (0.26, 0.6, 0.08), (0, 0.22, 0.79), "seat", 0.025))
-    parts.append(box("panel", (0.28, 0.26, 0.16), (0, 0.18, 0.66), "paint", 0.02))
-    parts.append(box("engine", (0.24, 0.36, 0.26), (0, -0.08, 0.36), "engine", 0.03))
+    parts.append(box("seat", (0.26, 0.6, 0.08), (0, 0.22, 0.79), "seat"))
+    parts.append(box("panel", (0.28, 0.26, 0.16), (0, 0.18, 0.66), "paint"))
+    parts.append(box("engine", (0.24, 0.36, 0.26), (0, -0.08, 0.36), "engine"))
     parts.append(rbox("silencer", (0.08, 0.6, 0.08), (0.17, 0.32, 0.36), "chrome", rot=(math.radians(-8), 0, 0)))
     parts.append(rbox("guard_r", (0.13, 0.45, 0.02), (0, ry - 0.05, r + 0.33), "paint", rot=(math.radians(-20), 0, 0)))
     parts.append(box("tail", (0.12, 0.05, 0.06), (0, ry + 0.2, 0.74), "tail"))
@@ -635,14 +648,14 @@ def two_wheeler():
     parts.append(box("bar", (0.7, 0.03, 0.03), (0, ty + 0.05, tz + 0.12), "iron"))
     for i, x in enumerate((-0.34, 0.34)):
         parts.append(box(f"grip{i}", (0.1, 0.04, 0.04), (x, ty + 0.05, tz + 0.12), "rubber"))
-    parts.append(cylinder("headlamp", 0.08, 0.1, (0, ty - 0.1, tz), "lamp", 10, rotation=(math.pi / 2, 0, 0)))
-    parts.append(box("cowl", (0.2, 0.12, 0.16), (0, ty - 0.02, tz + 0.02), "paint", 0.02))
+    parts.append(cylinder("headlamp", 0.08, 0.1, (0, ty - 0.1, tz), "lamp", 8, rotation=(math.pi / 2, 0, 0)))
+    parts.append(box("cowl", (0.2, 0.12, 0.16), (0, ty - 0.02, tz + 0.02), "paint"))
     parts.append(rbox("guard_f", (0.11, 0.35, 0.02), (0, fy, r + 0.08), "paint", rot=(math.radians(8), 0, 0)))
     # Side stand on the left (-X), down to the ground.
     parts.append(rbox("stand", (0.025, 0.025, 0.36), (-0.16, 0.0, 0.17), "iron", rot=(0, math.radians(-25), 0)))
     bike = join(parts, "two_wheeler")
     for name, y in (("front", fy), ("rear", ry)):
-        bike = place_wheel(spoked_wheel(f"wheel_{name}", r, 0.09, 5, sides=12), (0, y, r), bike, "two_wheeler")
+        bike = place_wheel(spoked_wheel(f"wheel_{name}", r, 0.09, 3, sides=10), (0, y, r), bike, "two_wheeler")
     # Lean onto the stand: turn about the line where the tyres touch the ground.
     bike.rotation_euler = (0, math.radians(-8), 0)
     bake(bike)

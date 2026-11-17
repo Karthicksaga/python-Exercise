@@ -465,18 +465,20 @@ export class ChunkView {
     }
     if (assets.props) {
       const street = life?.(chunkShopFronts(chunk, plans));
-      const pavement = [...pavementInstances(props), ...(street ? lifeInstances(street) : [])];
       const cables = street ? cableGeometry(street.cables) : undefined;
-      for (const mesh of [buildStreetProps(pavement, assets.props), buildStreetProps(fixtures, assets.props, false, cables)]) {
+      for (const mesh of [buildStreetProps(pavementInstances(props), assets.props), buildStreetProps(fixtures, assets.props, false, cables)]) {
         if (!mesh) continue;
         this.owned.push(mesh.geometry);
         this.object.add(mesh);
       }
-      const kolams = street && assets.kolams ? buildKolams(street.kolams, assets.kolams) : null;
-      if (kolams) {
-        this.owned.push(kolams.geometry);
-        this.object.add(kolams);
-        this.detail.push(kolams);
+      // Stalls, carts, chairs and bikes, and the kolams, are small: one mesh each, drawn only in
+      // chunks near the player (`setDetail`), so far chunks cost no triangles for them.
+      const near = street ? [buildStreetProps(lifeInstances(street), assets.props), assets.kolams ? buildKolams(street.kolams, assets.kolams) : null] : [];
+      for (const mesh of near) {
+        if (!mesh) continue;
+        this.owned.push(mesh.geometry);
+        this.object.add(mesh);
+        this.detail.push(mesh);
       }
     }
 

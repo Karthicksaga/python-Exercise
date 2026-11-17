@@ -93,7 +93,8 @@ function bake(scene: THREE.Object3D, model: PropModel): { baked: Baked; box: THR
     if (!(node instanceof THREE.Mesh)) return;
     const materials = Array.isArray(node.material) ? node.material : [node.material];
     const source = (node.geometry as THREE.BufferGeometry).index ? (node.geometry as THREE.BufferGeometry).toNonIndexed() : (node.geometry as THREE.BufferGeometry).clone();
-    source.applyMatrix4(node.matrixWorld);
+    // The node transform is applied after the attributes are read as floats (below): applied to
+    // quantised (normalised int16) positions it would clamp everything to +-1 m.
     if (!source.getAttribute("normal")) source.computeVertexNormals();
     const count = source.getAttribute("position").count;
     const color = new Float32Array(count * 3);
@@ -125,6 +126,7 @@ function bake(scene: THREE.Object3D, model: PropModel): { baked: Baked; box: THR
     part.setAttribute("normal", floats(source.getAttribute("normal")));
     part.setAttribute("color", new THREE.BufferAttribute(color, 3));
     part.setAttribute("paint", new THREE.BufferAttribute(paint, 1));
+    part.applyMatrix4(node.matrixWorld);
     parts.push(part);
     source.dispose();
   });

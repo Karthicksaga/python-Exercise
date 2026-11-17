@@ -16,8 +16,8 @@ import type { ExtraGeometry, PropInstance } from "./StreetProps";
 /** Kolams lie just above the verge and park layers (`LAYER_Y` in GroundMeshes). */
 const KOLAM_Y = 0.045;
 /** Cable tubes: radius and segments per span (sides are three, the cheapest closed tube). */
-const CABLE_RADIUS = 0.016;
-const CABLE_SEGMENTS = 10;
+const CABLE_RADIUS = 0.028;
+const CABLE_SEGMENTS = 8;
 /** Weathered black insulation, a little lighter than black so it reads against a dark sky. */
 const CABLE_COLOUR = [0.035, 0.035, 0.035] as const;
 

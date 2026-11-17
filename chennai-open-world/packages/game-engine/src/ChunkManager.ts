@@ -25,8 +25,8 @@ export interface ChunkSource {
   load(ref: ChunkRef): Promise<ChunkData>;
 }
 
-/** Kolams and other small ground detail are drawn in chunks whose nearest edge is this close, metres. */
-const DETAIL_DISTANCE = 90;
+/** Kolams, stalls and parked bikes are drawn in chunks whose nearest edge is this close, metres. */
+const DETAIL_DISTANCE = 70;
 
 /** How many chunk files may be in flight at once. */
 const IN_FLIGHT = 4;
