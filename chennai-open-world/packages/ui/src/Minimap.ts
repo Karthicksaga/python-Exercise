@@ -5,6 +5,8 @@
  * whole-city canvas would be far beyond phone memory (12 km at 1.5 px a metre).
  */
 
+import { drawPlaceIcon, type PlaceIcon } from "./placeIcons";
+
 interface MapPoint {
   readonly x: number;
   readonly z: number;
@@ -27,6 +29,8 @@ export interface MinimapMarker extends MapPoint {
   /** Markers outside the view are pinned to the rim when true (the objective). */
   readonly pinned?: boolean;
   readonly size?: number;
+  /** A place's badge (home, hospital…) drawn upright instead of a dot. */
+  readonly icon?: PlaceIcon;
 }
 
 const SIZE = 132; // CSS pixels
@@ -281,6 +285,16 @@ export class Minimap {
         if (!marker.pinned) continue;
         mx = x + ((mx - x) / distance) * rim;
         mz = z + ((mz - z) / distance) * rim;
+      }
+      if (marker.icon) {
+        // Kept upright as the map turns, like the landmark badges.
+        g.save();
+        g.translate(mx, mz);
+        g.rotate(-cameraYaw);
+        g.scale(1 / scale, 1 / scale);
+        drawPlaceIcon(g, marker.icon, 0, 0, (marker.size ?? 6) * this.ratio);
+        g.restore();
+        continue;
       }
       const r = (marker.size ?? 5) / scale;
       g.fillStyle = marker.color;

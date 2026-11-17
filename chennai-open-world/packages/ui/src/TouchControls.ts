@@ -289,14 +289,17 @@ export class TouchControls {
     this.fireButton.style.opacity = rounds > 0 ? "1" : "0.45";
   }
 
-  /** Show the context button with this label ("ENTER", "EXIT"), or hide it with null. */
-  setAction(label: string | null): void {
+  /**
+   * Show the context button with this label ("ENTER", "EXIT"), or hide it with null.
+   * @param spoken accessible name; "Get in" / "Get out" for vehicles when omitted ("Go inside" for a place)
+   */
+  setAction(label: string | null, spoken?: string): void {
     this.actionButton.hidden = label === null;
-    if (label !== null && this.actionButton.textContent !== label) {
-      this.actionButton.textContent = label;
-      const names: Record<string, string> = { EXIT: "Get out", BOARD: "Board the train", "STEP OFF": "Step off the train" };
-      this.actionButton.setAttribute("aria-label", names[label] ?? "Get in");
-    }
+    if (label === null) return;
+    const names: Record<string, string> = { EXIT: "Get out", BOARD: "Board the train", "STEP OFF": "Step off the train" };
+    const name = spoken ?? names[label] ?? "Get in";
+    if (this.actionButton.textContent !== label) this.actionButton.textContent = label;
+    if (this.actionButton.getAttribute("aria-label") !== name) this.actionButton.setAttribute("aria-label", name);
   }
 
   setVisible(visible: boolean): void {

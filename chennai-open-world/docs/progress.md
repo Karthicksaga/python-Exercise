@@ -46,6 +46,61 @@ Last updated: 17 Nov 2026 (suburban railway).
   ending at St. Thomas Mount with the beyond-the-map message; no money, no ticket.
   `npm run typecheck`, `npm test` 218/218. The full browser suite was **not** run on this branch
   (the coordinator runs it on the merged code to save CPU).
+
+- **Places, everyday activities and short stories (17 Nov; unit tests and 6 browser tests,
+  headless Chromium only, not on the emulator or a phone):** five places with an entrance on
+  the pavement beside the nearest road, a ring and a floating badge at the entrance
+  (`game-engine/PlaceMarkers.ts`) and a badge on the minimap (`ui/placeIcons.ts`). Standing at
+  an entrance on foot shows ENTER (spoken name "Go inside"; E on a keyboard); a vehicle within
+  reach still comes first. Inside, a DOM screen (`ui/PlaceScreen.ts`) holds the game. Rules in
+  `packages/missions/src/life.ts` (`Life`) and `stories.ts` (`StoryRunner`); placement and
+  stories in `apps/game/src/places.ts`; wiring in `apps/game/src/PlaceDesk.ts` and `Game.ts`.
+  - **Home** (across the street from the start, Anna Nagar): sleep until 07:00 (full health,
+    saves the game; crossing midnight counts a day), change clothes (cycles owned outfits; tints
+    the player's clothes through `HumanFigure.setClothes`).
+  - **Hospital** (at the mapped hospital where the ambulance is parked): treatment ₹3 per
+    missing health point, at least ₹50, 30 min; free if the last vehicle driven was the
+    ambulance; a free counter with a 3-hour queue.
+  - **Gym** (invented position): a tap-timing workout (needle sweeps a bar, 5 reps, tap in the
+    green); ₹50 day pass, 1 game hour; the first workout of a game day with 3+ good reps raises
+    fitness by 1 (max 5); each point is +2% sprint speed (`PlayerController.runScale`, at most +10%).
+  - **Mall** (invented position): a 10-minute escalator queue on entering; three snacks (+5 to
+    +20 health); three outfits (₹600–900, worn at once) with a "BUY 1 GET 1*" sign whose free
+    item is socks.
+  - **Cinema** (at the mapped `amenity=theatre` near the hospital): three invented films
+    (family comedy *Sambar Sunday*, action drama *Roundtana Thunder*, romance *Filter Coffee
+    Kadhal*), shows at 11:00, 14:30, 18:30 and 21:30, ticket ₹150; the clock moves on by the
+    wait for the next show plus the running time; a tap-through scene with audience moments
+    (whistles at the hero's entry, a phone ringing, the interval rush with optional ₹60 popcorn).
+  - **Stories** (offered at a place, one at a time, no enemies or stage progress while one runs,
+    paid once): *Paati's check-up* (car to the hospital, check-up inside, home on a timer,
+    ₹400), *Selva's gym bet* (4 good reps, then race on foot to the juice shop on a timer, ₹300),
+    *First day, first show* (bike, pick up Ravi, reach the cinema on a timer, watch the show,
+    ₹250). Failing (out of time) or quitting just ends it.
+  - **Save:** fitness, day, clothes, owned items, films seen and finished stories are kept under
+    `life` in `cow-progress-v1`; saving stage progress now keeps the save's other fields. Saves
+    without `life` load as a fresh life.
+  - Real: the hospital and theatre positions (OSM amenities) and the roads. Invented: every name
+    shown (Sugam Hospital, Thol Power Gym, Vaanavil Mall, Minnal Cinemas), the home, gym and mall
+    positions, films, plots, prices and stories.
+  - **Tested:** `npm test` 219/219 (adds `life.test.ts`: fees, sleep, outfits, needle and
+    fitness by day, sprint factor, snacks, clothes, show times and time passing, midnight
+    counting, old and damaged saves; `stories.test.ts`: steps, activity steps, time limits,
+    quitting; `apps/game/src/places.test.ts` on the real world files: entrances beside roads,
+    clear of parked vehicles, at the mapped amenities, stories pointing at places).
+    `apps/game/tests/places.spec.ts` (6, pass): old save + home sleep and clothes + reload;
+    hospital fee and free after the ambulance; gym fitness once a day and run speed; mall
+    escalator time, snack, shirt and socks; cinema ticket, scenes, popcorn and hours passed;
+    the Paati story end to end by teleport (6/6 again on 18 Nov with `PW_PORT=4293`, 3.6 min).
+    One full run on this branch (17 Nov, 44 tests, 18.3 min at load average about 19 with
+    other agents' suites running): 42 passed; the ambulance run and the T. Nagar street-name
+    check failed on wall-clock limits, and the job tests failed again on reruns. Those runs used
+    the shared port 4173 with `reuseExistingServer`, so they may have tested another checkout's
+    build (base and branch measured identical draw calls, which the entrance markers by the spawn
+    should change). `playwright.config.ts` now takes `PW_PORT`. **The full suite on this branch
+    still needs a clean run on its own port** (the coordinator runs it on the merged code).
+    Not covered in the browser: the gym bet and first-show
+    stories (unit-tested), the 3D markers' look, and whether the sprint boost is felt.
 - **Facade kit: sunshades, balconies, shop fronts and Tamil signboards (Phase 3, 16 Nov;
   unit-tested, and looked at in headless Chromium by day and at 21:00, not on a phone):**
   `packages/game-engine/src/FacadeKit.ts` decides at render time, from the `Building` record,

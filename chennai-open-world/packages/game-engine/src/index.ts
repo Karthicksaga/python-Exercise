@@ -15,3 +15,5 @@ export * from "./StreetFurniture";
 export * from "./StreetProps";
 export * from "./RailView";
 export * from "./TrainView";
+
+export * from "./PlaceMarkers";

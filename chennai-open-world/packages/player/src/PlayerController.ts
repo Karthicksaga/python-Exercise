@@ -35,6 +35,13 @@ export class PlayerController {
   /** Horizontal speed in m/s, for animation. */
   speed = 0;
   private velocity: Vec3 = { x: 0, y: 0, z: 0 };
+  /** Multiplies the running speed (fitness from the gym makes it slightly above 1). */
+  runScale = 1;
+
+  /** Top running speed, m/s. */
+  get runSpeed(): number {
+    return RUN_SPEED * this.runScale;
+  }
 
   constructor(
     readonly body: CharacterBody,
@@ -55,7 +62,7 @@ export class PlayerController {
   update(input: PlayerInput, dt: number): void {
     const magnitude = Math.min(1, Math.hypot(input.moveX, input.moveY));
     const running = input.run || magnitude > RUN_THRESHOLD;
-    const targetSpeed = magnitude < 0.08 ? 0 : running ? RUN_SPEED : WALK_SPEED * Math.min(1, magnitude / RUN_THRESHOLD);
+    const targetSpeed = magnitude < 0.08 ? 0 : running ? this.runSpeed : WALK_SPEED * Math.min(1, magnitude / RUN_THRESHOLD);
 
     // Camera-relative direction on the ground plane.
     let dirX = 0;

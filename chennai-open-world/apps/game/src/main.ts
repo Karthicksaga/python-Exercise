@@ -11,6 +11,8 @@ declare global {
       probe(x: number, z: number, dx: number, dz: number, max: number): number | null;
       /** Tests only: move the railway clock forward by this many seconds. */
       railAdvance(seconds: number): void;
+      /** Tests only: set the player's health (to check that treatment and rest restore it). */
+      setHealth(health: number): void;
     };
   }
 }
@@ -31,6 +33,7 @@ async function boot(): Promise<void> {
       probe: (x, z, dx, dz, max) => game.probe(x, z, dx, dz, max),
       // For tests only: trains run on a timetable; a test skips the wait for the next one.
       railAdvance: (seconds) => game.railway?.advance(seconds),
+      setHealth: (health) => game.debugSetHealth(health),
     };
     game.start();
     loading.remove();
