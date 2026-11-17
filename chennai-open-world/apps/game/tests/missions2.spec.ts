@@ -46,9 +46,14 @@ async function goToTarget(page: Page): Promise<void> {
 }
 
 /** Beat the stage's group: stand 7 m from each enemy in turn, facing it, and hold FIRE. */
-async function shootItOut(page: Page, objective: string, group: string): Promise<void> {
+async function shootItOut(page: Page, objective: string, group: string, restart: string): Promise<void> {
   for (let round = 0; round < 80; round++) {
     const s = await state(page);
+    if (s.objective === restart) {
+      // Knocked out between heals (eight armed enemies hit hard) and sent back: return.
+      await goToTarget(page);
+      continue;
+    }
     if (s.objective !== objective) break;
     await heal(page);
     const enemy = s.enemies.filter((e) => e.group === group && e.health > 0)[0];
@@ -60,7 +65,10 @@ async function shootItOut(page: Page, objective: string, group: string): Promise
     const away = Math.hypot(s.x - enemy.x, s.z - enemy.z) || 1;
     const from = { x: enemy.x + ((s.x - enemy.x) / away) * 6, z: enemy.z + ((s.z - enemy.z) / away) * 6 };
     await teleport(page, from.x, from.z, Math.atan2(-(enemy.x - from.x), -(enemy.z - from.z)));
-    await holdButton(page, "Fire", 800);
+    await heal(page);
+    // A line per few rounds, so a failure shows how the fight went.
+    if (round % 5 === 0) console.log(`${group} round ${round}: health ${Math.round(s.health)}, standing ${s.enemies.filter((e) => e.group === group && e.health > 0).map((e) => `${e.weapon}:${e.health}`).join(" ")}`);
+    await holdButton(page, "Fire", 500);
   }
 }
 
@@ -99,7 +107,7 @@ test("stage 12: the racket comes to the tea shop and is beaten; the shotgun is t
   await expect.poll(async () => (await state(page)).enemies.filter((e) => e.group === "racket").length, { timeout: GAME_WAIT }).toBe(4);
   expect((await state(page)).objective).toBe("Send the racket packing");
   await give(page, "pistol", 80);
-  await shootItOut(page, "Send the racket packing", "racket");
+  await shootItOut(page, "Send the racket packing", "racket", "Wait at the tea shop");
   await expect.poll(async () => (await state(page)).mission, { timeout: GAME_WAIT }).toBe("drive-by");
   const end = await state(page);
   expect(end.money).toBe(12_200 + 2500);
@@ -134,7 +142,7 @@ test("stage 14: clear out the hideout with the SMG", async ({ page }) => {
   await goToTarget(page);
   await expect.poll(async () => (await state(page)).enemies.filter((e) => e.group === "hideout").length, { timeout: GAME_WAIT }).toBe(6);
   const before = (await state(page)).weaponAmmo.smg!;
-  await shootItOut(page, "Clear out the hideout", "hideout");
+  await shootItOut(page, "Clear out the hideout", "hideout", "Find the hideout, Egmore");
   await expect.poll(async () => (await state(page)).mission, { timeout: GAME_WAIT }).toBe("turf-war");
   const end = await state(page);
   expect(end.money).toBe(16_700 + 3500);
@@ -148,7 +156,7 @@ test("stage 15: win the turf war at the clock tower, and the street war is over"
   await give(page, "smg", 360);
   await goToTarget(page);
   await expect.poll(async () => (await state(page)).enemies.filter((e) => e.group === "turf").length, { timeout: GAME_WAIT }).toBe(8);
-  await shootItOut(page, "Win the turf war", "turf");
+  await shootItOut(page, "Win the turf war", "turf", "Go to the clock tower, Royapettah");
   await expect.poll(async () => (await state(page)).mission, { timeout: GAME_WAIT }).toBeNull();
   expect((await state(page)).money).toBe(20_200 + 6000);
 });
