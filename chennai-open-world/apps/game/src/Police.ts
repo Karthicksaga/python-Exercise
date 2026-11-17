@@ -15,7 +15,6 @@ import type { Sound } from "@cow/audio";
 import { POLICE_GROUP, WANTED, Wanted, isPoliceGroup, isVehicleTheft, jobsAllowed, policeUnits, type Combat, type Crime, type Enemy, type HitOutcome } from "@cow/combat";
 import { nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import type { CharacterBody, KinematicBox, PhysicsWorld, VehicleBody } from "@cow/physics";
-import type { HumanAssets } from "@cow/player";
 import { WantedStars, type MinimapMarker } from "@cow/ui";
 import { TrafficCar, VEHICLE_TYPES } from "@cow/vehicles";
 
@@ -205,7 +204,6 @@ export class Police {
     private readonly scene: THREE.Object3D,
     private readonly physics: PhysicsWorld,
     private readonly combat: Combat,
-    private readonly humans: HumanAssets,
     private readonly sound: Sound,
     hudRoot: HTMLElement,
     world: { graph: () => RoadGraph; traffic: () => ReadonlyArray<{ x: number; z: number }> },
@@ -394,9 +392,8 @@ export class Police {
     // Built the first time each is needed, then reused: no models created or disposed mid-chase.
     const car = new TrafficCar("car", BODY);
     addLivery(car.object);
-    // A seated officer at the wheel (a baked figure in the car pose, shared like the traffic's drivers).
-    car.setDriver(this.humans.seatedStatic(0xa88e5c, car.type.pose));
-    car.driverVisible = false;
+    // No figure at the wheel: closed cars hide their driver (as the player's car does), and a
+    // seated figure would cost several draw calls and thousands of triangles per car.
     car.object.visible = false;
     this.scene.add(car.object);
     const unit: Unit = {
@@ -567,7 +564,8 @@ export class Police {
       car.speed = 0;
     } else {
       const units = policeUnits(stars);
-      const ram = units.ram && p.vehicle !== null && this.sinceSeen < 1;
+      // Ram a moving vehicle; a stopped one is boxed in and the officers get out (armed from three stars).
+      const ram = units.ram && p.vehicle !== null && p.speed > 3 && this.sinceSeen < 1;
       let goal: { x: number; z: number; vx: number; vz: number };
       let stopShort: number | null = POLICE.stopShort;
       if (this.sinceSeen < POLICE.searchAfter || !this.lastSeen) {
@@ -634,7 +632,6 @@ export class Police {
       const car = unit.pursuer;
       unit.car.sync(dt, car.x, car.z, car.heading, car.speed, unit.generation);
       const d = Math.hypot(car.x - at.x, car.z - at.z);
-      unit.car.driverVisible = d < 40;
       if (unit.state === "chase" && this.wanted.stars > 0) nearest = Math.min(nearest, d);
     }
     this.stars.set(this.wanted.stars, this.wanted.seen);

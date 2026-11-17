@@ -233,7 +233,7 @@ export class Game {
   /** A place whose entrance ENTER was pressed at; its screen opens on the next frame. */
   private enteringPlace: PlaceDesk["places"][number] | null = null;
   private lastPedestrianHit: GameSnapshot["lastPedestrianHit"] = null;
-  /** Police and the wanted level (`Police.ts`); made in `create`, which has the human figures it needs. */
+  /** Police and the wanted level (`Police.ts`); made in `create`, once the road graph and HUD exist. */
   private police!: Police;
 
   private constructor(
@@ -416,7 +416,7 @@ export class Game {
     });
     const riders = new ShareRiders(renderer.scene, humans);
     game = new Game(map, content, renderer, mapView, chunks, physics, player, avatar, vehicles, population, combat, fighters, sound, missions, beacon, camera, controls, hud, minimap, riders);
-    game.police = new Police(map, renderer.scene, physics, combat, humans, sound, hud.root, { graph: () => population.roadGraph, traffic: () => population.trafficPositions() }, {
+    game.police = new Police(map, renderer.scene, physics, combat, sound, hud.root, { graph: () => population.roadGraph, traffic: () => population.trafficPositions() }, {
       busted: (fine, stars, station) => game?.arrested(fine, stars, station),
     });
     const railFile = await railLoaded;

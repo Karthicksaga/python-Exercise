@@ -9,7 +9,7 @@ import type { HumanAssets, HumanFigure } from "@cow/player";
 
 const CHEST = 1.2;
 /** Enemy clothing tints: unarmed thugs in maroon, armed ones in near-black, police officers in khaki. */
-const TINT = { unarmed: 0xb04a4a, armed: 0x4a4a55, police: 0xa88e5c } as const;
+const TINT = { unarmed: 0xb04a4a, armed: 0x4a4a55, police: 0xe3cb8f } as const;
 
 interface Body {
   readonly figure: HumanFigure;

@@ -271,7 +271,9 @@ export class Pursuer {
       desired = Math.min(desired, room <= 0 ? 0 : Math.sqrt(2 * PURSUIT.brake * 0.5 * room));
     } else if (toGoal < 12) {
       const pace = Math.hypot(goal.vx, goal.vz);
-      desired = Math.min(desired, toGoal < PURSUIT.contact ? pace : pace + PURSUIT.ramClosing);
+      // Alongside, drop back a touch: a kinematic body that kept exact pace would push the
+      // target along with it. Falling back and closing again gives repeated shunts instead.
+      desired = Math.min(desired, toGoal < PURSUIT.contact ? Math.max(0, pace - 1) : pace + PURSUIT.ramClosing);
     }
 
     // Traffic ahead: slow to stop behind it.
