@@ -15,7 +15,7 @@ import { Hud, Minimap, TouchControls, type MinimapMarker } from "@cow/ui";
 import { Vehicle, gearFor, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
 import { buildContent, type GameContent } from "./content";
 import { Fighters, combatWorld } from "./Fighters";
-import { JobDesk } from "./JobDesk";
+import { JobDesk, type ShareSnapshot } from "./JobDesk";
 import { PlaceDesk, type PlaceSnapshot } from "./PlaceDesk";
 import { buildPlaces } from "./places";
 import { PlaceMarkers } from "@cow/game-engine";
@@ -23,6 +23,7 @@ import { PLACE_COLORS, placeIconCanvas } from "@cow/ui";
 import { KeyboardInput } from "./KeyboardInput";
 import { insideShell, onShellMessage, sendToShell } from "./nativeBridge";
 import { Population } from "./Population";
+import { ShareRiders } from "./ShareRiders";
 import { LandmarkView } from "@cow/game-engine";
 import { landmarkSolids } from "@cow/game-world";
 import { LandmarkLabels } from "@cow/ui";
@@ -88,6 +89,10 @@ export interface GameSnapshot extends PlaceSnapshot {
   readonly job: string | null;
   readonly jobStop: number;
   readonly reputation: number;
+  /** The share auto shift being worked (people waiting and aboard, fares), or null. */
+  readonly share: ShareSnapshot | null;
+  /** Share auto passengers drawn: figures at the kerb and seated in the auto. */
+  readonly shareFigures: { waiting: number; seated: number };
   readonly gear: string;
   readonly siren: boolean;
   /** True while a menu (job board, job result) holds the game. */
@@ -242,6 +247,7 @@ export class Game {
     private readonly keyboard: KeyboardInput,
     private readonly hud: Hud,
     private readonly minimap: Minimap,
+    private readonly riders: ShareRiders,
   ) {
     this.loop = new GameLoop({ fixedUpdate: (dt) => this.fixedUpdate(dt), frame: (dt) => this.frame(dt) });
     this.desk = new JobDesk(content.jobs, missions, hud, sound, {
@@ -400,7 +406,8 @@ export class Game {
       chunks.applyLook(look);
       setVehicleNightLights(look.night);
     });
-    game = new Game(map, content, renderer, mapView, chunks, physics, player, avatar, vehicles, population, combat, fighters, sound, missions, beacon, camera, controls, keyboard, hud, minimap);
+    const riders = new ShareRiders(renderer.scene, humans);
+    game = new Game(map, content, renderer, mapView, chunks, physics, player, avatar, vehicles, population, combat, fighters, sound, missions, beacon, camera, controls, keyboard, hud, minimap, riders);
     const railFile = await railLoaded;
     if (railFile) {
       const railway = new Railway(railFile, renderer.scene, physics, new RidePanel(hud.root), {
@@ -726,6 +733,8 @@ export class Game {
       job: this.desk.active?.id ?? null,
       jobStop: this.desk.runner.stopNumber,
       reputation: this.desk.runner.reputation,
+      share: this.desk.shareSnapshot(),
+      shareFigures: this.riders.drawn,
       gear: this.driving ? gearFor(this.driving.type, this.driving.body.forwardSpeed(), this.throttle) : "",
       siren: this.driving?.siren ?? false,
       held: this.held,
@@ -1045,7 +1054,9 @@ export class Game {
     for (const enemy of this.combat.enemies) if (enemy.health > 0) markers.push({ x: enemy.x, z: enemy.z, color: "#ff4d4d", size: 4 });
     if (this.railway) markers.push(...this.railway.stations);
     markers.push(...this.placeDesk.markers());
+    markers.push(...this.desk.markers());
     if (target) markers.push({ x: target.x, z: target.z, color: "#ffb703", pinned: true, size: 6 });
+    this.minimap.setRoute(this.desk.route());
     this.minimap.update(dt, at.x, at.z, this.driving ? this.driving.body.yaw() : this.player.yaw, this.camera.yaw, markers);
 
     this.fighters.frame(dt);
@@ -1063,6 +1074,9 @@ export class Game {
     }
     this.population.frame(dt, at);
     this.railway?.frame(at);
+    // Share auto passengers: waiting at the kerb near the player, and seated in the auto.
+    const shareAuto = this.driving && job?.share && this.driving.kind === job.vehicle ? this.driving.object : null;
+    this.riders.frame(dt, this.desk.runner.share, at, shareAuto);
     this.chunks.update(at.x, at.z);
     // Sea haze: thicker air within about 600 m of the coast.
     this.sinceHaze += dt;

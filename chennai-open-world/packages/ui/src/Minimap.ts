@@ -242,6 +242,13 @@ export class Minimap {
     return canvas;
   }
 
+  private route: readonly MapPoint[] | null = null;
+
+  /** Show a route line (in driving order), or none. */
+  setRoute(points: readonly MapPoint[] | null): void {
+    this.route = points;
+  }
+
   /**
    * @param dt seconds since the last call; the map redraws about 15 times a second
    * @param heading direction the player or vehicle faces
@@ -274,6 +281,16 @@ export class Minimap {
         // A hair over size, so the seams between tiles never show.
         g.drawImage(this.tile(c, r), c * TILE, r * TILE, TILE + 0.4, TILE + 0.4);
       }
+    }
+
+    // A job's route (the share auto's), as a wide coloured line under the markers.
+    if (this.route) {
+      g.strokeStyle = "rgba(245, 196, 0, 0.8)";
+      g.lineWidth = (5 * this.ratio) / scale;
+      g.lineCap = g.lineJoin = "round";
+      g.beginPath();
+      this.route.forEach((p, i) => (i === 0 ? g.moveTo(p.x, p.z) : g.lineTo(p.x, p.z)));
+      g.stroke();
     }
 
     for (const marker of markers) {

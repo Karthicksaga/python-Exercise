@@ -375,3 +375,15 @@ and browser tests were not run on this branch (no code changed).
   heights, the TAP timing by touch); sounds don't play inside places because holding the game
   suspends audio; a browser test for the gym bet and first-show stories; the knock-out bill could
   send the player to the hospital place instead of the start.
+
+## 17 Nov 2026 (latest): Share auto job done
+- Built and tested; details in `progress.md` (first entry). Unit 202/202, browser PENDING_BROWSER.
+- The "kerb figures don't render" note from the WIP stop was wrong: they render; in that
+  screenshot they were under the HUD toast. `snapshot().shareFigures` now counts the figures
+  drawn and the browser test checks them.
+- Browser tests take `PW_PORT` (`apps/game/playwright.config.ts`) so two checkouts can run them at
+  once; another agent's preview server held 4173.
+- Not done: a full shift driven with the controls, the emulator, a phone. The seat positions in
+  the auto (`SEATS` in `ShareRiders.ts`) were only looked at from 7–10 m at lite quality.
+- Ideas: show the destination as a street name in the "Passenger in" toast; a few people waving
+  in groups of two; the opposite direction as a second route.

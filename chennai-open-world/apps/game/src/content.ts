@@ -9,6 +9,7 @@ import type { EnemySpot } from "@cow/combat";
 import type { Job, Mission, Objective } from "@cow/missions";
 import type { VehicleKind } from "@cow/vehicles";
 import { cityJobs } from "./cityJobs";
+import { shareAutoJob } from "./shareAutoRoute";
 
 export interface Parking {
   readonly id: string;
@@ -394,11 +395,14 @@ export function buildContent(city: WorldMap): GameContent {
     }
   }
   const chemist = medicine.from;
-  const market = onRoad(place("supermarket", { x: -220, z: -120 }));
   const meals = [onRoad({ x: -280, z: -320 }), onRoad({ x: 60, z: 380 }), onRoad({ x: 330, z: -380 })];
-  const sharers = [onRoad({ x: 120, z: 160 }), onRoad({ x: -60, z: 260 })];
   const tourist = onRoad({ x: -330, z: -40 });
   const legs = (points: readonly Point[], speed: number) => points.slice(1).reduce((sum, p, i) => sum + allow(points[i]!, p, speed), 0);
+  // The share auto runs 2nd Avenue end to end, so it is built from the city map (the avenue
+  // runs out of the home square at both ends). It replaced an earlier "Share auto" job that was
+  // two fixed pick-ups and one drop; the id is kept so saved best fares carry on.
+  const share = shareAutoJob(city);
+  if (share) parking.push(share.parking);
   jobs.push(
     {
       id: "hospital-transfer",
@@ -443,20 +447,7 @@ export function buildContent(city: WorldMap): GameContent {
       payout: 380,
       fine: 70,
     },
-    {
-      id: "share-auto",
-      kind: "cab",
-      title: "Share auto",
-      brief: "Two passengers, one auto, both going to the market. Pick them both up, then drop them together.",
-      vehicle: "auto",
-      stops: [
-        ...sharers.map((p, i) => ({ label: `Pick up passenger ${i + 1} of 2${streetOf(p)}`, ...p, radius: 6, dwell: 2 })),
-        { label: `Drop both at the market${streetOf(market)}`, ...market, radius: 7, dwell: 2 },
-      ],
-      timeLimit: legs([...sharers, market], 8) + 90,
-      payout: Math.round(80 + (road(sharers[0]!, sharers[1]!) + road(sharers[1]!, market)) * 0.45),
-      fine: 50,
-    },
+    ...(share ? [share.job] : []),
     {
       id: "tower-park-visit",
       kind: "cab",
