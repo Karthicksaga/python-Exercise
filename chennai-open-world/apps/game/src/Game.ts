@@ -71,7 +71,7 @@ export interface GameSnapshot extends PlaceSnapshot {
   /** Grid keys ("col,row") of the loaded chunks. */
   readonly chunkKeys: string[];
   /** Each vehicle; `door` is how far its driver's door is open (0 shut, 1 open). */
-  readonly vehicles: Array<{ id: string; kind: string; x: number; z: number; door: number }>;
+  readonly vehicles: Array<{ id: string; kind: string; x: number; z: number; yaw: number; door: number }>;
   /** Getting in or out of a vehicle (the animated sequence), or null. */
   readonly boarding: BoardingSnapshot | null;
   readonly traffic: Array<{ x: number; z: number; speed: number; kind: string }>;
@@ -616,6 +616,8 @@ export class Game {
     this.avatar.setAiming(false);
     this.player.body.setEnabled(false);
     this.controls.setMode("busy");
+    // Pull the camera back far enough to see the whole vehicle and the door (the bus is 10 m long).
+    this.camera.reach = Math.max(5.6, vehicle.type.cameraDistance * 0.8);
     this.controls.setAction(null);
     this.boarder.startIn(vehicle, this.player.position, this.player.yaw);
   }
@@ -807,7 +809,7 @@ export class Game {
       frames: this.frames,
       chunksLoaded: this.chunks.loadedCount,
       chunkKeys: this.chunks.loadedKeys(),
-      vehicles: this.vehicles.map((v) => ({ id: v.id, kind: v.kind, x: v.body.position().x, z: v.body.position().z, door: v.door })),
+      vehicles: this.vehicles.map((v) => ({ id: v.id, kind: v.kind, x: v.body.position().x, z: v.body.position().z, yaw: v.body.yaw(), door: v.door })),
       boarding: this.boarder.snapshot(),
       traffic: this.population.trafficPositions(),
       pedestrians: this.population.pedestrianCount,
@@ -1024,7 +1026,7 @@ export class Game {
       driverInput = this.gearbox.controls({ gas: stick.gas, brake: stick.brake, steer: moveX }, speed);
       const hint = this.gearbox.consumeHint();
       if (hint) this.hud.showToast(hint, "", 2.4);
-    } else if (!this.railway?.riding) {
+    } else if (!this.railway?.riding && !this.railway?.walking) {
       this.player.update({ moveX, moveY, jump, cameraYaw: this.camera.yaw }, dt);
     }
     for (const vehicle of this.vehicles) vehicle.update(vehicle === this.driving ? driverInput : null, dt);
@@ -1101,6 +1103,13 @@ export class Game {
       this.sound.setSkid(null);
       this.nearby = null;
       this.controls.setAction(null);
+    } else if (this.railway?.walking) {
+      // Walking through a coach's doorway, getting on or off a train.
+      this.railway.walkFrame(dt);
+      this.camera.update(dt, at, this.physics, this.player.body);
+      this.hud.setSpeed(null);
+      this.nearby = null;
+      this.controls.setAction(this.railway.action);
     } else if (ride) {
       // On a train: the camera follows it; the rider is inside, out of sight.
       this.camera.chase(ride, dt);

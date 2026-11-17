@@ -62,6 +62,80 @@ export function coachGeometry(cab: boolean): THREE.BufferGeometry {
   return geometry;
 }
 
+/**
+ * The doorways along one side of a coach, as distances along its length (its own frame: -Z is
+ * its front), matching the door panels drawn by `coachGeometry`. Door sills are 1.25 m above
+ * the rails; each doorway is 1.5 m wide.
+ */
+export function coachDoorways(cab: boolean): number[] {
+  const half = COACH_LENGTH / 2;
+  const shift = cab ? 0.6 * 0.2 : 0;
+  return [-half + 4.2 + shift, shift, half - 4.2 + shift];
+}
+export const DOOR_SILL = 1.25;
+const DOOR_TOP = 3.3;
+const DOOR_HALF = 0.75;
+
+/**
+ * Sliding doors for the coach nearest the player: per doorway a dark opening and two leaves that
+ * slide apart along the outside of the body. All of them are instances of one box: one draw call.
+ */
+export class TrainDoors {
+  readonly mesh: THREE.InstancedMesh;
+  private readonly matrix = new THREE.Matrix4();
+  private readonly position = new THREE.Vector3();
+  private readonly rotation = new THREE.Quaternion();
+  private readonly size = new THREE.Vector3();
+  private readonly up = new THREE.Vector3(0, 1, 0);
+
+  constructor() {
+    this.mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.5, metalness: 0.3 }), 9);
+    const leaf = new THREE.Color(DOOR);
+    const dark = new THREE.Color(0x101214);
+    for (let i = 0; i < 9; i++) this.mesh.setColorAt(i, i < 3 ? dark : leaf);
+    this.mesh.count = 0;
+    this.mesh.castShadow = true;
+    this.mesh.frustumCulled = false;
+    this.mesh.name = "train-doors";
+  }
+
+  /**
+   * Draw the doors on one side of a coach, `amount` open (0 shut, 1 open), or hide them (null).
+   * @param side 1 for the coach's right (+X in its frame), -1 for its left
+   */
+  place(coach: CoachPose | null, side: 1 | -1, amount: number): void {
+    if (!coach) {
+      this.mesh.count = 0;
+      return;
+    }
+    const w = COACH_WIDTH / 2;
+    const height = DOOR_TOP - DOOR_SILL;
+    const y = RAIL_TOP + DOOR_SILL + height / 2;
+    const slide = Math.min(1, Math.max(0, amount)) * DOOR_HALF * 0.95;
+    this.rotation.setFromAxisAngle(this.up, coach.yaw);
+    const cos = Math.cos(coach.yaw);
+    const sin = Math.sin(coach.yaw);
+    const put = (index: number, x: number, z: number, sx: number, sz: number) => {
+      this.position.set(coach.x + x * cos + z * sin, y, coach.z - x * sin + z * cos);
+      this.matrix.compose(this.position, this.rotation, this.size.set(sx, height, sz));
+      this.mesh.setMatrixAt(index, this.matrix);
+    };
+    coachDoorways(coach.cab).forEach((z, k) => {
+      // The opening sits over the painted door panel; the leaves just outside it.
+      put(k, side * (w + 0.02), z, 0.008, DOOR_HALF * 2);
+      put(3 + k * 2, side * (w + 0.05), z - DOOR_HALF / 2 - slide, 0.04, DOOR_HALF);
+      put(4 + k * 2, side * (w + 0.05), z + DOOR_HALF / 2 + slide, 0.04, DOOR_HALF);
+    });
+    this.mesh.count = 9;
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  dispose(): void {
+    this.mesh.geometry.dispose();
+    (this.mesh.material as THREE.Material).dispose();
+  }
+}
+
 /** Where to draw one coach: its centre on the track, the way it faces, and whether it is a cab. */
 export interface CoachPose {
   readonly x: number;

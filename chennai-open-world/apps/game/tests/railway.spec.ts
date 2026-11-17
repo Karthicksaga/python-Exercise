@@ -1,6 +1,6 @@
 /** The suburban railway: board a timetabled train, ride one stop, step off; fares; the map's edge. */
 import { expect, test, type Page } from "@playwright/test";
-import { ready, snapshot, tapButton, teleport, waitGameTime } from "./support";
+import { GAME_WAIT, ready, snapshot, tapButton, teleport, waitGameTime } from "./support";
 
 interface RailState {
   clock: number;
@@ -13,6 +13,8 @@ interface RailState {
   stops: Array<{ line: string; name: string; x: number; z: number; footX: number; footZ: number; nextTrain: number }>;
   drawnCells: number;
   drawnCoaches: number;
+  doors: number;
+  walking: "board" | "alight" | null;
 }
 interface RailSnapshot {
   x: number;
@@ -135,4 +137,40 @@ test("no money, no ticket", async ({ page }) => {
   await tapButton(page, "Board the train");
   await expect(page.getByRole("status").filter({ hasText: "A ticket costs ₹5" })).toBeVisible();
   expect((await state(page)).rail.riding).toBeNull();
+});
+
+test("sliding doors open at the stop, the player walks through them, and they shut before the train leaves", async ({ page }) => {
+  await startWith(page, 100);
+  const egmore = await stopOf(page, "Chennai Egmore");
+  await teleport(page, egmore.footX, egmore.footZ);
+  await trainAt(page, "Chennai Egmore");
+  // Shortly after the train stops its doors (on the coach nearest the player) slide open.
+  await expect.poll(async () => (await state(page)).rail.doors, { timeout: GAME_WAIT, intervals: [100] }).toBeGreaterThan(0.8);
+  const before = await state(page);
+  await tapButton(page, "Board the train");
+  // A short walk through the doorway (not a jump into the train): the player is still near where they stood.
+  const walking = await state(page);
+  expect(walking.rail.riding).toBe(LINE);
+  expect(walking.rail.walking).toBe("board");
+  expect(Math.hypot(walking.x - before.x, walking.z - before.z)).toBeLessThan(8);
+  await expect.poll(async () => (await state(page)).rail.walking, { timeout: GAME_WAIT, intervals: [100] }).toBeNull();
+  expect((await state(page)).rail.riding).toBe(LINE);
+
+  // Just before it leaves the doors are shut; the train pulls away with them shut.
+  await page.evaluate(() => window.__cow?.railAdvance(28.9));
+  await expect.poll(async () => (await state(page)).rail.doors, { timeout: GAME_WAIT, intervals: [100] }).toBeLessThan(0.05);
+
+  // Step off at Chetpet: out through a doorway onto the platform, then control is back.
+  await rideTo(page, "Chetpet");
+  await expect.poll(async () => (await state(page)).rail.doors, { timeout: GAME_WAIT, intervals: [100] }).toBeGreaterThan(0.8);
+  await tapButton(page, "Step off the train");
+  const stepping = await state(page);
+  expect(stepping.rail.riding).toBeNull();
+  expect(stepping.rail.walking).toBe("alight");
+  await expect.poll(async () => (await state(page)).rail.walking, { timeout: GAME_WAIT, intervals: [100] }).toBeNull();
+  await waitGameTime(page, 0.5);
+  const off = await state(page);
+  expect(off.grounded).toBe(true);
+  expect(off.y).toBeGreaterThan(0.7);
+  await expect(page.getByRole("button", { name: "Jump", exact: true })).toBeVisible();
 });

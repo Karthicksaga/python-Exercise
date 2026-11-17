@@ -1,8 +1,39 @@
 # Progress, testing and known issues
 
-Last updated: 17 Nov 2026 (suburban railway).
+Last updated: 17 Nov 2026 (animated getting in and out of vehicles and trains).
 
 ## What exists
+
+- **Animated getting in and out of vehicles and trains (17 Nov, branch `agent/vehicle-entry`;
+  unit-tested and browser-tested in headless Chromium, checked by eye in screenshots; not on the
+  emulator or a phone):** ENTER no longer switches at once. Getting in: the figure walks to the
+  vehicle's entry point beside the door (round the front or back if it stands on the far side;
+  walking pace, at most 1.5 s, hurrying when further), the door opens (0.5 s, eased), the figure
+  turns to face along the vehicle and sits down (0.7 s; 0.8 s swinging a leg over the motorbike;
+  the bus driver first steps up and walks the floor to the seat), the door shuts with the door
+  sound (0.4 s). Getting out is the reverse; control comes back while the door is still closing.
+  All durations are estimates tuned by eye. India drives on the left: car and ambulance drivers
+  get in on the right, the bus driver through the front door on the kerb (left) side; the auto
+  (step in from the kerb side, estimated) and the motorbike (mount from the left) have no door.
+  Doors: the car's and ambulance's driver's doors are hinged at the front edge and swing out 65°,
+  the bus's front door is two glazed leaves folding out 80°; each is one mesh (vertex colours,
+  one shared material per paint colour, at most 72 triangles), with a dark doorway panel behind
+  it so an open door shows an opening. There is still no modelled cabin: the figure disappears
+  into the dark doorway as it sits, and closed vehicles hide the driver once the door shuts, as
+  before. During the sequence moving, attacks, jumping and the context button are ignored, the
+  controls are hidden, the vehicle holds its brake and the camera follows the figure. EXIT is
+  still refused while moving; if the door's side is blocked the player gets out at once on another
+  side (the old rule). Teleport, new game and being knocked out stop a sequence at once.
+  Trains: the coach nearest the player gets sliding doors (two leaves per doorway, one instanced
+  draw call) that open 0.3 s after the train stops and are shut 0.3 s before it leaves (1.2 s
+  slides, estimated); BOARD walks the player to the nearest doorway on the platform side and in
+  (up the platform steps first from the foot of the platform; hurrying to at most about 4 s from
+  far along it, always before the doors close), STEP OFF walks out of the doorway nearest the
+  middle of the train onto the platform. Code: `packages/vehicles/src/Boarding.ts` (the sequence
+  and the path round the body), `VehicleType.entry` (`specs.ts`), `DoorMesh` in `models.ts`,
+  `HumanFigure.sitting` (standing ↔ seated blend), `apps/game/src/Boarder.ts` (placing the figure
+  and door), `packages/rail/src/doors.ts` and `TrainDoors` (`TrainView.ts`), `Railway.ts` (doorway
+  walks). Tests: see "What was tested" below.
 
 - **Suburban railway with trains you can ride (17 Nov; unit-tested and browser-tested in headless
   Chromium, not on the emulator or a phone):** the Beach–Tambaram line from OpenStreetMap (the
