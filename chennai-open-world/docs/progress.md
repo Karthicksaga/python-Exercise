@@ -407,7 +407,9 @@ Last updated: 17 Nov 2026 (share auto).
 
 | Check | Result | How |
 |---|---|---|
-| Share auto (17 Nov) | **pass**: unit 202/202, browser PENDING_BROWSER | `npm run typecheck && npm test`; `cd apps/game && PW_PORT=4273 PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off` (the 38 earlier tests plus `shareAuto.spec.ts`). `PW_PORT` was needed because another checkout's preview server held 4173 |
+| Stabilise merge, Android only (17 Nov, `agent/stabilise-merge`) | **pass**: unit 301/301, browser 55/55, then FINAL_RUN after the controls-layout test | `npm run typecheck && npm test`; `cd apps/game && PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off`, run alone on the machine (first run 55/55 in 15.9 min, no retries). Unit count is 305 minus the 4 keyboard Gearbox tests removed with the keyboard (TD-20). New test: every driving control (GAS, BRAKE, HORN/SIREN, EXIT, P/R/D) on screen at 915×412 and none overlapping another or the minimap; it failed on the old layout, where HORN/SIREN sat under the minimap. Checked by eye in screenshots: bike rider seated with hands on the grips and a foot down; auto driver's hands on the handlebar, head under the roof; share-auto passenger on the rear bench with the estimated `PASSENGER` pose, feet on the floor, no clipping; P/R/D beside BRAKE and GAS at 915×412. Car and bus drivers are hidden (closed vehicles, no modelled wheel) |
+| Cost at `?quality=lite` (17 Nov, production build) | spawn at the triangle budget, the rest under | Headless Chromium, software GPU, worst of four headings after 6 s of game time: Anna Nagar spawn 207 draw calls / 300k triangles; T. Nagar (3269, 4960) 158 / 271k; Anna Salai (5033, 3180) 154 / 230k; beside Egmore station (5622, 703) 164 / 216k. Budget about 300 draw calls and 300k triangles: draw calls have room, triangles at spawn do not (it was 165k there on 16 Nov evening; the street props, shop fronts and people added since are the likely cause, not yet profiled) |
+| Share auto (17 Nov) | **pass**: unit 202/202, browser 55/55 in the merged suite (`shareAuto.spec.ts` kerb passengers included) | `npm run typecheck && npm test`; `cd apps/game && PW_PORT=4273 PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off` (the 38 earlier tests plus `shareAuto.spec.ts`). `PW_PORT` was needed because another checkout's preview server held 4173 |
 | TypeScript strict | pass | `npm run typecheck`; `cd apps/mobile && npx tsc --noEmit` |
 | Unit tests (51, 16 Nov) | pass | `npm test`: projection, OSM parsing, vehicle physics, mission rules, road graph and agents (including dead ends, people passing each other, pulling over for a siren), combat rules, job rules (clock, dwell, pay, bumps, fines, reputation locks, late bus stops, damaged saves), gear indicator, game clock |
 | Unit tests (103, 16 Nov, later) | pass | `npm test`, 14 files: adds signals, junction turns, density, traffic mix, lighting by hour and rain, drift on a real Rapier world (and no false crash from drifting or braking), chase camera, landmarks from OSM and the ring-path fallback |
@@ -461,8 +463,8 @@ Difficulty has not been play-tested by a person.
 - **Roads:** flat, no kerb height, no medians (trees mapped on medians are left out), no
   traffic signals or signs. One-way streets are respected by traffic, not enforced on the player.
 - **AI:** traffic does not overtake or plan routes, and can queue behind a vehicle the player
-  leaves in a lane (agents stuck for 8 s out of sight are moved). AI autos have no visible
-  driver. Pedestrians react only to someone being hit near them (not to gunfire or the horn); being hit is a knock-down pose, with no ragdoll or limp animation. No police
+  leaves in a lane (agents stuck for 8 s out of sight are moved). AI drivers sit in open vehicles
+  (bike, auto) with a riding pose; in closed vehicles they are hidden. Pedestrians react only to someone being hit near them (not to gunfire or the horn); being hit is a knock-down pose, with no ragdoll or limp animation. No police
   or wanted level.
 - **Combat:** enemies have no pathfinding (they head straight for the player and side-step
   walls), don't take cover, and exist only during their stage. Punching and aiming are arm

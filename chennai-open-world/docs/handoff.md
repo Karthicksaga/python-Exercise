@@ -483,3 +483,18 @@ Conflict resolutions to check (all are in the merge commits' messages):
 Run first: `PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e` from `chennai-open-world/` (it
 waits for any other run on the machine and picks a free port; see AGENTS.md). Known risks: `jobs.spec.ts` (ambulance run, Marina drive),
 `pedestrians.spec.ts` killed case, `shareAuto.spec.ts` kerb passengers, `handling.spec.ts`.
+
+## 17 Nov 2026: stabilise merge (branch `agent/stabilise-merge`): where I left off
+- **Done:** the five merged features plus Android only (TD-20) pass the full browser suite run alone:
+  55/55 on the first run, no test changed to pass. Then HORN / SIREN moved out from under the
+  minimap (it was unreachable while driving) with a new layout test that fails on the old CSS; the
+  rerun is FINAL_RUN. Unit 301/301 (four keyboard Gearbox tests removed with the keyboard), typecheck clean.
+- **Checked by eye** (screenshots, not committed): bike, auto and share-auto poses and seats, the
+  P / R / D column at 915×412; details in `progress.md`. The kerb passengers and the pedestrian
+  killed case pass in the suite.
+- **Cost at `?quality=lite`** (production build, software GPU): spawn 207 draw calls / 300k
+  triangles, T. Nagar 158 / 271k, Anna Salai 154 / 230k, Egmore 164 / 216k. Spawn is at the
+  300k triangle budget: profile which meshes grew since 16 Nov (165k) before adding more there.
+- **Not done:** steering animation (hands do not turn the bars or wheel); no modelled steering
+  wheel, so car and bus drivers stay hidden; nothing tried on a real phone.
+- **Next:** profile triangles at spawn; play on a phone (selector reach, poses, frame rate).
