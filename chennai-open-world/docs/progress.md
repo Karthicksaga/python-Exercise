@@ -1,6 +1,6 @@
 # Progress, testing and known issues
 
-Last updated: 17 Nov 2026 (suburban railway).
+Last updated: 17 Nov 2026 (weapons, rival gangs, stages 11–15).
 
 ## What exists
 
@@ -22,7 +22,7 @@ Last updated: 17 Nov 2026 (suburban railway).
   - *Weapons in the world*: glowing rings with the weapon turning above them; walking over one on
     foot takes it (1.6 m, back after 240 game s; estimates): a bat and pistol rounds in Anna Nagar,
     pistol rounds in Triplicane, shotguns in Royapettah and Egmore, an SMG in Egmore. Stages 12–15
-    also hand over guns and rounds. **No back-street dealer**: the place screens need a new place
+    also hand over guns and rounds (added to the arsenal, not put in the hand). **No back-street dealer**: the place screens need a new place
     kind in shared files (`life.ts`, `places.ts`, `PlaceDesk.ts`, place icons); left for later.
   - *Rival gangs* (invented, `apps/game/src/streetWar.ts`): Manjal Puli (yellow, Royapettah),
     Neela Nandu (blue, Triplicane), Pachai Paambu (green, Egmore), wearing their colours as clothing

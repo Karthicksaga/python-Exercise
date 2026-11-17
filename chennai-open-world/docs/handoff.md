@@ -526,7 +526,10 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   `packages/missions` `types.ts` (`chase` objective, `hostiles`, `weapons` reward),
   `MissionRunner.ts` (`quarry`), `stories.ts` (one line), index export lists, `docs/*.md`.
 - **Tests:** typecheck clean; unit 351/351; my specs `weapons.spec.ts` 4/4, `gangs.spec.ts` 4/4,
-  `missions2.spec.ts` 5/5; `combat.spec.ts` 4/4; full suite: see the final report of this branch.
+  `missions2.spec.ts` 5/5; `combat.spec.ts` 4/4. **Full browser suite on this branch: 69/69
+  (21.5 min, run alone with the lock).** An earlier full run was 68/69: stage 12 ended mid-burst
+  and the reward shotgun, then put straight in the hand, fired a shell; rewards are no longer put
+  in the hand (commit 827fa60).
 - **Measured at `?quality=lite`** (preview build, software GPU): gang corners 107 draw calls /
   208k triangles (Royapettah), 162 / 164k (Triplicane), 129 / 254k (Egmore); the gangs spec saw
   130 / 237k at Royapettah.
