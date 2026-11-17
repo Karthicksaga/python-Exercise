@@ -183,7 +183,7 @@ export class Arms {
       if (!(id in WEAPONS)) continue;
       const weapon = id as WeaponId;
       this.combat.arsenal.give(weapon, ammo);
-      if (WEAPONS[weapon].kind === "gun") this.combat.arsenal.select(weapon);
+      // Not put in the hand: the stage often ends mid-burst, and a switch would fire the new gun.
       lines.push(`${WEAPONS[weapon].name}${ammo ? ` +${ammo}` : ""}`);
     }
     this.save();

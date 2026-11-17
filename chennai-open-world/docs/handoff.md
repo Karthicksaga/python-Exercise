@@ -503,3 +503,37 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - **Next:** asked by the user: an animated get-in / get-out (doors opening and closing on the car,
   bus and train) and more missions with police, gangsters and more weapons. Then profile
   triangles at spawn; play on a phone (selector reach, poses, frame rate).
+
+## 17 Nov 2026: weapons, rival gangs, stages 11–15 (branch `agent/gangs`): where I left off
+- **Done and tested** (details in `progress.md`, decision TD-21): weapon table and arsenal
+  (fists, cricket bat, pistol, shotgun, SMG) in `packages/combat/src/Weapons.ts`; gang hostility
+  and crew fielding in `Gangs.ts`; pickups in `Pickups.ts`; held weapon meshes in
+  `packages/player/src/weaponModels.ts`; the weapon button; three invented gangs and stages 11–15
+  in `apps/game/src/streetWar.ts`; game wiring in `apps/game/src/Arms.ts`.
+- **For the police branch:** `Combat` emits `{ type: "playerShot", x, z, weapon }` on every shot,
+  plus `crewWarning` / `crewProvoked` for gangs. `Combat.ammo` is still the pistol's rounds; other
+  guns are in `combat.arsenal`. Gang members are `Enemy` entries with `group` `gang:<gang>:<n>`
+  and `calm`.
+- **Bugs found by the browser tests and fixed:** spread weapons never hit in the real game (the
+  wall ray stops at the target's own collision box; `CombatWorld.wallDistance` in `Fighters.ts`
+  now measures from the point itself, and pellets allow a body's depth); stage enemies placed 2 m
+  off the kerb stood inside building solids on some streets and could not be beaten (now 0.5–1 m).
+- **Shared files touched:** `Game.ts` (Arms wiring in `fight`, `frame`, `announce`, `snapshot`,
+  `newGame`, `setPaused`, `target`; `debugGiveWeapon`), `main.ts` (`__cow.giveWeapon`, tests only),
+  `content.ts` (append stages 11–15, `gangs` / `crews` / `pickups` in `GameContent`),
+  `content.test.ts` (10 → 15 stages on purpose), `Fighters.ts`, `HumanFigure.ts` (weapon in the
+  right-hand bone, `setWeapon`, `shownWeapon`), `TouchControls.ts` (weapon button),
+  `packages/missions` `types.ts` (`chase` objective, `hostiles`, `weapons` reward),
+  `MissionRunner.ts` (`quarry`), `stories.ts` (one line), index export lists, `docs/*.md`.
+- **Tests:** typecheck clean; unit 351/351; my specs `weapons.spec.ts` 4/4, `gangs.spec.ts` 4/4,
+  `missions2.spec.ts` 5/5; `combat.spec.ts` 4/4; full suite: see the final report of this branch.
+- **Measured at `?quality=lite`** (preview build, software GPU): gang corners 107 draw calls /
+  208k triangles (Royapettah), 162 / 164k (Triplicane), 129 / 254k (Egmore); the gangs spec saw
+  130 / 237k at Royapettah.
+- **Checked by eye** (screenshots, not committed): the weapon button sits left of FIRE / HIT, clear
+  of them; crews stand at the kerb in their colours with the bat in hand; the player's bat is in
+  the hand. Guns are small and dark at lite quality: visible as a dark shape at the hand, hard to
+  judge closely.
+- **Not done:** the back-street dealer (needs a new place kind across shared files); a holster
+  (a loaded gun always counts as armed near gangs); two-handed poses for the shotgun and SMG;
+  nothing tried on the emulator or a phone.
