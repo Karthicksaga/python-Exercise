@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
-import { Combat, PLAYER_MAX_HEALTH, hitPenalty, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState } from "@cow/combat";
+import { Combat, PLAYER_MAX_HEALTH, hitPenalty, isPoliceGroup, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState } from "@cow/combat";
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
@@ -23,6 +23,7 @@ import { PlaceMarkers } from "@cow/game-engine";
 import { PLACE_COLORS, placeIconCanvas } from "@cow/ui";
 import { insideShell, onShellMessage, sendToShell } from "./nativeBridge";
 import { Population, type DrivenVehicle, type PedestrianHit } from "./Population";
+import { Police, type PoliceView } from "./Police";
 import { ShareRiders } from "./ShareRiders";
 import { LandmarkView } from "@cow/game-engine";
 import { landmarkSolids } from "@cow/game-world";
@@ -116,6 +117,8 @@ export interface GameSnapshot extends PlaceSnapshot {
   /** People the player's vehicle has hit and their state, and the last hit with what it cost (tests). */
   readonly casualties: Array<{ x: number; z: number; state: CasualtyState; speed: number }>;
   readonly lastPedestrianHit: { outcome: HitOutcome; speed: number; fine: number; reputation: number } | null;
+  /** The wanted level, police cars and officers, the last arrest (`Police.ts`). */
+  readonly police: ReturnType<Police["snapshot"]>;
 }
 
 const SAVE_KEY = "cow-progress-v1";
@@ -238,6 +241,8 @@ export class Game {
   private readonly boarder: Boarder;
   /** The controls are hidden for a walk through a train's doorway. */
   private railWalk = false;
+  /** Police and the wanted level (`Police.ts`); made in `create`, once the road graph and HUD exist. */
+  private police!: Police;
 
   private constructor(
     private readonly map: WorldMap,
@@ -425,6 +430,9 @@ export class Game {
     });
     const riders = new ShareRiders(renderer.scene, humans);
     game = new Game(map, content, renderer, mapView, chunks, physics, player, avatar, vehicles, population, combat, fighters, sound, missions, beacon, camera, controls, hud, minimap, riders);
+    game.police = new Police(map, renderer.scene, physics, combat, sound, hud.root, { graph: () => population.roadGraph, traffic: () => population.trafficPositions() }, {
+      busted: (fine, stars, station) => game?.arrested(fine, stars, station),
+    });
     const railFile = await railLoaded;
     if (railFile) {
       const railway = new Railway(railFile, renderer.scene, physics, new RidePanel(hud.root), {
@@ -464,7 +472,11 @@ export class Game {
 
   /** Open the job board (the JOBS button). */
   openBoard(): void {
-    if (!this.paused) this.desk.openBoard();
+    if (this.paused) return;
+    // No new jobs while wanted at two stars or more (a job in progress can still be quit).
+    const refusal = this.police.jobRefusal(this.desk.active !== null);
+    if (refusal) this.hud.showToast("Job board closed", refusal, 3);
+    else this.desk.openBoard();
   }
 
   private hold(): void {
@@ -573,6 +585,7 @@ export class Game {
     this.combat.keepOnly([]);
     this.combat.revive();
     this.combat.ammo = 0;
+    this.police.clear();
     if (this.driving) this.leaveVehicle(true);
     this.content.parking.forEach((spot, i) => this.vehicles[i]?.body.teleport({ x: spot.x, y: (this.vehicles[i]?.type.rideHeight ?? 0.7) + 0.1, z: spot.z }, spot.yaw));
     this.teleport(this.content.spawn.x, this.content.spawn.z, this.content.spawn.yaw);
@@ -820,7 +833,8 @@ export class Game {
       waitingAtSignals: this.population.waitingAtSignals,
       health: this.combat.health,
       ammo: this.combat.ammo,
-      enemies: this.combat.enemies.map((e) => ({ x: e.x, z: e.z, health: e.health, armed: e.armed })),
+      // Story enemies only; police officers are under `police`.
+      enemies: this.combat.enemies.filter((e) => !isPoliceGroup(e.group)).map((e) => ({ x: e.x, z: e.z, health: e.health, armed: e.armed })),
       street: this.street,
       district: this.district,
       visitedDistricts: [...this.visited.list()],
@@ -842,6 +856,7 @@ export class Game {
       clothes: this.avatar.clothesColor,
       casualties: this.population.casualtyList(),
       lastPedestrianHit: this.lastPedestrianHit,
+      police: this.police.snapshot(),
     };
   }
 
@@ -862,6 +877,7 @@ export class Game {
 
   /** The player's vehicle hit a pedestrian: it slows a little, a thud, and a fine and lost reputation. */
   private pedestrianHit(hit: PedestrianHit): void {
+    this.police.pedestrianHit(hit.outcome);
     this.driving?.knock(hit.keep);
     this.sound.crash(Math.min(8, 1 + hit.speed * 0.4));
     if (hit.outcome === "stumble") {
@@ -911,7 +927,8 @@ export class Game {
     const objective = this.missions.objective;
     // No fights while on a city job or a story.
     const group = objective?.type === "defeat" && !this.desk.active && !this.placeDesk.story ? objective.group : null;
-    this.combat.keepOnly(group ? [group] : []);
+    // Police officers on foot (`Police.ts`) are enemies too, and stay.
+    this.combat.keepOnly([...(group ? [group] : []), ...this.police.groups()]);
     if (group && !this.cleared.has(group) && this.combat.remaining(group) === 0) {
       const spots = this.content.enemies[group] ?? [];
       this.combat.spawnGroup(group, spots);
@@ -952,6 +969,7 @@ export class Game {
           this.sound.shot();
           const muzzle = { x: at.x - Math.sin(this.camera.yaw) * 0.7, z: at.z - Math.cos(this.camera.yaw) * 0.7 };
           this.fighters.tracer(muzzle.x, muzzle.z, shot.toX, shot.toZ);
+          this.police.gunfire(at.x, at.z, shot.toX, shot.toZ);
         } else if (this.combat.ammo === 0 && this.sinceClick > 0.4) {
           this.sinceClick = 0;
           this.sound.click();
@@ -986,10 +1004,61 @@ export class Game {
     this.cleared.clear();
     this.combat.keepOnly([]);
     this.combat.revive();
+    // Wasted clears the wanted level too.
+    this.police.clear();
     if (this.driving) this.leaveVehicle(true);
     this.teleport(this.content.spawn.x, this.content.spawn.z, this.content.spawn.yaw);
     this.sound.fail();
     this.hud.showToast("Knocked out", bill > 0 ? `Hospital bill ₹${bill}. The stage starts again.` : "The stage starts again.", 4.5);
+  }
+
+  /**
+   * Busted (`Police.ts` decided it): a fine, the pistol rounds taken, and the player let go
+   * outside the nearest police station. Like a knock-out, the stage objective starts again.
+   */
+  private arrested(fine: number, stars: number, station: { x: number; z: number; yaw: number }): void {
+    const paid = this.missions.charge(fine);
+    // Weapons are confiscated. (Only the pistol's rounds exist so far; a weapon inventory would be emptied here too.)
+    this.combat.ammo = 0;
+    this.missions.restartStage();
+    saveProgress(this.missions.progress());
+    this.cleared.clear();
+    this.combat.keepOnly([]);
+    this.combat.revive();
+    if (this.driving) this.leaveVehicle(true);
+    this.teleport(station.x, station.z, station.yaw);
+    this.sound.fail();
+    this.hud.showToast("Busted", `${"★".repeat(stars)} · ${paid > 0 ? `Fine ₹${paid.toLocaleString("en-IN")}` : "No money for the fine"} · weapons taken. Released at the police station.`, 5);
+  }
+
+  /** The player as the police see them (`Police.ts`). */
+  private policeView(at: { x: number; z: number }, impact: number): PoliceView {
+    const v = this.driving ? this.driving.body.planarVelocity() : { x: -Math.sin(this.player.yaw) * this.player.speed, z: -Math.cos(this.player.yaw) * this.player.speed };
+    const objective = this.placeDesk.objective() ?? this.missions.objective;
+    const allowedKinds: string[] = [];
+    if (this.desk.active) allowedKinds.push(this.desk.active.vehicle);
+    if (objective?.type === "enter") allowedKinds.push(objective.vehicle);
+    const driving = this.driving;
+    return {
+      x: at.x,
+      z: at.z,
+      speed: driving ? Math.abs(driving.body.forwardSpeed()) : this.player.speed,
+      vx: v.x,
+      vz: v.z,
+      vehicle: driving ? { id: driving.id, kind: driving.kind, halfLength: driving.type.physics.halfExtents.z } : null,
+      impact,
+      allowedKinds,
+      body: driving ? driving.body : this.player.body,
+    };
+  }
+
+  /** For tests and debugging only: set the wanted level, and give pistol rounds. */
+  debugSetWanted(stars: number): void {
+    this.police.setStars(stars);
+  }
+
+  debugGiveAmmo(rounds: number): void {
+    this.combat.ammo = Math.max(0, Math.floor(rounds));
   }
 
   private fixedUpdate(dt: number): void {
@@ -1043,12 +1112,15 @@ export class Game {
     const before = this.where();
     this.parkedObstacles.length = 0;
     for (const vehicle of this.vehicles) if (vehicle !== this.driving) this.parkedObstacles.push(...vehicle.footprint());
+    this.parkedObstacles.push(...this.police.obstacles());
     const room = this.driving ? this.driving.footprint() : [{ x: before.x, z: before.z, radius: 0.5 }];
-    const siren = this.driving?.siren ? { x: before.x, z: before.z, heading: this.driving.body.yaw() } : null;
+    // Traffic pulls over for the player's siren, or else for the nearest police car's.
+    const siren = this.driving?.siren ? { x: before.x, z: before.z, heading: this.driving.body.yaw() } : this.police.siren(before);
     // Rush hours are busy, late nights quiet.
     this.population.setHour(this.clock.hour);
     const driven = this.driving ? this.drivenMotion(this.driving) : null;
     for (const hit of this.population.fixedUpdate(dt, before, room, this.parkedObstacles, siren, driven)) this.pedestrianHit(hit);
+    this.police.fixedUpdate(dt, this.policeView(before, impact));
     this.fight(dt, before);
     this.fighters.fixedUpdate();
     this.railway?.fixedUpdate(dt, before);
@@ -1211,7 +1283,8 @@ export class Game {
     const markers: MinimapMarker[] = this.vehicles
       .filter((v) => v !== this.driving)
       .map((v) => ({ x: v.body.position().x, z: v.body.position().z, color: MINIMAP_COLORS[v.kind], size: v.kind === "bus" ? 5 : 3.5 }));
-    for (const enemy of this.combat.enemies) if (enemy.health > 0) markers.push({ x: enemy.x, z: enemy.z, color: "#ff4d4d", size: 4 });
+    for (const enemy of this.combat.enemies) if (enemy.health > 0 && !isPoliceGroup(enemy.group)) markers.push({ x: enemy.x, z: enemy.z, color: "#ff4d4d", size: 4 });
+    markers.push(...this.police.markers());
     if (this.railway) markers.push(...this.railway.stations);
     markers.push(...this.placeDesk.markers());
     markers.push(...this.desk.markers());
@@ -1220,6 +1293,7 @@ export class Game {
     this.minimap.update(dt, at.x, at.z, this.driving ? this.driving.body.yaw() : this.player.yaw, this.camera.yaw, markers);
 
     this.fighters.frame(dt);
+    this.police.frame(dt, at);
     this.hud.setHealth(this.combat.health / PLAYER_MAX_HEALTH);
     this.controls.setAmmo(this.combat.ammo);
     // The name of the street underfoot, from the map. Looked up twice a second.

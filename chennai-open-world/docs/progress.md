@@ -34,6 +34,40 @@ Last updated: 17 Nov 2026 (animated getting in and out of vehicles and trains).
   `HumanFigure.sitting` (standing ↔ seated blend), `apps/game/src/Boarder.ts` (placing the figure
   and door), `packages/rail/src/doors.ts` and `TrainDoors` (`TrainView.ts`), `Railway.ts` (doorway
   walks). Tests: see "What was tested" below.
+Last updated: 17 Nov 2026 (police and wanted level).
+
+## What exists
+
+- **Police and a wanted level (17 Nov, `agent/police`; unit-tested and browser-tested in headless
+  Chromium, not on the emulator or a phone):** 0–5 stars. Rules in `packages/combat/src/Wanted.ts`
+  (pure); every number is a game-design estimate. Crimes and heat points: a gun fired in the
+  street 1 (one report per 3 s of firing; not counted within 60 m of a story fight's enemies),
+  hurting a pedestrian 3 (at least 1 star), killing one 6 (at least 2), taking a vehicle that
+  isn't yours 1, driving into a police car 2, shooting one 2, hitting an officer 4 (at least 2),
+  knocking one out 10 (at least 3); stars start at 1, 5, 12, 22, 35 points. **Theft:** the start
+  hatchback, bike and auto are the player's; any other parked vehicle (free-roam extras, the
+  ambulance, the bus, job vehicles) is theft unless the current job or story step asks for that
+  kind; each vehicle is reported once. **Losing them:** one star drops after 30/40/55/70/85 s
+  (by level) with no police unit seeing the player (cars see 70 m, officers 45 m, with a clear
+  line); a sighting or a new crime restarts the wait. **Busted** (1–2 stars): kept still on foot
+  within 3.2 m of an officer for 2 s: fine ₹500/1,000 (₹2,000–5,000 at higher levels, unused
+  since arrests stop at 2), pistol rounds taken, released on the pavement outside the nearest
+  police station (the 37 OSM `amenity=police` points; names not shown), the stage objective
+  starts again. **Wasted** (knocked out) clears the level too. **Units** (`apps/game/src/Police.ts`):
+  at most 1/2/2/3/3 cars and 2/2/3/4/4 officers by level. Cars appear 80–140 m from where the
+  player was last seen, out of the player's sight, and chase on the traffic's road graph
+  (`Pursuer`, A*, `packages/ai/src/Pursuit.ts`), straight at the player within 35 m; they stop
+  9 m short and two officers get out (Combat enemies, khaki tint). Below 3 stars officers walk up
+  to arrest; from 3 they come out armed and shoot with the enemy rules, and cars ram a moving
+  vehicle (shunts) and box in a stopped one. Unseen for 3 s, cars search the streets within
+  120 m of the last sighting. Traffic gives way to police cars and pulls over for the nearest
+  one's siren. Livery: white body, khaki band with POLICE on both sides, red/blue light bar
+  (invented; no real force's emblem). **HUD:** five stars under the money line, flashing red/blue
+  while seen; police cars flash red/blue and officers are blue dots on the minimap; a synthesised
+  siren (`Sound.setPoliceSiren`) as loud as the nearest chasing car is near (within 250 m).
+  **Jobs:** from 2 stars the job board takes no new jobs ("Lose them first"); a job already
+  running can still be finished or quit; an arrest doesn't quit it (its clock usually runs out).
+  The wanted level is not saved. Test hooks: `__cow.setWanted`, `__cow.giveAmmo`.
 
 - **Suburban railway with trains you can ride (17 Nov; unit-tested and browser-tested in headless
   Chromium, not on the emulator or a phone):** the Beach–Tambaram line from OpenStreetMap (the
@@ -439,6 +473,7 @@ Last updated: 17 Nov 2026 (share auto).
 | Check | Result | How |
 |---|---|---|
 | Animated get in / get out, train doors (17 Nov, `agent/vehicle-entry`) | **pass**: typecheck clean, unit 348/348, browser 61/61 (21.9 min, full suite, no retries) | `npm run typecheck && npm test`; `PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e -- --trace off` on 8f7b5bd. New unit tests: `Boarding.test.ts` (phase order and timings, walk cap, door easing and smoothness, events, getting out, the walk path never crosses any vehicle's body from 16 directions, entry data), `doors.test.ts` (vehicles: car and ambulance doors swing out on the front hinge, bus leaves fold outwards and clear the opening, one mesh each with at most 72 triangles, one material per colour, no door on auto and bike), `packages/rail/src/doors.test.ts` (train doors: shut while moving, open mid-stop, shut before leaving, still open when the last ticket is sold), and `ridingPose.test.ts` with the real character (the hips move in a straight line as it sits, hands on the grips or wheel at the end for every kind, a part-way pose does not creep, it stands fully up again). New browser tests: `boarding.spec.ts` (car: door > 0.8 while still on foot, phases open → sit → close, seated with the door shut and driving controls shown, the car does not move; getting out: control back while the door is still closing, standing 1 to 2 m off the car's right side on the ground; bus: climb phase through the folding door; auto and bike: no door; a teleport mid-sequence leaves the player on foot with the door shut) and a railway test (doors open at the stop, the player walks through, doors shut when the train leaves, stepping off walks out onto the platform). **Changed on purpose:** `board()` and a new `getOut()` helper in `support.ts` wait in game time for the sequence, since getting in and out is no longer instant; every gameplay assertion is kept. Checked by eye (Playwright screenshots, 915×412, not committed): the car door swings out from its front hinge with the figure standing behind it, the figure disappears into the dark doorway as it sits (no cabin); bus leaves fold out on the kerb side and the figure steps in between them; the auto rider steps in from the left, though the legs brush the front cowl mid-step; feet stay on the ground while walking; train doors on the coach nearest the player slide apart to show dark openings |
+| Police and wanted level (17 Nov, `agent/police`) | **pass**: typecheck clean, unit 337/337 (34 new: `Wanted.test.ts` 25, `Pursuit.test.ts` 9), browser **60/60** full suite (21.0 min) | `npm run typecheck && npm test`; `PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e -- --trace off`. New `police.spec.ts` (4): a pistol shot gives a star and a car comes from out of sight (over 60 m) and reaches the player, stars flash when seen; teleported kilometres away the star holds until its 30 s and then fades and the car leaves; standing still beside the officers at one star → busted, ₹500 fine, rounds taken, released by a police station; the own hatchback is no crime, `car-1` is theft, and at two stars the job board refuses. An earlier partial full run had one failure in `onfoot.spec.ts` (chunk streaming, a wall-clock wait under load); it passed in the complete run. **Cost at `?quality=lite`** (production build, software GPU, spawn street): before police 175–207 draw calls / 250–300k triangles; one car plus two officers on foot +21 draw calls / +30k triangles; a 3-star chase (two cars, three armed officers) peaked at 244 draw calls and 333k triangles (3-star stop on foot: 241 / 309k). Draw calls are within the ~300 budget; triangles go over 300k at the spawn street, which was already at the limit. Checked by eye at 915×412: light bar and POLICE band on the car, officers walking up and standing round the player, armed officers at 3 stars, stars under the money line (no overlap with controls or the minimap), the Busted toast at the station |
 | Stabilise merge, Android only (17 Nov, `agent/stabilise-merge`) | **pass**: unit 303/303, browser 55/55, then 56/56 (16.6 min, no retries) on the final code with the controls-layout test and closed grips | `npm run typecheck && npm test`; `cd apps/game && PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off`, run alone on the machine (first run 55/55 in 15.9 min, no retries). Unit count is 305 minus the 4 keyboard Gearbox tests removed with the keyboard (TD-20). New test: every driving control (GAS, BRAKE, HORN/SIREN, EXIT, P/R/D) on screen at 915×412 and none overlapping another or the minimap; it failed on the old layout, where HORN/SIREN sat under the minimap. Checked by eye in screenshots: bike rider seated with hands on the grips and a foot down; auto driver's hands on the handlebar, head under the roof; share-auto passenger on the rear bench with the estimated `PASSENGER` pose, feet on the floor, no clipping; P/R/D beside BRAKE and GAS at 915×412. Car and bus drivers are hidden (closed vehicles, no modelled wheel) |
 | Cost at `?quality=lite` (17 Nov, production build) | spawn at the triangle budget, the rest under | Headless Chromium, software GPU, worst of four headings after 6 s of game time: Anna Nagar spawn 207 draw calls / 300k triangles; T. Nagar (3269, 4960) 158 / 271k; Anna Salai (5033, 3180) 154 / 230k; beside Egmore station (5622, 703) 164 / 216k. Budget about 300 draw calls and 300k triangles: draw calls have room, triangles at spawn do not (it was 165k there on 16 Nov evening; the street props, shop fronts and people added since are the likely cause, not yet profiled) |
 | Share auto (17 Nov) | **pass**: unit 202/202, browser 55/55 in the merged suite (`shareAuto.spec.ts` kerb passengers included) | `npm run typecheck && npm test`; `cd apps/game && PW_PORT=4273 PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off` (the 38 earlier tests plus `shareAuto.spec.ts`). `PW_PORT` was needed because another checkout's preview server held 4173 |

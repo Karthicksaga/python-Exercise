@@ -10,7 +10,7 @@ Status values: **done** (built and tested as described in `progress.md`), **in p
 | 3. Player | Rigged character with animations, movement, camera, collisions | done with a placeholder model; no jump or interaction animations |
 | 4. Vehicles | Car, auto-rickshaw and motorbike; enter/exit; driving controls; speedometer | done |
 | 5. AI | Road graph from OSM; traffic, pedestrians, enemies | first version done; no signals, overtaking, pathfinding or reactions |
-| 6. Game mechanics | Missions, money, health, fighting and shooting, saved progress | ten stages done; no inventory, police or wanted level |
+| 6. Game mechanics | Missions, money, health, fighting and shooting, saved progress | ten stages done; police and a 0–5 star wanted level (17 Nov, `agent/police`); no inventory |
 | 7. Optimisation | Merged buildings and vehicles, instancing, streaming, quality tiers | partly done; no LOD, texture compression or phone profiling |
 
 ## Next steps, in order of value
