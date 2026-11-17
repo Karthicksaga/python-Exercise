@@ -1,7 +1,7 @@
 /**
  * On-screen controls: a floating joystick on the left half, camera drag on the right half, and
- * buttons that change with what the player is doing (jump on foot; accelerate and brake when
- * driving; a context button to get in or out of a vehicle). Uses Pointer Events, so several
+ * buttons that change with what the player is doing (jump on foot; accelerate, brake and a
+ * P / R / D gear selector when driving; a context button to get in or out of a vehicle). Uses Pointer Events, so several
  * fingers work at once and a mouse works too.
  *
  * The controls only record intent; the game reads `state` once per frame.
@@ -27,7 +27,13 @@ export interface ControlState {
   punch: boolean;
   /** Set when the horn is pressed (driving); cleared by `consumeHorn()`. */
   horn: boolean;
+  /** Gear asked for on the selector (driving); cleared by `consumeGear()`. */
+  gear: GearButton | null;
 }
+
+/** The gear selector's positions: park, reverse, drive. */
+export type GearButton = "P" | "R" | "D";
+const GEAR_NAMES: Readonly<Record<GearButton, string>> = { P: "Park", R: "Reverse", D: "Drive" };
 
 export type ControlMode = "foot" | "drive";
 
@@ -53,6 +59,12 @@ const STYLE = `
 .cow-button.fire small{display:block;font:600 10px ui-monospace,monospace;opacity:.9}
 .cow-button.hit{right:calc(122px + env(safe-area-inset-right));bottom:calc(16px + env(safe-area-inset-bottom));width:64px;height:64px;background:rgba(60,70,110,.6)}
 .cow-button.horn{right:calc(40px + env(safe-area-inset-right));bottom:calc(214px + env(safe-area-inset-bottom));width:52px;height:52px;font-size:10px}
+.cow-gears{position:absolute;right:calc(222px + env(safe-area-inset-right));bottom:calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:4px;
+  padding:5px;border-radius:14px;background:rgba(15,18,30,.45);border:1px solid rgba(255,255,255,.35)}
+.cow-gears button{width:42px;height:34px;border-radius:9px;border:0;background:transparent;color:rgba(255,255,255,.75);font:800 16px system-ui,sans-serif;touch-action:none}
+.cow-gears button.on{background:#ffd166;color:#1a1a1a}
+.cow-gears button.wait{box-shadow:inset 0 0 0 2px #ffd166;color:#ffd166;animation:cow-gear-wait .6s steps(2) infinite}
+@keyframes cow-gear-wait{50%{box-shadow:none}}
 .cow-controls [hidden]{display:none}
 `;
 
@@ -70,7 +82,9 @@ function capture(element: HTMLElement, pointerId: number): void {
 }
 
 export class TouchControls {
-  readonly state: ControlState = { moveX: 0, moveY: 0, lookDX: 0, lookDY: 0, jump: false, gas: false, brake: false, action: false, fire: false, punch: false, horn: false };
+  readonly state: ControlState = { moveX: 0, moveY: 0, lookDX: 0, lookDY: 0, jump: false, gas: false, brake: false, action: false, fire: false, punch: false, horn: false, gear: null };
+  private readonly gearPanel: HTMLDivElement;
+  private readonly gearButtons = new Map<GearButton, HTMLButtonElement>();
   private readonly fireButton: HTMLButtonElement;
   private readonly hitButton: HTMLButtonElement;
   private readonly hornButton: HTMLButtonElement;
@@ -132,8 +146,26 @@ export class TouchControls {
     this.hitButton = button("hit", "HIT", "Punch");
     this.hornButton = button("horn", "HORN", "Horn");
     this.gasButton.hidden = this.brakeButton.hidden = this.actionButton.hidden = this.hornButton.hidden = true;
+    // Gear selector beside the brake, in a real lever's order: P at the top, then R, then D.
+    this.gearPanel = document.createElement("div");
+    this.gearPanel.className = "cow-gears";
+    this.gearPanel.dataset.testid = "gear-selector";
+    this.gearPanel.hidden = true;
+    for (const gear of ["P", "R", "D"] as const) {
+      const element = document.createElement("button");
+      element.type = "button";
+      element.textContent = gear;
+      element.setAttribute("aria-label", GEAR_NAMES[gear]);
+      element.setAttribute("aria-pressed", "false");
+      element.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        this.state.gear = gear;
+      });
+      this.gearButtons.set(gear, element);
+      this.gearPanel.append(element);
+    }
 
-    this.root.append(moveZone, lookZone, this.stick, jump, this.gasButton, this.brakeButton, this.actionButton, this.fireButton, this.hitButton, this.hornButton);
+    this.root.append(moveZone, lookZone, this.stick, jump, this.gasButton, this.brakeButton, this.gearPanel, this.actionButton, this.fireButton, this.hitButton, this.hornButton);
     parent.append(this.root);
 
     // Where the stick rests when no finger is down.
@@ -268,11 +300,30 @@ export class TouchControls {
     return pressed;
   }
 
-  /** Swap the button set: jump, punch and fire on foot; accelerator, brake and horn when driving. */
+  /** Read and clear the gear last asked for on the selector. */
+  consumeGear(): GearButton | null {
+    const gear = this.state.gear;
+    this.state.gear = null;
+    return gear;
+  }
+
+  /** Light the engaged gear on the selector, and make a gear waiting for the vehicle to stop blink. */
+  setGear(engaged: GearButton, waiting: GearButton | null): void {
+    for (const [gear, element] of this.gearButtons) {
+      const on = gear === engaged && waiting === null;
+      element.classList.toggle("on", on);
+      element.classList.toggle("wait", gear === waiting);
+      const pressed = String(on);
+      if (element.getAttribute("aria-pressed") !== pressed) element.setAttribute("aria-pressed", pressed);
+    }
+  }
+
+  /** Swap the button set: jump, punch and fire on foot; accelerator, brake, gears and horn when driving. */
   setMode(mode: ControlMode): void {
     this.jumpButton.hidden = this.fireButton.hidden = this.hitButton.hidden = mode !== "foot";
-    this.gasButton.hidden = this.brakeButton.hidden = this.hornButton.hidden = mode !== "drive";
+    this.gasButton.hidden = this.brakeButton.hidden = this.hornButton.hidden = this.gearPanel.hidden = mode !== "drive";
     this.state.gas = this.state.brake = this.state.fire = false;
+    this.state.gear = null;
   }
 
   /** Label of the horn button: "HORN", or "SIREN" in an ambulance. */

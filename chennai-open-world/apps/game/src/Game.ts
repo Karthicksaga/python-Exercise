@@ -12,7 +12,7 @@ import { MissionRunner, type MissionEvent, type Objective, type Progress } from 
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
 import { HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, type HumanFigure } from "@cow/player";
 import { Hud, Minimap, TouchControls, type MinimapMarker } from "@cow/ui";
-import { Vehicle, gearFor, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
+import { Gearbox, Vehicle, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
 import { buildContent, type GameContent } from "./content";
 import { Fighters, combatWorld } from "./Fighters";
 import { JobDesk } from "./JobDesk";
@@ -182,7 +182,8 @@ export class Game {
   private readonly desk: JobDesk;
   /** A menu is open over the game (job board or a job's result). */
   private held = false;
-  private throttle = 0;
+  /** The P / R / D selector of whatever the player drives (reset to D on getting in). */
+  private readonly gearbox = new Gearbox();
   /** Gear shown last frame, to hear a change up. */
   private lastGear = "";
   /** Time of day. Systems that change with it read `clock.hour`. */
@@ -502,6 +503,7 @@ export class Game {
     this.avatar.visible = vehicle.type.openSeat === true;
     this.avatar.setSeated(vehicle.type.pose);
     this.camera.reach = vehicle.type.cameraDistance;
+    this.gearbox.reset("D");
     this.controls.setMode("drive");
     this.controls.setHornLabel(vehicle.type.siren ? "SIREN" : "HORN");
   }
@@ -632,7 +634,7 @@ export class Game {
       job: this.desk.active?.id ?? null,
       jobStop: this.desk.runner.stopNumber,
       reputation: this.desk.runner.reputation,
-      gear: this.driving ? gearFor(this.driving.type, this.driving.body.forwardSpeed(), this.throttle) : "",
+      gear: this.driving ? this.gearbox.label(this.driving.type, this.driving.body.forwardSpeed()) : "",
       siren: this.driving?.siren ?? false,
       held: this.held,
       hour: this.clock.hour,
@@ -765,6 +767,8 @@ export class Game {
     // Read both sources every step, so a press on one is never left pending.
     const jump = [this.controls.consumeJump(), this.keyboard.consumeJump()].some(Boolean);
     const action = [this.controls.consumeAction(), this.keyboard.consumeAction()].some(Boolean);
+    const gearAsked = this.controls.consumeGear();
+    const keyGear = this.keyboard.consumeGear();
 
     if (action) {
       if (this.driving) this.leaveVehicle();
@@ -774,12 +778,12 @@ export class Game {
     let driverInput: VehicleControls | null = null;
     if (this.driving) {
       const speed = this.driving.body.forwardSpeed();
-      const gas = stick.gas || this.keyboard.moveY > 0;
-      const brake = stick.brake || this.keyboard.moveY < 0;
-      // The brake pedal brakes while rolling forwards and reverses once the vehicle has stopped.
-      const reversing = brake && speed < 0.8;
-      driverInput = { throttle: gas ? 1 : reversing ? -1 : 0, steer: moveX, brake: brake && !reversing ? 1 : 0 };
-      this.throttle = driverInput.throttle;
+      // Gear rules (P / R / D, braking before a shift) are in the Gearbox (@cow/vehicles).
+      const asked = gearAsked ?? keyGear;
+      if (asked) this.gearbox.select(asked, speed);
+      driverInput = this.gearbox.controls({ gas: stick.gas, brake: stick.brake, steer: moveX, keys: this.keyboard.moveY }, speed);
+      const hint = this.gearbox.consumeHint();
+      if (hint) this.hud.showToast(hint, "", 2.4);
     } else {
       this.player.update({ moveX, moveY, run: this.keyboard.run, jump, cameraYaw: this.camera.yaw }, dt);
     }
@@ -843,7 +847,8 @@ export class Game {
       const body = this.driving.body;
       this.camera.chase({ velocity: body.planarVelocity(), heading: body.yaw(), forwardSpeed: body.forwardSpeed(), topSpeed: this.driving.type.physics.maxSpeed }, dt);
       this.camera.update(dt, at, this.physics, this.driving.body);
-      const gear = gearFor(this.driving.type, this.driving.body.forwardSpeed(), this.throttle);
+      const gear = this.gearbox.label(this.driving.type, this.driving.body.forwardSpeed());
+      this.controls.setGear(this.gearbox.gear, this.gearbox.pending);
       this.hud.setSpeed(this.driving.speedKmh, gear);
       if (shiftedUp(this.lastGear, gear)) this.sound.gearChange();
       this.lastGear = gear;

@@ -1,9 +1,13 @@
 /**
  * Keyboard fallback for development on a desktop: WASD or arrows, Shift to run, Space to jump,
  * E to get in or out of a vehicle, F to fire, Q to punch. When driving, W accelerates, S brakes
- * and H sounds the horn (or switches the siren). J opens the job board.
+ * (and reverses once stopped; W in reverse brakes, then drives forwards), P, R and G select park,
+ * reverse and drive (D steers), and H sounds the horn (or switches the siren). J opens the job board.
  */
+const GEAR_KEYS: Readonly<Record<string, "P" | "R" | "D">> = { KeyP: "P", KeyR: "R", KeyG: "D" };
+
 export class KeyboardInput {
+  private gearPressed: "P" | "R" | "D" | null = null;
   private readonly down = new Set<string>();
   private jumpPressed = false;
   private actionPressed = false;
@@ -18,6 +22,8 @@ export class KeyboardInput {
       if (e.code === "KeyQ" && !e.repeat) this.punchPressed = true;
       if (e.code === "KeyH" && !e.repeat) this.hornPressed = true;
       if (e.code === "KeyJ" && !e.repeat) this.boardPressed = true;
+      const gear = GEAR_KEYS[e.code];
+      if (gear && !e.repeat) this.gearPressed = gear;
       this.down.add(e.code);
     });
     window.addEventListener("keyup", (e) => this.down.delete(e.code));
@@ -55,6 +61,13 @@ export class KeyboardInput {
     const pressed = this.hornPressed;
     this.hornPressed = false;
     return pressed;
+  }
+
+  /** Gear asked for with P, R or G since the last call, or null. */
+  consumeGear(): "P" | "R" | "D" | null {
+    const gear = this.gearPressed;
+    this.gearPressed = null;
+    return gear;
   }
 
   consumeBoard(): boolean {
