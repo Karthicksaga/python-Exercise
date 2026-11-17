@@ -122,7 +122,8 @@ test("stage 12: the racket comes to the tea shop and is beaten; the shotgun is t
   const end = await state(page);
   expect(end.money).toBe(12_200 + 2500);
   expect(end.weapons).toContain("shotgun");
-  expect(end.weaponAmmo.shotgun).toBeGreaterThanOrEqual(14);
+  // Given, not put in the hand, so none has been fired yet.
+  expect(end.weaponAmmo.shotgun).toBe(14);
   await expect(page.getByRole("status")).toContainText("Stage 12 complete");
 });
 
