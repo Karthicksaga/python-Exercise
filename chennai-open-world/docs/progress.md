@@ -284,7 +284,7 @@ Difficulty has not been play-tested by a person.
   traffic signals or signs. One-way streets are respected by traffic, not enforced on the player.
 - **AI:** traffic does not overtake or plan routes, and can queue behind a vehicle the player
   leaves in a lane (agents stuck for 8 s out of sight are moved). AI autos have no visible
-  driver. Pedestrians don't react to danger, gunfire or the horn, and can't be hurt. No police
+  driver. Pedestrians react only to someone being hit near them (not to gunfire or the horn); being hit is a knock-down pose, with no ragdoll or limp animation. No police
   or wanted level.
 - **Combat:** enemies have no pathfinding (they head straight for the player and side-step
   walls), don't take cover, and exist only during their stage. Punching and aiming are arm

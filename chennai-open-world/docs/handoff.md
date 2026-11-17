@@ -240,3 +240,18 @@ desktop instructions.
 - **Next step:** `cd apps/game && PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test tests/pedestrians.spec.ts --trace off`;
   if the killed case passes, run the full suite, then update `progress.md` (what was built and how it was
   tested; remove the known issue).
+
+## 17 Nov 2026 (later): pedestrians hurt when hit, finished
+- Picks up the WIP entry above. Done and tested; details and test list in `progress.md`.
+- The killed case failed only because the test's `lineUp` probed one ray down the middle; it now probes
+  three rays across the vehicle's width (a pole inside the car's width deflected it).
+- Hardening for normal play: if a person's collision box stops the vehicle in the physics step before
+  the game sees the hit, the hit uses the speed it came in at (`Vehicle.approachVelocity`). New browser
+  tests: auto and bike hitting people off-centre at an angle, and a hit with the CPU slowed six times
+  (about 17 fps). The hit check runs every fixed 1/60 s step, so it does not depend on frame rate.
+- `apps/game/playwright.config.ts` reads `PW_PORT` (default 4173) so several checkouts can run tests at once.
+- Results: typecheck clean, unit 205/205, `pedestrians.spec.ts` 4/4. A full browser run under five
+  parallel suites on 4 CPUs had wall-clock poll timeouts in three older tests (see the report); they
+  were rerun on their own.
+- Not tested on a phone. Next: try it on the phone build the user reported from ("hitting NPC does not work
+  properly" was before this feature).
