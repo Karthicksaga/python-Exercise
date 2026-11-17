@@ -9,6 +9,8 @@ declare global {
       setPaused(paused: boolean): void;
       teleport(x: number, z: number, yaw?: number): Promise<void>;
       probe(x: number, z: number, dx: number, dz: number, max: number): number | null;
+      /** Tests only: move the railway clock forward by this many seconds. */
+      railAdvance(seconds: number): void;
     };
   }
 }
@@ -27,6 +29,8 @@ async function boot(): Promise<void> {
       // For tests and debugging only: missions need long drives that tests skip with this.
       teleport: (x, z, yaw) => game.teleport(x, z, yaw),
       probe: (x, z, dx, dz, max) => game.probe(x, z, dx, dz, max),
+      // For tests only: trains run on a timetable; a test skips the wait for the next one.
+      railAdvance: (seconds) => game.railway?.advance(seconds),
     };
     game.start();
     loading.remove();

@@ -294,7 +294,8 @@ export class TouchControls {
     this.actionButton.hidden = label === null;
     if (label !== null && this.actionButton.textContent !== label) {
       this.actionButton.textContent = label;
-      this.actionButton.setAttribute("aria-label", label === "EXIT" ? "Get out" : "Get in");
+      const names: Record<string, string> = { EXIT: "Get out", BOARD: "Board the train", "STEP OFF": "Step off the train" };
+      this.actionButton.setAttribute("aria-label", names[label] ?? "Get in");
     }
   }
 
