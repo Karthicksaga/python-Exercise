@@ -199,6 +199,17 @@ export class PhysicsWorld {
     return hit ? hit.timeOfImpact : null;
   }
 
+  /**
+   * Like `raycast`, but only fixed solids and vehicles count: people's collision boxes and the
+   * player's capsule (kinematic bodies) are passed through. So a ray can start at a person's own
+   * centre, which matters because buildings are hollow: a ray that starts past a wall, inside a
+   * building, sees nothing.
+   */
+  raycastSolid(origin: Vec3, direction: Vec3, maxDistance: number): number | null {
+    const hit = this.world.castRay(new RAPIER.Ray(origin, direction), maxDistance, true, RAPIER.QueryFilterFlags.EXCLUDE_KINEMATIC);
+    return hit ? hit.timeOfImpact : null;
+  }
+
   /** Advance the simulation by one fixed step. */
   step(dt: number): void {
     this.world.timestep = dt;

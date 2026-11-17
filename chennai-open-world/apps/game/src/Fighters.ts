@@ -34,6 +34,9 @@ export function combatWorld(physics: PhysicsWorld): CombatWorld {
       const hit = physics.raycast({ x: x + dx * 0.6, y: CHEST, z: z + dz * 0.6 }, { x: dx, y: 0, z: dz }, max);
       return hit === null ? null : hit + 0.6;
     },
+    solidDistance(x, z, dx, dz, max) {
+      return physics.raycastSolid({ x, y: CHEST, z }, { x: dx, y: 0, z: dz }, max);
+    },
   };
 }
 

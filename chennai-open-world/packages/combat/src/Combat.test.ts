@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Combat, PLAYER_MAX_HEALTH, type CombatEvent, type CombatWorld, type PlayerState } from "./Combat";
 
-const open: CombatWorld = { lineOfSight: () => true, wallDistance: () => null };
-const walled: CombatWorld = { lineOfSight: () => false, wallDistance: () => 6 };
+const open: CombatWorld = { lineOfSight: () => true, wallDistance: () => null, solidDistance: () => null };
+const walled: CombatWorld = { lineOfSight: () => false, wallDistance: () => 6, solidDistance: () => 6 };
 /** Player at the origin facing north (-Z). */
 const player = (over: Partial<PlayerState> = {}): PlayerState => ({ x: 0, z: 0, heading: 0, inVehicle: false, speed: 0, ...over });
 const run = (combat: Combat, seconds: number, p: PlayerState) => {

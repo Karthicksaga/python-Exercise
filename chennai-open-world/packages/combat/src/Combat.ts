@@ -13,6 +13,12 @@ export interface CombatWorld {
   lineOfSight(ax: number, az: number, bx: number, bz: number): boolean;
   /** Distance to the first wall from a point in a direction, or null when clear for `max` metres. */
   wallDistance(x: number, z: number, dx: number, dz: number, max: number): number | null;
+  /**
+   * Distance from a person's own centre to the nearest building, tree or vehicle in a direction,
+   * passing through people; null when clear for `max` metres. Used for walking: unlike
+   * `wallDistance` it has no blind spot right in front of the person.
+   */
+  solidDistance(x: number, z: number, dx: number, dz: number, max: number): number | null;
 }
 
 export interface EnemySpot {
@@ -121,6 +127,8 @@ export const PLAYER_MAX_HEALTH = 100;
 const ENEMY_HEALTH = 100;
 const ENEMY_NOTICE = 28; // metres at which an enemy notices the player
 const ENEMY_SPEED = 3.4;
+/** How far ahead (from the centre) an enemy looks for walls before stepping: body half-width 0.28 m plus a margin. */
+const WALL_LOOKAHEAD = 0.9;
 const ENEMY_PUNCH_RANGE = 1.7;
 const REGEN_DELAY = 6;
 const REGEN_RATE = 7;
@@ -396,15 +404,16 @@ export class Combat {
         }
         continue;
       }
-      // Close in, stepping round walls rather than walking into them.
+      // Close in, stepping round walls rather than walking into them. Measured from the enemy's
+      // own centre: a wall closer than the body's front plus a margin blocks the way.
       const step = ENEMY_SPEED * dt;
       let moveX = ux;
       let moveZ = uz;
-      if (this.world.wallDistance(enemy.x, enemy.z, ux, uz, 1.2) !== null) {
+      if (this.world.solidDistance(enemy.x, enemy.z, ux, uz, WALL_LOOKAHEAD) !== null) {
         const side = enemy.id % 2 === 0 ? 1 : -1;
         moveX = -uz * side;
         moveZ = ux * side;
-        if (this.world.wallDistance(enemy.x, enemy.z, moveX, moveZ, 1.2) !== null) continue;
+        if (this.world.solidDistance(enemy.x, enemy.z, moveX, moveZ, WALL_LOOKAHEAD) !== null) continue;
       }
       // Keep a little apart from the others so a group doesn't stand in one spot.
       let crowded = false;

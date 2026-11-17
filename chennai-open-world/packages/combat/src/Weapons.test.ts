@@ -3,7 +3,7 @@ import { Combat, type CombatEvent, type CombatWorld, type PlayerState } from "./
 import { Arsenal, GUNS, WEAPONS, damageFactor, hitDamage, strayAngle } from "./Weapons";
 import { PICKUP_RADIUS, PICKUP_RESPAWN, WeaponPickups } from "./Pickups";
 
-const open: CombatWorld = { lineOfSight: () => true, wallDistance: () => null };
+const open: CombatWorld = { lineOfSight: () => true, wallDistance: () => null, solidDistance: () => null };
 const player = (over: Partial<PlayerState> = {}): PlayerState => ({ x: 0, z: 0, heading: 0, inVehicle: false, speed: 0, ...over });
 /** A random source that returns the given values in turn, then repeats the last. */
 const rolls = (...values: number[]) => {
@@ -189,14 +189,14 @@ describe("Combat with the new weapons", () => {
 
   it("pellets hit people whose own collision box is what the wall ray meets (found in the browser test)", () => {
     // In the game the wall ray also stops at the front of the target's box, 0.28 m before its centre.
-    const boxes: CombatWorld = { lineOfSight: () => true, wallDistance: (_x, _z, _dx, dz) => (dz < 0 ? 8 - 0.28 : null) };
+    const boxes: CombatWorld = { lineOfSight: () => true, wallDistance: (_x, _z, _dx, dz) => (dz < 0 ? 8 - 0.28 : null), solidDistance: (_x, _z, _dx, dz) => (dz < 0 ? 8 - 0.28 : null)};
     const combat = new Combat(boxes, () => 0.5);
     combat.arsenal.give("smg", 5);
     combat.arsenal.select("smg");
     combat.spawnGroup("a", [{ x: 0, z: -8, armed: false }]);
     expect(combat.shoot(player(), []).hit).not.toBeNull();
     // A real wall a metre in front of them still stops the bullet.
-    const walled = new Combat({ lineOfSight: () => true, wallDistance: () => 7 }, () => 0.5);
+    const walled = new Combat({ lineOfSight: () => true, wallDistance: () => 7, solidDistance: () => 7 }, () => 0.5);
     walled.arsenal.give("smg", 5);
     walled.arsenal.select("smg");
     walled.spawnGroup("a", [{ x: 0, z: -8, armed: false }]);

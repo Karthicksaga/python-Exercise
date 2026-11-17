@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Combat, type CombatEvent, type CombatWorld, type EnemySpot, type PlayerState } from "./Combat";
 import { GANG_RULES, crewsToField, hearsGunshot, lingerStep } from "./Gangs";
 
-const open: CombatWorld = { lineOfSight: () => true, wallDistance: () => null };
+const open: CombatWorld = { lineOfSight: () => true, wallDistance: () => null, solidDistance: () => null };
 const player = (over: Partial<PlayerState> = {}): PlayerState => ({ x: 0, z: 0, heading: 0, inVehicle: false, speed: 0, ...over });
 const crew: EnemySpot[] = [
   { x: 0, z: -6, armed: false, calm: true, weapon: "bat", tint: 0xd4a017 },
