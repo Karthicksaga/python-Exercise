@@ -196,3 +196,34 @@ test("new game clears progress", async ({ page }) => {
   expect(fresh.mission).toBe("morning-walk");
   expect(fresh.paused).toBe(false);
 });
+
+test("driving controls are all reachable at phone size: none overlaps another or sits under the minimap", async ({ page }) => {
+  await ready(page);
+  await board(page, "ambulance");
+  // The siren is how the ambulance jobs clear traffic, so it must be tappable, not just present.
+  await expect(page.getByRole("button", { name: "Siren", exact: true })).toBeVisible();
+  const boxes: Array<[string, { x: number; y: number; width: number; height: number }]> = [];
+  for (const name of ["Accelerate", "Brake", "Siren", "Get out"]) {
+    const box = await page.getByRole("button", { name, exact: true }).boundingBox();
+    expect(box, name).not.toBeNull();
+    boxes.push([name, box!]);
+  }
+  const gears = await page.getByTestId("gear-selector").boundingBox();
+  const minimap = await page.getByTestId("minimap").boundingBox();
+  expect(gears).not.toBeNull();
+  expect(minimap).not.toBeNull();
+  boxes.push(["gears", gears!], ["minimap", minimap!]);
+  const viewport = page.viewportSize()!;
+  for (const [name, b] of boxes) {
+    expect(b.x, `${name} inside the screen`).toBeGreaterThanOrEqual(0);
+    expect(b.y + b.height, `${name} inside the screen`).toBeLessThanOrEqual(viewport.height);
+  }
+  for (let i = 0; i < boxes.length; i++) {
+    for (let k = i + 1; k < boxes.length; k++) {
+      const [na, a] = boxes[i]!;
+      const [nb, b] = boxes[k]!;
+      const overlap = a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+      expect(overlap, `${na} overlaps ${nb}`).toBe(false);
+    }
+  }
+});

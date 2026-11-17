@@ -58,7 +58,7 @@ const STYLE = `
 .cow-button.fire{right:calc(124px + env(safe-area-inset-right));bottom:calc(92px + env(safe-area-inset-bottom));width:68px;height:68px;background:rgba(170,40,40,.6)}
 .cow-button.fire small{display:block;font:600 10px ui-monospace,monospace;opacity:.9}
 .cow-button.hit{right:calc(122px + env(safe-area-inset-right));bottom:calc(16px + env(safe-area-inset-bottom));width:64px;height:64px;background:rgba(60,70,110,.6)}
-.cow-button.horn{right:calc(40px + env(safe-area-inset-right));bottom:calc(214px + env(safe-area-inset-bottom));width:52px;height:52px;font-size:10px}
+.cow-button.horn{right:calc(144px + env(safe-area-inset-right));bottom:calc(124px + env(safe-area-inset-bottom));width:52px;height:52px;font-size:10px}
 .cow-gears{position:absolute;right:calc(222px + env(safe-area-inset-right));bottom:calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:4px;
   padding:5px;border-radius:14px;background:rgba(15,18,30,.45);border:1px solid rgba(255,255,255,.35)}
 .cow-gears button{width:42px;height:34px;border-radius:9px;border:0;background:transparent;color:rgba(255,255,255,.75);font:800 16px system-ui,sans-serif;touch-action:none}
