@@ -48,7 +48,7 @@ const LICENCE = "CC0 1.0 Universal (public domain dedication)";
 const SURFACES = [
   { surface: "asphalt", id: "asphalt_04", author: "Sergej Majboroda (photography), Jenelle van Heerden (processing)", metres: 4, what: "Worn, sun-bleached grey asphalt with faint patches (roads)", modulate: { brightness: 0.72, saturation: 0.8 }, flatten: 0.25 },
   { surface: "paving", id: "concrete_pavers", author: "Amal Kumar", metres: 1.92, what: "Grey I-shaped interlocking cement pavers (footpaths and verges)", modulate: { brightness: 1.25, saturation: 0.9 } },
-  { surface: "earth", id: "red_laterite_soil_stones", author: "Amal Kumar", metres: 2, what: "Red laterite soil with stones (bare ground)", modulate: { brightness: 1.5, saturation: 0.55 }, flatten: 0.6, normal: false },
+  { surface: "earth", id: "red_laterite_soil_stones", author: "Amal Kumar", metres: 2, what: "Red laterite soil with stones (bare ground)", modulate: { brightness: 2, saturation: 0.55, hue: 18 }, flatten: 0.6, normal: false },
   { surface: "sand", id: "sand_01", author: "Rob Tuytel", metres: 1.5, what: "Pale fine sand (Marina beach, sand areas)", modulate: { brightness: 1.15, saturation: 0.85 }, flatten: 0.8, flattenRadius: 12, normal: false },
   { surface: "grass", id: "sparse_grass", author: "Amal Kumar", metres: 2, what: "Sparse grass on soil (parks)", normal: false },
   { surface: "plaster", id: "painted_plaster_wall", author: "Amal Kumar", metres: 2, what: "Painted plaster wall (building walls, drawn into the facade atlas)", neutral: 0.9, normal: false },

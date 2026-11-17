@@ -56,7 +56,8 @@ export function createGroundAssets(surfaces: Surfaces): GroundAssets {
   return {
     paving,
     asphalt,
-    paint: new THREE.MeshStandardMaterial({ color: 0xf0efe6, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
+    // Off-white and a little dull: road paint in Chennai is faded and dusty, not fresh white.
+    paint: new THREE.MeshStandardMaterial({ color: 0xd9d6cb, roughness: 0.85, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
     grass: flatMaterial(surfaces.grass, UV_METRES.area, 3, 0.95, 1),
     water: new THREE.MeshStandardMaterial({ color: 0x3f7fa6, roughness: 0.2, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
     sand,

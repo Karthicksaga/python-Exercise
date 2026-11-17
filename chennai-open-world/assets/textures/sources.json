@@ -77,8 +77,9 @@
     "processing": {
       "neutral": null,
       "modulate": {
-        "brightness": 1.5,
-        "saturation": 0.55
+        "brightness": 2,
+        "saturation": 0.55,
+        "hue": 18
       },
       "flatten": 0.6,
       "flattenRadius": null
@@ -88,7 +89,7 @@
         "file": "earth-albedo.webp",
         "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/red_laterite_soil_stones/red_laterite_soil_stones_diff_1k.jpg",
         "sourceSha256": "949cd648409b30e2267d89066965605d22dba4ce73d601673e155046c41e1219",
-        "bytes": 53188
+        "bytes": 66056
       }
     ]
   },
