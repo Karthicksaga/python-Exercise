@@ -1,6 +1,6 @@
 /** Vehicles, missions and saved progress. */
 import { expect, test } from "@playwright/test";
-import { board, holdButton, holdStick, ready, snapshot, tapButton, teleport, waitGameTime, GAME_WAIT, type Snapshot } from "./support";
+import { board, getOut, holdButton, holdStick, ready, snapshot, tapButton, teleport, waitGameTime, GAME_WAIT, type Snapshot } from "./support";
 
 test("get in the car, drive, brake and get out", async ({ page }) => {
   await ready(page);
@@ -17,10 +17,11 @@ test("get in the car, drive, brake and get out", async ({ page }) => {
   // Getting out is refused while moving.
   await tapButton(page, "Get out");
   expect((await snapshot(page)).mode).toBe("car");
+  expect((await snapshot(page)).boarding).toBeNull();
 
   await holdButton(page, "Brake", 2500);
   await expect.poll(async () => (await snapshot(page)).speed, { timeout: 20_000 }).toBeLessThan(1);
-  await tapButton(page, "Get out");
+  await getOut(page);
   const out = await snapshot(page);
   expect(out.mode).toBe("foot");
   await expect(page.getByRole("button", { name: "Jump", exact: true })).toBeVisible();
@@ -97,7 +98,7 @@ test("in P the car can be left and stays where it was parked", async ({ page }) 
   await ready(page);
   await board(page, "car-start");
   await tapButton(page, "Park");
-  await tapButton(page, "Get out");
+  await getOut(page);
   const out = await snapshot(page);
   expect(out.mode).toBe("foot");
   await expect(page.getByTestId("gear-selector")).toBeHidden();
@@ -129,7 +130,7 @@ test("the motorbike and the auto-rickshaw can be ridden", async ({ page }) => {
     expect(moving.speed).toBeGreaterThan(3);
     await holdButton(page, "Brake", 2200);
     await expect.poll(async () => (await snapshot(page)).speed, { timeout: 20_000 }).toBeLessThan(1.5);
-    await tapButton(page, "Get out");
+    await getOut(page);
     expect((await snapshot(page)).mode).toBe("foot");
   }
 });

@@ -10,7 +10,7 @@ import { MeshoptDecoder } from "meshoptimizer";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { describe, expect, it } from "vitest";
-import { HumanFigure, PLAYER_HEIGHT } from "@cow/player";
+import { HumanFigure, PLAYER_HEIGHT, sitWeight } from "@cow/player";
 import { VEHICLE_TYPES, type VehicleKind } from "@cow/vehicles";
 
 /** The optimised character, without its textures (Node has no image decoder). */
@@ -135,5 +135,57 @@ describe("riding poses", async () => {
     figure.object.position.set(0, 0, 0);
     figure.object.updateMatrixWorld(true);
     expect(point(figure, "Hips").y).toBeGreaterThan(0.8);
+  });
+});
+
+describe("sitting down and standing up (getting in and out)", async () => {
+  const figure = await seatedFigure();
+  const at = (x: number, y: number, z: number) => {
+    figure.object.position.set(x, y, z);
+    figure.object.updateMatrixWorld(true);
+  };
+  figure.sitting(VEHICLE_TYPES.car.pose, 0, 1 / 60);
+  at(0, 0, 0);
+  const standingHips = point(figure, "Hips").y;
+
+  it("moves the hips in a straight line from standing to the seat as the root moves the same eased share", () => {
+    expect(standingHips).toBeGreaterThan(0.8);
+    for (const amount of [0.25, 0.5, 0.75]) {
+      figure.sitting(VEHICLE_TYPES.car.pose, amount, 1 / 60);
+      // Root on the ground at 0 and on the seat's hip point (here also at 0) at 1: the hips drop by the eased share.
+      at(0, 0, 0);
+      const w = sitWeight(amount);
+      expect(point(figure, "Hips").y).toBeCloseTo(standingHips * (1 - w), 2);
+    }
+  });
+
+  it.each(KINDS)("%s: at the end of sitting down the hands are on the grips or wheel", (kind) => {
+    const { driver, pose } = VEHICLE_TYPES[kind];
+    figure.sitting(pose, 0.6, 1 / 60);
+    figure.sitting(pose, 1, 1 / 60);
+    at(driver.x, driver.y, driver.z);
+    for (const side of [1, -1]) {
+      const hand = new THREE.Vector3(driver.x + side * pose.hand.x, driver.y + pose.hand.y, driver.z + pose.hand.z);
+      expect(point(figure, side > 0 ? "RightPalm" : "LeftPalm").distanceTo(hand), `${kind} hand`).toBeLessThan(0.03);
+    }
+    figure.sitting(pose, 0, 1 / 60);
+  });
+
+  it("holds a part-way pose steady frame after frame (bones don't creep towards the seat)", () => {
+    const pose = VEHICLE_TYPES.bike.pose;
+    figure.sitting(pose, 0.4, 1 / 60);
+    at(0, 0, 0);
+    const first = point(figure, "RightPalm");
+    for (let i = 0; i < 30; i++) figure.sitting(pose, 0.4, 1 / 60);
+    at(0, 0, 0);
+    expect(point(figure, "RightPalm").distanceTo(first)).toBeLessThan(0.001);
+  });
+
+  it("stands fully up again after being seated", () => {
+    figure.setSeated(VEHICLE_TYPES.auto.pose);
+    figure.sitting(VEHICLE_TYPES.auto.pose, 0.5, 1 / 60);
+    figure.sitting(VEHICLE_TYPES.auto.pose, 0, 1 / 60);
+    at(0, 0, 0);
+    expect(point(figure, "Hips").y).toBeCloseTo(standingHips, 3);
   });
 });

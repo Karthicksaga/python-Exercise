@@ -1,6 +1,6 @@
 /** Driving into a pedestrian: knocked down, injured or killed, with a fine and lost reputation. */
 import { expect, test, type Page } from "@playwright/test";
-import { board, probe, ready, snapshot, tapButton, teleport, waitGameTime } from "./support";
+import { board, getOut, probe, ready, snapshot, teleport, waitGameTime } from "./support";
 
 interface HitSnapshot {
   x: number;
@@ -192,7 +192,7 @@ test("the auto-rickshaw and the motorbike hit people off-centre too, and the hit
     await page.getByRole("button", { name: "Brake", exact: true }).dispatchEvent("pointerdown", { pointerId: 32, pointerType: "touch" });
     await expect.poll(async () => (await state(page)).speed, { timeout: 30_000, intervals: [100] }).toBeLessThan(1);
     await page.getByRole("button", { name: "Brake", exact: true }).dispatchEvent("pointerup", { pointerId: 32, pointerType: "touch" });
-    await tapButton(page, "Get out");
+    await getOut(page);
   }
   expect((await state(page)).reputation).toBe(50 - 16);
 });

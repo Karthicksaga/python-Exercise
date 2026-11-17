@@ -40,6 +40,15 @@ const LIMB_CHILD: Readonly<Record<string, string>> = {
   RightForeArm: "RightHand",
 };
 
+/**
+ * How far a figure part way into a seat (`HumanFigure.sitting`) has moved, from a linear 0 to 1:
+ * eased, so sitting down starts and settles gently. Use it to move the figure's root too.
+ */
+export function sitWeight(amount: number): number {
+  const x = Math.min(1, Math.max(0, amount));
+  return x * x * (3 - 2 * x);
+}
+
 export class HumanAssets {
   private constructor(
     private readonly model: THREE.Object3D,
@@ -183,6 +192,8 @@ export class HumanFigure {
   private readonly aimPose: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>;
   private readonly gun: THREE.Mesh;
   private readonly standingLift: number;
+  /** Every bone's local rotation at rest, to start each blended frame from (`sitting`). */
+  private readonly restRotations: ReadonlyArray<{ readonly bone: THREE.Bone; readonly quaternion: THREE.Quaternion }>;
   private gait: Gait = "idle";
   private seated: RidingPose | null = null;
   private aiming = false;
@@ -194,6 +205,7 @@ export class HumanFigure {
   constructor(model: THREE.Object3D, clips: THREE.AnimationClip[], scale: number, lift: number) {
     // Capture the rest pose (for riding poses) while the model is still unscaled and unturned.
     this.rig = captureRig(model);
+    this.restRotations = this.rig.bones.map(({ bone }) => ({ bone, quaternion: bone.quaternion.clone() }));
     this.scale = scale;
     this.model = model;
     const aimBones = new Set(Object.keys(AIMING));
@@ -301,11 +313,7 @@ export class HumanFigure {
     if (pose === this.seated) return;
     this.seated = pose;
     if (pose) {
-      let solved = this.ridingPoses.get(pose);
-      if (!solved) {
-        solved = solveRidingPose(this.rig, pose, this.scale);
-        this.ridingPoses.set(pose, solved);
-      }
+      const solved = this.solved(pose);
       this.mixer.stopAllAction();
       for (const { bone, quaternion } of solved.rotations) bone.quaternion.copy(quaternion);
       // The model is turned half a turn and scaled: put its hip joints on the root.
@@ -318,6 +326,44 @@ export class HumanFigure {
         action.setEffectiveWeight(name === "idle" ? 1 : 0);
       }
     }
+  }
+
+  /** A riding pose solved on this figure's skeleton (once per pose). */
+  private solved(pose: RidingPose): SolvedPose {
+    let solved = this.ridingPoses.get(pose);
+    if (!solved) {
+      solved = solveRidingPose(this.rig, pose, this.scale);
+      this.ridingPoses.set(pose, solved);
+    }
+    return solved;
+  }
+
+  /**
+   * Part way between standing (0) and seated in `pose` (1), for getting in and out of a vehicle.
+   * The idle clip plays, then every bone turns towards its seated rotation by the eased amount
+   * (`sitWeight`), and the model slides from standing on the root to having its hip joints on it.
+   * The caller moves the root the same eased share of the way from the feet's spot to the seat's
+   * hip point, so the hips travel in a straight line. At 1 this is `setSeated(pose)`.
+   */
+  sitting(pose: RidingPose, amount: number, dt: number): void {
+    if (amount >= 1) {
+      this.setSeated(pose);
+      return;
+    }
+    // Coming out of the seated pose: start the idle clip again.
+    if (this.seated) this.setSeated(null);
+    const w = sitWeight(amount);
+    // Start from rest each frame, so bones the clip doesn't move don't creep towards the pose.
+    for (const { bone, quaternion } of this.restRotations) bone.quaternion.copy(quaternion);
+    this.update(dt, 0, true);
+    if (w <= 0) {
+      this.model.position.set(0, this.standingLift, 0);
+      return;
+    }
+    const solved = this.solved(pose);
+    for (const { bone, quaternion } of solved.rotations) bone.quaternion.slerp(quaternion, w);
+    const s = this.scale;
+    this.model.position.set(solved.hips.x * s * w, this.standingLift + (-solved.hips.y * s - this.standingLift) * w, solved.hips.z * s * w);
   }
 
   /** Hold the pistol out (true) or put it away. */

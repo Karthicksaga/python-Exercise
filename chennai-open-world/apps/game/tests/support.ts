@@ -13,7 +13,7 @@ export interface Snapshot {
   paused: boolean;
   drawCalls: number;
   triangles: number;
-  mode: "foot" | "car" | "auto" | "bike";
+  mode: "foot" | "car" | "auto" | "bike" | "ambulance" | "bus";
   money: number;
   mission: string | null;
   objective: string | null;
@@ -23,7 +23,10 @@ export interface Snapshot {
   simTime: number;
   frames: number;
   street: string;
-  vehicles: Array<{ id: string; kind: string; x: number; z: number }>;
+  /** `door`: how far the driver's door is open, 0 to 1. */
+  vehicles: Array<{ id: string; kind: string; x: number; z: number; door: number }>;
+  /** Getting in or out of a vehicle, or null. */
+  boarding: { direction: "in" | "out"; phase: string; vehicle: string; door: number; progress: number; seated: number } | null;
   traffic: Array<{ x: number; z: number; speed: number }>;
   pedestrians: number;
   /** HUD gear while driving: P, R, N (a shift waiting for the vehicle to stop), D or D1…D5; "" on foot. */
@@ -121,14 +124,28 @@ export async function tapButton(page: Page, name: string): Promise<void> {
   await waitFrames(page, 1);
 }
 
-/** Stand next to a parked vehicle and get in. */
+/**
+ * Stand next to a parked vehicle and get in. Getting in is an animated sequence (walk to the
+ * door, open it, sit, shut it: a few game seconds), so this waits on game time until the player
+ * is seated and the driving controls are shown.
+ */
 export async function board(page: Page, id: string): Promise<void> {
   const vehicle = (await snapshot(page)).vehicles.find((v) => v.id === id);
   if (!vehicle) throw new Error(`No vehicle ${id}`);
   await teleport(page, vehicle.x + 2, vehicle.z);
   await expect(page.getByRole("button", { name: "Get in", exact: true })).toBeVisible();
   await tapButton(page, "Get in");
+  await expect.poll(async () => (await snapshot(page)).mode, { timeout: GAME_WAIT, intervals: [100] }).not.toBe("foot");
   await expect(page.getByRole("button", { name: "Accelerate", exact: true })).toBeVisible();
+}
+
+/**
+ * Tap EXIT and wait (game time) until the player stands on the ground again: getting out is an
+ * animated sequence (open the door, stand up, step out), no longer instant.
+ */
+export async function getOut(page: Page): Promise<void> {
+  await tapButton(page, "Get out");
+  await expect.poll(async () => (await snapshot(page)).mode, { timeout: GAME_WAIT, intervals: [100] }).toBe("foot");
 }
 
 export { handle };

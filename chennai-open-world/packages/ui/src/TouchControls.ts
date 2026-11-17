@@ -35,7 +35,8 @@ export interface ControlState {
 export type GearButton = "P" | "R" | "D";
 const GEAR_NAMES: Readonly<Record<GearButton, string>> = { P: "Park", R: "Reverse", D: "Drive" };
 
-export type ControlMode = "foot" | "drive";
+/** "busy": neither set, while getting in or out of a vehicle. */
+export type ControlMode = "foot" | "drive" | "busy";
 
 const STICK_RADIUS = 56; // px the knob can travel from its base
 

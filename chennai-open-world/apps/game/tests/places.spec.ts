@@ -1,6 +1,6 @@
 /** Places the player can go into (home, hospital, gym, mall, cinema), their activities, and a story. */
 import { expect, test, type Page } from "@playwright/test";
-import { board, ready, snapshot, tapButton, teleport } from "./support";
+import { board, getOut, ready, snapshot, teleport } from "./support";
 
 interface LifeState {
   day: number;
@@ -151,7 +151,7 @@ test("hospital: treatment restores health for a fee, and is free after driving t
 
   // Drive the ambulance, get out, and walk in: no fee.
   await board(page, "ambulance");
-  await tapButton(page, "Get out");
+  await getOut(page);
   expect((await state(page)).mode).toBe("foot");
   await goInside(page, "hospital");
   await setHealth(page, 50);
@@ -263,7 +263,7 @@ test("story: take Paati to the hospital for her check-up and bring her home", as
   await expect.poll(async () => (await state(page)).storyStep, { timeout: 8000 }).toBe(2);
   // Park back at the start, so the car is not in the hospital's doorway, and walk in.
   await teleport(page, spawn.x, spawn.z, spawn.yaw);
-  await tapButton(page, "Get out");
+  await getOut(page);
   await goInside(page, "hospital");
   await page.getByTestId("story-step").click();
   for (let i = 0; i < 3; i++) await page.getByTestId("scene-next").click();

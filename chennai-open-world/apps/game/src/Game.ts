@@ -14,6 +14,7 @@ import { HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, type Human
 import { Hud, Minimap, TouchControls, type MinimapMarker } from "@cow/ui";
 import { Gearbox, Vehicle, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
 import { buildContent, type GameContent } from "./content";
+import { Boarder, type BoardingSnapshot } from "./Boarder";
 import { Fighters, combatWorld } from "./Fighters";
 import { JobDesk, type ShareSnapshot } from "./JobDesk";
 import { PlaceDesk, type PlaceSnapshot } from "./PlaceDesk";
@@ -69,7 +70,10 @@ export interface GameSnapshot extends PlaceSnapshot {
   readonly chunksLoaded: number;
   /** Grid keys ("col,row") of the loaded chunks. */
   readonly chunkKeys: string[];
-  readonly vehicles: Array<{ id: string; kind: string; x: number; z: number }>;
+  /** Each vehicle; `door` is how far its driver's door is open (0 shut, 1 open). */
+  readonly vehicles: Array<{ id: string; kind: string; x: number; z: number; door: number }>;
+  /** Getting in or out of a vehicle (the animated sequence), or null. */
+  readonly boarding: BoardingSnapshot | null;
   readonly traffic: Array<{ x: number; z: number; speed: number; kind: string }>;
   readonly pedestrians: number;
   /** AI vehicles the time of day and area call for (`traffic` catches up as they go out of sight). */
@@ -230,6 +234,8 @@ export class Game {
   /** A place whose entrance ENTER was pressed at; its screen opens on the next frame. */
   private enteringPlace: PlaceDesk["places"][number] | null = null;
   private lastPedestrianHit: GameSnapshot["lastPedestrianHit"] = null;
+  /** Getting in and out of vehicles as an animated sequence (`Boarder.ts`). */
+  private readonly boarder: Boarder;
 
   private constructor(
     private readonly map: WorldMap,
@@ -254,6 +260,12 @@ export class Game {
     private readonly riders: ShareRiders,
   ) {
     this.loop = new GameLoop({ fixedUpdate: (dt) => this.fixedUpdate(dt), frame: (dt) => this.frame(dt) });
+    this.boarder = new Boarder(avatar, (x, z, vehicle) => {
+      // The ground under a point beside the vehicle: a ray down from above its roof.
+      const top = vehicle.body.position().y + 2;
+      const hit = physics.raycast({ x, y: top, z }, { x: 0, y: -1, z: 0 }, 5, vehicle.body);
+      return hit === null ? null : top - hit;
+    });
     this.desk = new JobDesk(content.jobs, missions, hud, sound, {
       hold: () => this.hold(),
       release: () => this.release(),
@@ -571,6 +583,8 @@ export class Game {
   private where(): { x: number; y: number; z: number } {
     const riding = this.railway?.ridePosition();
     if (riding) return riding;
+    const boarding = this.boarder.position();
+    if (boarding) return boarding;
     if (!this.driving) return this.player.position;
     const p = this.driving.body.position();
     return { x: p.x, y: p.y - this.driving.type.rideHeight, z: p.z };
@@ -582,6 +596,7 @@ export class Game {
    */
   teleport(x: number, z: number, yaw = 0): Promise<void> {
     this.railway?.endRide(null);
+    this.cancelBoarding();
     const ready = this.chunks.whenLoaded(x, z);
     this.chunks.update(x, z, true);
     if (this.driving) this.driving.body.teleport({ x, y: this.driving.type.rideHeight + 0.1, z }, yaw);
@@ -596,9 +611,82 @@ export class Game {
     return this.physics.raycast({ x, y: 1, z }, { x: dx / length, y: 0, z: dz / length }, max, this.driving ? this.driving.body : this.player.body);
   }
 
+  /** Start getting in: the figure walks to the door, opens it, sits down and shuts it (`Boarder`). */
+  private getIn(vehicle: Vehicle): void {
+    this.avatar.setAiming(false);
+    this.player.body.setEnabled(false);
+    this.controls.setMode("busy");
+    this.controls.setAction(null);
+    this.boarder.startIn(vehicle, this.player.position, this.player.yaw);
+  }
+
+  /** Start getting out; refused while moving. With the door's side blocked, out the other way at once. */
+  private getOut(): void {
+    const vehicle = this.driving;
+    if (!vehicle) return;
+    if (Math.abs(vehicle.body.forwardSpeed()) > 2.5) {
+      this.hud.showToast("Stop the vehicle first", "", 1.6);
+      return;
+    }
+    const { entry, physics } = vehicle.type;
+    const p = vehicle.body.position();
+    const yaw = vehicle.body.yaw();
+    const side = yaw - entry.side * (Math.PI / 2);
+    // From the middle of the body level with the door (local z), out past the entry point.
+    const origin = { x: p.x + Math.sin(yaw) * entry.point.z, y: 0.9, z: p.z + Math.cos(yaw) * entry.point.z };
+    if (this.physics.raycast(origin, { x: -Math.sin(side), y: 0, z: -Math.cos(side) }, physics.halfExtents.x + 1.4, vehicle.body) !== null) {
+      this.leaveVehicle();
+      return;
+    }
+    vehicle.setSiren(false);
+    this.sound.setSiren(false);
+    this.controls.setMode("busy");
+    this.controls.setAction(null);
+    this.avatar.visible = true;
+    this.boarder.startOut(vehicle);
+  }
+
+  /** One step of getting in or out: the door's sounds, and the switch once seated or back on foot. */
+  private boardingStep(dt: number): void {
+    const vehicle = this.boarder.active;
+    const direction = this.boarder.direction;
+    for (const event of this.boarder.fixedUpdate(dt)) {
+      if (event === "shut") this.sound.door();
+      else if (event === "done" && direction === "in" && vehicle) this.enterVehicle(vehicle);
+      else if (event === "free" && vehicle) {
+        const place = this.boarder.exitPlace();
+        this.standUp();
+        if (place) this.player.respawn({ x: place.x, y: place.y + 0.05, z: place.z }, place.yaw);
+      }
+    }
+  }
+
+  /** Stop a sequence at once (teleport, new game, knocked out): getting in, back on foot; getting out, back in the seat. */
+  private cancelBoarding(): void {
+    const vehicle = this.boarder.active;
+    if (!vehicle) return;
+    const busy = this.boarder.busy;
+    const direction = this.boarder.direction;
+    this.boarder.cancel();
+    if (!busy) return;
+    if (direction === "in") this.standUp();
+    else this.enterVehicle(vehicle);
+  }
+
+  /** On foot again: the physics body back, the figure standing, the foot controls. */
+  private standUp(): void {
+    this.driving = null;
+    this.player.body.setEnabled(true);
+    this.avatar.visible = true;
+    this.avatar.setSeated(null);
+    this.avatar.object.quaternion.identity();
+    this.camera.reach = 5.6;
+    this.controls.setMode("foot");
+  }
+
+  /** Seated and in control (the end of getting in, or at once). */
   private enterVehicle(vehicle: Vehicle): void {
     this.driving = vehicle;
-    this.sound.door();
     this.avatar.setAiming(false);
     this.player.body.setEnabled(false);
     // Open vehicles show the rider sitting; closed ones hide the driver.
@@ -610,10 +698,14 @@ export class Game {
     this.controls.setHornLabel(vehicle.type.siren ? "SIREN" : "HORN");
   }
 
-  /** Get out beside the vehicle, on whichever side has room. */
+  /**
+   * Get out at once, beside the vehicle on whichever side has room: forced (knocked out, new
+   * game), or when the door's side is blocked. Any sequence running stops.
+   */
   private leaveVehicle(force = false): void {
     const vehicle = this.driving;
     if (!vehicle) return;
+    if (force) this.boarder.cancel();
     if (!force && Math.abs(vehicle.body.forwardSpeed()) > 2.5) {
       this.hud.showToast("Stop the vehicle first", "", 1.6);
       return;
@@ -635,15 +727,9 @@ export class Game {
     const out = exit === sides[2] ? vehicle.type.physics.halfExtents.z + 0.9 : reach;
     vehicle.setSiren(false);
     this.sound.setSiren(false);
-    this.driving = null;
     this.sound.door();
-    this.player.body.setEnabled(true);
+    this.standUp();
     this.player.respawn({ x: p.x - Math.sin(exit) * out, y: 0.1, z: p.z - Math.cos(exit) * out }, yaw);
-    this.avatar.visible = true;
-    this.avatar.setSeated(null);
-    this.avatar.object.quaternion.identity();
-    this.camera.reach = 5.6;
-    this.controls.setMode("foot");
   }
 
   /** The marker for the current objective: a place, or the nearest vehicle of the wanted kind. */
@@ -721,7 +807,8 @@ export class Game {
       frames: this.frames,
       chunksLoaded: this.chunks.loadedCount,
       chunkKeys: this.chunks.loadedKeys(),
-      vehicles: this.vehicles.map((v) => ({ id: v.id, kind: v.kind, x: v.body.position().x, z: v.body.position().z })),
+      vehicles: this.vehicles.map((v) => ({ id: v.id, kind: v.kind, x: v.body.position().x, z: v.body.position().z, door: v.door })),
+      boarding: this.boarder.snapshot(),
       traffic: this.population.trafficPositions(),
       pedestrians: this.population.pedestrianCount,
       trafficWanted: this.population.trafficWanted,
@@ -842,7 +929,7 @@ export class Game {
     this.aimFor = Math.max(0, this.aimFor - dt);
     this.sinceClick += dt;
 
-    if (!this.driving && (punch || fire)) {
+    if (!this.driving && !this.boarder.busy && (punch || fire)) {
       // Attacks go where the camera looks, so turn the player to face that way first.
       this.player.yaw = this.camera.yaw;
       const facing = { ...state, heading: this.camera.yaw };
@@ -910,17 +997,27 @@ export class Game {
     const jump = this.controls.consumeJump();
     const action = this.controls.consumeAction();
     const gearAsked = this.controls.consumeGear();
+    // Getting in or out: the presses above are used up and ignored until it is over.
+    const boarding = this.boarder.busy;
+    this.boardingStep(dt);
 
-    if (action && !this.driving && this.railway?.act(this.where())) {
+    if (boarding) {
+      // The sequence has the player.
+    } else if (action && !this.driving && this.railway?.act(this.where())) {
       // Boarded or stepped off a train.
     } else if (action) {
-      if (this.driving) this.leaveVehicle();
-      else if (this.nearby) this.enterVehicle(this.nearby);
+      if (this.driving) this.getOut();
+      else if (this.nearby) this.getIn(this.nearby);
       else this.enteringPlace = this.placeDesk.near(this.player.position);
     }
 
     let driverInput: VehicleControls | null = null;
-    if (this.driving) {
+    if (boarding && this.driving) {
+      // Getting out: the vehicle stays where it is, brake held.
+      driverInput = { throttle: 0, steer: 0, brake: 1 };
+    } else if (boarding || this.boarder.busy) {
+      // Getting in: the figure is placed by the sequence, not the physics.
+    } else if (this.driving) {
       const speed = this.driving.body.forwardSpeed();
       // Gear rules (P / R / D, braking before a shift) are in the Gearbox (@cow/vehicles).
       if (gearAsked) this.gearbox.select(gearAsked, speed);
@@ -994,7 +1091,17 @@ export class Game {
     for (const vehicle of this.vehicles) vehicle.sync(dt);
 
     const ride = this.railway?.rideChase();
-    if (ride) {
+    const boarding = this.boarder.active;
+    if (boarding && this.boarder.busy) {
+      // Getting in or out: the figure is placed by the sequence and the camera follows it.
+      this.boarder.frame(dt);
+      this.camera.update(dt, this.boarder.position() ?? at, this.physics, boarding.body);
+      this.hud.setSpeed(null);
+      this.sound.setEngine(null);
+      this.sound.setSkid(null);
+      this.nearby = null;
+      this.controls.setAction(null);
+    } else if (ride) {
       // On a train: the camera follows it; the rider is inside, out of sight.
       this.camera.chase(ride, dt);
       this.camera.update(dt, at, this.physics, this.player.body);
