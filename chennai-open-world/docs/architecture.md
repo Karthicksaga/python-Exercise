@@ -40,7 +40,7 @@ Why the game runs in a WebView: `docs/technical-decisions.md`, TD-1.
 | `audio` | Synthesised sound effects (Web Audio) | nothing |
 | `rail` | Railway data model, OSM extract → rail file (`buildRail`), track geometry, train motion, timetable, boarding rules. Pure logic | `map-data` |
 | `ui` | Touch controls, HUD, minimap, railway ride panel (DOM and 2D canvas) | nothing |
-| `apps/game` | Wires the packages (`Game.ts`), content placed on the map (`content.ts`), AI bodies and models (`Population.ts`), enemy bodies and tracers (`Fighters.ts`), keyboard fallback, native bridge | all packages |
+| `apps/game` | Wires the packages (`Game.ts`), content placed on the map (`content.ts`), AI bodies and models (`Population.ts`), enemy bodies and tracers (`Fighters.ts`), native bridge | all packages |
 | `apps/mobile` | React Native shell | none of the above; loads the built bundle |
 
 Dependency direction is one way: data → physics/rendering → gameplay → app. `game-world`,

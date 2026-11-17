@@ -272,3 +272,18 @@ apart with no other track between), the fare (₹5), the train and its livery, a
 **Revisit when** more lines are wanted (the MRTS and Metro need viaducts and tunnels), when
 trains should react to the player (they do not brake for anything on the track), or when a
 real timetable is used.
+
+## TD-20: Android only; no browser release
+
+**Decision (the user's, 17 Nov 2026).** The game is released only as the Android app. Removed:
+the GitHub Pages deploy and the downloadable web build in CI, the keyboard and mouse controls
+(`KeyboardInput`), the "run" key in `PlayerController` (running comes from pushing the stick
+far), and the desktop "high" quality default (every device gets the phone tier unless `?quality=`
+says otherwise).
+
+**What stays, and why.** The APK *is* the web build running in Android's WebView (TD-1), so the
+web build, Vite and `npm run dev` remain as the way to build and develop the game. The browser
+tests (`npm run test:e2e`) stay too: they drive that same build at phone size with touch input
+and are the main automated check, alongside the CI emulator job.
+
+**Revisit when** an iOS or desktop release is wanted.

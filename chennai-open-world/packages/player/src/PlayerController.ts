@@ -8,8 +8,6 @@ export interface PlayerInput {
   /** Stick position: x right, y forward, each in [-1, 1]. */
   readonly moveX: number;
   readonly moveY: number;
-  /** Held to run even with a gentle stick (keyboard Shift). */
-  readonly run: boolean;
   /** True on the step the jump button was pressed. */
   readonly jump: boolean;
   /** Camera heading; movement is relative to where the camera looks. */
@@ -61,7 +59,7 @@ export class PlayerController {
   /** Advance one fixed physics step. Call before `PhysicsWorld.step`. */
   update(input: PlayerInput, dt: number): void {
     const magnitude = Math.min(1, Math.hypot(input.moveX, input.moveY));
-    const running = input.run || magnitude > RUN_THRESHOLD;
+    const running = magnitude > RUN_THRESHOLD;
     const targetSpeed = magnitude < 0.08 ? 0 : running ? this.runSpeed : WALK_SPEED * Math.min(1, magnitude / RUN_THRESHOLD);
 
     // Camera-relative direction on the ground plane.

@@ -1,5 +1,5 @@
 name: Chennai Open World
-# Tests, web build and Android APK for chennai-open-world/. Nothing else in this repo is built here.
+# Tests, the Android APK and an emulator check for chennai-open-world/ (an Android-only game, TD-20). Nothing else in this repo is built here.
 on:
   push:
     paths: ['chennai-open-world/**', '.github/workflows/chennai-open-world.yml']
@@ -53,58 +53,6 @@ jobs:
             chennai-open-world/apps/game/test-results/
           if-no-files-found: ignore
           retention-days: 14
-
-  web:
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: chennai-open-world/package-lock.json
-      - run: npm ci
-      - run: npm run build
-      # Downloadable build: unzip and serve the folder over http to play it.
-      - uses: actions/upload-artifact@v4
-        with:
-          name: chennai-open-world-web
-          path: chennai-open-world/apps/game/dist/
-          if-no-files-found: error
-      # Same files, packaged for GitHub Pages (only where the deploy job below runs).
-      - if: >-
-          github.event_name == 'workflow_dispatch' ||
-          (github.event_name == 'push' &&
-           (github.ref == 'refs/heads/feat/chennai-open-world' || github.ref == 'refs/heads/master'))
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: chennai-open-world/apps/game/dist/
-
-  deploy:
-    # Publishes the web build to GitHub Pages (a public URL).
-    # Requires Pages to be enabled once: repo Settings → Pages → Source: GitHub Actions.
-    # If it is not enabled this job fails (on its own; the test, web and APK results still stand).
-    # The github-pages environment may only allow the default branch: add feat/chennai-open-world
-    # under Settings → Environments → github-pages to deploy from it.
-    needs: web
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' &&
-       (github.ref == 'refs/heads/feat/chennai-open-world' || github.ref == 'refs/heads/master'))
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/configure-pages@v5
-      - id: deployment
-        uses: actions/deploy-pages@v4
 
   android:
     needs: test

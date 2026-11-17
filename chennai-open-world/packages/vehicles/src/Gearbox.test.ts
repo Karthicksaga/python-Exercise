@@ -86,41 +86,6 @@ describe("Gearbox: touch pedals", () => {
   });
 });
 
-describe("Gearbox: keyboard keys", () => {
-  const forward = { gas: false, brake: false, steer: 0, keys: 1 };
-  const back = { gas: false, brake: false, steer: 0, keys: -1 };
-
-  it("back brakes while rolling forwards, then shifts to R and reverses (as before)", () => {
-    const box = new Gearbox("D");
-    expect(box.controls(back, 6)).toEqual({ throttle: 0, steer: 0, brake: 1 });
-    expect(box.gear).toBe("D");
-    expect(box.controls(back, 0.5)).toEqual({ throttle: -1, steer: 0, brake: 0 });
-    expect(box.gear).toBe("R");
-    expect(box.consumeHint()).toBeNull();
-  });
-
-  it("forward brakes while reversing, then shifts to D and drives", () => {
-    const box = new Gearbox("R");
-    expect(box.controls(forward, -4)).toEqual({ throttle: 0, steer: 0, brake: 1 });
-    expect(box.controls(forward, -0.3)).toEqual({ throttle: 1, steer: 0, brake: 0 });
-    expect(box.gear).toBe("D");
-  });
-
-  it("leaves P when a key is pressed", () => {
-    const box = new Gearbox("P");
-    expect(box.controls(forward, 0).throttle).toBe(1);
-    expect(box.gear).toBe("D");
-    box.reset("P");
-    expect(box.controls(back, 0).throttle).toBe(-1);
-    expect(box.gear).toBe("R");
-  });
-
-  it("lets the touch pedals win over the keys", () => {
-    const box = new Gearbox("D");
-    expect(box.controls({ ...brake, keys: 1 }, 0)).toEqual({ throttle: 0, steer: 0, brake: 1 });
-  });
-});
-
 describe("Gearbox.label", () => {
   it("shows P, R, N while a shift waits, D when stopped, and D with the gear when moving", () => {
     const box = new Gearbox("P");

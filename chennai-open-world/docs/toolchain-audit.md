@@ -209,7 +209,7 @@ Figma connector exists but needs signing in. So no tool in sections 1–6 has be
   GPU, the `window.__cow` debug handle, Android build (Gradle) and emulator runs done earlier
   on another machine.
 - **Missing:** CI (being added now: `.github/workflows/chennai-open-world.yml`, typecheck,
-  unit and browser tests, a web build on GitHub Pages and a test APK as a download);
+  unit and browser tests, a test APK as a download and an emulator check; no web release, TD-20);
   automated emulator smoke test; performance capture on a real phone.
 - **Recommended:**
   - GitHub Actions for every push (in progress).
@@ -266,7 +266,7 @@ Each phase ends playable, tested in the browser, with measurements recorded in
 | Phase | What | Tools | Needs from you |
 |---|---|---|---|
 | **0. Finish J2 (in progress)** | Commit the streamed city (done in the browser), gopuram model, Marina evening drive and city jobs, visited districts in Share progress, docs | Code only | Answer: keep, tone down or remove fight stages 7–10? |
-| **1. Foundations** (in progress) | CI (in progress); serve the game through `WebViewAssetLoader` (done: react-native-webview patch, file access off, TD-16; passes on the CI emulator); emulator smoke test (done: `android-smoke`, passing); asset optimisation script (done: `npm run optimize:assets`, glTF Transform + meshopt + WebP, character 1.8 MB → 0.5 MB; KTX2 later); memory: road graph and signals built per area instead of the whole city (done, TD-17); performance overlay | glTF Transform, toktx, GitHub Actions | Enable GitHub Pages; run the APK on a real phone once |
+| **1. Foundations** (in progress) | CI (in progress); serve the game through `WebViewAssetLoader` (done: react-native-webview patch, file access off, TD-16; passes on the CI emulator); emulator smoke test (done: `android-smoke`, passing); asset optimisation script (done: `npm run optimize:assets`, glTF Transform + meshopt + WebP, character 1.8 MB → 0.5 MB; KTX2 later); memory: road graph and signals built per area instead of the whole city (done, TD-17); performance overlay | glTF Transform, toktx, GitHub Actions | Run the APK on a real phone once |
 | **2. Character pipeline** | Base character (MPFB2 or a licensed character), clothing, Mixamo rig and clip set, `HumanFigure` state machine (locomotion blend, jump/fall/land, enter/exit, sit, punch/kick/block/hit), player foot IK on steps; 3–4 pedestrian variants | Blender, MPFB2, Mixamo | A Mixamo/Adobe account to download clips; character look approval |
 | **3. World look** (in progress) | Facade kits (balconies, sunshades, shop fronts, invented Tamil signboards: **done** procedurally, measured +1 draw call per chunk and +33k triangles at T. Nagar, see `progress.md`), electricity poles (**done in the browser**: invented concrete poles with lamps along main roads, no wires yet), bus shelters at the 533 real stops (**done in the browser**: 478 placed), kerbs (**done in the browser**, visual only, not solid) and medians (not yet), PBR ground textures, water shader, street lights (**done in the browser**: lamps glow and light the road at night). Part 1 measured: at most +16 draw calls and +8.6k triangles (Anna Nagar spawn, night); not yet run on a phone | Blender (kits), Poly Haven/ambientCG, Noto Sans Tamil | Look approval on screenshots |
 | **4. Landmarks** | Blender models: Kapaleeshwarar gopuram, Marina lighthouse, Central station, Ripon building, LIC building | Blender | Reference photo choices |

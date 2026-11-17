@@ -8,8 +8,6 @@
  * - Changing gear needs the vehicle nearly stopped. Asked for while moving, the gearbox brakes
  *   first and shifts once stopped (shown as N meanwhile); asking for the gear already engaged
  *   cancels that.
- * - The keyboard's two keys (W/S or the arrows) keep working the old way: forward drives, back
- *   brakes and, once stopped, shifts to R and reverses; forward in R brakes, then shifts to D.
  */
 import type { VehicleControls } from "@cow/physics";
 import { gearFor, type VehicleType } from "./specs";
@@ -26,8 +24,6 @@ export interface DriveInput {
   readonly brake: boolean;
   /** -1 (left) to 1 (right). */
   readonly steer: number;
-  /** Keyboard forward (+1) or back (-1), which also shift between D and R by themselves. */
-  readonly keys?: number;
 }
 
 const HOLD = 1;
@@ -84,17 +80,8 @@ export class Gearbox {
   /** Physics controls for one fixed step. */
   controls(input: DriveInput, forwardSpeed: number): VehicleControls {
     const stopped = Math.abs(forwardSpeed) < SHIFT_SPEED;
-    let gas = input.gas;
-    let brake = input.brake;
-    const keys = input.keys ?? 0;
-    if (!gas && !brake && keys !== 0) {
-      // Two-key driving: the key's direction picks D or R once stopped, and brakes before that.
-      const wanted: GearSelection = keys > 0 ? "D" : "R";
-      const rollingAway = keys > 0 ? forwardSpeed < -SHIFT_SPEED : forwardSpeed > SHIFT_SPEED;
-      if (this.selected !== wanted && (this.selected === "P" || !rollingAway)) this.select(wanted, forwardSpeed);
-      if (this.selected === wanted && this.next === null) gas = true;
-      else brake = true;
-    }
+    const gas = input.gas;
+    const brake = input.brake;
     if (this.next !== null && stopped) {
       this.selected = this.next;
       this.next = null;

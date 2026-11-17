@@ -20,7 +20,6 @@ import { PlaceDesk, type PlaceSnapshot } from "./PlaceDesk";
 import { buildPlaces } from "./places";
 import { PlaceMarkers } from "@cow/game-engine";
 import { PLACE_COLORS, placeIconCanvas } from "@cow/ui";
-import { KeyboardInput } from "./KeyboardInput";
 import { insideShell, onShellMessage, sendToShell } from "./nativeBridge";
 import { Population, type DrivenVehicle, type PedestrianHit } from "./Population";
 import { ShareRiders } from "./ShareRiders";
@@ -121,10 +120,11 @@ const MINIMAP_COLORS: Record<Vehicle["kind"], string> = { car: "#e9eef5", auto: 
 const ENTER_RANGE = 3.6;
 
 function pickQuality(): Quality {
-  // `?quality=lite` (or low/high) overrides the automatic choice; the tests use lite.
+  // The game runs on Android phones only (TD-20): the phone tier by default. `?quality=lite`
+  // (the tests) or `high` (a capable phone, for comparison) overrides it.
   const asked = new URLSearchParams(location.search).get("quality");
   if (asked === "lite" || asked === "low" || asked === "high") return asked;
-  return /Android|iPhone|iPad/i.test(navigator.userAgent) ? "low" : "high";
+  return "low";
 }
 
 function loadProgress(): Progress | undefined {
@@ -249,7 +249,6 @@ export class Game {
     private readonly beacon: Beacon,
     private readonly camera: FollowCamera,
     private readonly controls: TouchControls,
-    private readonly keyboard: KeyboardInput,
     private readonly hud: Hud,
     private readonly minimap: Minimap,
     private readonly riders: ShareRiders,
@@ -394,7 +393,6 @@ export class Game {
 
     const camera = new FollowCamera(renderer.camera, spawn.yaw);
     const controls = new TouchControls(stage);
-    const keyboard = new KeyboardInput();
 
     let game: Game | undefined;
     const hud = new Hud(
@@ -412,7 +410,7 @@ export class Game {
       setVehicleNightLights(look.night);
     });
     const riders = new ShareRiders(renderer.scene, humans);
-    game = new Game(map, content, renderer, mapView, chunks, physics, player, avatar, vehicles, population, combat, fighters, sound, missions, beacon, camera, controls, keyboard, hud, minimap, riders);
+    game = new Game(map, content, renderer, mapView, chunks, physics, player, avatar, vehicles, population, combat, fighters, sound, missions, beacon, camera, controls, hud, minimap, riders);
     const railFile = await railLoaded;
     if (railFile) {
       const railway = new Railway(railFile, renderer.scene, physics, new RidePanel(hud.root), {
@@ -450,7 +448,7 @@ export class Game {
     sendToShell({ type: "ready", gpu: this.renderer.gpu() });
   }
 
-  /** Open the job board (the JOBS button, or J on a keyboard). */
+  /** Open the job board (the JOBS button). */
   openBoard(): void {
     if (!this.paused) this.desk.openBoard();
   }
@@ -839,8 +837,8 @@ export class Game {
       inVehicle: this.driving !== null,
       speed: this.driving ? Math.abs(this.driving.body.forwardSpeed()) : this.player.speed,
     };
-    const punch = [this.controls.consumePunch(), this.keyboard.consumePunch()].some(Boolean);
-    const fire = this.controls.state.fire || this.keyboard.fire;
+    const punch = this.controls.consumePunch();
+    const fire = this.controls.state.fire;
     this.aimFor = Math.max(0, this.aimFor - dt);
     this.sinceClick += dt;
 
@@ -907,13 +905,11 @@ export class Game {
     this.simTime += dt;
     this.clock.advance(dt);
     const stick = this.controls.state;
-    const moveX = stick.moveX || this.keyboard.moveX;
-    const moveY = stick.moveY || this.keyboard.moveY;
-    // Read both sources every step, so a press on one is never left pending.
-    const jump = [this.controls.consumeJump(), this.keyboard.consumeJump()].some(Boolean);
-    const action = [this.controls.consumeAction(), this.keyboard.consumeAction()].some(Boolean);
+    const moveX = stick.moveX;
+    const moveY = stick.moveY;
+    const jump = this.controls.consumeJump();
+    const action = this.controls.consumeAction();
     const gearAsked = this.controls.consumeGear();
-    const keyGear = this.keyboard.consumeGear();
 
     if (action && !this.driving && this.railway?.act(this.where())) {
       // Boarded or stepped off a train.
@@ -927,13 +923,12 @@ export class Game {
     if (this.driving) {
       const speed = this.driving.body.forwardSpeed();
       // Gear rules (P / R / D, braking before a shift) are in the Gearbox (@cow/vehicles).
-      const asked = gearAsked ?? keyGear;
-      if (asked) this.gearbox.select(asked, speed);
-      driverInput = this.gearbox.controls({ gas: stick.gas, brake: stick.brake, steer: moveX, keys: this.keyboard.moveY }, speed);
+      if (gearAsked) this.gearbox.select(gearAsked, speed);
+      driverInput = this.gearbox.controls({ gas: stick.gas, brake: stick.brake, steer: moveX }, speed);
       const hint = this.gearbox.consumeHint();
       if (hint) this.hud.showToast(hint, "", 2.4);
     } else if (!this.railway?.riding) {
-      this.player.update({ moveX, moveY, run: this.keyboard.run, jump, cameraYaw: this.camera.yaw }, dt);
+      this.player.update({ moveX, moveY, jump, cameraYaw: this.camera.yaw }, dt);
     }
     for (const vehicle of this.vehicles) vehicle.update(vehicle === this.driving ? driverInput : null, dt);
     // Crashes: a thump, and a bump on the job's record. Parked vehicles' knocks are forgotten.
@@ -984,10 +979,6 @@ export class Game {
 
   private frame(dt: number): void {
     this.frames++;
-    if (this.keyboard.consumeBoard()) {
-      this.openBoard();
-      return;
-    }
     if (this.enteringPlace) {
       const place = this.enteringPlace;
       this.enteringPlace = null;
@@ -1024,7 +1015,7 @@ export class Game {
       const top = this.driving.type.physics.maxSpeed;
       this.sound.setEngine(Math.abs(this.driving.body.forwardSpeed()) / top, this.driving.kind === "auto" || this.driving.kind === "bike");
       this.sound.setSkid(body.drifting());
-      if ([this.controls.consumeHorn(), this.keyboard.consumeHorn()].some(Boolean)) {
+      if (this.controls.consumeHorn()) {
         // The ambulance's button switches the siren; everything else has a horn.
         if (this.driving.type.siren) {
           this.driving.setSiren(!this.driving.siren);

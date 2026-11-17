@@ -18,6 +18,29 @@ first.
 
 ---
 
+## 17 Nov 2026 (evening): three more agent branches, realism phases 2 and 6; test timing fixes
+
+Started in this session (TD-18, realistic look), each pushing to its own branch as it goes and
+merged into `feat/chennai-open-world` only after its tests pass:
+1. **`agent/materials`** — realism-plan Phase 2: CC0 photographic textures (Poly Haven,
+   ambientCG) for roads, pavers, plaster, earth, Marina sand and roof tiles, measured.
+2. **`agent/street-life`** — kolam at doorways (fades through the day), awnings over shop
+   fronts and the `ShutterOpen` shutters following the hour (via `FacadeKit`), new realistic
+   Blender props (tea stall, flower stall, pushcart, plastic chairs, parked two-wheeler) and
+   overhead cables; reuses `props.ts` / `StreetProps.ts`, no second prop system.
+3. **`agent/characters`** — realism-plan Phase 6 start: realistic Chennai men built with MPFB
+   (MakeHuman CC0 assets) in Blender, replacing the placeholder player model, plus pedestrian
+   variants; must keep the seated drivers working. Sarees need proper cloth modelling (later).
+Avoid these areas until merged, or coordinate first. If this session stops, continue from those
+branches: read the newest handoff entry on each, run the checks, merge one at a time.
+
+Also on `feat/chennai-open-world`: browser tests that wait on something the game does in its own
+time (a stop's dwell, a fight, a reward, the knock-out) now poll game state with `GAME_WAIT` or
+longer limits instead of short wall-clock waits; this fixes the `test` failures seen on CI for
+49e9ff2 and 4a6b2c2 (slow runner, not a game bug). Rule: AGENTS.md "Testing notes".
+
+---
+
 ## 17 Nov 2026 (later): realism brief received, plan written, nothing implemented yet
 
 The user asked for a realistic Tamil Nadu look (buildings, roads, real vehicles, realistic
@@ -116,15 +139,10 @@ Sources: dtnext.in "TN's vehicle count crosses 4 crore" and "Chennai's vehicle p
 Tamil Nadu's count in 2000"; dtnext.in "Green autos, red signal"; stationeryprinting.tn.gov.in
 gazette 2021/48 III 1a; dtnext.in MTC e-bus reports; sustainable-bus.com (Chennai MTC e-buses).
 
-## Decision pending: mobile only (user, 17 Nov 2026)
-The user wants to support the Android app only, not the browser. Note that the Android app
-**is** the web build running in a WebView (TD-1). So "no browser support" can only mean:
-dropping the public GitHub Pages deploy and the desktop keyboard and mouse controls as player
-features. It cannot mean removing the web build: the APK is made from it, and the browser tests
-(`npm run test:e2e`, touch input at phone size) are the main automated check. Nothing has been
-removed yet. Confirm with the user which of these to drop: (1) the Pages deploy job in
-`.github/workflows/chennai-open-world.yml`, (2) `apps/game/src/KeyboardInput.ts` and the README's
-desktop instructions.
+## Decided: Android only (user, 17 Nov 2026), TD-20
+Done on `feat/chennai-open-world`: the Pages deploy and web-build artifact are gone from CI,
+`KeyboardInput.ts` and the desktop instructions are removed, and every device defaults to the
+phone quality tier. The web build and the browser tests stay (the APK runs the web build).
 
 ## 17 Nov 2026 (later): vehicle prototype 1 for review
 - `prototypes/auto-rickshaw.html`: a page-only three.js prototype (not part of the game build)
