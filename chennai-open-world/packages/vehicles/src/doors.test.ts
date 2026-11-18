@@ -1,4 +1,4 @@
-/** The driver's doors: separate from the merged body, one mesh each, swinging the right way. */
+/** Doors, the driver's and the passengers': separate from the merged body, one mesh per vehicle, swinging the right way. */
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { buildVehicleModel } from "./models";
@@ -17,18 +17,32 @@ function bounds(mesh: THREE.Mesh): THREE.Box3 {
 
 const triangles = (mesh: THREE.Mesh) => mesh.geometry.getAttribute("position").count / 3;
 
+/** Bounds of the door mesh's vertices that pass `keep` (one door of several in the mesh). */
+function boundsWhere(mesh: THREE.Mesh, keep: (x: number, z: number) => boolean): THREE.Box3 {
+  const position = mesh.geometry.getAttribute("position");
+  const box = new THREE.Box3();
+  const v = new THREE.Vector3();
+  for (let i = 0; i < position.count; i++) {
+    v.fromBufferAttribute(position, i);
+    if (keep(v.x, v.z)) box.expandByPoint(v);
+  }
+  return box;
+}
+
 describe("vehicle doors", () => {
   it("car: the right front door swings out about 65° on its front hinge", () => {
     const model = buildVehicleModel("car", 0xc0392b);
     expect(model.door).toBeDefined();
-    const door = doorOf(model.object);
-    const shut = bounds(door);
+    const mesh = doorOf(model.object);
+    // The mesh also holds the two rear passenger doors (z 0.5 to 1.45 when shut): look at the front right one.
+    const front = (x: number, z: number) => x > 0 && z < 0.502;
+    const shut = boundsWhere(mesh, front);
     // Shut: flush with the right side, between the hinge (z -0.55) and the seam (z 0.5).
     expect(shut.max.x).toBeLessThan(0.9);
     expect(shut.min.z).toBeGreaterThan(-0.56);
     expect(shut.max.z).toBeLessThan(0.51);
     model.door!(1);
-    const open = bounds(door);
+    const open = boundsWhere(mesh, front);
     // The rear edge has gone out about 1.05 m × sin 65° from the hinge, to the right (+X) and forwards.
     expect(open.max.x).toBeGreaterThan(0.845 + 1.0 * Math.sin(THREE.MathUtils.degToRad(60)));
     expect(open.max.x).toBeLessThan(0.845 + 1.1 * Math.sin(THREE.MathUtils.degToRad(70)) + 0.06);
@@ -36,7 +50,51 @@ describe("vehicle doors", () => {
     // The hinge stays put.
     expect(open.min.z).toBeGreaterThan(-0.6);
     model.door!(0);
-    expect(bounds(door).max.x).toBeCloseTo(shut.max.x, 5);
+    expect(boundsWhere(mesh, front).max.x).toBeCloseTo(shut.max.x, 5);
+  });
+
+  it("car: the rear passenger doors open on their own, each to its own side", () => {
+    const model = buildVehicleModel("car", 0xc0392b);
+    const mesh = doorOf(model.object);
+    const rear = (side: number) => (x: number, z: number) => x * side > 0 && z > 0.502;
+    const shutLeft = boundsWhere(mesh, rear(-1));
+    expect(shutLeft.min.x).toBeGreaterThan(-0.9);
+    expect(shutLeft.min.z).toBeGreaterThan(0.49);
+    expect(shutLeft.max.z).toBeLessThan(1.46);
+    model.door!(1, 1);
+    // The left rear door swings out to the left; the driver's and the right rear stay shut.
+    expect(boundsWhere(mesh, rear(-1)).min.x).toBeLessThan(-0.845 - 0.8);
+    expect(bounds(mesh).max.x).toBeLessThan(0.9);
+    model.door!(1, 2);
+    expect(boundsWhere(mesh, rear(1)).max.x).toBeGreaterThan(0.845 + 0.8);
+    model.door!(0, 1);
+    expect(boundsWhere(mesh, rear(-1)).min.x).toBeCloseTo(shutLeft.min.x, 5);
+  });
+
+  it("ambulance: the two rear doors open outwards for the patient", () => {
+    const model = buildVehicleModel("ambulance", 0);
+    const mesh = doorOf(model.object);
+    const back = (_x: number, z: number) => z > 2;
+    expect(boundsWhere(mesh, back).max.z).toBeLessThan(2.62);
+    model.door!(1, 1);
+    const open = boundsWhere(mesh, back);
+    // Swung right round: out past the back and beyond the sides.
+    expect(open.max.z).toBeGreaterThan(3.1);
+    expect(open.max.x).toBeGreaterThan(0.9);
+    expect(open.min.x).toBeLessThan(-0.9);
+  });
+
+  it("every vehicle that carries fares has a passenger door outside its body", () => {
+    for (const kind of ["car", "auto", "ambulance", "bus"] as const) {
+      const doors = VEHICLE_TYPES[kind].passengers ?? [];
+      expect(doors.length, kind).toBeGreaterThan(0);
+      const half = VEHICLE_TYPES[kind].physics.halfExtents;
+      for (const door of doors) {
+        expect(Math.abs(door.point.x) > half.x || Math.abs(door.point.z) > half.z, kind).toBe(true);
+        if (door.leaf !== undefined) expect(buildVehicleModel(kind, 0).door, kind).toBeDefined();
+      }
+    }
+    expect(VEHICLE_TYPES.bike.passengers).toBeUndefined();
   });
 
   it("ambulance: the right cab door swings out", () => {
@@ -69,6 +127,9 @@ describe("vehicle doors", () => {
     expect(inMiddle).toBe(0);
   });
 
+  // One mesh (one draw call) for all of a vehicle's doors: the car's holds three doors since the
+  // passengers' rear doors were added, the ambulance's its cab door and two rear doors.
+  const DOOR_TRIANGLES = { car: 180, ambulance: 120, bus: 72 } as const;
   it.each(["car", "ambulance", "bus"] as const)("%s: one door mesh, with almost no triangles", (kind) => {
     const model = buildVehicleModel(kind, 0x3366aa);
     const doors: THREE.Mesh[] = [];
@@ -76,7 +137,7 @@ describe("vehicle doors", () => {
       if (node instanceof THREE.Mesh && node.name === "door") doors.push(node);
     });
     expect(doors).toHaveLength(1);
-    expect(triangles(doors[0]!)).toBeLessThanOrEqual(72);
+    expect(triangles(doors[0]!)).toBeLessThanOrEqual(DOOR_TRIANGLES[kind]);
     expect(VEHICLE_TYPES[kind].entry.door).not.toBe("none");
   });
 

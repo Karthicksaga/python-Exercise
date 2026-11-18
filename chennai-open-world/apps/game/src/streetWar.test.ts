@@ -59,7 +59,8 @@ describe("rival gangs", () => {
 });
 
 describe("stages 11 to 15", () => {
-  const stages = content.missions.slice(10);
+  // Stages 11 to 15 only: stages 16 onwards (`laterStages.ts`) follow them and are tested in `laterStages.test.ts`.
+  const stages = content.missions.slice(10, 15);
 
   it("follow stage 10 in order, each with a brief and a reward in money", () => {
     expect(stages.map((m) => [m.stage, m.id])).toEqual([

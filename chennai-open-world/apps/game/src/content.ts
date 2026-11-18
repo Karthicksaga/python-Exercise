@@ -8,7 +8,10 @@ import { GeoProjection } from "@cow/map-data";
 import type { EnemySpot, PickupSpot } from "@cow/combat";
 import type { Job, Mission, Objective } from "@cow/missions";
 import type { VehicleKind } from "@cow/vehicles";
+import { busCrowd } from "@cow/missions";
 import { cityJobs } from "./cityJobs";
+import { fareAt } from "./fareSpots";
+import { buildLaterStages } from "./laterStages";
 import { shareAutoJob } from "./shareAutoRoute";
 import { buildStreetWar, type Crew, type Gang } from "./streetWar";
 
@@ -132,8 +135,10 @@ export function buildContent(city: WorldMap): GameContent {
   const walkTo = onRoad(ahead(55));
   const { minX, maxX, minZ, maxZ } = map.bounds;
   const inset = 70;
-  const pickup = onRoad({ x: maxX - 180, z: minZ + 230 });
-  const drop = onRoad({ x: minX + 160, z: maxZ - 200 });
+  const pickupNear = { x: maxX - 180, z: minZ + 230 };
+  const dropNear = { x: minX + 160, z: maxZ - 200 };
+  const pickup = onRoad(pickupNear);
+  const drop = onRoad(dropNear);
   const parcels = [onRoad({ x: maxX - inset - 40, z: maxZ - 180 }), onRoad({ x: minX + 200, z: minZ + 160 }), onRoad({ x: 0, z: maxZ - inset - 30 })];
   const lunch = [onRoad({ x: 60, z: -120 }), onRoad({ x: maxX - 120, z: 120 }), onRoad({ x: minX + 130, z: 40 })];
   const dashFrom = onRoad({ x: minX + inset, z: maxZ - inset });
@@ -202,8 +207,9 @@ export function buildContent(city: WorldMap): GameContent {
       reward: 300,
       objectives: [
         { type: "enter", label: "Get in the auto-rickshaw", vehicle: "auto" },
-        reach("Pick up the passenger", pickup, { mode: "auto", radius: 6, stop: true }),
-        reach("Drop the passenger", drop, { mode: "auto", radius: 6, stop: true, timeLimit: allow(pickup, drop, 9) }),
+        // Someone waits at the kerb and gets in once the auto stops beside them, and gets out at the drop.
+        reach("Pick up the passenger", pickup, { mode: "auto", radius: 6, stop: true, fare: fareAt(map, pickup, { board: 1 }, pickupNear) }),
+        reach("Drop the passenger", drop, { mode: "auto", radius: 6, stop: true, timeLimit: allow(pickup, drop, 9), fare: fareAt(map, drop, { alight: 1 }, dropNear) }),
       ],
     },
     {
@@ -311,12 +317,15 @@ export function buildContent(city: WorldMap): GameContent {
   };
 
   const ambulanceBay = kerb(place("hospital", { x: 320, z: 55 }));
-  const hospital = onRoad(map.pois.filter((p) => p.kind === "hospital" && !/eye|optical/i.test(p.name ?? ""))[1] ?? { x: -337, z: 314 });
+  const hospitalPoi = map.pois.filter((p) => p.kind === "hospital" && !/eye|optical/i.test(p.name ?? ""))[1] ?? { x: -337, z: 314 };
+  const hospital = onRoad(hospitalPoi);
   const patient = onRoad({ x: -60, z: -260 });
   const postOffice = onRoad(place("post_office", { x: -100, z: 150 }));
   const parcelTo = onRoad({ x: maxX - 120, z: maxZ - 140 });
-  const rider = onRoad({ x: minX + 140, z: minZ + 180 });
-  const riderTo = onRoad({ x: 230, z: 280 });
+  const riderNear = { x: minX + 140, z: minZ + 180 };
+  const riderToNear = { x: 230, z: 280 };
+  const rider = onRoad(riderNear);
+  const riderTo = onRoad(riderToNear);
   const busStand = avenueKerb({ x: -150, z: 20 });
   const busStops = spacedStops(avenues, busStand, 4, 260);
   parking.push(
@@ -326,9 +335,17 @@ export function buildContent(city: WorldMap): GameContent {
 
   const road = (a: Point, b: Point) => distance(a, b) * 1.4;
   let due = 0;
+  // Who gets on and off at each stop (nobody aboard at the start, everyone off at the end).
+  const crowd = busCrowd(busStops.length);
+  // People wait on the right of each avenue's drawn direction: on the left, buildings come right up to the carriageway at one stop.
+  const rightOf = (p: Point): Point | undefined => {
+    const hit = nearestRoadPoint(avenues, p);
+    return hit ? { x: hit.x + Math.cos(hit.heading) * 20, z: hit.z - Math.sin(hit.heading) * 20 } : undefined;
+  };
+  const busFare = (stop: Point, i: number, people = crowd) => fareAt(map, stop, people[i]!, rightOf(stop));
   const busRoute = busStops.map((stop, i) => {
     due += allow(i === 0 ? busStand : busStops[i - 1]!, stop, 8) + 5;
-    return { label: `Bus stop ${i + 1} of ${busStops.length}${streetOf(stop)}`, ...stop, radius: 8, dwell: 4, due };
+    return { label: `Bus stop ${i + 1} of ${busStops.length}${streetOf(stop)}`, ...stop, radius: 8, dwell: 4, due, fare: busFare(stop, i) };
   });
   const jobs: Job[] = [
     {
@@ -338,8 +355,8 @@ export function buildContent(city: WorldMap): GameContent {
       brief: "A patient needs a hospital now. Use the SIREN to clear the traffic, and drive smoothly: every bump hurts.",
       vehicle: "ambulance",
       stops: [
-        { label: `Pick up the patient${streetOf(patient)}`, ...patient, radius: 8, dwell: 3 },
-        { label: `Drive the patient to the hospital${streetOf(hospital)}`, ...hospital, radius: 9 },
+        { label: `Pick up the patient${streetOf(patient)}`, ...patient, radius: 8, dwell: 3, fare: fareAt(map, patient, { board: 1, patient: true }) },
+        { label: `Drive the patient to the hospital${streetOf(hospital)}`, ...hospital, radius: 9, fare: fareAt(map, hospital, { alight: 1, patient: true }, hospitalPoi) },
       ],
       timeLimit: allow(ambulanceBay, patient, 11) + allow(patient, hospital, 11),
       payout: 900,
@@ -367,8 +384,8 @@ export function buildContent(city: WorldMap): GameContent {
       brief: "A passenger is waiting for a car. The fare goes by distance; a smooth ride earns a tip.",
       vehicle: "car",
       stops: [
-        { label: `Pick up the passenger${streetOf(rider)}`, ...rider, radius: 7, dwell: 2 },
-        { label: `Drop the passenger${streetOf(riderTo)}`, ...riderTo, radius: 7, dwell: 1 },
+        { label: `Pick up the passenger${streetOf(rider)}`, ...rider, radius: 7, dwell: 2, fare: fareAt(map, rider, { board: 1 }, riderNear) },
+        { label: `Drop the passenger${streetOf(riderTo)}`, ...riderTo, radius: 7, dwell: 1, fare: fareAt(map, riderTo, { alight: 1 }, riderToNear) },
       ],
       timeLimit: allow(rider, riderTo, 10) + 90,
       // ₹80 flag fall plus ₹0.35 a metre of road.
@@ -390,7 +407,8 @@ export function buildContent(city: WorldMap): GameContent {
   ];
 
   // More everyday work, from real mapped places (names not shown).
-  const firstHospital = onRoad(place("hospital", { x: 320, z: 55 }));
+  const firstHospitalPoi = place("hospital", { x: 320, z: 55 });
+  const firstHospital = onRoad(firstHospitalPoi);
   const kitchen = onRoad(place("restaurant", { x: 100, z: -60 }));
   // The chemist and hospital farthest apart, so the run is a real ride.
   let medicine = { from: onRoad({ x: -300, z: -250 }), to: firstHospital };
@@ -401,7 +419,8 @@ export function buildContent(city: WorldMap): GameContent {
   }
   const chemist = medicine.from;
   const meals = [onRoad({ x: -280, z: -320 }), onRoad({ x: 60, z: 380 }), onRoad({ x: 330, z: -380 })];
-  const tourist = onRoad({ x: -330, z: -40 });
+  const touristNear = { x: -330, z: -40 };
+  const tourist = onRoad(touristNear);
   const legs = (points: readonly Point[], speed: number) => points.slice(1).reduce((sum, p, i) => sum + allow(points[i]!, p, speed), 0);
   // The share auto runs 2nd Avenue end to end, so it is built from the city map (the avenue
   // runs out of the home square at both ends). It replaced an earlier "Share auto" job that was
@@ -416,8 +435,8 @@ export function buildContent(city: WorldMap): GameContent {
       brief: "A stable patient needs moving between hospitals for a scan. Less rush, but a smooth ride matters even more.",
       vehicle: "ambulance",
       stops: [
-        { label: `Collect the patient at the hospital${streetOf(firstHospital)}`, ...firstHospital, radius: 10, dwell: 4 },
-        { label: `Transfer to the hospital${streetOf(hospital)}`, ...hospital, radius: 9, dwell: 2 },
+        { label: `Collect the patient at the hospital${streetOf(firstHospital)}`, ...firstHospital, radius: 10, dwell: 4, fare: fareAt(map, firstHospital, { board: 1, patient: true }) },
+        { label: `Transfer to the hospital${streetOf(hospital)}`, ...hospital, radius: 9, dwell: 2, fare: fareAt(map, hospital, { alight: 1, patient: true }, hospitalPoi) },
       ],
       timeLimit: legs([ambulanceBay, firstHospital, hospital], 9) + 40,
       payout: 700,
@@ -460,8 +479,8 @@ export function buildContent(city: WorldMap): GameContent {
       brief: "A visitor wants to see Anna Nagar Tower Park before it closes. Take them to the gate.",
       vehicle: "car",
       stops: [
-        { label: `Pick up the visitor${streetOf(tourist)}`, ...tourist, radius: 7, dwell: 2 },
-        { label: "Drop them at Anna Nagar Tower Park", ...parkGate, radius: 8, dwell: 1 },
+        { label: `Pick up the visitor${streetOf(tourist)}`, ...tourist, radius: 7, dwell: 2, fare: fareAt(map, tourist, { board: 1 }, touristNear) },
+        { label: "Drop them at Anna Nagar Tower Park", ...parkGate, radius: 8, dwell: 1, fare: fareAt(map, parkGate, { alight: 1 }, parkCentre) },
       ],
       timeLimit: allow(tourist, parkGate, 10) + 90,
       payout: Math.round(80 + road(tourist, parkGate) * 0.35),
@@ -478,7 +497,7 @@ export function buildContent(city: WorldMap): GameContent {
         const reversed = [...busStops].reverse();
         return reversed.map((stop, i) => {
           clock += allow(i === 0 ? busStand : reversed[i - 1]!, stop, 9) + 6;
-          return { label: `Bus stop ${i + 1} of ${reversed.length}${streetOf(stop)}`, ...stop, radius: 8, dwell: 5, due: clock };
+          return { label: `Bus stop ${i + 1} of ${reversed.length}${streetOf(stop)}`, ...stop, radius: 8, dwell: 5, due: clock, fare: busFare(stop, i) };
         });
       })(),
       timeLimit: legs([busStand, ...[...busStops].reverse()], 9) + 80,
@@ -498,6 +517,12 @@ export function buildContent(city: WorldMap): GameContent {
   missions.push(...war.missions);
   Object.assign(enemies, war.enemies);
   parking.push(...war.parking);
+
+  // Stages 16 onwards, starting where the street war ended (`laterStages.ts`).
+  const later = buildLaterStages(city);
+  missions.push(...later.missions);
+  Object.assign(enemies, later.enemies);
+  parking.push(...later.parking);
 
   return { spawn, parking, missions, enemies, jobs, gangs: war.gangs, crews: war.crews, pickups: war.pickups };
 }

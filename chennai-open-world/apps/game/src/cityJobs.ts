@@ -9,7 +9,8 @@
  * Hospital names are never shown, only the street they are on.
  */
 import { insideBounds, nearestRoadPoint, type District, type Point, type Road, type WorldMap } from "@cow/game-world";
-import type { AvoidPoint, Job } from "@cow/missions";
+import { busCrowd, type AvoidPoint, type Job } from "@cow/missions";
+import { fareAt } from "./fareSpots";
 import type { Parking } from "./content";
 
 /** Anna Salai's name in the extract, and the samples of it the evening drive avoids. */
@@ -135,8 +136,9 @@ export function cityJobs(city: WorldMap): { jobs: Job[]; parking: Parking[] } {
     brief: `Take a friend from T. Nagar to Marina Beach for the evening breeze. Anna Salai is jammed at this hour: cross it, don't drive along it. Evenings only (${MARINA_HOURS.from}:00–20:30); the clock starts at the pick-up.`,
     vehicle: "car",
     stops: [
-      { label: `Pick up your friend${streetOf(pickup)}, T. Nagar`, ...pickup, radius: 8, dwell: 3 },
-      { label: "Drop them at Marina Beach, on the beach road", ...drop, radius: 10, dwell: 2 },
+      { label: `Pick up your friend${streetOf(pickup)}, T. Nagar`, ...pickup, radius: 8, dwell: 3, fare: fareAt(city, pickup, { board: 1 }) },
+      // They get out on the beach side of the road.
+      { label: "Drop them at Marina Beach, on the beach road", ...drop, radius: 10, dwell: 2, fare: fareAt(city, drop, { alight: 1 }, marina) },
     ],
     // About 6 km of evening city driving, with room to go round Anna Salai.
     timeLimit: allow(pickup, drop, 10) + 60,
@@ -170,8 +172,8 @@ export function cityJobs(city: WorldMap): { jobs: Job[]; parking: Parking[] } {
       brief: "A stable patient moves from a hospital in Egmore to one in Royapettah for treatment, through central Chennai. Use the SIREN; three bumps end the run.",
       vehicle: "ambulance",
       stops: [
-        { label: `Collect the patient at the hospital${streetOf(collect)}, Egmore`, ...collect, radius: 10, dwell: 4 },
-        { label: `Transfer to the hospital${streetOf(b)}, Royapettah`, ...b, radius: 10, dwell: 2 },
+        { label: `Collect the patient at the hospital${streetOf(collect)}, Egmore`, ...collect, radius: 10, dwell: 4, fare: fareAt(city, collect, { board: 1, patient: true, shift: 20 }) },
+        { label: `Transfer to the hospital${streetOf(b)}, Royapettah`, ...b, radius: 10, dwell: 2, fare: fareAt(city, b, { alight: 1, patient: true }, to) },
       ],
       timeLimit: allow(collect, b, 9) + 60,
       payout: 1000,
@@ -195,14 +197,14 @@ export function cityJobs(city: WorldMap): { jobs: Job[]; parking: Parking[] } {
     const last = r.points[r.points.length - 1]!;
     return (last.x - first.x) * dir.x + (last.z - first.z) * dir.z > 0;
   });
-  const candidates: Array<Point & { name: string; t: number; heading: number }> = [];
+  const candidates: Array<Point & { name: string; t: number; heading: number; mapped: Point }> = [];
   for (const stop of city.busStops ?? []) {
     if (!stop.name) continue;
     const t = (stop.x - runFrom.x) * dir.x + (stop.z - runFrom.z) * dir.z;
     if (t < -60 || t > length + 60) continue;
     const hit = snap(carriageway, stop);
     if (!hit || hit.distance > 30) continue;
-    candidates.push({ ...round(hit), heading: hit.heading, name: stop.name, t });
+    candidates.push({ ...round(hit), heading: hit.heading, name: stop.name, t, mapped: { x: stop.x, z: stop.z } });
   }
   candidates.sort((p, q) => p.t - q.t || p.x - q.x);
   const picked: typeof candidates = [];
@@ -220,9 +222,11 @@ export function cityJobs(city: WorldMap): { jobs: Job[]; parking: Parking[] } {
     const stand = kerb(carriageway, along(first, -120));
     parking.push({ id: "bus-mount-road", kind: "bus", ...stand, color: 0x1f6f78 });
     let due = 0;
+    // People wait on the side of the road the stop is mapped on (its shelter).
+    const crowd = busCrowd(picked.length);
     const stops = picked.map((stop, i) => {
       due += allow(i === 0 ? stand : picked[i - 1]!, stop, 8) + 5;
-      return { label: `Bus stop ${i + 1} of 4: ${stop.name}`, x: stop.x, z: stop.z, radius: 9, dwell: 4, due };
+      return { label: `Bus stop ${i + 1} of 4: ${stop.name}`, x: stop.x, z: stop.z, radius: 9, dwell: 4, due, fare: fareAt(city, stop, crowd[i]!, stop.mapped) };
     });
     jobs.push({
       id: "mount-road-bus",

@@ -15,8 +15,11 @@ export interface VehicleModel {
   readonly wheels: THREE.Group[];
   /** Emergency lights that flash while the siren is on. */
   readonly beacons?: readonly THREE.MeshStandardMaterial[];
-  /** Open the driver's door: 0 shut, 1 fully open. Absent on vehicles without one (auto, motorbike). */
-  readonly door?: (amount: number) => void;
+  /**
+   * Open a door: 0 shut, 1 fully open. `leaf` 0 (the default) is the driver's door; higher ones
+   * are passengers' doors (`VehicleType.passengers`). Absent on vehicles without doors.
+   */
+  readonly door?: (amount: number, leaf?: number) => void;
 }
 
 /** One door leaf: its parts (built around the hinge, the leaf running along z), and how it swings. */
@@ -26,6 +29,8 @@ interface Leaf {
   readonly hinge: { readonly x: number; readonly z: number };
   /** Angle when fully open, radians; the sign picks the way it swings (positive turns +z towards +x). */
   readonly open: number;
+  /** Which door this leaf belongs to (leaves of one door swing together); 0, the driver's, when absent. */
+  readonly group?: number;
 }
 
 /**
@@ -40,7 +45,8 @@ class DoorMesh {
   private readonly baseNormals: Float32Array;
   /** Which leaf each vertex belongs to. */
   private readonly owner: Uint8Array;
-  private amount = -1;
+  /** How open each door (leaf group) is. */
+  private readonly amounts: number[] = [];
 
   constructor(
     private readonly leaves: readonly Leaf[],
@@ -71,22 +77,29 @@ class DoorMesh {
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = true;
     this.mesh.name = "door";
-    this.set(0);
+    this.update();
     // Bounds big enough for the leaves at any angle, so an open door is never culled.
     geometry.computeBoundingSphere();
     if (geometry.boundingSphere) geometry.boundingSphere.radius += reach;
   }
 
-  set(amount: number): void {
+  set(amount: number, group = 0): void {
     const a = Math.min(1, Math.max(0, amount));
-    if (Math.abs(a - this.amount) < 1e-4) return;
-    this.amount = a;
+    if (Math.abs(a - (this.amounts[group] ?? 0)) < 1e-4) return;
+    this.amounts[group] = a;
+    this.update();
+  }
+
+  private update(): void {
     const geometry = this.mesh.geometry;
     const position = geometry.getAttribute("position") as THREE.BufferAttribute;
     const normal = geometry.getAttribute("normal") as THREE.BufferAttribute;
     const p = position.array as Float32Array;
     const n = normal.array as Float32Array;
-    const turns = this.leaves.map((leaf) => ({ cos: Math.cos(leaf.open * a), sin: Math.sin(leaf.open * a), hinge: leaf.hinge }));
+    const turns = this.leaves.map((leaf) => {
+      const a = this.amounts[leaf.group ?? 0] ?? 0;
+      return { cos: Math.cos(leaf.open * a), sin: Math.sin(leaf.open * a), hinge: leaf.hinge };
+    });
     for (let v = 0; v < this.owner.length; v++) {
       const turn = turns[this.owner[v]!]!;
       const i = v * 3;
@@ -289,6 +302,8 @@ function car(color: number): VehicleModel {
   // The driver's doorway: dark panels just outside the body and the side glass, hidden by the
   // shut door, so an open door shows an opening instead of paint (there is no modelled cabin).
   object.add(box(0.008, 0.58, 1.03, dark, 0.836, 0.015, -0.03), box(0.006, 0.46, 0.68, dark, 0.755, 0.56, -0.07));
+  // The same behind the two rear doors, for passengers.
+  for (const x of [-1, 1]) object.add(box(0.008, 0.58, 0.9, dark, 0.836 * x, 0.015, 0.97), box(0.006, 0.4, 0.42, dark, 0.755 * x, 0.54, 0.76));
   // Grille and a strip of trim along the sill.
   object.add(box(1.0, 0.14, 0.03, dark, 0, -0.08, -2.0));
   for (const x of [-0.83, 0.83]) object.add(box(0.03, 0.08, 3.0, dark, x, -0.27, 0));
@@ -312,11 +327,28 @@ function car(color: number): VehicleModel {
           { geometry: slab(0.03, 0.05, 0.155, 0.19, 0.32, 0.48), color: CHROME_COLOR },
         ],
       },
+      // Rear doors for passengers, hinged at their front edge (z 0.5) and running back to the
+      // seam at z 1.45, cut round the rear wheel arch; left (group 1) and right (group 2).
+      ...([-1, 1] as const).map((side) => {
+        const out = (a: number, b: number) => (side > 0 ? [a, b] : [-b, -a]) as [number, number];
+        return {
+          hinge: { x: 0.845 * side, z: 0.5 },
+          open: THREE.MathUtils.degToRad(65) * side,
+          group: side < 0 ? 1 : 2,
+          parts: [
+            { geometry: slab(...out(0, 0.03), -0.01, 0.31, 0.005, 0.94), color },
+            { geometry: slab(...out(0, 0.03), -0.28, -0.01, 0.005, 0.3), color },
+            { geometry: slab(...out(-0.085, -0.065), 0.31, 0.75, 0.05, 0.45), color: GLASS_COLOR },
+            { geometry: slab(...out(-0.085, -0.06), 0.31, 0.34, 0.02, 0.5), color },
+            { geometry: slab(...out(0.03, 0.05), 0.155, 0.19, 0.3, 0.46), color: CHROME_COLOR },
+          ],
+        };
+      }),
     ],
     doorMaterial(String(color)),
   );
   object.add(door.mesh);
-  return { object, wheels, door: (amount) => door.set(amount) };
+  return { object, wheels, door: (amount, leaf) => door.set(amount, leaf) };
 }
 
 /**
@@ -434,7 +466,6 @@ function ambulance(): VehicleModel {
     for (let i = 0; i < 6; i++) object.add(box(0.025, 0.14, 0.28, i % 2 ? yellow : red, x, -0.24, -0.15 + i * 0.56)); // checks
     object.add(box(0.012, 1.4, 0.02, dark, x, 0.3, -0.42)); // door seam
   }
-  object.add(box(0.02, 1.3, 0.02, dark, 0, 0.35, 2.56)); // rear doors
   object.add(box(1.96, 0.22, 0.14, dark, 0, -0.5, -2.53), box(1.96, 0.22, 0.14, dark, 0, -0.5, 2.55));
   for (const x of [-0.68, 0.68]) object.add(box(0.36, 0.14, 0.05, lampMaterial(), x, 0.1, -2.5), box(0.2, 0.3, 0.05, tailMaterial(), x * 1.2, 0.3, 2.56));
   for (const x of [-0.9, 0.9]) for (const z of [-1.6, 1.55]) object.add(box(0.1, 0.36, 0.95, dark, x, -0.42, z));
@@ -445,6 +476,8 @@ function ambulance(): VehicleModel {
   object.add(box(0.5, 0.14, 0.3, beaconRed, -0.36, 1.26, -1.0), box(0.5, 0.14, 0.3, beaconBlue, 0.36, 1.26, -1.0));
   // The driver's doorway (dark, behind the cab door): see `car`.
   object.add(box(0.008, 1.18, 0.78, dark, 0.976, 0.4, -0.82));
+  // The rear doorway, behind the two rear doors (dark: there is no modelled interior).
+  object.add(box(1.36, 1.3, 0.008, dark, 0, 0.33, 2.553));
 
   mergeParts(object, []);
   const wheels = [0, 1, 2, 3].map(() => wheel(0.38, 0.26));
@@ -463,11 +496,23 @@ function ambulance(): VehicleModel {
           { geometry: slab(0.03, 0.05, 0.3, 0.34, 0.6, 0.74), color: TRIM_COLOR },
         ],
       },
+      // Two rear doors for the patient (group 1), hinged at the body's sides inside the tail
+      // lamps and swinging out about 110°, round towards the sides. Each is 0.7 m wide.
+      ...([-1, 1] as const).map((side) => ({
+        hinge: { x: 0.7 * side, z: 2.56 },
+        open: THREE.MathUtils.degToRad(110) * side,
+        group: 1,
+        parts: [
+          { geometry: slab(side > 0 ? -0.7 : 0, side > 0 ? 0 : 0.7, -0.37, 1.0, 0, 0.03), color: 0xf3f4f1 },
+          { geometry: slab(side > 0 ? -0.6 : 0.1, side > 0 ? -0.1 : 0.6, 0.45, 0.9, 0.03, 0.04), color: GLASS_COLOR },
+          { geometry: slab(side > 0 ? -0.7 : 0, side > 0 ? 0 : 0.7, -0.03, 0.19, 0.03, 0.045), color: 0xc8202a },
+        ],
+      })),
     ],
     doorMaterial("ambulance"),
   );
   object.add(door.mesh);
-  return { object, wheels, beacons: [beaconRed, beaconBlue], door: (amount) => door.set(amount) };
+  return { object, wheels, beacons: [beaconRed, beaconBlue], door: (amount, leaf) => door.set(amount, leaf) };
 }
 
 /** A short city bus in an original teal-and-cream livery, doors on the kerb (left) side. */
@@ -518,7 +563,7 @@ function bus(): VehicleModel {
     doorMaterial("bus"),
   );
   object.add(door.mesh);
-  return { object, wheels, door: (amount) => door.set(amount) };
+  return { object, wheels, door: (amount, leaf) => door.set(amount, leaf) };
 }
 
 export function buildVehicleModel(kind: VehicleKind, color: number): VehicleModel {

@@ -60,6 +60,52 @@ const round = (p: Point): Point => ({ x: Math.round(p.x * 10) / 10, z: Math.roun
 /** Time allowed to ride from a to b: road distance is longer than the straight line. */
 const allow = (a: Point, b: Point, speed: number) => Math.round((distance(a, b) * 1.5) / speed + 25);
 
+/**
+ * A continuous path along one named road from near `start`: its pieces chained end to end
+ * (OSM splits a road at every junction), until it is `length` metres long or the road ends.
+ */
+export function roadPathOn(streets: Pick<WorldMap, "roads">, name: string, start: Point, length: number): Point[] {
+  const pieces = streets.roads.filter((r) => r.name === name);
+  const first = nearestRoadPoint({ roads: pieces }, start);
+  if (!first) return [start];
+  const used = new Set<Road>([first.road]);
+  // Begin at the start point and run to the far end of its piece.
+  const pts = first.road.points;
+  const fromStart = distance(pts[0]!, start) < distance(pts[pts.length - 1]!, start);
+  const path: Point[] = [round(first)];
+  const ordered = fromStart ? pts : [...pts].reverse();
+  // The segment the start lies on: carry on from its far point.
+  let index = 1;
+  let best = Infinity;
+  for (let i = 0; i < ordered.length - 1; i++) {
+    const a = ordered[i]!;
+    const b = ordered[i + 1]!;
+    const ab = distance(a, b);
+    const off = distance(a, first) + distance(first, b) - ab;
+    if (off < best) {
+      best = off;
+      index = i + 1;
+    }
+  }
+  for (const p of ordered.slice(index)) if (distance(p, path[path.length - 1]!) > 1) path.push(round(p));
+  let total = 0;
+  const measure = () => {
+    total = 0;
+    for (let i = 1; i < path.length; i++) total += distance(path[i]!, path[i - 1]!);
+  };
+  measure();
+  while (total < length) {
+    const end = path[path.length - 1]!;
+    const next = pieces.find((r) => !used.has(r) && (distance(r.points[0]!, end) < 3 || distance(r.points[r.points.length - 1]!, end) < 3));
+    if (!next) break;
+    used.add(next);
+    const points = distance(next.points[0]!, end) < 3 ? next.points : [...next.points].reverse();
+    for (const p of points.slice(1)) path.push(round(p));
+    measure();
+  }
+  return path;
+}
+
 export function buildStreetWar(city: WorldMap): StreetWar {
   const streets: Pick<WorldMap, "roads"> = { roads: city.roads.filter((r) => r.kind !== "footway" && r.kind !== "service") };
   const named = (name: string): Pick<WorldMap, "roads"> => ({ roads: streets.roads.filter((r) => r.name === name) });
@@ -93,51 +139,7 @@ export function buildStreetWar(city: WorldMap): StreetWar {
       return { ...spot, armed: weapon === "pistol" || weapon === "shotgun" || weapon === "smg", weapon, tint, ...(calm ? { calm } : {}), ...(health ? { health } : {}) };
     });
 
-  /**
-   * A continuous path along one named road from near `start`: its pieces chained end to end
-   * (OSM splits a road at every junction), until it is `length` metres long or the road ends.
-   */
-  const roadPath = (name: string, start: Point, length: number): Point[] => {
-    const pieces = streets.roads.filter((r) => r.name === name);
-    const first = nearestRoadPoint({ roads: pieces }, start);
-    if (!first) return [start];
-    const used = new Set<Road>([first.road]);
-    // Begin at the start point and run to the far end of its piece.
-    const pts = first.road.points;
-    const fromStart = distance(pts[0]!, start) < distance(pts[pts.length - 1]!, start);
-    const path: Point[] = [round(first)];
-    const ordered = fromStart ? pts : [...pts].reverse();
-    // The segment the start lies on: carry on from its far point.
-    let index = 1;
-    let best = Infinity;
-    for (let i = 0; i < ordered.length - 1; i++) {
-      const a = ordered[i]!;
-      const b = ordered[i + 1]!;
-      const ab = distance(a, b);
-      const off = distance(a, first) + distance(first, b) - ab;
-      if (off < best) {
-        best = off;
-        index = i + 1;
-      }
-    }
-    for (const p of ordered.slice(index)) if (distance(p, path[path.length - 1]!) > 1) path.push(round(p));
-    let total = 0;
-    const measure = () => {
-      total = 0;
-      for (let i = 1; i < path.length; i++) total += distance(path[i]!, path[i - 1]!);
-    };
-    measure();
-    while (total < length) {
-      const end = path[path.length - 1]!;
-      const next = pieces.find((r) => !used.has(r) && (distance(r.points[0]!, end) < 3 || distance(r.points[r.points.length - 1]!, end) < 3));
-      if (!next) break;
-      used.add(next);
-      const points = distance(next.points[0]!, end) < 3 ? next.points : [...next.points].reverse();
-      for (const p of points.slice(1)) path.push(round(p));
-      measure();
-    }
-    return path;
-  };
+  const roadPath = (name: string, start: Point, length: number): Point[] => roadPathOn(streets, name, start, length);
 
   const gang = (id: string) => GANGS.find((g) => g.id === id)!;
   const crews: Crew[] = [];
