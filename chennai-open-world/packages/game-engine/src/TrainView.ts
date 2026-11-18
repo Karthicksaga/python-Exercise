@@ -3,7 +3,8 @@
  * doors, roof, underframe and bogies; the end coaches have a driving cab), in an invented
  * livery (cream with a teal band and a saffron line), not a real railway's. Every coach of
  * every train near the player is one instance of one of two meshes, so all trains together are
- * two draw calls.
+ * two draw calls, plus one for the turning wheelsets of the coaches close to the player. The
+ * motor coaches (the middle ones) carry a pantograph up to the overhead wire.
  */
 import * as THREE from "three";
 import { MeshBuilder } from "./MeshBuilder";
@@ -13,6 +14,8 @@ export const COACH_LENGTH = 20.5;
 export const COACH_WIDTH = 3.2;
 /** Top of the roof above the rails. */
 export const COACH_HEIGHT = 3.9;
+/** Most wheelsets drawn turning at once (four per coach: three trains near the player). */
+const MAX_WHEELSETS = 48;
 
 const CREAM = 0xe9e1c8;
 const TEAL = 0x1f6f78;
@@ -28,9 +31,16 @@ export function coachGeometry(cab: boolean): THREE.BufferGeometry {
   const half = COACH_LENGTH / 2;
   const w = COACH_WIDTH / 2;
   const nose = cab ? 1.2 : 0;
-  // Underframe and two bogies with their wheels' bulk.
-  orientedBox(b, 0, 0, 0, half - 0.6, w - 0.35, 0.55, 1.15, UNDER);
-  for (const z of [-half + 3, half - 3]) orientedBox(b, 0, z, 0, 1.4, w - 0.25, 0.0, 0.85, 0x1b1b1c);
+  // Underframe, and two bogies: side frames outside the wheels (the wheelsets are drawn turning,
+  // `TrainView`), springs and a bolster under the body.
+  orientedBox(b, 0, 0, 0, half - 0.6, w - 0.35, 0.75, 1.15, UNDER);
+  for (const z of BOGIES) {
+    for (const x of [-1.06, 1.06]) {
+      orientedBox(b, x, z, 0, 1.45, 0.07, 0.32, 0.72, 0x1b1b1c);
+      orientedBox(b, x, z, 0, 0.35, 0.09, 0.72, 0.8, 0x3a3a3c, "top-sides");
+    }
+    orientedBox(b, 0, z, 0, 0.3, 1.0, 0.62, 0.78, 0x1b1b1c);
+  }
   // Body: lower teal band, saffron line, cream sides with the window band, roof.
   const bodyHalf = half - nose / 2;
   const bodyZ = nose / 2;
@@ -49,6 +59,7 @@ export function coachGeometry(cab: boolean): THREE.BufferGeometry {
       orientedBox(b, x, (z0 + z1) / 2, 0, (z1 - z0) / 2, 0.012, 2.3, 3.05, GLASS, "top-sides");
     }
   }
+  if (!cab) pantograph(b, half - 4.5);
   if (cab) {
     // Driving cab: a slightly lower, raked nose with a windscreen and lamps.
     orientedBox(b, 0, -half + nose / 2, 0, nose / 2, w - 0.1, 1.15, 3.35, CREAM);
@@ -59,6 +70,100 @@ export function coachGeometry(cab: boolean): THREE.BufferGeometry {
   }
   const geometry = b.build();
   if (!geometry) throw new Error("Coach geometry is empty.");
+  return geometry;
+}
+
+/** Bogie centres along a coach, and the axles either side of each (its own frame), metres. */
+const BOGIES = [-COACH_LENGTH / 2 + 3, COACH_LENGTH / 2 - 3];
+const AXLE_HALF = 1.1;
+/** Wheel radius (a new EMU wheel is about 0.95 m across). */
+export const WHEEL_RADIUS = 0.46;
+/** Height of the pantograph's head above the rails, just touching the contact wire (`RailView`). */
+export const PANTOGRAPH_TOP = 5.5;
+
+/** A bar of square section `t` from p to q (pantograph arms). */
+function bar(b: MeshBuilder, p: readonly [number, number, number], q: readonly [number, number, number], t: number, hex: number): void {
+  const d = new THREE.Vector3(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
+  const along = d.clone().normalize();
+  const side = new THREE.Vector3(1, 0, 0);
+  if (Math.abs(along.dot(side)) > 0.9) side.set(0, 0, 1);
+  const n1 = new THREE.Vector3().crossVectors(along, side).normalize().multiplyScalar(t / 2);
+  const n2 = new THREE.Vector3().crossVectors(along, n1).normalize().multiplyScalar(t / 2);
+  const c = new THREE.Color(hex);
+  const corners = [n1.clone().add(n2), n1.clone().sub(n2), n1.clone().negate().sub(n2), n1.clone().negate().add(n2)];
+  for (let k = 0; k < 4; k++) {
+    const a = corners[k]!;
+    const e = corners[(k + 1) % 4]!;
+    const n = a.clone().add(e).normalize();
+    const ids = [
+      b.vertex(p[0] + a.x, p[1] + a.y, p[2] + a.z, n.x, n.y, n.z, 0.5, 0.5, c.r, c.g, c.b),
+      b.vertex(p[0] + e.x, p[1] + e.y, p[2] + e.z, n.x, n.y, n.z, 0.5, 0.5, c.r, c.g, c.b),
+      b.vertex(q[0] + e.x, q[1] + e.y, q[2] + e.z, n.x, n.y, n.z, 0.5, 0.5, c.r, c.g, c.b),
+      b.vertex(q[0] + a.x, q[1] + a.y, q[2] + a.z, n.x, n.y, n.z, 0.5, 0.5, c.r, c.g, c.b),
+    ];
+    b.quad(ids[0]!, ids[1]!, ids[2]!, ids[3]!);
+  }
+}
+
+/** A raised diamond-style pantograph on the roof at `z` (its own frame): base on insulators, two arms, the collector head. */
+function pantograph(b: MeshBuilder, z: number): void {
+  const roof = COACH_HEIGHT;
+  const base = roof + 0.32;
+  for (const x of [-0.55, 0.55]) for (const dz of [-0.6, 0.6]) orientedBox(b, x, z + dz, 0, 0.07, 0.07, roof - 0.02, base, 0x7b4a2c, "top-sides");
+  orientedBox(b, 0, z, 0, 0.75, 0.62, base, base + 0.08, 0x3d4144);
+  const knee = PANTOGRAPH_TOP - 0.62;
+  const head = PANTOGRAPH_TOP - 0.06;
+  for (const x of [-0.42, 0.42]) {
+    bar(b, [x, base + 0.08, z - 0.7], [x * 0.7, knee, z + 0.55], 0.06, 0x8a8f93);
+    bar(b, [x * 0.7, knee, z + 0.55], [x * 0.35, head, z - 0.1], 0.05, 0x8a8f93);
+  }
+  // Collector head: a bow across, with horns at its ends.
+  orientedBox(b, 0, z - 0.1, 0, 0.08, 0.85, head, head + 0.06, 0x2b2b2b);
+  for (const x of [-0.95, 0.95]) bar(b, [x * 0.9, head + 0.03, z - 0.1], [x * 1.08, head - 0.18, z - 0.1], 0.04, 0x2b2b2b);
+}
+
+/** A wheelset: axle and two wheels (each a 10-sided disc with a pale stripe, so its turning shows), around the X axis at the origin. */
+function wheelsetGeometry(): THREE.BufferGeometry {
+  const b = new MeshBuilder();
+  const sides = 10;
+  const r = WHEEL_RADIUS;
+  const gauge = 1.676 / 2;
+  const disc = (x0: number, x1: number, radius: number, hex: number) => {
+    const c = new THREE.Color(hex);
+    for (const [x, nx] of [[x0, -1], [x1, 1]] as const) {
+      const centre = b.vertex(x, 0, 0, nx, 0, 0, 0.5, 0.5, c.r, c.g, c.b);
+      const rim: number[] = [];
+      for (let k = 0; k < sides; k++) {
+        const a = (k / sides) * Math.PI * 2;
+        rim.push(b.vertex(x, Math.cos(a) * radius, Math.sin(a) * radius, nx, 0, 0, 0.5, 0.5, c.r, c.g, c.b));
+      }
+      for (let k = 0; k < sides; k++) {
+        if (nx > 0) b.triangle(centre, rim[k]!, rim[(k + 1) % sides]!);
+        else b.triangle(centre, rim[(k + 1) % sides]!, rim[k]!);
+      }
+    }
+    for (let k = 0; k < sides; k++) {
+      const a0 = (k / sides) * Math.PI * 2;
+      const a1 = ((k + 1) / sides) * Math.PI * 2;
+      const n0 = [Math.cos(a0), Math.sin(a0)] as const;
+      const ids = [
+        b.vertex(x0, n0[0] * radius, n0[1] * radius, 0, n0[0], n0[1], 0.5, 0.5, c.r * 0.8, c.g * 0.8, c.b * 0.8),
+        b.vertex(x1, n0[0] * radius, n0[1] * radius, 0, n0[0], n0[1], 0.5, 0.5, c.r * 0.8, c.g * 0.8, c.b * 0.8),
+        b.vertex(x1, Math.cos(a1) * radius, Math.sin(a1) * radius, 0, Math.cos(a1), Math.sin(a1), 0.5, 0.5, c.r * 0.8, c.g * 0.8, c.b * 0.8),
+        b.vertex(x0, Math.cos(a1) * radius, Math.sin(a1) * radius, 0, Math.cos(a1), Math.sin(a1), 0.5, 0.5, c.r * 0.8, c.g * 0.8, c.b * 0.8),
+      ];
+      b.quad(ids[0]!, ids[1]!, ids[2]!, ids[3]!);
+    }
+  };
+  for (const s of [-1, 1]) {
+    disc(s > 0 ? gauge - 0.03 : -gauge - 0.11, s > 0 ? gauge + 0.11 : -gauge + 0.03, r, 0x3b3a38);
+    // The stripe across the wheel's outer face.
+    const x = s * (gauge + 0.115);
+    orientedBox(b, x, 0, 0, r * 0.85, 0.008, -0.05, 0.05, 0xbdb7a8, "top-sides");
+  }
+  disc(-gauge, gauge, 0.09, 0x2a2a2a);
+  const geometry = b.build();
+  if (!geometry) throw new Error("Wheelset geometry is empty.");
   return geometry;
 }
 
@@ -142,12 +247,18 @@ export interface CoachPose {
   readonly z: number;
   readonly yaw: number;
   readonly cab: boolean;
+  /** Metres the train has run (turns the wheels); without it the coach is drawn without turning wheelsets. */
+  readonly roll?: number;
 }
 
 export class TrainView {
   readonly object = new THREE.Group();
   private readonly cabs: THREE.InstancedMesh;
   private readonly trailers: THREE.InstancedMesh;
+  /** Turning wheelsets for the coaches close to the player (those placed with `roll`). */
+  private readonly wheels: THREE.InstancedMesh;
+  private readonly spin = new THREE.Quaternion();
+  private readonly axis = new THREE.Vector3(1, 0, 0);
   private readonly material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.1 });
   private readonly matrix = new THREE.Matrix4();
   private readonly position = new THREE.Vector3();
@@ -165,7 +276,17 @@ export class TrainView {
       mesh.frustumCulled = false;
       this.object.add(mesh);
     }
+    this.wheels = new THREE.InstancedMesh(wheelsetGeometry(), this.material, MAX_WHEELSETS);
+    this.wheels.count = 0;
+    this.wheels.frustumCulled = false;
+    this.wheels.name = "wheelsets";
+    this.object.add(this.wheels);
     this.object.name = "trains";
+  }
+
+  /** Wheelsets drawn now (for tests). */
+  get wheelsets(): number {
+    return this.wheels.count;
   }
 
   /** Draw these coaches this frame (extra ones beyond `maxCoaches` are left out). */
@@ -183,6 +304,30 @@ export class TrainView {
       if (coach.cab) cabs++;
       else trailers++;
     }
+    // Wheelsets: four per coach placed with `roll`, turned by the distance run.
+    let wheels = 0;
+    for (const coach of coaches) {
+      if (coach.roll === undefined) continue;
+      const cos = Math.cos(coach.yaw);
+      const sin = Math.sin(coach.yaw);
+      this.rotation.setFromAxisAngle(this.up, coach.yaw);
+      // Rolling towards the coach's front (-Z) turns the top of each wheel forwards. (A coach drawn
+      // facing backwards, the trailing cab, is given a negative roll by the caller.)
+      this.spin.setFromAxisAngle(this.axis, -coach.roll / WHEEL_RADIUS);
+      const turn = this.rotation.clone().multiply(this.spin);
+      for (const bogie of BOGIES) {
+        for (const axle of [-AXLE_HALF, AXLE_HALF]) {
+          if (wheels >= MAX_WHEELSETS) break;
+          const z = bogie + axle;
+          this.position.set(coach.x + z * sin, RAIL_TOP + WHEEL_RADIUS, coach.z + z * cos);
+          this.matrix.compose(this.position, turn, this.scale);
+          this.wheels.setMatrixAt(wheels++, this.matrix);
+        }
+      }
+    }
+    this.wheels.count = wheels;
+    this.wheels.visible = wheels > 0;
+    this.wheels.instanceMatrix.needsUpdate = true;
     this.cabs.count = cabs;
     this.trailers.count = trailers;
     this.cabs.instanceMatrix.needsUpdate = true;
@@ -192,6 +337,7 @@ export class TrainView {
   }
 
   dispose(): void {
+    this.wheels.geometry.dispose();
     this.cabs.geometry.dispose();
     this.trailers.geometry.dispose();
     this.material.dispose();

@@ -1,17 +1,19 @@
 /**
- * The railway as drawn: ballast, sleepers and rails along every track, and platforms with
- * station name boards, built in 250 m cells and only near the player.
+ * The railway as drawn: ballast, sleepers and rails along every track, overhead electric wires
+ * on masts along the running lines, and the stations (`StationKit`), built in 250 m cells and
+ * only near the player.
  *
- * Each cell is at most two draw calls: one merged mesh with vertex colours for ballast,
- * sleepers, rails and platforms, and one for the name boards (a shared atlas texture). Sleepers
- * are drawn only in cells close to the player. The look is estimated (OSM maps where tracks
- * run, not what they look like): grey ballast, concrete sleepers, platforms 0.9 m high with a
- * yellow safety edge and a short shelter, and an invented board design (blue with white
- * English and Tamil names and a yellow rule), not the real railway's signage.
+ * Each cell is at most two draw calls: one merged mesh with vertex colours for the track, wires
+ * and stations, and one for the boards and signs (a shared atlas texture). Sleepers and the
+ * stations' small parts are drawn only in cells close to the player. The look is estimated (OSM
+ * maps where tracks run, not what they look like): grey ballast, concrete sleepers, overhead
+ * wires on masts, platforms 0.9 m high, and invented board designs in the style of Chennai's
+ * yellow three-language name boards, not the real railway's signage.
  */
 import * as THREE from "three";
-import { PLATFORM_EDGE, PLATFORM_HEIGHT, PLATFORM_LENGTH, RailPath, platformOffset, type RailFile, type RailLineData, type RailStopData } from "@cow/rail";
+import { RailNetwork, RailPath, stationPlatforms, type RailFile, type StationPlatform } from "@cow/rail";
 import { MeshBuilder } from "./MeshBuilder";
+import { buildStation, type AtlasRows } from "./StationKit";
 
 export const RAIL_CELL = 250;
 /** Height of the top of the rails above the ground (trains' wheels sit here). */
@@ -20,11 +22,12 @@ const BALLAST_TOP = 0.16;
 const GAUGE = 1.676; // Indian broad gauge, metres between rails
 const SLEEPER_SPACING = 0.9; // estimated (real spacing is about 0.6 m; wider costs fewer triangles)
 const PIECE = 20; // track is cut into pieces of at most this length before it is filed by cell
-/** Name-board atlas: one row per station. */
+/** Board atlas: one row per station, then the shared signs. */
 const BOARD_W = 512;
-const BOARD_H = 128;
-/** Font family the station-name font is registered under (`loadStationFont`). */
+const BOARD_H = 192;
+/** Font families the station-name fonts are registered under (`loadStationFont`). */
 export const STATION_FONT = "CowStationTamil";
+export const STATION_FONT_HI = "CowStationHindi";
 
 const color = new THREE.Color();
 
@@ -100,20 +103,14 @@ interface TrackPiece {
   readonly kind: "main" | "service";
 }
 
-interface PlatformPiece {
-  readonly line: RailLineData;
-  readonly path: RailPath;
-  readonly stop: RailStopData;
-  /** Row of the station in the board atlas. */
-  readonly row: number;
-}
 
 interface Cell {
   readonly key: string;
   readonly x: number;
   readonly z: number;
   readonly tracks: TrackPiece[];
-  readonly platforms: PlatformPiece[];
+  readonly platforms: StationPlatform[];
+  readonly masts: Mast[];
   view: { group: THREE.Group; detailed: boolean } | null;
 }
 
@@ -140,55 +137,192 @@ function cellKey(x: number, z: number): string {
   return `${Math.floor(x / RAIL_CELL)},${Math.floor(z / RAIL_CELL)}`;
 }
 
-/** Draws the station names into one canvas (null where there is no DOM, as in unit tests). */
-function boardAtlas(names: ReadonlyArray<{ name: string; nameTa: string }>, tamilFont: boolean): THREE.CanvasTexture | null {
+/** Draws the station boards and shared signs into one canvas (null where there is no DOM, as in unit tests). */
+function stationAtlas(names: ReadonlyArray<{ id: string; name: string; nameTa: string; nameHi?: string }>, fonts: { tamil: boolean; hindi: boolean }): { texture: THREE.CanvasTexture; rows: AtlasRows } | null {
   if (typeof document === "undefined") return null;
+  const extra = ["pf1", "pf2", "clock", "office", "tea", "exit"] as const;
+  const count = names.length + extra.length;
   const canvas = document.createElement("canvas");
   canvas.width = BOARD_W;
-  canvas.height = BOARD_H * Math.max(1, names.length);
+  canvas.height = BOARD_H * count;
   const g = canvas.getContext("2d");
   if (!g) return null;
-  names.forEach(({ name, nameTa }, row) => {
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  const fit = (text: string, font: string, size: number, cx: number, cy: number, width: number) => {
+    let px = size;
+    g.font = `700 ${px}px ${font}`;
+    while (px > 12 && g.measureText(text).width > width) {
+      px -= 2;
+      g.font = `700 ${px}px ${font}`;
+    }
+    g.fillText(text, cx, cy);
+  };
+  const sans = "system-ui,sans-serif";
+  // Station name boards: yellow with black lettering, Tamil above Hindi above English (as in Chennai).
+  names.forEach(({ name, nameTa, nameHi }, row) => {
     const y = row * BOARD_H;
-    g.fillStyle = "#1d3c78";
+    g.fillStyle = "#f1c40f";
     g.fillRect(0, y, BOARD_W, BOARD_H);
-    g.fillStyle = "#f2c230";
-    g.fillRect(0, y + BOARD_H / 2 - 3, BOARD_W, 6);
+    g.strokeStyle = "#151515";
+    g.lineWidth = 8;
+    g.strokeRect(4, y + 4, BOARD_W - 8, BOARD_H - 8);
+    g.fillStyle = "#111111";
+    const lines: Array<[string, string]> = [];
+    if (fonts.tamil && nameTa) lines.push([nameTa, `"${STATION_FONT}"`]);
+    if (fonts.hindi && nameHi) lines.push([nameHi, `"${STATION_FONT_HI}"`]);
+    lines.push([name.toUpperCase(), sans]);
+    const band = (BOARD_H - 20) / lines.length;
+    lines.forEach(([text, font], i) => fit(text, font, Math.min(52, band * 0.8), BOARD_W / 2, y + 10 + band * (i + 0.5), BOARD_W - 36));
+  });
+  const rowOf = (k: (typeof extra)[number]) => names.length + extra.indexOf(k);
+  // Platform numbers: a white figure on blue in the left square of the row (the board uses that part).
+  for (const n of [1, 2]) {
+    const y = rowOf(n === 1 ? "pf1" : "pf2") * BOARD_H;
+    g.fillStyle = "#1f3f8f";
+    g.fillRect(0, y, BOARD_H, BOARD_H);
     g.strokeStyle = "#ffffff";
     g.lineWidth = 6;
-    g.strokeRect(3, y + 3, BOARD_W - 6, BOARD_H - 6);
+    g.strokeRect(6, y + 6, BOARD_H - 12, BOARD_H - 12);
     g.fillStyle = "#ffffff";
-    g.textAlign = "center";
-    g.textBaseline = "middle";
-    const fit = (text: string, font: string, size: number, cy: number) => {
-      let px = size;
-      g.font = `700 ${px}px ${font}`;
-      while (px > 14 && g.measureText(text).width > BOARD_W - 30) {
-        px -= 2;
-        g.font = `700 ${px}px ${font}`;
-      }
-      g.fillText(text, BOARD_W / 2, cy);
-    };
-    if (tamilFont && nameTa) fit(nameTa, `"${STATION_FONT}"`, 40, y + BOARD_H * 0.27);
-    fit(name.toUpperCase(), "system-ui,sans-serif", 40, y + (tamilFont && nameTa ? BOARD_H * 0.75 : BOARD_H / 2));
-  });
+    fit("PLATFORM", sans, 22, BOARD_H / 2, y + 34, BOARD_H - 24);
+    fit(String(n), sans, 110, BOARD_H / 2, y + 118, BOARD_H - 24);
+  }
+  {
+    // A clock face (the hands are drawn live, `StationLife`).
+    const y = rowOf("clock") * BOARD_H;
+    const r = BOARD_H / 2;
+    g.fillStyle = "#2a2a2a";
+    g.fillRect(0, y, BOARD_H, BOARD_H);
+    g.fillStyle = "#fbfaf4";
+    g.beginPath();
+    g.arc(r, y + r, r - 8, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = "#202020";
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      g.lineWidth = k % 3 === 0 ? 8 : 4;
+      g.beginPath();
+      g.moveTo(r + Math.sin(a) * (r - 14), y + r - Math.cos(a) * (r - 14));
+      g.lineTo(r + Math.sin(a) * (r - 34), y + r - Math.cos(a) * (r - 34));
+      g.stroke();
+    }
+  }
+  const sign = (k: (typeof extra)[number], bg: string, fg: string, text: string) => {
+    const y = rowOf(k) * BOARD_H;
+    g.fillStyle = bg;
+    g.fillRect(0, y, BOARD_W, BOARD_H);
+    g.fillStyle = fg;
+    fit(text, sans, 96, BOARD_W / 2, y + BOARD_H / 2, BOARD_W - 40);
+  };
+  sign("office", "#1f3f8f", "#ffffff", "BOOKING OFFICE");
+  sign("tea", "#f6e7c1", "#7a1f12", "TEA · COFFEE · SNACKS");
+  sign("exit", "#1d6b3a", "#ffffff", "WAY OUT");
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
-  return texture;
+  const ids = new Map(names.map((n, i) => [n.id, i]));
+  const rows: AtlasRows = {
+    count,
+    station: (id) => ids.get(id) ?? 0,
+    platform: [rowOf("pf1"), rowOf("pf2")],
+    clock: rowOf("clock"),
+    office: rowOf("office"),
+    tea: rowOf("tea"),
+    exit: rowOf("exit"),
+  };
+  return { texture, rows };
 }
 
-/** Registers the station-name font (a subset of Noto Sans Tamil Bold). Resolves false if it cannot load. */
-export async function loadStationFont(url: string): Promise<boolean> {
+/** An overhead-wire mast beside a running line: where it stands, and the way to the track it carries. */
+interface Mast {
+  readonly x: number;
+  readonly z: number;
+  /** Unit vector from the mast to the track's centre. */
+  readonly toX: number;
+  readonly toZ: number;
+}
+
+/** Overhead wires: contact wire and catenary heights above the ground, mast spacing and offset from the track (estimated). */
+const CONTACT_Y = RAIL_TOP + 5.5;
+const MESSENGER_Y = RAIL_TOP + 6.4;
+const MAST_SPACING = 54;
+const MAST_OFFSET = 3.1;
+/** A mast needs this much room from any other track's centre, metres (clear of passing trains). */
+const MAST_CLEAR = 2.6;
+
+/**
+ * Masts every `MAST_SPACING` metres along each running line, on whichever side has room (no
+ * other track within reach); where both sides are crowded (a middle track in a yard), none: the
+ * wires there hang from the neighbours' masts in reality.
+ */
+function mastSpots(file: RailFile): Mast[] {
+  // Every track sampled every 2 m into a 10 m grid, to find neighbours fast.
+  const grid = new Map<string, Array<{ x: number; z: number; id: number }>>();
+  const key = (x: number, z: number) => `${Math.floor(x / 10)},${Math.floor(z / 10)}`;
+  const paths = file.tracks.map((t) => ({ track: t, path: RailPath.fromFlat(t.points) }));
+  for (const { track, path } of paths) {
+    for (let s = 0; s <= path.length; s += 2) {
+      const p = path.at(s);
+      const k = key(p.x, p.z);
+      let list = grid.get(k);
+      if (!list) grid.set(k, (list = []));
+      list.push({ x: p.x, z: p.z, id: track.id });
+    }
+  }
+  const clear = (x: number, z: number, own: number) => {
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        for (const q of grid.get(key(x + dx * 10, z + dz * 10)) ?? []) {
+          if (q.id !== own && Math.hypot(q.x - x, q.z - z) < MAST_CLEAR) return false;
+        }
+      }
+    }
+    return true;
+  };
+  const out: Mast[] = [];
+  for (const { track, path } of paths) {
+    if (track.kind !== "main") continue;
+    for (let s = MAST_SPACING / 2; s < path.length; s += MAST_SPACING) {
+      const centre = path.at(s);
+      for (const side of [1, -1]) {
+        const p = path.beside(s, side * MAST_OFFSET);
+        if (!clear(p.x, p.z, track.id)) continue;
+        const d = Math.hypot(centre.x - p.x, centre.z - p.z) || 1;
+        out.push({ x: p.x, z: p.z, toX: (centre.x - p.x) / d, toZ: (centre.z - p.z) / d });
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+/** A mast: a tall steel post with two cantilever arms out over the track. */
+function drawMast(b: MeshBuilder, mast: Mast, detailed: boolean): void {
+  const yaw = Math.atan2(-mast.toX, -mast.toZ);
+  orientedBox(b, mast.x, mast.z, yaw, 0.14, 0.11, 0, MESSENGER_Y + 0.5, 0x6a6e70, detailed ? "all" : "top-sides");
+  const reach = MAST_OFFSET + 0.2;
+  const cx = mast.x + mast.toX * (reach / 2);
+  const cz = mast.z + mast.toZ * (reach / 2);
+  orientedBox(b, cx, cz, yaw, reach / 2, 0.04, MESSENGER_Y + 0.05, MESSENGER_Y + 0.15, 0x6a6e70, "top-sides");
+  if (detailed) {
+    orientedBox(b, cx, cz, yaw, reach / 2, 0.03, CONTACT_Y + 0.08, CONTACT_Y + 0.14, 0x6a6e70, "top-sides");
+    // Insulators where the arms meet the post (brown porcelain).
+    for (const y of [MESSENGER_Y + 0.1, CONTACT_Y + 0.11]) orientedBox(b, mast.x + mast.toX * 0.35, mast.z + mast.toZ * 0.35, yaw, 0.12, 0.07, y - 0.07, y + 0.07, 0x7b4a2c, "top-sides");
+  }
+}
+
+/** Registers a station-name font (subsets of Noto Sans Tamil / Devanagari Bold). Resolves false if it cannot load. */
+export async function loadStationFont(url: string, family = STATION_FONT): Promise<boolean> {
   try {
     if (typeof FontFace === "undefined" || typeof document === "undefined") return false;
-    const face = new FontFace(STATION_FONT, `url(${url})`, { weight: "700" });
+    const face = new FontFace(family, `url(${url})`, { weight: "700" });
     const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Station font timed out")), 4000));
     await Promise.race([face.load(), timeout]);
     document.fonts.add(face);
     return true;
   } catch (error) {
-    console.warn("Tamil station font unavailable; boards are drawn in English only.", error);
+    console.warn(`Station font ${family} unavailable; boards are drawn without it.`, error);
     return false;
   }
 }
@@ -200,6 +334,8 @@ export interface RailViewOptions {
   readonly detailDistance: number;
   /** Draw Tamil names (the station font loaded). */
   readonly tamil: boolean;
+  /** Draw Hindi names (the Devanagari station font loaded). */
+  readonly hindi?: boolean;
 }
 
 export class RailView {
@@ -207,24 +343,24 @@ export class RailView {
   private readonly cells = new Map<string, Cell>();
   private readonly material: THREE.MeshStandardMaterial;
   private readonly boardMaterial: THREE.MeshStandardMaterial | null;
-  private readonly rows = new Map<string, number>();
-  private readonly atlasRows: number;
+  private readonly atlas: AtlasRows | null;
+  /** Every drawn platform and the station round it (the game's crowds and boards use the same layout). */
+  readonly platforms: readonly StationPlatform[];
 
   constructor(file: RailFile, private readonly options: RailViewOptions) {
     this.object.name = "railway";
     this.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0, side: THREE.DoubleSide });
-    const names = file.stations.map((s) => ({ name: s.name, nameTa: s.nameTa }));
-    file.stations.forEach((s, i) => this.rows.set(s.id, i));
-    this.atlasRows = Math.max(1, names.length);
-    const atlas = boardAtlas(names, options.tamil);
-    this.boardMaterial = atlas ? new THREE.MeshStandardMaterial({ map: atlas, roughness: 0.6, side: THREE.DoubleSide }) : null;
+    const atlas = stationAtlas(file.stations, { tamil: options.tamil, hindi: options.hindi ?? false });
+    this.atlas = atlas?.rows ?? null;
+    this.boardMaterial = atlas ? new THREE.MeshStandardMaterial({ map: atlas.texture, roughness: 0.6, side: THREE.DoubleSide }) : null;
+    this.platforms = stationPlatforms(new RailNetwork(file));
 
     const cell = (x: number, z: number): Cell => {
       const key = cellKey(x, z);
       let c = this.cells.get(key);
       if (!c) {
         const [col, row] = key.split(",").map(Number) as [number, number];
-        c = { key, x: (col + 0.5) * RAIL_CELL, z: (row + 0.5) * RAIL_CELL, tracks: [], platforms: [], view: null };
+        c = { key, x: (col + 0.5) * RAIL_CELL, z: (row + 0.5) * RAIL_CELL, tracks: [], platforms: [], masts: [], view: null };
         this.cells.set(key, c);
       }
       return c;
@@ -238,15 +374,12 @@ export class RailView {
         cell((a.x + b.x) / 2, (a.z + b.z) / 2).tracks.push(piece);
       }
     }
-    for (const line of file.lines) {
-      const path = RailPath.fromFlat(line.points);
-      for (const stop of line.stops) {
-        // An island platform is drawn once, for the first direction's stop.
-        if (stop.twin) continue;
-        const centre = path.beside(stop.s, stop.side * platformOffset(stop));
-        cell(centre.x, centre.z).platforms.push({ line, path, stop, row: this.rows.get(stop.id) ?? 0 });
-      }
+    // An island platform is drawn once, for the first direction's stop (`stationPlatforms`).
+    for (const platform of this.platforms) {
+      const centre = platform.line.path.beside(platform.stop.s, (platform.near + platform.far) / 2);
+      cell(centre.x, centre.z).platforms.push(platform);
     }
+    for (const mast of mastSpots(file)) cell(mast.x, mast.z).masts.push(mast);
   }
 
   /** Cells drawn now (for tests and the debug snapshot). */
@@ -285,7 +418,8 @@ export class RailView {
     const b = new MeshBuilder();
     for (const piece of c.tracks) this.track(b, piece, detailed);
     const boards = new MeshBuilder();
-    for (const p of c.platforms) this.platform(b, boards, p);
+    for (const mast of c.masts) drawMast(b, mast, detailed);
+    for (const p of c.platforms) buildStation(b, this.boardMaterial ? boards : null, p, this.atlas, detailed);
     const geometry = b.build();
     if (geometry) {
       const mesh = new THREE.Mesh(geometry, this.material);
@@ -336,71 +470,10 @@ export class RailView {
       const oz = rz * side * (GAUGE / 2);
       orientedBox(b, (a.x + c.x) / 2 + ox, (a.z + c.z) / 2 + oz, yaw, length / 2 + 0.02, 0.04, BALLAST_TOP + 0.04, RAIL_TOP, 0x5d5953, "top-sides");
     }
-  }
-
-  private platform(b: MeshBuilder, boards: MeshBuilder, p: PlatformPiece): void {
-    const { path, stop } = p;
-    const pose = path.at(stop.s);
-    const width = stop.width;
-    const across = stop.side * platformOffset(stop);
-    const centre = path.beside(stop.s, across);
-    const half = PLATFORM_LENGTH / 2;
-    // Concrete deck, then the yellow safety line along the track edge.
-    orientedBox(b, centre.x, centre.z, pose.yaw, half, width / 2, -0.05, PLATFORM_HEIGHT, 0xb7b0a3);
-    if (width > 6) {
-      // An island platform: a safety line along the other track's edge too.
-      const far = path.beside(stop.s, stop.side * (PLATFORM_EDGE + width - 0.25));
-      orientedBox(b, far.x, far.z, pose.yaw, half, 0.22, PLATFORM_HEIGHT - 0.02, PLATFORM_HEIGHT + 0.01, 0xe8c12c, "top-sides");
-    }
-    const edge = path.beside(stop.s, stop.side * (PLATFORM_EDGE + 0.25));
-    orientedBox(b, edge.x, edge.z, pose.yaw, half, 0.22, PLATFORM_HEIGHT - 0.02, PLATFORM_HEIGHT + 0.01, 0xe8c12c, "top-sides");
-    // Steps down at both ends (three 0.3 m steps; the player climbs 0.35 m at a time).
-    for (const end of [-1, 1]) {
-      for (let k = 0; k < 3; k++) {
-        const along = stop.s + end * (half + 0.4 + k * 0.8);
-        const step = path.beside(along, across);
-        orientedBox(b, step.x, step.z, pose.yaw, 0.4, width / 2, -0.05, PLATFORM_HEIGHT - 0.3 * (k + 1), 0xa9a296);
-      }
-    }
-    // A short shelter in the middle: posts on the far side, a sloping-looking flat roof.
-    const roofCentre = path.beside(stop.s, across);
-    for (const u of [-16, -8, 0, 8, 16]) {
-      // On an island the posts stand down the middle; on a side platform at its back.
-      const post = path.beside(stop.s + u, width > 6 ? across : stop.side * (PLATFORM_EDGE + width - 0.6));
-      orientedBox(b, post.x, post.z, pose.yaw, 0.1, 0.1, PLATFORM_HEIGHT, PLATFORM_HEIGHT + 3.2, 0x4a6b5c);
-    }
-    orientedBox(b, roofCentre.x, roofCentre.z, pose.yaw, 18, width / 2 + 0.3, PLATFORM_HEIGHT + 3.2, PLATFORM_HEIGHT + 3.35, 0x6b8a7a);
-    // Name boards on two posts, near each end, facing the track.
-    for (const u of [-34, 34]) {
-      const at = path.beside(stop.s + u, across);
-      for (const w of [-1.1, 1.1]) {
-        const leg = path.beside(stop.s + u + w, across);
-        orientedBox(b, leg.x, leg.z, pose.yaw, 0.05, 0.05, PLATFORM_HEIGHT, PLATFORM_HEIGHT + 2.6, 0x30343a);
-      }
-      this.board(boards, at.x, at.z, pose.yaw, PLATFORM_HEIGHT + 1.9, p.row);
-    }
-  }
-
-  /** A board 2.6 m × 0.65 m along the track at (x, z), its face showing the station's atlas row. */
-  private board(b: MeshBuilder, x: number, z: number, yaw: number, y: number, row: number): void {
-    const fx = -Math.sin(yaw);
-    const fz = -Math.cos(yaw);
-    const w = 1.3;
-    const h = 0.65;
-    const v0 = 1 - ((row + 1) * BOARD_H) / (BOARD_H * this.atlasRows);
-    const v1 = 1 - (row * BOARD_H) / (BOARD_H * this.atlasRows);
-    const nx = -fz;
-    const nz = fx;
-    // Readable from both faces: two quads back to back, each with the text the right way round.
-    for (const facing of [1, -1]) {
-      const ids = [
-        b.vertex(x - fx * w * facing + nx * 0.02 * facing, y - h / 2, z - fz * w * facing + nz * 0.02 * facing, nx * facing, 0, nz * facing, 0, v0),
-        b.vertex(x + fx * w * facing + nx * 0.02 * facing, y - h / 2, z + fz * w * facing + nz * 0.02 * facing, nx * facing, 0, nz * facing, 1, v0),
-        b.vertex(x + fx * w * facing + nx * 0.02 * facing, y + h / 2, z + fz * w * facing + nz * 0.02 * facing, nx * facing, 0, nz * facing, 1, v1),
-        b.vertex(x - fx * w * facing + nx * 0.02 * facing, y + h / 2, z - fz * w * facing + nz * 0.02 * facing, nx * facing, 0, nz * facing, 0, v1),
-      ];
-      b.quad(ids[0]!, ids[1]!, ids[2]!, ids[3]!);
-    }
+    if (service) return;
+    // Overhead wires over the running lines: the contact wire the pantographs touch, and the catenary above it.
+    orientedBox(b, (a.x + c.x) / 2, (a.z + c.z) / 2, yaw, length / 2 + 0.02, 0.014, CONTACT_Y - 0.012, CONTACT_Y + 0.012, 0x2e2a26, "top-sides");
+    orientedBox(b, (a.x + c.x) / 2, (a.z + c.z) / 2, yaw, length / 2 + 0.02, 0.012, MESSENGER_Y - 0.01, MESSENGER_Y + 0.01, 0x2e2a26, "top-sides");
   }
 
   dispose(): void {

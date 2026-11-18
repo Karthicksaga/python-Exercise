@@ -54,6 +54,20 @@ describe("RailView", () => {
     expect(meshes(view.object)).toBe(0);
   });
 
+  it("builds a whole station (shelter, FOB, booking office, furniture) for a few thousand triangles", () => {
+    const near = new RailView(file, { drawDistance: 400, detailDistance: 200, tamil: false });
+    const bare = new RailView({ ...file, lines: [{ ...file.lines[0]!, stops: [] }] }, { drawDistance: 400, detailDistance: 200, tamil: false });
+    for (let i = 0; i < 10; i++) {
+      near.update(0, 1000, 10);
+      bare.update(0, 1000, 10);
+    }
+    const station = triangles(near.object) - triangles(bare.object);
+    console.log(`station kit, detailed: ${station} triangles`);
+    expect(station).toBeGreaterThan(1500);
+    expect(station).toBeLessThan(9000);
+    expect(near.platforms).toHaveLength(1);
+  });
+
   it("keeps the triangle count of a station's surroundings modest", () => {
     const view = new RailView(file, { drawDistance: 400, detailDistance: 200, tamil: false });
     for (let i = 0; i < 10; i++) view.update(0, 1000, 10);

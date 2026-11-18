@@ -265,6 +265,49 @@ export class Sound {
     this.tone({ frequency: 90, duration: 0.08, volume: 0.3 });
   }
 
+  /**
+   * An electric train's horn as it pulls away: two reedy notes a minor third apart, held, then
+   * a short second blast. Quieter with distance.
+   * @param level 1 beside the train, towards 0 far away
+   */
+  trainHorn(level = 1): void {
+    const v = Math.max(0, Math.min(1, level));
+    if (v < 0.03) return;
+    for (const [frequency, delay, duration] of [[311, 0, 0.9], [370, 0, 0.9], [311, 1.1, 0.35], [370, 1.1, 0.35]] as const) {
+      this.tone({ frequency, duration, type: "sawtooth", volume: 0.07 * v, delay });
+    }
+  }
+
+  /**
+   * The station's announcement: a three-note chime, then a murmur of a voice through the
+   * platform's speakers (filtered tones rising and falling like syllables; no words).
+   */
+  stationChime(): void {
+    [659, 523, 784].forEach((frequency, i) => this.tone({ frequency, duration: 0.7, type: "sine", volume: 0.16, delay: i * 0.42 }));
+    const { context, master } = this;
+    if (!context || !master) return;
+    const start = context.currentTime + 1.6;
+    const voice = context.createOscillator();
+    voice.type = "sawtooth";
+    const formant = context.createBiquadFilter();
+    formant.type = "bandpass";
+    formant.Q.value = 4;
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0.0001, start);
+    // Twelve "syllables": pitch and vowel colour wander, loudness pulses.
+    for (let k = 0; k < 12; k++) {
+      const t = start + k * 0.19;
+      voice.frequency.setValueAtTime(150 + Math.sin(k * 1.7) * 25, t);
+      formant.frequency.setValueAtTime(700 + Math.sin(k * 2.3) * 350, t);
+      gain.gain.linearRampToValueAtTime(0.05, t + 0.05);
+      gain.gain.linearRampToValueAtTime(0.012, t + 0.17);
+    }
+    gain.gain.linearRampToValueAtTime(0.0001, start + 12 * 0.19 + 0.1);
+    voice.connect(formant).connect(gain).connect(master);
+    voice.start(start);
+    voice.stop(start + 12 * 0.19 + 0.2);
+  }
+
   horn(): void {
     this.tone({ frequency: 415, duration: 0.35, type: "square", volume: 0.16 });
     this.tone({ frequency: 520, duration: 0.35, type: "square", volume: 0.12 });

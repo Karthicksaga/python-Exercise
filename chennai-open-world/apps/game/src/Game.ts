@@ -10,7 +10,7 @@ import { Combat, PLAYER_MAX_HEALTH, hitPenalty, isPoliceGroup, type CasualtyStat
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
-import { HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, type HumanFigure } from "@cow/player";
+import { CrowdFigures, HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, type HumanFigure } from "@cow/player";
 import { Hud, Minimap, TouchControls, type MinimapMarker } from "@cow/ui";
 import { Gearbox, Vehicle, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
 import { buildContent, type GameContent } from "./content";
@@ -32,8 +32,9 @@ import { LandmarkLabels } from "@cow/ui";
 import { loadRail, loadWorld } from "./WorldFiles";
 import { Railway, type RailSnapshot } from "./Railway";
 import { RidePanel } from "@cow/ui";
-import { loadStationFont } from "@cow/game-engine";
+import { STATION_FONT_HI, loadStationFont } from "@cow/game-engine";
 import stationFont from "../../../assets/fonts/noto-sans-tamil-stations.woff2?inline";
+import stationFontHindi from "../../../assets/fonts/noto-sans-devanagari-stations.woff2?inline";
 import playerModel from "../../../assets/optimized/player.glb?inline";
 import locomotion from "../../../assets/optimized/locomotion.glb?inline";
 import { loadSignFont } from "@cow/game-engine";
@@ -344,6 +345,8 @@ export class Game {
     const vehiclesLoaded = loadVehicleModels({ auto: { url: autoRickshaw, ground: -0.68 } });
     // Station names in Tamil on the platform boards (a separate subset of the font).
     const stationFontLoaded = loadStationFont(stationFont);
+    // Hindi on the three-language boards (Tamil, Hindi, English).
+    const stationFontHindiLoaded = loadStationFont(stationFontHindi, STATION_FONT_HI);
     const railLoaded = loadRail();
     // The world files are produced from OpenStreetMap by `npm run build:world` (TD-16).
     const world = await loadWorld();
@@ -456,7 +459,11 @@ export class Game {
         },
         toast: (title, detail, seconds) => hud.showToast(title, detail, seconds),
         door: () => sound.door(),
-      }, { drawDistance: renderer.tier.loadDistance, tamil: await stationFontLoaded });
+        horn: (level) => sound.trainHorn(level),
+        announce: () => sound.stationChime(),
+      }, { drawDistance: renderer.tier.loadDistance, tamil: await stationFontLoaded, hindi: await stationFontHindiLoaded });
+      // Platform crowds: the human model baked into a few cheap instanced poses.
+      void CrowdFigures.create(humans).then((figures) => railway.useCrowd(figures)).catch((error: unknown) => console.warn("Station crowds unavailable.", error));
       minimap.addLines(railway.minimapLines());
       game.railway = railway;
     }
@@ -1337,7 +1344,7 @@ export class Game {
       this.announceArea();
     }
     this.population.frame(dt, at);
-    this.railway?.frame(at);
+    this.railway?.frame(at, dt, this.clock.hour);
     // Share auto passengers: waiting at the kerb near the player, and seated in the auto.
     const shareAuto = this.driving && job?.share && this.driving.kind === job.vehicle ? this.driving.object : null;
     this.riders.frame(dt, this.desk.runner.share, at, shareAuto);

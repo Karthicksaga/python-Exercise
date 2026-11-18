@@ -56,6 +56,8 @@ export interface StationPlatform {
 export const FOB_HEIGHT = 7.2;
 /** FOB stairs on the platform: run along the platform, metres (about 0.3 m going per 0.15 m rise). */
 export const FOB_STAIR_RUN = 12.5;
+/** Half the FOB deck's width (along the platform), metres. */
+export const FOB_HALF_WIDTH = 1.5;
 /** How far from the stop's centre the FOB crosses, metres (towards the front of the train). */
 export const FOB_AT = -30;
 /** Tracks this far from a platform still count as the station's (the FOB spans them), metres. */
@@ -103,9 +105,10 @@ export function stationPlatforms(network: RailNetwork): StationPlatform[] {
       }
       // Side platforms of the other direction (no twin) are numbered 2 too.
       if (services.length === 1 && line !== network.lines[0]) services[0] = { ...services[0]!, number: 2 };
-      // The FOB spans the station's tracks and lands 4 m beyond the outermost on each side.
-      const lo = Math.min(far, near, ...laterals) - 4;
-      const hi = Math.max(far, near, ...laterals) + 4;
+      // The FOB spans the station's tracks and lands 5 m beyond the outermost on each side
+      // (its stairs down there stand clear of the trains).
+      const lo = Math.min(far, near, ...laterals) - 5;
+      const hi = Math.max(far, near, ...laterals) + 5;
       // The booking office is on the side with more track to cross (the town side of a yard), or behind a side platform.
       const officeSide: 1 | -1 = island ? (Math.abs(hi) > Math.abs(lo) ? 1 : -1) : side;
       const officeW = officeSide > 0 ? hi + 5 : lo - 5;
@@ -122,7 +125,7 @@ export function stationPlatforms(network: RailNetwork): StationPlatform[] {
         services,
         fob: { u: FOB_AT, from: lo, to: hi },
         office: { u: FOB_AT, w: officeW, facing: officeSide > 0 ? -1 : 1 },
-        exits: [-half + 1, half - 1, FOB_AT + FOB_STAIR_RUN + 0.8],
+        exits: [-half + 1, half - 1, FOB_AT + FOB_HALF_WIDTH + FOB_STAIR_RUN + 0.8],
         busy: Math.min(1, (island ? 0.8 : 0.55) + (station.name.includes("Egmore") ? 0.2 : 0)),
       });
     });

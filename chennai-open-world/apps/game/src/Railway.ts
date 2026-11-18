@@ -5,12 +5,18 @@
  * train, the panel shows the next station, STEP OFF at a stop. A ride towards the map's edge
  * ends at the last station on the map. The rules live in `@cow/rail`; this module connects them
  * to the renderer, physics, player and HUD, like `Population` does for the AI.
+ *
+ * Stations come alive near the player (`StationCrowd`, `StationLife`): people wait on the
+ * platforms, get on and off the trains, the departure board counts down to the next train, the
+ * clock keeps the time of day, a chime announces each train and the horn sounds as it leaves.
+ * Everything drawn moves with a render clock that follows the railway clock smoothly between
+ * physics steps, so trains and people glide rather than step.
  */
 import type * as THREE from "three";
-import { COACH_HEIGHT, COACH_LENGTH, COACH_WIDTH, DOOR_SILL, RAIL_TOP, RailView, TrainDoors, TrainView, coachDoorways, type ChaseTarget, type CoachPose, type FollowCamera } from "@cow/game-engine";
+import { COACH_HEIGHT, COACH_LENGTH, COACH_WIDTH, DOOR_SILL, RAIL_TOP, RailView, StationLife, TrainDoors, TrainView, coachDoorways, platformStair, stallAt, type ChaseTarget, type CoachPose, type FollowCamera } from "@cow/game-engine";
 import type { KinematicBox, PhysicsWorld, StaticBox } from "@cow/physics";
-import type { HumanFigure, PlayerController } from "@cow/player";
-import { FARE, PLATFORM_HEIGHT, PLATFORM_LENGTH, RailNetwork, boarding, canStepOff, doorOpenness, platformOf, platformOffset, rideEndsAt, stopAt, type RailFile, type RailLine, type TrainAt } from "@cow/rail";
+import type { CrowdFigures, CrowdPlacement, HumanFigure, PlayerController } from "@cow/player";
+import { FARE, PLATFORM_HEIGHT, PLATFORM_LENGTH, RailNetwork, StationCrowd, boardText, boarding, canStepOff, doorOpenness, initialLoad, platformMiddle, platformOf, platformOffset, rideEndsAt, stopAt, waitingCount, type CrowdTrain, type RailFile, type RailLine, type StationPlatform, type TrainAt } from "@cow/rail";
 import type { MinimapMarker, RidePanel } from "@cow/ui";
 
 /** Coaches per train (estimated: real Chennai EMUs run 9 or 12 cars). */
@@ -21,6 +27,19 @@ const DRAW_RANGE = 900;
 const SOLID_RANGE = 400;
 /** The railway clock starts mid-service, so trains are already running. */
 const CLOCK_START = 2 * 3600;
+/** Platforms within this distance of the player have their crowd; at most this many at once. */
+const CROWD_RANGE = 170;
+const CROWD_PLATFORMS = 2;
+/** The departure board and clock are live at the nearest platform within this distance, metres. */
+const BOARD_RANGE = 200;
+/** Platform people further than this from the player are not drawn, metres. */
+const PEOPLE_DRAWN = 80;
+/** Trains whose wheels are drawn turning: within this distance, metres. */
+const WHEEL_RANGE = 140;
+/** A train pulling away sounds its horn when within this distance of the player, metres. */
+const HORN_RANGE = 350;
+/** The chime is announced this many seconds before a train reaches the platform the player is at. */
+const ANNOUNCE_AHEAD = 50;
 
 export interface RailHost {
   readonly player: PlayerController;
@@ -31,6 +50,31 @@ export interface RailHost {
   pay(rupees: number): void;
   toast(title: string, detail: string, seconds: number): void;
   door(): void;
+  /** A train pulling away nearby: its horn, `level` 1 close to 0 far. */
+  horn?(level: number): void;
+  /** The platform's announcement chime (a train is coming). */
+  announce?(): void;
+}
+
+/** What tests and the debug snapshot can read about the station the player is at. */
+export interface StationSnapshot {
+  readonly station: string;
+  readonly platform: string;
+  /** People waiting, walking to a door, and getting off, on the platform now. */
+  readonly waiting: number;
+  readonly boarding: number;
+  readonly alighting: number;
+  /** For the train standing at this platform now (or null): people on it, and how many got on and off here so far. */
+  readonly train: { id: string; onTrain: number; boarded: number; alighted: number; board: number; alight: number } | null;
+  /** The departure board's lines (header first), or empty when it is not live here. */
+  readonly board: string[];
+  /** Crowd figures drawn this frame (all live platforms), and their triangles. */
+  readonly drawn: number;
+  readonly crowdTriangles: number;
+  /** Announcements made since the start. */
+  readonly announcements: number;
+  /** Horns sounded since the start. */
+  readonly horns: number;
 }
 
 /** What tests and the debug snapshot can read about the railway. */
@@ -52,6 +96,10 @@ export interface RailSnapshot {
   readonly doors: number;
   /** Walking through a coach's doorway: "board" (onto the train) or "alight" (off it), or null. */
   readonly walking: "board" | "alight" | null;
+  /** The live station near the player, or null. */
+  readonly station: StationSnapshot | null;
+  /** Wheelsets drawn turning. */
+  readonly wheelsets: number;
 }
 
 /** A short walk through a coach's doorway, getting on or off (world space, feet). */
@@ -95,18 +143,41 @@ export class Railway {
   private doorAmount = 0;
   /** Walking through a doorway to get on or off, or null. */
   private walk: DoorWalk | null = null;
+  /** Railway time the drawn trains and people are shown at: follows `clock` smoothly between physics steps. */
+  private viewClock = CLOCK_START;
+  /** Every drawn platform (the same layout the station models use). */
+  private readonly platforms: readonly StationPlatform[];
+  /** Platform crowds near the player, by platform key, and the figures that draw them (once baked). */
+  private readonly crowds = new Map<string, StationCrowd>();
+  private crowdClock = CLOCK_START;
+  private figures: CrowdFigures | null = null;
+  private readonly people: CrowdPlacement[] = [];
+  /** People on each train in view (set when first seen; changed by who gets on and off). */
+  private readonly loads = new Map<string, number>();
+  /** Doorways of trains standing at a crowd's platform, in its frame (doors don't move while it stands). */
+  private readonly doorCache = new Map<string, CrowdTrain["doors"]>();
+  private readonly life = new StationLife();
+  private livePlatform: StationPlatform | null = null;
+  private hour = 12;
+  /** Trains near the player last step, and whether each was standing (the horn sounds as one pulls away). */
+  private readonly standing = new Map<string, boolean>();
+  /** Seconds to the next train at each service of the platform the player is at, last step (for the chime). */
+  private readonly lastWait = new Map<string, number>();
+  private announcements = 0;
+  private horns = 0;
 
   constructor(
     file: RailFile,
-    scene: THREE.Object3D,
+    private readonly scene: THREE.Object3D,
     private readonly physics: PhysicsWorld,
     private readonly panel: RidePanel,
     private readonly host: RailHost,
-    options: { drawDistance: number; tamil: boolean },
+    options: { drawDistance: number; tamil: boolean; hindi?: boolean },
   ) {
     this.network = new RailNetwork(file);
-    this.view = new RailView(file, { drawDistance: options.drawDistance + 150, detailDistance: Math.min(260, options.drawDistance), tamil: options.tamil });
-    scene.add(this.view.object, this.trains.object, this.doors.mesh);
+    this.view = new RailView(file, { drawDistance: options.drawDistance + 150, detailDistance: Math.min(260, options.drawDistance), tamil: options.tamil, hindi: options.hindi ?? false });
+    this.platforms = this.view.platforms;
+    scene.add(this.view.object, this.trains.object, this.doors.mesh, this.life.object);
     // Platforms and their steps are solid (always: a few boxes for the whole map).
     const group = physics.createStaticGroup();
     for (const box of this.platformSolids()) group.addBox(box);
@@ -163,8 +234,11 @@ export class Railway {
     return this.ride ? this.ride.line.train(this.ride.departure, this.clock) : null;
   }
 
-  /** Coach centres and headings of a train (the train's `s` is its middle). */
-  private coaches(train: TrainAt): CoachPose[] {
+  /**
+   * Coach centres and headings of a train (the train's `s` is its middle).
+   * @param roll give each coach the distance run, so its wheels are drawn turning
+   */
+  private coaches(train: TrainAt, roll = false): CoachPose[] {
     const out: CoachPose[] = [];
     const path = train.line.path;
     for (let i = 0; i < COACHES; i++) {
@@ -174,7 +248,9 @@ export class Railway {
       const yaw = Math.atan2(-(front.x - back.x), -(front.z - back.z));
       // The end coaches are driving cabs, the last one facing backwards.
       const last = i === COACHES - 1;
-      out.push({ x: (front.x + back.x) / 2, z: (front.z + back.z) / 2, yaw: last ? yaw + Math.PI : yaw, cab: i === 0 || last });
+      const pose = { x: (front.x + back.x) / 2, z: (front.z + back.z) / 2, yaw: last ? yaw + Math.PI : yaw, cab: i === 0 || last };
+      // The trailing cab is drawn facing backwards: in its own frame its wheels turn the other way.
+      out.push(roll ? { ...pose, roll: last ? -train.state.s : train.state.s } : pose);
     }
     return out;
   }
@@ -221,6 +297,7 @@ export class Railway {
         else boxes![i]!.moveTo(coach.x, y, coach.z, coach.yaw);
       });
     }
+    this.listen(at);
     for (const [id, boxes] of this.bodies) {
       if (near.has(id)) continue;
       for (const box of boxes) {
@@ -242,6 +319,47 @@ export class Railway {
       this.alight(train);
       this.host.toast(`${stop.name}: end of the ride`, line.to.beyond ? `The line continues to ${line.to.name} beyond the map.` : `This train terminates at ${stop.name}.`, 5);
     }
+  }
+
+  /** The horn of a train pulling away near the player, and the chime before a train reaches the player's platform. */
+  private listen(at: { x: number; z: number }): void {
+    const seen = new Set<string>();
+    for (const train of this.network.trains(this.clock)) {
+      const middle = train.line.path.at(train.state.s);
+      const d = Math.hypot(middle.x - at.x, middle.z - at.z);
+      if (d > HORN_RANGE) continue;
+      seen.add(train.id);
+      const stood = this.standing.get(train.id);
+      const stands = train.state.stoppedAt !== null;
+      if (stood === true && !stands) {
+        this.horns++;
+        this.host.horn?.(1 - d / HORN_RANGE);
+      }
+      this.standing.set(train.id, stands);
+    }
+    for (const id of [...this.standing.keys()]) if (!seen.has(id)) this.standing.delete(id);
+    // The platform the player is at: a chime when its next train is under a minute away.
+    for (const line of this.network.lines) {
+      const index = stopAt(line, at);
+      const key = `${line.id}:${index}`;
+      if (index === null) {
+        for (const k of [...this.lastWait.keys()]) if (k.startsWith(`${line.id}:`)) this.lastWait.delete(k);
+        continue;
+      }
+      const wait = line.nextArrival(index, this.clock);
+      const before = this.lastWait.get(key);
+      if (before !== undefined && before > ANNOUNCE_AHEAD && wait <= ANNOUNCE_AHEAD && wait > 1) {
+        this.announcements++;
+        this.host.announce?.();
+      }
+      this.lastWait.set(key, wait);
+    }
+  }
+
+  /** The baked crowd figures, once ready (people on the platforms are drawn from then on). */
+  useCrowd(figures: CrowdFigures): void {
+    this.figures = figures;
+    this.scene.add(figures.object);
   }
 
   /** The context button was pressed: board or step off. Returns true if the railway used the press. */
@@ -448,10 +566,10 @@ export class Railway {
   }
 
   /** The sliding doors: on the coach nearest `at` of a train standing at a stop near the player. */
-  private placeDoors(at: { x: number; z: number }): void {
+  private placeDoors(at: { x: number; z: number }, trains: readonly TrainAt[]): void {
     let best: { coach: CoachPose; side: 1 | -1; amount: number } | null = null;
     let bestDistance = 80;
-    for (const train of this.network.trains(this.clock)) {
+    for (const train of trains) {
       const index = train.state.stoppedAt;
       if (index === null) continue;
       const middle = train.line.path.at(train.state.s);
@@ -469,17 +587,34 @@ export class Railway {
     this.doorAmount = best?.amount ?? 0;
   }
 
-  /** Each drawn frame: track cells, train models, the panel and the button. */
-  frame(at: { x: number; z: number }): void {
+  /**
+   * Each drawn frame: track cells, train models, the stations' people, board and clock, the
+   * panel and the button.
+   * @param dt seconds since the last frame
+   * @param hour time of day (crowds and clocks follow it)
+   */
+  frame(at: { x: number; z: number }, dt = 0, hour = 12): void {
+    this.hour = hour;
+    // The render clock runs on with the frames and is pulled gently onto the railway clock: no
+    // step at each physics tick, and no lasting drift on a slow machine. A jump (test hook) snaps.
+    this.viewClock += Math.max(0, Math.min(0.25, dt));
+    const behind = this.clock - this.viewClock;
+    if (Math.abs(behind) > 0.5) this.viewClock = this.clock;
+    else this.viewClock += behind * Math.min(1, dt * 6);
+    // Never ahead of the timetable by more than a frame: a train must not reach a stop early.
+    this.viewClock = Math.min(this.viewClock, this.clock + 1 / 60);
+    const shown = this.network.trains(this.viewClock);
     this.view.update(at.x, at.z);
     this.poses = [];
-    for (const train of this.network.trains(this.clock)) {
+    for (const train of shown) {
       const middle = train.line.path.at(train.state.s);
-      if (Math.hypot(middle.x - at.x, middle.z - at.z) > DRAW_RANGE) continue;
-      this.poses.push(...this.coaches(train));
+      const d = Math.hypot(middle.x - at.x, middle.z - at.z);
+      if (d > DRAW_RANGE) continue;
+      this.poses.push(...this.coaches(train, d < WHEEL_RANGE));
     }
     this.trains.place(this.poses);
-    this.placeDoors(at);
+    this.placeDoors(at, shown);
+    this.stationFrame(at, shown);
 
     const train = this.current();
     if (train) {
@@ -506,6 +641,107 @@ export class Railway {
     }
     this.panel.show(name ? { title: `${name} station · ticket ₹${FARE}`, detail: here.join(" · ") } : null);
     this.offer = this.standingTrain(at) ? "BOARD" : null;
+  }
+
+  /** Crowds on the platforms near the player, stepped on the render clock, and the live board and clock. */
+  private stationFrame(at: { x: number; z: number }, trains: readonly TrainAt[]): void {
+    const step = Math.max(0, Math.min(0.25, this.viewClock - this.crowdClock));
+    this.crowdClock = this.viewClock;
+    const near = this.platforms
+      .map((p) => ({ p, d: Math.hypot(platformCentre(p).x - at.x, platformCentre(p).z - at.z) }))
+      .filter(({ d }) => d < Math.max(CROWD_RANGE, BOARD_RANGE))
+      .sort((a, b) => a.d - b.d);
+    const live = near.filter(({ d }) => d < CROWD_RANGE).slice(0, CROWD_PLATFORMS).map(({ p }) => p);
+    for (const key of [...this.crowds.keys()]) if (!live.some((p) => p.key === key)) this.crowds.delete(key);
+    this.people.length = 0;
+    for (const platform of live) {
+      let crowd = this.crowds.get(platform.key);
+      if (!crowd) {
+        crowd = new StationCrowd(crowdSpec(platform));
+        this.crowds.set(platform.key, crowd);
+      }
+      const standing = this.standingAt(platform, trains);
+      const flowsBefore = new Map([...crowd.flows].map(([id, f]) => [id, { boarded: f.boarded, alighted: f.alighted }]));
+      crowd.step(step, waitingCount(this.hour, platform.busy), standing);
+      // Who got on and off changes the train's load.
+      for (const [id, flow] of crowd.flows) {
+        const before = flowsBefore.get(id) ?? { boarded: 0, alighted: 0 };
+        const load = this.loads.get(id) ?? initialLoad(id);
+        this.loads.set(id, Math.max(0, load + (flow.boarded - before.boarded) - (flow.alighted - before.alighted)));
+      }
+      this.placePeople(platform, crowd, at);
+    }
+    // Forget trains no longer on the line.
+    if (this.loads.size > 64) {
+      const running = new Set(trains.map((t) => t.id));
+      for (const id of [...this.loads.keys()]) if (!running.has(id)) this.loads.delete(id);
+    }
+    for (const id of [...this.doorCache.keys()]) if (!trains.some((t) => id.startsWith(`${t.id}@`) && t.state.stoppedAt !== null)) this.doorCache.delete(id);
+    this.figures?.place(this.people);
+    // The departure board and clock at the nearest platform.
+    const board = near.find(({ d }) => d < BOARD_RANGE)?.p ?? null;
+    this.livePlatform = board;
+    this.life.show(board, board ? boardText(board, this.viewClock, this.hour) : [], this.hour);
+  }
+
+  /** Trains standing at a platform now, with their doorways in its frame. */
+  private standingAt(platform: StationPlatform, trains: readonly TrainAt[]): CrowdTrain[] {
+    const out: CrowdTrain[] = [];
+    platform.services.forEach((service, index) => {
+      const train = trains.find((t) => t.line.id === service.line.id && t.state.stoppedAt === service.stop);
+      if (!train) return;
+      const key = `${train.id}@${platform.key}`;
+      let doors = this.doorCache.get(key);
+      if (!doors) {
+        const list: Array<{ u: number; w: number }> = [];
+        const centre = platformCentre(platform);
+        for (const coach of this.coaches(train)) {
+          const side = platformSide(coach, centre);
+          const cos = Math.cos(coach.yaw);
+          const sin = Math.sin(coach.yaw);
+          for (const z of coachDoorways(coach.cab)) {
+            const x = side * (COACH_WIDTH / 2 + 0.3);
+            const p = { x: coach.x + x * cos + z * sin, z: coach.z - x * sin + z * cos };
+            const hit = platform.line.path.project(p);
+            const u = hit.s - platform.stop.s;
+            // Only doorways alongside the platform's deck.
+            if (Math.abs(u) > PLATFORM_LENGTH / 2 - 1) continue;
+            list.push({ u, w: service.edge });
+          }
+        }
+        doors = list;
+        this.doorCache.set(key, doors);
+      }
+      out.push({ id: train.id, service: index, doors, open: doorOpenness(train.state, train.line.profile.spec.dwell), dwellLeft: train.state.dwellLeft, load: this.loads.get(train.id) ?? initialLoad(train.id) });
+    });
+    return out;
+  }
+
+  /** The crowd's people in the world, standing on the deck; and the tea seller behind the counter. */
+  private placePeople(platform: StationPlatform, crowd: StationCrowd, at: { x: number; z: number }): void {
+    const path = platform.line.path;
+    const put = (u: number, w: number, heading: number, walked: number | null, look: number) => {
+      const s = platform.stop.s + u;
+      const p = path.beside(s, w);
+      // Far down a platform people are a few pixels tall: not drawn (they are still there).
+      if (Math.hypot(p.x - at.x, p.z - at.z) > PEOPLE_DRAWN) return;
+      const pose = path.at(s);
+      // Heading in the platform frame: from +u (the line's direction) towards +w (its left).
+      const fx = -Math.sin(pose.yaw);
+      const fz = -Math.cos(pose.yaw);
+      const lx = -fz;
+      const lz = fx;
+      const dx = fx * Math.cos(heading) + lx * Math.sin(heading);
+      const dz = fz * Math.cos(heading) + lz * Math.sin(heading);
+      this.people.push({ x: p.x, y: PLATFORM_HEIGHT, z: p.z, yaw: Math.atan2(-dx, -dz), walked, look });
+    };
+    for (const person of crowd.people) {
+      if (person.delay > 0) continue;
+      put(person.u, person.w, person.heading, person.state === "waiting" ? null : person.walked, person.look);
+    }
+    const tea = stallAt(platform);
+    // Facing out over the counter: towards -w when the counter faces -w.
+    put(tea.u - 0.2, tea.w + tea.facing * 0.2, tea.facing > 0 ? Math.PI / 2 : -Math.PI / 2, null, 2);
   }
 
   /** For tests only: move the railway clock forward (trains jump ahead on their timetable). */
@@ -539,8 +775,70 @@ export class Railway {
       drawnCoaches: this.poses.length,
       doors: this.doorAmount,
       walking: this.walk ? (this.walk.boarding ? "board" : "alight") : null,
+      station: this.stationSnapshot(at),
+      wheelsets: this.trains.wheelsets,
     };
   }
+
+  private stationSnapshot(at: { x: number; z: number }): StationSnapshot | null {
+    // The crowd of the platform nearest the player.
+    let best: { platform: StationPlatform; crowd: StationCrowd } | null = null;
+    let bestDistance = Infinity;
+    for (const platform of this.platforms) {
+      const crowd = this.crowds.get(platform.key);
+      if (!crowd) continue;
+      const c = platformCentre(platform);
+      const d = Math.hypot(c.x - at.x, c.z - at.z);
+      if (d < bestDistance) {
+        bestDistance = d;
+        best = { platform, crowd };
+      }
+    }
+    if (!best) return null;
+    const { platform, crowd } = best;
+    const count = (state: string) => crowd.people.filter((p) => p.state === state).length;
+    const standing = this.standingAt(platform, this.network.trains(this.viewClock))[0] ?? null;
+    const flow = standing ? crowd.flows.get(standing.id) : undefined;
+    return {
+      station: platform.station.name,
+      platform: platform.key,
+      waiting: count("waiting"),
+      boarding: count("boarding"),
+      alighting: count("alighting"),
+      train: standing ? { id: standing.id, onTrain: this.loads.get(standing.id) ?? initialLoad(standing.id), boarded: flow?.boarded ?? 0, alighted: flow?.alighted ?? 0, board: flow?.board ?? 0, alight: flow?.alight ?? 0 } : null,
+      board: this.livePlatform === platform ? this.life.lines : [],
+      drawn: this.figures?.drawn ?? 0,
+      crowdTriangles: (this.figures?.drawn ?? 0) * (this.figures?.trianglesEach ?? 0),
+      announcements: this.announcements,
+      horns: this.horns,
+    };
+  }
+}
+
+/** The middle of a platform's deck, in the world. */
+function platformCentre(p: StationPlatform): { x: number; z: number } {
+  return p.line.path.beside(p.stop.s, platformMiddle(p));
+}
+
+/** How the crowd of a platform is laid out: its edges, exits, and where nobody stands. */
+function crowdSpec(p: StationPlatform): ConstructorParameters<typeof StationCrowd>[0] {
+  const blocked: Array<readonly [number, number]> = [];
+  if (!p.island) {
+    // On a narrow side platform people keep clear of the FOB's stairs and the tea stall.
+    const [u0, u1] = platformStair(p);
+    blocked.push([u0 - 1, u1 + 1]);
+    const tea = stallAt(p);
+    blocked.push([tea.u - 2, tea.u + 2]);
+  }
+  return {
+    half: PLATFORM_LENGTH / 2,
+    edges: p.services.map((s) => ({ w: s.edge, inward: s.inward })),
+    exits: p.exits,
+    middle: platformMiddle(p),
+    key: p.key,
+    depth: p.island ? 3 : 2.1,
+    blocked,
+  };
 }
 
 /** Length of a walk over the ground, metres. */

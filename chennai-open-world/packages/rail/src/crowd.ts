@@ -128,6 +128,10 @@ export interface CrowdSpec {
   readonly middle: number;
   /** A key for this platform (makes the crowd's choices stable per station). */
   readonly key: string;
+  /** Furthest in from the edge people wait, metres (a narrow platform keeps them clear of benches and stairs). */
+  readonly depth?: number;
+  /** Stretches along the platform where nobody waits (under stairs, at a stall). */
+  readonly blocked?: ReadonlyArray<readonly [number, number]>;
 }
 
 /** What happened at one stop of one train: people on and off. */
@@ -163,8 +167,13 @@ export class StationCrowd {
   /** A spot to wait at for a service: along the platform, 1–3 m in from its edge. */
   private spot(service: number): { u: number; w: number } {
     const edge = this.spec.edges[service]!;
-    const u = (this.random("u") * 2 - 1) * this.spec.half * 0.8;
-    const w = edge.w + edge.inward * (1.1 + this.random("w") * 1.9);
+    const depth = Math.max(1.2, this.spec.depth ?? 3);
+    let u = 0;
+    for (let tries = 0; tries < 8; tries++) {
+      u = (this.random("u") * 2 - 1) * this.spec.half * 0.8;
+      if (!(this.spec.blocked ?? []).some(([u0, u1]) => u > u0 && u < u1)) break;
+    }
+    const w = edge.w + edge.inward * (1.1 + this.random("w") * (depth - 1.1));
     return { u, w };
   }
 
