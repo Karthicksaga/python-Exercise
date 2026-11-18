@@ -114,7 +114,7 @@ export class StoryRunner {
 
   private met(step: StoryStep, player: PlayerStatus): boolean {
     if (step.type === "enter") return player.mode === step.vehicle;
-    if (step.type === "defeat" || step.type === "activity" || step.type === "chase") return false;
+    if (step.type === "defeat" || step.type === "activity" || step.type === "chase" || step.type === "evade") return false;
     if (step.mode && player.mode !== step.mode) return false;
     if (Math.hypot(player.x - step.x, player.z - step.z) > step.radius) return false;
     return !step.stop || player.speed < STOPPED;

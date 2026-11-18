@@ -764,6 +764,8 @@ export class Game {
   private target(objective: Objective | null, at: { x: number; z: number }): { x: number; z: number; radius: number } | null {
     if (!objective) return null;
     if (objective.type === "reach" || objective.type === "defeat") return { x: objective.x, z: objective.z, radius: objective.radius };
+    // Losing the police has no marker: the stars on the HUD show how it is going.
+    if (objective.type === "evade") return null;
     if (objective.type === "chase") {
       const quarry = this.missions.quarry;
       return quarry ? { x: quarry.x, z: quarry.z, radius: objective.radius } : null;

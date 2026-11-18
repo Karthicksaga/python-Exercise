@@ -110,7 +110,7 @@ describe("stages 11 to 15", () => {
   it("are played in the districts the briefs name", () => {
     const placeOf = (id: string, i: number) => {
       const o = content.missions.find((m) => m.id === id)!.objectives[i]!;
-      if (o.type === "enter") throw new Error("no place");
+      if (o.type === "enter" || o.type === "evade") throw new Error("no place");
       return districts.at(o.type === "chase" ? o.path[0]! : o)?.name;
     };
     expect(placeOf("courier-chase", 0)).toBe("Royapettah");
