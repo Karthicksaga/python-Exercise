@@ -31,6 +31,8 @@ import { landmarkSolids } from "@cow/game-world";
 import { LandmarkLabels } from "@cow/ui";
 import { loadRail, loadWorld } from "./WorldFiles";
 import { Railway, type RailSnapshot } from "./Railway";
+import { CityMapDesk } from "./CityMapDesk";
+import type { CityMapState } from "@cow/ui";
 import { RidePanel } from "@cow/ui";
 import { loadStationFont } from "@cow/game-engine";
 import stationFont from "../../../assets/fonts/noto-sans-tamil-stations.woff2?inline";
@@ -118,6 +120,8 @@ export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
   /** People the player's vehicle has hit and their state, and the last hit with what it cost (tests). */
   readonly casualties: Array<{ x: number; z: number; state: CasualtyState; speed: number }>;
   readonly lastPedestrianHit: { outcome: HitOutcome; speed: number; fine: number; reputation: number } | null;
+  /** The full-screen city map (opened by tapping the minimap). */
+  readonly cityMap: CityMapState;
   /** The wanted level, police cars and officers, the last arrest (`Police.ts`). */
   readonly police: ReturnType<Police["snapshot"]>;
 }
@@ -246,6 +250,8 @@ export class Game {
   private police!: Police;
   /** Weapons in the world, gang crews, the chase courier and the weapon button (set in `create`). */
   private arms!: Arms;
+  /** The full-screen city map (`CityMapDesk.ts`), opened by tapping the minimap. */
+  private readonly cityMap: CityMapDesk;
 
   private constructor(
     private readonly map: WorldMap,
@@ -314,6 +320,25 @@ export class Game {
     });
     this.placeMarkers = new PlaceMarkers(placeContent.places.map((p) => ({ x: p.x, z: p.z, radius: p.radius, icon: placeIconCanvas(p.kind), color: Number.parseInt(PLACE_COLORS[p.kind].slice(1), 16) })));
     renderer.scene.add(this.placeMarkers.object);
+    this.cityMap = this.makeCityMap();
+    minimap.onTap(() => this.cityMap.open());
+  }
+
+  /** The city map and what it reads from the game when it opens. */
+  private makeCityMap(): CityMapDesk {
+    return new CityMapDesk(this.hud.root, this.map, {
+      hold: () => this.hold(),
+      release: () => this.release(),
+      canOpen: () => !this.paused && !this.held,
+      player: () => ({ ...this.where(), heading: this.driving ? this.driving.body.yaw() : this.player.yaw }),
+      target: () => this.currentTarget(this.where()),
+      vehicles: () => this.vehicles.filter((v) => v !== this.driving).map((v) => ({ x: v.body.position().x, z: v.body.position().z, kind: v.kind, color: MINIMAP_COLORS[v.kind] })),
+      markers: () => [...this.placeDesk.markers(), ...this.desk.markers()],
+      route: () => this.desk.route(),
+      buildings: () => this.chunks.loaded(),
+      district: () => this.district,
+      street: () => this.street,
+    });
   }
 
   private saveHour(): void {
@@ -458,6 +483,7 @@ export class Game {
         door: () => sound.door(),
       }, { drawDistance: renderer.tier.loadDistance, tamil: await stationFontLoaded });
       minimap.addLines(railway.minimapLines());
+      game.cityMap.setRail(railFile);
       game.railway = railway;
     }
 
@@ -467,7 +493,8 @@ export class Game {
       if (document.hidden) game.loop.stop();
       else if (!game.paused && !game.held) game.loop.start();
     });
-    onShellMessage((message) => game.setPaused(message.type === "pause"));
+    // Android Back: closes the city map when it is open, otherwise pauses.
+    onShellMessage((message) => (message.type === "back" ? game.back() : game.setPaused(message.type === "pause")));
     return game;
   }
 
@@ -478,6 +505,12 @@ export class Game {
     if (mission) this.hud.showToast(`Stage ${mission.stage}: ${mission.title}`, mission.brief, 5);
     else this.hud.showToast("Free roam", "Every stage is complete. The city is yours.", 4);
     sendToShell({ type: "ready", gpu: this.renderer.gpu() });
+  }
+
+  /** Android Back (sent by the shell only while the city map is open). */
+  back(): void {
+    if (this.cityMap.isOpen) this.cityMap.close();
+    else this.setPaused(true);
   }
 
   /** Open the job board (the JOBS button). */
@@ -563,6 +596,8 @@ export class Game {
     if (paused === this.paused) return;
     this.paused = paused;
     if (paused) this.arms.save();
+    // Pausing (the app went to the background) closes the city map; the pause screen shows instead.
+    if (paused) this.cityMap.close();
     this.held = false;
     this.controls.setVisible(!paused);
     if (paused) {
@@ -876,6 +911,7 @@ export class Game {
       lastPedestrianHit: this.lastPedestrianHit,
       police: this.police.snapshot(),
       ...this.arms.snapshot(this.avatar, this.fighters.heldWeapons(), this.missions.quarry),
+      cityMap: this.cityMap.state(),
     };
   }
 

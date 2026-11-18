@@ -30,6 +30,7 @@ type GameMessage =
   | { type: 'ready'; gpu: string }
   | { type: 'error'; message: string }
   | { type: 'paused'; paused: boolean }
+  | { type: 'cityMap'; open: boolean }
   | { type: 'exit' };
 
 /** Script that delivers a shell message to the game as a `cow-shell` event. */
@@ -39,12 +40,14 @@ type GameMessage =
  */
 type NoExtraProps = Record<never, never>;
 
-const shellMessage = (type: 'pause' | 'resume') =>
+const shellMessage = (type: 'pause' | 'resume' | 'back') =>
   `window.dispatchEvent(new CustomEvent('cow-shell',{detail:${JSON.stringify(JSON.stringify({ type }))}}));true;`;
 
 export function GameScreen({ onExit }: { onExit: () => void }) {
   const web = useRef<WebView<NoExtraProps>>(null);
   const paused = useRef(false);
+  /** The game's full-screen city map is open: Back closes it instead of pausing. */
+  const cityMap = useRef(false);
   const [failure, setFailure] = useState<string | null>(null);
 
   const onMessage = useCallback(
@@ -56,16 +59,19 @@ export function GameScreen({ onExit }: { onExit: () => void }) {
         return;
       }
       if (message.type === 'paused') paused.current = message.paused;
+      else if (message.type === 'cityMap') cityMap.current = message.open;
       else if (message.type === 'exit') onExit();
       else if (message.type === 'error') setFailure(message.message);
     },
     [onExit],
   );
 
-  // Back: first press pauses the game, a second press (while paused) leaves to the menu.
+  // Back: closes the city map if it is open; otherwise the first press pauses the game, and a
+  // second press (while paused) leaves to the menu.
   useEffect(() => {
     const back = BackHandler.addEventListener('hardwareBackPress', () => {
       if (failure || paused.current) onExit();
+      else if (cityMap.current) web.current?.injectJavaScript(shellMessage('back'));
       else web.current?.injectJavaScript(shellMessage('pause'));
       return true;
     });

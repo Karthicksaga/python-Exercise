@@ -6,9 +6,11 @@ export type GameMessage =
   | { type: "ready"; gpu: string }
   | { type: "error"; message: string }
   | { type: "paused"; paused: boolean }
+  /** The city map opened or closed: while it is open, Android Back should close it (send "back"). */
+  | { type: "cityMap"; open: boolean }
   | { type: "exit" };
 
-export type ShellMessage = { type: "pause" } | { type: "resume" };
+export type ShellMessage = { type: "pause" } | { type: "resume" } | { type: "back" };
 
 interface ReactNativeWebView {
   postMessage(data: string): void;
@@ -31,7 +33,7 @@ export function onShellMessage(handler: (message: ShellMessage) => void): void {
   window.addEventListener("cow-shell", (event) => {
     try {
       const data = JSON.parse(String((event as CustomEvent<string>).detail)) as ShellMessage;
-      if (data.type === "pause" || data.type === "resume") handler(data);
+      if (data.type === "pause" || data.type === "resume" || data.type === "back") handler(data);
     } catch {
       // Ignore anything that isn't one of our messages.
     }
