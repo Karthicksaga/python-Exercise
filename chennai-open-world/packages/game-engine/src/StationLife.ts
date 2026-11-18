@@ -121,7 +121,7 @@ export class StationLife {
     const right = new THREE.Vector3(at.rx, 0, at.rz);
     const up = new THREE.Vector3(0, 1, 0);
     // The face's normal (as `atlasBoard` faces it), and the hands' angles (clockwise from 12).
-    const normal = new THREE.Vector3(at.rz, 0, -at.rx);
+    const normal = new THREE.Vector3(-at.rz, 0, at.rx);
     const h = ((hour % 24) + 24) % 24;
     const minute = ((h * 60) % 60) / 60;
     const hands: Array<[number, number, number]> = [

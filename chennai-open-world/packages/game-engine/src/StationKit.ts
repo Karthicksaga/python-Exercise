@@ -112,8 +112,8 @@ const color = new THREE.Color();
  * (rx, rz) and `halfH` up, each face with the text the right way round.
  */
 export function atlasBoard(b: MeshBuilder, x: number, y: number, z: number, rx: number, rz: number, halfW: number, halfH: number, rows: number, front: number, back: number, u1 = 1): void {
-  const nx = rz;
-  const nz = -rx;
+  const nx = -rz;
+  const nz = rx;
   for (const [facing, row] of [[1, front], [-1, back]] as const) {
     const v0 = 1 - (row + 1) / rows;
     const v1 = 1 - row / rows;
@@ -197,14 +197,17 @@ export function buildStation(b: MeshBuilder, boards: MeshBuilder | null, p: Stat
     f.box(b, 18 - 1.2, mid, 0.02, 0.02, top + HANGING_Y + 0.7, top + CANOPY_LOW, STEEL, "top-sides");
     f.box(b, 18 + 1.2, mid, 0.02, 0.02, top + HANGING_Y + 0.7, top + CANOPY_LOW, STEEL, "top-sides");
   }
-  // Platform numbers hang across the platform, readable along it: each face shows the number of the edge it is nearer.
-  const numbers = p.services.map((s) => atlas.platform[Math.min(atlas.platform.length - 1, s.number - 1)]!);
+  // Platform numbers hang across the platform, readable along it: on an island one over each
+  // half, showing the number of the edge on that side.
   for (const u of [-12, 26]) {
-    const at = hangingBoard(p, u);
-    const front = numbers[0]!;
-    const back = numbers[numbers.length - 1]!;
-    atlasBoard(boards, at.x, at.y + 0.35, at.z, at.rx, at.rz, 0.42, 0.42, rows, front, back, 192 / 512);
-    hangers(b, f, u, mid, 0.3);
+    for (const service of p.services) {
+      const row = atlas.platform[Math.min(atlas.platform.length - 1, service.number - 1)]!;
+      const w = p.island ? mid + (service.edge - mid) * 0.45 : mid;
+      const c = f.at(u, w);
+      const at = hangingBoard(p, u);
+      atlasBoard(boards, c.x, at.y + 0.35, c.z, at.rx, at.rz, 0.42, 0.42, rows, row, row, 192 / 512);
+      hangers(b, f, u, w, 0.3);
+    }
   }
   // The clock: a face on each side (hands are drawn live at the nearest platform, `StationLife`).
   const clock = hangingBoard(p, CLOCK_AT);

@@ -71,6 +71,8 @@ export interface StationSnapshot {
   /** Crowd figures drawn this frame (all live platforms), and their triangles. */
   readonly drawn: number;
   readonly crowdTriangles: number;
+  /** Where this platform's people stand (feet; not the tea seller), for checking they are on the deck. */
+  readonly people: ReadonlyArray<{ x: number; y: number; z: number }>;
   /** Announcements made since the start. */
   readonly announcements: number;
   /** Horns sounded since the start. */
@@ -603,6 +605,10 @@ export class Railway {
     else this.viewClock += behind * Math.min(1, dt * 6);
     // Never ahead of the timetable by more than a frame: a train must not reach a stop early.
     this.viewClock = Math.min(this.viewClock, this.clock + 1 / 60);
+    // Riding (or stepping through a doorway), the camera follows the train on the physics step:
+    // drawn on the same clock, the train stays steady in view. (Drop this once the camera is
+    // interpolated between steps too.)
+    if (this.ride || this.walk) this.viewClock = this.clock;
     const shown = this.network.trains(this.viewClock);
     this.view.update(at.x, at.z);
     this.poses = [];
@@ -809,6 +815,12 @@ export class Railway {
       board: this.livePlatform === platform ? this.life.lines : [],
       drawn: this.figures?.drawn ?? 0,
       crowdTriangles: (this.figures?.drawn ?? 0) * (this.figures?.trianglesEach ?? 0),
+      people: crowd.people
+        .filter((p) => p.delay <= 0)
+        .map((p) => {
+          const at = platform.line.path.beside(platform.stop.s + p.u, p.w);
+          return { x: Math.round(at.x * 100) / 100, y: PLATFORM_HEIGHT, z: Math.round(at.z * 100) / 100 };
+        }),
       announcements: this.announcements,
       horns: this.horns,
     };
