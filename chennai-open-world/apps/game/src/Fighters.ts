@@ -4,6 +4,7 @@
  */
 import * as THREE from "three";
 import { isPoliceGroup, type Combat, type CombatWorld, type Enemy } from "@cow/combat";
+import { Motion } from "@cow/game-engine";
 import type { KinematicBox, PhysicsWorld } from "@cow/physics";
 import type { HumanAssets, HumanFigure } from "@cow/player";
 
@@ -15,6 +16,8 @@ interface Body {
   readonly figure: HumanFigure;
   readonly box: KinematicBox;
   placed: boolean;
+  /** The last two fixed steps, drawn in between (smooth on any display rate). */
+  readonly motion: Motion;
 }
 
 /** How the combat rules see the world: ray casts against buildings, trees and vehicles. */
@@ -65,6 +68,7 @@ export class Fighters {
         body.box.teleport(enemy.x, 0.87, enemy.z, enemy.heading);
         body.placed = true;
       }
+      body.motion.step(enemy.x, 0, enemy.z, enemy.heading);
     }
   }
 
@@ -80,20 +84,22 @@ export class Fighters {
       // A boss is visibly bigger.
       if (enemy.maxHealth > 150) figure.object.scale.setScalar(1.18);
       this.scene.add(figure.object);
-      body = { figure, box: this.physics.createKinematicBox({ x: 0.28, y: 0.85, z: 0.28 }), placed: false };
+      body = { figure, box: this.physics.createKinematicBox({ x: 0.28, y: 0.85, z: 0.28 }), placed: false, motion: new Motion() };
+      body.motion.snap(enemy.x, 0, enemy.z, enemy.heading);
       this.bodies.set(enemy.id, body);
     }
     return body;
   }
 
-  /** Once per rendered frame. */
-  frame(dt: number): void {
+  /** Once per rendered frame. `alpha`: how far the clock is past the last fixed step (0 to 1); enemies are drawn that far between their last two steps. */
+  frame(dt: number, alpha = 1): void {
     const alive = new Set<number>();
     for (const enemy of this.combat.enemies) {
       alive.add(enemy.id);
-      const { figure } = this.body(enemy);
-      figure.object.position.set(enemy.x, 0, enemy.z);
-      figure.object.rotation.y = enemy.heading;
+      const { figure, motion } = this.body(enemy);
+      const drawn = motion.at(alpha);
+      figure.object.position.set(drawn.x, 0, drawn.z);
+      figure.object.rotation.y = drawn.heading;
       figure.setDown(enemy.health <= 0);
       figure.setAiming(enemy.armed && enemy.alerted && enemy.speed === 0);
       figure.update(dt, enemy.speed, true);

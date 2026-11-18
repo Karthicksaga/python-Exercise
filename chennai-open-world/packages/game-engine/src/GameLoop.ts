@@ -3,12 +3,21 @@
  *
  * Physics and gameplay advance in constant 1/60 s steps so behaviour is identical on a 60 Hz
  * and a 120 Hz phone; rendering happens once per display frame.
+ *
+ * Display frames don't line up with the steps: one frame may run no step and the next two. If
+ * each frame drew things where the last step left them, cars, people and the camera would move
+ * in uneven jumps (on a 120 Hz screen every other frame wouldn't move at all), which reads as
+ * shaking. So `frame` also gets `alpha`, how far the clock is between the last step and the
+ * next (0 to 1), and draws moving things that far between their last two steps (`Motion`).
  */
 export interface LoopCallbacks {
   /** Gameplay and physics; `dt` is always `FIXED_STEP`. */
   fixedUpdate(dt: number): void;
-  /** Camera, animation and drawing; `dt` is the real time since the last frame. */
-  frame(dt: number): void;
+  /**
+   * Camera, animation and drawing; `dt` is the real time since the last frame, `alpha` how far
+   * the clock is past the last fixed step, as a share of a step (0 to 1).
+   */
+  frame(dt: number, alpha: number): void;
 }
 
 export const FIXED_STEP = 1 / 60;
@@ -57,6 +66,6 @@ export class GameLoop {
       steps++;
     }
     if (steps === MAX_STEPS_PER_FRAME) this.accumulator = 0;
-    this.callbacks.frame(dt);
+    this.callbacks.frame(dt, Math.min(1, this.accumulator / FIXED_STEP));
   };
 }

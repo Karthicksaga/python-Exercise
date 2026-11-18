@@ -4,6 +4,9 @@ import type { PhysicsWorld, VehicleBody, VehicleControls } from "@cow/physics";
 import { buildVehicleModel, type VehicleModel } from "./models";
 import { VEHICLE_TYPES, type VehicleKind, type VehicleType } from "./specs";
 
+/** A move longer than this in one fixed step is a teleport: drawn at once (metres). */
+const JUMP = 8;
+
 const IDLE: VehicleControls = { throttle: 0, steer: 0, brake: 0.4 };
 /**
  * A change of velocity bigger than this in one physics step (m/s) is a crash, not driving:
@@ -21,6 +24,9 @@ export class Vehicle {
   private roll = 0;
   private lean = 0;
   private readonly seatPoint = new THREE.Vector3();
+  /** Pose at the start of the last fixed step: `sync` draws part-way from it to the body's pose now. */
+  private readonly before = { position: new THREE.Vector3(), rotation: new THREE.Quaternion(), set: false };
+  private readonly now = { position: new THREE.Vector3(), rotation: new THREE.Quaternion() };
   private last: { x: number; z: number; vx: number; vz: number } | null = null;
   private impact = 0;
   /** Velocity before anything was hit in the last step (see `approachVelocity`). */
@@ -147,11 +153,21 @@ export class Vehicle {
     this.approach = last && Math.hypot(v.x - last.vx, v.z - last.vz) > IMPACT ? { x: last.vx, z: last.vz } : { x: v.x, z: v.z };
     const after = this.body.planarVelocity();
     this.last = { x: p.x, z: p.z, vx: after.x, vz: after.z };
+    // Where it is before this step's physics: the start of the step that frames are drawn across.
+    const start = this.body.position();
+    const turn = this.body.rotation();
+    this.before.position.set(start.x, start.y, start.z);
+    this.before.rotation.set(turn.x, turn.y, turn.z, turn.w);
+    this.before.set = true;
     this.body.drive(controls ?? IDLE, dt);
   }
 
-  /** Copy the physics state onto the model. Call once per rendered frame. */
-  sync(dt: number): void {
+  /**
+   * Copy the physics state onto the model. Call once per rendered frame. `alpha` (0 to 1): how far
+   * the clock is past the last fixed step; the model is drawn that far between the pose before
+   * that step and the pose after it, so it moves evenly whatever the display rate.
+   */
+  sync(dt: number, alpha = 1): void {
     if (this.sirenOn) {
       // Red and blue take turns, about three flashes a second.
       this.sirenClock += dt;
@@ -160,8 +176,16 @@ export class Vehicle {
     }
     const p = this.body.position();
     const r = this.body.rotation();
-    this.object.position.set(p.x, p.y, p.z);
-    this.object.quaternion.set(r.x, r.y, r.z, r.w);
+    this.now.position.set(p.x, p.y, p.z);
+    this.now.rotation.set(r.x, r.y, r.z, r.w);
+    // A teleport (a long jump in one step) is drawn at once, not slid across the map.
+    if (this.before.set && this.before.position.distanceTo(this.now.position) < JUMP) {
+      this.object.position.lerpVectors(this.before.position, this.now.position, Math.max(0, Math.min(1, alpha)));
+      this.object.quaternion.slerpQuaternions(this.before.rotation, this.now.rotation, Math.max(0, Math.min(1, alpha)));
+    } else {
+      this.object.position.copy(this.now.position);
+      this.object.quaternion.copy(this.now.rotation);
+    }
     if (this.type.leans) {
       // Two-wheelers bank into corners: more with speed and steering. Looks only; the physics
       // body stays upright.

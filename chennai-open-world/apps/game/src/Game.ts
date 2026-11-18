@@ -4,7 +4,7 @@
  * and owns the one piece of state they share: whether the player is on foot or driving.
  */
 import * as THREE from "three";
-import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
+import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, Motion, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
 import { Combat, PLAYER_MAX_HEALTH, hitPenalty, isPoliceGroup, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState, type WeaponId } from "@cow/combat";
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
@@ -209,6 +209,11 @@ export class Game {
   /** Seconds simulated and frames drawn since start (tests wait on these, not the wall clock). */
   private simTime = 0;
   private frames = 0;
+  /**
+   * The player's place (on foot, in a vehicle or on a train) at the last two fixed steps: the
+   * figure and the camera are drawn in between, so they move evenly whatever the display rate.
+   */
+  private readonly playerMotion = new Motion();
   /** Named areas of the city (OSM place points) and the ones the player has been to. */
   private readonly districtIndex: DistrictIndex;
   private readonly visited = loadDistricts();
@@ -269,7 +274,7 @@ export class Game {
     private readonly minimap: Minimap,
     private readonly riders: ShareRiders,
   ) {
-    this.loop = new GameLoop({ fixedUpdate: (dt) => this.fixedUpdate(dt), frame: (dt) => this.frame(dt) });
+    this.loop = new GameLoop({ fixedUpdate: (dt) => this.fixedUpdate(dt), frame: (dt, alpha) => this.frame(dt, alpha) });
     this.boarder = new Boarder(avatar, (x, z, vehicle) => {
       // The ground under a point beside the vehicle: a ray down from above its roof.
       const top = vehicle.body.position().y + 2;
@@ -473,6 +478,9 @@ export class Game {
 
   start(): void {
     this.renderer.setRain(this.weather === "rain", true);
+    // Drawn from the spawn point until the first fixed steps have run.
+    const at = this.where();
+    this.playerMotion.snap(at.x, at.y, at.z, this.player.yaw);
     this.loop.start();
     const mission = this.missions.mission;
     if (mission) this.hud.showToast(`Stage ${mission.stage}: ${mission.title}`, mission.brief, 5);
@@ -628,6 +636,7 @@ export class Game {
     if (this.driving) this.driving.body.teleport({ x, y: this.driving.type.rideHeight + 0.1, z }, yaw);
     else this.player.respawn({ x, y: 0.1, z }, yaw);
     this.camera.yaw = yaw;
+    this.playerMotion.snap(x, 0, z, yaw);
     return ready;
   }
 
@@ -1155,6 +1164,7 @@ export class Game {
     this.physics.step(dt);
 
     const at = this.where();
+    this.playerMotion.step(at.x, at.y, at.z, this.driving ? this.driving.body.yaw() : this.player.yaw);
     const status = {
       x: at.x,
       z: at.z,
@@ -1178,7 +1188,8 @@ export class Game {
     if (at.y < -20) this.teleport(this.content.spawn.x, this.content.spawn.z, this.content.spawn.yaw);
   }
 
-  private frame(dt: number): void {
+  /** Once per display frame. `alpha` (0 to 1): how far the clock is past the last fixed step (`GameLoop`). */
+  private frame(dt: number, alpha = 1): void {
     this.frames++;
     if (this.enteringPlace) {
       const place = this.enteringPlace;
@@ -1191,8 +1202,10 @@ export class Game {
     const look = this.controls.consumeLook();
     this.camera.look(look.dx, look.dy);
 
-    const at = this.where();
-    for (const vehicle of this.vehicles) vehicle.sync(dt);
+    // Drawn part-way between the last two steps (see `playerMotion`).
+    const drawn = this.playerMotion.at(alpha);
+    const at = { x: drawn.x, y: drawn.y, z: drawn.z };
+    for (const vehicle of this.vehicles) vehicle.sync(dt, alpha);
 
     const ride = this.railway?.rideChase();
     const boarding = this.boarder.active;
@@ -1256,7 +1269,7 @@ export class Game {
       this.controls.setAction("EXIT");
     } else {
       this.avatar.object.position.set(at.x, at.y, at.z);
-      this.avatar.object.rotation.y = this.player.yaw;
+      this.avatar.object.rotation.y = drawn.heading;
       this.avatar.update(dt, this.player.speed, this.player.grounded);
       this.avatar.setAiming(this.aimFor > 0);
       this.camera.update(dt, at, this.physics, this.player.body);
@@ -1320,8 +1333,8 @@ export class Game {
     this.minimap.setRoute(this.desk.route());
     this.minimap.update(dt, at.x, at.z, this.driving ? this.driving.body.yaw() : this.player.yaw, this.camera.yaw, markers);
 
-    this.fighters.frame(dt);
-    this.police.frame(dt, at);
+    this.fighters.frame(dt, alpha);
+    this.police.frame(dt, at, alpha);
     this.hud.setHealth(this.combat.health / PLAYER_MAX_HEALTH);
     const quarry = this.missions.quarry;
     const chase = objective?.type === "chase" ? objective : null;
@@ -1336,7 +1349,7 @@ export class Game {
       this.trackDistrict(at);
       this.announceArea();
     }
-    this.population.frame(dt, at);
+    this.population.frame(dt, at, alpha);
     this.railway?.frame(at);
     // Share auto passengers: waiting at the kerb near the player, and seated in the auto.
     const shareAuto = this.driving && job?.share && this.driving.kind === job.vehicle ? this.driving.object : null;

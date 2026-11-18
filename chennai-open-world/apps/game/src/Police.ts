@@ -13,6 +13,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { Pursuer, findRoute, nearestNode, routeLength, type Obstacle, type RoadGraph, type Siren } from "@cow/ai";
 import type { Sound } from "@cow/audio";
 import { POLICE_GROUP, WANTED, Wanted, isPoliceGroup, isVehicleTheft, jobsAllowed, policeUnits, type Combat, type Crime, type Enemy, type HitOutcome } from "@cow/combat";
+import { Motion } from "@cow/game-engine";
 import { nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import type { CharacterBody, KinematicBox, PhysicsWorld, VehicleBody } from "@cow/physics";
 import { WantedStars, type MinimapMarker } from "@cow/ui";
@@ -117,6 +118,8 @@ interface Unit {
   /** Seconds since the player stopped being wanted (the car leaves). */
   standingDown: number;
   generation: number;
+  /** The last two fixed steps, drawn in between (smooth on any display rate). */
+  readonly motion: Motion;
 }
 
 /** Shared materials: every car's light bar flashes together. */
@@ -437,6 +440,7 @@ export class Police {
       role: this.units.length % 2,
       standingDown: 0,
       generation: 0,
+      motion: new Motion(),
     };
     this.units.push(unit);
     return unit;
@@ -560,6 +564,7 @@ export class Police {
     for (const unit of this.units) {
       if (!unit.active) continue;
       this.drive(unit, dt, graph, p, traffic);
+      unit.motion.step(unit.pursuer.x, 0, unit.pursuer.z, unit.pursuer.heading, unit.generation);
     }
   }
 
@@ -642,8 +647,11 @@ export class Police {
     this.host.busted(fine, stars, at);
   }
 
-  /** Once per rendered frame: place the cars, flash the lights, the HUD stars and the siren. */
-  frame(dt: number, at: { x: number; z: number }): void {
+  /**
+   * Once per rendered frame: place the cars, flash the lights, the HUD stars and the siren.
+   * `alpha`: how far the clock is past the last fixed step (0 to 1); cars are drawn that far between their last two steps.
+   */
+  frame(dt: number, at: { x: number; z: number }, alpha = 1): void {
     this.sinceFlash += dt;
     if (this.sinceFlash > 0.18) {
       this.sinceFlash = 0;
@@ -656,7 +664,8 @@ export class Police {
     for (const unit of this.units) {
       if (!unit.active) continue;
       const car = unit.pursuer;
-      unit.car.sync(dt, car.x, car.z, car.heading, car.speed, unit.generation);
+      const drawn = unit.motion.at(alpha);
+      unit.car.sync(dt, drawn.x, drawn.z, drawn.heading, car.speed, unit.generation);
       const d = Math.hypot(car.x - at.x, car.z - at.z);
       if (unit.state === "chase" && this.wanted.stars > 0) nearest = Math.min(nearest, d);
     }

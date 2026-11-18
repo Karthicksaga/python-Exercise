@@ -1,4 +1,5 @@
 export * from "./GameLoop";
+export * from "./Motion";
 export * from "./SceneRenderer";
 export * from "./FollowCamera";
 export * from "./ChunkView";

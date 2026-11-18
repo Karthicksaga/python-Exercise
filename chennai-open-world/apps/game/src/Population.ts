@@ -23,7 +23,7 @@ import {
   type Walker as Spot,
 } from "@cow/ai";
 import { Casualties, PEDESTRIAN_HIT, hitOutcome, restingSpot, speedKept, vehicleTouches, type CasualtyState, type HitOutcome, type VehicleMotion } from "@cow/combat";
-import { SignalView } from "@cow/game-engine";
+import { Motion, SignalView } from "@cow/game-engine";
 import type { WorldMap } from "@cow/game-world";
 import type { KinematicBox, PhysicsWorld, VehicleBody } from "@cow/physics";
 import type { HumanAssets, HumanFigure } from "@cow/player";
@@ -85,11 +85,14 @@ interface Driver {
   readonly car: TrafficCar;
   readonly body: KinematicBox;
   generation: number;
+  /** The last two fixed steps, drawn in between (smooth on any display rate). */
+  readonly motion: Motion;
 }
 interface Walker {
   readonly figure: HumanFigure;
   readonly body: KinematicBox;
   generation: number;
+  readonly motion: Motion;
   /** Height the body was last put at (it is put away below the street while the person lies down). */
   y: number;
 }
@@ -203,12 +206,12 @@ export class Population {
       // Every moving vehicle has someone at the wheel (a baked seated person, shared per shirt).
       car.setDriver(humans.seatedStatic(kind === "auto" ? AUTO_DRIVER : DRIVER_CLOTHES[agent.id % DRIVER_CLOTHES.length]!, car.type.pose));
       scene.add(car.object);
-      this.drivers.push({ car, body: physics.createKinematicBox(car.type.physics.halfExtents), generation: -1 });
+      this.drivers.push({ car, body: physics.createKinematicBox(car.type.physics.halfExtents), generation: -1, motion: new Motion() });
     }
     for (const agent of this.walkers.agents) {
       const figure = humans.create(CLOTHES[agent.id % CLOTHES.length]!, true);
       scene.add(figure.object);
-      this.people.push({ figure, body: physics.createKinematicBox({ x: 0.25, y: 0.85, z: 0.25 }), generation: -1, y: PARKED_Y });
+      this.people.push({ figure, body: physics.createKinematicBox({ x: 0.25, y: 0.85, z: 0.25 }), generation: -1, y: PARKED_Y, motion: new Motion() });
     }
   }
 
@@ -325,6 +328,7 @@ export class Population {
       } else if (agent.active) {
         driver.body.moveTo(agent.x, y, agent.z, agent.heading);
       }
+      driver.motion.step(agent.x, 0, agent.z, agent.heading, agent.generation);
     });
     this.walkers.agents.forEach((agent, i) => {
       const walker = this.people[i]!;
@@ -337,6 +341,7 @@ export class Population {
       } else if (agent.active) {
         walker.body.moveTo(agent.x, y, agent.z, agent.heading);
       }
+      walker.motion.step(agent.x, 0, agent.z, agent.heading, agent.generation);
     });
     return hits;
   }
@@ -392,23 +397,28 @@ export class Population {
     return hits;
   }
 
-  /** Once per rendered frame: place the models, advance the walk animations, light the signals. */
-  frame(dt: number, viewer: { x: number; z: number }): void {
+  /**
+   * Once per rendered frame: place the models, advance the walk animations, light the signals.
+   * `alpha`: how far the clock is past the last fixed step (0 to 1); agents are drawn that far between their last two steps.
+   */
+  frame(dt: number, viewer: { x: number; z: number }, alpha = 1): void {
     this.traffic.agents.forEach((agent, i) => {
-      const { car } = this.drivers[i]!;
+      const { car, motion } = this.drivers[i]!;
       car.object.visible = agent.active;
       if (!agent.active) return;
-      car.sync(dt, agent.x, agent.z, agent.heading, agent.speed, agent.generation);
+      const drawn = motion.at(alpha);
+      car.sync(dt, drawn.x, drawn.z, drawn.heading, agent.speed, agent.generation);
       car.driverVisible = Math.hypot(agent.x - viewer.x, agent.z - viewer.z) < DRIVERS_VISIBLE;
     });
     this.walkers.agents.forEach((agent, i) => {
-      const { figure } = this.people[i]!;
+      const { figure, motion } = this.people[i]!;
       // Animated people are the most expensive thing to draw: only those close enough to be
       // seen clearly are shown and animated.
       figure.visible = agent.active && Math.hypot(agent.x - viewer.x, agent.z - viewer.z) < PEOPLE_VISIBLE;
       if (!figure.object.visible) return;
-      figure.object.position.set(agent.x, 0, agent.z);
-      figure.object.rotation.y = agent.heading;
+      const drawn = motion.at(alpha);
+      figure.object.position.set(drawn.x, 0, drawn.z);
+      figure.object.rotation.y = drawn.heading;
       figure.setDown(this.casualties.isDown(agent.id));
       figure.update(dt, agent.speed, true);
     });
