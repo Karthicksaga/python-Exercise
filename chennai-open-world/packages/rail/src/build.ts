@@ -60,6 +60,11 @@ export interface BuildOptions {
   readonly lines: readonly LineSpec[];
   /** Short names for stations whose OSM name is long or official: OSM name -> [English, Tamil]. */
   readonly names?: Readonly<Record<string, readonly [string, string]>>;
+  /**
+   * Hindi names for the boards where OSM has no `name:hi`: English (short) name -> Devanagari.
+   * Transliterations written for the game (estimated), not official spellings.
+   */
+  readonly hindi?: Readonly<Record<string, string>>;
   /** How far past the map's edge a line is kept, metres (trains appear and vanish out there). */
   readonly margin?: number;
   /** Track ways to leave out (elevated or underground lines drawn wrongly at ground level). */
@@ -282,7 +287,10 @@ export function buildRail(extract: RailExtract, options: BuildOptions): RailFile
       // Keep the platform whole on the line (and on the map).
       const s = Math.max(60, Math.min(path.length - 60, path.project(at).s));
       stops.push({ id: String(node.id), name, nameTa, s: round(s), side: platformSide(path, s, trackLines), width: PLATFORM_WIDTH });
-      if (!stations.has(String(node.id))) stations.set(String(node.id), { id: String(node.id), name, nameTa, x: round(p.x), z: round(p.z) });
+      if (!stations.has(String(node.id))) {
+        const nameHi = node.tags?.["name:hi"] ?? options.hindi?.[name] ?? "";
+        stations.set(String(node.id), { id: String(node.id), name, nameTa, ...(nameHi ? { nameHi } : {}), x: round(p.x), z: round(p.z) });
+      }
     };
     const stopPositions = stopRefs.filter((p) => inside(p, options.bounds, 0) && path.project(p).distance < 15);
     if (stopPositions.length > 0) {
