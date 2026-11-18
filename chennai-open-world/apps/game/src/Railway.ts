@@ -34,6 +34,8 @@ const CROWD_PLATFORMS = 2;
 const BOARD_RANGE = 200;
 /** Platform people further than this from the player are not drawn, metres. */
 const PEOPLE_DRAWN = 80;
+/** At most this many platform people are drawn at once (the nearest). */
+const PEOPLE_MAX = 20;
 /** Trains whose wheels are drawn turning: within this distance, metres. */
 const WHEEL_RANGE = 140;
 /** A train pulling away sounds its horn when within this distance of the player, metres. */
@@ -683,6 +685,11 @@ export class Railway {
       for (const id of [...this.loads.keys()]) if (!running.has(id)) this.loads.delete(id);
     }
     for (const id of [...this.doorCache.keys()]) if (!trains.some((t) => id.startsWith(`${t.id}@`) && t.state.stoppedAt !== null)) this.doorCache.delete(id);
+    // Only the nearest people are drawn (the triangle budget near busy stations; TD-23).
+    if (this.people.length > PEOPLE_MAX) {
+      this.people.sort((a, b) => Math.hypot(a.x - at.x, a.z - at.z) - Math.hypot(b.x - at.x, b.z - at.z));
+      this.people.length = PEOPLE_MAX;
+    }
     this.figures?.place(this.people);
     // The departure board and clock at the nearest platform.
     const board = near.find(({ d }) => d < BOARD_RANGE)?.p ?? null;

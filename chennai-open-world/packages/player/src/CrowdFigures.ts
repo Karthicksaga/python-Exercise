@@ -18,7 +18,7 @@ export const WALK_FRAMES = 6;
 /** Shirt colours, as for the city's pedestrians (`Population`). */
 const SHIRTS = [0xffffff, 0x9fb8e0, 0xe0c29f, 0xa9d6a9, 0xd9a0a0, 0xc9c9c9, 0xe6dd9a, 0xb7a3d6];
 /** Share of each part's triangles kept (the whole figure ends up under about 1k). */
-const KEEP = 0.05;
+const KEEP = 0.04;
 
 /** One person to draw: feet position, heading (the game's yaw, 0 faces -Z), walking or not. */
 export interface CrowdPlacement {

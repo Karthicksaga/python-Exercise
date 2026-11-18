@@ -166,7 +166,7 @@ export function buildStation(b: MeshBuilder, boards: MeshBuilder | null, p: Stat
     if (detailed) {
       // Tactile paving: a strip of studded tiles, drawn as alternating shades.
       const w = edge + inward * 0.95;
-      for (let u = -half + 0.3; u < half; u += 0.6) f.box(b, u, w, 0.3, 0.2, top - 0.02, top + 0.016, Math.round((u + half) / 0.6) % 2 ? TACTILE : TACTILE_DARK, "top-sides");
+      for (let u = -half + 0.6; u < half; u += 1.2) f.box(b, u, w, 0.6, 0.2, top - 0.02, top + 0.016, Math.round((u + half) / 1.2) % 2 ? TACTILE : TACTILE_DARK, "top-sides");
     }
   }
   // Ramps down at both ends (three 0.3 m steps; the player climbs 0.35 m at a time).
