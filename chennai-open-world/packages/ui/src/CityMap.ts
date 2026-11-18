@@ -95,6 +95,8 @@ export interface CityMapState {
   readonly band: number;
   /** Times the canvas was redrawn since the page loaded (redraws happen only on change). */
   readonly draws: number;
+  /** How long the last redraw took, ms (to watch performance on a phone). */
+  readonly drawMs: number;
 }
 
 export interface CityMapOpen {
@@ -234,6 +236,9 @@ export class CityMap {
   private readonly scaleBarEl: HTMLElement;
   /** The header, buttons and scale bar: labels keep out from under them. */
   private readonly panels: readonly HTMLElement[];
+  /** The OSM credit, written only while the map is shown (so a page search finds just the minimap's while it is closed). */
+  private readonly credit: HTMLElement;
+  private readonly creditText: string;
   private ratio = 1;
   private view: CityView = { cx: 0, cz: 0, scale: OPEN_SCALE, width: 1, height: 1 };
   private limits: ZoomLimits = { min: 0.02, max: MAX_SCALE };
@@ -244,6 +249,7 @@ export class CityMap {
   private route: readonly MapPoint[] | null = null;
   private frameRequested = 0;
   private draws = 0;
+  private drawMs = 0;
 
   /** Road indices and area indices by culling cell. */
   private readonly roadCells = new Map<string, number[]>();
@@ -316,10 +322,10 @@ export class CityMap {
     const scale = element("div", "cow-cm-scale", this.root);
     this.scaleLabel = element("span", "", scale);
     this.scaleBarEl = element("i", "", scale);
-    const credit = element("small", "cow-cm-credit", this.root);
+    this.credit = element("small", "cow-cm-credit", this.root);
     // The extract's date (the day): OSM data needs the credit and when it was taken.
-    credit.textContent = source.dataDate ? `${source.attribution} · ${source.dataDate.slice(0, 10)}` : source.attribution;
-    this.panels = [head, north, close, zoom, scale, credit];
+    this.creditText = source.dataDate ? `${source.attribution} · ${source.dataDate.slice(0, 10)}` : source.attribution;
+    this.panels = [head, north, close, zoom, scale, this.credit];
 
     this.index();
     this.listen();
@@ -470,6 +476,7 @@ export class CityMap {
     this.headDetail.hidden = !what.street;
     if (what.buildings) this.setBuildings(what.buildings);
     this.root.hidden = false;
+    this.credit.textContent = this.creditText;
     this.shown = true;
     this.pointers.clear();
     this.drag = this.pinch = this.tapStart = this.lastTap = null;
@@ -483,6 +490,7 @@ export class CityMap {
     if (!this.shown) return;
     this.shown = false;
     this.root.hidden = true;
+    this.credit.textContent = "";
     this.pointers.clear();
     this.drag = this.pinch = null;
     if (this.frameRequested) cancelAnimationFrame(this.frameRequested);
@@ -512,6 +520,7 @@ export class CityMap {
       marker: this.shown ? { x: this.player.x, z: this.player.z, heading: this.player.heading, screenX: rect.left + p.x, screenY: rect.top + p.y } : null,
       band: bandFor(this.view.scale),
       draws: this.draws,
+      drawMs: this.drawMs,
     };
   }
 
@@ -656,6 +665,7 @@ export class CityMap {
   /** Paint everything on screen. Called at most once per animation frame, and only after a change. */
   private draw(): void {
     this.draws++;
+    const began = performance.now();
     const g = this.g;
     const v = this.view;
     const r = this.ratio;
@@ -792,6 +802,7 @@ export class CityMap {
     const bar = scaleBar(s, 110);
     this.scaleLabel.textContent = bar.label;
     this.scaleBarEl.style.width = `${Math.round(bar.px)}px`;
+    this.drawMs = performance.now() - began;
   }
 
   private halo(text: string, x: number, y: number): void {
@@ -856,6 +867,8 @@ export class CityMap {
       const sin = Math.abs(Math.sin(label.angle));
       const hw = (w * cos + 14 * sin) / 2;
       const hh = (w * sin + 14 * cos) / 2;
+      // A name cut off by the screen's edge can't be read: wait for a spot fully on screen.
+      if (p.x - hw < 2 || p.y - hh < 2 || p.x + hw > v.width - 2 || p.y + hh > v.height - 2) continue;
       if (!free({ minX: p.x - hw, maxX: p.x + hw, minZ: p.y - hh, maxZ: p.y + hh })) continue;
       g.save();
       g.translate(p.x, p.y);
@@ -886,6 +899,7 @@ export class CityMap {
       const text = big ? d.name.toUpperCase() : d.name;
       const font = big ? "700 12px system-ui,sans-serif" : "500 11px system-ui,sans-serif";
       const w = this.measure(font, text);
+      if (p.x - w / 2 < 2 || p.x + w / 2 > v.width - 2 || p.y < 9 || p.y > v.height - 9) continue;
       if (!free({ minX: p.x - w / 2 - 3, maxX: p.x + w / 2 + 3, minZ: p.y - 8, maxZ: p.y + 8 })) continue;
       g.font = font;
       g.fillStyle = COLORS.district;

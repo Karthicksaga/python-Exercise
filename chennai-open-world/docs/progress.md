@@ -4,6 +4,37 @@ Last updated: 17 Nov 2026 (animated getting in and out of vehicles and trains).
 
 ## What exists
 
+- **Full-screen city map (18 Nov, branch `agent/city-map`; unit-tested and browser-tested in
+  headless Chromium, checked by eye in screenshots at 915×412 and 740×360; not on the emulator or
+  a phone):** tapping the minimap opens a north-up map of the whole city
+  (`packages/ui/src/CityMap.ts`, geometry in `cityMapMath.ts`; game glue `apps/game/src/CityMapDesk.ts`).
+  It opens centred on the player at about 1.8 km across, with a blue heading arrow in a pulsing
+  ring (a DOM element with a CSS animation, so the pulse needs no redraws; still with reduced
+  motion), a north arrow, a scale bar and "© OpenStreetMap contributors · <extract date>". Drawn
+  on a 2D canvas from data the game already has: every road from `roads.bin` by class (yellow
+  arterials, pale-yellow secondary, white streets with casings; footpaths dashed at street
+  level), the sea, parks/water/beaches (`index.json` areas), landmark footprints, buildings only
+  where chunks are loaded (from 0.9 px/m), main-line railway tracks and stations with names
+  (`rail.json`), district names (suburbs always, neighbourhoods from 0.3 px/m), and street names
+  written along straight stretches of named roads (pieces between junctions joined first;
+  arterials from 0.2 px/m, residential at street level; never cut off by the screen edge or
+  under a button). Icons: places (`places.ts` badges), the vehicles (lettered tags in their
+  minimap colours), share-auto passengers and drops, a job's route, and the objective as a flag,
+  pinned to the screen edge with an arrow when off screen. The header says which district and
+  street the player is in. Gestures: pinch (whole city 0.03 px/m to street level 6 px/m),
+  one-finger drag, double-tap to zoom ×2 about the point, +/−, "centre on me", close (X);
+  Escape and the mouse wheel on a desktop. The game is held while it is open (the job board's
+  hold: no simulation, controls hidden) and runs again when it closes. **Android Back** closes
+  it: the game tells the shell `{type:"cityMap", open}` and the shell sends `{type:"back"}`
+  instead of pausing (`apps/mobile/src/GameScreen.tsx`); a shell pause (app to the background)
+  closes the map and shows the pause screen. **Performance:** redraws only on a change, at most
+  once per animation frame; roads and areas are filed by 1 km cell and, per zoom band (5 bands:
+  main roads only and 20 m simplification zoomed out, everything unsimplified at street level),
+  a cell's lines are simplified (Douglas–Peucker) and baked into Path2D objects the first time
+  they are drawn; a redraw strokes only the cells on screen. Measured in headless Chromium
+  (software rendering, other test runs on the machine): first open 78 ms (includes baking that
+  band's cells), later redraws 0.6 ms at street level, 3 ms whole city, 10 ms at district zoom
+  (`snapshot().cityMap.drawMs`). Not measured on a phone. Tests: see "What was tested" below.
 - **Animated getting in and out of vehicles and trains (17 Nov, branch `agent/vehicle-entry`;
   unit-tested and browser-tested in headless Chromium, checked by eye in screenshots; not on the
   emulator or a phone):** ENTER no longer switches at once. Getting in: the figure walks to the
