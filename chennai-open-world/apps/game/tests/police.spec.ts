@@ -1,6 +1,6 @@
 /** Police and the wanted level: crimes give stars, police cars come, the stars fade when lost, arrests. */
 import { expect, test, type Page } from "@playwright/test";
-import { board, getOut, ready, snapshot, teleport, waitGameTime } from "./support";
+import { GAME_WAIT, board, getOut, ready, snapshot, teleport, waitGameTime } from "./support";
 
 interface PoliceState {
   stars: number;
@@ -12,6 +12,7 @@ interface PoliceState {
   lastCrime: string | null;
 }
 interface State {
+  simTime: number;
   x: number;
   z: number;
   money: number;
@@ -24,6 +25,8 @@ const state = async (page: Page) => (await snapshot(page)) as unknown as State;
 
 /** Game seconds before one star is lost unseen (`WANTED.loseAfter[1]` in @cow/combat). */
 const LOSE_ONE_STAR = 30;
+/** Most game seconds the wait can be held while the first car drives to the crime (`POLICE.responseMax` in Police.ts). */
+const RESPONSE_MAX = 45;
 /** Wall-clock bound for waits that the game measures in its own time (software rendering runs slowly). */
 const SLOW = 150_000;
 const MONEY = 5000;
@@ -71,9 +74,10 @@ test("firing the pistol in the street gives a star, and a police car comes", asy
 });
 
 test("losing the police: far away and out of sight, the star fades", async ({ page }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(600_000);
   await start(page);
   await fireOnce(page);
+  const shotAt = (await state(page)).simTime;
   await expect.poll(async () => (await state(page)).police.cars.length, { timeout: 20_000 }).toBe(1);
   // Jump across the city (beside a car parked for a T. Nagar job, kilometres away).
   const s = await state(page);
@@ -87,10 +91,13 @@ test("losing the police: far away and out of sight, the star fades", async ({ pa
   expect(unseen).toBeLessThan(LOSE_ONE_STAR - 6);
   await waitGameTime(page, LOSE_ONE_STAR - unseen - 4);
   expect((await state(page)).police.stars).toBe(1);
-  await expect.poll(async () => (await state(page)).police.stars, { timeout: SLOW, intervals: [250] }).toBe(0);
+  // Lost at the latest once the response window and the full wait have passed (game time: on a
+  // busy machine the game runs well behind the clock, so a wall-clock bound isn't the measure).
+  while ((await state(page)).police.stars > 0 && (await state(page)).simTime - shotAt < RESPONSE_MAX + LOSE_ONE_STAR + 5) await waitGameTime(page, 1);
+  expect((await state(page)).police.stars).toBe(0);
   await expect(page.getByTestId("wanted")).toBeHidden();
   // Not wanted: the search is called off and the car leaves.
-  await expect.poll(async () => (await state(page)).police.cars.length, { timeout: 30_000 }).toBe(0);
+  await expect.poll(async () => (await state(page)).police.cars.length, { timeout: GAME_WAIT }).toBe(0);
 });
 
 test("standing still next to an officer at one star gets the player busted", async ({ page }) => {
