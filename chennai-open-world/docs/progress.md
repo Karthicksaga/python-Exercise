@@ -50,7 +50,8 @@ Last updated: 18 Nov 2026 (animated railway stations).
   train sampled over game time brakes to 0 at Egmore, people get off and on (platform count
   drops, train load = before + on − off and rises), the board shows ON PLATFORM, wheelsets
   drawn, it pulls away accelerating and the horn counter rises; Kodambakkam crowd on the 4 m
-  deck, board format, the chime before a train). Checked by eye (screenshots, not committed):
+  deck, board format, the chime before a train). Results: typecheck clean, unit 449/449, full browser suite 81/81
+  (31.0 min, on 6df2948). Checked by eye (screenshots, not committed):
   Egmore and Kodambakkam platforms with crowds standing on the deck, a train arriving and
   standing, people at the doors, the three-language name board (legible from the platform edge),
   the departure board and clock, the FOB stairs.

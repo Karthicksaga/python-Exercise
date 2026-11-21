@@ -643,12 +643,16 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   (`nameHi` in `rail.json`, `npm run build:rail`; tracks and lines unchanged) and a Devanagari
   font subset (`assets/fonts`, `assets/README.md`).
 - **Tests:** typecheck clean; unit 449/449; `stations.spec.ts` 3/3 and `railway.spec.ts` 4/4;
-  full browser suite FULL_E2E.
+  full browser suite **81/81** (31.0 min, run alone with the lock, on 6df2948). Two earlier
+  full runs failed `onfoot.spec` "streams chunks" (old street name read right after a teleport,
+  before any frame looked it up); fixed in the game, not the test: `Game.teleport` now names the
+  street once the new chunks are in. The crowd figures are also baked only when the player first
+  nears a platform (the bake at start stalled the first frames).
 - **Shared files touched:** `Game.ts` (Hindi font load, `horn`/`announce` host callbacks,
-  `CrowdFigures.create(...).then(railway.useCrowd)`, `railway.frame(at, dt, hour)`), `Railway.ts`,
+  `railway.crowdWhenNeeded(() => CrowdFigures.create(humans))`, `railway.frame(at, dt, hour)`), `Railway.ts`,
   `Sound.ts` (two new methods), `HumanFigure.ts` (`holdPose`, `walkClipSpeed`), `RailView.ts`
   (atlas redone, `loadStationFont(url, family)`, platform drawing moved to `StationKit`),
-  `TrainView.ts` (`CoachPose.roll` optional), index export lists of `rail`, `game-engine`,
+  `TrainView.ts` (`CoachPose.roll` optional), `Game.teleport` (street named after the load), index export lists of `rail`, `game-engine`,
   `player`, `packages/player/package.json` (`meshoptimizer` now a runtime dependency),
   `scripts/build-rail.ts`, `packages/rail/src/build.ts`/`types.ts` (`nameHi`), docs.
 - **For the render-jitter work:** `Railway.frame` keeps its own `viewClock` (advanced by frame
