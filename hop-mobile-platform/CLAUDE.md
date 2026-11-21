@@ -211,3 +211,7 @@ All helpers are in `shared/design/tripExtras.ts` unless named; styles are in `an
 - **Route labels** for other route options slide along their route until clear of the top bars. Fitting includes the other options.
 - **Tests:** markers are `.hop-map-marker[title=…]`. The canvas has `data-route` and `data-alternatives`, and `hopDebug` (route, project, vehicle, pitch, bearing, nav, overlay). See `tests/map-3d.spec.mjs`.
 - **APKs** still show Google Maps when a Google key is set (CI sets one). The OpenStreetMap map shows when Google is unavailable or with `VITE_MAP_PROVIDER=osm`.
+
+## Launch and booking fixes (15 Nov 2026)
+- **Approved Captain shown onboarding on launch:** `signedIn` was set before the first `/api/state` arrived, so `decorate()` read "no state yet" as "not approved" and opened onboarding. The onboarding check now waits for state, and the first state load retries with backoff (`LiveJourney.loadInitialState`), since onboarding has no map feed polling it. Moving from onboarding to Drive clears the back history. Test: `tests/startup.spec.mjs` ("never sees onboarding").
+- **"Usual captain" on by default** (`favoriteFirst`) no longer blocks bookings: it isn't counted as an extra option for scheduled rides, and it isn't sent with a shared ride (the server refuses that combination).

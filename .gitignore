@@ -34,3 +34,5 @@ hop-mobile-platform/playwright-report/
 .env.local
 **/.env.local
 **/deploy.local.json
+# Agent git worktrees (temporary; their branches are merged when done)
+.claude/worktrees/

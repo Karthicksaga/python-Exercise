@@ -111,6 +111,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /auth/otp/verify", s.otpVerify)
 	mux.HandleFunc("POST /auth/mobile/exchange", s.mobileExchange)
 	mux.HandleFunc("POST /api/payments/webhook", s.paymentWebhook)
+	mux.HandleFunc("POST /api/sms/inbound", s.smsInbound)
 	mux.Handle("POST /auth/logout", s.auth(http.HandlerFunc(s.logout)))
 	mux.Handle("GET /api/me", s.auth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := user(r)

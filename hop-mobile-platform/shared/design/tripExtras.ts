@@ -130,6 +130,9 @@ export function fareStory(ride: Ride, role: "rider" | "captain") {
   if (adjustedFrom !== null && ride.covered_meters)
     steps.push(["route", `Trip ended after ${km(ride.covered_meters)}`, role === "rider" ? "You pay only for the distance covered" : "Fare for the distance driven", `−${inr(Math.max(0, adjustedFrom - ride.fare_paise))}`]);
   if (discount > 0) steps.push(["gift", "Discount", "Applied to this ride", `−${inr(discount)}`]);
+  const promise = ride.promise_refund_paise || 0;
+  if (promise > 0)
+    steps.push(["lock", "Price promise", role === "rider" ? "The fare came out higher; you pay the promised price" : "Hop pays you the difference", role === "rider" ? `−${inr(promise)}` : `+${inr(promise)}`]);
   steps.push(["check", role === "rider" ? "You pay" : "You collect", payable === quoted ? "Same as the price at booking" : "Never more than the locked price, plus any waiting", inr(payable)]);
   const ico: Record<string, string> = { lock: "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4", clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2", route: "M12 3l7 18-7-4-7 4z", gift: "M3 9h18v4H3zM5 13v8h14v-8M12 9v12", check: "M5 12.5l4.5 4.5L19 7.5" };
   return `<section class="hop-fare-story" aria-label="How this fare was worked out"><strong>Fare story</strong>${steps.map(([i, t, d, a]) => `<div><span class="hop-fs-dot" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${ico[i]}"/></svg></span><span><b>${escape(t)}</b><small>${escape(d)}</small></span><span class="hop-fs-amt">${a}</span></div>`).join("")}</section>`;
@@ -241,3 +244,66 @@ export const QUICK_TEXT: Record<string, Record<string, string>> = {
   "Hazard lights are on.": { ta: "ஹசார்ட் லைட் போட்டிருக்கேன்.", hi: "हैज़र्ड लाइट चालू है।" },
   "Stuck in traffic, about 5 minutes.": { ta: "டிராஃபிக்ல இருக்கேன், சுமார் 5 நிமிஷம்.", hi: "ट्रैफ़िक में हूँ, लगभग 5 मिनट।" },
 };
+
+// ── Advertisable features (Nov 2026) ───────────────────
+/** Review screen: the price promise, and the official meter fare next to ours (autos, when set). */
+export function promiseCard(container: Element | null, fare: number | undefined, meter?: number) {
+  if (!container) return;
+  let card = container.querySelector<HTMLElement>(".hop-promise");
+  if (fare === undefined) return card?.remove();
+  if (!card) {
+    card = document.createElement("div");
+    card.className = "hop-promise";
+    card.setAttribute("role", "note");
+    container.append(card);
+  }
+  const meterText = meter ? `<span class="hop-meter">Govt meter fare ${inr(meter)}</span>` : "";
+  const html = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span><strong>Price promise · never more than ${inr(fare)}</strong><small>Only the waiting charge both phones show can be added.</small>${meterText}</span>`;
+  if (card.innerHTML !== html) card.innerHTML = html;
+}
+/** "Govt meter ₹X" under a vehicle price on the choose screen. */
+export function meterTag(button: Element, meter: number | undefined) {
+  let tag = button.querySelector<HTMLElement>(".hop-meter-tag");
+  if (!meter) return tag?.remove();
+  if (!tag) {
+    tag = document.createElement("span");
+    tag.className = "hop-meter-tag";
+    button.querySelector(".vehicle-price")?.after(tag);
+  }
+  const text = `Meter ${inr(meter)}`;
+  if (tag.textContent !== text) tag.textContent = text;
+}
+/** Meter fare from a tariff (charged per started 100 m, like printed fare charts). */
+export function meterFare(t: { meter_base_paise?: number | null; meter_base_meters?: number | null; meter_per_km_paise?: number | null } | undefined, meters: number) {
+  if (!t?.meter_base_paise || !t.meter_per_km_paise) return undefined;
+  const extra = Math.max(0, meters - (t.meter_base_meters || 0));
+  return t.meter_base_paise + Math.floor(Math.ceil(extra / 100) * t.meter_per_km_paise / 10);
+}
+/** Rider matching screen after a captain cancelled: first in line, and the credit. */
+export function cancelNotice(container: Element | null, ride: Ride | undefined) {
+  if (!container) return;
+  let card = container.querySelector<HTMLElement>(".hop-cancel-notice");
+  if (!ride || ride.status !== "requested" || !ride.captain_cancels) return card?.remove();
+  if (!card) {
+    card = document.createElement("div");
+    card.className = "hop-cancel-notice";
+    card.setAttribute("role", "status");
+    container.prepend(card);
+  }
+  const credit = ride.cancel_credit_paise ? ` ${inr(ride.cancel_credit_paise)} added to your wallet.` : "";
+  const html = `<strong>Your captain cancelled</strong><small>You're first in line for the next captain.${credit}</small>`;
+  if (card.innerHTML !== html) card.innerHTML = html;
+}
+/** Captain receipt: the back-seat check (24 h after the trip). */
+export function backSeatCard(ride: Ride) {
+  if (ride.status !== "completed" || !ride.completed_at || Date.now() - Date.parse(ride.completed_at) > 24 * 3600e3) return "";
+  if (ride.back_seat === "found") return `<div class="hop-back-seat done" role="status"><strong>The rider has been told you found something</strong><small>Keep it safe; they'll message you.</small></div>`;
+  if (ride.back_seat === "clear") return "";
+  return `<div class="hop-back-seat"><strong>Check the back seat</strong><small>Phones, bags and umbrellas get left behind.</small><div class="hop-back-seat-actions"><button type="button" class="secondary" data-live-seat="clear">All clear</button><button type="button" class="secondary" data-live-seat="found">Found something</button></div></div>`;
+}
+/** Rider receipt: their captain found something, or a way to report it. */
+export function lostItemHint(ride: Ride) {
+  if (ride.status !== "completed") return "";
+  if (ride.back_seat === "found") return `<div class="payment-hint hop-found" role="status">Your captain found something after your trip. Message them from this receipt to collect it.</div>`;
+  return "";
+}

@@ -37,6 +37,7 @@ const rideSelect = `SELECT r.id,r.status,r.version,r.payment_method,r.payment_st
  ,q.discount_paise,q.surge_multiplier::float8 AS surge_multiplier,q.promo_code,q.pink,GREATEST(0,COALESCE(r.offered_fare_paise,q.fare_paise)-q.discount_paise) AS payable_paise,r.full_fare_status,r.adjusted_from_paise,r.covered_meters
  ,CASE WHEN r.status='arrived' THEN (SELECT max(created_at) FROM audit_events e WHERE e.ride_id=r.id AND e.action='arrived') END AS arrived_at
  ,r.rider_notes,r.arrival_alert,r.arrival_alert_status,r.sms_updates
+ ,r.promised_fare_paise,r.promise_refund_paise,r.captain_cancels,r.cancel_credit_paise,r.back_seat
  FROM rides r JOIN quotes q ON q.id=r.quote_id JOIN accounts ra ON ra.id=r.rider_id LEFT JOIN drivers d ON d.user_id=r.driver_id LEFT JOIN accounts da ON da.id=r.driver_id
  LEFT JOIN ride_ratings myrating ON myrating.ride_id=r.id AND myrating.rater_id=$1::uuid`
 
@@ -126,7 +127,9 @@ func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	driver, e := jsonRows(r.Context(), s.DB, `SELECT user_id,area_id,status,vehicle_number,vehicle_category,vehicle_make,vehicle_model,vehicle_color,onboarding_version,upi_id,license_reference,insurance_reference,license_expires,insurance_expires,review_note,online,location_at,pickup_radius_meters,minimum_fare_paise,home_lat,home_lng,home_until,home_uses,home_uses_on,daily_goal_paise,lat,lng,online_since,break_until,home_by FROM drivers WHERE user_id=$1`, uid)
+	driver, e := jsonRows(r.Context(), s.DB, `SELECT user_id,area_id,status,vehicle_number,vehicle_category,vehicle_make,vehicle_model,vehicle_color,onboarding_version,upi_id,license_reference,insurance_reference,license_expires,insurance_expires,review_note,online,location_at,pickup_radius_meters,minimum_fare_paise,home_lat,home_lng,home_until,home_uses,home_uses_on,daily_goal_paise,lat,lng,online_since,break_until,home_by,
+ (SELECT count(*) FROM captain_cancellations c WHERE c.driver_id=drivers.user_id AND c.created_at>now()-interval '30 days') AS cancels_30d,
+ (SELECT count(*) FROM rides x WHERE x.driver_id=drivers.user_id AND x.status='completed' AND x.completed_at>now()-interval '30 days') AS trips_30d FROM drivers WHERE user_id=$1`, uid)
 	if e != nil {
 		dbError(w, e)
 		return
@@ -349,7 +352,9 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 	}
 	var id string
 	e = tx.QueryRow(ctx, `INSERT INTO rides(quote_id,rider_id,request_key,payment_method,passenger_name,passenger_phone,offered_fare_paise,favorite_first_until)
- SELECT q.id,q.rider_id,$3,$4,$5,$6,CASE WHEN $8::bigint<>q.fare_paise THEN $8::bigint END,CASE WHEN $7::boolean AND EXISTS(SELECT 1 FROM favorite_drivers WHERE rider_id=$2::uuid) THEN now()+interval '60 seconds' END
+ SELECT q.id,q.rider_id,$3,$4,$5,$6,CASE WHEN $8::bigint<>q.fare_paise THEN $8::bigint END,CASE WHEN $7::boolean AND EXISTS(SELECT 1 FROM favorite_drivers f JOIN drivers d ON d.user_id=f.driver_id WHERE f.rider_id=$2::uuid
+ AND d.online AND d.status='approved' AND d.area_id=q.area_id AND d.vehicle_category=q.vehicle_category AND d.location_at>now()-interval '2 minutes'
+ AND abs(d.lat-q.pickup_lat)<0.03 AND abs(d.lng-q.pickup_lng)<0.03) THEN now()+interval '60 seconds' END
  FROM quotes q JOIN areas a ON a.id=q.area_id WHERE q.id=$1 AND q.rider_id=$2 AND q.expires_at>now() AND a.active RETURNING id`,
 		input.QuoteID, uid, input.RequestKey, input.Payment, input.PassengerName, input.PassengerPhone, input.FavoriteFirst, offerOrQuote(input.OfferPaise, quotedFare)).Scan(&id)
 	if errors.Is(e, pgx.ErrNoRows) {
@@ -357,7 +362,7 @@ func (s *Server) book(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if e == nil {
-		_, e = tx.Exec(ctx, "UPDATE rides SET rider_notes=$2,arrival_alert=$3,sms_updates=$4 WHERE id=$1", id, notes, input.ArrivalAlert, input.SMSUpdates)
+		_, e = tx.Exec(ctx, "UPDATE rides SET rider_notes=$2,arrival_alert=$3,sms_updates=$4,promised_fare_paise=COALESCE(offered_fare_paise,(SELECT fare_paise FROM quotes WHERE id=quote_id)) WHERE id=$1", id, notes, input.ArrivalAlert, input.SMSUpdates)
 	}
 	if e != nil {
 		dbError(w, e)
@@ -592,7 +597,7 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 		}
 		var wait int64
 		if e = tx.QueryRow(ctx, waitChargeSQL, id).Scan(&wait); e == nil && wait > 0 {
-			_, e = tx.Exec(ctx, "UPDATE rides SET wait_charge_paise=$2,offered_fare_paise=COALESCE(offered_fare_paise,(SELECT fare_paise FROM quotes WHERE id=quote_id))+$2 WHERE id=$1", id, wait)
+			_, e = tx.Exec(ctx, "UPDATE rides SET wait_charge_paise=$2,offered_fare_paise=COALESCE(offered_fare_paise,(SELECT fare_paise FROM quotes WHERE id=quote_id))+$2,promised_fare_paise=promised_fare_paise+$2 WHERE id=$1", id, wait)
 		}
 		if e != nil {
 			dbError(w, e)
@@ -708,6 +713,26 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			next = "cancelled"
+			// Accepted means coming: a captain's cancel sends the ride back to matching first.
+			if uid == driver && (status == "accepted" || status == "arrived") {
+				requeued, _, err := requeueAfterCaptainCancel(ctx, tx, id, driver, rider, strings.TrimSpace(input.Reason))
+				if err == nil && requeued {
+					err = audit(ctx, tx, uid, id, "captain_cancelled_requeued", map[string]string{"reason": input.Reason})
+					if err == nil {
+						err = tx.Commit(ctx)
+					}
+				}
+				if err != nil {
+					dbError(w, err)
+					return
+				}
+				if requeued {
+					s.wake(rider)
+					s.wake(driver)
+					write(w, 200, map[string]any{"ok": true, "requeued": true})
+					return
+				}
+			}
 		}
 	case "cash_paid", "payment_not_received":
 		// Cash and direct UPI: the rider's "I've paid" lifts the booking block; the Captain can still
@@ -868,6 +893,9 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request) {
  version=version+1,updated_at=now() WHERE id=$1`, id, next, driver, input.Reason)
 	if e == nil && next == "cancelled" {
 		e = releaseOrphans(ctx, tx)
+	}
+	if e == nil && next == "completed" {
+		_, e = applyPricePromise(ctx, tx, id)
 	}
 	if e == nil && next == "completed" && payment == "wallet" {
 		e = settleWalletRide(ctx, tx, id, rider)
@@ -1032,7 +1060,7 @@ func (s *Server) acceptBid(w http.ResponseWriter, r *http.Request) {
 		dbError(w, e)
 		return
 	}
-	_, e = tx.Exec(ctx, "UPDATE rides SET offered_fare_paise=$2,reserved_driver_id=$3,reserved_until=now()+interval '60 seconds',version=version+1,updated_at=now() WHERE id=$1", r.PathValue("id"), amount, driver)
+	_, e = tx.Exec(ctx, "UPDATE rides SET offered_fare_paise=$2,promised_fare_paise=$2,reserved_driver_id=$3,reserved_until=now()+interval '60 seconds',version=version+1,updated_at=now() WHERE id=$1", r.PathValue("id"), amount, driver)
 	if e == nil {
 		e = audit(ctx, tx, uid, r.PathValue("id"), "fare_counter_accepted", map[string]int64{"amount_paise": amount})
 	}
