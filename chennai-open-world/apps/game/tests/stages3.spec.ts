@@ -14,6 +14,7 @@ const LATER = ["wedding-party", "planted-chain", "mumbai-mail", "harmonium-thief
 const LINE = "beach-tambaram";
 
 interface State {
+  simTime: number;
   x: number;
   z: number;
   mode: string;
@@ -49,14 +50,27 @@ async function startAt(page: Page, id: string, money: number): Promise<void> {
   expect((await state(page)).mission).toBe(id);
 }
 
-const objective = (page: Page, label: string) => expect.poll(async () => (await state(page)).objective, { timeout: GAME_WAIT }).toBe(label);
+/**
+ * Wait for the objective to read `label`, for up to `gameSeconds` of game time (not wall clock:
+ * on a slow runner three passengers walking over and getting in can outlast 40 real seconds).
+ */
+async function objective(page: Page, label: string, gameSeconds = 60): Promise<void> {
+  const from = (await state(page)).simTime;
+  await expect
+    .poll(async () => {
+      const s = await state(page);
+      return s.objective === label || s.simTime - from >= gameSeconds;
+    }, { timeout: Math.max(GAME_WAIT, gameSeconds * 20_000), intervals: [100] })
+    .toBe(true);
+  expect((await state(page)).objective).toBe(label);
+}
 async function goToTarget(page: Page): Promise<void> {
   const s = await state(page);
   await teleport(page, s.target!.x, s.target!.z);
 }
 
 test("stage 16: the wedding party of three gets into the auto on Westcott Road and out at the mandapam", async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(480_000);
   await startAt(page, "wedding-party", 30_000);
   const before = (await state(page)).reputation;
   await board(page, "auto-royapettah");
@@ -75,7 +89,7 @@ test("stage 16: the wedding party of three gets into the auto on Westcott Road a
 });
 
 test("stage 17: a planted chain brings the police; lose them, then hand it in at the temple office", async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(480_000);
   await startAt(page, "planted-chain", 31_800);
   await goToTarget(page);
   await objective(page, "Someone planted a stolen chain on you: lose the police");
@@ -93,7 +107,7 @@ test("stage 17: a planted chain brings the police; lose them, then hand it in at
 });
 
 test("stage 18: the singer gets into the car in Mylapore and out at Chennai Central, on time", async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(480_000);
   await startAt(page, "mumbai-mail", 33_800);
   await board(page, "car-mylapore");
   await objective(page, "Pick up the singer on South Mada Street");
@@ -109,7 +123,7 @@ test("stage 18: the singer gets into the car in Mylapore and out at Chennai Cent
 });
 
 test("stage 19: walk to Park station, ride the train to Egmore, and catch the thief on the motorbike", async ({ page }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(480_000);
   await startAt(page, "harmonium-thief", 36_300);
   await goToTarget(page);
   await objective(page, "Take a train from Park to Chennai Egmore (BOARD on the platform)");
@@ -147,7 +161,7 @@ test("stage 19: walk to Park station, ride the train to Egmore, and catch the th
 });
 
 test("stage 20: biryani from Egmore to the Chepauk stadium against the clock", async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(480_000);
   await startAt(page, "stadium-biryani", 39_095);
   await board(page, "bike-egmore");
   await objective(page, "Collect the biryani near Egmore station");
@@ -163,7 +177,7 @@ test("stage 20: biryani from Egmore to the Chepauk stadium against the clock", a
 });
 
 test("stage 21: beat the gang robbing the riders on the beach road", async ({ page }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(480_000);
   await startAt(page, "beach-road-brawl", 40_695);
   await page.evaluate(() => (window as unknown as Hooks).__cow.giveWeapon("pistol", 120));
   await goToTarget(page);
