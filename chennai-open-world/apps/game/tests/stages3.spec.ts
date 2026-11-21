@@ -101,7 +101,10 @@ test("stage 18: the singer gets into the car in Mylapore and out at Chennai Cent
   await objective(page, "Drop her at Chennai Central, EVR Periyar Salai");
   expect((await state(page)).fare!.aboard).toBe(1);
   await goToTarget(page);
-  await expect.poll(async () => (await state(page)).mission, { timeout: GAME_WAIT }).toBe("harmonium-thief");
+  // She gets out and walks to the station side of the road (here about 20 m: the kerb by the
+  // marker is a junction), about 15 game seconds: slow on a software-rendered runner.
+  await expect.poll(async () => (await state(page)).fare?.stages[0] ?? "done", { timeout: GAME_WAIT }).toMatch(/leaving|done/);
+  await expect.poll(async () => (await state(page)).mission, { timeout: 2 * GAME_WAIT }).toBe("harmonium-thief");
   expect((await state(page)).money).toBe(33_800 + 2500);
 });
 
