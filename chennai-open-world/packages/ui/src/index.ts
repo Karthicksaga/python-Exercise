@@ -7,3 +7,5 @@ export * from "./RidePanel";
 export * from "./PlaceScreen";
 export * from "./placeIcons";
 export * from "./WantedStars";
+export * from "./CityMap";
+export * from "./cityMapMath";

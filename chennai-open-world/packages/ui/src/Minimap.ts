@@ -92,6 +92,7 @@ class TileIndex<T> {
 const STYLE = `
 .cow-minimap{position:absolute;right:calc(14px + env(safe-area-inset-right));top:calc(64px + env(safe-area-inset-top));width:${SIZE}px;pointer-events:none}
 .cow-minimap canvas{width:${SIZE}px;height:${SIZE}px;border-radius:50%;border:2px solid rgba(255,255,255,.75);background:#cdbf9c;display:block;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.cow-minimap canvas.tappable{pointer-events:auto;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .cow-minimap small{display:block;text-align:center;font:500 8px system-ui,sans-serif;color:#fff;opacity:.85;margin-top:2px;text-shadow:0 1px 2px #000}
 `;
 
@@ -133,6 +134,22 @@ export class Minimap {
     this.context = context;
     for (const road of source.roads) this.roads.add(road, boxOf(road.points));
     for (const area of source.areas) this.areas.add(area, boxOf(area.outline));
+  }
+
+  /**
+   * Make the minimap a button (it opens the city map). Only the round map itself takes touches;
+   * the rest of the HUD around it still lets them through to the look zone underneath.
+   */
+  onTap(run: () => void): void {
+    const canvas = this.context.canvas;
+    canvas.classList.add("tappable");
+    canvas.setAttribute("role", "button");
+    canvas.setAttribute("aria-label", "Open city map");
+    canvas.tabIndex = 0;
+    canvas.addEventListener("click", () => run());
+    canvas.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") run();
+    });
   }
 
   /** Lines drawn over the roads on every tile they cross (railway tracks). Call once. */

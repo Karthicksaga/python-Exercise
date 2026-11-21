@@ -1,9 +1,40 @@
 # Progress, testing and known issues
 
-Last updated: 17 Nov 2026 (animated getting in and out of vehicles and trains).
+Last updated: 18 Nov 2026 (full-screen city map).
 
 ## What exists
 
+- **Full-screen city map (18 Nov, branch `agent/city-map`; unit-tested and browser-tested in
+  headless Chromium, checked by eye in screenshots at 915×412 and 740×360; not on the emulator or
+  a phone):** tapping the minimap opens a north-up map of the whole city
+  (`packages/ui/src/CityMap.ts`, geometry in `cityMapMath.ts`; game glue `apps/game/src/CityMapDesk.ts`).
+  It opens centred on the player at about 1.8 km across, with a blue heading arrow in a pulsing
+  ring (a DOM element with a CSS animation, so the pulse needs no redraws; still with reduced
+  motion), a north arrow, a scale bar and "© OpenStreetMap contributors · <extract date>". Drawn
+  on a 2D canvas from data the game already has: every road from `roads.bin` by class (yellow
+  arterials, pale-yellow secondary, white streets with casings; footpaths dashed at street
+  level), the sea, parks/water/beaches (`index.json` areas), landmark footprints, buildings only
+  where chunks are loaded (from 0.9 px/m), main-line railway tracks and stations with names
+  (`rail.json`), district names (suburbs always, neighbourhoods from 0.3 px/m), and street names
+  written along straight stretches of named roads (pieces between junctions joined first;
+  arterials from 0.2 px/m, residential at street level; never cut off by the screen edge or
+  under a button). Icons: places (`places.ts` badges), the vehicles (lettered tags in their
+  minimap colours), share-auto passengers and drops, a job's route, and the objective as a flag,
+  pinned to the screen edge with an arrow when off screen. The header says which district and
+  street the player is in. Gestures: pinch (whole city 0.03 px/m to street level 6 px/m),
+  one-finger drag, double-tap to zoom ×2 about the point, +/−, "centre on me", close (X);
+  Escape and the mouse wheel on a desktop. The game is held while it is open (the job board's
+  hold: no simulation, controls hidden) and runs again when it closes. **Android Back** closes
+  it: the game tells the shell `{type:"cityMap", open}` and the shell sends `{type:"back"}`
+  instead of pausing (`apps/mobile/src/GameScreen.tsx`); a shell pause (app to the background)
+  closes the map and shows the pause screen. **Performance:** redraws only on a change, at most
+  once per animation frame; roads and areas are filed by 1 km cell and, per zoom band (5 bands:
+  main roads only and 20 m simplification zoomed out, everything unsimplified at street level),
+  a cell's lines are simplified (Douglas–Peucker) and baked into Path2D objects the first time
+  they are drawn; a redraw strokes only the cells on screen. Measured in headless Chromium
+  (software rendering, other test runs on the machine): first open 78 ms (includes baking that
+  band's cells), later redraws 0.6 ms at street level, 3 ms whole city, 10 ms at district zoom
+  (`snapshot().cityMap.drawMs`). Not measured on a phone. Tests: see "What was tested" below.
 - **Animated getting in and out of vehicles and trains (17 Nov, branch `agent/vehicle-entry`;
   unit-tested and browser-tested in headless Chromium, checked by eye in screenshots; not on the
   emulator or a phone):** ENTER no longer switches at once. Getting in: the figure walks to the
@@ -518,6 +549,7 @@ Last updated: 17 Nov 2026 (share auto).
 
 | Check | Result | How |
 |---|---|---|
+| City map (18 Nov, `agent/city-map`) | **pass**: typecheck clean, unit 456/456 (21 new in `packages/ui/src/cityMapMath.test.ts`), browser `citymap.spec.ts` 6/6 with `onfoot.spec.ts` 13/13; full suite **84/84** (31.5 min, no retries) | `npm run typecheck && npm test`; `PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e -- tests/citymap.spec.ts …`. Unit: projection both ways, visible box, zoom clamping, fit-the-city scale, zoom about a point, drag, pinch (scale, anchored midpoint, pinch that pans, limits), centre kept over the city, culling cells, zoom bands, Douglas–Peucker, scale bar, edge pins, joining road pieces and finding straight stretches for names. Browser: tap the minimap → map open, centred on the player, marker (and the drawn arrow) at the screen centre, `held`, `simTime` unchanged over 1 s, controls hidden, X closes and game time runs; pinch doubles the zoom keeping the midpoint, drag moves the centre by the finger's travel, double-tap ×2 about the tap, +/−, street-level and whole-city limits, centre on me, no redraws without a change; teleport to T. Nagar (3269, 4960) → map and marker there with the heading; Back closes the map and the shell hears `cityMap` open/closed, Back with it closed pauses, a shell pause closes it; buttons ≥ 44 px, inside the screen, nothing overlapping at 915×412 and 740×360. Also `driving.spec.ts` (controls clear of the minimap) and `weapons.spec.ts` pass. **Changed on purpose:** none of the existing tests; the map's OSM credit is only in the page while it is open because `onfoot.spec.ts` searches the page for the credit text. Checked by eye (screenshots, not committed): whole city, the player at 0.5 px/m, street level with buildings, T. Nagar with "Anna Salai (Mount Road)" and Mambalam station; labels legible, marker clear of other icons except at the crowded spawn |
 | Merged: vehicle entry + police + weapons/gangs (17 Nov, `agent/merge-features`) | **pass**: typecheck clean, unit 430/430, browser **78/78** (28.4 min, full suite run alone, no retries) | `npm run typecheck && npm test`; `cd apps/game && PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test --trace off`. The three branches were merged into one; conflicts in `Game.ts` were resolved so they work together: being busted confiscates every weapon (`Arms.confiscate`), the police hear every gun, officers, gang crews and stage enemies can be active at once, a new game resets both. Not run on the emulator or a phone |
 | Animated get in / get out, train doors (17 Nov, `agent/vehicle-entry`) | **pass**: typecheck clean, unit 348/348, browser 61/61 (21.9 min, full suite, no retries) | `npm run typecheck && npm test`; `PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e -- --trace off` on 8f7b5bd. New unit tests: `Boarding.test.ts` (phase order and timings, walk cap, door easing and smoothness, events, getting out, the walk path never crosses any vehicle's body from 16 directions, entry data), `doors.test.ts` (vehicles: car and ambulance doors swing out on the front hinge, bus leaves fold outwards and clear the opening, one mesh each with at most 72 triangles, one material per colour, no door on auto and bike), `packages/rail/src/doors.test.ts` (train doors: shut while moving, open mid-stop, shut before leaving, still open when the last ticket is sold), and `ridingPose.test.ts` with the real character (the hips move in a straight line as it sits, hands on the grips or wheel at the end for every kind, a part-way pose does not creep, it stands fully up again). New browser tests: `boarding.spec.ts` (car: door > 0.8 while still on foot, phases open → sit → close, seated with the door shut and driving controls shown, the car does not move; getting out: control back while the door is still closing, standing 1 to 2 m off the car's right side on the ground; bus: climb phase through the folding door; auto and bike: no door; a teleport mid-sequence leaves the player on foot with the door shut) and a railway test (doors open at the stop, the player walks through, doors shut when the train leaves, stepping off walks out onto the platform). **Changed on purpose:** `board()` and a new `getOut()` helper in `support.ts` wait in game time for the sequence, since getting in and out is no longer instant; every gameplay assertion is kept. Checked by eye (Playwright screenshots, 915×412, not committed): the car door swings out from its front hinge with the figure standing behind it, the figure disappears into the dark doorway as it sits (no cabin); bus leaves fold out on the kerb side and the figure steps in between them; the auto rider steps in from the left, though the legs brush the front cowl mid-step; feet stay on the ground while walking; train doors on the coach nearest the player slide apart to show dark openings |
 | Police and wanted level (17 Nov, `agent/police`) | **pass**: typecheck clean, unit 337/337 (34 new: `Wanted.test.ts` 25, `Pursuit.test.ts` 9), browser **60/60** full suite (21.0 min) | `npm run typecheck && npm test`; `PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e -- --trace off`. New `police.spec.ts` (4): a pistol shot gives a star and a car comes from out of sight (over 60 m) and reaches the player, stars flash when seen; teleported kilometres away the star holds until its 30 s and then fades and the car leaves; standing still beside the officers at one star → busted, ₹500 fine, rounds taken, released by a police station; the own hatchback is no crime, `car-1` is theft, and at two stars the job board refuses. An earlier partial full run had one failure in `onfoot.spec.ts` (chunk streaming, a wall-clock wait under load); it passed in the complete run. **Cost at `?quality=lite`** (production build, software GPU, spawn street): before police 175–207 draw calls / 250–300k triangles; one car plus two officers on foot +21 draw calls / +30k triangles; a 3-star chase (two cars, three armed officers) peaked at 244 draw calls and 333k triangles (3-star stop on foot: 241 / 309k). Draw calls are within the ~300 budget; triangles go over 300k at the spawn street, which was already at the limit. Checked by eye at 915×412: light bar and POLICE band on the car, officers walking up and standing round the player, armed officers at 3 stars, stars under the money line (no overlap with controls or the minimap), the Busted toast at the station |

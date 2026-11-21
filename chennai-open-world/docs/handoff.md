@@ -632,3 +632,33 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   doesn't run until the first car gets within 30 m of the spot (or sees the player), at most 45 s
   (`POLICE.arrivedWithin`, `responseMax`; `WantedSight.responding`): on a slow CI runner the
   star faded before the car arrived. Unit 435/435, browser 78/78 (28.1 min).
+
+## 18 Nov 2026: full-screen city map (branch `agent/city-map`): where I left off
+- **Done and tested** (details in `progress.md`): tap the minimap → a north-up 2D-canvas map of
+  the whole city centred on the player (pulsing "you are here" arrow with heading, N arrow, scale
+  bar, OSM credit with the extract date), roads by class from `roads.bin`, sea, parks/water,
+  railway and stations, district and street names, places, vehicles, job marks and the objective
+  (pinned to the edge when off screen). Pinch, drag, double-tap, +/−, centre on me, X; Escape and
+  wheel on a desktop. The game is held while it is open (the job board's `hold`/`release`).
+  Code: `packages/ui/src/CityMap.ts` (drawing, gestures), `packages/ui/src/cityMapMath.ts` (pure
+  geometry, unit-tested), `apps/game/src/CityMapDesk.ts` (what the game feeds it).
+- **Android Back:** the game sends `{type:"cityMap", open}` to the shell; `GameScreen.tsx` sends
+  `{type:"back"}` while it is open (the game closes the map), otherwise pauses as before. A shell
+  "pause" closes the map and shows the pause screen. **Not tried on the emulator or a phone**, and
+  `apps/mobile` was not type-checked (its node_modules are not installed in this checkout).
+- **Shared files touched:** `Game.ts` (imports; a `cityMap` field built by a new `makeCityMap()`
+  at the end of the constructor, `minimap.onTap`; one line in `setPaused`; `back()`;
+  `cityMap.setRail` after the railway in `create`; `onShellMessage` line; `cityMap` in
+  `snapshot`/`GameSnapshot`), `nativeBridge.ts` (message types), `packages/ui/src/Minimap.ts`
+  (`onTap`: only the round canvas takes touches), `packages/ui/src/index.ts` (exports),
+  `apps/mobile/src/GameScreen.tsx`, `docs/progress.md`, `docs/handoff.md`. Not touched:
+  `Railway.ts`, `packages/rail` (the map reads `rail.json` data passed from `create`).
+- **Tests:** typecheck clean; unit 456/456; `citymap.spec.ts` 6/6 (with `onfoot.spec.ts` 13/13;
+  `driving.spec.ts` and `weapons.spec.ts` pass). Full suite on this branch: **84/84** (31.5 min, no retries).
+- **Measured** (headless Chromium, software rendering, machine shared): redraw 0.5 ms at street
+  level, 3–10 ms at city/district zoom; the first draw of a zoom band bakes its paths (up to
+  ~80 ms once). `snapshot().cityMap.drawMs` shows the last redraw; check it on a phone.
+- **Not done / uncertain:** no tap-to-identify on icons and no legend; buildings only where chunks
+  are loaded; police and enemies are not shown on the city map (only the minimap); the vehicle
+  tags crowd at the spawn where every parked vehicle stands together; the map's zoom is kept
+  between openings once the player changes it (first open 0.5 px/m).
