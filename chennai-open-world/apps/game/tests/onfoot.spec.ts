@@ -1,10 +1,11 @@
 /** The world and the player on foot, checked in a real browser engine with touch input. */
 import { expect, test } from "@playwright/test";
-import { dragLook, holdStick, probe, ready, snapshot, teleport } from "./support";
+import { dragLook, holdStick, probe, ready, snapshot, teleport, waitGameTime } from "./support";
 
 test("loads the real map around the player with traffic and pedestrians", async ({ page }) => {
   await ready(page);
-  await page.waitForTimeout(800);
+  // Game time, not wall clock: the first frames can stall, and the player spawns 10 cm up.
+  await waitGameTime(page, 0.5);
   const s = await snapshot(page);
   expect(s.chunksLoaded).toBeGreaterThan(3);
   expect(s.chunksLoaded).toBeLessThan(16); // streaming: not the whole map
