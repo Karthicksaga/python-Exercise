@@ -654,7 +654,7 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   `apps/mobile/src/GameScreen.tsx`, `docs/progress.md`, `docs/handoff.md`. Not touched:
   `Railway.ts`, `packages/rail` (the map reads `rail.json` data passed from `create`).
 - **Tests:** typecheck clean; unit 456/456; `citymap.spec.ts` 6/6 (with `onfoot.spec.ts` 13/13;
-  `driving.spec.ts` and `weapons.spec.ts` pass). Full suite on this branch: FULL_RESULT.
+  `driving.spec.ts` and `weapons.spec.ts` pass). Full suite on this branch: **84/84** (31.5 min, no retries).
 - **Measured** (headless Chromium, software rendering, machine shared): redraw 0.5 ms at street
   level, 3–10 ms at city/district zoom; the first draw of a zoom band bakes its paths (up to
   ~80 ms once). `snapshot().cityMap.drawMs` shows the last redraw; check it on a phone.
