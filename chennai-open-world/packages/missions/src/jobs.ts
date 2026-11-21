@@ -465,6 +465,13 @@ export class JobRunner {
     return { type: "failed", job, reason, fine: job.fine, reputation: this.rep - before };
   }
 
+  /** Gain reputation outside a job (a story stage's reward). Never above 100. Returns the points gained. */
+  gainReputation(points: number): number {
+    const before = this.rep;
+    this.rep = clamp(this.rep + Math.max(0, Math.round(points)), 0, 100);
+    return this.rep - before;
+  }
+
   /** Lose reputation outside a job (hitting a pedestrian). Never below 0. Returns the points lost. */
   loseReputation(points: number): number {
     const before = this.rep;
