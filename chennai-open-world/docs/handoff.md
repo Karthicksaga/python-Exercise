@@ -720,3 +720,16 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - **Results:** typecheck clean; unit 460/460; fares.spec 3/3, stages3.spec 6/6; full browser
   suite once: 86/87 (34.8 min); the failure was stage 15 expecting no next stage, updated on
   purpose (`missions2.spec.ts`), then 1/1 on its own.
+
+## 21 Nov 2026: merged smooth motion, city map, stations, fares and stages 16–21
+- `agent/merge-features-2` (1a6407c) fast-forwarded `feat/chennai-open-world` from a56bb00.
+  Conflicts were only in `Game.ts` (teleport keeps the motion snap and the street lookup after
+  the load; frame passes `alpha` to the population and `(at, dt, hour)` to the railway; city map
+  and fare figure fields both kept) and the docs (both entries kept).
+- Results on the merge: typecheck clean, unit 500/500, full browser suite **96/96** (36.9 min,
+  run alone). In a fresh worktree run the suite with `PW_CHROMIUM=/opt/pw-browsers/chromium`:
+  `npm ci` installs a Playwright whose own headless shell is not on this machine.
+- Open follow-ups from the four branches: Kodambakkam platform 318k triangles (over budget);
+  FOB and booking office not solid; fare passengers not physics bodies; no stretcher; stage 17
+  test uses `setWanted(0)`; `Railway.frame` still pins the train to the physics clock while
+  riding (remove once the camera is interpolated); nothing tried on a phone.
