@@ -738,3 +738,54 @@ Difficulty has not been play-tested by a person.
 - **Not built:** inventory or shops, more weapons, settings screen (including a mute switch),
   interiors, weather, day/night.
 - The release APK is signed with the debug keystore and built for arm64 only.
+
+## Fares and stages 16–21 (branch `agent/fares-stages`, 21 Nov 2026)
+- **Passengers get in and out (fares).** Before, every pick-up and drop was only a marker to stop
+  at. Rules in `packages/missions/src/fares.ts` (`FareStop`, `busCrowd`, timings in `FARES`, all
+  estimates): someone waits on the pavement beside the marker; once the vehicle is stopped in it
+  they walk to the door (1.3 m/s), get in (auto 1.2 s, car 1.8 s, ambulance 2.6 s and a patient
+  1.5 × that, bus 1 s), and only then is the objective or job stop done. At a drop they get out,
+  walk onto the pavement and 2.5 m on, then it pays. Bus stops: some off first, then some on
+  (nobody aboard at the first stop, everyone off at the last). A walker heads back if the vehicle
+  drives off; someone at the door finishes. `MissionRunner` and `JobRunner` run a stop's fare
+  before it counts, and **their clocks wait while people get in and out** (arriving in time is
+  what counts), so time limits, bumps and pay are otherwise unchanged; a stop with a fare no
+  longer uses its old `dwell`. Used on stage 3, the cab ride, Tower Park visitor, Marina evening,
+  ambulance run, both hospital transfers and all three bus routes (and stages 16 and 18).
+- **Where they wait:** `apps/game/src/fareSpots.ts` puts the spot 0.6 m past the carriageway edge
+  (estimated), on the side the real place is on, sliding along the road off junctions; two
+  hospital pick-ups and the home bus route needed a side or a shift because buildings reach the
+  carriageway there (found by `fareSpots.test.ts`, which checks every spot against the real
+  chunks' buildings and roads).
+- **Drawing them:** `apps/game/src/FareFigures.ts`: background figures (`HumanAssets`) only for the
+  current stop and within 220 m; they wave (`HumanFigure.setWaving`, a new arm pose) once the
+  vehicle is within 55 m; walk to the passenger door nearest the kerb (`VehicleType.passengers`,
+  new in `@cow/vehicles`); sit down on the auto's rear bench (seated baked figures with the share
+  auto's `PASSENGER` pose and `SEATS`) or step through a closed vehicle's door and disappear.
+  Cars now have **rear passenger doors** and the ambulance **two rear doors**, in the same door
+  mesh as the driver's (still one draw call; car 168, ambulance 120 triangles); the door swings
+  open for the passenger and shuts after. The bus uses its front door. The HUD says "Passenger
+  getting in" / "getting out" / "The patient is being loaded".
+- **Stages 16–21** (`apps/game/src/laterStages.ts`), starting at the Royapettah clock tower where
+  stage 15 ends, each within 1.5 km of the last one's end, vehicles parked at the starts:
+  16 *Muhurtham* (wedding party of three by auto, Westcott Road to North Mada Street, Mylapore;
+  ₹1,800, reputation +3), 17 *Hot property* (a planted chain: a new `evade` objective raises the
+  wanted level to 2 stars and is met when it is back to 0; ₹2,000, +2), 18 *The Mumbai Mail*
+  (a singer by car from South Mada Street to Chennai Central on EVR Periyar Salai, timed;
+  ₹2,500, +3), 19 *The harmonium thief* (walk to Park station, ride the train to Egmore: new
+  `byTrain` reach; then a motorbike chase on EVR Periyar Salai; ₹2,800), 20 *Biryani for the
+  dressing room* (bike delivery Egmore to the Chepauk stadium gate, two timed drops; ₹1,600,
+  +2), 21 *Beach road brawl* (five with fists and bats on Kamarajar Salai; ₹3,000, +4).
+  Missions can now pay reputation (`Mission.reputation`, `JobRunner.gainReputation`).
+- **Tests:** unit: `fares.test.ts` (FareStop, busCrowd, both runners with fares, evade, by
+  train), `fareSpots.test.ts`, `laterStages.test.ts`, `doors.test.ts` (rear doors; triangle
+  limits raised on purpose), `content.test.ts` (15 → 21 stages on purpose). Browser:
+  `fares.spec.ts` (stage 3 passenger waits, walks, sits, gets out and walks off before pay; cab
+  rear door opens and shuts; bus stop boarding and alighting) 3/3; `stages3.spec.ts` plays
+  stages 16–21 with the test hooks: 6/6 (in the full run).
+- **Checked by eye** (screenshots at 915×412, lite, not kept): the stage 3 passenger stands on
+  the pavement and walks to the auto's side, gets in beside it, sits under the canopy; the cab
+  passenger stands at the open left rear door; three bus passengers walk from the pavement to
+  the bus. Figures are small and dark at lite quality; the waving arm was not caught in a
+  screenshot (the passenger was off screen in the one taken from down the road).
+- **Results on this branch:** typecheck clean; unit 460/460; full browser suite 86/87 in 34.8 min (run once, with the lock); the one failure was `missions2.spec.ts` stage 15 still expecting no stage after the street war: updated on purpose to expect stage 16, then that test passed on its own (1/1).

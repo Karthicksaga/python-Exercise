@@ -4,6 +4,7 @@
  */
 import type { Mission, MissionEvent, Objective, PlayerStatus, Progress } from "./types";
 import { pathLength, pointAlong, quarrySpeed, type QuarryPlace } from "./chase";
+import { FareStop } from "./fares";
 
 /** Below this speed (m/s) a vehicle counts as stopped. */
 const STOPPED = 1.2;
@@ -16,6 +17,12 @@ export class MissionRunner {
   private timeLeft: number | null = null;
   /** Metres the quarry of a chase objective has gone along its path. */
   private chased = 0;
+  /** People getting in or out at the current objective, when it has a fare. */
+  private fareStop: FareStop | null = null;
+  /** Passengers in the vehicle before the current objective (picked up earlier in the stage). */
+  private riders = 0;
+  /** An evade objective: the wanted level has been raised since it started. */
+  private wantedSeen = false;
 
   constructor(
     private readonly missions: readonly Mission[],
@@ -54,6 +61,16 @@ export class MissionRunner {
     return objective?.type === "chase" ? pointAlong(objective.path, this.chased) : null;
   }
 
+  /** The pick-up or drop under way at the current objective, or null when it has no fare. */
+  get fare(): FareStop | null {
+    return this.fareStop;
+  }
+
+  /** Passengers in the vehicle now (picked up earlier, less any already out at this stop). */
+  get aboard(): number {
+    return this.riders + (this.fareStop?.change ?? 0);
+  }
+
   get balance(): number {
     return this.money;
   }
@@ -74,17 +91,23 @@ export class MissionRunner {
     const objective = this.objective;
     this.timeLeft = objective?.type === "reach" && objective.timeLimit ? objective.timeLimit : null;
     this.chased = 0;
+    this.wantedSeen = false;
+    // Back at the start of a stage nobody is aboard (a failed fare's passenger has gone home).
+    if (this.objectiveIndex === 0) this.riders = 0;
+    this.fareStop = objective?.type === "reach" && objective.fare ? new FareStop(objective.fare, objective.mode && objective.mode !== "foot" ? objective.mode : "car") : null;
   }
 
   private met(objective: Objective, player: PlayerStatus): boolean {
     if (objective.type === "enter") return player.mode === objective.vehicle;
     if (objective.type === "defeat") return player.cleared?.has(objective.group) ?? false;
+    if (objective.type === "evade") return this.wantedSeen && (player.wanted ?? 0) === 0;
     if (objective.type === "chase") {
       // Caught: alongside the quarry in a vehicle.
       const quarry = pointAlong(objective.path, this.chased);
       return player.mode !== "foot" && Math.hypot(player.x - quarry.x, player.z - quarry.z) <= objective.radius;
     }
     if (objective.mode && player.mode !== objective.mode) return false;
+    if (objective.byTrain && !player.onTrain) return false;
     if (Math.hypot(player.x - objective.x, player.z - objective.z) > objective.radius) return false;
     return !objective.stop || player.speed < STOPPED;
   }
@@ -96,7 +119,9 @@ export class MissionRunner {
     if (!mission || !objective) return [];
     const events: MissionEvent[] = [];
 
-    if (this.timeLeft !== null) {
+    if (objective.type === "evade" && (player.wanted ?? 0) > 0) this.wantedSeen = true;
+    // The clock waits while people get in or out: arriving in time is what counts.
+    if (this.timeLeft !== null && !this.fareStop?.started) {
       this.timeLeft -= dt;
       if (this.timeLeft <= 0) {
         // Out of time: the stage starts again from its first objective.
@@ -116,8 +141,12 @@ export class MissionRunner {
       }
       return events;
     }
-    if (!this.met(objective, player)) return events;
+    if (this.fareStop) {
+      // Stopped in the marker: the passengers walk over and get in (or out) before it counts.
+      if (!this.fareStop.step(dt, this.met(objective, player), player)) return events;
+    } else if (!this.met(objective, player)) return events;
 
+    this.riders = this.aboard;
     this.objectiveIndex++;
     const next = mission.objectives[this.objectiveIndex];
     if (next) {

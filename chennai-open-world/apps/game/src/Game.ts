@@ -26,6 +26,7 @@ import { insideShell, onShellMessage, sendToShell } from "./nativeBridge";
 import { Population, type DrivenVehicle, type PedestrianHit } from "./Population";
 import { Police, type PoliceView } from "./Police";
 import { ShareRiders } from "./ShareRiders";
+import { FareFigures, type FareFiguresSnapshot } from "./FareFigures";
 import { LandmarkView } from "@cow/game-engine";
 import { landmarkSolids } from "@cow/game-world";
 import { LandmarkLabels } from "@cow/ui";
@@ -125,6 +126,8 @@ export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
   readonly cityMap: CityMapState;
   /** The wanted level, police cars and officers, the last arrest (`Police.ts`). */
   readonly police: ReturnType<Police["snapshot"]>;
+  /** People getting in and out at the current pick-up or drop (`FareFigures.ts`), or null. */
+  readonly fare: (FareFiguresSnapshot & { readonly aboard: number; readonly kerb: { x: number; z: number }; readonly stages: string[]; readonly note: string | null }) | null;
 }
 
 const SAVE_KEY = "cow-progress-v1";
@@ -258,6 +261,10 @@ export class Game {
   private arms!: Arms;
   /** The full-screen city map (`CityMapDesk.ts`), opened by tapping the minimap. */
   private readonly cityMap: CityMapDesk;
+  /** Passengers getting in and out at pick-ups and drops (set in `create`). */
+  private fareFigures!: FareFigures;
+  /** The stage objective seen last step, to notice one starting (`storyPolice`). */
+  private lastObjective: Objective | null = null;
 
   private constructor(
     private readonly map: WorldMap,
@@ -476,6 +483,7 @@ export class Game {
       busted: (fine, stars, station) => game?.arrested(fine, stars, station),
     });
     game.arms = new Arms(content, combat, renderer.scene, humans, hud, controls);
+    game.fareFigures = new FareFigures(renderer.scene, humans);
     const railFile = await railLoaded;
     if (railFile) {
       const railway = new Railway(railFile, renderer.scene, physics, new RidePanel(hud.root), {
@@ -821,6 +829,8 @@ export class Game {
   private target(objective: Objective | null, at: { x: number; z: number }): { x: number; z: number; radius: number } | null {
     if (!objective) return null;
     if (objective.type === "reach" || objective.type === "defeat") return { x: objective.x, z: objective.z, radius: objective.radius };
+    // Losing the police has no marker: the stars on the HUD show how it is going.
+    if (objective.type === "evade") return null;
     if (objective.type === "chase") {
       const quarry = this.missions.quarry;
       return quarry ? { x: quarry.x, z: quarry.z, radius: objective.radius } : null;
@@ -855,7 +865,8 @@ export class Game {
         this.cleared.clear();
         // Weapons the stage hands over are given (and saved) by `Arms`, and named in the message.
         const weapons = this.arms.reward(event.mission);
-        this.hud.showToast(`Stage ${event.mission.stage} complete`, `${event.mission.title} · +₹${event.mission.reward}${weapons}`, 4);
+        const reputation = this.stageReputation(event.mission.reputation ?? 0);
+        this.hud.showToast(`Stage ${event.mission.stage} complete`, `${event.mission.title} · +₹${event.mission.reward}${reputation}${weapons}`, 4);
         saveProgress(this.missions.progress());
         this.arms.save();
         const next = this.missions.mission;
@@ -932,6 +943,7 @@ export class Game {
       casualties: this.population.casualtyList(),
       lastPedestrianHit: this.lastPedestrianHit,
       police: this.police.snapshot(),
+      fare: this.fareSnapshot(),
       ...this.arms.snapshot(this.avatar, this.fighters.heldWeapons(), this.missions.quarry),
       cityMap: this.cityMap.state(),
     };
@@ -1138,6 +1150,49 @@ export class Game {
     };
   }
 
+  /** The pick-up or drop under way: the city job's when on one, else the stage's (none during a story). */
+  private fareScene(): { stop: NonNullable<MissionRunner["fare"]>; aboard: number; kind: Vehicle["kind"]; marker: { x: number; z: number } } | null {
+    const job = this.desk.active;
+    if (job) {
+      const stop = this.desk.runner.fare;
+      const at = this.desk.runner.stop;
+      return stop && at ? { stop, aboard: this.desk.runner.aboard, kind: job.vehicle, marker: at } : null;
+    }
+    const objective = this.missions.objective;
+    const stop = this.missions.fare;
+    if (this.placeDesk.story || !stop || objective?.type !== "reach") return null;
+    return { stop, aboard: this.missions.aboard, kind: stop.vehicle, marker: objective };
+  }
+
+  /** Each drawn frame: the fare's people, given the vehicle when the player drives the fare's kind. */
+  private fareFrame(dt: number, at: { x: number; z: number }): void {
+    const scene = this.fareScene();
+    const vehicle = this.driving && scene && this.driving.kind === scene.kind ? this.driving : null;
+    this.fareFigures.frame(dt, scene, at, vehicle);
+  }
+
+  private fareSnapshot(): GameSnapshot["fare"] {
+    const scene = this.fareScene();
+    if (!scene) return null;
+    return { ...this.fareFigures.snapshot(), aboard: scene.aboard, kerb: scene.stop.fare.kerb, stages: scene.stop.people().map((p) => p.stage), note: scene.stop.note() };
+  }
+
+  /** A stage objective that has just started may call for the police: an "evade" raises the wanted level. */
+  private storyPolice(): void {
+    const objective = this.missions.objective;
+    if (objective === this.lastObjective) return;
+    this.lastObjective = objective;
+    if (objective?.type === "evade") this.police.setStars(Math.max(this.police.wanted.stars, objective.stars));
+  }
+
+  /** Reputation a stage pays (the city jobs' score); the toast's text for it. */
+  private stageReputation(points: number): string {
+    if (points <= 0) return "";
+    const gained = this.desk.runner.gainReputation(points);
+    this.desk.save();
+    return gained > 0 ? ` · reputation +${gained}` : "";
+  }
+
   /** For tests and debugging only: set the wanted level, and give pistol rounds. */
   debugSetWanted(stars: number): void {
     this.police.setStars(stars);
@@ -1230,8 +1285,11 @@ export class Game {
         mode: this.driving ? this.driving.kind : "foot",
         speed: this.driving ? Math.abs(this.driving.body.forwardSpeed()) : this.player.speed,
         cleared: this.cleared,
+        onTrain: this.railway?.riding ?? false,
+        wanted: this.police.wanted.stars,
       }),
     );
+    this.storyPolice();
 
     // Safety net: anything that ends up under the world goes back to the start.
     if (at.y < -20) this.teleport(this.content.spawn.x, this.content.spawn.z, this.content.spawn.yaw);
@@ -1364,7 +1422,7 @@ export class Game {
         : mission && objective
         ? {
             title: `Stage ${mission.stage} · ${mission.title}`,
-            objective: objective.label,
+            objective: this.missions.fare?.note() ? `${objective.label} · ${this.missions.fare.note()}` : objective.label,
             distance: target ? Math.hypot(target.x - at.x, target.z - at.z) : null,
             secondsLeft: this.missions.secondsLeft,
           }
@@ -1403,6 +1461,7 @@ export class Game {
     // Share auto passengers: waiting at the kerb near the player, and seated in the auto.
     const shareAuto = this.driving && job?.share && this.driving.kind === job.vehicle ? this.driving.object : null;
     this.riders.frame(dt, this.desk.runner.share, at, shareAuto);
+    this.fareFrame(dt, at);
     this.chunks.update(at.x, at.z);
     // Sea haze: thicker air within about 600 m of the coast.
     this.sinceHaze += dt;

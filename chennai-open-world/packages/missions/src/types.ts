@@ -1,4 +1,5 @@
 /** Mission data. Missions are plain data so new ones need no code. */
+import type { Fare } from "./fares";
 
 export type TravelMode = "foot" | "car" | "auto" | "bike" | "ambulance" | "bus";
 
@@ -18,6 +19,13 @@ export type Objective =
       readonly timeLimit?: number;
       /** An enemy group the game places while this objective is current (an ambush on the way); it need not be beaten. */
       readonly hostiles?: string;
+      /**
+       * People get in or out here (`fares.ts`): once stopped in the marker they walk to the
+       * vehicle and get in (or get out and walk off), and only then is the objective met.
+       */
+      readonly fare?: Fare;
+      /** Must be reached riding a train (the marker is a station on the line). */
+      readonly byTrain?: boolean;
     }
   | {
       /**
@@ -46,6 +54,15 @@ export type Objective =
       readonly radius: number;
     }
   | {
+      /**
+       * Get away from the police: the game raises the wanted level to `stars` when this
+       * objective starts, and it is met once the level has fallen back to nothing.
+       */
+      readonly type: "evade";
+      readonly label: string;
+      readonly stars: number;
+    }
+  | {
       readonly type: "enter";
       readonly label: string;
       readonly vehicle: Exclude<TravelMode, "foot">;
@@ -60,6 +77,8 @@ export interface Mission {
   readonly brief: string;
   /** Rupees paid on completion. */
   readonly reward: number;
+  /** Reputation points earned on completion (the same 0 to 100 score the city jobs build). */
+  readonly reputation?: number;
   /** Weapons (and rounds) handed over on completion: weapon ids as `@cow/combat` names them. */
   readonly weapons?: readonly { readonly id: string; readonly ammo: number }[];
   readonly objectives: readonly Objective[];
@@ -74,6 +93,10 @@ export interface PlayerStatus {
   readonly speed: number;
   /** Enemy groups that have been completely beaten. */
   readonly cleared?: ReadonlySet<string>;
+  /** Riding a suburban train. */
+  readonly onTrain?: boolean;
+  /** Police wanted level, 0 to 5 stars. */
+  readonly wanted?: number;
 }
 
 export interface Progress {

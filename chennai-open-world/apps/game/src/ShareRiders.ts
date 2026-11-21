@@ -15,7 +15,7 @@ const CLOTHES = [0xe0c29f, 0x9fb8e0, 0xd9a0a0, 0xa9d6a9, 0xe6dd9a, 0xb7a3d6];
  * Where people sit in the auto, relative to its chassis centre (feet, like `VehicleType.driver`):
  * three across the rear bench, then the fourth squeezed beside the driver. Estimated by eye.
  */
-const SEATS: ReadonlyArray<{ x: number; y: number; z: number }> = [
+export const SEATS: ReadonlyArray<{ x: number; y: number; z: number }> = [
   // Hip centres (seated figures are placed by their hips, as `VehicleType.driver` is), estimated from
   // the Blender auto: bench top about 0.07 m and floor about -0.30 m in the model frame, bench 0.88 m
   // behind the centre; the fourth passenger shares the driver's saddle, on the left.
@@ -26,7 +26,7 @@ const SEATS: ReadonlyArray<{ x: number; y: number; z: number }> = [
 ];
 
 /** Passengers sit back with their hands loosely closed on their laps and feet on the floor (estimated). */
-const PASSENGER: Parameters<HumanAssets["seatedStatic"]>[1] = { lean: -0.08, hand: { x: 0.15, y: 0.05, z: -0.28 }, foot: { x: 0.15, y: -0.37, z: -0.42 }, grip: 0.35 };
+export const PASSENGER: Parameters<HumanAssets["seatedStatic"]>[1] = { lean: -0.08, hand: { x: 0.15, y: 0.05, z: -0.28 }, foot: { x: 0.15, y: -0.37, z: -0.42 }, grip: 0.35 };
 
 export class ShareRiders {
   private readonly standing: HumanFigure[] = [];

@@ -148,9 +148,12 @@ export class JobDesk {
     const shift = this.runner.share;
     if (shift) return this.shareView(job, shift, inVehicle, vehicle, distance);
     const dwell = this.runner.dwellLeft;
+    const fareNote = this.runner.fare?.note() ?? null;
     const objective = !inVehicle
       ? `${this.runner.started ? "Get back in" : "Get in"} the ${vehicle}`
-      : dwell !== null
+      : fareNote
+        ? `${stop.label} · ${fareNote}`
+        : dwell !== null
         ? `${stop.label}: wait ${Math.ceil(dwell)} s`
         : !this.runner.started && job.startRadius !== undefined
           ? `Drive to the start; the clock starts there. ${stop.label}`

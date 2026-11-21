@@ -83,6 +83,28 @@ export class Vehicle {
     this.model.door(this.doorAmount);
   }
 
+  /** How far each passenger door is open (by leaf, `VehicleType.passengers`), 0 to 1. */
+  private readonly leafAmounts: number[] = [];
+
+  /**
+   * Swing a passenger door (fares). Leaf 0 is the driver's door (the bus's front door, shared
+   * with the driver). Ignored on vehicles without doors.
+   */
+  setPassengerDoor(leaf: number, amount: number): void {
+    if (!this.model.door) return;
+    const a = Math.min(1, Math.max(0, amount));
+    if (leaf === 0) {
+      this.setDoor(a);
+      return;
+    }
+    this.leafAmounts[leaf] = a;
+    this.model.door(a, leaf);
+  }
+
+  passengerDoor(leaf: number): number {
+    return leaf === 0 ? this.doorAmount : (this.leafAmounts[leaf] ?? 0);
+  }
+
   get siren(): boolean {
     return this.sirenOn;
   }

@@ -46,6 +46,19 @@ export interface VehicleEntry {
   readonly aisle?: ReadonlyArray<{ readonly x: number; readonly y: number; readonly z: number }>;
 }
 
+/**
+ * A door passengers use (fares, `FareFigures` in the game). Chassis frame like `VehicleEntry`.
+ * Positions are measured off `models.ts`; the inside points are estimates.
+ */
+export interface PassengerDoor {
+  /** Where a passenger stands outside the door, on the ground. */
+  readonly point: { readonly x: number; readonly z: number };
+  /** Where they go to through the door, at about hip height above the chassis centre (closed vehicles hide them there). */
+  readonly inside: { readonly x: number; readonly y: number; readonly z: number };
+  /** Which door of the model swings for them (0 is the driver's door); none for an open side. */
+  readonly leaf?: number;
+}
+
 export interface VehicleType {
   readonly kind: VehicleKind;
   /** Name shown to the player. */
@@ -74,6 +87,8 @@ export interface VehicleType {
   readonly siren?: boolean;
   /** Where and how the driver gets in. */
   readonly entry: VehicleEntry;
+  /** Doors passengers use, kerb (left) side first. None on the motorbike. */
+  readonly passengers?: readonly PassengerDoor[];
 }
 
 export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
@@ -85,6 +100,11 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     pose: STEERING,
     // Driver's door: front edge (hinge) at z -0.55, rear edge 0.5. Stand behind the open door.
     entry: { side: 1, point: { x: 1.25, z: 0.35 }, door: "hinged", style: "door" },
+    // Rear doors (hinge z 0.5, seam z 1.45): stand behind the open door, as the driver does.
+    passengers: [
+      { point: { x: -1.2, z: 1.35 }, inside: { x: -0.35, y: 0.1, z: 0.95 }, leaf: 1 },
+      { point: { x: 1.2, z: 1.35 }, inside: { x: 0.35, y: 0.1, z: 0.95 }, leaf: 2 },
+    ],
     cameraDistance: 8.5,
     gears: 5,
     physics: {
@@ -118,6 +138,11 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     pose: { lean: 0.45, hand: { x: 0.335, y: 0.25, z: -0.38 }, foot: { x: 0.16, y: -0.37, z: -0.24 } },
     // Open sides, no door: the driver steps in from the kerb (left) side (estimated; either side is used).
     entry: { side: -1, point: { x: -0.95, z: -0.4 }, door: "none", style: "step" },
+    // The rear bench is open on both sides (the seats themselves are in `FareFigures`).
+    passengers: [
+      { point: { x: -0.95, z: 0.8 }, inside: { x: -0.36, y: 0.17, z: 0.8 } },
+      { point: { x: 0.95, z: 0.8 }, inside: { x: 0.36, y: 0.17, z: 0.8 } },
+    ],
     physics: {
       halfExtents: { x: 0.66, y: 0.45, z: 1.3 },
       mass: 420,
@@ -173,6 +198,8 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     pose: { lean: -0.05, hand: { x: 0.17, y: 0.3, z: -0.42 }, foot: { x: 0.12, y: -0.38, z: -0.7 } },
     // Cab door on the right: hinge at z -1.25 (behind the windscreen), rear edge at the seam, z -0.42.
     entry: { side: 1, point: { x: 1.5, z: -0.5 }, door: "hinged", style: "door" },
+    // Patients go in at the back, through the two rear doors (leaf 1, both leaves together).
+    passengers: [{ point: { x: 0, z: 3.5 }, inside: { x: 0, y: 0.2, z: 1.9 }, leaf: 1 }],
     physics: {
       halfExtents: { x: 0.98, y: 0.8, z: 2.5 },
       mass: 2300,
@@ -207,6 +234,8 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
         { x: 0.25, y: -0.35, z: -3.85 },
       ],
     },
+    // Passengers use the same front door as the driver, and walk up the aisle out of sight.
+    passengers: [{ point: { x: -1.85, z: -3.6 }, inside: { x: -0.6, y: 0.3, z: -3.0 }, leaf: 0 }],
     cameraDistance: 15,
     gears: 5,
     physics: {

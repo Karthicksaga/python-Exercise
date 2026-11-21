@@ -34,6 +34,21 @@ const AIMING: Readonly<Record<string, readonly [number, number, number]>> = {
 };
 
 /**
+ * Waving down a ride: the right upper arm out and up, the forearm raised, swaying between the two
+ * forearm directions (model space, the figure facing +Z). Judged by eye.
+ */
+const WAVE_OUT: Readonly<Record<string, readonly [number, number, number]>> = {
+  RightArm: [-0.62, 0.72, 0.2],
+  RightForeArm: [-0.45, 1, 0.15],
+};
+const WAVE_IN: Readonly<Record<string, readonly [number, number, number]>> = {
+  RightArm: [-0.62, 0.72, 0.2],
+  RightForeArm: [0.1, 1, 0.15],
+};
+/** Waves a second (estimated). */
+const WAVE_RATE = 2.2;
+
+/**
  * How each weapon sits in the right hand, set in the aiming pose (model space, the figure facing
  * +Z): the direction its barrel or blade points. Guns carry on the line of the arm; the bat is
  * raised, ready to swing. Estimates, judged by eye.
@@ -221,6 +236,11 @@ export class HumanFigure {
   private down = false;
   /** Seconds left of a punch (arm thrown forwards). */
   private punching = 0;
+  /** Waving an arm (someone waiting for a ride), and the wave's clock. */
+  private waving = false;
+  private waveClock = 0;
+  /** The two ends of a wave, solved on this skeleton. */
+  private readonly wavePoses: { out: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>; in: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }> };
 
   /** @internal Use `HumanAssets.create`. */
   constructor(model: THREE.Object3D, clips: THREE.AnimationClip[], scale: number, lift: number) {
@@ -231,6 +251,9 @@ export class HumanFigure {
     this.model = model;
     const aimBones = new Set(Object.keys(AIMING));
     this.aimPose = HumanFigure.solvePose(model, AIMING).filter((entry) => aimBones.has(entry.bone.name));
+    // Like the aim, solved while the model is still in its own frame (unscaled, unturned).
+    const waveBones = (pose: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>) => pose.filter((entry) => entry.bone.name in WAVE_OUT);
+    this.wavePoses = { out: waveBones(HumanFigure.solvePose(model, WAVE_OUT)), in: waveBones(HumanFigure.solvePose(model, WAVE_IN)) };
 
     // The weapon is held in the right hand and moves with it; enemies show their pistol only
     // while aiming. Geometry and material are shared by every figure (`weaponModels.ts`).
@@ -464,6 +487,11 @@ export class HumanFigure {
     this.showGun();
   }
 
+  /** Wave the right arm overhead (waiting at the kerb for a ride), or stop. */
+  setWaving(waving: boolean): void {
+    this.waving = waving;
+  }
+
   /** Throw the right arm forwards for a moment. */
   punch(): void {
     this.punching = 0.22;
@@ -524,6 +552,11 @@ export class HumanFigure {
     this.showGun();
     if (this.aiming || this.punching > 0) {
       for (const { bone, quaternion } of this.aimPose) bone.quaternion.copy(quaternion);
+    } else if (this.waving) {
+      this.waveClock += dt;
+      const t = 0.5 + 0.5 * Math.sin(this.waveClock * WAVE_RATE * Math.PI * 2);
+      const { out, in: back } = this.wavePoses;
+      out.forEach(({ bone, quaternion }, i) => bone.quaternion.copy(quaternion).slerp(back[i]!.quaternion, t));
     }
   }
 }

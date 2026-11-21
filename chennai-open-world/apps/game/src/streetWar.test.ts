@@ -59,7 +59,8 @@ describe("rival gangs", () => {
 });
 
 describe("stages 11 to 15", () => {
-  const stages = content.missions.slice(10);
+  // Stages 11 to 15 only: stages 16 onwards (`laterStages.ts`) follow them and are tested in `laterStages.test.ts`.
+  const stages = content.missions.slice(10, 15);
 
   it("follow stage 10 in order, each with a brief and a reward in money", () => {
     expect(stages.map((m) => [m.stage, m.id])).toEqual([
@@ -110,7 +111,7 @@ describe("stages 11 to 15", () => {
   it("are played in the districts the briefs name", () => {
     const placeOf = (id: string, i: number) => {
       const o = content.missions.find((m) => m.id === id)!.objectives[i]!;
-      if (o.type === "enter") throw new Error("no place");
+      if (o.type === "enter" || o.type === "evade") throw new Error("no place");
       return districts.at(o.type === "chase" ? o.path[0]! : o)?.name;
     };
     expect(placeOf("courier-chase", 0)).toBe("Royapettah");

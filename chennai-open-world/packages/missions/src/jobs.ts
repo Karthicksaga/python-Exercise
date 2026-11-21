@@ -7,6 +7,7 @@
  * so it is fully unit-tested.
  */
 import { seededRandom, shareReputation, ShareShift, shareStars, type ShareEvent, type SharePassenger, type ShareRoute, type ShareSummary } from "./shareAuto";
+import { FareStop, type Fare } from "./fares";
 import type { TravelMode } from "./types";
 
 export type JobKind = "ambulance" | "courier" | "cab" | "bus" | "share";
@@ -18,8 +19,10 @@ export interface JobStop {
   readonly x: number;
   readonly z: number;
   readonly radius: number;
-  /** Seconds the vehicle must stand still inside the marker (boarding, loading). */
+  /** Seconds the vehicle must stand still inside the marker (loading). Not used when the stop has a fare. */
   readonly dwell?: number;
+  /** People get in or out here (`fares.ts`); the stop is done once they have. */
+  readonly fare?: Fare;
   /** Bus timetable: seconds after the job starts by which this stop is due. */
   readonly due?: number;
 }
@@ -185,6 +188,10 @@ export class JobRunner {
   private avoidTime = 0;
   private inAvoid = false;
   private shift: ShareShift | null = null;
+  /** People getting in or out at the current stop, when it has a fare. */
+  private fareStop: FareStop | null = null;
+  /** Passengers in the vehicle before the current stop. */
+  private riders = 0;
   private rep: number;
   private doneCount: number;
   private failedCount: number;
@@ -222,6 +229,16 @@ export class JobRunner {
   /** The share auto shift being worked, or null. */
   get share(): ShareShift | null {
     return this.shift;
+  }
+
+  /** The pick-up or drop under way at the current stop, or null when it has no fare. */
+  get fare(): FareStop | null {
+    return this.fareStop;
+  }
+
+  /** Passengers in the vehicle now. */
+  get aboard(): number {
+    return this.riders + (this.fareStop?.change ?? 0);
   }
 
   get bumps(): number {
@@ -269,6 +286,8 @@ export class JobRunner {
     this.lateCount = 0;
     this.avoidTime = 0;
     this.inAvoid = false;
+    this.riders = 0;
+    this.armFare(job);
     // A different crowd each shift, the same for a given save (tests replay it).
     this.shift = job.share ? new ShareShift(job.share, seededRandom(1 + this.doneCount + this.failedCount)) : null;
     return [{ type: "accepted", job }];
@@ -301,7 +320,8 @@ export class JobRunner {
       this.running = true;
       events.push({ type: "started", job });
     }
-    this.elapsed += dt;
+    // The clock waits while people get in or out: arriving in time is what counts.
+    if (!this.fareStop?.started) this.elapsed += dt;
     if (this.elapsed >= job.timeLimit) {
       // A share auto shift simply ends when its time is up.
       events.push(this.shift ? { type: "completed", result: this.finishShare(job, this.shift, false) } : this.fail(job, "Out of time"));
@@ -325,16 +345,23 @@ export class JobRunner {
     const stop = job.stops[this.stopIndex];
     if (!stop) return events;
     const inside = inVehicle && Math.hypot(player.x - stop.x, player.z - stop.z) <= stop.radius && player.speed < STOPPED;
-    if (!inside) {
-      this.dwelt = 0;
-      return events;
+    if (this.fareStop) {
+      // The passengers walk over and get in (or get out and walk off) before the stop counts.
+      if (!this.fareStop.step(dt, inside, player)) return events;
+    } else {
+      if (!inside) {
+        this.dwelt = 0;
+        return events;
+      }
+      this.dwelt += dt;
+      if (this.dwelt < (stop.dwell ?? 0)) return events;
     }
-    this.dwelt += dt;
-    if (this.dwelt < (stop.dwell ?? 0)) return events;
 
     if (stop.due !== undefined && this.elapsed > stop.due) this.lateCount++;
     this.dwelt = 0;
+    this.riders = this.aboard;
     this.stopIndex++;
+    this.armFare(job);
     const next = job.stops[this.stopIndex];
     if (next) {
       events.push({ type: "stop", job, label: next.label, index: this.stopIndex });
@@ -342,6 +369,11 @@ export class JobRunner {
     }
     events.push({ type: "completed", result: this.finish(job) });
     return events;
+  }
+
+  private armFare(job: Job): void {
+    const fare = job.stops[this.stopIndex]?.fare;
+    this.fareStop = fare ? new FareStop(fare, job.vehicle) : null;
   }
 
   /** How a finished run is paid: time left, bumps, lateness, and a bonus per job type. */
@@ -388,6 +420,8 @@ export class JobRunner {
     const result: JobResult = { job, pay: earned, stars, bumps: this.bumpCount, seconds: this.elapsed, late: this.lateCount, avoided: this.avoidTime, notes, reputation: this.rep - before };
     this.current = null;
     this.running = false;
+    this.fareStop = null;
+    this.riders = 0;
     return result;
   }
 
@@ -413,6 +447,8 @@ export class JobRunner {
     const result: JobResult = { job, pay: summary.fares, stars, bumps: this.bumpCount, seconds: this.elapsed, late: 0, avoided: 0, notes, reputation: this.rep - before, share: summary };
     this.current = null;
     this.running = false;
+    this.fareStop = null;
+    this.riders = 0;
     this.shift = null;
     return result;
   }
@@ -423,8 +459,17 @@ export class JobRunner {
     this.failedCount++;
     this.current = null;
     this.running = false;
+    this.fareStop = null;
+    this.riders = 0;
     this.shift = null;
     return { type: "failed", job, reason, fine: job.fine, reputation: this.rep - before };
+  }
+
+  /** Gain reputation outside a job (a story stage's reward). Never above 100. Returns the points gained. */
+  gainReputation(points: number): number {
+    const before = this.rep;
+    this.rep = clamp(this.rep + Math.max(0, Math.round(points)), 0, 100);
+    return this.rep - before;
   }
 
   /** Lose reputation outside a job (hitting a pedestrian). Never below 0. Returns the points lost. */
@@ -442,6 +487,8 @@ export class JobRunner {
   reset(): void {
     this.current = null;
     this.running = false;
+    this.fareStop = null;
+    this.riders = 0;
     this.shift = null;
     this.rep = START_REPUTATION;
     this.doneCount = 0;
