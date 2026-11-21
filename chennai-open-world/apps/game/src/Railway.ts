@@ -155,6 +155,7 @@ export class Railway {
   private readonly crowds = new Map<string, StationCrowd>();
   private crowdClock = CLOCK_START;
   private figures: CrowdFigures | null = null;
+  private bakeCrowd: (() => Promise<CrowdFigures>) | null = null;
   private readonly people: CrowdPlacement[] = [];
   /** People on each train in view (set when first seen; changed by who gets on and off). */
   private readonly loads = new Map<string, number>();
@@ -364,6 +365,14 @@ export class Railway {
   useCrowd(figures: CrowdFigures): void {
     this.figures = figures;
     this.scene.add(figures.object);
+  }
+
+  /**
+   * How to bake the crowd figures: called the first time the player comes near a platform, so the
+   * bake (a few hundred ms on a phone) never stalls the start of the game.
+   */
+  crowdWhenNeeded(bake: () => Promise<CrowdFigures>): void {
+    this.bakeCrowd = bake;
   }
 
   /** The context button was pressed: board or step off. Returns true if the railway used the press. */
@@ -661,6 +670,11 @@ export class Railway {
       .sort((a, b) => a.d - b.d);
     const live = near.filter(({ d }) => d < CROWD_RANGE).slice(0, CROWD_PLATFORMS).map(({ p }) => p);
     for (const key of [...this.crowds.keys()]) if (!live.some((p) => p.key === key)) this.crowds.delete(key);
+    if (live.length > 0 && this.bakeCrowd) {
+      const bake = this.bakeCrowd;
+      this.bakeCrowd = null;
+      void bake().then((figures) => this.useCrowd(figures)).catch((error: unknown) => console.warn("Station crowds unavailable.", error));
+    }
     this.people.length = 0;
     for (const platform of live) {
       let crowd = this.crowds.get(platform.key);

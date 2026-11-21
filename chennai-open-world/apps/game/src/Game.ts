@@ -462,8 +462,8 @@ export class Game {
         horn: (level) => sound.trainHorn(level),
         announce: () => sound.stationChime(),
       }, { drawDistance: renderer.tier.loadDistance, tamil: await stationFontLoaded, hindi: await stationFontHindiLoaded });
-      // Platform crowds: the human model baked into a few cheap instanced poses.
-      void CrowdFigures.create(humans).then((figures) => railway.useCrowd(figures)).catch((error: unknown) => console.warn("Station crowds unavailable.", error));
+      // Platform crowds: the human model baked into a few cheap instanced poses, near a station only.
+      railway.crowdWhenNeeded(() => CrowdFigures.create(humans));
       minimap.addLines(railway.minimapLines());
       game.railway = railway;
     }
