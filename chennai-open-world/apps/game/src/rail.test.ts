@@ -14,6 +14,11 @@ const network = new RailNetwork(file);
  * assets/README.md). If a station's Tamil name changes, re-cut the font and update this list.
  */
 const STATION_GLYPHS = "பூங்காசெனை எழுமரேதடநோலிண";
+/**
+ * Characters `assets/fonts/noto-sans-devanagari-stations.woff2` was cut to (pyftsubset, see
+ * assets/README.md). If a station's Hindi name changes, re-cut the font and update this list.
+ */
+const HINDI_GLYPHS = " ंईउएकगचटडथदनपबमरलसािीुेैॉो्";
 
 describe("the railway file", () => {
   it("is small", () => {
@@ -46,6 +51,13 @@ describe("the railway file", () => {
         expect(stop.nameTa.length).toBeGreaterThan(0);
         for (const ch of stop.nameTa) expect(STATION_GLYPHS).toContain(ch);
       }
+    }
+  });
+
+  it("gives every station a Hindi name the board font can draw", () => {
+    for (const station of file.stations) {
+      expect(station.nameHi?.length ?? 0).toBeGreaterThan(0);
+      for (const ch of station.nameHi ?? "") expect(HINDI_GLYPHS).toContain(ch);
     }
   });
 

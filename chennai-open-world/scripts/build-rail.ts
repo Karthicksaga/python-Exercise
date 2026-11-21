@@ -36,6 +36,21 @@ const file = buildRail(extract, {
     "Chennai Park Town": ["Park Town", "பூங்கா நகர்"],
     "Saint Thomas Mount": ["St. Thomas Mount", "பரங்கிமலை"],
   },
+  // Hindi for the three-language boards (Tamil, Hindi, English, as on Chennai's platforms) where
+  // OSM has no name:hi. Transliterations written for the game: estimated, not official spellings.
+  hindi: {
+    Park: "पार्क",
+    "Chennai Egmore": "चेन्नई एग्मोर",
+    Chetpet: "चेटपेट",
+    Nungambakkam: "नुंगमबाक्कम",
+    Kodambakkam: "कोडमबाक्कम",
+    Mambalam: "मांबलम",
+    Saidapet: "सैदापेट",
+    Guindy: "गिंडी",
+    "St. Thomas Mount": "सेंट थॉमस माउंट",
+    "Chennai Central": "चेन्नई सेंट्रल",
+    "Park Town": "पार्क टाउन",
+  },
   // The MRTS runs on a viaduct and the Metro mostly underground or on viaducts; drawn at ground
   // level they would cut through streets, so only tracks at ground level (or short bridges over
   // roads and rivers, drawn flat) are kept.

@@ -484,6 +484,23 @@ export class HumanFigure {
   }
 
   /**
+   * Hold one moment of a gait's cycle (`phase` 0 to 1), with no blending: for baking still
+   * copies of the figure (`CrowdFigures`). Returns the cycle's length in seconds.
+   */
+  holdPose(gait: "idle" | "walk", phase: number): number {
+    for (const name of ["idle", "walk", "run"] as const) {
+      this.actions[name].setEffectiveWeight(name === gait ? 1 : 0);
+      this.actions[name].timeScale = 1;
+    }
+    const duration = this.actions[gait].getClip().duration;
+    this.mixer.setTime(Math.max(0, Math.min(0.999, phase)) * duration);
+    return duration;
+  }
+
+  /** The walking pace the walk clip was made for, m/s (one cycle covers this times its length). */
+  static readonly walkClipSpeed = WALK_CLIP_SPEED;
+
+  /**
    * @param speed horizontal speed in m/s
    * @param grounded false while jumping or falling
    */

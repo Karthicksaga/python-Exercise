@@ -1,6 +1,6 @@
 # Progress, testing and known issues
 
-Last updated: 18 Nov 2026 (full-screen city map).
+Last updated: 21 Nov 2026 (city map, stations, smooth motion merged).
 
 ## What exists
 
@@ -35,6 +35,58 @@ Last updated: 18 Nov 2026 (full-screen city map).
   (software rendering, other test runs on the machine): first open 78 ms (includes baking that
   band's cells), later redraws 0.6 ms at street level, 3 ms whole city, 10 ms at district zoom
   (`snapshot().cityMap.drawMs`). Not measured on a phone. Tests: see "What was tested" below.
+- **Animated railway stations (18 Nov, branch `agent/stations`, TD-23; unit-tested and
+  browser-tested in headless Chromium, checked by eye in screenshots; not on the emulator or a
+  phone):** every station on the Beach–Tambaram line is now built round its platforms
+  (`packages/game-engine/src/StationKit.ts`, from the layout in `packages/rail/src/station.ts`):
+  deck with a pale coping, yellow line and tactile strip; a corrugated-sheet shelter on columns
+  over the middle 72 m (single slope on side platforms, ridge on islands) with tube lights;
+  benches, dustbins, lamp posts on the open ends; a tea stall with a seller; yellow name boards in
+  Tamil, Hindi and English (OSM `name:ta`, `name:hi` where mapped, else transliterations written
+  for the game, estimated; a 10 KB subset of Noto Sans Devanagari Bold); platform number boards;
+  a clock with live hands and an amber LED departure board at the platform nearest the player
+  (`StationLife.ts`; next trains from the timetable, "ON PLATFORM", "ARRIVING", "N MIN");
+  "WAY OUT" signs; a foot-over-bridge with stairs onto the platform and down at both landings,
+  spanning the main tracks mapped within 32 m; a booking office at its outer landing (not solid).
+  Overhead wires (contact and catenary) along every running line, on masts every 54 m on the side
+  with room. Trains: turning wheelsets under the coaches within 140 m (one instanced mesh), bogie
+  side frames, a pantograph on each motor coach. Life: people wait along the platform edges
+  (count by time of day, at most 24 waiting / 36 on a platform, crowds only on the two platforms
+  within 170 m, the nearest 20 people within 80 m drawn); when a train's doors open, up to 12 of
+  its line's waiting people walk to the nearest door and get on and 2–10 get off and walk to the
+  exits (`packages/rail/src/crowd.ts`); the train's load changes accordingly. A three-note chime
+  and a murmured "announcement" 50 s before a train reaches the player's platform; a two-tone horn
+  as a train within 350 m pulls away (`Sound.stationChime`, `trainHorn`). People are the game's
+  human model baked into 7 still poses (stand, 6 walk moments), simplified at load to about 610
+  triangles and instanced (`packages/player/src/CrowdFigures.ts`). Trains, doors and people are
+  drawn on a render clock that follows the railway clock between physics steps (not while riding:
+  the camera still moves on the physics step). Motion is unchanged: brake at 0.9 m/s² to exactly
+  the stop mark, 30 s dwell, accelerate at 0.8 m/s² (TD-19).
+  **Measured** (production build, headless Chromium, `?quality=lite`, 915×412, max over 1.5 s
+  after 4 s of game time; base = `feat/chennai-open-world` a56bb00 built the same way): Anna
+  Nagar spawn 178 / 253,838 → 178 / 253,838 (unchanged); Egmore (5622, 703) facing north
+  163 / 218k → 178 / 233k, facing south 146 / 229k → 148 / 245k; on Egmore's platform 142 / 202k
+  → 145 / 223k; Kodambakkam platform 163 / 299k → 166 / 318k and 133 / 285k → 167 / 319k
+  (**over the 300k budget**: the area was already at 285–299k without stations; traffic makes
+  these numbers vary by ±10k between runs); Guindy 136 / 188k → 147 / 208k. A detailed side
+  station is about 2.9k triangles (unit test). The stations spec saw 135 draw calls / 217k at
+  Egmore's platform foot. **Tested:** unit tests (`packages/rail/src/station.test.ts`: arrival
+  speed falls every sample and is 0 exactly on the stop mark, steady braking, dwell, accelerating
+  away; layout of islands, side platforms, FOB span and office, numbering; departure rows,
+  statuses and text; waiting by hour within the cap; boarding/alighting counts, caps and room;
+  crowd fill, boarding and alighting to completion, walkers sent back when the train leaves;
+  `RailView.test.ts` station triangle budget; `apps/game/src/rail.test.ts` Hindi names and font
+  glyphs) and browser tests (`apps/game/tests/stations.spec.ts`, 3 tests: Egmore crowd at rush
+  hour on the deck at 0.9 m, the board matches the timetable, under 300 draw calls / 300k; a
+  train sampled over game time brakes to 0 at Egmore, people get off and on (platform count
+  drops, train load = before + on − off and rises), the board shows ON PLATFORM, wheelsets
+  drawn, it pulls away accelerating and the horn counter rises; Kodambakkam crowd on the 4 m
+  deck, board format, the chime before a train). Results: typecheck clean, unit 449/449, full browser suite 81/81
+  (31.0 min, on 6df2948). Checked by eye (screenshots, not committed):
+  Egmore and Kodambakkam platforms with crowds standing on the deck, a train arriving and
+  standing, people at the doors, the three-language name board (legible from the platform edge),
+  the departure board and clock, the FOB stairs.
+
 - **Animated getting in and out of vehicles and trains (17 Nov, branch `agent/vehicle-entry`;
   unit-tested and browser-tested in headless Chromium, checked by eye in screenshots; not on the
   emulator or a phone):** ENTER no longer switches at once. Getting in: the figure walks to the

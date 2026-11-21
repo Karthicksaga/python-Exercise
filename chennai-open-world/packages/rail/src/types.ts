@@ -55,6 +55,8 @@ export interface RailStationData {
   readonly id: string;
   readonly name: string;
   readonly nameTa: string;
+  /** Hindi name (Devanagari) for the three-language boards: OSM `name:hi`, else an estimated transliteration; may be missing. */
+  readonly nameHi?: string;
   readonly x: number;
   readonly z: number;
 }

@@ -3,3 +3,4 @@ export * from "./HumanFigure";
 export * from "./retarget";
 export * from "./ridingPose";
 export * from "./weaponModels";
+export * from "./CrowdFigures";
