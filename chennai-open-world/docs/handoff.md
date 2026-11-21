@@ -632,3 +632,29 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   doesn't run until the first car gets within 30 m of the spot (or sees the player), at most 45 s
   (`POLICE.arrivedWithin`, `responseMax`; `WantedSight.responding`): on a slow CI runner the
   star faded before the car arrived. Unit 435/435, browser 78/78 (28.1 min).
+
+## 21 Nov 2026: fares (people get in and out) and stages 16–21 (branch `agent/fares-stages`): where I left off
+- **Done and tested** (details in `progress.md`): fare rules `packages/missions/src/fares.ts`;
+  `MissionRunner`/`JobRunner` wait for the fare before a stop counts and pause their clocks
+  meanwhile; `FareFigures.ts` draws the people; `fareSpots.ts` places them; passenger doors in
+  `@cow/vehicles`; waving in `HumanFigure`; stages 16–21 in `laterStages.ts` with two new
+  objective kinds (`evade`, reach `byTrain`) and a stage reputation reward.
+- **Shared files touched (additive):** `Game.ts` (`fareScene`, `fareFrame`, `fareSnapshot`,
+  `storyPolice`, `stageReputation`; `onTrain`/`wanted` in the mission status; snapshot `fare`;
+  HUD note; evade has no marker in `target`), `JobDesk.ts` (HUD note), `ShareRiders.ts` (exports
+  `SEATS`, `PASSENGER`), `content.ts`, `cityJobs.ts`, `streetWar.ts` (`roadPathOn` exported, no
+  behaviour change), `content.test.ts`, `streetWar.test.ts` (looks at stages 11–15 only),
+  `packages/missions` `types.ts`/`jobs.ts`/`MissionRunner.ts`/`stories.ts`/`index.ts`,
+  `packages/vehicles` `specs.ts`/`models.ts`/`Vehicle.ts`/`doors.test.ts`,
+  `packages/player/src/HumanFigure.ts`.
+- **For the render-smoothing merge:** fare figures are placed from rules state in `frame()` and
+  read the driven vehicle's object transform (`localToWorld`), so they follow whatever the
+  vehicle is drawn at.
+- **Not done / uncertain:** no stretcher or paramedic for patients (a pale-gowned figure walks);
+  fare people are not physics bodies (traffic passes through them); door choice is the one nearest
+  the kerb spot, so stopping with the wrong side to the kerb makes them walk round; the stage-3
+  drop screenshot did not show the leaver on screen (snapshot shows them walking off); evade is
+  tested with `setWanted(0)` standing in for out-running the police; nothing tried on a phone.
+- **Results:** typecheck clean; unit 460/460; fares.spec 3/3, stages3.spec 6/6; full browser
+  suite once: 86/87 (34.8 min); the failure was stage 15 expecting no next stage, updated on
+  purpose (`missions2.spec.ts`), then 1/1 on its own.

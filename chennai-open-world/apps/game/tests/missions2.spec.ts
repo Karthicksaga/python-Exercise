@@ -160,7 +160,7 @@ test("stage 14: clear out the hideout with the SMG", async ({ page }) => {
   expect(before - (end.weaponAmmo.smg ?? 0)).toBeGreaterThan(10);
 });
 
-test("stage 15: win the turf war at the clock tower, and the street war is over", async ({ page }) => {
+test("stage 15: win the turf war at the clock tower, and the street war is over (stage 16 is next)", async ({ page }) => {
   test.setTimeout(300_000);
   await startAt(page, "turf-war", 20_200);
   await give(page, "shotgun", 40);
@@ -168,6 +168,6 @@ test("stage 15: win the turf war at the clock tower, and the street war is over"
   await goToTarget(page);
   await expect.poll(async () => (await state(page)).enemies.filter((e) => e.group === "turf").length, { timeout: GAME_WAIT }).toBe(8);
   await shootItOut(page, "Win the turf war", "turf", "Go to the clock tower, Royapettah");
-  await expect.poll(async () => (await state(page)).mission, { timeout: GAME_WAIT }).toBeNull();
+  await expect.poll(async () => (await state(page)).mission, { timeout: GAME_WAIT }).toBe("wedding-party"); // stage 16 (laterStages.ts) now follows the street war
   expect((await state(page)).money).toBe(20_200 + 6000);
 });
