@@ -630,6 +630,8 @@ export class Game {
   teleport(x: number, z: number, yaw = 0): Promise<void> {
     this.railway?.endRide(null);
     this.cancelBoarding();
+    // Name the street at the new place on the next frame, not up to half a second later.
+    this.sinceStreet = Infinity;
     const ready = this.chunks.whenLoaded(x, z);
     this.chunks.update(x, z, true);
     if (this.driving) this.driving.body.teleport({ x, y: this.driving.type.rideHeight + 0.1, z }, yaw);
