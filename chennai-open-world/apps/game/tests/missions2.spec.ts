@@ -83,6 +83,11 @@ async function shootItOut(page: Page, objective: string, group: string, restart:
     }
     await teleport(page, from.x, from.z, Math.atan2(-(enemy.x - from.x), -(enemy.z - from.z)));
     await heal(page);
+    // Aim again at where the target is now: on a slow runner an enemy charging in can move off
+    // the line while the teleport completes, and every shot then goes where it was (seen in CI
+    // on stage 14: 65 rounds without a hit on a fists enemy).
+    const now = (await state(page)).enemies.filter((e) => e.group === group && e.health > 0).sort((a, b) => Math.hypot(a.x - enemy.x, a.z - enemy.z) - Math.hypot(b.x - enemy.x, b.z - enemy.z))[0];
+    if (now) await teleport(page, from.x, from.z, Math.atan2(-(now.x - from.x), -(now.z - from.z)));
     // A line per few rounds, so a failure shows how the fight went.
     if (round % 5 === 0) {
       const at = (p: { x: number; z: number }) => `${p.x.toFixed(1)},${p.z.toFixed(1)}`;

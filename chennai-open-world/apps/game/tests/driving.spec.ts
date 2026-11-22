@@ -155,9 +155,11 @@ test("stage 1 completes on foot, pays its reward, and progress survives a restar
   await teleport(page, target.x + 6, target.z, 0);
   expect((await snapshot(page)).mission).toBe("morning-walk");
   await holdStick(page, -80, 0, 1200); // camera faces north, so left is west, towards the marker
+  // The completion toast first: it shows for 4.2 s of real time before the next stage's brief
+  // replaces it, and polling the money first could use that up on a slow runner (seen in CI).
+  await expect(page.getByRole("status")).toContainText("Stage 1 complete", { timeout: GAME_WAIT });
   await expect.poll(async () => (await snapshot(page)).money, { timeout: GAME_WAIT }).toBe(50);
   await expect(page.getByTestId("money")).toHaveText("₹50");
-  await expect(page.getByRole("status")).toContainText("Stage 1 complete");
   const next = await snapshot(page);
   expect(next.mission).toBe("borrowed-wheels");
   expect(next.objective).toBe("Get in the hatchback");
