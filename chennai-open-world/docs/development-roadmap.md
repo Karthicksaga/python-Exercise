@@ -96,3 +96,20 @@ The city extract is git-ignored (58 MB). To rebuild it: `python3 -m venv .venv &
 | Scope: an open-world game is years of content work | Never finished | Phases with playable milestones; no feature marked done before it is tested |
 | Art: placeholder primitives | Doesn't feel like a game | Blender asset pipeline (glTF + KTX2) from Phase 3 |
 | ODbL licence of OSM | Legal | Attribution in app, keep derived map data separable, document the extract date |
+
+## Loading screen and title menu (22 Nov 2026, branch `agent/loading-screen`)
+
+Plan, as built (TD-24):
+1. Audit: the web loading screen was one line of text; the shell's native menu had one PLAY
+   button; the pause overlay centred six buttons in a box that could not scroll, so on a
+   landscape phone its first and last buttons fell off the screen (Resume, New game, Main menu).
+2. Loading screen: static first frame in `index.html`; `LoadingScreen` shows `Game.create`'s
+   six real steps, tips about real features, and the real street network behind.
+3. Title menu over the live city: `TitleScreen` (UI only) + `TitleDesk` (camera, wiring);
+   options limited to what the game already does.
+4. Pause overlay: scrolls instead of clipping; buttons wrap in a grid on short screens; MAIN MENU
+   goes to the title menu (browser and app).
+5. Shell: no native menu; Back forwarded to the game; failure screen gets Try again / Close.
+6. Tests: `title.spec.ts`; `?start=play` in the other specs; `TitleDesk.test.ts`.
+Dependencies: none added. Android limits: WebView fonts (system fonts plus the bundled Tamil
+station font for the wordmark), no network at runtime, battery (menu capped at 30 fps).

@@ -16,6 +16,8 @@ import type { ShouldStartLoadRequest } from 'react-native-webview/lib/WebViewTyp
  */
 const GAME_ORIGIN = 'https://appassets.androidplatform.net';
 const GAME_URL = `${GAME_ORIGIN}/assets/game/index.html`;
+/** Test builds only: the game skips its title menu and starts at once (see App.tsx). */
+const GAME_URL_AUTOPLAY = `${GAME_URL}?start=play`;
 
 /**
  * The WebView only ever shows our own page. `originWhitelist` is a prefix match on the origin, so
@@ -43,12 +45,11 @@ type NoExtraProps = Record<never, never>;
 const shellMessage = (type: 'pause' | 'resume' | 'back') =>
   `window.dispatchEvent(new CustomEvent('cow-shell',{detail:${JSON.stringify(JSON.stringify({ type }))}}));true;`;
 
-export function GameScreen({ onExit }: { onExit: () => void }) {
+export function GameScreen({ onExit, autoplay = false }: { onExit: () => void; autoplay?: boolean }) {
   const web = useRef<WebView<NoExtraProps>>(null);
-  const paused = useRef(false);
-  /** The game's full-screen city map is open: Back closes it instead of pausing. */
-  const cityMap = useRef(false);
   const [failure, setFailure] = useState<string | null>(null);
+  /** Bumped by "Try again" to load the game page afresh. */
+  const [attempt, setAttempt] = useState(0);
 
   const onMessage = useCallback(
     (event: WebViewMessageEvent) => {
@@ -58,21 +59,19 @@ export function GameScreen({ onExit }: { onExit: () => void }) {
       } catch {
         return;
       }
-      if (message.type === 'paused') paused.current = message.paused;
-      else if (message.type === 'cityMap') cityMap.current = message.open;
-      else if (message.type === 'exit') onExit();
+      // 'paused', 'cityMap' and 'ready' are for information: the game decides what Back does.
+      if (message.type === 'exit') onExit();
       else if (message.type === 'error') setFailure(message.message);
     },
     [onExit],
   );
 
-  // Back: closes the city map if it is open; otherwise the first press pauses the game, and a
-  // second press (while paused) leaves to the menu.
+  // Back is handled by the game: it closes the city map, or pauses, or (paused) opens the title
+  // menu, or leaves a menu page; on the title menu's main page it sends 'exit' and the app closes.
   useEffect(() => {
     const back = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (failure || paused.current) onExit();
-      else if (cityMap.current) web.current?.injectJavaScript(shellMessage('back'));
-      else web.current?.injectJavaScript(shellMessage('pause'));
+      if (failure) onExit();
+      else web.current?.injectJavaScript(shellMessage('back'));
       return true;
     });
     // Pause when the app goes to the background (a call, the home button).
@@ -90,8 +89,17 @@ export function GameScreen({ onExit }: { onExit: () => void }) {
       <View style={styles.failure}>
         <Text style={styles.failureTitle}>The game could not start</Text>
         <Text style={styles.failureText}>{failure}</Text>
-        <Pressable style={styles.button} onPress={onExit} accessibilityRole="button">
-          <Text style={styles.buttonText}>Back to menu</Text>
+        <Pressable
+          style={styles.button}
+          onPress={() => {
+            setFailure(null);
+            setAttempt((n) => n + 1);
+          }}
+          accessibilityRole="button">
+          <Text style={styles.buttonText}>Try again</Text>
+        </Pressable>
+        <Pressable style={[styles.button, styles.quiet]} onPress={onExit} accessibilityRole="button">
+          <Text style={[styles.buttonText, styles.quietText]}>Close</Text>
         </Pressable>
       </View>
     );
@@ -99,9 +107,10 @@ export function GameScreen({ onExit }: { onExit: () => void }) {
 
   return (
     <WebView<NoExtraProps>
+      key={attempt}
       ref={web}
       style={styles.web}
-      source={{ uri: GAME_URL }}
+      source={{ uri: autoplay ? GAME_URL_AUTOPLAY : GAME_URL }}
       originWhitelist={[GAME_ORIGIN]}
       onShouldStartLoadWithRequest={stayOnGameOrigin}
       // No file access: the game reads its world files with fetch from its https origin (TD-16).
@@ -124,10 +133,12 @@ export function GameScreen({ onExit }: { onExit: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  web: { flex: 1, backgroundColor: '#0f1220' },
+  web: { flex: 1, backgroundColor: '#07090f' },
   failure: { flex: 1, backgroundColor: '#0f1220', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
   failureTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
   failureText: { color: '#c9cde0', fontSize: 14, textAlign: 'center', maxWidth: 460 },
   button: { minWidth: 180, minHeight: 48, borderRadius: 12, backgroundColor: '#ffb703', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   buttonText: { color: '#1a1a1a', fontSize: 15, fontWeight: '700' },
+  quiet: { backgroundColor: 'rgba(255,255,255,0.12)', marginTop: 0 },
+  quietText: { color: '#fff' },
 });

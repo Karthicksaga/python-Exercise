@@ -371,3 +371,42 @@ is not solid, so nothing is blocked). `meshoptimizer` becomes a runtime dependen
 
 **Revisit when** the FOB should be walkable, real station plans are wanted (OSM
 `railway=platform` areas), or the platform crowd should share the city pedestrians' LOD.
+
+## TD-24: The game page owns the loading screen and the title menu; the shell opens straight into it
+
+**Decision (22 Nov 2026).** The loading screen and the title menu are part of the game page
+(`apps/game`), not React Native screens. The first frame of the loading screen is plain HTML and
+CSS in `index.html` (it shows while the 6.7 MB script is read); `LoadingScreen` (`@cow/ui`) then
+takes it over. After loading, the title menu (`TitleScreen` in `@cow/ui`, wired by
+`apps/game/src/TitleDesk.ts`) is drawn over the real city: the game renders the street round the
+player with a slow circling camera while its rules stay stopped. The React Native shell no
+longer has a menu (`MainMenu.tsx` removed): it opens the WebView at once, forwards every
+Android Back to the game, and closes the app when the game sends `exit` (QUIT, or Back on the
+title menu's main page). PAUSE → MAIN MENU now returns to the title menu in the game.
+
+**Why.** A React Native menu cannot show the 3D city (it lives in the WebView, TD-1), and a
+native menu followed by a web loading screen and the game is two menus and two loads. One menu
+in the page also works the same in the browser preview and the tests.
+
+**Progress is real.** `Game.create` reports six named steps (`LOAD_STEPS`); the bar fills one
+segment per finished step and shows an indeterminate sweep before the first. No percentage is
+computed or invented. The background is the real street network from the world file, drawn as
+soon as it has been read.
+
+**Only real options.** PLAY / CONTINUE, NEW GAME (with a confirmation), SETTINGS (time of day and
+weather: the pause menu's settings, applied live behind the menu), CONTROLS (the pause screen's
+help), ABOUT (credits, OSM attribution with the extract date, what is estimated) and QUIT (only
+inside the app). Arrow keys, Home/End, Enter and Escape move through the menus: for Bluetooth
+keyboards, D-pads and accessibility. This adds no keyboard *gameplay* controls (TD-20 stands).
+
+**Tests.** `?start=play` skips the title menu; the browser specs and the smoke-test APK
+(`testAutoplay`) use it. `title.spec.ts` opens the game as a player does.
+
+**Trade-offs.** Behind the menu the world is still (traffic and people do not move; only the
+camera, the player's idle pose and the rain animate), drawn at most 30 times a second, and not at
+all with reduced motion. The shell's Back handling moved into the game: an untested path on a
+device until the APK is built and run (no Android SDK on the machine where this was made).
+
+**Revisit when** the menu should show more of the city (a few fixed camera shots across
+districts would need their chunks loaded), or a settings page grows options that need a reload
+(graphics quality).

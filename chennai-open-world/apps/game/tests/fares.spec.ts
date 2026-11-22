@@ -36,7 +36,7 @@ const distance = (a: { x: number; z: number }, b: { x: number; z: number }) => M
 
 /** Open the game with stages 1 and 2 done: stage 3, the auto fare, is next. */
 async function atStage3(page: Page): Promise<void> {
-  await page.goto("/?quality=lite");
+  await page.goto("/?quality=lite&start=play");
   await page.evaluate(() => {
     localStorage.clear();
     localStorage.setItem("cow-progress-v1", JSON.stringify({ completed: ["morning-walk", "borrowed-wheels"], money: 200 }));

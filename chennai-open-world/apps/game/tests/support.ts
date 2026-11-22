@@ -11,6 +11,8 @@ export interface Snapshot {
   grounded: boolean;
   speed: number;
   paused: boolean;
+  /** The title menu is showing, or the game (playing or paused). */
+  screen: "title" | "game";
   drawCalls: number;
   triangles: number;
   mode: "foot" | "car" | "auto" | "bike" | "ambulance" | "bus";
@@ -54,7 +56,8 @@ export const probe = (page: Page, x: number, z: number, dx: number, dz: number, 
 export async function ready(page: Page, keepSave = false): Promise<void> {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/?quality=lite");
+  // `start=play` skips the title menu (title.spec.ts tests the menu itself).
+  await page.goto("/?quality=lite&start=play");
   if (!keepSave) {
     await page.evaluate(() => localStorage.clear());
     await page.reload();

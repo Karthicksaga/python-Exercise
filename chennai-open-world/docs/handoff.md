@@ -733,3 +733,19 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   FOB and booking office not solid; fare passengers not physics bodies; no stretcher; stage 17
   test uses `setWanted(0)`; `Railway.frame` still pins the train to the physics clock while
   riding (remove once the camera is interpolated); nothing tried on a phone.
+
+## 22 Nov 2026: loading screen and title menu (branch `agent/loading-screen`): where I left off
+- **Done and tested** (details in `progress.md`, decision TD-24): loading screen with the six
+  real `Game.create` steps and the real street network behind; title menu over the live city
+  (`TitleScreen`, `TitleDesk`); pause overlay no longer clips its buttons; MAIN MENU returns to the
+  title menu; the shell has no menu of its own and forwards Back to the game.
+- **Shared files touched:** `Game.ts` (`LOAD_STEPS`, `LoadProgress`, `create(…, progress)`,
+  title wiring, `back()`, `setWeather`, `resetProgress`, snapshot `screen`), `main.ts`,
+  `index.html`, `packages/ui` `Hud.ts` (overlay CSS, `.cow-actions`) and `index.ts`,
+  `apps/mobile` `App.tsx` / `GameScreen.tsx` (`MainMenu.tsx` removed), every spec's `goto`
+  (`&start=play`), `support.ts` (`screen`), `AGENTS.md` (testing note).
+- **Not done / uncertain:** not built as an APK or run on the emulator or a phone (no Android SDK
+  here): the shell's Back routing, QUIT and the Tamil wordmark in the WebView are untested on a
+  device. The world behind the menu is still (no traffic moving). A graphics-quality setting
+  would need a reload and was not added.
+- **Results:** typecheck clean; unit 503/503; full browser suite 104/104 (38.9 min).

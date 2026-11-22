@@ -31,7 +31,7 @@ const heal = (page: Page) => page.evaluate(() => (window as unknown as Hooks).__
 /** Open the game with the stages before `id` complete. */
 async function startAt(page: Page, id: string, money: number): Promise<void> {
   const done = [...FIRST_TEN, ...LATER.slice(0, LATER.indexOf(id))];
-  await page.goto("/?quality=lite");
+  await page.goto("/?quality=lite&start=play");
   await page.evaluate(([list, cash]) => {
     localStorage.clear();
     localStorage.setItem("cow-progress-v1", JSON.stringify({ completed: JSON.parse(list as string), money: cash }));

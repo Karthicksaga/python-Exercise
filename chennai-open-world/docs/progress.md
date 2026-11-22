@@ -789,3 +789,44 @@ Difficulty has not been play-tested by a person.
   the bus. Figures are small and dark at lite quality; the waving arm was not caught in a
   screenshot (the passenger was off screen in the one taken from down the road).
 - **Results on this branch:** typecheck clean; unit 460/460; full browser suite 86/87 in 34.8 min (run once, with the lock); the one failure was `missions2.spec.ts` stage 15 still expecting no stage after the street war: updated on purpose to expect stage 16, then that test passed on its own (1/1).
+
+## 22 Nov 2026: loading screen, title menu over the live city, pause menu that never clips (TD-24)
+- **Loading screen** (`apps/game/index.html` first frame, `packages/ui/src/LoadingScreen.ts`):
+  wordmark (CHENNAI / OPEN WORLD, and சென்னை in the bundled station font once it is loaded),
+  rotating tips about real features, and a bar of six segments, one per named step of
+  `Game.create` (`LOAD_STEPS`: map, physics, streets, people, traffic, railway). Before the first
+  step the bar is an indeterminate sweep; no percentage is shown anywhere. Once the world file is
+  read, its real road network is drawn behind (amber by road class, the sea in blue), drifting
+  slowly. On failure: the error and a TRY AGAIN button (reload) instead of a line of text.
+- **Title menu** (`packages/ui/src/TitleScreen.ts`, `apps/game/src/TitleDesk.ts`): drawn over
+  the city round the player, seen from a camera circling at about 30 m (about three minutes a
+  turn, pulled in front of buildings with a ray cast), at most 30 frames a second, rules stopped.
+  PLAY (stage 1) or CONTINUE (stage, money, stages done) and NEW GAME (asks first), SETTINGS
+  (time of day, weather: changed live behind the menu and saved), CONTROLS, ABOUT (OSM
+  attribution with the extract date, what is estimated, fonts), QUIT inside the app only. A
+  location card shows the real district and street, time and weather. Arrow keys / Home / End /
+  Enter / Escape; hover selects on a desktop; staggered entrance; fades through black to the game.
+  `prefers-reduced-motion`: no animations, and the city is a still frame.
+- **Pause menu fix** (`packages/ui/src/Hud.ts`): the overlay centred its buttons in a box that
+  could not scroll, so on a landscape phone the first and last fell off the screen (with six
+  buttons in the app at 915×360: "Paused" off the top and MAIN MENU off the bottom). It now
+  centres with auto margins inside a scrolling box and puts the buttons in a wrapping grid: all
+  six fit at 740×360. Job board overlays get the same. MAIN MENU (now also in a browser) returns
+  to the title menu.
+- **Shell** (`apps/mobile`): `MainMenu.tsx` removed; the app opens the game page at once; every
+  Back goes to the game (city map → close, playing → pause, paused → title menu, sub-page →
+  main page, title main page → close the app); failure screen has TRY AGAIN and CLOSE.
+  Typecheck and lint clean. **Not built or run on the emulator or a phone** (no Android SDK on
+  this machine).
+- **Tests:** unit `TitleDesk.test.ts` (camera path, controls list). Browser `title.spec.ts`
+  (8): each real step shown in order then "Ready"; menu over a paused city (sim time still);
+  PLAY starts where the player stands; settings change and save time and weather; keyboard;
+  CONTINUE and NEW GAME with cancel and confirm; every button on screen at 915×412, 640×320,
+  412×915, 1024×768 and 1440×900; inside a stand-in shell, every pause button reachable at
+  915×360 and MAIN MENU → title → PLAY back where the player was; Android Back order and QUIT.
+  The pause test was run against the old `Hud.ts` and failed (a button ended at y=414.5 of 360).
+  Other specs now open `/?quality=lite&start=play`.
+- **Checked by eye** (screenshots, lite quality, not kept): 915×412, 640×320, 412×915,
+  1024×768 and 1440×900 for the loading screen and the title menu; settings, controls and about
+  pages; pause menu at 915×412 and 740×360.
+- **Results on this branch:** typecheck clean (game and `apps/mobile`, which also lints clean); unit 503/503; full browser suite **104/104** in 38.9 min (run once, alone, with the lock); `title.spec.ts` 8/8 again after the last change (reduced-motion redraw on resize).
