@@ -1103,7 +1103,11 @@ export class Game {
       }
     }
 
-    events.push(...this.combat.update(dt, state));
+    // Enemies hold still while the streets round the player are still loading: right after a
+    // long move (a teleport, a respawn) a fight can start before its buildings have walls, and an
+    // enemy charging through a building not yet solid ended up sealed inside it once it loaded
+    // (seen in CI on stage 15, on a slow runner).
+    if (this.chunks.isLoaded(state.x, state.z)) events.push(...this.combat.update(dt, state));
     for (const event of events) {
       if (event.type === "enemyShot") {
         this.sound.shot(true);
