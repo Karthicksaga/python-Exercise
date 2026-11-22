@@ -1,6 +1,17 @@
 # Progress, testing and known issues
 
-Last updated: 21 Nov 2026 (city map, stations, smooth motion merged).
+Last updated: 22 Nov 2026 (the Chennai cast: realistic South Indian people).
+
+- **The Chennai cast (22 Nov; details in `docs/characters.md`, TD-24):** every person in the game
+  is now a realistic South Indian figure built with MakeHuman/MPFB in Blender
+  (`tools/blender/characters.py`, CC0 assets plus one credited CC-BY vest): 37 pedestrians (men,
+  women, children and teens in shirts, T-shirts, veshti, lungi, saree, salwar kameez, chudidar,
+  kurti, school uniforms; auto and cab drivers, traffic police and police, vendors, tea worker,
+  construction workers, delivery riders, shopkeeper, office workers, college students) and a
+  regenerated, clothed player. Cast by role from `assets/models/people/people.json`; children
+  only in platform crowds and as passengers beside an adult; LOD1 beyond 30 m; feet planted on
+  the ground. 6.8 MB optimised. Tested: unit 518/518, the touched browser specs, CI full suite
+  green. Not on a phone yet.
 
 ## What exists
 

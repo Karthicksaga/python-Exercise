@@ -761,3 +761,19 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   manifest has them. The player's placeholder model still looks unclothed at lite quality (as on
   feat). During the 0.22 s blend between two clips (a sudden stop) a sole can dip up to about 5 cm. `people.fixture.json` and the four
   interim GLBs can be deleted once the cast is complete. Nothing tried on a phone.
+
+## 22 Nov 2026: Chennai cast merged; stage 15 fix
+- `agent/people-game` (casting, LOD, feet) + `agent/people-assets` (37 people, clothed player)
+  merged as `agent/merge-people`; the fixture manifest and four interim GLBs removed;
+  `ridingPose.test.ts` loads the player as the game does (bone names normalised; head top and
+  fingertips measured without end bones on MPFB rigs).
+- Stage 15 CI failures: a turf enemy ended up sealed inside the small building at the
+  Royapettah clock tower. The fight starts as the player arrives, which after a teleport can be
+  before that chunk loads; the bat carrier charged across the footprint before it had walls.
+  `Game` now runs the combat step only while `ChunkManager.isLoaded` round the player.
+  `enemyWalls.test.ts` checks charges round the real building. `missions2.spec.ts`' fight helper
+  changes side when a round misses and logs positions.
+- Testing rule changed (user's decision): the full browser suite runs in CI (4 shards); locally,
+  typecheck, unit tests and the affected specs (AGENTS.md).
+- Open: faces smooth up close; pallu and dupatta are flat bands; long hems can show a shin when
+  running; older women wear a plait, not a bun; no player LOD1; nothing tried on a phone.
