@@ -2,15 +2,15 @@
 
 | File | What | Source | Licence / status |
 |---|---|---|---|
-| `models/player.glb` | The player: a Chennai man in his thirties (light cotton shirt, dark trousers, sandals, moustache), 29,098 triangles, 2 materials (skin 1024 px, outfit atlas 1024 px), 52-bone `mixamo` skeleton | Original, made by `tools/blender/characters.py` (`npm run blender:characters`) with MPFB from MakeHuman CC0 assets, see "Characters" below | Base mesh, targets, skins, clothes, hair, eyes and eyebrows: **CC0** (MakeHuman system assets). Garment recolouring, painted moustache, lungi and sandals: original work for this project. Replaces the Ready Player Me placeholder, which has been removed |
-| `models/people/*.glb` | Pedestrian and driver variants, each 2 materials (512 px), 52 bones: `elder` (older man, white shirt, grey trousers, grey hair, 9,698 triangles), `lungi` (half-sleeve top and checked lungi, 7,296), `tshirt` (maroon T-shirt, jeans, trainers, 9,697), `worker` (striped shirt, jeans, sandals, 8,794) | As the player | As the player |
+| `models/player.glb` | The player: a Chennai man of about 32 (light blue cotton shirt, dark trousers, sandals, moustache), 29,092 triangles, 2 materials (skin and outfit atlas, 1024 px), 52-bone MPFB `mixamo` skeleton | Original, made by `tools/blender/characters.py` (`npm run blender:characters`) with MPFB from MakeHuman CC0 assets; see `docs/characters.md` | CC0 MakeHuman assets; garment recolouring, painted moustache and sandals are original work. Replaces the earlier Ready Player Me placeholder, which is no longer used |
+| `models/people/<id>.glb`, `<id>_lod1.glb`, `people.json` | The Chennai cast: 37 pedestrians (men, women and children, everyday dress and work roles), each at most 10k triangles (512 px) with an LOD1 of at most 3.5k on the same 52-bone skeleton; `people.json` lists sex, age group, roles, height and triangle counts. Table in `docs/characters.md` | Original, made by `tools/blender/characters.py` with MPFB | MakeHuman assets, CC0 except one **CC-BY** garment: `elvs_male_athletic_tank1` (banian vest) by Elvaerwyn, MakeHuman community asset repository (pack shirts03). Garments modelled in code, patterns, skin tones and facial hair are original. The older `elder`, `lungi`, `tshirt`, `worker` files are superseded and kept only until the game stops importing them |
 | `animations/locomotion.glb` | Idle, walk and run clips | Extracted from the three.js example `Xbot.glb` (Mixamo animations) with `scripts/extract-animations.py` | Mixamo animations may be used in games royalty-free under Adobe's terms; check them before a commercial release |
 | `fonts/noto-sans-tamil-signs.woff2` | Tamil text on the invented shop signboards (7 KB, embedded with `?inline`, TD-3) | Noto Sans Tamil Bold (v31, via `@fontsource/noto-sans-tamil` 5.3.0, file `noto-sans-tamil-tamil-700-normal.woff2`), cut to the 30 characters the signs use (plus their layout tables) with `pyftsubset <file> --text="<signGlyphs()>" --layout-features='*' --flavor=woff2` | SIL Open Font Licence 1.1, © 2022 The Noto Project Authors; licence text in `fonts/OFL.txt`. Re-cut it when the sign text in `packages/game-engine/src/shopSigns.ts` changes (a unit test lists the glyphs) |
 | `osm/anna-nagar.osm.json` | Map extract | OpenStreetMap via Overpass API | ODbL 1.0, © OpenStreetMap contributors; see `osm/README.md` |
 
 | `models/props/*.glb` | Street props: barrel, crates, clay pots, AC unit, dish antenna, awning, rolling shutter (`ShutterOpen` clip), vegetable handcart (`Roll` clip) | Original, made by `tools/blender/street_props.py` in Blender 5.2 LTS (`npm run blender:props`) | Original work for this project |
 | `models/vehicles/auto_rickshaw.glb`, `auto_rickshaw_lod1.glb` | Auto-rickshaw (detailed 16k triangles; traffic 12k), wheels as separate nodes | Original, made by `tools/blender/auto_rickshaw.py` in Blender 5.2 LTS (`npm run blender:auto`) | Original work for this project. Not used by the game yet (awaiting review) |
-| `optimized/*.glb` | What the game embeds: the models above after `npm run optimize:assets` (blend shapes dropped, textures 512 px WebP (the player's 1024 px), meshopt-compressed geometry) | Generated from the sources above | Same licences as their sources |
+| `optimized/*.glb` | What the game embeds: the models above after `npm run optimize:assets` (blend shapes dropped, textures 512 px WebP (the player's 1024 px, people LOD1 128 px), meshopt-compressed geometry) | Generated from the sources above | Same licences as their sources |
 
 Vehicles, buildings, trees and all textures are generated in code and are original, including
 the shop signboards: their words and names are invented (see `shopSigns.ts`), not real businesses.
@@ -20,11 +20,15 @@ the shop signboards: their words and names are invented (see `shopSigns.ts`), no
 MIT; sharp, Apache 2.0) rewrites every `models/*.glb` and `animations/*.glb` into `optimized/` (and `models/props`, `models/vehicles`,
 `models/people` into the folders of the same name). 17 Nov 2026, MPFB characters: player 2,798 KB → 351 KB;
 elder 920 → 185 KB, lungi 986 → 161 KB, tshirt 808 → 148 KB, worker 889 → 162 KB.
+22 Nov 2026, the full cast: 37 people, LOD0 + LOD1, 6,824 KB optimised (meshopt "high" for people); player 354 KB.
 16 Nov 2026: player 1,796 KB → 484 KB, locomotion 189 KB → 123 KB; the game script went from
 7.9 MB to 6.1 MB. Run it after changing any model and commit both the source and the output.
 
 ## Characters (player and pedestrians)
-`tools/blender/characters.py` builds all five people in Blender 5.2 LTS with **MPFB 2.0.18**
+The full description (cast, garments, every MakeHuman asset and its licence, toolchain, rebuild steps) is in
+`docs/characters.md`; the notes below are the short version.
+
+`tools/blender/characters.py` builds the player and the whole cast in Blender 5.2 LTS with **MPFB 2.0.18**
 (MakeHuman for Blender) through its Python API (`HumanService.deserialize_from_dict`, the same
 path as loading a human preset), then bakes, dresses, joins and exports them. Nothing is edited
 by hand; the script is the source.

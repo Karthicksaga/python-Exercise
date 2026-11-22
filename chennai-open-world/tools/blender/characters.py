@@ -424,7 +424,7 @@ def skin_sources(spec):
 
 
 def hair_asset(spec):
-    name = os.environ.get("CHAR_HAIR") or spec["hair"][0]
+    name = spec["hair"][0]
     # "bun": worn pulled back; braid01 (CC0) with its fringe cut reads better than the bun assets.
     return {"bun": "braid01"}.get(name, name)
 
@@ -1248,13 +1248,6 @@ def make_region(rig, body, collection, lm, g, name):
     bm.to_mesh(mesh)
     bm.free()
     obj = new_object(name, mesh, rig, collection)
-    if os.environ.get("CHAR_DEBUG"):
-        zs = sorted({round(v.co.z, 1) for v in mesh.vertices})
-        for z in zs:
-            row = [v.co for v in mesh.vertices if abs(v.co.z - z) < 0.03 and v.co.y < 0]
-            if row:
-                print("DEBUG", name, g["region"], z, round(min(v.x for v in row), 3), round(max(v.x for v in row), 3))
-        print("DEBUG parts", [(sorted(b), [(tuple(round(x, 3) for x in pt), tuple(round(x, 3) for x in no)) for pt, no in cuts]) for b, cuts in parts])
     obj.matrix_world = world
     for group in body.vertex_groups:  # same order as the body: the copied weights keep their meaning
         obj.vertex_groups.new(name=group.name)
