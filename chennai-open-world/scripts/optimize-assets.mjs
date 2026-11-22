@@ -5,7 +5,7 @@
  *     -> assets/optimized/<same name>.glb          (what the game embeds, TD-3)
  *   assets/models/props/*.glb (made by tools/blender/street_props.py) -> assets/optimized/props/
  *   assets/models/people/*.glb (made by tools/blender/characters.py) -> assets/optimized/people/
- *     (people.json, the cast list, is copied as it is; `*_lod1.glb` get 256 px textures)
+ *     (people.json, the cast list, is copied as it is; `*_lod1.glb` get 128 px textures)
  *
  * For every file: drop unused data (dedup, prune), drop facial blend shapes (the game never
  * uses them, `HumanAssets` threw them away at load), weld vertices, resample animation keys,
@@ -32,8 +32,8 @@ const out = resolve(root, "assets/optimized");
 const MAX_TEXTURE = 512;
 /** The player is seen close up: its textures keep up to 1024 px. */
 const LARGE_TEXTURE = { "player.glb": 1024 };
-/** Distant pedestrians (LOD1, `*_lod1.glb`) are a few dozen pixels tall: 256 px is plenty. */
-const textureSize = (name) => LARGE_TEXTURE[name] ?? (name.endsWith("_lod1.glb") ? 256 : MAX_TEXTURE);
+/** Distant pedestrians (LOD1, `*_lod1.glb`) are a few dozen pixels tall: 128 px is plenty. */
+const textureSize = (name) => LARGE_TEXTURE[name] ?? (name.endsWith("_lod1.glb") ? 128 : MAX_TEXTURE);
 
 await MeshoptDecoder.ready;
 await MeshoptEncoder.ready;
@@ -76,7 +76,8 @@ for (const { path: source, sub } of sources) {
     weld(),
     resample(),
     textureCompress({ encoder: sharp, targetFormat: "webp", resize: Array(2).fill(textureSize(basename(source))), quality: 82 }),
-    meshopt({ encoder: MeshoptEncoder, level: "medium" }),
+    // People: "high" (stronger quantisation and filters) roughly halves their geometry; checked in game.
+    meshopt({ encoder: MeshoptEncoder, level: sub === "people" ? "high" : "medium" }),
   );
   document.createExtension(EXTMeshoptCompression).setRequired(true);
   mkdirSync(join(out, sub), { recursive: true });
