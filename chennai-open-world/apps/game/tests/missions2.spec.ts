@@ -47,6 +47,8 @@ async function goToTarget(page: Page): Promise<void> {
 
 /** Beat the stage's group: stand 6 m from each enemy in turn, facing it, and hold FIRE. */
 async function shootItOut(page: Page, objective: string, group: string, restart: string): Promise<void> {
+  // Rounds spent on each enemy without hurting them, by where they stand (see below).
+  const tries = new Map<string, { health: number; attempt: number }>();
   for (let round = 0; round < 80; round++) {
     const s = await state(page);
     if (s.objective === restart) {
@@ -61,30 +63,34 @@ async function shootItOut(page: Page, objective: string, group: string, restart:
       await waitGameTime(page, 0.3);
       continue;
     }
-    // Stand 6 m off where a shot sees the enemy, trying the side the player is on first. Checked
-    // both ways: outward from just past the enemy's own collision box (0.28 m half-width, 0.4 m to
-    // a corner), and inward from the spot, where the first thing met must be a person's box. Checking
-    // outward from 0.7 m only missed a pole or wall right at the enemy's shoulder; the game's sight
-    // and shot rays (which stop 0.6 m short of a person) met it, and every shot from the chosen
-    // spot missed, round after round (stages 12, 14 and 15 in CI).
-    const toward = Math.atan2(s.x - enemy.x, s.z - enemy.z);
-    let from = { x: enemy.x + Math.sin(toward) * 6, z: enemy.z + Math.cos(toward) * 6 };
-    // A ray that stops at a standing enemy (this one or another in the crowd) is a shot that
-    // hits someone; one that stops anywhere else stopped at a wall, a pole or a prop.
+    // Stand 6 m off where a shot can reach the enemy. Spots checked both ways come first: clear
+    // outward from just past the enemy's own collision box (0.28 m half-width, 0.4 m to a
+    // corner), and from the spot inward the first thing met is a person. Then spots clear outward
+    // from 0.7 m (the old check, which misses a pole or wall right at the enemy's shoulder).
+    // If a round from one spot did not hurt this enemy, the next round tries the next spot: the
+    // helper used to return to the same useless spot for 70+ rounds (stages 12 and 14 in CI).
+    const key = `${enemy.weapon}@${Math.round(enemy.x)},${Math.round(enemy.z)}`;
+    const before = tries.get(key);
+    const attempt = before && before.health <= enemy.health ? before.attempt + 1 : 0;
+    tries.set(key, { health: enemy.health, attempt });
     const standing = s.enemies.filter((e) => e.health > 0);
     const meetsSomeone = (x: number, z: number) => standing.some((e) => Math.hypot(e.x - x, e.z - z) <= 0.45);
+    const toward = Math.atan2(s.x - enemy.x, s.z - enemy.z);
+    const verified: Array<{ x: number; z: number }> = [];
+    const open: Array<{ x: number; z: number }> = [];
     for (let k = 0; k < 16; k++) {
       const a = toward + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 8);
       const dx = Math.sin(a);
       const dz = Math.cos(a);
+      const spot = { x: enemy.x + dx * 6, z: enemy.z + dz * 6 };
       const out = await probe(page, enemy.x + dx * 0.45, enemy.z + dz * 0.45, dx, dz, 5.55);
-      if (out !== null && !meetsSomeone(enemy.x + dx * (0.45 + out), enemy.z + dz * (0.45 + out))) continue;
-      const back = await probe(page, enemy.x + dx * 6, enemy.z + dz * 6, -dx, -dz, 6);
-      if (back !== null && meetsSomeone(enemy.x + dx * (6 - back), enemy.z + dz * (6 - back))) {
-        from = { x: enemy.x + dx * 6, z: enemy.z + dz * 6 };
-        break;
-      }
+      const outClear = out === null || meetsSomeone(enemy.x + dx * (0.45 + out), enemy.z + dz * (0.45 + out));
+      const back = outClear ? await probe(page, spot.x, spot.z, -dx, -dz, 6) : null;
+      if (outClear && back !== null && meetsSomeone(enemy.x + dx * (6 - back), enemy.z + dz * (6 - back))) verified.push(spot);
+      else if ((await probe(page, enemy.x + dx * 0.7, enemy.z + dz * 0.7, dx, dz, 6)) === null) open.push(spot);
     }
+    const spots = [...verified, ...open];
+    const from = spots.length > 0 ? spots[attempt % spots.length]! : { x: enemy.x + Math.sin(toward) * 6, z: enemy.z + Math.cos(toward) * 6 };
     await teleport(page, from.x, from.z, Math.atan2(-(enemy.x - from.x), -(enemy.z - from.z)));
     await heal(page);
     // A line per few rounds, so a failure shows how the fight went.
