@@ -177,6 +177,35 @@ describe("enemies fight as a group", () => {
     expect(Math.hypot(combat.enemies[0]!.x, combat.enemies[0]!.z)).toBeGreaterThan(4);
   });
 
+  it("a hurt enemy with a wall at their back does not back into it, and keeps fighting", () => {
+    // Solid behind the enemy (north of z = -3): any step further north is blocked.
+    const wall: CombatWorld = { ...open, solidDistance: (_x, z, _dx, dz) => (dz < -0.1 && z < -1.6 ? 0.5 : null) };
+    const combat = new Combat(wall, () => 0.5);
+    combat.spawnGroup("a", [{ x: 0, z: -1.7, armed: false, health: 100 }]);
+    step(combat, 0.1);
+    combat.enemies[0]!.health = 20;
+    const events = step(combat, 1.5);
+    expect(combat.enemies[0]!.z).toBeGreaterThan(-2.2); // did not press into the wall
+    expect(events.some((e) => e.type === "enemyWindup")).toBe(true); // still fighting
+  });
+
+  it("an enemy blocked ahead and on one side goes round the other side", () => {
+    // A wall straight ahead (between the enemy and the player) and on the enemy's right.
+    const corner: CombatWorld = {
+      ...open,
+      solidDistance: (x, z, dx, dz) => {
+        if (z < -4 && dz > 0.6) return 0.5; // ahead (towards the player, +z)
+        if (x > -0.5 && dx > 0.3) return 0.5; // to the +x side
+        return null;
+      },
+    };
+    const combat = new Combat(corner, () => 0.5);
+    combat.spawnGroup("a", [{ x: 0, z: -6, armed: false }]);
+    combat.enemies[0]!.strafe = -1; // prefers the blocked side first
+    step(combat, 1);
+    expect(combat.enemies[0]!.x).toBeLessThan(-0.5); // went round the open side
+  });
+
   it("takes turns: the attackers are kept while close, then the nearest", () => {
     const fighters = [{ id: 1, distance: 5 }, { id: 2, distance: 2 }, { id: 3, distance: 3 }, { id: 4, distance: 1 }];
     expect([...chooseAttackers(fighters, new Set())].sort()).toEqual([2, 4]);

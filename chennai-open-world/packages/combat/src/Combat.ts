@@ -546,13 +546,15 @@ export class Combat {
       }
 
       // Badly hurt: back off for a while, once (not the boss).
+      // Only with open ground behind: backing into a corner would leave them stuck there.
       if (!enemy.retreated && enemy.maxHealth <= 150 && enemy.health < enemy.maxHealth * COMBAT_FEEL.retreatBelow) {
         enemy.retreated = true;
-        enemy.retreat = COMBAT_FEEL.retreatFor;
+        if (this.world.solidDistance(enemy.x, enemy.z, -ux, -uz, 3) === null) enemy.retreat = COMBAT_FEEL.retreatFor;
       }
       if (enemy.retreat > 0) {
         enemy.retreat -= dt;
-        this.walk(enemy, -ux, -uz, ENEMY_SPEED * 0.8, dt);
+        // Something in the way: stop backing off and come on again.
+        if (!this.walk(enemy, -ux, -uz, ENEMY_SPEED * 0.8, dt)) enemy.retreat = 0;
         continue;
       }
 
@@ -595,14 +597,29 @@ export class Combat {
       }
       // Close in, stepping round walls rather than walking into them. Measured from the enemy's
       // own centre: a wall closer than the body's front plus a margin blocks the way.
+      // Straight at the player; else half-left or half-right, then sideways, trying the side it
+      // last went first (so it does not dither), and the other side before giving up.
       const step = ENEMY_SPEED * dt;
       let moveX = ux;
       let moveZ = uz;
       if (this.world.solidDistance(enemy.x, enemy.z, ux, uz, WALL_LOOKAHEAD) !== null) {
-        const side = enemy.id % 2 === 0 ? 1 : -1;
-        moveX = -uz * side;
-        moveZ = ux * side;
-        if (this.world.solidDistance(enemy.x, enemy.z, moveX, moveZ, WALL_LOOKAHEAD) !== null) continue;
+        const c = Math.SQRT1_2;
+        let found = false;
+        for (const [turn, side] of [[c, enemy.strafe], [c, -enemy.strafe], [0, enemy.strafe], [0, -enemy.strafe]] as const) {
+          // `turn` 0.71: 45 degrees off the line to the player; 0: square to it.
+          const along = turn;
+          const across = turn === 0 ? 1 : c;
+          const mx = ux * along - uz * side * across;
+          const mz = uz * along + ux * side * across;
+          if (this.world.solidDistance(enemy.x, enemy.z, mx, mz, WALL_LOOKAHEAD) === null) {
+            moveX = mx;
+            moveZ = mz;
+            if (side !== enemy.strafe) enemy.strafe = side;
+            found = true;
+            break;
+          }
+        }
+        if (!found) continue;
       }
       // Keep a little apart from the others so a group doesn't stand in one spot.
       let crowded = false;
