@@ -180,13 +180,12 @@ export class Combat {
   /**
    * Where to put someone asked for at (x, z): there, unless walls close it in on every side, as
    * when a pavement offset falls inside a small building (the turf war's crew at the Royapettah
-   * clock tower, an enclosed space about 7 m across). Nobody could reach or shoot an enemy in
-   * there, and the stage could never be won. Such a spot moves to the nearest place within 20 m
-   * that is open on at least one side.
+   * clock tower). Nobody could reach or shoot an enemy in there, and the stage could never be
+   * won. Such a spot moves to the nearest place within 8 m that is open on at least one side.
    */
   private openSpot(x: number, z: number): { x: number; z: number } {
     if (!this.walledIn(x, z)) return { x, z };
-    for (let ring = 1; ring <= 20; ring++) {
+    for (let ring = 1; ring <= 8; ring++) {
       for (let k = 0; k < 12; k++) {
         const a = (k * Math.PI) / 6;
         const cx = x + Math.sin(a) * ring;
@@ -197,14 +196,11 @@ export class Combat {
     return { x, z };
   }
 
-  /**
-   * Solid within 10 m in each of eight directions (people do not count). A spot on a pavement
-   * always has the street open along its length, so only an enclosed space answers true.
-   */
+  /** Solid within 3 m in each of eight directions (people do not count). */
   private walledIn(x: number, z: number): boolean {
     for (let k = 0; k < 8; k++) {
       const a = (k * Math.PI) / 4;
-      if (this.world.solidDistance(x, z, Math.sin(a), Math.cos(a), 10) === null) return false;
+      if (this.world.solidDistance(x, z, Math.sin(a), Math.cos(a), 3) === null) return false;
     }
     return true;
   }
