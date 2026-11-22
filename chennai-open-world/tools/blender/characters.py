@@ -37,6 +37,7 @@ What the game needs, and how this script gets there:
 - `people/people.json` lists every pedestrian with its sex, age group, role tags, height and
   triangle counts (the game reads it to pick people for each job).
 """
+import faulthandler
 import json
 import math
 import os
@@ -50,6 +51,7 @@ import numpy as np
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
+faulthandler.enable()
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 OUT = os.path.abspath(argv[0] if argv and not argv[0].startswith("--") else "assets/models")
 ONLY = set(argv[argv.index("--only") + 1].split(",")) if "--only" in argv else None
@@ -211,8 +213,8 @@ def leggings(colour):
     return {"kind": "region", "region": "leggings", "colour": colour, "offset": 0.003}
 
 
-def towel(colour=c("#e9e4d6"), stripe=c("#b23a3a")):
-    return {"kind": "region", "region": "towel", "texture": ("towel", colour, stripe), "offset": 0.022}
+def towel(colour=c("#cdb894"), stripe=c("#b23a3a")):
+    return {"kind": "region", "region": "towel", "texture": ("towel", colour, stripe), "offset": 0.035}
 
 
 def head_cloth(colour):
@@ -221,7 +223,7 @@ def head_cloth(colour):
 
 def police(sex):
     """A generic khaki police uniform: shirt, trousers, belt, peaked cap. No insignia."""
-    items = shirt_trousers(KHAKI, KHAKI) if sex == "male" else [{"asset": "female_casualsuit01", "split": "uv", "upper": KHAKI, "lower": KHAKI, "prints": True}]
+    items = shirt_trousers(KHAKI, KHAKI) if sex == "male" else [{"asset": "female_casualsuit01", "split": "z", "upper": KHAKI, "lower": KHAKI, "prints": True}]
     return items
 
 
@@ -245,7 +247,7 @@ CAST = [
            body={"muscle": 0.35, "weight": 0.4, "height": 0.38, "proportions": 0.45}, hair=("short04", GREY_HAIR), facial=["moustache", "beard"],
            facial_colour=WHITE_HAIR, clothes=shirt_only(c("#c9d3d9")), garments=[lungi(c("#5b2e2a"), [c("#c9a24a"), c("#1f1f1f")])]),
     person("man-veshti-elderly", "male", 72, ["pedestrian", "passenger"], tone=0.55,
-           body={"muscle": 0.35, "weight": 0.5, "height": 0.4, "proportions": 0.45}, hair=("short02", WHITE_HAIR), facial=["moustache"],
+           body={"muscle": 0.35, "weight": 0.5, "height": 0.4, "proportions": 0.45}, hair=("short02", GREY_HAIR), facial=["moustache"],
            facial_colour=WHITE_HAIR, clothes=shirt_only(OFF_WHITE), garments=[veshti(c("#2e5e3a")), towel()]),
     person("man-shirt-middle", "male", 48, ["pedestrian", "passenger", "shopkeeper"], tone=0.5,
            body={"muscle": 0.45, "weight": 0.7, "height": 0.48, "proportions": 0.5}, facial=["moustache"],
@@ -264,7 +266,7 @@ CAST = [
            clothes=shirt_trousers(c("#f2f2f0"), NAVY), shoes="shoes04"),
     person("boy-casual", "male", 9, ["pedestrian"], tone=0.7, eyelashes=False,
            body={"muscle": 0.45, "weight": 0.45, "height": 0.5, "proportions": 0.5}, hair=("short04", BLACK_HAIR),
-           clothes=[tshirt(c("#3f7f5a")), {"asset": "cortu_jeans_shorts", "colour": c("#3a4660")}]),
+           clothes=[tshirt(c("#3f7f5a")), trousers(c("#4a4f5a"), "cortu_cargo_pants")]),
     # ---------------------------------------------------------------- men at work
     person("auto-driver", "male", 45, ["auto-driver"], tone=0.75,
            body={"muscle": 0.5, "weight": 0.55, "height": 0.45, "proportions": 0.5}, facial=["moustache"],
@@ -288,7 +290,7 @@ CAST = [
            clothes=shirt_only(c("#8fa8a0")), garments=[lungi(c("#6d5a2f"), [c("#26353a"), c("#d8d0bb")], "knee"), towel(c("#dcd3b8"), c("#3c6f3c"))]),
     person("tea-worker", "male", 34, ["tea-worker", "vendor"], tone=0.7,
            body={"muscle": 0.5, "weight": 0.42, "height": 0.48, "proportions": 0.5}, facial=["moustache"],
-           clothes=[banian()], garments=[veshti(c("#7a2f2f"), "knee"), towel(c("#e9e4d6"), c("#2f4f8f"))]),
+           clothes=[banian()], garments=[veshti(c("#7a2f2f"), "knee"), towel(c("#d9a66a"), c("#2f4f8f"))]),
     person("construction-worker", "male", 30, ["construction"], tone=0.9,
            body={"muscle": 0.65, "weight": 0.4, "height": 0.48, "proportions": 0.5}, facial=["moustache", "stubble"],
            clothes=shirt_only(c("#7d6e5c"), ("stripe", c("#5f5243"), 10)), garments=[lungi(c("#3a3a52"), [c("#9a8a6a"), c("#2b2b2b")], "knee"), head_cloth(c("#cfc6b2"))]),
@@ -323,7 +325,7 @@ CAST = [
            garments=[leggings(c("#d8c7a3"))] + kurta(c("#2f5f8a"), "calf", ("stripe", c("#9fc0dd"), 14)) + [{"kind": "idtag", "colour": c("#8a2f2f")}]),
     person("woman-kurti-jeans", "female", 21, ["college", "pedestrian", "passenger"], tone=0.4,
            body={"muscle": 0.45, "weight": 0.42, "height": 0.52, "proportions": 0.55}, hair=("ponytail01", BLACK_HAIR),
-           clothes=[{"asset": "female_casualsuit01", "split": "uv", "lower": c("#33405e"), "drop": "upper"}],
+           clothes=[{"asset": "female_casualsuit01", "split": "z", "lower": c("#33405e"), "drop": "upper"}],
            garments=kurta(c("#e3b23c"), "thigh", ("dots", c("#a8452e"), 26), sleeves=0.5)),
     person("woman-vendor", "female", 50, ["vendor", "pedestrian"], tone=0.85,
            body={"muscle": 0.45, "weight": 0.5, "height": 0.38, "proportions": 0.5}, hair=("bun", DARK_HAIR), bindi=c("#8a1020"),
@@ -366,15 +368,18 @@ FACE_BASE = {
     "r-eye-scale-incr": 0.08,
     "head-oval": 0.25,
 }
-FACE_JITTER = ["nose-hump-incr", "nose-volume-incr", "nose-scale-vert-incr", "mouth-scale-horiz-incr", "chin-width-incr",
-               "chin-prominent-incr", "cheek-bones-incr", "head-square", "head-round", "eyebrows-trans-up", "l-eye-push1-out", "r-eye-push1-out"]
+FACE_JITTER = [("nose-hump-incr",), ("nose-volume-incr",), ("nose-scale-vert-incr",), ("mouth-scale-horiz-incr",), ("chin-width-incr",),
+               ("chin-prominent-incr",), ("l-cheek-bones-incr", "r-cheek-bones-incr"), ("head-square",), ("head-round",),
+               ("eyebrows-trans-up",), ("l-eye-push1-out", "r-eye-push1-out"), ("chin-jaw-drop-incr",), ("l-cheek-volume-incr", "r-cheek-volume-incr")]
 
 
 def face_targets(spec):
     rng = np.random.default_rng(spec["face"])
     targets = dict(FACE_BASE)
-    for name in rng.choice(FACE_JITTER, size=5, replace=False):
-        targets[name] = round(float(rng.uniform(0.05, 0.35)), 3)
+    for pick in rng.choice(len(FACE_JITTER), size=5, replace=False):
+        value = round(float(rng.uniform(0.05, 0.35)), 3)
+        for name in FACE_JITTER[pick]:
+            targets[name] = value
     targets.update(spec["targets"])
     return [{"target": k, "value": v} for k, v in targets.items()]
 
@@ -419,8 +424,9 @@ def skin_sources(spec):
 
 
 def hair_asset(spec):
-    name = os.environ.get("CHAR_HAIR") or spec["hair"][0]
-    return {"bun": "rehmanpolanski_hair_bun_brown"}.get(name, name)
+    name = spec["hair"][0]
+    # "bun": worn pulled back; braid01 (CC0) with its fringe cut reads better than the bun assets.
+    return {"bun": "braid01"}.get(name, name)
 
 
 def make_human(spec, human_service):
@@ -927,7 +933,10 @@ def measure_landmarks(rig, body, eyes):
     lm["brow_z"] = sum((eyes.matrix_world @ v.co).z for v in eyes.data.vertices) / len(eyes.data.vertices) + 0.022
     torso = [p for p, b in zip(pts, bones) if b in ("Spine", "Spine1", "Spine2", "Hips")]
     lm["waist"] = (lm["Spine"].z + lm["Hips"].z) / 2 + 0.04
-    lm["chest_front"] = min(p.y for p in torso if abs(p.z - lm["Spine2"].z) < 0.06)
+    # The chest may be hidden under a MakeHuman top (its skin is deleted): then use the nearest
+    # body points that are left, or the rig.
+    chest = [p.y for p in torso if abs(p.z - lm["Spine2"].z) < 0.06] or [p.y for p in torso] or [lm["Spine2"].y - 0.11]
+    lm["chest_front"] = min(chest)
     lm["height"] = lm["top"]
     return lm
 
@@ -994,7 +1003,7 @@ def tube_bottom(lm, name):
     }[name]
 
 
-def make_tube(rig, body, collection, lm, g, name):
+def make_tube(rig, body, collection, lm, g, name, extra=()):
     """A cloth tube from the waist down: lungi, veshti, saree skirt, kurta skirt, pinafore skirt.
     Rings are fitted round the hips and legs at each height (never narrower than the ring above:
     cloth hangs). Weighted to the hips at the top, to each thigh lower down (left/right split
@@ -1006,6 +1015,12 @@ def make_tube(rig, body, collection, lm, g, name):
     world = body.matrix_world
     bones = dominant_bones(body)
     verts = [world @ v.co for v, b in zip(body.data.vertices, bones) if b not in ARM_BONES]
+    # Garments worn under it (salwar, trousers): only where their skin is gone (a fallback, so
+    # a kurta does not balloon round a loose salwar).
+    under = []
+    for obj in extra:
+        ob = dominant_bones(obj)
+        under += [obj.matrix_world @ v.co for v, b in zip(obj.data.vertices, ob) if b not in ARM_BONES]
     rings = max(4, int((top - bottom) / 0.07) + 2)
     segments = 32
     long = bottom < knee - 0.1
@@ -1016,7 +1031,11 @@ def make_tube(rig, body, collection, lm, g, name):
     for r in range(rings):
         z = top + (bottom - top) * r / (rings - 1)
         zs = max(z, 0.06)
-        near = [p for p in verts if abs(p.z - zs) < 0.025] or [p for p in verts if abs(p.z - zs) < 0.07]
+        near = [p for p in verts if abs(p.z - zs) < 0.025] or [p for p in verts if abs(p.z - zs) < 0.07] \
+            or [p for p in under if abs(p.z - zs) < 0.025]
+        if not near and fits:
+            fits.append((z,) + fits[-1][1:])
+            continue
         xs = [p.x for p in near]
         ys = [p.y for p in near]
         cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
@@ -1167,7 +1186,7 @@ def region_parts(lm, rig, g):
     if region in ("towel", "dupatta"):
         side = "Left"
         x = (lm[side + "Arm"].x + lm["Neck"].x) / 2 + (0.01 if region == "towel" else 0.0)
-        half = 0.055 if region == "towel" else 0.085
+        half = 0.055
         low = lm["Spine1"].z - 0.02 if region == "towel" else lm["Hips"].z - 0.04
         return [(torso | {"LeftArm"}, [(Vector((x - half, 0, 0)), Vector((1, 0, 0))), (Vector((x + half, 0, 0)), Vector((-1, 0, 0))),
                                        (Vector((0, 0, low)), up)])]
@@ -1229,13 +1248,6 @@ def make_region(rig, body, collection, lm, g, name):
     bm.to_mesh(mesh)
     bm.free()
     obj = new_object(name, mesh, rig, collection)
-    if os.environ.get("CHAR_DEBUG"):
-        zs = sorted({round(v.co.z, 1) for v in mesh.vertices})
-        for z in zs:
-            row = [v.co for v in mesh.vertices if abs(v.co.z - z) < 0.03 and v.co.y < 0]
-            if row:
-                print("DEBUG", name, g["region"], z, round(min(v.x for v in row), 3), round(max(v.x for v in row), 3))
-        print("DEBUG parts", [(sorted(b), [(tuple(round(x, 3) for x in pt), tuple(round(x, 3) for x in no)) for pt, no in cuts]) for b, cuts in parts])
     obj.matrix_world = world
     for group in body.vertex_groups:  # same order as the body: the copied weights keep their meaning
         obj.vertex_groups.new(name=group.name)
@@ -1385,7 +1397,7 @@ def make_headgear(rig, body, hair, collection, lm, g, name):
             bm.faces.new((brim[s], brim[(s + 1) % seg], layers[0][(s + 1) % seg], layers[0][s]))
     elif style == "peaked":
         # A peaked cap: band, a crown wider than the band, a dark visor.
-        z0, z1, z2 = brow - 0.005, brow + 0.04, brow + 0.075
+        z0, z1, z2 = brow - 0.005, brow + 0.03, brow + 0.058
         rows = [(z0, 1.0), (z1, 1.03), (z2, 1.12)]
         layers = []
         for zz, k in rows:
@@ -1457,6 +1469,8 @@ def copy_faces(body, keep, name, offset):
     obj = bpy.data.objects.new(name, mesh)
     body.users_collection[0].objects.link(obj)
     obj.matrix_world = body.matrix_world
+    for group in body.vertex_groups:  # same order as the body: the copied weights keep their meaning
+        obj.vertex_groups.new(name=group.name)
     obj.parent = body.parent
     obj.matrix_parent_inverse = body.matrix_parent_inverse.copy()
     obj.modifiers.new("Armature", "ARMATURE").object = body.parent
@@ -1627,13 +1641,21 @@ def join(rig, body, parts, name):
     bpy.ops.object.join()
     body.name = name
     body.data.name = name
-    with bpy.context.temp_override(object=body, active_object=body):
-        bpy.ops.object.vertex_group_limit_total(group_select_mode="BONE_DEFORM", limit=4)
-        bpy.ops.object.vertex_group_normalize_all(group_select_mode="BONE_DEFORM", lock_active=False)
     bones = {b.name for b in rig.data.bones}
     for group in list(body.vertex_groups):
         if group.name not in bones:
             body.vertex_groups.remove(group)
+    # At most four bones per vertex, weights summing to one (done here: Blender's own operators
+    # crashed on the full base mesh).
+    groups = body.vertex_groups
+    for v in body.data.vertices:
+        ws = sorted(((g.group, g.weight) for g in v.groups if g.weight > 1e-4), key=lambda gw: -gw[1])
+        for gi, _ in ws[4:]:
+            groups[gi].remove([v.index])
+        total = sum(w for _, w in ws[:4])
+        if total > 0:
+            for gi, w in ws[:4]:
+                groups[gi].add([v.index], w / total, "REPLACE")
     for modifier in list(body.modifiers):
         if modifier.type == "ARMATURE" and modifier.object != rig:
             body.modifiers.remove(modifier)
@@ -1726,7 +1748,7 @@ def build(spec, human_service, workdir):
     for i, g in enumerate(spec["garments"]):
         name = f"g{i}_{g['kind']}"
         if g["kind"] == "tube":
-            obj, inside = make_tube(rig, body, collection, lm, g, name)
+            obj, inside = make_tube(rig, body, collection, lm, g, name, [o for _, o in clothes_objs])
             made.append((name, obj, ("fabric", g["texture"]), "uv"))
             hidden.update(inside)
         elif g["kind"] == "region":
@@ -1792,8 +1814,12 @@ def build(spec, human_service, workdir):
         if split:
             split_z = hips_z + 0.03
 
-            def is_upper(centre, uv, split=split, split_z=split_z):
-                return uv.y > 0.5 if split == "uv" else centre.z > split_z
+            # The MakeHuman suits put the top in the upper half of the texture and the trousers
+            # below; the trousers' waistband reaches a little above the middle.
+            split_v = item.get("split_v", 0.585)
+
+            def is_upper(centre, uv, split=split, split_z=split_z, split_v=split_v):
+                return uv.y > split_v if split == "uv" else centre.z > split_z
 
             upper = uv_mask(obj, size, is_upper)
             lower = uv_mask(obj, size, lambda cc, uv, f=is_upper: not f(cc, uv)) & ~upper
@@ -2038,13 +2064,17 @@ def main():
                 export(rig, lod1, os.path.join(OUT, spec["file"].replace(".glb", "_lod1.glb")))
             if spec["roles"]:
                 entries[spec["id"]] = manifest_entry(spec, stats)
+                write_manifest(manifest_path, entries)  # after each person: a crash keeps the rest
             if PREVIEW:
                 os.makedirs(PREVIEW, exist_ok=True)
                 preview(rig, body, os.path.join(PREVIEW, spec["id"]), [lod1] if lod1 else [])
+
+
+def write_manifest(path, entries):
     order = [s["id"] for s in CAST]
     people = [entries[i] for i in order if i in entries]
-    os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
-    with open(manifest_path, "w") as f:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
         json.dump({"people": people}, f, indent=2)
         f.write("\n")
 

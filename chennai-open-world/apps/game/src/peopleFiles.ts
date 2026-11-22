@@ -4,8 +4,8 @@
  * only when someone first needs that person (`HumanAssets.look`).
  *
  * `assets/models/people/people.json` is the real manifest, written by the assets pipeline
- * (`docs/characters.md`). Until it exists, `people.fixture.json` beside it stands in: the interim
- * models already in the repository. Any manifest of the same schema works.
+ * (`docs/characters.md`). A `people.fixture.json` beside it is used only when there is no real
+ * manifest. Any manifest of the same schema works.
  */
 import { parsePeopleManifest, type PeopleSources } from "@cow/player";
 

@@ -55,19 +55,15 @@ describe("people manifest", () => {
     expect(() => parsePeopleManifest({ nobody: [] })).toThrow();
   });
 
-  it("the fixture manifest is valid and every file it names exists", () => {
+  it("the real manifest is valid, every file it names exists, and it casts no child anywhere they can be hurt", () => {
     const root = new URL("../../../assets/", import.meta.url);
-    const { manifest, problems } = parsePeopleManifest(JSON.parse(readFileSync(new URL("models/people/people.fixture.json", root), "utf8")));
+    const { manifest, problems } = parsePeopleManifest(JSON.parse(readFileSync(new URL("models/people/people.json", root), "utf8")));
     expect(problems).toEqual([]);
-    expect(manifest.fixture).toBe(true);
-    for (const p of manifest.people) expect(existsSync(fileURLToPath(new URL(`optimized/${p.file}`, root))), p.file).toBe(true);
-  });
-
-  it("the real manifest, once it exists, is valid and casts no child anywhere they can be hurt", () => {
-    const file = new URL("../../../assets/models/people/people.json", import.meta.url);
-    if (!existsSync(fileURLToPath(file))) return;
-    const { manifest, problems } = parsePeopleManifest(JSON.parse(readFileSync(file, "utf8")));
-    expect(problems).toEqual([]);
+    expect(manifest.fixture).toBe(false);
+    for (const p of manifest.people) {
+      expect(existsSync(fileURLToPath(new URL(`optimized/${p.file}`, root))), p.file).toBe(true);
+      if (p.lod1) expect(existsSync(fileURLToPath(new URL(`optimized/${p.lod1}`, root))), p.lod1).toBe(true);
+    }
     for (const cast of HURTABLE) for (const p of castPool(manifest.people, cast)) expect(isMinor(p), `${p.id} as ${cast}`).toBe(false);
   });
 });

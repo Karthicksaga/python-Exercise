@@ -16,6 +16,349 @@
       "texture": 512
     },
     {
+      "id": "man-tshirt-young",
+      "file": "people/man_tshirt_young.glb",
+      "lod1": "people/man_tshirt_young_lod1.glb",
+      "sex": "male",
+      "age": "young",
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "college"
+      ],
+      "heightM": 1.722,
+      "triangles": 9697,
+      "lod1Triangles": 3385,
+      "texture": 512
+    },
+    {
+      "id": "man-veshti-middle",
+      "file": "people/man_veshti_middle.glb",
+      "lod1": "people/man_veshti_middle_lod1.glb",
+      "sex": "male",
+      "age": "middle",
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "shopkeeper"
+      ],
+      "heightM": 1.742,
+      "triangles": 9697,
+      "lod1Triangles": 3389,
+      "texture": 512
+    },
+    {
+      "id": "man-lungi-middle",
+      "file": "people/man_lungi_middle.glb",
+      "lod1": "people/man_lungi_middle_lod1.glb",
+      "sex": "male",
+      "age": "middle",
+      "roles": [
+        "pedestrian",
+        "passenger"
+      ],
+      "heightM": 1.731,
+      "triangles": 8486,
+      "lod1Triangles": 3387,
+      "texture": 512
+    },
+    {
+      "id": "man-lungi-elderly",
+      "file": "people/man_lungi_elderly.glb",
+      "lod1": "people/man_lungi_elderly_lod1.glb",
+      "sex": "male",
+      "age": "elderly",
+      "roles": [
+        "pedestrian",
+        "passenger"
+      ],
+      "heightM": 1.688,
+      "triangles": 8241,
+      "lod1Triangles": 3386,
+      "texture": 512
+    },
+    {
+      "id": "man-veshti-elderly",
+      "file": "people/man_veshti_elderly.glb",
+      "lod1": "people/man_veshti_elderly_lod1.glb",
+      "sex": "male",
+      "age": "elderly",
+      "roles": [
+        "pedestrian",
+        "passenger"
+      ],
+      "heightM": 1.69,
+      "triangles": 9697,
+      "lod1Triangles": 3390,
+      "texture": 512
+    },
+    {
+      "id": "man-shirt-middle",
+      "file": "people/man_shirt_middle.glb",
+      "lod1": "people/man_shirt_middle_lod1.glb",
+      "sex": "male",
+      "age": "middle",
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "shopkeeper"
+      ],
+      "heightM": 1.763,
+      "triangles": 9208,
+      "lod1Triangles": 3389,
+      "texture": 512
+    },
+    {
+      "id": "man-office-young",
+      "file": "people/man_office_young.glb",
+      "lod1": "people/man_office_young_lod1.glb",
+      "sex": "male",
+      "age": "young",
+      "roles": [
+        "office",
+        "pedestrian",
+        "passenger"
+      ],
+      "heightM": 1.825,
+      "triangles": 9696,
+      "lod1Triangles": 3387,
+      "texture": 512
+    },
+    {
+      "id": "man-college",
+      "file": "people/man_college.glb",
+      "lod1": "people/man_college_lod1.glb",
+      "sex": "male",
+      "age": "teen",
+      "roles": [
+        "college",
+        "pedestrian",
+        "passenger"
+      ],
+      "heightM": 1.643,
+      "triangles": 9697,
+      "lod1Triangles": 3387,
+      "texture": 512
+    },
+    {
+      "id": "teen-boy",
+      "file": "people/teen_boy.glb",
+      "lod1": "people/teen_boy_lod1.glb",
+      "sex": "male",
+      "age": "teen",
+      "roles": [
+        "pedestrian",
+        "passenger"
+      ],
+      "heightM": 1.52,
+      "triangles": 9313,
+      "lod1Triangles": 3387,
+      "texture": 512
+    },
+    {
+      "id": "boy-school",
+      "file": "people/boy_school.glb",
+      "lod1": "people/boy_school_lod1.glb",
+      "sex": "male",
+      "age": "child",
+      "roles": [
+        "school"
+      ],
+      "heightM": 1.31,
+      "triangles": 9697,
+      "lod1Triangles": 3389,
+      "texture": 512
+    },
+    {
+      "id": "boy-casual",
+      "file": "people/boy_casual.glb",
+      "lod1": "people/boy_casual_lod1.glb",
+      "sex": "male",
+      "age": "child",
+      "roles": [
+        "pedestrian"
+      ],
+      "heightM": 1.243,
+      "triangles": 7008,
+      "lod1Triangles": 3386,
+      "texture": 512
+    },
+    {
+      "id": "auto-driver",
+      "file": "people/auto_driver.glb",
+      "lod1": "people/auto_driver_lod1.glb",
+      "sex": "male",
+      "age": "middle",
+      "roles": [
+        "auto-driver"
+      ],
+      "heightM": 1.745,
+      "triangles": 9208,
+      "lod1Triangles": 3388,
+      "texture": 512
+    },
+    {
+      "id": "auto-driver-lungi",
+      "file": "people/auto_driver_lungi.glb",
+      "lod1": "people/auto_driver_lungi_lod1.glb",
+      "sex": "male",
+      "age": "middle",
+      "roles": [
+        "auto-driver"
+      ],
+      "heightM": 1.721,
+      "triangles": 9879,
+      "lod1Triangles": 3384,
+      "texture": 512
+    },
+    {
+      "id": "cab-driver",
+      "file": "people/cab_driver.glb",
+      "lod1": "people/cab_driver_lod1.glb",
+      "sex": "male",
+      "age": "young",
+      "roles": [
+        "cab-driver",
+        "pedestrian"
+      ],
+      "heightM": 1.77,
+      "triangles": 9207,
+      "lod1Triangles": 3388,
+      "texture": 512
+    },
+    {
+      "id": "traffic-police",
+      "file": "people/traffic_police.glb",
+      "lod1": "people/traffic_police_lod1.glb",
+      "sex": "male",
+      "age": "middle",
+      "roles": [
+        "traffic-police"
+      ],
+      "heightM": 1.817,
+      "triangles": 9697,
+      "lod1Triangles": 3389,
+      "texture": 512
+    },
+    {
+      "id": "police-officer",
+      "file": "people/police_officer.glb",
+      "lod1": "people/police_officer_lod1.glb",
+      "sex": "male",
+      "age": "middle",
+      "roles": [
+        "police"
+      ],
+      "heightM": 1.808,
+      "triangles": 9698,
+      "lod1Triangles": 3391,
+      "texture": 512
+    },
+    {
+      "id": "vendor-lungi",
+      "file": "people/vendor_lungi.glb",
+      "lod1": "people/vendor_lungi_lod1.glb",
+      "sex": "male",
+      "age": "middle",
+      "roles": [
+        "vendor",
+        "pedestrian"
+      ],
+      "heightM": 1.725,
+      "triangles": 7954,
+      "lod1Triangles": 3385,
+      "texture": 512
+    },
+    {
+      "id": "tea-worker",
+      "file": "people/tea_worker.glb",
+      "lod1": "people/tea_worker_lod1.glb",
+      "sex": "male",
+      "age": "young",
+      "roles": [
+        "tea-worker",
+        "vendor"
+      ],
+      "heightM": 1.768,
+      "triangles": 9698,
+      "lod1Triangles": 3388,
+      "texture": 512
+    },
+    {
+      "id": "construction-worker",
+      "file": "people/construction_worker.glb",
+      "lod1": "people/construction_worker_lod1.glb",
+      "sex": "male",
+      "age": "young",
+      "roles": [
+        "construction"
+      ],
+      "heightM": 1.777,
+      "triangles": 9107,
+      "lod1Triangles": 3386,
+      "texture": 512
+    },
+    {
+      "id": "construction-hardhat",
+      "file": "people/construction_hardhat.glb",
+      "lod1": "people/construction_hardhat_lod1.glb",
+      "sex": "male",
+      "age": "middle",
+      "roles": [
+        "construction"
+      ],
+      "heightM": 1.773,
+      "triangles": 8285,
+      "lod1Triangles": 3386,
+      "texture": 512
+    },
+    {
+      "id": "delivery-rider",
+      "file": "people/delivery_rider.glb",
+      "lod1": "people/delivery_rider_lod1.glb",
+      "sex": "male",
+      "age": "young",
+      "roles": [
+        "delivery",
+        "pedestrian"
+      ],
+      "heightM": 1.758,
+      "triangles": 9696,
+      "lod1Triangles": 3391,
+      "texture": 512
+    },
+    {
+      "id": "delivery-rider-2",
+      "file": "people/delivery_rider_2.glb",
+      "lod1": "people/delivery_rider_2_lod1.glb",
+      "sex": "male",
+      "age": "young",
+      "roles": [
+        "delivery",
+        "pedestrian"
+      ],
+      "heightM": 1.768,
+      "triangles": 9697,
+      "lod1Triangles": 3387,
+      "texture": 512
+    },
+    {
+      "id": "shopkeeper",
+      "file": "people/shopkeeper.glb",
+      "lod1": "people/shopkeeper_lod1.glb",
+      "sex": "male",
+      "age": "middle",
+      "roles": [
+        "shopkeeper",
+        "vendor",
+        "pedestrian"
+      ],
+      "heightM": 1.738,
+      "triangles": 9698,
+      "lod1Triangles": 3390,
+      "texture": 512
+    },
+    {
       "id": "woman-saree-young",
       "file": "people/woman_saree_young.glb",
       "lod1": "people/woman_saree_young_lod1.glb",
@@ -28,6 +371,189 @@
       "heightM": 1.609,
       "triangles": 8276,
       "lod1Triangles": 3386,
+      "texture": 512
+    },
+    {
+      "id": "woman-saree-middle",
+      "file": "people/woman_saree_middle.glb",
+      "lod1": "people/woman_saree_middle_lod1.glb",
+      "sex": "female",
+      "age": "middle",
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "vendor"
+      ],
+      "heightM": 1.571,
+      "triangles": 8214,
+      "lod1Triangles": 3384,
+      "texture": 512
+    },
+    {
+      "id": "woman-saree-elderly",
+      "file": "people/woman_saree_elderly.glb",
+      "lod1": "people/woman_saree_elderly_lod1.glb",
+      "sex": "female",
+      "age": "elderly",
+      "roles": [
+        "pedestrian",
+        "passenger"
+      ],
+      "heightM": 1.521,
+      "triangles": 7839,
+      "lod1Triangles": 3385,
+      "texture": 512
+    },
+    {
+      "id": "woman-salwar-young",
+      "file": "people/woman_salwar_young.glb",
+      "lod1": "people/woman_salwar_young_lod1.glb",
+      "sex": "female",
+      "age": "young",
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "college"
+      ],
+      "heightM": 1.586,
+      "triangles": 9696,
+      "lod1Triangles": 3384,
+      "texture": 512
+    },
+    {
+      "id": "woman-chudidar",
+      "file": "people/woman_chudidar.glb",
+      "lod1": "people/woman_chudidar_lod1.glb",
+      "sex": "female",
+      "age": "middle",
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "office"
+      ],
+      "heightM": 1.608,
+      "triangles": 7784,
+      "lod1Triangles": 3388,
+      "texture": 512
+    },
+    {
+      "id": "woman-kurti-jeans",
+      "file": "people/woman_kurti_jeans.glb",
+      "lod1": "people/woman_kurti_jeans_lod1.glb",
+      "sex": "female",
+      "age": "young",
+      "roles": [
+        "college",
+        "pedestrian",
+        "passenger"
+      ],
+      "heightM": 1.538,
+      "triangles": 8856,
+      "lod1Triangles": 3389,
+      "texture": 512
+    },
+    {
+      "id": "woman-vendor",
+      "file": "people/woman_vendor.glb",
+      "lod1": "people/woman_vendor_lod1.glb",
+      "sex": "female",
+      "age": "middle",
+      "roles": [
+        "vendor",
+        "pedestrian"
+      ],
+      "heightM": 1.556,
+      "triangles": 8212,
+      "lod1Triangles": 3385,
+      "texture": 512
+    },
+    {
+      "id": "woman-construction",
+      "file": "people/woman_construction.glb",
+      "lod1": "people/woman_construction_lod1.glb",
+      "sex": "female",
+      "age": "young",
+      "roles": [
+        "construction"
+      ],
+      "heightM": 1.591,
+      "triangles": 8313,
+      "lod1Triangles": 3384,
+      "texture": 512
+    },
+    {
+      "id": "woman-office",
+      "file": "people/woman_office.glb",
+      "lod1": "people/woman_office_lod1.glb",
+      "sex": "female",
+      "age": "young",
+      "roles": [
+        "office",
+        "pedestrian",
+        "passenger"
+      ],
+      "heightM": 1.632,
+      "triangles": 8001,
+      "lod1Triangles": 3389,
+      "texture": 512
+    },
+    {
+      "id": "woman-police",
+      "file": "people/woman_police.glb",
+      "lod1": "people/woman_police_lod1.glb",
+      "sex": "female",
+      "age": "middle",
+      "roles": [
+        "police",
+        "traffic-police"
+      ],
+      "heightM": 1.642,
+      "triangles": 9696,
+      "lod1Triangles": 3385,
+      "texture": 512
+    },
+    {
+      "id": "teen-girl",
+      "file": "people/teen_girl.glb",
+      "lod1": "people/teen_girl_lod1.glb",
+      "sex": "female",
+      "age": "teen",
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "school"
+      ],
+      "heightM": 1.409,
+      "triangles": 9696,
+      "lod1Triangles": 3385,
+      "texture": 512
+    },
+    {
+      "id": "girl-school",
+      "file": "people/girl_school.glb",
+      "lod1": "people/girl_school_lod1.glb",
+      "sex": "female",
+      "age": "child",
+      "roles": [
+        "school"
+      ],
+      "heightM": 1.228,
+      "triangles": 9697,
+      "lod1Triangles": 3385,
+      "texture": 512
+    },
+    {
+      "id": "girl-pavadai",
+      "file": "people/girl_pavadai.glb",
+      "lod1": "people/girl_pavadai_lod1.glb",
+      "sex": "female",
+      "age": "child",
+      "roles": [
+        "pedestrian"
+      ],
+      "heightM": 1.17,
+      "triangles": 9568,
+      "lod1Triangles": 3387,
       "texture": 512
     }
   ]
