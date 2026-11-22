@@ -51,6 +51,8 @@ export const COMBAT_FEEL = {
   lockRange: 12,
   lockArc: 1.9,
   lockKeep: 15,
+  /** An enemy this close (arm's reach) takes the lock from a farther one. */
+  lockSwitchWithin: 2.2,
   /** A pedestrian's health. */
   civilianHealth: 60,
 } as const;
@@ -101,7 +103,12 @@ export function chooseLock(
   sees: (c: LockCandidate) => boolean,
 ): number | null {
   const kept = current === null ? undefined : candidates.find((c) => c.id === current);
-  if (kept && Math.hypot(kept.x - player.x, kept.z - player.z) <= COMBAT_FEEL.lockKeep && sees(kept)) return kept.id;
+  const keptAt = kept ? Math.hypot(kept.x - player.x, kept.z - player.z) : Infinity;
+  // Someone right in the player's face takes the lock from a farther target (a fist would whiff
+  // at the far one): within arm's reach and at least 1.5 m nearer than the current target.
+  const inFace = candidates.find((c) => c.id !== current && Math.hypot(c.x - player.x, c.z - player.z) <= COMBAT_FEEL.lockSwitchWithin && Math.hypot(c.x - player.x, c.z - player.z) < keptAt - 1.5 && sees(c));
+  if (inFace) return inFace.id;
+  if (kept && keptAt <= COMBAT_FEEL.lockKeep && sees(kept)) return kept.id;
   let best: number | null = null;
   let bestScore = Infinity;
   for (const c of candidates) {

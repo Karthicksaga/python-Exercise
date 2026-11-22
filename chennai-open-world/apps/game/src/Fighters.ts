@@ -7,6 +7,7 @@ import { isPoliceGroup, type Combat, type CombatWorld, type Enemy } from "@cow/c
 import { Motion } from "@cow/game-engine";
 import type { KinematicBox, PhysicsWorld } from "@cow/physics";
 import type { HumanAssets, HumanFigure } from "@cow/player";
+import type { CombatMark } from "@cow/ui";
 
 const CHEST = 1.2;
 /** Enemy clothing tints: unarmed thugs in maroon, armed ones in near-black, police officers in khaki. */
@@ -48,6 +49,10 @@ export class Fighters {
   private readonly tracers: Array<{ mesh: THREE.Mesh; life: number }> = [];
   private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.9, depthWrite: false, fog: false });
   private readonly tracerGeometry = new THREE.BoxGeometry(0.035, 0.035, 1);
+  /** Muzzle flashes: a bright star that shows for a moment where a gun fires. */
+  private readonly flashes: Array<{ sprite: THREE.Sprite; life: number }> = [];
+  private readonly flashMaterial = new THREE.SpriteMaterial({ map: muzzleTexture(), color: 0xffe0a0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  private readonly scratch = new THREE.Vector3();
 
   constructor(
     private readonly combat: Combat,
@@ -102,6 +107,8 @@ export class Fighters {
       figure.object.rotation.y = drawn.heading;
       figure.setDown(enemy.health <= 0);
       figure.setAiming(enemy.armed && enemy.alerted && enemy.speed === 0);
+      // Brawlers square up, fists raised, once the fight is on.
+      figure.setStance(!enemy.armed && enemy.weapon === "fists" && enemy.alerted && !enemy.calm && enemy.health > 0 ? "guard" : null);
       figure.update(dt, enemy.speed, true);
     }
     // Enemies the rules have removed leave the scene too.
@@ -110,6 +117,15 @@ export class Fighters {
       this.scene.remove(body.figure.object);
       body.box.dispose();
       this.bodies.delete(id);
+    }
+    for (let i = this.flashes.length - 1; i >= 0; i--) {
+      const flash = this.flashes[i]!;
+      flash.life -= dt;
+      flash.sprite.material.opacity = Math.max(0, flash.life / 0.06);
+      if (flash.life > 0) continue;
+      this.scene.remove(flash.sprite);
+      flash.sprite.material.dispose();
+      this.flashes.splice(i, 1);
     }
     for (let i = this.tracers.length - 1; i >= 0; i--) {
       const tracer = this.tracers[i]!;
@@ -120,9 +136,46 @@ export class Fighters {
     }
   }
 
-  /** An enemy throws a punch (arm animation). */
+  /** An enemy's punch or swing lands. */
   enemyPunch(enemy: Enemy): void {
-    this.bodies.get(enemy.id)?.figure.punch();
+    this.bodies.get(enemy.id)?.figure.play(enemy.weapon === "bat" ? "bat" : "cross");
+  }
+
+  /** An enemy draws back to strike: the tell the player can block or dodge on. */
+  enemyWindup(enemy: Enemy): void {
+    this.bodies.get(enemy.id)?.figure.play("windup");
+  }
+
+  /** The player's hit landed: a flinch, or a stagger for a heavy one. */
+  enemyHit(enemy: Enemy, heavy: boolean): void {
+    if (enemy.health > 0) this.bodies.get(enemy.id)?.figure.play(heavy ? "stagger" : "flinch");
+  }
+
+  /** A gun fires at (x, z), pointing along `yaw`: a flash at the muzzle for a moment. */
+  muzzleFlash(x: number, z: number, yaw: number, height = 1.4): void {
+    const sprite = new THREE.Sprite(this.flashMaterial.clone());
+    sprite.position.set(x - Math.sin(yaw) * 0.25, height, z - Math.cos(yaw) * 0.25);
+    sprite.scale.setScalar(0.45 + Math.random() * 0.15);
+    sprite.material.rotation = Math.random() * Math.PI;
+    this.scene.add(sprite);
+    this.flashes.push({ sprite, life: 0.06 });
+  }
+
+  /** Health bars, the lock-on brackets and hit markers: where each standing enemy is on screen. */
+  marks(camera: THREE.Camera, locked: number | null, near: { x: number; z: number }): CombatMark[] {
+    const out: CombatMark[] = [];
+    for (const enemy of this.combat.enemies) {
+      if (enemy.health <= 0 || Math.hypot(enemy.x - near.x, enemy.z - near.z) > 40) continue;
+      const body = this.bodies.get(enemy.id);
+      if (!body) continue;
+      const at = body.figure.object.position;
+      const head = this.scratch.set(at.x, 2.15, at.z).project(camera);
+      const inView = head.z > -1 && head.z < 1 && Math.abs(head.x) < 1.05 && Math.abs(head.y) < 1.05;
+      const headXY = { x: head.x, y: head.y };
+      const chest = this.scratch.set(at.x, 1.25, at.z).project(camera);
+      out.push({ id: enemy.id, head: headXY, chest: { x: chest.x, y: chest.y }, inView, health: enemy.health / enemy.maxHealth, sinceHit: enemy.sinceHit, heavyHit: enemy.heavyHit, locked: enemy.id === locked });
+    }
+    return out;
   }
 
   /** What the enemies hold in their hands now (tests): weapon ids, one per enemy shown with one. */
@@ -147,3 +200,32 @@ export class Fighters {
     this.tracers.push({ mesh, life: 0.07 });
   }
 }
+
+/** A small soft star for muzzle flashes, drawn once. */
+function muzzleTexture(): THREE.Texture {
+  const size = 64;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const g = canvas.getContext("2d");
+  if (g) {
+    const glow = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    glow.addColorStop(0, "rgba(255,255,255,1)");
+    glow.addColorStop(0.25, "rgba(255,220,140,.9)");
+    glow.addColorStop(1, "rgba(255,140,40,0)");
+    g.fillStyle = glow;
+    g.fillRect(0, 0, size, size);
+    // Four short spikes.
+    g.strokeStyle = "rgba(255,240,200,.9)";
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(size / 2, 4);
+    g.lineTo(size / 2, size - 4);
+    g.moveTo(4, size / 2);
+    g.lineTo(size - 4, size / 2);
+    g.stroke();
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+

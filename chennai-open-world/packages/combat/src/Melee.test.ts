@@ -193,6 +193,13 @@ describe("lock-on", () => {
     expect(chooseLock(me, targets, null, sees)).toBe(2);
   });
 
+  it("an enemy in the player's face takes the lock from a farther one", () => {
+    const targets = [{ id: 1, x: 0, z: -6 }, { id: 2, x: 1.2, z: -1 }];
+    expect(chooseLock(me, targets, 1, sees)).toBe(2);
+    // Not when the locked one is about as close.
+    expect(chooseLock(me, [{ id: 1, x: 0, z: -2 }, { id: 2, x: 1.2, z: -1 }], 1, sees)).toBe(1);
+  });
+
   it("keeps the current target while it stays close and in sight", () => {
     const targets = [{ id: 1, x: 0, z: -3 }, { id: 2, x: 9, z: 9 }];
     expect(chooseLock(me, targets, 2, sees)).toBe(2);

@@ -6,12 +6,13 @@
 import * as THREE from "three";
 import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, Motion, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
 import { Sound, soundKind, type SoundState } from "@cow/audio";
+import { COMBAT_FEEL, chooseLock, type CivilianOutcome } from "@cow/combat";
 import { Combat, PLAYER_MAX_HEALTH, hitPenalty, isPoliceGroup, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState, type WeaponId } from "@cow/combat";
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
 import { CrowdFigures, HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, type HumanFigure } from "@cow/player";
-import { Hud, Minimap, TouchControls, type MinimapMarker } from "@cow/ui";
+import { CombatMarks, Hud, Minimap, TouchControls, type MinimapMarker } from "@cow/ui";
 import { Gearbox, Vehicle, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
 import { buildContent, type GameContent } from "./content";
 import { Boarder, type BoardingSnapshot } from "./Boarder";
@@ -78,6 +79,18 @@ export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
   readonly screen: "title" | "game";
   /** What the sound system is playing (engine, traffic voices, ambience, one-shots heard). */
   readonly audio: SoundState;
+  /** The fight as the player sees it (combat redesign): mode, lock-on, guard, the player's move. */
+  readonly fightView: {
+    readonly combatMode: boolean;
+    readonly locked: number | null;
+    readonly blocking: boolean;
+    readonly dodging: boolean;
+    readonly lastSwing: string | null;
+    readonly playerMove: string | null;
+    readonly lastAssault: { readonly id: number; readonly outcome: CivilianOutcome } | null;
+    /** Pedestrians who can be hit within 4 m: id and distance (tests). */
+    readonly civiliansNear: ReadonlyArray<{ readonly id: number; readonly distance: number }>;
+  };
   readonly x: number;
   readonly y: number;
   readonly z: number;
@@ -310,6 +323,23 @@ export class Game {
   private airborne = 0;
   /** Seconds since the traffic and ambience sound was last updated (it runs at 20 Hz). */
   private sinceSound = 0;
+  /** The enemy the player's attacks turn to (`chooseLock`), by id. */
+  private lock: number | null = null;
+  /** A fight is on near the player: JUMP dodges, BLOCK shows (`TouchControls.setCombat`). */
+  private combatMode = false;
+  /** Seconds since the player last hit anyone or was hit (keeps fight mode on for a moment). */
+  private sinceViolence = 99;
+  /** Holding BLOCK this step. */
+  private blocking = false;
+  /** The last pedestrian the player hit, and what it did to them (tests and the debug snapshot). */
+  private lastAssault: GameSnapshot["fightView"]["lastAssault"] = null;
+  /** Health bars, lock-on brackets and hit markers over the people in a fight. */
+  private readonly marks: CombatMarks;
+  private sightWorld: ReturnType<typeof combatWorld> | null = null;
+  /** Line-of-sight questions about the world, for the lock-on. */
+  private sight(): ReturnType<typeof combatWorld> {
+    return (this.sightWorld ??= combatWorld(this.physics));
+  }
 
   private constructor(
     private readonly map: WorldMap,
@@ -381,6 +411,7 @@ export class Game {
     this.cityMap = this.makeCityMap();
     minimap.onTap(() => this.cityMap.open());
     sound.setMuted(!loadSoundOn());
+    this.marks = new CombatMarks(hud.root);
     this.title = this.makeTitle();
   }
 
@@ -1147,6 +1178,16 @@ export class Game {
       speed: this.driving ? Math.abs(this.driving.body.forwardSpeed()) : this.player.speed,
       fps: this.loop.fps,
       audio: this.sound.state(),
+      fightView: {
+        combatMode: this.combatMode,
+        locked: this.lock,
+        blocking: this.blocking,
+        dodging: this.combat.dodgingNow,
+        lastSwing: this.combat.lastSwing,
+        playerMove: this.avatar.playing,
+        lastAssault: this.lastAssault,
+        civiliansNear: this.population.civilians(p, 4).map((c) => ({ id: c.id, distance: Math.round(Math.hypot(c.x - p.x, c.z - p.z) * 100) / 100 })),
+      },
       paused: this.paused,
       screen: this.title.isOpen ? "title" : "game",
       drawCalls: stats.calls,
@@ -1282,6 +1323,8 @@ export class Game {
     }
 
     const events: CombatEvent[] = [];
+    // Holding BLOCK: forearms up, no attacking, melee hits cut to a fifth.
+    this.blocking = this.combatMode && !this.driving && this.controls.state.block && !this.boarder.busy;
     const state: PlayerState = {
       x: at.x,
       z: at.z,
@@ -1289,32 +1332,50 @@ export class Game {
       inVehicle: this.driving !== null,
       speed: this.driving ? Math.abs(this.driving.body.forwardSpeed()) : this.player.speed,
       armed: !this.driving && this.arms.armed(),
+      blocking: this.blocking,
     };
+    // Lock-on: the hostile enemy the player's attacks turn to (near, in front of the camera, in sight).
+    const hostiles = this.driving ? [] : this.combat.enemies.filter((e) => e.health > 0 && e.alerted && !e.calm);
+    this.lock = chooseLock({ x: at.x, z: at.z, heading: this.camera.yaw }, hostiles, this.lock, (e) => this.sight().lineOfSight(at.x, at.z, e.x, e.z));
+    const target = this.lock === null ? null : hostiles.find((e) => e.id === this.lock) ?? null;
+    // Fight mode: a hostile close by, or a fight just now (hitting a passer-by counts).
+    this.sinceViolence += dt;
+    const near = hostiles.some((e) => Math.hypot(e.x - at.x, e.z - at.z) < 15);
+    this.combatMode = !this.driving && (near || this.sinceViolence < 4);
+    this.controls.setCombat(this.combatMode);
+    // People on the pavement can be hit too (the user's decision, 22 Nov 2026).
+    const civilians = this.driving ? [] : this.population.civilians(at, 25);
     if (this.controls.consumeWeaponSwitch() && !this.driving) this.arms.switchWeapon();
     const punch = this.controls.consumePunch();
     const fire = this.controls.state.fire;
     this.aimFor = Math.max(0, this.aimFor - dt);
     this.sinceClick += dt;
 
-    if (!this.driving && !this.boarder.busy && (punch || fire)) {
-      // Attacks go where the camera looks, so turn the player to face that way first.
-      this.player.yaw = this.camera.yaw;
-      const facing = { ...state, heading: this.camera.yaw };
+    if (!this.driving && !this.boarder.busy && !this.blocking && (punch || fire)) {
+      // Attacks go to the locked-on enemy when there is one, otherwise where the camera looks;
+      // the player turns to face that way first.
+      const yaw = target ? Math.atan2(-(target.x - at.x), -(target.z - at.z)) : this.camera.yaw;
+      this.player.yaw = yaw;
+      const facing = { ...state, heading: yaw };
       if (punch) {
-        const hit = this.combat.punch(facing, events);
+        const before = events.length;
+        const hit = this.combat.punch(facing, events, civilians);
         if (hit !== undefined) {
           this.arms.swung();
-          this.avatar.punch();
-          if (hit) this.sound.punch();
-          else this.sound.whiff();
+          this.avatar.play(this.combat.lastSwing ?? "jab");
+          // A landed blow sounds from its hit event below; a swing at nothing whooshes.
+          if (!hit && !events.slice(before).some((e) => e.type === "civilianHit")) this.sound.whiff();
         }
       }
       if (fire) {
-        const shot = this.combat.shoot(facing, events);
+        const shot = this.combat.shoot(facing, events, civilians);
         if (shot.fired) {
           this.aimFor = 0.7;
           this.sound.shot();
-          const muzzle = { x: at.x - Math.sin(this.camera.yaw) * 0.7, z: at.z - Math.cos(this.camera.yaw) * 0.7 };
+          this.avatar.play("recoil");
+          this.fighters.muzzleFlash(at.x - Math.sin(yaw) * 0.45, at.z - Math.cos(yaw) * 0.45, yaw);
+          this.population.scareAt(at.x, at.z);
+          const muzzle = { x: at.x - Math.sin(yaw) * 0.7, z: at.z - Math.cos(yaw) * 0.7 };
           // One tracer per pellet: the shotgun's spread is visible.
           for (const pellet of shot.pellets) this.fighters.tracer(muzzle.x, muzzle.z, pellet.toX, pellet.toZ);
           this.police.gunfire(at.x, at.z, shot.toX, shot.toZ);
@@ -1330,9 +1391,35 @@ export class Game {
       if (event.type === "enemyShot") {
         this.sound.shot(true);
         this.fighters.tracer(event.fromX, event.fromZ, event.toX, event.toZ);
+        const yaw = Math.atan2(-(event.toX - event.fromX), -(event.toZ - event.fromZ));
+        this.fighters.muzzleFlash(event.fromX - Math.sin(yaw) * 0.45, event.fromZ - Math.cos(yaw) * 0.45, yaw);
       } else if (event.type === "enemyPunch") {
         this.fighters.enemyPunch(event.enemy);
-        this.sound.punch();
+        this.sinceViolence = 0;
+        // Blocked or dodged blows have their own sound (below); a clean one lands with a thud.
+        if (!this.blocking && !this.combat.dodgingNow) this.sound.impact(event.enemy.weapon === "bat" ? "bat" : "light");
+      } else if (event.type === "enemyWindup") {
+        this.fighters.enemyWindup(event.enemy);
+        this.sound.windup();
+      } else if (event.type === "enemyHit") {
+        this.sinceViolence = 0;
+        this.fighters.enemyHit(event.enemy, event.heavy);
+        if (event.weapon === "fists" || event.weapon === "bat") this.sound.impact(event.weapon === "bat" ? "bat" : event.heavy ? "heavy" : "light");
+        if (event.heavy || event.enemy.health <= 0) this.sound.grunt(true);
+      } else if (event.type === "civilianHit") {
+        this.sinceViolence = 0;
+        const outcome = this.population.assault(event.id, event.damage, event.weapon, { x: event.fromX, z: event.fromZ });
+        if (outcome) {
+          this.lastAssault = { id: event.id, outcome };
+          if (event.weapon === "fists" || event.weapon === "bat") this.sound.impact(event.weapon === "bat" ? "bat" : event.heavy ? "heavy" : "light");
+          this.sound.grunt();
+          // Hurting people in the street is a crime: the police hear about it.
+          this.police.report(outcome === "killed" ? "pedestrianKilled" : outcome === "injured" ? "pedestrianInjured" : "pedestrianAssaulted");
+        }
+      } else if (event.type === "blocked") {
+        this.sound.block();
+      } else if (event.type === "dodged") {
+        // The dash already made its sound.
       } else if (event.type === "playerHurt") {
         this.hud.flashHurt();
         this.sound.hurt();
@@ -1459,7 +1546,20 @@ export class Game {
     const stick = this.controls.state;
     const moveX = stick.moveX;
     const moveY = stick.moveY;
-    const jump = this.controls.consumeJump();
+    // In a fight JUMP is DODGE: a short dash along the stick (or straight back), untouchable for a moment.
+    const jumpPressed = this.controls.consumeJump();
+    const dodge = jumpPressed && this.combatMode && !this.driving && !this.boarder.busy && this.player.grounded;
+    const jump = jumpPressed && !dodge;
+    if (dodge && this.combat.dodge()) {
+      const yaw = this.camera.yaw;
+      const held = Math.hypot(moveX, moveY) > 0.2;
+      // Camera-relative like walking; with no stick, back away from where the player faces.
+      const dx = held ? moveX * Math.cos(yaw) - moveY * Math.sin(yaw) : Math.sin(this.player.yaw);
+      const dz = held ? -moveX * Math.sin(yaw) - moveY * Math.cos(yaw) : Math.cos(this.player.yaw);
+      this.player.dash(dx, dz, COMBAT_FEEL.dodgeDistance, COMBAT_FEEL.dodgeFor);
+      this.avatar.play("dodge");
+      this.sound.dodge();
+    }
     const action = this.controls.consumeAction();
     const gearAsked = this.controls.consumeGear();
     // Getting in or out: the presses above are used up and ignored until it is over.
@@ -1630,6 +1730,8 @@ export class Game {
     } else {
       this.avatar.object.position.set(at.x, at.y, at.z);
       this.avatar.object.rotation.y = drawn.heading;
+      // In a fight: forearms up while blocking, fists up when bare-handed.
+      this.avatar.setStance(this.blocking ? "block" : this.combatMode && this.avatar.shownWeapon === null ? "guard" : null);
       this.avatar.update(dt, this.player.speed, this.player.grounded);
       this.avatar.setAiming(this.aimFor > 0);
       this.camera.update(dt, at, this.physics, this.player.body);
@@ -1731,6 +1833,7 @@ export class Game {
       this.renderer.setHaze(1 + 0.6 * Math.max(0, 1 - coast / 600));
     }
     this.soundFrame(dt, at);
+    this.marks.update(this.fighters.marks(this.renderer.camera, this.driving ? null : this.lock, at));
     this.mapView.follow(this.renderer.camera);
     this.renderer.focusShadows(at.x, at.z);
     // Light and sky follow the clock; rain, headlight pool and speed blur follow the player.

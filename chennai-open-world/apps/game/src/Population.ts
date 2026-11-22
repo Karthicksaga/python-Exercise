@@ -22,7 +22,7 @@ import {
   type Siren,
   type Walker as Spot,
 } from "@cow/ai";
-import { Casualties, PEDESTRIAN_HIT, hitOutcome, restingSpot, speedKept, vehicleTouches, type CasualtyState, type HitOutcome, type VehicleMotion } from "@cow/combat";
+import { COMBAT_FEEL, Casualties, PEDESTRIAN_HIT, attackOutcome, hitOutcome, restingSpot, speedKept, vehicleTouches, type CasualtyState, type Civilian, type CivilianOutcome, type HitOutcome, type VehicleMotion, type WeaponId } from "@cow/combat";
 import { Motion, SignalView } from "@cow/game-engine";
 import type { WorldMap } from "@cow/game-world";
 import type { KinematicBox, PhysicsWorld, VehicleBody } from "@cow/physics";
@@ -361,6 +361,66 @@ export class Population {
     }
   }
 
+  /**
+   * Health of pedestrians the player has hit, by agent id, and where they were. An agent recycled
+   * as somebody new reappears somewhere else, out of sight, so a stored health counts only while
+   * the agent is still within a few metres of that spot.
+   */
+  private readonly civilianHealth = new Map<number, { health: number; x: number; z: number }>();
+
+  /** Pedestrians close enough to be attacked: standing, within `radius` metres of a point. */
+  civilians(at: { x: number; z: number }, radius = 25): Civilian[] {
+    const out: Civilian[] = [];
+    for (const agent of this.walkers.agents) {
+      if (!agent.active || this.casualties.isDown(agent.id)) continue;
+      if (Math.hypot(agent.x - at.x, agent.z - at.z) > radius) continue;
+      out.push({ id: agent.id, x: agent.x, z: agent.z });
+    }
+    return out;
+  }
+
+  /**
+   * The player hit a pedestrian (`civilianHit` from `@cow/combat`): they flinch, stagger back, or
+   * go down (knocked out by fists or the bat, and up again later; killed by a gun), and everyone
+   * near runs. Returns what happened, or null when that person can no longer be hit.
+   */
+  assault(id: number, damage: number, weapon: WeaponId, from: { x: number; z: number }): CivilianOutcome | null {
+    const index = this.walkers.agents.findIndex((a) => a.id === id);
+    const agent = this.walkers.agents[index];
+    if (!agent || !agent.active || this.casualties.isDown(id)) return null;
+    const known = this.civilianHealth.get(id);
+    const before = known && Math.hypot(known.x - agent.x, known.z - agent.z) < 6 ? known.health : COMBAT_FEEL.civilianHealth;
+    const { health, outcome } = attackOutcome(before, damage, weapon);
+    const figure = this.people[index]?.figure;
+    const away = Math.hypot(agent.x - from.x, agent.z - from.z) || 1;
+    const dx = (agent.x - from.x) / away;
+    const dz = (agent.z - from.z) / away;
+    // Not pushed through a wall: stop short of anything solid on the way.
+    const push = (metres: number) => {
+      const wall = this.physics.raycast({ x: agent.x + dx * 0.4, y: 0.9, z: agent.z + dz * 0.4 }, { x: dx, y: 0, z: dz }, metres);
+      return wall === null ? metres : Math.max(0, wall - 0.2);
+    };
+    if (outcome === "flinch" || outcome === "stumble") {
+      figure?.play(outcome === "flinch" ? "flinch" : "stagger");
+      const metres = push(outcome === "flinch" ? 0.25 : COMBAT_FEEL.heavy.knock);
+      this.walkers.moveAgent(agent, agent.x + dx * metres, agent.z + dz * metres);
+    } else {
+      this.walkers.hold(agent);
+      const metres = push(0.9);
+      // Falls away from the attacker, facing them.
+      this.walkers.moveAgent(agent, agent.x + dx * metres, agent.z + dz * metres, Math.atan2(dx, dz));
+      this.casualties.hit(id, outcome === "killed" ? "killed" : "injured");
+    }
+    this.civilianHealth.set(id, { health, x: agent.x, z: agent.z });
+    this.walkers.scare(from.x, from.z, PEDESTRIAN_HIT.scareRadius, PEDESTRIAN_HIT.scareFor);
+    return outcome;
+  }
+
+  /** Gunfire or a fight at a point: people near run off or step back (and cower if they stop). */
+  scareAt(x: number, z: number, radius: number = PEDESTRIAN_HIT.scareRadius * 1.6): void {
+    this.walkers.scare(x, z, radius, PEDESTRIAN_HIT.scareFor);
+  }
+
   /** Pedestrians the player's vehicle touches this step: knocked aside or down (`@cow/combat` rules). */
   private runOver(vehicle: DrivenVehicle): PedestrianHit[] {
     const speed = Math.hypot(vehicle.vx, vehicle.vz);
@@ -420,6 +480,8 @@ export class Population {
       figure.object.position.set(drawn.x, 0, drawn.z);
       figure.object.rotation.y = drawn.heading;
       figure.setDown(this.casualties.isDown(agent.id));
+      // Frightened and standing still: crouched, arms over the head.
+      figure.setStance(this.walkers.isScared(agent) && agent.speed < 0.3 ? "cower" : null);
       figure.update(dt, agent.speed, true);
     });
     if (Math.hypot(viewer.x - this.signalCentre.x, viewer.z - this.signalCentre.z) > SIGNAL_REBUILD) {

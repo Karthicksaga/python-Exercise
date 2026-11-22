@@ -442,6 +442,77 @@ export class Sound {
     this.burst(0.07, 0.12, 2200);
   }
 
+  /**
+   * A blow landing (combat redesign): a jab is a tight slap, a heavy hit (the hook, a stagger)
+   * a deeper thud, the cricket bat a woody crack.
+   */
+  impact(kind: "light" | "heavy" | "bat"): void {
+    if (kind === "bat") {
+      this.tone({ frequency: 520, slideTo: 300, duration: 0.07, type: "square", volume: 0.18 });
+      this.burst(0.12, 0.6, 2600);
+      this.tone({ frequency: 110, slideTo: 55, duration: 0.14, volume: 0.35 });
+      return;
+    }
+    const heavy = kind === "heavy";
+    this.burst(heavy ? 0.12 : 0.07, heavy ? 0.7 : 0.45, heavy ? 650 : 1100);
+    this.tone({ frequency: heavy ? 95 : 140, slideTo: heavy ? 45 : 70, duration: heavy ? 0.16 : 0.08, volume: heavy ? 0.45 : 0.3 });
+  }
+
+  /** A blow caught on raised forearms: a dull muffled thump. */
+  block(): void {
+    this.burst(0.06, 0.35, 380);
+    this.tone({ frequency: 75, duration: 0.07, volume: 0.25 });
+  }
+
+  /** A quick dodge: cloth and air. */
+  dodge(): void {
+    const { context, world, noise } = this;
+    if (!context || !world || !noise) return;
+    const source = context.createBufferSource();
+    source.buffer = noise;
+    const band = context.createBiquadFilter();
+    band.type = "bandpass";
+    band.Q.value = 1.4;
+    const now = context.currentTime;
+    band.frequency.setValueAtTime(700, now);
+    band.frequency.exponentialRampToValueAtTime(2400, now + 0.2);
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.22, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+    source.connect(band).connect(gain).connect(world);
+    source.start(now, Math.random() * 0.7);
+    source.stop(now + 0.26);
+  }
+
+  /** An enemy drawing back to strike: a short rising swish, the audible tell. */
+  windup(): void {
+    this.burst(0.18, 0.08, 1600);
+  }
+
+  /** Someone hurt (a pedestrian or an enemy): a short voiced grunt, pitch varied. */
+  grunt(low = false): void {
+    const { context, world } = this;
+    if (!context || !world) return;
+    const now = context.currentTime;
+    const voice = context.createOscillator();
+    voice.type = "sawtooth";
+    const pitch = (low ? 110 : 160) * (0.9 + Math.random() * 0.25);
+    voice.frequency.setValueAtTime(pitch * 1.15, now);
+    voice.frequency.exponentialRampToValueAtTime(pitch * 0.8, now + 0.18);
+    const formant = context.createBiquadFilter();
+    formant.type = "bandpass";
+    formant.frequency.value = 650 + Math.random() * 200;
+    formant.Q.value = 3;
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.12, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+    voice.connect(formant).connect(gain).connect(world);
+    voice.start(now);
+    voice.stop(now + 0.22);
+  }
+
   hurt(): void {
     this.tone({ frequency: 240, slideTo: 110, duration: 0.22, type: "sawtooth", volume: 0.2 });
   }

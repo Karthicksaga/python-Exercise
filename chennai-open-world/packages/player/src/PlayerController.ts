@@ -35,6 +35,19 @@ export class PlayerController {
   private velocity: Vec3 = { x: 0, y: 0, z: 0 };
   /** Multiplies the running speed (fitness from the gym makes it slightly above 1). */
   runScale = 1;
+  /** A dodge in progress: its velocity on the ground and the seconds it has left. */
+  private dashing: { vx: number; vz: number; left: number } | null = null;
+
+  /** Dodge: carried `distance` metres along (dx, dz) over `seconds`, whatever the stick says. */
+  dash(dx: number, dz: number, distance: number, seconds: number): void {
+    const length = Math.hypot(dx, dz) || 1;
+    this.dashing = { vx: (dx / length) * (distance / seconds), vz: (dz / length) * (distance / seconds), left: seconds };
+  }
+
+  /** True while a dodge is carrying the player. */
+  get isDashing(): boolean {
+    return this.dashing !== null;
+  }
 
   /** Top running speed, m/s. */
   get runSpeed(): number {
@@ -72,11 +85,19 @@ export class PlayerController {
       dirZ = (-input.moveX * sin - input.moveY * cos) / magnitude;
     }
 
-    // Ease the horizontal velocity towards the target; less control in the air.
-    const control = this.body.grounded ? 1 : 0.35;
-    const blend = Math.min(1, RESPONSE * control * dt);
-    this.velocity.x += (dirX * targetSpeed - this.velocity.x) * blend;
-    this.velocity.z += (dirZ * targetSpeed - this.velocity.z) * blend;
+    // Ease the horizontal velocity towards the target; less control in the air. A dodge
+    // carries the player at its own speed until it ends.
+    if (this.dashing) {
+      this.velocity.x = this.dashing.vx;
+      this.velocity.z = this.dashing.vz;
+      this.dashing.left -= dt;
+      if (this.dashing.left <= 0) this.dashing = null;
+    } else {
+      const control = this.body.grounded ? 1 : 0.35;
+      const blend = Math.min(1, RESPONSE * control * dt);
+      this.velocity.x += (dirX * targetSpeed - this.velocity.x) * blend;
+      this.velocity.z += (dirZ * targetSpeed - this.velocity.z) * blend;
+    }
 
     if (this.body.grounded) {
       // A small downward speed keeps the capsule pressed to the ground on slopes and kerbs.
@@ -100,6 +121,7 @@ export class PlayerController {
 
   /** Put the player back at a known place (fell out of the world, or restart). */
   respawn(feet: Vec3, yaw: number): void {
+    this.dashing = null;
     this.body.teleport(feet);
     this.velocity = { x: 0, y: 0, z: 0 };
     this.yaw = yaw;
