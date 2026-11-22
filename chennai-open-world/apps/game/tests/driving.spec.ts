@@ -154,10 +154,13 @@ test("stage 1 completes on foot, pays its reward, and progress survives a restar
   const target = start.target!;
   await teleport(page, target.x + 6, target.z, 0);
   expect((await snapshot(page)).mission).toBe("morning-walk");
+  // The completion message is shown for a few seconds of wall clock, and the stage may finish
+  // part-way through the walk below (held in game time): watch for it from before the walk.
+  const completed = expect(page.getByRole("status")).toContainText("Stage 1 complete", { timeout: GAME_WAIT });
   await holdStick(page, -80, 0, 1200); // camera faces north, so left is west, towards the marker
   await expect.poll(async () => (await snapshot(page)).money, { timeout: GAME_WAIT }).toBe(50);
   await expect(page.getByTestId("money")).toHaveText("₹50");
-  await expect(page.getByRole("status")).toContainText("Stage 1 complete");
+  await completed;
   const next = await snapshot(page);
   expect(next.mission).toBe("borrowed-wheels");
   expect(next.objective).toBe("Get in the hatchback");
