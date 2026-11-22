@@ -21,9 +21,34 @@ defaults:
 
 jobs:
   test:
+    # Typecheck and unit tests: quick, and the browser shards and the APK wait for them.
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: chennai-open-world/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  e2e:
+    # The browser suite, split into 4 shards on 4 runners. Each runner runs one copy of the game
+    # at a time (software WebGL is CPU-bound, so tests on one machine must not overlap), so the
+    # suite takes about a quarter of the time with nothing shared between shards.
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      # Every shard reports, so one failure does not hide another.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     env:
       # Playwright starts its own build + preview server and never reuses one in CI.
       CI: 'true'
@@ -35,19 +60,17 @@ jobs:
           cache: npm
           cache-dependency-path: chennai-open-world/package-lock.json
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
       # Installs the Chromium build that matches the pinned @playwright/test in package-lock.json.
       - run: npx playwright install --with-deps chromium
       # The browser tests hold controls for game time, not wall-clock time, so a slow shared
       # runner with software WebGL gives the same results (see AGENTS.md). No retries are added:
       # a failure here should be looked at, not hidden.
-      - run: npm run test:e2e
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
       - name: Upload Playwright results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results
+          name: playwright-results-${{ matrix.shard }}
           path: |
             chennai-open-world/apps/game/playwright-report/
             chennai-open-world/apps/game/test-results/
@@ -55,7 +78,7 @@ jobs:
           retention-days: 14
 
   android:
-    needs: test
+    needs: [test, e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: read
