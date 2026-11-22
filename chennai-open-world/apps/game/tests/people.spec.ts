@@ -116,10 +116,14 @@ test("figures stand on the ground: walkers, someone standing, and the player idl
     await zone.dispatchEvent("pointerdown", { ...pointer, clientX: 150, clientY: 260 });
     await zone.dispatchEvent("pointermove", { ...pointer, clientX: 150, clientY: 260 + push });
     await waitGameTime(page, 1.2);
-    for (let i = 0; i < 8; i++) {
+    // Only while the gait is steady: at speed for this sample and the two before (0.26 s, longer
+    // than the 0.22 s blend between two clips, as when a bump into something stops the player).
+    const fast = label === "running" ? 4 : 0.5;
+    let steady = 0;
+    for (let i = 0; i < 10; i++) {
       const p = await people(page);
-      // Running: only well past the walk-to-run blend (a fifth of a second in which the two clips mix).
-      if (p.player.feet !== null && p.player.grounded && p.player.speed > (label === "running" ? 4 : 0.5)) samples.push({ who: `player ${label}`, feet: p.player.feet });
+      steady = p.player.grounded && p.player.speed > fast ? steady + 1 : 0;
+      if (p.player.feet !== null && steady >= 3) samples.push({ who: `player ${label}`, feet: p.player.feet });
       await waitGameTime(page, 0.13);
     }
     await zone.dispatchEvent("pointerup", { ...pointer, clientX: 150, clientY: 260 + push });

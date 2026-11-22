@@ -250,6 +250,75 @@ function attachLod(copy: THREE.Object3D, parts: readonly LodPart[]): THREE.Skinn
   return meshes;
 }
 
+/** Bones whose vertices are the feet (the soles are the lowest of them). */
+const FOOT_BONES = /^(Left|Right)(Foot|ToeBase|Toe_End)$/;
+
+/**
+ * Refine the hips' height in each clip (`retargetClips` keeps the lowest foot joint at its rest
+ * height) so the lowest foot vertex stays on the ground: a pointed toe or a rolling heel takes
+ * the sole a few centimetres below its joints. Measured on this model's own feet, every key.
+ */
+function plantSoles(scene: THREE.Object3D, clips: readonly THREE.AnimationClip[]): void {
+  const hips = scene.getObjectByName("Hips");
+  if (!hips?.parent) return;
+  // A sample of the vertices bound mostly to a foot bone.
+  const feet: Array<{ mesh: THREE.SkinnedMesh; index: number }> = [];
+  for (const mesh of skinnedMeshes(scene)) {
+    const index = mesh.geometry.getAttribute("skinIndex");
+    const weight = mesh.geometry.getAttribute("skinWeight");
+    if (!index || !weight) continue;
+    for (let i = 0; i < index.count; i++) {
+      let best = 0;
+      for (let k = 1; k < 4; k++) if (weight.getComponent(i, k) > weight.getComponent(i, best)) best = k;
+      const bone = mesh.skeleton.bones[index.getComponent(i, best)];
+      if (bone && FOOT_BONES.test(bone.name)) feet.push({ mesh, index: i });
+    }
+  }
+  if (feet.length === 0) return;
+  const step = Math.max(1, Math.floor(feet.length / 600));
+  const v = new THREE.Vector3();
+  const lowest = () => {
+    scene.updateMatrixWorld(true);
+    let low = Infinity;
+    for (let i = 0; i < feet.length; i += step) {
+      const { mesh, index } = feet[i]!;
+      mesh.getVertexPosition(index, v);
+      mesh.localToWorld(v);
+      if (v.y < low) low = v.y;
+    }
+    return low;
+  };
+  const bones: THREE.Bone[] = [];
+  scene.traverse((node) => {
+    if (node instanceof THREE.Bone) bones.push(node);
+  });
+  const rest = bones.map((b) => ({ q: b.quaternion.clone(), p: b.position.clone() }));
+  const restLow = lowest();
+  const up = new THREE.Vector3(0, 1, 0).applyMatrix3(new THREE.Matrix3().setFromMatrix4(hips.parent.matrixWorld).invert());
+  const mixer = new THREE.AnimationMixer(scene);
+  for (const clip of clips) {
+    const track = clip.tracks.find((t) => t.name === `${hips.name}.position`);
+    if (!track) continue;
+    const action = mixer.clipAction(clip);
+    action.play();
+    const values = track.values;
+    track.times.forEach((time, k) => {
+      mixer.setTime(Math.min(time, clip.duration - 1e-4));
+      const dy = restLow - lowest();
+      values[k * 3] = values[k * 3]! + up.x * dy;
+      values[k * 3 + 1] = values[k * 3 + 1]! + up.y * dy;
+      values[k * 3 + 2] = values[k * 3 + 2]! + up.z * dy;
+    });
+    action.stop();
+    mixer.uncacheClip(clip);
+  }
+  bones.forEach((b, i) => {
+    b.quaternion.copy(rest[i]!.q);
+    b.position.copy(rest[i]!.p);
+  });
+  scene.updateMatrixWorld(true);
+}
+
 /** Who plays a part: a manifest person (by id), or null for the player's model; and a clothing tint (a uniform), if any. */
 export interface PersonLook {
   readonly person: string | null;
@@ -377,6 +446,7 @@ export class HumanAssets {
     let clips = this.clipCache.get(key);
     if (!clips) {
       clips = retargetClips(cloneSkinned(this.animations.scene), this.animations.animations, scene);
+      plantSoles(scene, clips);
       this.clipCache.set(key, clips);
     }
     const measured = measure(scene);

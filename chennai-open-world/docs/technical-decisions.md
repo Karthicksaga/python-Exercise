@@ -395,8 +395,8 @@ placeholder's 8-10 calls and 15k, so both budgets went down (spawn 207 -> 187 ca
 **Trade-offs.** A figure made before its person loaded is a stand-in (enemies are swapped once
 the person loads; pedestrians and drivers are loaded before they are made). The script grows by
 each person's optimised size (about 150 kB, plus LOD1). Planting the lower foot removes the
-running flight phase, and during the fifth of a second the walk and run clips blend a sole can
-dip a few centimetres. The dye colours a whole outfit, trousers and all.
+running flight phase, and during the 0.22 s blend between two clips (a sudden stop) a sole can
+dip up to about 5 cm. The dye colours a whole outfit, trousers and all.
 
 **Revisit when** the cast grows past what fits in the script (stream people as files, TD-16), or
 people need per-garment colours (a mask channel in the atlas).

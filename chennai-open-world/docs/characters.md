@@ -29,8 +29,10 @@ skeleton (same rig and rest pose: same clips).
 `PLAYER_HEIGHT`), with the lowest vertex of the rest pose (the soles) on the ground. The walk and
 run play faster for shorter legs (stride from hip height relative to the player's), so feet
 don't slide. The retargeted clips also lower the hips frame by frame so the lower foot keeps its
-rest height (the clips carry no hip movement; without it walkers floated 2–5 cm and runners
-about 10 cm). Browser-tested: soles within 5 cm of the ground standing, walking and running.
+rest height, then refine it on each model's own foot vertices so the lowest sole stays at 0
+(the clips carry no hip movement; without this walkers floated 2–5 cm and runners about 10 cm).
+Browser-tested: soles within 5 cm of the ground standing, walking and running steadily; during
+the 0.22 s blend between two clips (a sudden stop) a sole can dip up to about 5 cm.
 
 **Who plays whom** (`CASTS` in `people.ts`; only assignment, nothing about where or how people
 move changed):
