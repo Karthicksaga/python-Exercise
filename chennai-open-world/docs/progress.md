@@ -855,3 +855,9 @@ Difficulty has not been play-tested by a person.
   saved; rain and night beds.
 - **Not done:** not listened to on a phone (only measured); no footsteps for other people; no
   per-bus volume settings.
+- **Results on this branch:** typecheck clean; unit 515/515; `sound.spec`, `title.spec`,
+  `driving.spec`, `onfoot.spec` 30/30 (the affected specs, per AGENTS.md; the full suite runs
+  in CI). Before the CI-shard rule, one full local run: 107/108, the failure stage 12, which
+  also fails 1 in 3 on the untouched base (`suggestions/2026-11-22-chennai-combat-stage-flakes.md`).
+  Game speed in headless Chromium measured with and without sound started, next to traffic:
+  0.69–0.72 game seconds per second either way (no measurable cost).
