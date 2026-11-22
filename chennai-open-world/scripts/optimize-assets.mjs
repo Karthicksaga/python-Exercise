@@ -5,6 +5,7 @@
  *     -> assets/optimized/<same name>.glb          (what the game embeds, TD-3)
  *   assets/models/props/*.glb (made by tools/blender/street_props.py) -> assets/optimized/props/
  *   assets/models/people/*.glb (made by tools/blender/characters.py) -> assets/optimized/people/
+ *     (people.json, the cast list, is copied as it is; `*_lod1.glb` get 256 px textures)
  *
  * For every file: drop unused data (dedup, prune), drop facial blend shapes (the game never
  * uses them, `HumanAssets` threw them away at load), weld vertices, resample animation keys,
@@ -17,7 +18,7 @@
  *
  * Run with `npm run optimize:assets` after adding or changing a model. Prints sizes before and after.
  */
-import { mkdirSync, readdirSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { NodeIO } from "@gltf-transform/core";
@@ -31,6 +32,8 @@ const out = resolve(root, "assets/optimized");
 const MAX_TEXTURE = 512;
 /** The player is seen close up: its textures keep up to 1024 px. */
 const LARGE_TEXTURE = { "player.glb": 1024 };
+/** Distant pedestrians (LOD1, `*_lod1.glb`) are a few dozen pixels tall: 256 px is plenty. */
+const textureSize = (name) => LARGE_TEXTURE[name] ?? (name.endsWith("_lod1.glb") ? 256 : MAX_TEXTURE);
 
 await MeshoptDecoder.ready;
 await MeshoptEncoder.ready;
@@ -72,7 +75,7 @@ for (const { path: source, sub } of sources) {
     prune({ keepLeaves: true }),
     weld(),
     resample(),
-    textureCompress({ encoder: sharp, targetFormat: "webp", resize: Array(2).fill(LARGE_TEXTURE[basename(source)] ?? MAX_TEXTURE), quality: 82 }),
+    textureCompress({ encoder: sharp, targetFormat: "webp", resize: Array(2).fill(textureSize(basename(source))), quality: 82 }),
     meshopt({ encoder: MeshoptEncoder, level: "medium" }),
   );
   document.createExtension(EXTMeshoptCompression).setRequired(true);
@@ -86,3 +89,5 @@ for (const { path: source, sub } of sources) {
   console.log(`${basename(source)}: ${(a / 1024).toFixed(0)} KB -> ${(b / 1024).toFixed(0)} KB`);
 }
 console.log(`Total: ${(before / 1024).toFixed(0)} KB -> ${(after / 1024).toFixed(0)} KB in ${out}`);
+const cast = resolve(root, "assets/models/people/people.json");
+if (existsSync(cast)) copyFileSync(cast, join(out, "people", "people.json"));
