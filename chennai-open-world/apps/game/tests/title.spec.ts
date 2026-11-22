@@ -48,6 +48,9 @@ async function openTitle(page: Page, save?: Record<string, string>): Promise<str
   return errors;
 }
 
+/** Wait until no CSS transition or animation is running (a page sliding in, the entrance). */
+const settled = (page: Page) => page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
+
 /** The element is wholly inside the window (not cut off by an edge). */
 async function expectOnScreen(locator: Locator): Promise<void> {
   const box = await locator.boundingBox();
@@ -176,15 +179,18 @@ test("every menu button stays on screen from a small landscape phone to a deskto
     { width: 1440, height: 900 },
   ]) {
     await page.setViewportSize(size);
-    await page.waitForTimeout(150);
+    await settled(page);
     for (const name of ["Play", "Settings", "Controls", "About"]) await expectOnScreen(menuButton(page, name));
     await menuButton(page, "Settings").click();
+    // Measure where the page comes to rest, not part-way through its slide in.
+    await settled(page);
     for (const name of ["Time of day", "Weather", "Back"]) {
       const button = title(page).locator(`.ct-page.current [aria-label^="${name}"]`);
       await button.scrollIntoViewIfNeeded();
       await expectOnScreen(button);
     }
     await page.keyboard.press("Escape");
+    await settled(page);
   }
 });
 

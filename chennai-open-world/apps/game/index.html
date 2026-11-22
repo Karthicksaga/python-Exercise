@@ -27,6 +27,8 @@
         gap: 16px 32px; box-sizing: border-box; transition: opacity .65s ease;
       }
       #loading[data-state="done"] { opacity: 0; pointer-events: none; }
+      /* While it fades over the first frames of the game, nothing in it moves. */
+      #loading[data-state="done"] *, #loading[data-state="done"] *::before, #loading[data-state="done"] *::after { animation: none !important; }
       #loading .ld-map { position: absolute; inset: -8%; width: 116%; height: 116%; opacity: 0; transition: opacity 1.4s ease;
         transform-origin: 60% 55%; animation: ld-drift 48s ease-in-out infinite alternate; }
       #loading .ld-map.drawn { opacity: .9; }
