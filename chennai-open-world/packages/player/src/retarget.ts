@@ -15,8 +15,31 @@ import * as THREE from "three";
 
 const SAMPLE_RATE = 30; // frames per second baked into the new clips
 
-/** Strip the "mixamorig" prefix (with or without a colon) so names match plain bone names. */
-const plainName = (name: string) => name.replace(/^mixamorig:?/, "");
+/**
+ * Strip the "mixamorig" prefix so names match plain bone names (`Hips`, `LeftArm`...). Rigs
+ * name their bones `mixamorig:Hips` (Mixamo, MPFB's "mixamo" rig); three.js's GLTFLoader drops
+ * the colon (`mixamorigHips`); some exporters write `mixamorig_Hips`.
+ */
+export const plainBoneName = (name: string): string => name.replace(/^mixamorig[:_]?(?=[A-Z])/, "");
+const plainName = plainBoneName;
+
+/**
+ * Give every bone of a loaded character its plain name, so the rest of the game (poses,
+ * retargeting, height measurement) can find bones by `Hips`, `LeftArm`... whatever prefix the
+ * rig used. Skinning binds bones by reference, so renaming is safe. Returns how many changed.
+ */
+export function normalizeBoneNames(root: THREE.Object3D): number {
+  let changed = 0;
+  root.traverse((node) => {
+    if (!(node instanceof THREE.Bone)) return;
+    const plain = plainBoneName(node.name);
+    if (plain !== node.name) {
+      node.name = plain;
+      changed++;
+    }
+  });
+  return changed;
+}
 
 /** Limb bones and the child that defines the direction each one points in. */
 const LIMB_CHILD: Readonly<Record<string, string>> = {

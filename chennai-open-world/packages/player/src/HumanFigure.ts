@@ -8,13 +8,18 @@ import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.j
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { PLAYER_HEIGHT } from "./PlayerController";
-import { retargetClips } from "./retarget";
+import { normalizeBoneNames, retargetClips } from "./retarget";
 import { captureRig, solveRidingPose, type Rig, type RidingPose, type SolvedPose } from "./ridingPose";
 import { weaponGeometry, weaponMaterial, type HeldWeapon } from "./weaponModels";
 
 export interface HumanSources {
-  /** URL of the character model (.glb). */
+  /** URL of the player's model (.glb). */
   readonly model: string;
+  /**
+   * URLs of other people (.glb), rigged with the same bone names and modelled in metres like
+   * `model`: the pedestrians and drivers pick from these. Without them everyone uses `model`.
+   */
+  readonly variants?: readonly string[];
   /** URL of a .glb holding `idle`, `walk` and `run` clips for a skeleton with the same bone names. */
   readonly animations: string;
 }
@@ -79,58 +84,87 @@ export function sitWeight(amount: number): number {
   return x * x * (3 - 2 * x);
 }
 
+/** One loaded character: its scene (rest pose) and its own copy of the retargeted clips. */
+interface Character {
+  readonly model: THREE.Object3D;
+  readonly clips: THREE.AnimationClip[];
+  /** Height of the feet above the model's origin once scaled, metres. */
+  readonly lift: number;
+}
+
+/** Lowest and highest point of a character in rest pose, in model units. */
+function measure(scene: THREE.Object3D): { low: number; high: number } {
+  // Height is measured on the skeleton (top of head to toes) when the rig has end bones: a
+  // mesh bounding box is thrown off by hats, props and helper meshes. Rigs without them
+  // (MPFB's) are measured on their skinned meshes.
+  scene.updateMatrixWorld(true);
+  const top = scene.getObjectByName("HeadTop_End");
+  const toes = scene.getObjectByName("LeftToe_End");
+  const point = new THREE.Vector3();
+  if (top && toes) return { high: top.getWorldPosition(point).y, low: toes.getWorldPosition(point).y };
+  const box = new THREE.Box3().setFromObject(scene, true);
+  return { high: box.max.y, low: box.min.y };
+}
+
 export class HumanAssets {
   private constructor(
-    private readonly model: THREE.Object3D,
-    private readonly clips: THREE.AnimationClip[],
+    private readonly characters: readonly Character[],
     private readonly scale: number,
-    private readonly lift: number,
   ) {}
 
   static async load(sources: HumanSources): Promise<HumanAssets> {
     // Models from `npm run optimize:assets` use meshopt geometry compression; the decoder embeds
     // its WebAssembly, so nothing extra is fetched (TD-3, TD-16).
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-    const [model, animations] = await Promise.all([loader.loadAsync(sources.model), loader.loadAsync(sources.animations)]);
-    const scene = model.scene;
-    // Both skeletons are compared in rest pose, before anything is scaled or turned.
-    const clips = retargetClips(animations.scene, animations.animations, scene);
-
-    // Facial blend shapes are never used; dropping them avoids their GPU textures.
-    scene.traverse((node) => {
-      if (!(node instanceof THREE.Mesh)) return;
-      node.geometry.morphAttributes = {};
-      node.morphTargetInfluences = [];
-      node.morphTargetDictionary = {};
+    const urls = [sources.model, ...(sources.variants ?? [])];
+    const [animations, ...models] = await Promise.all([loader.loadAsync(sources.animations), ...urls.map((url) => loader.loadAsync(url))]);
+    if (!animations) throw new Error("Human animations failed to load.");
+    const loaded = models.map((gltf) => {
+      const scene = gltf.scene;
+      // `mixamorig:Hips`, `mixamorigHips` and `Hips` all become `Hips` (poses look bones up by name).
+      normalizeBoneNames(scene);
+      // Both skeletons are compared in rest pose, before anything is scaled or turned; each
+      // character gets a fresh copy of the clip skeleton, as sampling leaves it posed.
+      const clips = retargetClips(cloneSkinned(animations.scene), animations.animations, scene);
+      // Facial blend shapes are never used; dropping them avoids their GPU textures.
+      scene.traverse((node) => {
+        if (!(node instanceof THREE.Mesh)) return;
+        node.geometry.morphAttributes = {};
+        node.morphTargetInfluences = [];
+        node.morphTargetDictionary = {};
+      });
+      return { scene, clips, ...measure(scene) };
     });
+    // The player is scaled to PLAYER_HEIGHT; the others by the same factor, so a shorter man
+    // stays shorter (all models are in metres).
+    const player = loaded[0]!;
+    const scale = PLAYER_HEIGHT / Math.max(0.01, player.high - player.low);
+    return new HumanAssets(
+      loaded.map((c) => ({ model: c.scene, clips: c.clips, lift: -c.low * scale })),
+      scale,
+    );
+  }
 
-    // Height is measured on the skeleton (top of head to toes): a mesh bounding box is thrown
-    // off by hats, props and helper meshes.
-    scene.updateMatrixWorld(true);
-    const top = scene.getObjectByName("HeadTop_End");
-    const toes = scene.getObjectByName("LeftToe_End") ?? scene.getObjectByName("LeftToeBase");
-    const point = new THREE.Vector3();
-    let low: number;
-    let high: number;
-    if (top && toes) {
-      high = top.getWorldPosition(point).y;
-      low = toes.getWorldPosition(point).y;
-    } else {
-      const box = new THREE.Box3().setFromObject(scene, true);
-      high = box.max.y;
-      low = box.min.y;
-    }
-    const scale = PLAYER_HEIGHT / Math.max(0.01, high - low);
-    return new HumanAssets(scene, clips, scale, -low * scale);
+  /** How many characters were loaded (the player's model is number 0). */
+  get variantCount(): number {
+    return this.characters.length;
+  }
+
+  /** The character for the `index`-th person of a crowd: a variant, never the player's model when there are variants. */
+  crowdVariant(index: number): number {
+    const others = this.characters.length - 1;
+    return others > 0 ? 1 + (Math.abs(Math.trunc(index)) % others) : 0;
   }
 
   /**
    * A new figure.
-   * @param tint multiplies the clothing colour, so pedestrians don't all look identical
+   * @param tint multiplies the clothing colour (the `Outfit` material: clothes, shoes and hair)
    * @param background a cheaper copy for pedestrians
+   * @param variant which character (see `crowdVariant`); 0 is the player's model
    */
-  create(tint?: number, background = false): HumanFigure {
-    const copy = cloneSkinned(this.model);
+  create(tint?: number, background = false, variant = 0): HumanFigure {
+    const character = this.characters[variant] ?? this.characters[0]!;
+    const copy = cloneSkinned(character.model);
     if (background) {
       // People in the crowd are seen from a distance: skip the tiny parts and let only the
       // body and clothes cast shadows.
@@ -145,32 +179,36 @@ export class HumanAssets {
     if (tint !== undefined) {
       const color = new THREE.Color(tint);
       copy.traverse((node) => {
-        if (!(node instanceof THREE.Mesh) || !/Outfit|Headwear|Mesh$/.test(node.name)) return;
-        const material = (node.material as THREE.MeshStandardMaterial).clone();
-        material.color.multiply(color);
-        node.material = material;
+        if (!(node instanceof THREE.Mesh)) return;
+        const material = node.material as THREE.MeshStandardMaterial;
+        if (!/Outfit/.test(material.name) && !/Outfit|Headwear|Mesh$/.test(node.name)) return;
+        const tinted = material.clone();
+        tinted.color.multiply(color);
+        node.material = tinted;
       });
     }
-    return new HumanFigure(copy, this.clips, this.scale, this.lift);
+    return new HumanFigure(copy, character.clips, this.scale, character.lift);
   }
 
-  private readonly seatedTemplates = new Map<RidingPose, Map<number, THREE.Group>>();
+  private readonly seatedTemplates = new Map<string, THREE.Group>();
+  private readonly poseIds = new Map<RidingPose, number>();
 
   /**
-   * A seated person as plain meshes (no skeleton): the riding pose baked once per pose and
-   * clothing tint, then shared by every copy. For drivers and riders of AI traffic: much cheaper
-   * than an animated figure, and a seated driver doesn't move. Root at the hip joints (like a
-   * seated `HumanFigure`), facing like `create`.
+   * A seated person as plain meshes (no skeleton): the riding pose baked once per pose,
+   * character and clothing tint, then shared by every copy. For drivers and riders of AI
+   * traffic: much cheaper than an animated figure, and a seated driver doesn't move. Root at the
+   * hip joints (like a seated `HumanFigure`), facing like `create`.
    */
-  seatedStatic(tint: number, pose: RidingPose): THREE.Group {
-    let byTint = this.seatedTemplates.get(pose);
-    if (!byTint) {
-      byTint = new Map();
-      this.seatedTemplates.set(pose, byTint);
+  seatedStatic(tint: number, pose: RidingPose, variant = 0): THREE.Group {
+    let poseId = this.poseIds.get(pose);
+    if (poseId === undefined) {
+      poseId = this.poseIds.size;
+      this.poseIds.set(pose, poseId);
     }
-    let template = byTint.get(tint);
+    const key = `${poseId}:${variant}:${tint}`;
+    let template = this.seatedTemplates.get(key);
     if (!template) {
-      const figure = this.create(tint, true);
+      const figure = this.create(tint, true, variant);
       figure.setSeated(pose);
       figure.object.updateMatrixWorld(true);
       const toRoot = figure.object.matrixWorld.clone().invert();
@@ -203,7 +241,7 @@ export class HumanAssets {
         mesh.castShadow = false;
         template.add(mesh);
       }
-      byTint.set(tint, template);
+      this.seatedTemplates.set(key, template);
     }
     // Copies share geometry and materials with the template.
     return template.clone(true);

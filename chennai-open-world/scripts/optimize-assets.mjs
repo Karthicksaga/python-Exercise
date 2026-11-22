@@ -4,6 +4,7 @@
  *   assets/models/*.glb, assets/animations/*.glb  (sources, as exported from Blender or Mixamo)
  *     -> assets/optimized/<same name>.glb          (what the game embeds, TD-3)
  *   assets/models/props/*.glb (made by tools/blender/street_props.py) -> assets/optimized/props/
+ *   assets/models/people/*.glb (made by tools/blender/characters.py) -> assets/optimized/people/
  *
  * For every file: drop unused data (dedup, prune), drop facial blend shapes (the game never
  * uses them, `HumanAssets` threw them away at load), weld vertices, resample animation keys,
@@ -28,6 +29,8 @@ import sharp from "sharp";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const out = resolve(root, "assets/optimized");
 const MAX_TEXTURE = 512;
+/** The player is seen close up: its textures keep up to 1024 px. */
+const LARGE_TEXTURE = { "player.glb": 1024 };
 
 await MeshoptDecoder.ready;
 await MeshoptEncoder.ready;
@@ -49,6 +52,7 @@ const folders = [
   ["assets/animations", ""],
   ["assets/models/props", "props"],
   ["assets/models/vehicles", "vehicles"],
+  ["assets/models/people", "people"],
 ];
 const sources = folders.flatMap(([dir, sub]) =>
   readdirSync(resolve(root, dir))
@@ -68,7 +72,7 @@ for (const { path: source, sub } of sources) {
     prune({ keepLeaves: true }),
     weld(),
     resample(),
-    textureCompress({ encoder: sharp, targetFormat: "webp", resize: [MAX_TEXTURE, MAX_TEXTURE], quality: 82 }),
+    textureCompress({ encoder: sharp, targetFormat: "webp", resize: Array(2).fill(LARGE_TEXTURE[basename(source)] ?? MAX_TEXTURE), quality: 82 }),
     meshopt({ encoder: MeshoptEncoder, level: "medium" }),
   );
   document.createExtension(EXTMeshoptCompression).setRequired(true);

@@ -40,6 +40,12 @@ import stationFont from "../../../assets/fonts/noto-sans-tamil-stations.woff2?in
 import stationFontHindi from "../../../assets/fonts/noto-sans-devanagari-stations.woff2?inline";
 import playerModel from "../../../assets/optimized/player.glb?inline";
 import locomotion from "../../../assets/optimized/locomotion.glb?inline";
+// Pedestrian and driver variants (tools/blender/characters.py). The order matters: number 1
+// (the older man in a white shirt) also drives the autos in a khaki shirt (Population.ts).
+import elderModel from "../../../assets/optimized/people/elder.glb?inline";
+import lungiModel from "../../../assets/optimized/people/lungi.glb?inline";
+import tshirtModel from "../../../assets/optimized/people/tshirt.glb?inline";
+import workerModel from "../../../assets/optimized/people/worker.glb?inline";
 import { loadSignFont } from "@cow/game-engine";
 import signFont from "../../../assets/fonts/noto-sans-tamil-signs.woff2?inline";
 import acUnit from "../../../assets/optimized/props/ac_unit.glb?inline";
@@ -437,7 +443,7 @@ export class Game {
 
     const body = physics.createCharacter({ radius: PLAYER_RADIUS, height: PLAYER_HEIGHT, feet: { x: spawn.x, y: 0.1, z: spawn.z } });
     const player = new PlayerController(body, spawn.yaw);
-    const humans = await HumanAssets.load({ model: playerModel, animations: locomotion });
+    const humans = await HumanAssets.load({ model: playerModel, variants: [elderModel, lungiModel, tshirtModel, workerModel], animations: locomotion });
     const avatar = humans.create();
     renderer.scene.add(avatar.object);
 

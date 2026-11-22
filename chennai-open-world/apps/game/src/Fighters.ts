@@ -76,7 +76,7 @@ export class Fighters {
     let body = this.bodies.get(enemy.id);
     if (!body) {
       // Gang members wear their gang's colours.
-      const figure = this.humans.create(isPoliceGroup(enemy.group) ? TINT.police : enemy.tint ?? (enemy.armed ? TINT.armed : TINT.unarmed), true);
+      const figure = this.humans.create(isPoliceGroup(enemy.group) ? TINT.police : enemy.tint ?? (enemy.armed ? TINT.armed : TINT.unarmed), true, this.humans.crowdVariant(enemy.id));
       // Guns are drawn while aiming; a bat is carried in the hand. Fists: nothing held.
       if (enemy.weapon === "bat") figure.setWeapon("bat", true);
       else if (enemy.weapon === "shotgun" || enemy.weapon === "smg") figure.setWeapon(enemy.weapon);
