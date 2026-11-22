@@ -58,7 +58,13 @@ async function shootItOut(page: Page, objective: string, group: string, restart:
     }
     if (s.objective !== objective) break;
     await heal(page);
-    const enemy = s.enemies.filter((e) => e.group === group && e.health > 0)[0];
+    // The first standing enemy, unless six rounds at them have hurt nobody: then the next one a
+    // round can reach (an enemy who wandered somewhere unreachable used to hold the test for
+    // the rest of its rounds while the others stood untouched, stage 15 in CI). They are
+    // tried again once the others are down.
+    const crew = s.enemies.filter((e) => e.group === group && e.health > 0);
+    const stuck = (e: (typeof crew)[number]) => (tries.get(`${e.weapon}@${Math.round(e.x)},${Math.round(e.z)}`)?.attempt ?? 0) >= 6;
+    const enemy = crew.find((e) => !stuck(e)) ?? crew[0];
     if (!enemy) {
       await waitGameTime(page, 0.3);
       continue;
