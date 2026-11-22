@@ -463,6 +463,8 @@ export class Game {
     // The people the street needs from the first frame; everyone else loads when first wanted.
     await humans.prepare(["pedestrian", "auto-driver", "driver"]);
     const avatar = humans.create();
+    // Seen up close: no sole sinks into the road, even while starting or stopping.
+    avatar.plantsFeet = true;
     renderer.scene.add(avatar.object);
 
     await vehiclesLoaded;

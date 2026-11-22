@@ -275,17 +275,25 @@ function plantSoles(scene: THREE.Object3D, clips: readonly THREE.AnimationClip[]
     }
   }
   if (feet.length === 0) return;
-  const step = Math.max(1, Math.floor(feet.length / 600));
   const v = new THREE.Vector3();
+  const heightOf = (foot: { mesh: THREE.SkinnedMesh; index: number }) => {
+    foot.mesh.getVertexPosition(foot.index, v);
+    foot.mesh.localToWorld(v);
+    return v.y;
+  };
+  // Every vertex of the sole, not a thinned sample: on a detailed model a sample of every Nth
+  // vertex skipped the toe tip, and the running player's sole sank up to 7 cm. The sole is the
+  // feet's lower part in rest pose (heel to toe, up to the instep), which is where the lowest
+  // point can be in any pose of a walk or a run.
+  scene.updateMatrixWorld(true);
+  const restHeights = feet.map(heightOf);
+  const floor = Math.min(...restHeights);
+  const top = Math.max(...restHeights);
+  const sole = feet.filter((_, i) => restHeights[i]! < floor + (top - floor) * 0.45);
   const lowest = () => {
     scene.updateMatrixWorld(true);
     let low = Infinity;
-    for (let i = 0; i < feet.length; i += step) {
-      const { mesh, index } = feet[i]!;
-      mesh.getVertexPosition(index, v);
-      mesh.localToWorld(v);
-      if (v.y < low) low = v.y;
-    }
+    for (const foot of sole) low = Math.min(low, heightOf(foot));
     return low;
   };
   const bones: THREE.Bone[] = [];
@@ -301,16 +309,37 @@ function plantSoles(scene: THREE.Object3D, clips: readonly THREE.AnimationClip[]
     if (!track) continue;
     const action = mixer.clipAction(clip);
     action.play();
-    const values = track.values;
-    track.times.forEach((time, k) => {
-      mixer.setTime(Math.min(time, clip.duration - 1e-4));
+    // Planted at every key of every bone, not only the hips' own keys: between two hip keys a
+    // leg's keys can swing the sole lower than either end.
+    const times = [...new Set(clip.tracks.flatMap((t) => Array.from(t.times)))].sort((a, b) => a - b);
+    const hipAt = (time: number): [number, number, number] => {
+      const t = track.times;
+      const at = (k: number): [number, number, number] => [track.values[k * 3]!, track.values[k * 3 + 1]!, track.values[k * 3 + 2]!];
+      if (time <= t[0]!) return at(0);
+      for (let k = 1; k < t.length; k++) {
+        if (time <= t[k]!) {
+          const f = (time - t[k - 1]!) / (t[k]! - t[k - 1]! || 1);
+          const a = at(k - 1);
+          const b = at(k);
+          return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+        }
+      }
+      return at(t.length - 1);
+    };
+    const values = new Float32Array(times.length * 3);
+    times.forEach((time, k) => {
+      const at = Math.min(time, clip.duration - 1e-4);
+      mixer.setTime(at);
       const dy = restLow - lowest();
-      values[k * 3] = values[k * 3]! + up.x * dy;
-      values[k * 3 + 1] = values[k * 3 + 1]! + up.y * dy;
-      values[k * 3 + 2] = values[k * 3 + 2]! + up.z * dy;
+      const hip = hipAt(at);
+      values[k * 3] = hip[0]! + up.x * dy;
+      values[k * 3 + 1] = hip[1]! + up.y * dy;
+      values[k * 3 + 2] = hip[2]! + up.z * dy;
     });
     action.stop();
     mixer.uncacheClip(clip);
+    const planted = new THREE.VectorKeyframeTrack(track.name, times, values);
+    clip.tracks[clip.tracks.indexOf(track)] = planted;
   }
   bones.forEach((b, i) => {
     b.quaternion.copy(rest[i]!.q);
@@ -580,6 +609,14 @@ export class HumanFigure {
   /** Root, positioned at the figure's feet by the game. */
   readonly object = new THREE.Group();
   private readonly mixer: THREE.AnimationMixer;
+  /**
+   * Keep the soles from sinking below the ground in every pose (set for the player, seen up
+   * close). Each clip is planted at load (`plantSoles`), but a blend between two clips (starting,
+   * stopping, a bump) is not: for its 0.22 s a sole sank up to 8 cm. After the clips are applied,
+   * the hips are raised by however far the lowest sole vertex is below the ground.
+   */
+  plantsFeet = false;
+  private soleVertices: Array<{ mesh: THREE.SkinnedMesh; index: number }> | null = null;
   private readonly actions: Record<Gait, THREE.AnimationAction>;
   private readonly rig: Rig;
   private readonly scale: number;
@@ -953,6 +990,49 @@ export class HumanFigure {
    * Height of the figure's lowest vertex above its root, metres, in the current pose (the soles:
    * about 0 when standing or walking on the ground). For tests; it reads every vertex.
    */
+  /** The vertices of the detailed model's soles: foot vertices in the lower part of the foot (bind pose). */
+  private soles(): Array<{ mesh: THREE.SkinnedMesh; index: number }> {
+    if (this.soleVertices) return this.soleVertices;
+    const feet: Array<{ mesh: THREE.SkinnedMesh; index: number; y: number }> = [];
+    for (const { mesh } of this.levels[0]!) {
+      if (!(mesh instanceof THREE.SkinnedMesh)) continue;
+      const index = mesh.geometry.getAttribute("skinIndex");
+      const weight = mesh.geometry.getAttribute("skinWeight");
+      const position = mesh.geometry.getAttribute("position");
+      if (!index || !weight || !position) continue;
+      for (let i = 0; i < index.count; i++) {
+        let best = 0;
+        for (let k = 1; k < 4; k++) if (weight.getComponent(i, k) > weight.getComponent(i, best)) best = k;
+        const bone = mesh.skeleton.bones[index.getComponent(i, best)];
+        if (bone && FOOT_BONES.test(bone.name)) feet.push({ mesh, index: i, y: position.getY(i) });
+      }
+    }
+    const floor = Math.min(...feet.map((f) => f.y));
+    const top = Math.max(...feet.map((f) => f.y));
+    this.soleVertices = feet.filter((f) => f.y < floor + (top - floor) * 0.45).map(({ mesh, index }) => ({ mesh, index }));
+    return this.soleVertices;
+  }
+
+  private keepSolesUp(): void {
+    const hips = this.hipsRest?.bone;
+    if (!hips?.parent || this.level !== 0) return;
+    this.object.updateMatrixWorld(true);
+    const v = new THREE.Vector3();
+    let low = Infinity;
+    for (const { mesh, index } of this.soles()) {
+      mesh.getVertexPosition(index, v);
+      mesh.localToWorld(v);
+      if (v.y < low) low = v.y;
+    }
+    const sink = this.object.getWorldPosition(v).y - low;
+    if (!(sink > 0.002)) return;
+    // The same world-space lift, expressed in the hips' parent space (scaled, turned).
+    const at = hips.getWorldPosition(new THREE.Vector3());
+    const from = hips.parent.worldToLocal(at.clone());
+    const to = hips.parent.worldToLocal(at.add(new THREE.Vector3(0, sink, 0)));
+    hips.position.add(to.sub(from));
+  }
+
   feetHeight(): number {
     this.object.updateMatrixWorld(true);
     const v = new THREE.Vector3();
@@ -988,6 +1068,7 @@ export class HumanFigure {
     this.actions.run.timeScale = Math.max(0.7, speed / (RUN_CLIP_SPEED * this.stride)) * air;
     this.mixer.update(dt);
 
+    if (this.plantsFeet) this.keepSolesUp();
     // Arm poses are laid over the walk cycle after it has been applied.
     this.punching = Math.max(0, this.punching - dt);
     this.showGun();

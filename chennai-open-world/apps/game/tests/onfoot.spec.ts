@@ -65,7 +65,8 @@ test("dragging the right side rotates the camera", async ({ page }) => {
 
 test("jump lifts the player and gravity brings them back", async ({ page }) => {
   await ready(page);
-  await page.waitForTimeout(300);
+  // Game time, not wall clock: the player spawns 10 cm up, and a jump only starts on the ground.
+  await waitGameTime(page, 0.5);
   await page.getByRole("button", { name: "Jump", exact: true }).dispatchEvent("pointerdown", { pointerId: 33, pointerType: "touch" });
   // Wall-clock limits only: on a slow machine a jump takes longer than its game time.
   await expect.poll(async () => (await snapshot(page)).y, { timeout: 10_000, intervals: [30] }).toBeGreaterThan(0.5);
