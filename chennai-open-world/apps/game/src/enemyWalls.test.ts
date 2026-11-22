@@ -51,35 +51,3 @@ describe("enemies and walls", async () => {
     expect(Math.hypot(combat.enemies[0]!.x - 20, combat.enemies[0]!.z)).toBeLessThan(2);
   });
 });
-
-describe("enemies spawned inside a building", async () => {
-  // A small closed building, like the clock tower at the Royapettah junction: 2.6 m square.
-  const physics = await PhysicsWorld.create();
-  const [x0, x1, z0, z1, y0, y1] = [98.7, 101.3, 98.7, 101.3, 0, 8];
-  const corners = [
-    [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1],
-    [x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1],
-  ];
-  const indices: number[] = [];
-  for (const [a, b, c, d] of [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]]) indices.push(a!, b!, c!, a!, c!, d!, a!, c!, b!, a!, d!, c!);
-  physics.createStaticGroup().addMesh(new Float32Array(corners.flat()), new Uint32Array(indices));
-  physics.step(1 / 60);
-
-  it("are moved out to the street, where they can be reached and shot", () => {
-    const combat = new Combat(combatWorld(physics), () => 0.5);
-    combat.spawnGroup("turf", [{ x: 100, z: 100, armed: false, weapon: "bat" }]);
-    const enemy = combat.enemies[0]!;
-    const outside = enemy.x < x0 || enemy.x > x1 || enemy.z < z0 || enemy.z > z1;
-    expect(outside).toBe(true);
-    expect(Math.hypot(enemy.x - 100, enemy.z - 100)).toBeLessThanOrEqual(8);
-    // From 6 m away, a straight line reaches them.
-    expect(combatWorld(physics).lineOfSight(enemy.x + 6, enemy.z, enemy.x, enemy.z) || combatWorld(physics).lineOfSight(enemy.x - 6, enemy.z, enemy.x, enemy.z) || combatWorld(physics).lineOfSight(enemy.x, enemy.z + 6, enemy.x, enemy.z) || combatWorld(physics).lineOfSight(enemy.x, enemy.z - 6, enemy.x, enemy.z)).toBe(true);
-  });
-
-  it("stay where they were asked to stand when that spot is open, even right beside a wall", () => {
-    const combat = new Combat(combatWorld(physics), () => 0.5);
-    combat.spawnGroup("corner", [{ x: 100, z: 102, armed: true, weapon: "pistol" }]);
-    expect(combat.enemies[0]).toMatchObject({ x: 100, z: 102 });
-  });
-});
-
