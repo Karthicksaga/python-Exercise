@@ -95,15 +95,6 @@ async function shootItOut(page: Page, objective: string, group: string, restart:
     await heal(page);
     // A line per few rounds, so a failure shows how the fight went.
     if (round % 5 === 0) console.log(`${group} round ${round}: health ${Math.round(s.health)}, standing ${s.enemies.filter((e) => e.group === group && e.health > 0).map((e) => `${e.weapon}:${e.health}`).join(" ")}`);
-    if (round >= 8 && round % 4 === 0) {
-      const me = await state(page);
-      const d = Math.hypot(enemy.x - me.x, enemy.z - me.z);
-      const toE = await probe(page, me.x, me.z, enemy.x - me.x, enemy.z - me.z, 20);
-      const toP = await probe(page, enemy.x, enemy.z, me.x - enemy.x, me.z - enemy.z, 20);
-      const around = [] as Array<number | null>;
-      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) around.push(await probe(page, enemy.x, enemy.z, dx!, dz!, 30));
-      console.log(`DIAG round ${round}: enemy ${enemy.weapon} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)}) player (${me.x.toFixed(1)}, ${me.z.toFixed(1)}) dist ${d.toFixed(1)}; probe player->enemy ${toE}, enemy->player ${toP}; from enemy E/W/S/N ${around.map((v) => (v === null ? "-" : v.toFixed(1))).join(" ")}`);
-    }
     await holdButton(page, "Fire", 500);
   }
 }
