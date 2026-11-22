@@ -610,13 +610,15 @@ export class HumanFigure {
   readonly object = new THREE.Group();
   private readonly mixer: THREE.AnimationMixer;
   /**
-   * Keep the soles from sinking below the ground in every pose (set for the player, seen up
-   * close). Each clip is planted at load (`plantSoles`), but a blend between two clips (starting,
+   * Keep the soles from sinking below the ground in every pose, not only during blends (set for
+   * the player, seen up close). Each clip is planted at load (`plantSoles`), but a blend between two clips (starting,
    * stopping, a bump) is not: for its 0.22 s a sole sank up to 8 cm. After the clips are applied,
    * the hips are raised by however far the lowest sole vertex is below the ground.
    */
   plantsFeet = false;
-  private soleVertices: Array<{ mesh: THREE.SkinnedMesh; index: number }> | null = null;
+  /** Seconds left of the blend between two gaits: every detailed figure is planted while it lasts. */
+  private blending = 0;
+  private readonly soleVertices: Array<Array<{ mesh: THREE.SkinnedMesh; index: number }> | null> = [null, null];
   private readonly actions: Record<Gait, THREE.AnimationAction>;
   private readonly rig: Rig;
   private readonly scale: number;
@@ -990,11 +992,13 @@ export class HumanFigure {
    * Height of the figure's lowest vertex above its root, metres, in the current pose (the soles:
    * about 0 when standing or walking on the ground). For tests; it reads every vertex.
    */
-  /** The vertices of the detailed model's soles: foot vertices in the lower part of the foot (bind pose). */
+  /** The vertices of the soles of the model shown: foot vertices in the lower part of the foot (bind pose). */
   private soles(): Array<{ mesh: THREE.SkinnedMesh; index: number }> {
-    if (this.soleVertices) return this.soleVertices;
+    const level = this.level === 1 && this.hasLod ? 1 : 0;
+    const known = this.soleVertices[level];
+    if (known) return known;
     const feet: Array<{ mesh: THREE.SkinnedMesh; index: number; y: number }> = [];
-    for (const { mesh } of this.levels[0]!) {
+    for (const { mesh } of this.levels[level]!) {
       if (!(mesh instanceof THREE.SkinnedMesh)) continue;
       const index = mesh.geometry.getAttribute("skinIndex");
       const weight = mesh.geometry.getAttribute("skinWeight");
@@ -1009,13 +1013,14 @@ export class HumanFigure {
     }
     const floor = Math.min(...feet.map((f) => f.y));
     const top = Math.max(...feet.map((f) => f.y));
-    this.soleVertices = feet.filter((f) => f.y < floor + (top - floor) * 0.45).map(({ mesh, index }) => ({ mesh, index }));
-    return this.soleVertices;
+    const sole = feet.filter((f) => f.y < floor + (top - floor) * 0.45).map(({ mesh, index }) => ({ mesh, index }));
+    this.soleVertices[level] = sole;
+    return sole;
   }
 
   private keepSolesUp(): void {
     const hips = this.hipsRest?.bone;
-    if (!hips?.parent || this.level !== 0) return;
+    if (!hips?.parent) return;
     this.object.updateMatrixWorld(true);
     const v = new THREE.Vector3();
     let low = Infinity;
@@ -1061,6 +1066,7 @@ export class HumanFigure {
       this.actions[next].reset().setEffectiveWeight(1);
       this.actions[this.gait].crossFadeTo(this.actions[next], 0.22, false);
       this.gait = next;
+      this.blending = 0.25;
     }
     // Play the clip at the rate that keeps feet from sliding; slower in the air.
     const air = grounded ? 1 : 0.55;
@@ -1068,7 +1074,10 @@ export class HumanFigure {
     this.actions.run.timeScale = Math.max(0.7, speed / (RUN_CLIP_SPEED * this.stride)) * air;
     this.mixer.update(dt);
 
-    if (this.plantsFeet) this.keepSolesUp();
+    // Each clip is planted at load; a blend of two is not (a sole sank up to 8 cm). The player is
+    // always planted; everyone else only during a blend, which is brief.
+    this.blending = Math.max(0, this.blending - dt);
+    if (this.plantsFeet || this.blending > 0) this.keepSolesUp();
     // Arm poses are laid over the walk cycle after it has been applied.
     this.punching = Math.max(0, this.punching - dt);
     this.showGun();
