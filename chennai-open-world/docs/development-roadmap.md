@@ -113,3 +113,28 @@ Plan, as built (TD-24):
 6. Tests: `title.spec.ts`; `?start=play` in the other specs; `TitleDesk.test.ts`.
 Dependencies: none added. Android limits: WebView fonts (system fonts plus the bundled Tamil
 station font for the wordmark), no network at runtime, battery (menu capped at 30 fps).
+
+## Combat redesign (22 Nov 2026, branch `agent/combat-redesign`, on top of `agent/sound-design`)
+
+The user's decision: pedestrians take part in fights, and all four areas are redesigned.
+Audit: attacks were an arm snapped forward for 0.22 s and a 0.07 s tracer; enemies showed nothing
+until they fell flat in one frame; pedestrians could only be hurt by vehicles; enemies walked
+straight at the player and all attacked at once; no block, dodge or targeting. The model has
+idle/walk/run clips only, so combat moves are procedural poses (like the existing aim and wave).
+
+Plan:
+1. Rules (`@cow/combat`, pure, unit-tested): a three-hit punch combo (jab, cross, hook with
+   knockback); hit reactions as state (stun, knockback, heavy hits); block (melee damage cut)
+   and dodge (a short dash with invulnerability); lock-on target choice; civilians as targets
+   (`attackOutcome` on the pedestrian casualty states) and a new assault crime.
+2. Enemies: attack in turns (two melee attackers at once, the rest circle at 3-4 m), wind up
+   before a melee strike (time to block or dodge), gunmen keep their distance and strafe between
+   shots, the badly hurt back off.
+3. Figures (`@cow/player`): procedural moves blended over the walk cycle: jab, cross, hook, bat
+   swing, recoil, block, dodge, flinch, stagger, an animated fall, cowering.
+4. Game: reactions and a health bar over a hurt enemy, a lock-on marker, hit markers, muzzle
+   flash, hit/block/dodge sounds; pedestrians hurt, knocked down or killed by attacks, bystanders
+   flee, police told; contextual controls (JUMP becomes DODGE and a BLOCK button appears while a
+   hostile is near; attacks turn to the locked target).
+5. Tests: unit for every rule; browser specs for the new behaviour and the existing combat,
+   gang, police, pedestrian, weapon and stage specs.

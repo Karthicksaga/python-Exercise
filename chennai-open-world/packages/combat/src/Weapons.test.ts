@@ -231,8 +231,9 @@ describe("Combat with the new weapons", () => {
     combat.spawnGroup("a", [{ x: 0, z: -2.1, armed: false }]);
     const events: CombatEvent[] = [];
     expect(combat.punch(player(), events)?.health).toBe(50);
-    // Wait out the swing in small steps (the enemy closes in, staying in front).
-    for (let i = 0; i < 45; i++) combat.update(1 / 60, player());
+    // Wait out the swing in small steps. A bat swing is a heavy hit (22 Nov 2026 redesign): it
+    // knocks the enemy back out of reach and stuns them; they come back in, staying in front.
+    for (let i = 0; i < 90; i++) combat.update(1 / 60, player());
     combat.punch(player(), events);
     expect(combat.remaining("a")).toBe(0);
   });
@@ -241,7 +242,8 @@ describe("Combat with the new weapons", () => {
     const hurtBy = (weapon: "pistol" | "shotgun" | "bat" | "fists", z: number) => {
       const combat = new Combat(open, () => 0); // always hits
       combat.spawnGroup("a", [{ x: 0, z, armed: weapon === "pistol" || weapon === "shotgun", weapon }]);
-      combat.update(2, player());
+      // In small steps: melee enemies wind up before a strike lands (22 Nov 2026 redesign).
+      for (let i = 0; i < 120; i++) combat.update(1 / 60, player());
       return 100 - combat.health;
     };
     expect(hurtBy("shotgun", -8)).toBeGreaterThan(hurtBy("pistol", -8));

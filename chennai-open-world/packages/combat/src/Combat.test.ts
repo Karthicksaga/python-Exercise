@@ -32,7 +32,8 @@ describe("Combat", () => {
       combat.punch(player(), events);
       combat.update(0.5, player()); // wait out the recovery; the enemy stays in reach
     }
-    expect(events.map((e) => e.type)).toEqual(["enemyDown", "groupCleared"]);
+    // Each landed punch is reported (the 22 Nov 2026 redesign shows a reaction for every hit).
+    expect(events.map((e) => e.type)).toEqual(["enemyHit", "enemyHit", "enemyHit", "enemyDown", "groupCleared"]);
     expect(combat.remaining("a")).toBe(0);
     // The body is removed after a few seconds.
     combat.update(6, player());
