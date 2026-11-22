@@ -1,6 +1,6 @@
 # Chennai Open World: stage 12 and stage 15 browser tests fail intermittently
 
-Date: 22 Nov 2026 · Status: Proposed · Scope: `chennai-open-world` (`apps/game/tests/missions2.spec.ts`, combat)
+Date: 22 Nov 2026 · Status: Done (test helper fixed on 22 Nov 2026, PR #13) · Scope: `chennai-open-world` (`apps/game/tests/missions2.spec.ts`, combat)
 
 ## Summary
 Two combat-stage browser tests fail now and then on the unchanged base branch, so they turn CI
@@ -25,3 +25,15 @@ helper; do not loosen the assertions.
 
 ## Open questions
 - Does the same happen to a player (an enemy that cannot be hit), or only to the test's aim?
+
+## Outcome (22 Nov 2026)
+Cause found with diagnostics in the browser test: `shootItOut` picked the firing spot by checking
+for a clear line outward from 0.7 m beside the enemy, so an obstacle closer than that (a pole or
+wall at 0.63 m) was invisible to it, while the game's sight and shot rays (which stop 0.6 m short
+of a person) met it. Every shot from that spot missed, and the helper went back to the same spot
+every round. Not a game bug: on the untouched base, stage 15 passed 3/3 locally.
+
+Fix (test only, `apps/game/tests/missions2.spec.ts`): spots checked both ways first (clear
+outward from 0.45 m, and inward the first thing met is a person), then the old check; and a new
+spot whenever a round did not hurt that enemy. Stages 12, 14 and 15: 9/9 passed (3 each).
+
