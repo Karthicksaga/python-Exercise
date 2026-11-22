@@ -789,3 +789,16 @@ Difficulty has not been play-tested by a person.
   the bus. Figures are small and dark at lite quality; the waving arm was not caught in a
   screenshot (the passenger was off screen in the one taken from down the road).
 - **Results on this branch:** typecheck clean; unit 460/460; full browser suite 86/87 in 34.8 min (run once, with the lock); the one failure was `missions2.spec.ts` stage 15 still expecting no stage after the street war: updated on purpose to expect stage 16, then that test passed on its own (1/1).
+
+## 22 Nov 2026: people from the manifest (branch `agent/people-game`)
+- **Done:** casting from `people.json` (`people.ts`, `HumanAssets.look`), lazy per-person
+  loading, height fit, stride-scaled gait, feet kept on the ground by the retargeted clips, LOD1
+  beyond 30 m, dyed gang colours and stand-in uniforms, several people and a tea seller in
+  platform crowds, wedding party and patients for fares. `docs/characters.md`, TD-24.
+- **Tested:** typecheck; unit tests (`people.test.ts`, `retarget.test.ts`); browser
+  `people.spec.ts` and the touched specs listed in `handoff.md` (not the full suite: CI runs it).
+  Checked by eye at 915x412 lite: street walkers, auto driver, police (khaki dye), platform crowd.
+  Not tried on a phone.
+- **Cost** (lite, software GPU, worst of four headings; fixture cast): spawn 207 -> 187 draw
+  calls, 300k -> 258k triangles; T. Nagar 154 -> 124, 270k -> 197k; two-star police stop 225 ->
+  200, 316k -> 266k; Egmore platform 153 -> 131, 230k -> 165k.

@@ -118,7 +118,8 @@ test("figures stand on the ground: walkers, someone standing, and the player idl
     await waitGameTime(page, 1.2);
     for (let i = 0; i < 8; i++) {
       const p = await people(page);
-      if (p.player.feet !== null && p.player.grounded && p.player.speed > 0.5) samples.push({ who: `player ${label}`, feet: p.player.feet });
+      // Running: only well past the walk-to-run blend (a fifth of a second in which the two clips mix).
+      if (p.player.feet !== null && p.player.grounded && p.player.speed > (label === "running" ? 4 : 0.5)) samples.push({ who: `player ${label}`, feet: p.player.feet });
       await waitGameTime(page, 0.13);
     }
     await zone.dispatchEvent("pointerup", { ...pointer, clientX: 150, clientY: 260 + push });

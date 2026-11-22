@@ -190,8 +190,11 @@ export function castPool(people: readonly Person[], cast: Cast, options: CastOpt
   const minorsOk = !rule.hurtable && (rule.minors === "yes" || (rule.minors === "withAdult" && options.withAdult === true));
   const allowed = people.filter((p) => minorsOk || !isMinor(p));
   let pool = allowed.filter((p) => matches(p, rule));
-  if (pool.length === 0 && rule.fallback) pool = allowed.filter((p) => matches(p, rule.fallback!));
-  // Last resort for adult casts: any adult (a role nobody in the manifest was made for).
+  const fallback = rule.fallback;
+  if (pool.length === 0 && fallback) pool = allowed.filter((p) => matches(p, fallback));
+  // A small manifest: any adult of the stand-in's sex (an auto driver stays a man), then any adult.
+  const sexes = fallback?.sexes ?? rule.sexes;
+  if (pool.length === 0) pool = allowed.filter((p) => !isMinor(p) && (!sexes || sexes.includes(p.sex)) && (!rule.ages || rule.ages.includes(p.age)));
   if (pool.length === 0) pool = allowed.filter((p) => !isMinor(p) && (!rule.ages || rule.ages.includes(p.age)));
   if (rule.prefer) {
     const preferred = pool.filter((p) => rule.prefer!.test(p.id));

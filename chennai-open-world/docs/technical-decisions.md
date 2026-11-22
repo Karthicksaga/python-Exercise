@@ -371,3 +371,32 @@ is not solid, so nothing is blocked). `meshoptimizer` becomes a runtime dependen
 
 **Revisit when** the FOB should be walkable, real station plans are wanted (OSM
 `railway=platform` areas), or the platform crowd should share the city pedestrians' LOD.
+
+## TD-24: People come from a manifest and are cast by role; LOD1 past 30 m
+
+**Decision (22 Nov 2026, branch `agent/people-game`).** Everyone but the player is a person from
+`assets/models/people/people.json` (the assets pipeline's manifest: file, LOD1, sex, age, roles,
+height). The game only assigns them: pure casting rules in `@cow/player` `people.ts` (`CASTS`,
+`castPool`, `pickPerson`) decide who walks, drives, polices, fights, waits on a platform or rides
+as a fare; who spawns where and how they move is unchanged. Models are lazy `?inline` imports
+(still embedded, TD-3), loaded per person the first time a cast needs them, retargeted once per
+skeleton, fitted to their manifest height with the soles on the ground, and given a LOD1 (the
+manifest's, or simplified at load time) shown beyond 30 m without shadows. Children and
+teenagers are never cast where anything can hit, shoot or hurt them. The retargeted clips lower
+the hips so the lower foot keeps its rest height. Tints on manifest people are a dye (brightness
+times colour), since their outfits are one coloured atlas. Details and numbers: `docs/characters.md`.
+
+**Why.** Data-driven casting lets the assets branch add people without code changes and keeps
+the safety rule (no children in harm's way) in one tested place. Lazy loading keeps start-up to
+the people the street needs. MPFB people are 2 draw calls and about 9k triangles against the
+placeholder's 8-10 calls and 15k, so both budgets went down (spawn 207 -> 187 calls, 300k ->
+258k triangles).
+
+**Trade-offs.** A figure made before its person loaded is a stand-in (enemies are swapped once
+the person loads; pedestrians and drivers are loaded before they are made). The script grows by
+each person's optimised size (about 150 kB, plus LOD1). Planting the lower foot removes the
+running flight phase, and during the fifth of a second the walk and run clips blend a sole can
+dip a few centimetres. The dye colours a whole outfit, trousers and all.
+
+**Revisit when** the cast grows past what fits in the script (stream people as files, TD-16), or
+people need per-garment colours (a mask channel in the atlas).
