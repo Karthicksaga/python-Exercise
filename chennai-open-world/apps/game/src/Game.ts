@@ -10,7 +10,7 @@ import { Combat, PLAYER_MAX_HEALTH, hitPenalty, isPoliceGroup, type CasualtyStat
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
-import { CrowdFigures, HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, type HumanFigure } from "@cow/player";
+import { CrowdFigures, HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, platformCast, type HumanFigure } from "@cow/player";
 import { Hud, Minimap, TouchControls, type MinimapMarker } from "@cow/ui";
 import { Gearbox, Vehicle, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
 import { buildContent, type GameContent } from "./content";
@@ -40,12 +40,8 @@ import stationFont from "../../../assets/fonts/noto-sans-tamil-stations.woff2?in
 import stationFontHindi from "../../../assets/fonts/noto-sans-devanagari-stations.woff2?inline";
 import playerModel from "../../../assets/optimized/player.glb?inline";
 import locomotion from "../../../assets/optimized/locomotion.glb?inline";
-// Pedestrian and driver variants (tools/blender/characters.py). The order matters: number 1
-// (the older man in a white shirt) also drives the autos in a khaki shirt (Population.ts).
-import elderModel from "../../../assets/optimized/people/elder.glb?inline";
-import lungiModel from "../../../assets/optimized/people/lungi.glb?inline";
-import tshirtModel from "../../../assets/optimized/people/tshirt.glb?inline";
-import workerModel from "../../../assets/optimized/people/worker.glb?inline";
+// Everyone else: the people manifest and their models, loaded per person when first needed.
+import { peopleSources } from "./peopleFiles";
 import { loadSignFont } from "@cow/game-engine";
 import signFont from "../../../assets/fonts/noto-sans-tamil-signs.woff2?inline";
 import acUnit from "../../../assets/optimized/props/ac_unit.glb?inline";
@@ -251,6 +247,8 @@ export class Game {
   private readonly landmarkLabels: LandmarkLabels;
   /** Suburban trains and stations (`Railway.ts`); null if the rail file could not be read. */
   railway: Railway | null = null;
+  /** The character models (the player's and the people of the manifest), for the people report. */
+  humans: HumanAssets | null = null;
   /** Places the player can go into (home, hospital, gym, mall, cinema) and the short stories. */
   private readonly placeDesk: PlaceDesk;
   private readonly placeMarkers: PlaceMarkers;
@@ -373,6 +371,23 @@ export class Game {
     this.combat.health = Math.max(1, Math.min(PLAYER_MAX_HEALTH, health));
   }
 
+  /**
+   * Tests and debugging only: who plays whom (`people.ts`): the manifest, the people loaded, and
+   * each pedestrian, driver and enemy shown, with how high their soles are off the ground.
+   */
+  debugPeople(): unknown {
+    const manifest = this.humans?.manifest ?? null;
+    return {
+      fixture: manifest?.fixture ?? null,
+      manifest: manifest?.people.map((p) => ({ id: p.id, sex: p.sex, age: p.age, roles: p.roles })) ?? [],
+      loaded: this.humans?.loadedPeople() ?? [],
+      ...this.population.peopleReport(),
+      enemies: this.fighters.peopleReport(),
+      player: { feet: this.driving ? null : this.avatar.feetHeight(), speed: this.player.speed, grounded: this.player.grounded },
+      crowd: this.railway?.crowdPeople ?? 0,
+    };
+  }
+
   /** For tests and debugging only: give a weapon and rounds, and take it in hand if it is a gun. */
   debugGiveWeapon(id: WeaponId, ammo: number): void {
     this.combat.arsenal.give(id, ammo);
@@ -443,7 +458,10 @@ export class Game {
 
     const body = physics.createCharacter({ radius: PLAYER_RADIUS, height: PLAYER_HEIGHT, feet: { x: spawn.x, y: 0.1, z: spawn.z } });
     const player = new PlayerController(body, spawn.yaw);
-    const humans = await HumanAssets.load({ model: playerModel, variants: [elderModel, lungiModel, tshirtModel, workerModel], animations: locomotion });
+    const people = peopleSources();
+    const humans = await HumanAssets.load({ model: playerModel, animations: locomotion, ...(people ? { people } : {}) });
+    // The people the street needs from the first frame; everyone else loads when first wanted.
+    await humans.prepare(["pedestrian", "auto-driver", "driver"]);
     const avatar = humans.create();
     renderer.scene.add(avatar.object);
 
@@ -490,6 +508,7 @@ export class Game {
     });
     game.arms = new Arms(content, combat, renderer.scene, humans, hud, controls);
     game.fareFigures = new FareFigures(renderer.scene, humans);
+    game.humans = humans;
     const railFile = await railLoaded;
     if (railFile) {
       const railway = new Railway(railFile, renderer.scene, physics, new RidePanel(hud.root), {
@@ -506,8 +525,12 @@ export class Game {
         horn: (level) => sound.trainHorn(level),
         announce: () => sound.stationChime(),
       }, { drawDistance: renderer.tier.loadDistance, tamil: await stationFontLoaded, hindi: await stationFontHindiLoaded });
-      // Platform crowds: the human model baked into a few cheap instanced poses, near a station only.
-      railway.crowdWhenNeeded(() => CrowdFigures.create(humans));
+      // Platform crowds: a few of the city's people (adults, elderly, students, children) and the
+      // tea-stall seller, each baked into a few cheap instanced poses, near a station only.
+      railway.crowdWhenNeeded(async () => {
+        await humans.prepare(["platform", "tea-seller"]);
+        return CrowdFigures.create(humans, 48, humans.manifest ? platformCast(humans.manifest.people) : undefined);
+      });
       minimap.addLines(railway.minimapLines());
       game.cityMap.setRail(railFile);
       game.railway = railway;
@@ -1446,7 +1469,7 @@ export class Game {
     this.minimap.setRoute(this.desk.route());
     this.minimap.update(dt, at.x, at.z, this.driving ? this.driving.body.yaw() : this.player.yaw, this.camera.yaw, markers);
 
-    this.fighters.frame(dt, alpha);
+    this.fighters.frame(dt, alpha, at);
     this.police.frame(dt, at, alpha);
     this.hud.setHealth(this.combat.health / PLAYER_MAX_HEALTH);
     const quarry = this.missions.quarry;

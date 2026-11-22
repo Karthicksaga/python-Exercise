@@ -6,14 +6,20 @@ import * as THREE from "three";
 import { isPoliceGroup, type Combat, type CombatWorld, type Enemy } from "@cow/combat";
 import { Motion } from "@cow/game-engine";
 import type { KinematicBox, PhysicsWorld } from "@cow/physics";
-import type { HumanAssets, HumanFigure } from "@cow/player";
+import { detailFor, type HumanAssets, type HumanFigure } from "@cow/player";
 
 const CHEST = 1.2;
-/** Enemy clothing tints: unarmed thugs in maroon, armed ones in near-black, police officers in khaki. */
-const TINT = { unarmed: 0xb04a4a, armed: 0x4a4a55, police: 0xe3cb8f } as const;
+/**
+ * Enemy clothing tints: unarmed thugs in maroon, armed ones in near-black (gang members wear
+ * their gang's colours, `Enemy.tint`). Police officers are "police" people in their own uniform;
+ * a stand-in gets the khaki tint (`CASTS.police.uniform`).
+ */
+const TINT = { unarmed: 0xb04a4a, armed: 0x4a4a55 } as const;
 
 interface Body {
-  readonly figure: HumanFigure;
+  figure: HumanFigure;
+  /** The person cast for this enemy; `figure` is a stand-in until they are loaded. */
+  readonly wanted: string | null;
   readonly box: KinematicBox;
   placed: boolean;
   /** The last two fixed steps, drawn in between (smooth on any display rate). */
@@ -75,28 +81,48 @@ export class Fighters {
   private body(enemy: Enemy): Body {
     let body = this.bodies.get(enemy.id);
     if (!body) {
-      // Gang members wear their gang's colours.
-      const figure = this.humans.create(isPoliceGroup(enemy.group) ? TINT.police : enemy.tint ?? (enemy.armed ? TINT.armed : TINT.unarmed), true, this.humans.crowdVariant(enemy.id));
-      // Guns are drawn while aiming; a bat is carried in the hand. Fists: nothing held.
-      if (enemy.weapon === "bat") figure.setWeapon("bat", true);
-      else if (enemy.weapon === "shotgun" || enemy.weapon === "smg") figure.setWeapon(enemy.weapon);
-      else if (!enemy.armed) figure.setWeapon(null);
-      // A boss is visibly bigger.
-      if (enemy.maxHealth > 150) figure.object.scale.setScalar(1.18);
-      this.scene.add(figure.object);
-      body = { figure, box: this.physics.createKinematicBox({ x: 0.28, y: 0.85, z: 0.28 }), placed: false, motion: new Motion() };
+      const { figure, wanted } = this.figureFor(enemy);
+      body = { figure, wanted, box: this.physics.createKinematicBox({ x: 0.28, y: 0.85, z: 0.28 }), placed: false, motion: new Motion() };
       body.motion.snap(enemy.x, 0, enemy.z, enemy.heading);
       this.bodies.set(enemy.id, body);
     }
     return body;
   }
 
-  /** Once per rendered frame. `alpha`: how far the clock is past the last fixed step (0 to 1); enemies are drawn that far between their last two steps. */
-  frame(dt: number, alpha = 1): void {
+  /**
+   * An enemy's figure: police officers are "police" people, story and gang enemies grown men
+   * from the street ("enemy": never children or teenagers). Gang members wear their gang's colours.
+   */
+  private figureFor(enemy: Enemy): { figure: HumanFigure; wanted: string | null } {
+    const police = isPoliceGroup(enemy.group);
+    const look = this.humans.look(police ? "police" : "enemy", enemy.id);
+    const figure = this.humans.create(police ? look.tint : enemy.tint ?? (enemy.armed ? TINT.armed : TINT.unarmed), true, look.person);
+    // Guns are drawn while aiming; a bat is carried in the hand. Fists: nothing held.
+    if (enemy.weapon === "bat") figure.setWeapon("bat", true);
+    else if (enemy.weapon === "shotgun" || enemy.weapon === "smg") figure.setWeapon(enemy.weapon);
+    else if (!enemy.armed) figure.setWeapon(null);
+    // A boss is visibly bigger.
+    if (enemy.maxHealth > 150) figure.object.scale.setScalar(1.18);
+    this.scene.add(figure.object);
+    return { figure, wanted: look.wanted };
+  }
+
+  /**
+   * Once per rendered frame. `alpha`: how far the clock is past the last fixed step (0 to 1); enemies are drawn that far between their last two steps.
+   * @param viewer where the player is (distant enemies get the cheap model)
+   */
+  frame(dt: number, alpha = 1, viewer?: { x: number; z: number }): void {
     const alive = new Set<number>();
     for (const enemy of this.combat.enemies) {
       alive.add(enemy.id);
-      const { figure, motion } = this.body(enemy);
+      const body = this.body(enemy);
+      // The person cast for this enemy has loaded since the stand-in was made: swap them in.
+      if (body.wanted !== null && body.figure.person !== body.wanted && this.humans.isLoaded(body.wanted)) {
+        this.scene.remove(body.figure.object);
+        body.figure = this.figureFor(enemy).figure;
+      }
+      const { figure, motion } = body;
+      if (viewer) figure.setDetail(detailFor(Math.hypot(enemy.x - viewer.x, enemy.z - viewer.z), figure.detail));
       const drawn = motion.at(alpha);
       figure.object.position.set(drawn.x, 0, drawn.z);
       figure.object.rotation.y = drawn.heading;
@@ -118,6 +144,14 @@ export class Fighters {
       this.scene.remove(tracer.mesh);
       this.tracers.splice(i, 1);
     }
+  }
+
+  /** Tests and debugging only: who plays each enemy (police included) and how high their soles are off the ground. */
+  peopleReport(): Array<{ group: string; person: string | null; wanted: string | null; speed: number; feet: number | null }> {
+    return this.combat.enemies.map((enemy) => {
+      const body = this.bodies.get(enemy.id);
+      return { group: enemy.group, person: body?.figure.person ?? null, wanted: body?.wanted ?? null, speed: enemy.speed, feet: body && enemy.health > 0 ? body.figure.feetHeight() : null };
+    });
   }
 
   /** An enemy throws a punch (arm animation). */

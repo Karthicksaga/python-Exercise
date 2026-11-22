@@ -26,22 +26,19 @@ import { Casualties, PEDESTRIAN_HIT, hitOutcome, restingSpot, speedKept, vehicle
 import { Motion, SignalView } from "@cow/game-engine";
 import type { WorldMap } from "@cow/game-world";
 import type { KinematicBox, PhysicsWorld, VehicleBody } from "@cow/physics";
-import type { HumanAssets, HumanFigure } from "@cow/player";
+import { detailFor, type HumanAssets, type HumanFigure } from "@cow/player";
 import { TrafficCar, VEHICLE_TYPES, type VehicleKind } from "@cow/vehicles";
 
 /** Autos are yellow, as in Chennai (the parked autos use the same colour, `content.ts`). */
 const AUTO_YELLOW = 0xf5c400;
 const CAR_COLORS = [0xb8bcc4, 0x2b3f6b, 0x7a1f1f, 0xe6e2d6, 0x30343a, 0x3d6b4f, 0x8a6a2f];
 
-/**
- * Shirt tints for drivers. Chennai auto drivers wear a khaki uniform shirt; others vary.
- * The tint multiplies the model's clothing colour (`HumanAssets.create`). Auto drivers are the
- * white-shirted older man (`AUTO_DRIVER_VARIANT`, people/elder.glb), so the khaki reads true;
- * other drivers are any of the pedestrian variants.
+/*
+ * Who drives and who walks comes from the people manifest (`@cow/player` `people.ts`): autos are
+ * driven by "auto-driver" people (a stand-in gets the khaki uniform shirt as a tint), cars,
+ * buses and trucks by "cab-driver" people, and the walkers are "pedestrian" people, mixed men and
+ * women, young and old, never children (they can be run over).
  */
-const AUTO_DRIVER = 0xd9c08f;
-const AUTO_DRIVER_VARIANT = 1;
-const DRIVER_CLOTHES = [0xffffff, 0xffffff, 0xe6e6e6, 0xf0f4ff];
 /** Drivers further than this from the player are not drawn (each is a few draw calls), metres. */
 const DRIVERS_VISIBLE = 40;
 
@@ -85,6 +82,8 @@ export interface PedestrianHit {
 
 interface Driver {
   readonly car: TrafficCar;
+  /** Who sits at the wheel (a manifest id; null: the player's model). */
+  readonly person: string | null;
   readonly body: KinematicBox;
   generation: number;
   /** The last two fixed steps, drawn in between (smooth on any display rate). */
@@ -206,17 +205,15 @@ export class Population {
       const kind = isVehicleKind(name) ? name : "car";
       const car = new TrafficCar(kind, kind === "auto" ? AUTO_YELLOW : CAR_COLORS[agent.id % CAR_COLORS.length]!);
       // Every moving vehicle has someone at the wheel (a baked seated person, shared per shirt).
-      car.setDriver(
-        kind === "auto"
-          ? humans.seatedStatic(AUTO_DRIVER, car.type.pose, Math.min(AUTO_DRIVER_VARIANT, humans.variantCount - 1))
-          : humans.seatedStatic(DRIVER_CLOTHES[agent.id % DRIVER_CLOTHES.length]!, car.type.pose, humans.crowdVariant(agent.id)),
-      );
+      const driver = humans.look(kind === "auto" ? "auto-driver" : "driver", agent.id);
+      car.setDriver(humans.seatedStatic(driver.tint, car.type.pose, driver.person));
       scene.add(car.object);
-      this.drivers.push({ car, body: physics.createKinematicBox(car.type.physics.halfExtents), generation: -1, motion: new Motion() });
+      this.drivers.push({ car, person: driver.person, body: physics.createKinematicBox(car.type.physics.halfExtents), generation: -1, motion: new Motion() });
     }
     for (const agent of this.walkers.agents) {
-      // Variety comes from the pedestrian variants (different men and clothes), not tints.
-      const figure = humans.create(undefined, true, humans.crowdVariant(agent.id));
+      // Variety comes from the people themselves (consecutive ids get different people), not tints.
+      const walker = humans.look("pedestrian", agent.id);
+      const figure = humans.create(walker.tint, true, walker.person);
       scene.add(figure.object);
       this.people.push({ figure, body: physics.createKinematicBox({ x: 0.25, y: 0.85, z: 0.25 }), generation: -1, y: PARKED_Y, motion: new Motion() });
     }
@@ -421,8 +418,11 @@ export class Population {
       const { figure, motion } = this.people[i]!;
       // Animated people are the most expensive thing to draw: only those close enough to be
       // seen clearly are shown and animated.
-      figure.visible = agent.active && Math.hypot(agent.x - viewer.x, agent.z - viewer.z) < PEOPLE_VISIBLE;
+      const distance = Math.hypot(agent.x - viewer.x, agent.z - viewer.z);
+      figure.visible = agent.active && distance < PEOPLE_VISIBLE;
       if (!figure.object.visible) return;
+      // Beyond LOD1_FROM the cheap model, without a shadow.
+      figure.setDetail(detailFor(distance, figure.detail));
       const drawn = motion.at(alpha);
       figure.object.position.set(drawn.x, 0, drawn.z);
       figure.object.rotation.y = drawn.heading;
@@ -447,6 +447,18 @@ export class Population {
     const view = new SignalView(near, near.map((a) => a.crossing));
     this.scene.add(view.object);
     return view;
+  }
+
+  /** Tests and debugging only: who walks and drives, and how high each walker's soles are off the ground (metres). */
+  peopleReport(): { pedestrians: Array<{ person: string | null; x: number; z: number; speed: number; visible: boolean; detail: 0 | 1; down: boolean; feet: number | null }>; drivers: Array<{ kind: string; person: string | null; active: boolean }> } {
+    return {
+      pedestrians: this.walkers.agents.map((agent, i) => {
+        const { figure } = this.people[i]!;
+        const down = this.casualties.isDown(agent.id);
+        return { person: figure.person, x: agent.x, z: agent.z, speed: agent.speed, visible: figure.object.visible, detail: figure.detail, down, feet: figure.object.visible && !down ? figure.feetHeight() : null };
+      }),
+      drivers: this.traffic.agents.map((agent, i) => ({ kind: this.traffic.kinds[agent.kind]!.name, person: this.drivers[i]!.person, active: agent.active })),
+    };
   }
 
   /** Signal heads drawn now (the ones near the player). */

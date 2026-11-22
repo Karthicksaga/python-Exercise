@@ -61,4 +61,39 @@ describe("retargetClips", () => {
     const last = new THREE.Quaternion().fromArray(Array.from(values.slice(values.length - 4)));
     expect(last.angleTo(turned)).toBeLessThan(0.01);
   });
+
+  it("lowers the hips as the knee bends, so the foot stays on the ground", () => {
+    const source = skeleton((n) => n);
+    // A target twice the size, inside a scaled armature (as exporters do).
+    const target = skeleton((n) => n);
+    target.scale.setScalar(2);
+    const armature = new THREE.Group();
+    armature.add(target);
+    armature.updateMatrixWorld(true);
+    const foot = target.getObjectByName("LeftFoot")!;
+    const restFoot = foot.getWorldPosition(new THREE.Vector3()).y;
+    // Half way through, the thigh swings forward and the knee bends back: the foot comes up.
+    const bend = (angle: number) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), angle).toArray();
+    const clip = new THREE.AnimationClip("walk", 1, [
+      new THREE.QuaternionKeyframeTrack("LeftUpLeg.quaternion", [0, 0.5, 1], [...bend(0), ...bend(-0.5), ...bend(0)]),
+      new THREE.QuaternionKeyframeTrack("LeftLeg.quaternion", [0, 0.5, 1], [...bend(0), ...bend(1), ...bend(0)]),
+    ]);
+    const [out] = retargetClips(source, [clip], armature);
+    expect(out!.tracks.some((t) => t.name === "Hips.position")).toBe(true);
+    // Sampling put the target back in its rest pose.
+    expect(foot.getWorldPosition(new THREE.Vector3()).y).toBeCloseTo(restFoot, 6);
+    const mixer = new THREE.AnimationMixer(armature);
+    mixer.clipAction(out!).play();
+    for (const t of [0, 0.25, 0.5, 0.75]) {
+      mixer.setTime(t);
+      armature.updateMatrixWorld(true);
+      expect(foot.getWorldPosition(new THREE.Vector3()).y, `at ${t} s`).toBeCloseTo(restFoot, 3);
+    }
+    // Hips lower half way through (the bent leg is shorter).
+    mixer.setTime(0.5);
+    expect(target.getObjectByName("Hips")!.position.y).toBeLessThan(0.99);
+    // A clip that doesn't move the legs gets no hip track.
+    const still = new THREE.AnimationClip("idle", 1, [new THREE.QuaternionKeyframeTrack("Spine.quaternion", [0, 1], [0, 0, 0, 1, ...bend(0.2)])]);
+    expect(retargetClips(skeleton((n) => n), [still], skeleton((n) => n))[0]!.tracks.some((t) => t.name === "Hips.position")).toBe(false);
+  });
 });

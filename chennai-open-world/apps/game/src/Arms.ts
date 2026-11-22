@@ -237,7 +237,8 @@ export class Arms {
       if (this.courier) this.scene.remove(this.courier.car.object);
       const car = new TrafficCar(quarry.kind, 0x2b2b30);
       const gang = this.content.gangs[0];
-      car.setDriver(this.humans.seatedStatic(gang?.colour ?? 0xe0b020, car.type.pose));
+      // A gang member at the wheel, in the gang's colours.
+      car.setDriver(this.humans.seatedStatic(gang?.colour ?? 0xe0b020, car.type.pose, this.humans.look("enemy", 0).person));
       this.scene.add(car.object);
       this.courier = { car, kind: quarry.kind };
     }

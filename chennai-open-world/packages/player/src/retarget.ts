@@ -7,6 +7,10 @@
  * target's rest orientation, then converted back to the target's local space. Only rotations
  * are transferred, so the target keeps its own proportions.
  *
+ * The hips are then lowered (or raised) frame by frame so that the lower foot stays at its rest
+ * height: with rotations alone a bent stance knee lifts the whole figure off the ground (a few
+ * centimetres walking, about ten running), and the clips carry no hip movement of their own.
+ *
  * Rest poses may differ (arms straight out on one rig, lowered on the other): for each limb
  * bone the target's rest orientation is first turned so the limb points the way the source's
  * does, which makes the two rest poses equivalent.
@@ -40,6 +44,9 @@ export function normalizeBoneNames(root: THREE.Object3D): number {
   });
   return changed;
 }
+
+/** Joints that can touch the ground (the lowest of them is kept at its rest height). */
+const FEET = ["LeftFoot", "RightFoot", "LeftToeBase", "RightToeBase", "LeftToe_End", "RightToe_End"];
 
 /** Limb bones and the child that defines the direction each one points in. */
 const LIMB_CHILD: Readonly<Record<string, string>> = {
@@ -115,8 +122,27 @@ export function retargetClips(source: THREE.Object3D, clips: readonly THREE.Anim
   });
   if (!joints.some((j) => j.source)) throw new Error("Animation skeleton and character skeleton share no bone names.");
 
+  // Feet kept on the ground: the joints that can touch it, the lowest of them at rest, and the
+  // way up in the hips' parent space (rotation and scale; the armature never animates).
+  const targetHips = targetBones.get("Hips");
+  const feet = FEET.map((name) => targetBones.get(name)).filter((b): b is THREE.Object3D => b !== undefined);
+  const lowest = () => Math.min(...feet.map((b) => b.getWorldPosition(footAt).y));
+  const footAt = new THREE.Vector3();
+  const plant =
+    targetHips?.parent && feet.length > 0
+      ? {
+          rest: targetHips.position.clone(),
+          restLow: lowest(),
+          up: new THREE.Vector3(0, 1, 0).applyMatrix3(new THREE.Matrix3().setFromMatrix4(targetHips.parent.matrixWorld).invert()),
+          height: targetHips.getWorldPosition(new THREE.Vector3()).y - lowest(),
+        }
+      : null;
+  // Sampling poses the target: its rest pose is put back afterwards.
+  const restPose = joints.map((joint) => joint.bone.quaternion.clone());
+
   const mixer = new THREE.AnimationMixer(source);
   const sourceWorld = new THREE.Quaternion();
+  const hipsAt = new THREE.Vector3();
   const parentInverse = new THREE.Quaternion();
   const local = new THREE.Quaternion();
   const out: THREE.AnimationClip[] = [];
@@ -124,6 +150,8 @@ export function retargetClips(source: THREE.Object3D, clips: readonly THREE.Anim
   for (const clip of clips) {
     const frames = Math.max(2, Math.round(clip.duration * SAMPLE_RATE) + 1);
     const times: number[] = [];
+    const hips: number[] = [];
+    let moved = 0;
     for (const joint of joints) joint.values.length = 0;
     const action = mixer.clipAction(clip);
     action.play();
@@ -148,14 +176,31 @@ export function retargetClips(source: THREE.Object3D, clips: readonly THREE.Anim
         local.copy(parentInverse.copy(parentWorld).invert()).multiply(joint.world);
         joint.values.push(local.x, local.y, local.z, local.w);
       }
+      if (plant && targetHips) {
+        // Pose the target as this frame has it, and see how far its lowest foot joint is off its rest height.
+        joints.forEach((joint) => {
+          if (joint.source) joint.bone.quaternion.fromArray(joint.values, joint.values.length - 4);
+        });
+        targetHips.position.copy(plant.rest);
+        target.updateMatrixWorld(true);
+        const dy = plant.restLow - lowest();
+        moved = Math.max(moved, Math.abs(dy));
+        hipsAt.copy(plant.rest).addScaledVector(plant.up, dy);
+        hips.push(hipsAt.x, hipsAt.y, hipsAt.z);
+      }
     }
     action.stop();
     mixer.uncacheClip(clip);
 
-    const tracks = joints
+    const tracks: THREE.KeyframeTrack[] = joints
       .filter((joint) => joint.source)
       .map((joint) => new THREE.QuaternionKeyframeTrack(`${joint.bone.name}.quaternion`, times, joint.values.slice()));
+    // Only clips that move the feet up or down get a track (a fraction of a millimetre is noise).
+    if (plant && targetHips && moved > 1e-4 * plant.height) tracks.push(new THREE.VectorKeyframeTrack(`${targetHips.name}.position`, times, hips));
     out.push(new THREE.AnimationClip(clip.name, clip.duration, tracks));
   }
+  joints.forEach((joint, i) => joint.bone.quaternion.copy(restPose[i]!));
+  if (plant && targetHips) targetHips.position.copy(plant.rest);
+  target.updateMatrixWorld(true);
   return out;
 }
