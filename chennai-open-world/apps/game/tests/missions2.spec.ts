@@ -61,15 +61,22 @@ async function shootItOut(page: Page, objective: string, group: string, restart:
       await waitGameTime(page, 0.3);
       continue;
     }
-    // Stand 6 m off in a direction with nothing solid between (the ray starts clear of the
-    // enemy's own collision box), trying the side the player is on first.
+    // Stand 6 m off where a shot sees the enemy, trying the side the player is on first. Checked
+    // both ways: outward from just past the enemy's own collision box (0.28 m half-width, 0.4 m to
+    // a corner), and inward from the spot, where the first thing met must be that box. Checking
+    // outward from 0.7 m only missed a pole or wall right at the enemy's shoulder; the game's sight
+    // and shot rays (which stop 0.6 m short of a person) met it, and every shot from the chosen
+    // spot missed, round after round (stages 12, 14 and 15 in CI).
     const toward = Math.atan2(s.x - enemy.x, s.z - enemy.z);
     let from = { x: enemy.x + Math.sin(toward) * 6, z: enemy.z + Math.cos(toward) * 6 };
-    for (let k = 0; k < 8; k++) {
-      const a = toward + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 4);
+    for (let k = 0; k < 16; k++) {
+      const a = toward + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 8);
       const dx = Math.sin(a);
       const dz = Math.cos(a);
-      if ((await probe(page, enemy.x + dx * 0.7, enemy.z + dz * 0.7, dx, dz, 6)) === null) {
+      const out = await probe(page, enemy.x + dx * 0.45, enemy.z + dz * 0.45, dx, dz, 5.55);
+      if (out !== null) continue;
+      const back = await probe(page, enemy.x + dx * 6, enemy.z + dz * 6, -dx, -dz, 6);
+      if (back !== null && back >= 6 - 0.45) {
         from = { x: enemy.x + dx * 6, z: enemy.z + dz * 6 };
         break;
       }
