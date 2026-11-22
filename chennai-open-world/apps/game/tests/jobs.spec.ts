@@ -89,6 +89,9 @@ test("quitting a job costs reputation and the game goes on", async ({ page }) =>
 });
 
 test("the Marina evening drive is offered only in the evening, and pays for a drive off Anna Salai", async ({ page }) => {
+  // Two reloads, boarding, a pick-up and a 4 km drop: about 50 s here and 67 s on a CI runner,
+  // too close to the default 90 s (it ran out once on a slower shard). As the other long specs do.
+  test.setTimeout(180_000);
   await ready(page);
   const reloadAt = async (hour: number) => {
     await page.evaluate((h) => localStorage.setItem("cow-hour-v1", String(h)), hour);
