@@ -1,0 +1,34 @@
+{
+  "people": [
+    {
+      "id": "man-shirt-young",
+      "file": "people/man_shirt_young.glb",
+      "lod1": "people/man_shirt_young_lod1.glb",
+      "sex": "male",
+      "age": "young",
+      "roles": [
+        "pedestrian",
+        "passenger"
+      ],
+      "heightM": 1.772,
+      "triangles": 9210,
+      "lod1Triangles": 3389,
+      "texture": 512
+    },
+    {
+      "id": "woman-saree-young",
+      "file": "people/woman_saree_young.glb",
+      "lod1": "people/woman_saree_young_lod1.glb",
+      "sex": "female",
+      "age": "young",
+      "roles": [
+        "pedestrian",
+        "passenger"
+      ],
+      "heightM": 1.609,
+      "triangles": 8276,
+      "lod1Triangles": 3386,
+      "texture": 512
+    }
+  ]
+}

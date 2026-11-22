@@ -1,165 +1,382 @@
 """
-Chennai people: the player and the pedestrian variants, built by script with MPFB (MakeHuman
-for Blender) in Blender 5.2 LTS. The script is the source: re-running it rebuilds the same files.
+Chennai people: the player and the pedestrian cast, built by script with MPFB (MakeHuman for
+Blender) in Blender 5.2 LTS. The script is the source: re-running it rebuilds the same files.
 
-Run headless (MPFB and the MakeHuman system assets must be installed, see assets/README.md):
-    blender -b --factory-startup --python tools/blender/characters.py -- <models dir> [--only <name>] [--preview <dir>]
+Run headless (MPFB, the MakeHuman system assets and the community packs listed in
+docs/characters.md must be installed, see that file):
+    blender -b --factory-startup --python tools/blender/characters.py -- <models dir> [--only id,id] [--preview <dir>] [--no-lod]
 or `npm run blender:characters` (finds Blender through the BLENDER environment variable).
 
-Every figure is an MPFB human (MakeHuman base mesh and targets, CC0) with South Indian adult
-proportions and a medium-to-dark brown skin, dressed in MakeHuman system clothes (CC0) and,
-where nothing suitable exists, in simple garments modelled here (a knee-length lungi, sandals).
-Each figure gets MPFB's built-in "mixamo" skeleton (bones `mixamorig:Hips`, `mixamorig:LeftArm`
-...), which the game's retargeting reads after stripping the prefix (retarget.ts).
+Every figure is an MPFB human (MakeHuman base mesh and targets, CC0) with South Indian
+proportions and brown skin, dressed in MakeHuman clothes (CC0, a few CC-BY, see
+docs/characters.md) and, for what MakeHuman lacks, in garments modelled here: veshti, lungi,
+saree (pleated skirt, pallu over the left shoulder, blouse), kurta, leggings, dupatta, towel,
+head cloth, caps, hard hat, belt, ID tag and sandals.
+
+How the garments made here are built:
+- Tubes (veshti, lungi, saree skirt, kurta skirt): rings fitted round the hips and legs at each
+  height, weighted to the hips at the top and to the thighs (and a little to the shins) lower
+  down, split left/right across the middle.
+- Skin-tight pieces (blouse, banian vest, leggings, kurta top, pinafore, pallu, dupatta, towel,
+  head cloth): the body's own faces in a region (chosen by the bone that moves them and cut
+  with planes), pushed out along the normals. They bend exactly like the body; the skin under
+  them is deleted.
+- Hard pieces (caps, hard hat, ID tag): small meshes weighted to one bone.
 
 What the game needs, and how this script gets there:
-- Shape keys (MakeHuman targets, expressions) are baked into the mesh: no blend shapes ship.
-- Helper geometry and the skin hidden under clothes (MPFB delete groups) are removed.
-- Every part is joined into one skinned mesh `Body` with two materials, so a figure is two draw
-  calls: `Skin` (the skin texture, opaque) and `Outfit` (one atlas holding clothes, shoes,
-  hair, eyebrows, eyelashes and eyes; alpha-tested for the hair cards).
-- Textures are built here from the CC0 sources: skins blended to a South Indian tone, a painted
-  moustache, clothes recoloured, printed logos painted out, the lungi's check woven in code.
-- Triangle budgets: the player at most 30,000, pedestrians at most 10,000 (Decimate where the
-  MakeHuman parts are heavier). The figure stands at the origin facing -Y (glTF +Z), feet on
-  the ground, in MakeHuman's rest pose (arms down, A-pose).
+- Shape keys (MakeHuman targets) are baked into the mesh: no blend shapes ship.
+- Helper geometry and skin hidden under clothes are removed.
+- Every part is joined into one skinned mesh `Body` with two materials, so a figure is two
+  draw calls: `Skin` (opaque) and `Outfit` (an atlas of clothes, shoes, hair, eyebrows,
+  eyelashes, eyes and flat colours; alpha-tested for the hair cards).
+- MPFB's "mixamo" skeleton (bones `mixamorig:Hips` ...); the game strips the prefix.
+- Triangle budgets: the player at most 30,000 (1024 px textures), pedestrians at most 10,000
+  (512 px), and an LOD1 of each pedestrian (`<file>_lod1.glb`) at most 3,500, same skeleton.
+- The figure stands at the origin facing -Y (glTF +Z), feet on the ground, in MakeHuman's
+  rest pose (arms down, A-pose), in metres.
+- `people/people.json` lists every pedestrian with its sex, age group, role tags, height and
+  triangle counts (the game reads it to pick people for each job).
 """
+import json
 import math
 import os
 import sys
 import tempfile
 
+import bpy  # noqa: I001  (bpy before bmesh)
 import addon_utils
 import bmesh
-import bpy
 import numpy as np
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 OUT = os.path.abspath(argv[0] if argv and not argv[0].startswith("--") else "assets/models")
-ONLY = argv[argv.index("--only") + 1] if "--only" in argv else None
+ONLY = set(argv[argv.index("--only") + 1].split(",")) if "--only" in argv else None
 PREVIEW = argv[argv.index("--preview") + 1] if "--preview" in argv else None
+NO_LOD = "--no-lod" in argv
 
 MPFB = "bl_ext.user_default.mpfb"
 LUMA = np.array([0.2126, 0.7152, 0.0722], np.float32)
+LOD1_BUDGET = 3500
+ROLES = {"pedestrian", "auto-driver", "cab-driver", "traffic-police", "police", "vendor", "tea-worker", "construction", "delivery", "shopkeeper", "office", "college", "school", "passenger"}
+
+
+def c(hex_colour):
+    """An sRGB colour from '#rrggbb' (texture pixels are sRGB)."""
+    h = hex_colour.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+
+# Colours used across the cast (all invented; no brand or livery colours).
+BLACK_HAIR = c("#0b0908")
+DARK_HAIR = c("#16110d")
+GREY_HAIR = c("#8c8a86")
+WHITE_HAIR = c("#c9c6c0")
+SALT_PEPPER = c("#4a4744")
+KHAKI = c("#b59a62")
+KHAKI_DARK = c("#8f7748")
+OFF_WHITE = c("#ecebe4")
+NAVY = c("#1f2a44")
+
 
 # ----------------------------------------------------------------------------------------------
-# The cast. Phenotype values are MakeHuman's macro sliders (0..1): age 0.5 = 25 years, 1 = 90;
-# race mixes MakeHuman's three reference shapes. Skins blend two CC0 skin textures (same UV
-# layout) and then multiply by `tone`. Clothes are MakeHuman system assets ("name/name.mhclo").
+# The cast
 # ----------------------------------------------------------------------------------------------
-BASE_PHENOTYPE = {"gender": 1.0, "age": 0.55, "muscle": 0.55, "weight": 0.5, "proportions": 0.5, "height": 0.45, "cupsize": 0.5, "firmness": 0.5}
+def age_macro(years):
+    """MakeHuman's age slider: 0 = 1 year, 0.1875 = 11, 0.5 = 25, 1 = 90."""
+    if years <= 11:
+        return max(0.0, (years - 1) / 10 * 0.1875)
+    if years <= 25:
+        return 0.1875 + (years - 11) / 14 * 0.3125
+    return min(1.0, 0.5 + (years - 25) / 65 * 0.5)
 
-CHARACTERS = [
-    {
-        # A Chennai man in his early thirties: light cotton shirt, dark trousers, sandals.
-        "name": "player",
-        "file": "player.glb",
-        "texture": 1024,
-        "budget": 30000,
-        "phenotype": {"age": 0.56, "muscle": 0.55, "weight": 0.52, "race": {"african": 0.4, "caucasian": 0.55, "asian": 0.05}},
-        "skin": ("young_african_male", "young_caucasian_male", 0.72, (1.0, 0.95, 0.9)),
-        "proxy": None,
-        "hair": ("short02", (0.03, 0.025, 0.022)),
-        "eyebrows": "eyebrow001",
+
+def age_group(years):
+    if years < 13:
+        return "child"
+    if years < 20:
+        return "teen"
+    if years < 36:
+        return "young"
+    if years < 60:
+        return "middle"
+    return "elderly"
+
+
+def person(pid, sex, years, roles, **kw):
+    """One member of the cast. Keyword arguments override the defaults below.
+
+    tone: 0 (light-medium brown) to 1 (dark brown). face: a seed for small face differences.
+    clothes: MakeHuman garments, each {"asset", "colour" | "upper"/"lower", "split", "drop",
+    "prints", "pattern"}. garments: garments made here (see GARMENT BUILDERS). shoes:
+    "sandals", "barefoot" or a MakeHuman shoe asset.
+    """
+    assert set(roles) <= ROLES, roles
+    group = age_group(years)
+    male = sex == "male"
+    spec = {
+        "id": pid,
+        "file": f"people/{pid.replace('-', '_')}.glb",
+        "sex": sex,
+        "years": years,
+        "age": group,
+        "roles": list(roles),
+        "texture": 512,
+        "budget": 10000,
+        "proxy": "male1591" if male else "female1605",
+        "body": {"muscle": 0.5, "weight": 0.5, "height": 0.5, "proportions": 0.5},
+        "tone": 0.5,
+        "face": sum(map(ord, pid)),
+        "targets": {},
+        "hair": ("short02" if male else "braid01", BLACK_HAIR),
+        "eyebrows": "eyebrow001" if male else "eyebrow010",
         "eyelashes": True,
-        "moustache": (0.025, 0.02, 0.018),
-        "clothes": "male_casualsuit01",
-        "garments": {"upper": (0.62, 0.72, 0.84), "lower": (0.2, 0.19, 0.18)},
-        "split": "z",  # shirt and trousers told apart by height on this suit
+        "facial": [],
+        "facial_colour": None,
+        "bindi": None,
+        "clothes": [],
+        "garments": [],
         "shoes": "sandals",
-    },
-    {
-        # Older man: white shirt, grey trousers, grey hair and moustache, sandals.
-        "name": "elder",
-        "file": "people/elder.glb",
-        "texture": 512,
-        "budget": 10000,
-        "phenotype": {"age": 0.86, "muscle": 0.4, "weight": 0.55, "height": 0.38, "race": {"african": 0.5, "caucasian": 0.45, "asian": 0.05}},
-        "skin": ("old_african_male", "old_caucasian_male", 0.75, (1.0, 0.95, 0.9)),
-        "proxy": "male1591",
-        "hair": ("short04", (0.55, 0.55, 0.53)),
-        "eyebrows": "eyebrow001",
-        "eyelashes": False,
-        "moustache": (0.6, 0.6, 0.58),
-        "clothes": "male_casualsuit01",
-        "garments": {"upper": (0.9, 0.9, 0.87), "lower": (0.42, 0.41, 0.38)},
-        "split": "z",
-        "shoes": "sandals",
-    },
-    {
-        # Half-sleeve top and a checked lungi folded to the knee: the street-corner look.
-        "name": "lungi",
-        "file": "people/lungi.glb",
-        "texture": 512,
-        "budget": 10000,
-        "phenotype": {"age": 0.66, "muscle": 0.6, "weight": 0.45, "height": 0.42, "race": {"african": 0.6, "caucasian": 0.38, "asian": 0.02}},
-        "skin": ("young_african_male", "middleage_caucasian_male", 0.85, (0.95, 0.9, 0.86)),
-        "proxy": "male1591",
-        "hair": ("short04", (0.03, 0.025, 0.022)),
-        "eyebrows": "eyebrow001",
-        "eyelashes": False,
-        "moustache": (0.02, 0.018, 0.016),
-        "clothes": "male_casualsuit04",
-        "garments": {"upper": (0.86, 0.8, 0.6)},
-        "split": "uv",  # T-shirt in the top half of this suit's texture, jeans in the bottom half
-        "prints": True,  # paint out the printed logo and trims
-        "drop": "lower",  # the jeans are cut away; the lungi takes their place
-        "lungi": True,
-        "shoes": "sandals",
-    },
-    {
-        # Young man in a T-shirt and jeans with trainers.
-        "name": "tshirt",
-        "file": "people/tshirt.glb",
-        "texture": 512,
-        "budget": 10000,
-        "phenotype": {"age": 0.5, "muscle": 0.5, "weight": 0.48, "height": 0.5, "race": {"african": 0.35, "caucasian": 0.6, "asian": 0.05}},
-        "skin": ("young_african_male", "young_caucasian_male", 0.65, (1.0, 0.96, 0.9)),
-        "proxy": "male1591",
-        "hair": ("short02", (0.03, 0.025, 0.022)),
-        "eyebrows": "eyebrow001",
-        "eyelashes": False,
-        "moustache": None,
-        "clothes": "male_casualsuit06",
-        "garments": {"upper": (0.45, 0.1, 0.12)},
-        "split": "uv",
-        "prints": True,
-        "shoes": "shoes06",
-    },
-    {
-        # Working man: striped long-sleeve shirt, jeans, sandals.
-        "name": "worker",
-        "file": "people/worker.glb",
-        "texture": 512,
-        "budget": 10000,
-        "phenotype": {"age": 0.6, "muscle": 0.65, "weight": 0.42, "height": 0.47, "race": {"african": 0.55, "caucasian": 0.43, "asian": 0.02}},
-        "skin": ("young_african_male", "middleage_caucasian_male", 0.82, (0.97, 0.92, 0.88)),
-        "proxy": "male1591",
-        "hair": ("short04", (0.03, 0.025, 0.022)),
-        "eyebrows": "eyebrow001",
-        "eyelashes": False,
-        "moustache": (0.025, 0.02, 0.018),
-        "clothes": "male_casualsuit03",
-        "garments": {},
-        "split": "uv",
-        "shoes": "sandals",
-    },
+        "sandal_colours": (c("#2b1d12"), c("#5a3520")),
+    }
+    spec.update(kw)
+    if spec["facial_colour"] is None:
+        spec["facial_colour"] = spec["hair"][1] if group != "elderly" else SALT_PEPPER
+    return spec
+
+
+def shirt_trousers(shirt, trousers, pattern=None):
+    """Long-sleeved cotton shirt over trousers (MakeHuman male_casualsuit01, recoloured)."""
+    item = {"asset": "male_casualsuit01", "split": "z", "upper": shirt, "lower": trousers}
+    if pattern:
+        item["pattern"] = pattern
+    return [item]
+
+
+def shirt_only(shirt, pattern=None):
+    """The same shirt without the trousers (worn over a veshti or lungi)."""
+    item = {"asset": "male_casualsuit01", "split": "z", "upper": shirt, "drop": "lower"}
+    if pattern:
+        item["pattern"] = pattern
+    return [item]
+
+
+def tshirt(colour, asset="elvs_crude_t-shirt_male"):
+    return {"asset": asset, "colour": colour}
+
+
+def trousers(colour, asset="toigo_wool_pants"):
+    return {"asset": asset, "colour": colour}
+
+
+def jeans(colour=c("#2c3a55")):
+    """The jeans of male_casualsuit06 (its T-shirt dropped)."""
+    return {"asset": "male_casualsuit06", "split": "uv", "lower": colour, "drop": "upper"}
+
+
+def banian():
+    """Sleeveless cotton vest, the everyday undershirt worn on its own in the heat."""
+    return {"asset": "elvs_male_athletic_tank1", "colour": c("#efeee8")}
+
+
+def veshti(border=c("#b8902c"), length="ankle", colour=OFF_WHITE):
+    return {"kind": "tube", "texture": ("veshti", colour, border), "bottom": length, "flare": 0.05}
+
+
+def lungi(ground, stripes, length="ankle"):
+    return {"kind": "tube", "texture": ("check", ground, stripes), "bottom": length, "flare": 0.05}
+
+
+def saree(base, border, motif, blouse):
+    return [
+        {"kind": "region", "region": "blouse", "colour": blouse, "offset": 0.004},
+        {"kind": "tube", "texture": ("saree", base, border, motif), "bottom": "floor", "flare": 0.06, "pleats": True, "top": "navel"},
+        {"kind": "region", "region": "pallu", "texture": ("pallu", base, border, motif), "offset": 0.014},
+    ]
+
+
+def kurta(colour, length="knee", pattern=None, sleeves=0.75, slits=True):
+    return [
+        {"kind": "region", "region": "kurta_top", "colour": colour, "pattern": pattern, "offset": 0.008, "sleeves": sleeves},
+        {"kind": "tube", "texture": ("plain", colour, pattern), "top": "hip", "bottom": length, "flare": 0.04, "slits": slits},
+    ]
+
+
+def dupatta(colour, border=None):
+    return {"kind": "region", "region": "dupatta", "texture": ("dupatta", colour, border or colour), "offset": 0.02}
+
+
+def leggings(colour):
+    return {"kind": "region", "region": "leggings", "colour": colour, "offset": 0.003}
+
+
+def towel(colour=c("#e9e4d6"), stripe=c("#b23a3a")):
+    return {"kind": "region", "region": "towel", "texture": ("towel", colour, stripe), "offset": 0.022}
+
+
+def head_cloth(colour):
+    return {"kind": "region", "region": "headcloth", "colour": colour, "offset": 0.02}
+
+
+def police(sex):
+    """A generic khaki police uniform: shirt, trousers, belt, peaked cap. No insignia."""
+    items = shirt_trousers(KHAKI, KHAKI) if sex == "male" else [{"asset": "female_casualsuit01", "split": "uv", "upper": KHAKI, "lower": KHAKI, "prints": True}]
+    return items
+
+
+CAST = [
+    # ---------------------------------------------------------------- the player
+    person("player", "male", 32, [], file="player.glb", texture=1024, budget=30000, proxy=None,
+           body={"muscle": 0.55, "weight": 0.52, "height": 0.5, "proportions": 0.55}, tone=0.55,
+           facial=["moustache"], clothes=shirt_trousers(c("#a9bfd8"), c("#34302c"))),
+    # ---------------------------------------------------------------- men
+    person("man-shirt-young", "male", 26, ["pedestrian", "passenger"], tone=0.45,
+           facial=["moustache"], clothes=shirt_trousers(c("#d8d2c4"), c("#3b3a3f"), ("check", c("#8a9bb8"), 34))),
+    person("man-tshirt-young", "male", 23, ["pedestrian", "passenger", "college"], tone=0.6,
+           hair=("short04", BLACK_HAIR), facial=["stubble"], clothes=[tshirt(c("#3d5f73")), jeans()], shoes="shoes06"),
+    person("man-veshti-middle", "male", 46, ["pedestrian", "passenger", "shopkeeper"], tone=0.65,
+           body={"muscle": 0.45, "weight": 0.62, "height": 0.45, "proportions": 0.5}, facial=["moustache"],
+           clothes=shirt_only(c("#f1efe8")), garments=[veshti()]),
+    person("man-lungi-middle", "male", 44, ["pedestrian", "passenger"], tone=0.8,
+           body={"muscle": 0.55, "weight": 0.45, "height": 0.42, "proportions": 0.5}, hair=("short04", BLACK_HAIR), facial=["moustache", "stubble"],
+           clothes=[banian()], garments=[lungi(c("#1c2f6b"), [c("#2f7a50"), c("#e8e6dd")], "knee")]),
+    person("man-lungi-elderly", "male", 70, ["pedestrian", "passenger"], tone=0.75,
+           body={"muscle": 0.35, "weight": 0.4, "height": 0.38, "proportions": 0.45}, hair=("short04", GREY_HAIR), facial=["moustache", "beard"],
+           facial_colour=WHITE_HAIR, clothes=shirt_only(c("#c9d3d9")), garments=[lungi(c("#5b2e2a"), [c("#c9a24a"), c("#1f1f1f")])]),
+    person("man-veshti-elderly", "male", 72, ["pedestrian", "passenger"], tone=0.55,
+           body={"muscle": 0.35, "weight": 0.5, "height": 0.4, "proportions": 0.45}, hair=("short02", WHITE_HAIR), facial=["moustache"],
+           facial_colour=WHITE_HAIR, clothes=shirt_only(OFF_WHITE), garments=[veshti(c("#2e5e3a")), towel()]),
+    person("man-shirt-middle", "male", 48, ["pedestrian", "passenger", "shopkeeper"], tone=0.5,
+           body={"muscle": 0.45, "weight": 0.7, "height": 0.48, "proportions": 0.5}, facial=["moustache"],
+           clothes=shirt_trousers(c("#a7b89a"), c("#5a5346"))),
+    person("man-office-young", "male", 29, ["office", "pedestrian", "passenger"], tone=0.4,
+           body={"muscle": 0.5, "weight": 0.5, "height": 0.55, "proportions": 0.55}, facial=["moustache"],
+           clothes=shirt_trousers(c("#dfe7f2"), c("#2a2d36")), garments=[{"kind": "belt"}, {"kind": "idtag", "colour": c("#2f5d8a")}], shoes="shoes04"),
+    person("man-college", "male", 19, ["college", "pedestrian", "passenger"], tone=0.55,
+           body={"muscle": 0.45, "weight": 0.42, "height": 0.55, "proportions": 0.5}, hair=("short02", BLACK_HAIR), facial=["stubble"],
+           clothes=[{"asset": "male_casualsuit04", "split": "uv", "upper": c("#7a2531"), "lower": c("#2b3550"), "prints": True}], shoes="shoes06"),
+    person("teen-boy", "male", 16, ["pedestrian", "passenger"], tone=0.6,
+           body={"muscle": 0.4, "weight": 0.42, "height": 0.5, "proportions": 0.5}, hair=("short02", BLACK_HAIR),
+           clothes=[tshirt(c("#c98b2b")), trousers(c("#2f3a3f"), "cortu_cargo_pants")]),
+    person("boy-school", "male", 10, ["school"], tone=0.55, eyelashes=False,
+           body={"muscle": 0.45, "weight": 0.45, "height": 0.5, "proportions": 0.5}, hair=("short02", BLACK_HAIR),
+           clothes=shirt_trousers(c("#f2f2f0"), NAVY), shoes="shoes04"),
+    person("boy-casual", "male", 9, ["pedestrian"], tone=0.7, eyelashes=False,
+           body={"muscle": 0.45, "weight": 0.45, "height": 0.5, "proportions": 0.5}, hair=("short04", BLACK_HAIR),
+           clothes=[tshirt(c("#3f7f5a")), {"asset": "cortu_jeans_shorts", "colour": c("#3a4660")}]),
+    # ---------------------------------------------------------------- men at work
+    person("auto-driver", "male", 45, ["auto-driver"], tone=0.75,
+           body={"muscle": 0.5, "weight": 0.55, "height": 0.45, "proportions": 0.5}, facial=["moustache"],
+           clothes=shirt_trousers(KHAKI, c("#4a4a48"))),
+    person("auto-driver-lungi", "male", 52, ["auto-driver"], tone=0.85,
+           body={"muscle": 0.5, "weight": 0.48, "height": 0.42, "proportions": 0.5}, facial=["moustache", "stubble"],
+           clothes=shirt_only(KHAKI), garments=[lungi(c("#2c3d2f"), [c("#c8c2b0"), c("#7b2b2b")], "knee")]),
+    person("cab-driver", "male", 35, ["cab-driver", "pedestrian"], tone=0.5,
+           body={"muscle": 0.5, "weight": 0.55, "height": 0.5, "proportions": 0.5}, facial=["moustache"],
+           clothes=shirt_trousers(c("#e4e9ef"), c("#2b2d33"))),
+    person("traffic-police", "male", 40, ["traffic-police"], tone=0.65,
+           body={"muscle": 0.55, "weight": 0.55, "height": 0.55, "proportions": 0.5}, facial=["moustache"],
+           clothes=police("male"), garments=[{"kind": "belt", "colour": c("#2a2018")}, {"kind": "cap", "style": "peaked", "colour": c("#f0efea"), "band": c("#1f1f1f")}],
+           shoes="shoes04"),
+    person("police-officer", "male", 47, ["police"], tone=0.6,
+           body={"muscle": 0.55, "weight": 0.6, "height": 0.55, "proportions": 0.5}, facial=["moustache"],
+           clothes=police("male"), garments=[{"kind": "belt", "colour": c("#2a2018")}, {"kind": "cap", "style": "peaked", "colour": KHAKI_DARK, "band": c("#2a2018")}],
+           shoes="shoes04"),
+    person("vendor-lungi", "male", 50, ["vendor", "pedestrian"], tone=0.85,
+           body={"muscle": 0.5, "weight": 0.45, "height": 0.42, "proportions": 0.5}, facial=["moustache"], hair=("short04", SALT_PEPPER),
+           clothes=shirt_only(c("#8fa8a0")), garments=[lungi(c("#6d5a2f"), [c("#26353a"), c("#d8d0bb")], "knee"), towel(c("#dcd3b8"), c("#3c6f3c"))]),
+    person("tea-worker", "male", 34, ["tea-worker", "vendor"], tone=0.7,
+           body={"muscle": 0.5, "weight": 0.42, "height": 0.48, "proportions": 0.5}, facial=["moustache"],
+           clothes=[banian()], garments=[veshti(c("#7a2f2f"), "knee"), towel(c("#e9e4d6"), c("#2f4f8f"))]),
+    person("construction-worker", "male", 30, ["construction"], tone=0.9,
+           body={"muscle": 0.65, "weight": 0.4, "height": 0.48, "proportions": 0.5}, facial=["moustache", "stubble"],
+           clothes=shirt_only(c("#7d6e5c"), ("stripe", c("#5f5243"), 10)), garments=[lungi(c("#3a3a52"), [c("#9a8a6a"), c("#2b2b2b")], "knee"), head_cloth(c("#cfc6b2"))]),
+    person("construction-hardhat", "male", 41, ["construction"], tone=0.8,
+           body={"muscle": 0.6, "weight": 0.45, "height": 0.5, "proportions": 0.5}, facial=["moustache"], hair=("short04", BLACK_HAIR),
+           clothes=[banian(), trousers(c("#5c5a4f"), "cortu_cargo_pants")], garments=[{"kind": "hardhat", "colour": c("#e8c22a")}]),
+    person("delivery-rider", "male", 24, ["delivery", "pedestrian"], tone=0.55,
+           body={"muscle": 0.5, "weight": 0.45, "height": 0.52, "proportions": 0.5}, facial=["stubble"],
+           clothes=[tshirt(c("#2a8c86")), jeans()], shoes="shoes06"),
+    person("delivery-rider-2", "male", 28, ["delivery", "pedestrian"], tone=0.7,
+           body={"muscle": 0.5, "weight": 0.5, "height": 0.48, "proportions": 0.5}, facial=["moustache"], hair=("short04", BLACK_HAIR),
+           clothes=[tshirt(c("#6b3fa0")), jeans(c("#3a3f4a"))], shoes="shoes06"),
+    person("shopkeeper", "male", 56, ["shopkeeper", "vendor", "pedestrian"], tone=0.55,
+           body={"muscle": 0.4, "weight": 0.68, "height": 0.45, "proportions": 0.5}, facial=["moustache"], hair=("short02", SALT_PEPPER),
+           clothes=shirt_only(c("#f4f1e6")), garments=[veshti(c("#a07a2a"))]),
+    # ---------------------------------------------------------------- women
+    person("woman-saree-young", "female", 26, ["pedestrian", "passenger"], tone=0.5,
+           body={"muscle": 0.45, "weight": 0.48, "height": 0.45, "proportions": 0.55}, bindi=c("#8a1020"),
+           garments=saree(c("#1f6f6a"), c("#c9a13a"), c("#d9b85a"), c("#7a2a3a"))),
+    person("woman-saree-middle", "female", 45, ["pedestrian", "passenger", "vendor"], tone=0.7,
+           body={"muscle": 0.4, "weight": 0.62, "height": 0.4, "proportions": 0.5}, hair=("bun", BLACK_HAIR), bindi=c("#8a1020"),
+           garments=saree(c("#7d1f3a"), c("#2e5a2e"), c("#d4a73c"), c("#2e5a2e"))),
+    person("woman-saree-elderly", "female", 70, ["pedestrian", "passenger"], tone=0.65,
+           body={"muscle": 0.35, "weight": 0.5, "height": 0.35, "proportions": 0.45}, hair=("bun", GREY_HAIR), eyelashes=False,
+           garments=saree(c("#8a8f6e"), c("#5a2a2a"), c("#c7b27a"), c("#5a2a2a"))),
+    person("woman-salwar-young", "female", 23, ["pedestrian", "passenger", "college"], tone=0.45,
+           body={"muscle": 0.45, "weight": 0.45, "height": 0.5, "proportions": 0.55},
+           clothes=[{"asset": "toigo_harem_pants", "colour": c("#efe6d2")}],
+           garments=kurta(c("#b0466a"), "knee", ("dots", c("#f3d9a0"), 22)) + [dupatta(c("#efe6d2"), c("#b0466a"))]),
+    person("woman-chudidar", "female", 38, ["pedestrian", "passenger", "office"], tone=0.6,
+           body={"muscle": 0.45, "weight": 0.55, "height": 0.45, "proportions": 0.5}, bindi=c("#5a1020"),
+           garments=[leggings(c("#d8c7a3"))] + kurta(c("#2f5f8a"), "calf", ("stripe", c("#9fc0dd"), 14)) + [{"kind": "idtag", "colour": c("#8a2f2f")}]),
+    person("woman-kurti-jeans", "female", 21, ["college", "pedestrian", "passenger"], tone=0.4,
+           body={"muscle": 0.45, "weight": 0.42, "height": 0.52, "proportions": 0.55}, hair=("ponytail01", BLACK_HAIR),
+           clothes=[{"asset": "female_casualsuit01", "split": "uv", "lower": c("#33405e"), "drop": "upper"}],
+           garments=kurta(c("#e3b23c"), "thigh", ("dots", c("#a8452e"), 26), sleeves=0.5)),
+    person("woman-vendor", "female", 50, ["vendor", "pedestrian"], tone=0.85,
+           body={"muscle": 0.45, "weight": 0.5, "height": 0.38, "proportions": 0.5}, hair=("bun", DARK_HAIR), bindi=c("#8a1020"),
+           garments=saree(c("#3f5f2a"), c("#8a2a2a"), c("#c8a64a"), c("#8a2a2a"))),
+    person("woman-construction", "female", 34, ["construction"], tone=0.9,
+           body={"muscle": 0.55, "weight": 0.4, "height": 0.42, "proportions": 0.5},
+           garments=saree(c("#5a4a7a"), c("#2a2a2a"), c("#8a7aa0"), c("#7a3a2a")) + [head_cloth(c("#d6cdb6"))]),
+    person("woman-office", "female", 30, ["office", "pedestrian", "passenger"], tone=0.5,
+           body={"muscle": 0.45, "weight": 0.5, "height": 0.5, "proportions": 0.55}, hair=("bun", BLACK_HAIR),
+           garments=[leggings(c("#f0ece2"))] + kurta(c("#5d6f3a"), "calf", ("dots", c("#e8e0c0"), 30)) + [dupatta(c("#f0ece2")), {"kind": "idtag", "colour": c("#2f5d8a")}]),
+    person("woman-police", "female", 36, ["police", "traffic-police"], tone=0.6,
+           body={"muscle": 0.55, "weight": 0.5, "height": 0.52, "proportions": 0.5}, hair=("bun", BLACK_HAIR),
+           clothes=police("female"), garments=[{"kind": "belt", "colour": c("#2a2018")}, {"kind": "cap", "style": "beret", "colour": KHAKI_DARK}], shoes="shoes04"),
+    person("teen-girl", "female", 16, ["pedestrian", "passenger", "school"], tone=0.5,
+           body={"muscle": 0.4, "weight": 0.42, "height": 0.48, "proportions": 0.5},
+           clothes=[{"asset": "toigo_harem_pants", "colour": c("#1f3a5f")}],
+           garments=kurta(c("#f2f2f0"), "knee") + [dupatta(c("#1f3a5f"))]),
+    person("girl-school", "female", 10, ["school"], tone=0.55, eyelashes=False,
+           body={"muscle": 0.45, "weight": 0.45, "height": 0.5, "proportions": 0.5},
+           garments=[{"kind": "region", "region": "school_shirt", "colour": c("#f4f4f2"), "offset": 0.004},
+                     {"kind": "region", "region": "pinafore", "colour": NAVY, "offset": 0.01},
+                     {"kind": "tube", "texture": ("plain", NAVY, ("pleat", None, 24)), "top": "waist", "bottom": "knee", "flare": 0.09}],
+           shoes="shoes04"),
+    person("girl-pavadai", "female", 9, ["pedestrian"], tone=0.7, eyelashes=False,
+           body={"muscle": 0.45, "weight": 0.45, "height": 0.5, "proportions": 0.5}, bindi=c("#5a1020"),
+           clothes=[{"asset": "toigo_long_full_skirt", "colour": c("#b02a5a"), "border": c("#d9a832")}],
+           garments=[{"kind": "region", "region": "blouse_child", "colour": c("#d9a832"), "offset": 0.004}]),
 ]
 
-# Outfit atlas layout, in UV space (origin bottom-left): (u, v, size) of each square tile.
-TILES = {
-    "clothes": (0.0, 0.5, 0.5),
-    "hair": (0.5, 0.5, 0.5),
-    "shoes": (0.0, 0.25, 0.25),
-    "eyes": (0.25, 0.375, 0.125),
-    "eyebrows": (0.375, 0.375, 0.125),
-    "eyelashes": (0.25, 0.25, 0.125),
-    "lungi": (0.5, 0.0, 0.5),
+# ----------------------------------------------------------------------------------------------
+# Face: small, seeded differences on a South Indian base (no exaggeration).
+# ----------------------------------------------------------------------------------------------
+FACE_BASE = {
+    "nose-flaring-incr": 0.25,
+    "nose-scale-horiz-incr": 0.12,
+    "nose-point-width-incr": 0.15,
+    "mouth-lowerlip-volume-incr": 0.2,
+    "mouth-upperlip-volume-incr": 0.1,
+    "l-eye-scale-incr": 0.08,
+    "r-eye-scale-incr": 0.08,
+    "head-oval": 0.25,
 }
-# Flat colours for the modelled sandals, as tiny swatches inside the free corner of the atlas.
-SWATCHES = {"sole": ((0.375, 0.25), (0.11, 0.075, 0.05)), "strap": ((0.4375, 0.25), (0.3, 0.17, 0.09))}
-SWATCH_SIZE = 0.0625
+FACE_JITTER = ["nose-hump-incr", "nose-volume-incr", "nose-scale-vert-incr", "mouth-scale-horiz-incr", "chin-width-incr",
+               "chin-prominent-incr", "cheek-bones-incr", "head-square", "head-round", "eyebrows-trans-up", "l-eye-push1-out", "r-eye-push1-out"]
+
+
+def face_targets(spec):
+    rng = np.random.default_rng(spec["face"])
+    targets = dict(FACE_BASE)
+    for name in rng.choice(FACE_JITTER, size=5, replace=False):
+        targets[name] = round(float(rng.uniform(0.05, 0.35)), 3)
+    targets.update(spec["targets"])
+    return [{"target": k, "value": v} for k, v in targets.items()]
 
 
 # ----------------------------------------------------------------------------------------------
@@ -167,9 +384,8 @@ SWATCH_SIZE = 0.0625
 # ----------------------------------------------------------------------------------------------
 def load_mpfb():
     addon_utils.enable(MPFB, default_set=True)
-    module = sys.modules.get(MPFB)
-    if module is None:
-        sys.exit("MPFB is not installed: install the MPFB 2 extension into Blender (see assets/README.md).")
+    if sys.modules.get(MPFB) is None:
+        sys.exit("MPFB is not installed: install the MPFB 2 extension into Blender (see docs/characters.md).")
     from bl_ext.user_default.mpfb.services.assetservice import AssetService
     from bl_ext.user_default.mpfb.services.humanservice import HumanService
     if not AssetService.system_assets_pack_is_installed():
@@ -177,38 +393,63 @@ def load_mpfb():
     return HumanService
 
 
+def mpfb_info(obj):
+    from bl_ext.user_default.mpfb.entities.objectproperties import GeneralObjectProperties
+    from bl_ext.user_default.mpfb.services.objectservice import ObjectService
+    return ObjectService.get_object_type(obj), str(GeneralObjectProperties.get_value("asset_source", entity_reference=obj) or "")
+
+
 def clear():
     for obj in list(bpy.data.objects):
         bpy.data.objects.remove(obj, do_unlink=True)
-    for block in (bpy.data.meshes, bpy.data.materials, bpy.data.images, bpy.data.armatures, bpy.data.node_groups):
+    for block in (bpy.data.meshes, bpy.data.materials, bpy.data.images, bpy.data.armatures, bpy.data.node_groups, bpy.data.lights, bpy.data.cameras):
         for item in list(block):
             if item.users == 0:
                 block.remove(item)
 
 
+SKIN_AGE = {"child": "young", "teen": "young", "young": "young", "middle": "middleage", "elderly": "old"}
+
+
+def skin_sources(spec):
+    """Two CC0 skin textures (same UV layout) blended to the person's tone."""
+    age = SKIN_AGE[spec["age"]]
+    sex = "male" if spec["sex"] == "male" else "female"
+    return f"{age}_african_{sex}", f"{age}_caucasian_{sex}"
+
+
+def hair_asset(spec):
+    name = os.environ.get("CHAR_HAIR") or spec["hair"][0]
+    return {"bun": "rehmanpolanski_hair_bun_brown"}.get(name, name)
+
+
 def make_human(spec, human_service):
-    phenotype = dict(BASE_PHENOTYPE)
-    phenotype.update({k: v for k, v in spec["phenotype"].items() if k != "race"})
-    phenotype["race"] = spec["phenotype"]["race"]
-    clothes = [f"{spec['clothes']}/{spec['clothes']}.mhclo"]
-    if spec["shoes"] != "sandals":
+    t = spec["tone"]
+    african = 0.32 + 0.3 * t
+    phenotype = {"gender": 1.0 if spec["sex"] == "male" else 0.0, "age": age_macro(spec["years"]), "cupsize": 0.5, "firmness": 0.5,
+                 "race": {"african": african, "caucasian": 0.95 - african, "asian": 0.05}}
+    phenotype.update(spec["body"])
+    clothes = [f"{item['asset']}/{item['asset']}.mhclo" for item in spec["clothes"]]
+    if spec["shoes"] not in ("sandals", "barefoot"):
         clothes.append(f"{spec['shoes']}/{spec['shoes']}.mhclo")
+    hair = hair_asset(spec)
     info = {
-        "name": spec["name"],
+        "name": spec["id"],
         "phenotype": phenotype,
         "rig": "mixamo",
         "eyes": "low-poly/low-poly.mhclo",
         "eyebrows": f"{spec['eyebrows']}/{spec['eyebrows']}.mhclo",
         "eyelashes": "eyelashes01/eyelashes01.mhclo" if spec["eyelashes"] else "",
-        "hair": f"{spec['hair'][0]}/{spec['hair'][0]}.mhclo",
+        "hair": f"{hair}/{hair}.mhclo",
         "tongue": "",
         "teeth": "",
         "proxy": f"{spec['proxy']}/{spec['proxy']}.proxy" if spec["proxy"] else "",
         "clothes": clothes,
-        "skin_mhmat": f"{spec['skin'][0]}/{spec['skin'][0]}.mhmat",
+        "skin_mhmat": f"{skin_sources(spec)[0]}/{skin_sources(spec)[0]}.mhmat",
         "skin_material_type": "GAMEENGINE",
         "eyes_material_type": "MAKESKIN",
         "clothes_material_type": "MAKESKIN",
+        "targets": face_targets(spec),
     }
     settings = human_service.get_default_deserialization_settings()
     settings["subdiv_levels"] = 0
@@ -218,14 +459,17 @@ def make_human(spec, human_service):
     return basemesh, rig
 
 
-def image_path(obj, contains="diffuse"):
-    """The colour texture MPFB put on an object's material."""
-    paths = [n.image.filepath for m in obj.data.materials if m and m.node_tree for n in m.node_tree.nodes if n.type == "TEX_IMAGE" and n.image]
-    for path in paths:
-        name = os.path.basename(path).lower()
-        if contains in name or not any(k in name for k in ("normal", "_ao", "bump", "spec")):
-            return bpy.path.abspath(path)
-    raise RuntimeError(f"No colour texture on {obj.name}: {paths}")
+def colour_texture_path(obj):
+    """The colour texture MPFB put on an object's material (the node MPFB names diffuseTexture)."""
+    images = [n for m in obj.data.materials if m and m.node_tree for n in m.node_tree.nodes if n.type == "TEX_IMAGE" and n.image]
+    for node in images:
+        if node.name.lower() == "diffusetexture":
+            return bpy.path.abspath(node.image.filepath)
+    for node in images:
+        name = os.path.basename(node.image.filepath).lower()
+        if not any(k in name for k in ("normal", "nrm", "_ao", "bump", "spec", "height", "rough")):
+            return bpy.path.abspath(node.image.filepath)
+    raise RuntimeError(f"No colour texture on {obj.name}")
 
 
 def bake(obj):
@@ -266,15 +510,27 @@ def write_image(pixels, path, name):
     return img
 
 
+def resized(pixels, n):
+    if pixels.shape[0] == n:
+        return pixels
+    img = bpy.data.images.new("resize", pixels.shape[1], pixels.shape[0], alpha=True, float_buffer=True)
+    img.pixels.foreach_set(pixels.astype(np.float32).ravel())
+    img.scale(n, n)
+    out = np.empty(n * n * 4, np.float32)
+    img.pixels.foreach_get(out)
+    bpy.data.images.remove(img)
+    return out.reshape(n, n, 4)
+
+
 def blur(a, radius):
     """Box blur over the first two axes (cumulative sums), edges clamped."""
     out = a.astype(np.float32)
     for axis in (0, 1):
         pad = [(0, 0)] * out.ndim
         pad[axis] = (radius + 1, radius)
-        c = np.cumsum(np.pad(out, pad, mode="edge"), axis=axis)
+        cs = np.cumsum(np.pad(out, pad, mode="edge"), axis=axis)
         n = out.shape[axis]
-        out = (np.take(c, range(2 * radius + 1, 2 * radius + 1 + n), axis=axis) - np.take(c, range(0, n), axis=axis)) / (2 * radius + 1)
+        out = (np.take(cs, range(2 * radius + 1, 2 * radius + 1 + n), axis=axis) - np.take(cs, range(0, n), axis=axis)) / (2 * radius + 1)
     return out
 
 
@@ -290,45 +546,69 @@ def dilate(mask, steps):
     return out
 
 
-def uv_mask(obj, size, keep):
-    """Pixels covered by the faces for which keep(world_centre, uv_centre) is true."""
-    mask = np.zeros((size, size), bool)
+def raster(obj, size, faces=None, values=None):
+    """Rasterise faces into UV space. Without `values`: a coverage mask. With `values` (one per
+    vertex): the value interpolated across each face (max where faces overlap)."""
+    mask = np.zeros((size, size), bool) if values is None else np.zeros((size, size), np.float32)
     uv_layer = obj.data.uv_layers.active.data
-    world = obj.matrix_world
-    for poly in obj.data.polygons:
-        uvs = [Vector(uv_layer[i].uv) for i in poly.loop_indices]
-        if not keep(world @ poly.center, sum(uvs, Vector((0, 0))) / len(uvs)):
+    polys = obj.data.polygons if faces is None else [obj.data.polygons[i] for i in faces]
+    for poly in polys:
+        loops = list(poly.loop_indices)
+        uvs = [np.array(uv_layer[i].uv) * size for i in loops]
+        vals = [values[obj.data.loops[i].vertex_index] for i in loops] if values is not None else None
+        if vals is not None and max(vals) <= 0:
             continue
-        pts = [np.array((uv.x * size, uv.y * size)) for uv in uvs]
-        for k in range(1, len(pts) - 1):
-            a, b, c = pts[0], pts[k], pts[k + 1]
-            x0, x1 = int(max(0, min(a[0], b[0], c[0]))), int(min(size - 1, max(a[0], b[0], c[0]) + 1))
-            y0, y1 = int(max(0, min(a[1], b[1], c[1]))), int(min(size - 1, max(a[1], b[1], c[1]) + 1))
+        for k in range(1, len(uvs) - 1):
+            a, b, cc = uvs[0], uvs[k], uvs[k + 1]
+            x0, x1 = int(max(0, min(a[0], b[0], cc[0]))), int(min(size - 1, max(a[0], b[0], cc[0]) + 1))
+            y0, y1 = int(max(0, min(a[1], b[1], cc[1]))), int(min(size - 1, max(a[1], b[1], cc[1]) + 1))
             if x1 < x0 or y1 < y0:
                 continue
             ys, xs = np.mgrid[y0:y1 + 1, x0:x1 + 1]
             px, py = xs + 0.5, ys + 0.5
-            d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1])
+            d = (b[1] - cc[1]) * (a[0] - cc[0]) + (cc[0] - b[0]) * (a[1] - cc[1])
             if abs(d) < 1e-9:
                 continue
-            l1 = ((b[1] - c[1]) * (px - c[0]) + (c[0] - b[0]) * (py - c[1])) / d
-            l2 = ((c[1] - a[1]) * (px - c[0]) + (a[0] - c[0]) * (py - c[1])) / d
-            inside = (l1 >= -0.02) & (l2 >= -0.02) & (1 - l1 - l2 >= -0.02)
-            mask[y0:y1 + 1, x0:x1 + 1] |= inside
-    return dilate(mask, 2)
+            l1 = ((b[1] - cc[1]) * (px - cc[0]) + (cc[0] - b[0]) * (py - cc[1])) / d
+            l2 = ((cc[1] - a[1]) * (px - cc[0]) + (a[0] - cc[0]) * (py - cc[1])) / d
+            l3 = 1 - l1 - l2
+            inside = (l1 >= -0.02) & (l2 >= -0.02) & (l3 >= -0.02)
+            if vals is None:
+                mask[y0:y1 + 1, x0:x1 + 1] |= inside
+            else:
+                v = np.clip(l1, 0, 1) * vals[0] + np.clip(l2, 0, 1) * vals[k] + np.clip(l3, 0, 1) * vals[k + 1]
+                region = mask[y0:y1 + 1, x0:x1 + 1]
+                np.maximum(region, np.where(inside, v, 0), out=region)
+    return dilate(mask, 2) if values is None else mask
+
+
+def uv_mask(obj, size, keep):
+    """Pixels covered by the faces for which keep(world_centre, uv_centre) is true."""
+    uv_layer = obj.data.uv_layers.active.data
+    world = obj.matrix_world
+    faces = []
+    for poly in obj.data.polygons:
+        uvs = [Vector(uv_layer[i].uv) for i in poly.loop_indices]
+        if keep(world @ poly.center, sum(uvs, Vector((0, 0))) / len(uvs)):
+            faces.append(poly.index)
+    return raster(obj, size, faces)
 
 
 def recolour(pixels, mask, colour):
     """Dye a garment: keep the fabric's light and shade (folds, weave), change its colour."""
+    if not mask.any():
+        return
     lum = pixels[..., :3] @ LUMA
     middle = float(np.median(lum[mask]))
-    shade = np.clip(lum / max(middle, 1e-3), 0.25, 1.35)
+    shade = np.clip(lum / max(middle, 1e-3), 0.3, 1.3)
     pixels[mask, :3] = np.array(colour, np.float32)[None, :] * shade[mask, None]
 
 
 def paint_out_prints(pixels, mask, threshold=0.22):
-    """Remove printed logos and trims from a garment: pixels far from the fabric's own colour
-    are filled from the surrounding cloth."""
+    """Remove printed logos and trims: pixels far from the fabric's own colour are filled from
+    the surrounding cloth."""
+    if not mask.any():
+        return
     colour = np.median(pixels[mask, :3], axis=0)
     off = (np.linalg.norm(pixels[..., :3] - colour, axis=2) > threshold) & mask
     off = dilate(off, 3)
@@ -339,50 +619,178 @@ def paint_out_prints(pixels, mask, threshold=0.22):
     pixels[still, :3] = colour
 
 
-def skin_texture(spec, body, size):
-    first, second, mix, tone = spec["skin"]
+def pattern_layer(size, pattern):
+    """A woven pattern as a multiplier/overlay over a recoloured garment: (colour, weight) maps."""
+    kind, colour, repeat = pattern
+    coords = (np.arange(size) + 0.5) / size
+    phase = (coords * repeat) % 1.0
+    weight = np.zeros((size, size), np.float32)
+    if kind == "stripe":
+        weight[:] = ((phase > 0.0) & (phase < 0.22))[None, :]
+    elif kind == "check":
+        band = ((phase > 0.0) & (phase < 0.25)).astype(np.float32)
+        weight = np.maximum(band[None, :], band[:, None]) * 0.75
+    elif kind == "dots":
+        y, x = np.meshgrid(phase, phase, indexing="ij")
+        offset = (np.floor(coords * repeat)[:, None] % 2) * 0.5
+        x = (x + offset) % 1.0
+        weight = (((x - 0.5) ** 2 + (y - 0.5) ** 2) < 0.045).astype(np.float32)
+    elif kind == "pleat":
+        weight = (0.5 + 0.5 * np.cos(phase * 2 * math.pi))[None, :].repeat(size, 0) * 0.35
+        return np.zeros(3, np.float32), weight  # darkening only
+    return np.array(colour, np.float32), weight
+
+
+def apply_pattern(pixels, mask, pattern):
+    if not pattern:
+        return
+    colour, weight = pattern_layer(pixels.shape[0], pattern)
+    w = (weight * mask)[..., None]
+    if pattern[0] == "pleat":
+        pixels[..., :3] *= 1 - w
+    else:
+        pixels[..., :3] = pixels[..., :3] * (1 - w) + colour * w
+
+
+def weave(size, colour, seed=3, strength=0.07):
+    """Plain cotton: a flat colour with a faint weave and slub."""
+    rng = np.random.default_rng(seed)
+    noise = blur(rng.random((size, size)).astype(np.float32), 1)
+    rows = blur(rng.random((size, 1)).astype(np.float32).repeat(size, 1), 1)
+    shade = 1 - strength + strength * (0.6 * noise + 0.4 * rows) * 2
+    pixels = np.ones((size, size, 4), np.float32)
+    pixels[..., :3] = np.array(colour, np.float32) * np.clip(shade, 0.8, 1.1)[..., None]
+    return pixels
+
+
+# ----------------------------------------------------------------------------------------------
+# Procedural fabric textures, each for a tile with UV (u across/around, v up)
+# ----------------------------------------------------------------------------------------------
+def fabric(spec_tex, size):
+    kind = spec_tex[0]
+    coords = (np.arange(size) + 0.5) / size
+    if kind == "plain":
+        _, colour, pattern = spec_tex
+        pixels = weave(size, colour)
+        apply_pattern(pixels, np.ones((size, size), np.float32), pattern)
+        return pixels
+    if kind == "check":
+        # An original madras-style check: ground colour, wide and thin stripes both ways.
+        _, ground, stripes = spec_tex
+        pixels = weave(size, ground, strength=0.05)
+        phase = (coords * 9) % 1.0
+        for (lo, hi), colour in zip(((0.08, 0.3), (0.55, 0.6)), stripes):
+            band = ((phase > lo) & (phase < hi)).astype(np.float32)
+            for w in (band[None, :, None], band[:, None, None]):
+                pixels[..., :3] = pixels[..., :3] * (1 - 0.5 * w) + np.array(colour, np.float32) * 0.5 * w
+        return pixels
+    if kind == "veshti":
+        # Off-white cotton with a thin coloured border along the hem and the front edge.
+        _, base, border = spec_tex
+        pixels = weave(size, base, strength=0.05)
+        v = coords[:, None].repeat(size, 1)
+        u = coords[None, :].repeat(size, 0)
+        band = ((v > 0.03) & (v < 0.075)) | ((u > 0.012) & (u < 0.03)) | ((u > 0.97) & (u < 0.988))
+        line = (v > 0.09) & (v < 0.1)
+        pixels[band, :3] = np.array(border, np.float32)
+        pixels[line, :3] = np.array(border, np.float32) * 0.9 + 0.1
+        return pixels
+    if kind == "saree":
+        # Body colour with small woven motifs, a broad border at the hem and a thin zari line.
+        _, base, border, motif = spec_tex
+        pixels = weave(size, base, strength=0.06)
+        apply_pattern(pixels, np.ones((size, size), np.float32), ("dots", motif, 36))
+        v = coords[:, None].repeat(size, 1)
+        pixels[(v < 0.11), :3] = np.array(border, np.float32)
+        pixels[(v > 0.115) & (v < 0.125), :3] = np.array(motif, np.float32)
+        pixels[(v > 0.02) & (v < 0.03), :3] = np.array(motif, np.float32)
+        return pixels
+    if kind == "pallu":
+        # The end of the saree that goes over the shoulder: borders along both long edges.
+        _, base, border, motif = spec_tex
+        pixels = weave(size, base, strength=0.06)
+        apply_pattern(pixels, np.ones((size, size), np.float32), ("dots", motif, 20))
+        u = coords[None, :].repeat(size, 0)
+        edge = (u < 0.07) | (u > 0.93)
+        pixels[edge, :3] = np.array(border, np.float32)
+        pixels[((u > 0.075) & (u < 0.09)) | ((u > 0.91) & (u < 0.925)), :3] = np.array(motif, np.float32)
+        return pixels
+    if kind == "dupatta":
+        _, base, border = spec_tex
+        pixels = weave(size, base, strength=0.04)
+        u = coords[None, :].repeat(size, 0)
+        pixels[(u < 0.06) | (u > 0.94), :3] = np.array(border, np.float32)
+        return pixels
+    if kind == "towel":
+        # A thin cotton towel (thundu): off-white with a coloured stripe near each end.
+        _, base, stripe = spec_tex
+        pixels = weave(size, base, strength=0.08)
+        v = coords[:, None].repeat(size, 1)
+        pixels[((v > 0.04) & (v < 0.07)) | ((v > 0.93) & (v < 0.96)), :3] = np.array(stripe, np.float32)
+        return pixels
+    raise ValueError(kind)
+
+
+# ----------------------------------------------------------------------------------------------
+# Skin: blend, tone, facial hair, bindi
+# ----------------------------------------------------------------------------------------------
+def skin_texture(spec, body, size, landmarks):
     from bl_ext.user_default.mpfb.services.assetservice import AssetService
     paths = []
-    for skin in (first, second):
+    for skin in skin_sources(spec):
         mhmat = AssetService.find_asset_absolute_path(f"{skin}/{skin}.mhmat", "skins")
         folder = os.path.dirname(mhmat)
         texture = next(f for f in sorted(os.listdir(folder)) if f.endswith(".png") and "diffuse" in f)
         paths.append(os.path.join(folder, texture))
     a, b = read_image(paths[0], size), read_image(paths[1], size)
+    t = spec["tone"]
+    # Light-medium (t = 0) to dark brown (t = 1): more of the darker texture, warmer and deeper.
+    mix = 0.42 + 0.4 * t
     pixels = a * mix + b * (1 - mix)
-    pixels[..., :3] *= np.array(tone, np.float32)
+    pixels[..., :3] *= np.array((1.0, 0.94, 0.86), np.float32) * (1.0 - 0.1 * t)
     pixels[..., 3] = 1
-    if spec["moustache"]:
-        paint_moustache(pixels, body, size, spec["moustache"])
+    colour = spec["facial_colour"]
+    if "stubble" in spec["facial"] or "beard" in spec["facial"]:
+        paint_beard(pixels, body, size, landmarks, colour, full="beard" in spec["facial"])
+    if "moustache" in spec["facial"]:
+        paint_moustache(pixels, body, size, colour)
+    if spec["bindi"]:
+        paint_bindi(pixels, body, size, landmarks, spec["bindi"])
     return pixels
 
 
-def paint_moustache(pixels, body, size, colour):
-    """A trimmed moustache painted on the skin above the upper lip. The shape is drawn in the
-    texture around three landmarks of MakeHuman's "lips" vertex group (the middle of the upper
-    lip and the two mouth corners), so it follows the face whatever the proportions."""
+def face_frame(body):
+    """Mouth landmarks from MakeHuman's "lips" vertex group: corners and the front of the lips."""
     lips = body.vertex_groups.get("lips")
     if lips is None:
-        print("No lips vertex group on", body.name, "- moustache skipped")
-        return
+        return None
     world = body.matrix_world
     ids = [v.index for v in body.data.vertices if any(g.group == lips.index and g.weight > 0.5 for g in v.groups)]
     pos = {i: world @ body.data.vertices[i].co for i in ids}
-    # Only the outside of the lips (the group also covers the inside of the mouth).
     front = min(p.y for p in pos.values())
     ids = [i for i in ids if pos[i].y < front + 0.022]
+    left = max(ids, key=lambda i: pos[i].x)
+    right = min(ids, key=lambda i: pos[i].x)
+    return {"ids": ids, "pos": pos, "left": left, "right": right, "front": front}
+
+
+def paint_moustache(pixels, body, size, colour):
+    """A trimmed moustache painted on the skin above the upper lip, drawn in the texture around
+    the mouth corners and the middle of the upper lip, so it follows the face whatever the
+    proportions."""
+    frame = face_frame(body)
+    if frame is None:
+        print("No lips vertex group on", body.name, "- moustache skipped")
+        return
+    ids, pos, left, right = frame["ids"], frame["pos"], frame["left"], frame["right"]
     uv_layer = body.data.uv_layers.active.data
     loops_of = {}
     for loop in body.data.loops:
         if loop.vertex_index in pos:
             loops_of.setdefault(loop.vertex_index, []).append(np.array(uv_layer[loop.index].uv) * size)
-    left = max(ids, key=lambda i: pos[i].x)
-    right = min(ids, key=lambda i: pos[i].x)
-    l, r = loops_of[left][0], loops_of[right][0]
-    # Map face space (x across, z up) to texture pixels with a least-squares fit over the lip
-    # vertices; seam copies far from the mouth are left out.
-    mid = (l + r) / 2
-    reach = 3 * np.linalg.norm(l - r)
+    lp, rp = loops_of[left][0], loops_of[right][0]
+    mid = (lp + rp) / 2
+    reach = 3 * np.linalg.norm(lp - rp)
     rows_a, rows_b = [], []
     for i in ids:
         uv = min(loops_of[i], key=lambda q: np.linalg.norm(q - mid))
@@ -394,16 +802,15 @@ def paint_moustache(pixels, body, size, colour):
     corner_x = (pos[left].x - pos[right].x) / 2
     corner_z = (pos[left].z + pos[right].z) / 2
     middle_z = max(pos[i].z for i in ids if abs(pos[i].x) < corner_x * 0.15)
-    middle_z = min(middle_z, corner_z + 0.005)  # some lip groups reach up into the philtrum
+    middle_z = min(middle_z, corner_z + 0.005)
     rows, cols = np.mgrid[0:size, 0:size]
     rel = np.stack((cols + 0.5, rows + 0.5), axis=-1) - fit[2]
     face = rel @ to_face.T
     s = face[..., 0] / (corner_x * 1.12)
     z = face[..., 1]
-    # Lower edge follows the top of the upper lip; about 9 mm deep, a little thinner at the ends.
     lower = corner_z + (middle_z - corner_z) * np.clip(1 - s * s, 0, 1) - 0.0015
     upper = lower + 0.0095 * (1 - 0.3 * s * s)
-    edge = max(0.0012, 1.5 * corner_x / max(1.0, np.linalg.norm(l - r)))
+    edge = max(0.0012, 1.5 * corner_x / max(1.0, np.linalg.norm(lp - rp)))
     inside = np.clip((z - lower) / edge, 0, 1) * np.clip((upper - z) / edge, 0, 1) * np.clip((1.05 - np.abs(s)) / 0.12, 0, 1)
     rng = np.random.default_rng(7)
     strands = blur(rng.random((size, size)).astype(np.float32), 1)
@@ -412,119 +819,624 @@ def paint_moustache(pixels, body, size, colour):
     pixels[..., :3] = pixels[..., :3] * (1 - alpha) + np.array(colour, np.float32) * alpha
 
 
-def lungi_texture(size):
-    """An original madras-style check: indigo ground, green and white stripes, both ways."""
-    ground = np.array((0.09, 0.14, 0.33), np.float32)
-    green = np.array((0.12, 0.42, 0.28), np.float32)
-    white = np.array((0.85, 0.85, 0.8), np.float32)
-    coords = np.arange(size) / size
-    repeat = 8
-    phase = (coords * repeat) % 1.0
+def paint_beard(pixels, body, size, landmarks, colour, full):
+    """Stubble or a short trimmed beard: a value per head vertex (jaw, chin, cheeks below the
+    cheekbone, in front of the ears; not the lips) interpolated across the skin texture."""
+    frame = face_frame(body)
+    if frame is None:
+        return
+    pos = frame["pos"]
+    mouth = (pos[frame["left"]] + pos[frame["right"]]) / 2
+    half = (pos[frame["left"]].x - pos[frame["right"]].x) / 2
+    world = body.matrix_world
+    values = np.zeros(len(body.data.vertices), np.float32)
+    for v in body.data.vertices:
+        p = world @ v.co
+        if p.z < landmarks["Neck"].z - 0.01 or p.z > mouth.z + 0.06 or p.y > landmarks["Head"].y + 0.01:
+            continue
+        side = abs(p.x - mouth.x)
+        # Upper edge rises from the moustache line towards the sideburns.
+        top = mouth.z + 0.012 + 0.03 * min(1.0, side / 0.07)
+        under = (mouth.z - 0.03) - p.z  # below the chin line: fades down the throat
+        value = min(1.0, (top - p.z) / 0.01)
+        if under > 0:
+            value *= max(0.0, 1 - under / 0.035)
+        lips = ((p.x - mouth.x) / (half * 1.15)) ** 2 + ((p.z - mouth.z) / 0.011) ** 2
+        if lips < 1:
+            value = 0
+        if side > 0.055:
+            value *= max(0.0, 1 - (side - 0.055) / 0.02)
+        values[v.index] = max(0.0, value)
+    field = raster(body, size, None, values)
+    field = blur(field, 2)
+    rng = np.random.default_rng(5)
+    grain = blur(rng.random((size, size)).astype(np.float32), 1)
+    alpha = np.clip(field * ((0.78 if full else 0.32) + (0.15 if full else 0.2) * (grain - 0.5) * 2), 0, 0.9)[..., None]
+    pixels[..., :3] = pixels[..., :3] * (1 - alpha) + np.array(colour, np.float32) * alpha
 
-    def stripes(p):
-        band = np.zeros(p.shape + (3,), np.float32)
-        weight = np.zeros(p.shape, np.float32)
-        wide = (p > 0.1) & (p < 0.28)
-        thin = ((p > 0.55) & (p < 0.58)) | ((p > 0.62) & (p < 0.65))
-        band[wide] = green
-        weight[wide] = 1
-        band[thin] = white
-        weight[thin] = 1
-        return band, weight
 
-    bu, wu = stripes(phase)
-    pixels = np.empty((size, size, 4), np.float32)
-    pixels[..., :3] = ground
-    # Crossing threads mix where the stripes meet.
-    for band, weight, axis in ((bu, wu, 1), (bu, wu, 0)):
-        b = band[None, :, :] if axis == 1 else band[:, None, :]
-        w = weight[None, :] if axis == 1 else weight[:, None]
-        pixels[..., :3] = pixels[..., :3] * (1 - 0.5 * w[..., None]) + b * 0.5 * w[..., None]
-    rng = np.random.default_rng(11)
-    pixels[..., :3] *= (0.92 + 0.08 * rng.random((size, size)))[..., None]
-    pixels[..., 3] = 1
-    return pixels
+def uv_at(obj, point, direction=Vector((0, 1, 0))):
+    """The UV coordinate of the surface point hit by a ray (world space), or None."""
+    tree = body_bvh(obj)
+    hit, _, index, _ = tree.ray_cast(point, direction)
+    if hit is None:
+        return None
+    world = obj.matrix_world
+    poly = obj.data.polygons[index]
+    uv_layer = obj.data.uv_layers.active.data
+    corners = [(world @ obj.data.vertices[obj.data.loops[li].vertex_index].co, np.array(uv_layer[li].uv)) for li in poly.loop_indices]
+    weights = np.array([1 / max(1e-5, (p - hit).length) ** 2 for p, _ in corners])
+    weights /= weights.sum()
+    return sum(w * uv for w, (_, uv) in zip(weights, corners))
+
+
+def paint_bindi(pixels, body, size, landmarks, colour):
+    """A small dot between the eyebrows."""
+    uv = uv_at(body, Vector((0, -1.0, landmarks["brow_z"] - 0.004)))
+    if uv is None:
+        return
+    rows, cols = np.mgrid[0:size, 0:size]
+    r = np.hypot(cols + 0.5 - uv[0] * size, rows + 0.5 - uv[1] * size)
+    radius = max(1.2, size / 512 * 1.5)
+    alpha = np.clip((radius - r) / 0.8, 0, 1)[..., None] * 0.95
+    pixels[..., :3] = pixels[..., :3] * (1 - alpha) + np.array(colour, np.float32) * alpha
 
 
 # ----------------------------------------------------------------------------------------------
-# Garments modelled here
+# Body geometry helpers
 # ----------------------------------------------------------------------------------------------
 def bone_head(rig, name):
     return rig.matrix_world @ rig.data.bones["mixamorig:" + name].head_local
 
 
-def make_lungi(rig, body, collection):
-    """A cloth tube wrapped from the waist to just below the knee, weighted to the hips and thighs."""
-    hips = bone_head(rig, "Hips")
-    knee = bone_head(rig, "LeftLeg")
-    top, bottom = hips.z + 0.06, knee.z - 0.06
+def bone_tail(rig, name):
+    return rig.matrix_world @ rig.data.bones["mixamorig:" + name].tail_local
+
+
+ARM_BONES = {"LeftArm", "RightArm", "LeftForeArm", "RightForeArm", "LeftHand", "RightHand"}
+
+
+def dominant_bones(obj):
+    """For every vertex, the bone (without the mixamorig: prefix) with the largest weight."""
+    names = {g.index: g.name.split(":")[-1] for g in obj.vertex_groups if g.name.startswith("mixamorig:")}
+    out = []
+    for v in obj.data.vertices:
+        best, weight = "", 0.0
+        for g in v.groups:
+            if g.group in names and g.weight > weight:
+                best, weight = names[g.group], g.weight
+        if "Hand" in best and best not in ("LeftHand", "RightHand"):
+            best = "LeftHand" if best.startswith("Left") else "RightHand"
+        out.append(best)
+    return out
+
+
+def measure_landmarks(rig, body, eyes):
+    lm = {name: bone_head(rig, name) for name in ("Hips", "Spine", "Spine1", "Spine2", "Neck", "Head", "LeftShoulder", "RightShoulder",
+                                                  "LeftArm", "RightArm", "LeftForeArm", "RightForeArm", "LeftHand", "RightHand",
+                                                  "LeftUpLeg", "RightUpLeg", "LeftLeg", "RightLeg", "LeftFoot", "RightFoot", "LeftToeBase")}
     world = body.matrix_world
-    # Legs and hips only: the hands hang beside the thighs in the rest pose.
-    verts = [p for p in (world @ v.co for v in body.data.vertices) if abs(p.x) < 0.25]
-    rings, segments = 9, 28
-    mesh_verts, uvs_by_vert, weights = [], [], []
-    widest = (0.0, 0.0)
+    bones = dominant_bones(body)
+    pts = [world @ v.co for v in body.data.vertices]
+    head = [p for p, b in zip(pts, bones) if b == "Head"]
+    lm["top"] = max(p.z for p in pts)
+    lm["head"] = Vector((0, min(p.y for p in head), lm["Head"].z))  # y: the front of the face
+    lm["head_back"] = max(p.y for p in head)
+    lm["head_half"] = max(abs(p.x) for p in head)
+    # Eyebrows sit a little above the eyes.
+    lm["brow_z"] = sum((eyes.matrix_world @ v.co).z for v in eyes.data.vertices) / len(eyes.data.vertices) + 0.022
+    torso = [p for p, b in zip(pts, bones) if b in ("Spine", "Spine1", "Spine2", "Hips")]
+    lm["waist"] = (lm["Spine"].z + lm["Hips"].z) / 2 + 0.04
+    lm["chest_front"] = min(p.y for p in torso if abs(p.z - lm["Spine2"].z) < 0.06)
+    lm["height"] = lm["top"]
+    return lm
+
+
+def body_bvh(obj):
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.transform(obj.matrix_world)
+    tree = BVHTree.FromBMesh(bm)
+    bm.free()
+    return tree
+
+
+def new_object(name, mesh, rig, collection):
+    obj = bpy.data.objects.new(name, mesh)
+    collection.objects.link(obj)
+    obj.parent = rig
+    obj.modifiers.new("Armature", "ARMATURE").object = rig
+    return obj
+
+
+def weights_from_body(obj, body, mapping="POLYINTERP_NEAREST"):
+    """Give a garment the body's skin weights at the nearest point of the body surface."""
+    for group in body.vertex_groups:
+        if group.name.startswith("mixamorig:") and not obj.vertex_groups.get(group.name):
+            obj.vertex_groups.new(name=group.name)
+    transfer = obj.modifiers.new("weights", "DATA_TRANSFER")
+    transfer.object = body
+    transfer.use_vert_data = True
+    transfer.data_types_verts = {"VGROUP_WEIGHTS"}
+    transfer.vert_mapping = mapping
+    transfer.layers_vgroup_select_src = "ALL"
+    transfer.layers_vgroup_select_dst = "NAME"
+    bpy.context.view_layer.objects.active = obj
+    with bpy.context.temp_override(object=obj, active_object=obj):
+        bpy.ops.object.modifier_move_to_index(modifier=transfer.name, index=0)
+        bpy.ops.object.modifier_apply(modifier=transfer.name)
+
+
+def set_weights(obj, weights):
+    for vi, w in enumerate(weights):
+        for bone, value in w.items():
+            if value <= 1e-4:
+                continue
+            group = obj.vertex_groups.get("mixamorig:" + bone) or obj.vertex_groups.new(name="mixamorig:" + bone)
+            group.add([vi], value, "REPLACE")
+
+
+# ----------------------------------------------------------------------------------------------
+# GARMENT BUILDERS
+# ----------------------------------------------------------------------------------------------
+TUBE_TOPS = {"navel": lambda lm: lm["Hips"].z + 0.075, "waist": lambda lm: lm["Hips"].z + 0.06, "hip": lambda lm: lm["Hips"].z - 0.02}
+
+
+def tube_bottom(lm, name):
+    knee = lm["LeftLeg"].z
+    ankle = lm["LeftFoot"].z
+    return {
+        "thigh": knee + 0.18,
+        "knee": knee - 0.05,
+        "calf": knee - 0.25 * (knee - ankle),
+        "ankle": ankle + 0.03,
+        "floor": 0.025,
+    }[name]
+
+
+def make_tube(rig, body, collection, lm, g, name):
+    """A cloth tube from the waist down: lungi, veshti, saree skirt, kurta skirt, pinafore skirt.
+    Rings are fitted round the hips and legs at each height (never narrower than the ring above:
+    cloth hangs). Weighted to the hips at the top, to each thigh lower down (left/right split
+    across the middle) and partly to the shins below the knee, so it follows the legs."""
+    top = TUBE_TOPS[g.get("top", "waist")](lm)
+    bottom = tube_bottom(lm, g["bottom"])
+    knee = lm["LeftLeg"].z
+    hips_z = lm["Hips"].z
+    world = body.matrix_world
+    bones = dominant_bones(body)
+    verts = [world @ v.co for v, b in zip(body.data.vertices, bones) if b not in ARM_BONES]
+    rings = max(4, int((top - bottom) / 0.07) + 2)
+    segments = 32
+    long = bottom < knee - 0.1
+    mesh_verts, uvs, weights = [], [], []
+    pleats = g.get("pleats", False)
+    # Pass 1: an ellipse round the body at each height.
+    fits = []
     for r in range(rings):
-        t = r / (rings - 1)
-        z = top + (bottom - top) * t
-        near = [p for p in verts if abs(p.z - z) < 0.025] or [p for p in verts if abs(p.z - z) < 0.06]
+        z = top + (bottom - top) * r / (rings - 1)
+        zs = max(z, 0.06)
+        near = [p for p in verts if abs(p.z - zs) < 0.025] or [p for p in verts if abs(p.z - zs) < 0.07]
         xs = [p.x for p in near]
         ys = [p.y for p in near]
         cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
-        a0, b0 = (max(xs) - min(xs)) / 2, (max(ys) - min(ys)) / 2
-        # Grow the ellipse until every body point of this slice is inside it.
+        a0, b0 = max(0.04, (max(xs) - min(xs)) / 2), max(0.04, (max(ys) - min(ys)) / 2)
         reach = max(math.sqrt(((p.x - cx) / a0) ** 2 + ((p.y - cy) / b0) ** 2) for p in near)
-        margin = 0.015 + 0.035 * t
-        a = max(a0 * reach + margin, widest[0])
-        b = max(b0 * reach + margin, widest[1])
-        if r > 0:  # the cloth hangs: never narrower than above it
-            widest = (a, b)
-        elif r == 0:
-            widest = (a * 0.98, b * 0.98)
+        fits.append((z, cx, cy, a0 * reach + 0.008, b0 * reach + 0.008))
+    # Pass 2: the cloth never narrows over the hips; below the widest ring it falls in a straight
+    # line to the hem (a little flared), widening only where a leg would poke through.
+    crotch = lm["LeftUpLeg"].z - 0.08
+    upper = [i for i, f in enumerate(fits) if f[0] >= crotch] or [0]
+    h = max(upper, key=lambda i: fits[i][3])
+    flare = g.get("flare", 0.04)
+    end = fits[-1]
+    hem_a = max(end[3] + flare, fits[h][3] * 0.82)
+    hem_b = max(end[4] + flare * 0.8, fits[h][4] * 0.85)
+    profile = []
+    for i, (z, cx, cy, a, b) in enumerate(fits):
+        if i <= h:
+            if profile:
+                a, b = max(a, profile[-1][3]), max(b, profile[-1][4])
+            profile.append((z, cx, cy, a, b))
+            continue
+        k = (i - h) / max(1, len(fits) - 1 - h)
+        hz, hcx, hcy, ha, hb = profile[h]
+        la, lb = ha + (hem_a - ha) * k, hb + (hem_b - hb) * k
+        profile.append((z, hcx + (end[1] - hcx) * k, hcy + (end[2] - hcy) * k, max(la, a + 0.004), max(lb, b + 0.004)))
+    for r, (z, cx, cy, a, b) in enumerate(profile):
+        t = r / (rings - 1)
         for s in range(segments + 1):
-            angle = 2 * math.pi * s / segments
-            x = cx + a * math.cos(angle)
-            y = cy + b * math.sin(angle)
+            # u = 0 at the front (-Y), going round to the figure's left.
+            angle = -math.pi / 2 + 2 * math.pi * s / segments
+            radius = 1.0
+            if pleats:
+                # Front pleats tucked at the navel: a fan of folds just left of centre.
+                front = math.cos(angle + math.pi / 2 - 0.25)
+                if front > 0.55:
+                    radius += 0.03 * t * abs(math.sin(s * math.pi / 2))
+            x = cx + a * radius * math.cos(angle)
+            y = cy + b * radius * math.sin(angle)
             mesh_verts.append((x, y, z))
-            uvs_by_vert.append((s / segments, 1 - t))
-            # Top of the wrap moves with the hips, the hem with the thighs (split by side).
-            hip_share = max(0.0, min(1.0, (z - (hips.z - 0.12)) / (top - (hips.z - 0.12))))
-            side = max(0.0, min(1.0, 0.5 + 0.5 * (x - cx) / (a * 0.55)))
+            uvs.append((s / segments, 1 - t))
+            hip_share = max(0.0, min(1.0, (z - (hips_z - 0.14)) / max(0.02, top - (hips_z - 0.14))))
+            side = max(0.0, min(1.0, 0.5 + 0.5 * (x - cx) / (a * 0.35)))
+            below = max(0.0, min(1.0, (knee + 0.08 - z) / max(0.05, knee + 0.08 - lm["LeftFoot"].z))) if long else 0.0
+            shin = 0.8 * below ** 0.8
             leg = 1 - hip_share
-            weights.append({"Hips": hip_share, "LeftUpLeg": leg * side, "RightUpLeg": leg * (1 - side)})
+            weights.append({"Hips": hip_share, "LeftUpLeg": leg * side * (1 - shin), "RightUpLeg": leg * (1 - side) * (1 - shin),
+                            "LeftLeg": leg * side * shin, "RightLeg": leg * (1 - side) * shin})
     faces = []
+    slit_from = hips_z - 0.12
     for r in range(rings - 1):
+        z_low = top + (bottom - top) * (r + 1) / (rings - 1)
         for s in range(segments):
+            if g.get("slits") and z_low < slit_from:
+                mid_angle = -math.pi / 2 + 2 * math.pi * (s + 0.5) / segments
+                if abs(math.cos(mid_angle)) > 0.97:  # side slits of a kurta
+                    continue
             i = r * (segments + 1) + s
             j = i + segments + 1
             faces.append((i, i + 1, j + 1, j))
-    mesh = bpy.data.meshes.new("lungi")
+    mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(mesh_verts, [], faces)
     uv = mesh.uv_layers.new(name="UVMap")
     for poly in mesh.polygons:
         for li in poly.loop_indices:
-            uv.data[li].uv = uvs_by_vert[mesh.loops[li].vertex_index]
-    obj = bpy.data.objects.new("lungi", mesh)
-    collection.objects.link(obj)
-    for vi, w in enumerate(weights):
-        for bone, value in w.items():
-            if value <= 0:
-                continue
-            group = obj.vertex_groups.get("mixamorig:" + bone) or obj.vertex_groups.new(name="mixamorig:" + bone)
-            group.add([vi], value, "REPLACE")
-    # Faces point outwards; a thin inside wall so the hem is not see-through from below.
+            uv.data[li].uv = uvs[mesh.loops[li].vertex_index]
+    obj = new_object(name, mesh, rig, collection)
+    set_weights(obj, weights)
     bm = bmesh.new()
     bm.from_mesh(mesh)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bm.to_mesh(mesh)
     bm.free()
-    solid = obj.modifiers.new("thickness", "SOLIDIFY")
-    solid.thickness = 0.006
-    solid.offset = -1
-    with bpy.context.temp_override(object=obj, active_object=obj):
-        bpy.ops.object.modifier_apply(modifier=solid.name)
-    obj.parent = rig
-    obj.modifiers.new("Armature", "ARMATURE").object = rig
+    for poly in mesh.polygons:
+        poly.use_smooth = True
+    # Hidden skin: hips and thighs inside the tube (shins stay: the hem lifts when walking).
+    inside = []
+    for poly, in_tube in zip(body.data.polygons, face_bones(body, bones)):
+        if in_tube not in ("Hips", "LeftUpLeg", "RightUpLeg"):
+            continue
+        zs = [(world @ body.data.vertices[i].co).z for i in poly.vertices]
+        if min(zs) > max(bottom + 0.12, knee + 0.06) and max(zs) < top - 0.03:
+            inside.append(poly.index)
+    return obj, inside
+
+
+def face_bones(obj, bones):
+    """The bone that moves most of each face's vertices."""
+    out = []
+    for poly in obj.data.polygons:
+        counts = {}
+        for i in poly.vertices:
+            counts[bones[i]] = counts.get(bones[i], 0) + 1
+        out.append(max(counts, key=counts.get))
+    return out
+
+
+def region_parts(lm, rig, g):
+    """Each skin-tight garment as parts: (bones whose faces it covers, cutting planes keeping the
+    side the normal points to). Planes are (point, normal) in world space."""
+    up, down = Vector((0, 0, 1)), Vector((0, 0, -1))
+    torso = {"Hips", "Spine", "Spine1", "Spine2", "LeftShoulder", "RightShoulder", "Neck"}
+    neck_base = lm["Neck"].z + 0.01
+    under_bust = lm["Spine1"].z + 0.02
+    region = g["region"]
+
+    def sleeve(side, fraction):
+        arm = bone_head(rig, side + "Arm")
+        elbow = bone_head(rig, side + "ForeArm")
+        wrist = bone_head(rig, side + "Hand")
+        bones_ = {side + "Arm"}
+        if fraction > 1:
+            bones_.add(side + "ForeArm")
+            point = elbow + (wrist - elbow) * (fraction - 1)
+            direction = (wrist - elbow).normalized()
+        else:
+            point = arm + (elbow - arm) * fraction
+            direction = (elbow - arm).normalized()
+        return (bones_, [(point, -direction)])
+
+    def scoop(depth):
+        # A neckline lower at the front than at the back.
+        return (Vector((0, lm["chest_front"], neck_base - depth)), Vector((0, 0.55, -1)).normalized())
+
+    if region == "blouse":
+        return [(torso, [(Vector((0, 0, under_bust + 0.03)), up), scoop(0.07)]), sleeve("Left", 0.32), sleeve("Right", 0.32)]
+    if region == "blouse_child":
+        return [(torso, [(Vector((0, 0, lm["Hips"].z + 0.04)), up), scoop(0.04)]), sleeve("Left", 0.4), sleeve("Right", 0.4)]
+    if region == "school_shirt":
+        return [(torso, [(Vector((0, 0, lm["Hips"].z - 0.02)), up), scoop(0.02)]), sleeve("Left", 0.45), sleeve("Right", 0.45)]
+    if region == "kurta_top":
+        f = g.get("sleeves", 0.75)
+        fraction = 1 + (f - 0.5) * 2 if f > 0.5 else f * 2 * 0.9
+        return [(torso, [(Vector((0, 0, lm["Hips"].z - 0.06)), up), scoop(0.05)]), sleeve("Left", fraction), sleeve("Right", fraction)]
+    if region == "pinafore":
+        shoulder_x = (lm["LeftArm"].x - lm["Neck"].x) * 0.45
+        return [(torso, [(Vector((0, 0, lm["Hips"].z + 0.03)), up), (Vector((0, 0, lm["Spine2"].z + 0.06)), down),
+                         ]), (torso, [(Vector((0, 0, lm["Spine2"].z + 0.06)), up), (Vector((shoulder_x + 0.025, 0, 0)), Vector((-1, 0, 0))),
+                                      (Vector((shoulder_x - 0.025, 0, 0)), Vector((1, 0, 0)))]),
+                (torso, [(Vector((0, 0, lm["Spine2"].z + 0.06)), up), (Vector((-shoulder_x - 0.025, 0, 0)), Vector((1, 0, 0))),
+                         (Vector((-shoulder_x + 0.025, 0, 0)), Vector((-1, 0, 0)))])]
+    if region == "leggings":
+        legs = {"LeftUpLeg", "RightUpLeg", "LeftLeg", "RightLeg", "Hips"}
+        return [(legs, [(Vector((0, 0, lm["LeftFoot"].z + 0.035)), up), (Vector((0, 0, lm["Hips"].z + 0.03)), down)])]
+    if region == "headcloth":
+        brow = lm["brow_z"] + 0.012
+        return [({"Head"}, [(Vector((0, 0, brow)), up), (Vector((0, 0, brow + 0.07)), down)])]
+    if region in ("towel", "dupatta"):
+        side = "Left"
+        x = (lm[side + "Arm"].x + lm["Neck"].x) / 2 + (0.01 if region == "towel" else 0.0)
+        half = 0.055 if region == "towel" else 0.085
+        low = lm["Spine1"].z - 0.02 if region == "towel" else lm["Hips"].z - 0.04
+        return [(torso | {"LeftArm"}, [(Vector((x - half, 0, 0)), Vector((1, 0, 0))), (Vector((x + half, 0, 0)), Vector((-1, 0, 0))),
+                                       (Vector((0, 0, low)), up)])]
+    if region == "pallu":
+        # A diagonal band from the right hip to over the left shoulder, front and back.
+        a = Vector((-0.12, 0, lm["Hips"].z + 0.02))
+        b = Vector((lm["LeftArm"].x * 0.6, 0, lm["LeftShoulder"].z + 0.06))
+        along = (b - a).normalized()
+        normal = Vector((along.z, 0, -along.x)).normalized()  # in the frontal plane, across the band
+        half = 0.13
+        mid = (a + b) / 2
+        return [((torso - {"Neck"}) | {"LeftArm"}, [(mid - normal * half, normal), (mid + normal * half, -normal), (Vector((0, 0, lm["Hips"].z - 0.02)), up)])]
+    raise ValueError(region)
+
+
+def make_region(rig, body, collection, lm, g, name):
+    """A skin-tight garment: the body's faces in a region, cut cleanly with planes and pushed out."""
+    world = body.matrix_world
+    inv = world.inverted()
+    bones = dominant_bones(body)
+    fbones = face_bones(body, bones)
+    parts = region_parts(lm, rig, g)
+    meshes = []
+    inside = set()
+    for bone_set, cuts in parts:
+        bm = bmesh.new()
+        bm.from_mesh(body.data)
+        bm.faces.ensure_lookup_table()
+        drop = [f for f in bm.faces if fbones[f.index] not in bone_set]
+        bmesh.ops.delete(bm, geom=drop, context="FACES")
+        for point, normal in cuts:
+            co = inv @ point
+            no = (world.to_3x3().transposed() @ normal).normalized()
+            geom = list(bm.verts) + list(bm.edges) + list(bm.faces)
+            bmesh.ops.bisect_plane(bm, geom=geom, dist=1e-5, plane_co=co, plane_no=no, clear_inner=True)
+        loose = [v for v in bm.verts if not v.link_faces]
+        bmesh.ops.delete(bm, geom=loose, context="VERTS")
+        mesh = bpy.data.meshes.new(name + "_part")
+        bm.to_mesh(mesh)
+        bm.free()
+        meshes.append(mesh)
+        for poly, fb in zip(body.data.polygons, fbones):
+            if fb not in bone_set:
+                continue
+            pts = [world @ body.data.vertices[i].co for i in poly.vertices]
+            if all(all((p - point).dot(normal) > 0.012 for p in pts) for point, normal in cuts):
+                inside.add(poly.index)
+    # Join the parts and weld their shared edges.
+    bm = bmesh.new()
+    for mesh in meshes:
+        bm.from_mesh(mesh)
+        bpy.data.meshes.remove(mesh)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+    bm.normal_update()
+    offset = g.get("offset", 0.006)
+    for v in bm.verts:
+        v.co += v.normal * offset
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = new_object(name, mesh, rig, collection)
+    if os.environ.get("CHAR_DEBUG"):
+        zs = sorted({round(v.co.z, 1) for v in mesh.vertices})
+        for z in zs:
+            row = [v.co for v in mesh.vertices if abs(v.co.z - z) < 0.03 and v.co.y < 0]
+            if row:
+                print("DEBUG", name, g["region"], z, round(min(v.x for v in row), 3), round(max(v.x for v in row), 3))
+        print("DEBUG parts", [(sorted(b), [(tuple(round(x, 3) for x in pt), tuple(round(x, 3) for x in no)) for pt, no in cuts]) for b, cuts in parts])
+    obj.matrix_world = world
+    for group in body.vertex_groups:  # same order as the body: the copied weights keep their meaning
+        obj.vertex_groups.new(name=group.name)
+    for poly in mesh.polygons:
+        poly.use_smooth = True
+    if g["region"] in ("pallu", "towel", "dupatta"):
+        band_uvs(obj, g, lm)
+    return obj, sorted(inside)
+
+
+def band_uvs(obj, g, lm):
+    """UVs for draped bands: u across the band (its borders), v along it."""
+    world = obj.matrix_world
+    uv = obj.data.uv_layers.active.data
+    pts = {v.index: world @ v.co for v in obj.data.vertices}
+    if g["region"] == "pallu":
+        a = Vector((-0.12, 0, lm["Hips"].z + 0.02))
+        b = Vector((lm["LeftArm"].x * 0.6, 0, lm["LeftShoulder"].z + 0.06))
+        along = (b - a).normalized()
+        across = Vector((along.z, 0, -along.x)).normalized()
+        mid = (a + b) / 2
+        half = 0.13
+        for loop in obj.data.loops:
+            p = pts[loop.vertex_index]
+            u = 0.5 + (p - mid).dot(across) / (2 * half)
+            ang = math.atan2(p.y, (p - mid).dot(along))
+            uv[loop.index].uv = (min(1, max(0, u)), (ang / math.pi + 1) / 2)
+    else:
+        x0 = min(p.x for p in pts.values())
+        x1 = max(p.x for p in pts.values())
+        z0 = min(p.z for p in pts.values())
+        top = max(p.z for p in pts.values())
+        for loop in obj.data.loops:
+            p = pts[loop.vertex_index]
+            u = (p.x - x0) / max(1e-3, x1 - x0)
+            # v runs down the front, over the shoulder and down the back.
+            length = (top - p.z) / max(1e-3, top - z0)
+            v = 0.5 - 0.5 * length if p.y < lm["Spine2"].y else 0.5 + 0.5 * length
+            uv[loop.index].uv = (u, v)
+
+
+def make_belt(rig, body, collection, lm, clothes_objs, name):
+    """A plain belt round the trousers' waistband."""
+    world = body.matrix_world
+    z = lm["Hips"].z + 0.045
+    pts = []
+    for obj in clothes_objs:
+        pts += [obj.matrix_world @ v.co for v in obj.data.vertices if abs((obj.matrix_world @ v.co).z - z) < 0.02]
+    if not pts:
+        pts = [world @ v.co for v in body.data.vertices if abs((world @ v.co).z - z) < 0.02]
+    pts = [p for p in pts if abs(p.x) < 0.22]
+    xs, ys = [p.x for p in pts], [p.y for p in pts]
+    cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
+    a0, b0 = (max(xs) - min(xs)) / 2, (max(ys) - min(ys)) / 2
+    reach = max(math.sqrt(((p.x - cx) / a0) ** 2 + ((p.y - cy) / b0) ** 2) for p in pts)
+    a, b = a0 * reach + 0.004, b0 * reach + 0.004
+    segments = 28
+    verts, faces = [], []
+    for zz in (z - 0.018, z + 0.018):
+        for s in range(segments):
+            ang = 2 * math.pi * s / segments
+            verts.append((cx + a * math.cos(ang), cy + b * math.sin(ang), zz))
+    for s in range(segments):
+        faces.append((s, (s + 1) % segments, segments + (s + 1) % segments, segments + s))
+    # Buckle: a small plate at the front.
+    k = len(verts)
+    fy = cy - b - 0.004
+    for dx, dz in ((-0.025, -0.02), (0.025, -0.02), (0.025, 0.02), (-0.025, 0.02)):
+        verts.append((cx + dx, fy, z + dz))
+    faces.append((k, k + 1, k + 2, k + 3))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.uv_layers.new(name="UVMap")
+    obj = new_object(name, mesh, rig, collection)
+    set_weights(obj, [{"Hips": 1.0}] * len(verts))
+    return obj, [k, k + 1, k + 2, k + 3]
+
+
+def make_idtag(rig, body, collection, lm, name):
+    """An ID card on a lanyard (plain, no text)."""
+    tree = body_bvh(body)
+    z = lm["Spine1"].z + 0.03
+    hit = tree.ray_cast(Vector((0.0, -1.0, z)), Vector((0, 1, 0)))
+    front = (hit[0].y if hit[0] else lm["chest_front"]) - 0.025
+    w, h = 0.055, 0.085
+    verts = [(-w / 2, front, z - h / 2), (w / 2, front, z - h / 2), (w / 2, front, z + h / 2), (-w / 2, front, z + h / 2)]
+    faces = [(0, 1, 2, 3)]
+    # Lanyard: two thin strips from the sides of the neck down to the card.
+    neck_z = lm["Neck"].z + 0.02
+    for side in (-1, 1):
+        nx = side * 0.055
+        hit = tree.ray_cast(Vector((nx, -1.0, neck_z - 0.02)), Vector((0, 1, 0)))
+        ny = (hit[0].y if hit[0] else lm["chest_front"] + 0.04) - 0.012
+        k = len(verts)
+        bx = side * 0.012
+        verts += [(nx - 0.006, ny, neck_z - 0.02), (nx + 0.006, ny, neck_z - 0.02), (bx + 0.006, front + 0.002, z + h / 2), (bx - 0.006, front + 0.002, z + h / 2)]
+        faces.append((k, k + 1, k + 2, k + 3))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.uv_layers.new(name="UVMap")
+    obj = new_object(name, mesh, rig, collection)
+    set_weights(obj, [{"Spine2": 1.0}] * len(verts))
+    return obj
+
+
+def make_headgear(rig, body, hair, collection, lm, g, name):
+    """Caps and hard hats, made round the head (and hair) they sit on."""
+    world = body.matrix_world
+    bones = dominant_bones(body)
+    pts = [world @ v.co for v, b in zip(body.data.vertices, bones) if b == "Head"]
+    if hair is not None:
+        pts += [hair.matrix_world @ v.co for v in hair.data.vertices]
+    top = max(p.z for p in pts)
+    brow = lm["brow_z"] + 0.02
+    ring = [p for p in pts if abs(p.z - (brow + 0.03)) < 0.02]
+    xs, ys = [p.x for p in ring], [p.y for p in ring]
+    cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
+    a, b = (max(xs) - min(xs)) / 2 + 0.008, (max(ys) - min(ys)) / 2 + 0.008
+    style = g.get("style", "hardhat") if g["kind"] == "cap" else "hardhat"
+    bm = bmesh.new()
+    seg = 24
+    if style == "hardhat":
+        # A dome over the head, a slight peak at the front and a narrow brim.
+        rings = 7
+        height = top - brow + 0.035
+        layers = []
+        for r in range(rings):
+            t = r / (rings - 1)
+            ang = t * math.pi / 2
+            layer = []
+            for s in range(seg):
+                th = 2 * math.pi * s / seg
+                x = cx + (a + 0.012) * math.cos(ang) * math.cos(th)
+                y = cy + (b + 0.012) * math.cos(ang) * math.sin(th)
+                layer.append(bm.verts.new((x, y, brow + height * math.sin(ang))))
+            layers.append(layer)
+        for r in range(rings - 1):
+            for s in range(seg):
+                bm.faces.new((layers[r][s], layers[r][(s + 1) % seg], layers[r + 1][(s + 1) % seg], layers[r + 1][s]))
+        bm.faces.new(list(reversed(layers[-1])))
+        brim = []
+        for s in range(seg):
+            th = 2 * math.pi * s / seg
+            peak = 0.03 if math.sin(th) < -0.7 else 0.012
+            brim.append(bm.verts.new((cx + (a + 0.012 + peak) * math.cos(th), cy + (b + 0.012 + peak) * math.sin(th), brow - 0.004)))
+        for s in range(seg):
+            bm.faces.new((brim[s], brim[(s + 1) % seg], layers[0][(s + 1) % seg], layers[0][s]))
+    elif style == "peaked":
+        # A peaked cap: band, a crown wider than the band, a dark visor.
+        z0, z1, z2 = brow - 0.005, brow + 0.04, brow + 0.075
+        rows = [(z0, 1.0), (z1, 1.03), (z2, 1.12)]
+        layers = []
+        for zz, k in rows:
+            layers.append([bm.verts.new((cx + a * k * math.cos(2 * math.pi * s / seg), cy + b * k * math.sin(2 * math.pi * s / seg) + (0.012 if zz == z2 else 0), zz)) for s in range(seg)])
+        for r in range(len(layers) - 1):
+            for s in range(seg):
+                bm.faces.new((layers[r][s], layers[r][(s + 1) % seg], layers[r + 1][(s + 1) % seg], layers[r + 1][s]))
+        centre = bm.verts.new((cx, cy + 0.012, z2 + 0.004))
+        for s in range(seg):
+            bm.faces.new((layers[-1][s], layers[-1][(s + 1) % seg], centre))
+        visor = []
+        for s in range(seg):
+            th = 2 * math.pi * s / seg
+            if math.sin(th) < -0.55:
+                visor.append(s)
+        vfaces = []
+        for s in visor:
+            if (s + 1) % seg not in visor:
+                continue
+            p0, p1 = layers[0][s], layers[0][(s + 1) % seg]
+            o0 = bm.verts.new(p0.co + Vector((math.cos(2 * math.pi * s / seg) * 0.01, -0.055, -0.012)))
+            o1 = bm.verts.new(p1.co + Vector((math.cos(2 * math.pi * ((s + 1) % seg) / seg) * 0.01, -0.055, -0.012)))
+            vfaces.append(bm.faces.new((p0, p1, o1, o0)))
+        g["_visor"] = True
+    else:  # beret: a soft flattened dome tipped to the right
+        rings = 6
+        layers = []
+        for r in range(rings):
+            t = r / (rings - 1)
+            ang = t * math.pi / 2
+            k = 1.0 + 0.25 * math.sin(t * math.pi)
+            layer = []
+            for s in range(seg):
+                th = 2 * math.pi * s / seg
+                x = cx + a * k * math.cos(ang) * math.cos(th) - 0.02 * t
+                y = cy + b * k * math.cos(ang) * math.sin(th)
+                layer.append(bm.verts.new((x, y, brow + 0.01 + (top - brow + 0.01) * math.sin(ang) * 0.75 + 0.03 * t * (-x + cx) / max(a, 1e-3))))
+            layers.append(layer)
+        for r in range(rings - 1):
+            for s in range(seg):
+                bm.faces.new((layers[r][s], layers[r][(s + 1) % seg], layers[r + 1][(s + 1) % seg], layers[r + 1][s]))
+        bm.faces.new(list(reversed(layers[-1])))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.uv_layers.new(name="UVMap")
+    obj = new_object(name, mesh, rig, collection)
+    set_weights(obj, [{"Head": 1.0}] * len(mesh.vertices))
+    for poly in mesh.polygons:
+        poly.use_smooth = style != "peaked"
     return obj
 
 
@@ -545,8 +1457,6 @@ def copy_faces(body, keep, name, offset):
     obj = bpy.data.objects.new(name, mesh)
     body.users_collection[0].objects.link(obj)
     obj.matrix_world = body.matrix_world
-    for group in body.vertex_groups:
-        obj.vertex_groups.new(name=group.name)
     obj.parent = body.parent
     obj.matrix_parent_inverse = body.matrix_parent_inverse.copy()
     obj.modifiers.new("Armature", "ARMATURE").object = body.parent
@@ -554,15 +1464,14 @@ def copy_faces(body, keep, name, offset):
 
 
 def make_sandals(rig, body):
-    """Flat leather sandals: a sole under each foot and a strap over the forefoot. Both are
+    """Flat leather sandals (chappals): a sole under each foot and a strap over the forefoot,
     made from the body's own foot faces, so they bend with the foot."""
     parts = []
     for side, sign in (("Left", 1), ("Right", -1)):
         toe = bone_head(rig, side + "ToeBase")
-        foot = bone_head(rig, side + "Foot")
 
         def sole(centre, normal, sign=sign):
-            return centre.z < 0.03 and normal.z < -0.3 and centre.x * sign > 0.02
+            return centre.z < 0.03 and normal.z < -0.3 and centre.x * sign > 0.0
 
         obj = copy_faces(body, sole, f"sandal_sole_{side}", 0.0)
         bm = bmesh.new()
@@ -571,70 +1480,106 @@ def make_sandals(rig, body):
         for v in bm.verts:
             flat = Vector((v.co.x, v.co.y, 0))
             v.co = Vector((centre.x, centre.y, 0)) + (flat - Vector((centre.x, centre.y, 0))) * 1.08
-            v.co.z = -0.01
+            v.co.z = 0.0
         result = bmesh.ops.extrude_face_region(bm, geom=list(bm.faces))
         for v in [e for e in result["geom"] if isinstance(e, bmesh.types.BMVert)]:
-            v.co.z = 0.008
+            v.co.z = 0.012
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
         bm.to_mesh(obj.data)
         bm.free()
         parts.append(("sole", obj))
-
-        ball = toe.y + 0.015  # strap just behind the ball of the foot
+        ball = toe.y + 0.015
 
         def strap(centre, normal, sign=sign, ball=ball):
-            return 0.012 < centre.z < 0.09 and abs(centre.y - ball) < 0.02 and centre.x * sign > 0.02 and normal.z > -0.2
+            return 0.012 < centre.z < 0.09 and abs(centre.y - ball) < 0.02 and centre.x * sign > 0.0 and normal.z > -0.2
 
         parts.append(("strap", copy_faces(body, strap, f"sandal_strap_{side}", 0.003)))
-    # Weights: copy_faces created empty groups; take the body's weights by nearest vertex.
     for _, obj in parts:
-        transfer = obj.modifiers.new("weights", "DATA_TRANSFER")
-        transfer.object = body
-        transfer.use_vert_data = True
-        transfer.data_types_verts = {"VGROUP_WEIGHTS"}
-        transfer.vert_mapping = "NEAREST"
-        transfer.layers_vgroup_select_src = "ALL"
-        transfer.layers_vgroup_select_dst = "NAME"
-        bpy.context.view_layer.objects.active = obj
-        with bpy.context.temp_override(object=obj, active_object=obj):
-            bpy.ops.object.modifier_move_to_index(modifier=transfer.name, index=0)
-            bpy.ops.object.modifier_apply(modifier=transfer.name)
+        weights_from_body(obj, body, "NEAREST")
         obj.data.uv_layers.new(name="UVMap")
     return parts
+
+
+def lift_feet(body, sole_height):
+    """With sandals on, the feet stand on the soles."""
+    world = body.matrix_world
+    inv = world.inverted()
+    for v in body.data.vertices:
+        p = world @ v.co
+        if p.z < 0.12:
+            v.co = inv @ (p + Vector((0, 0, sole_height * max(0.0, 1 - p.z / 0.12))))
+
+
+# ----------------------------------------------------------------------------------------------
+# Atlas
+# ----------------------------------------------------------------------------------------------
+def allocate(requests):
+    """Square tiles of power-of-two fractions of the atlas, packed buddy-style. Requests that do
+    not fit are halved until they do. Returns {name: (u, v, size)}."""
+    free = [(0.0, 0.0, 1.0)]
+    out = {}
+    for name, size in sorted(requests, key=lambda r: -r[1]):
+        while True:
+            fits = sorted([f for f in free if f[2] >= size - 1e-9], key=lambda f: f[2])
+            if fits:
+                break
+            size /= 2
+            if size < 1 / 64:
+                raise RuntimeError("atlas full")
+        u, v, s = fits[0]
+        free.remove(fits[0])
+        while s > size + 1e-9:
+            s /= 2
+            free += [(u + s, v, s), (u, v + s, s), (u + s, v + s, s)]
+        out[name] = (u, v, s)
+    return out
+
+
+def place_uvs(obj, tile, bbox=False):
+    u0, v0, s = tile
+    data = obj.data.uv_layers.active.data
+    if bbox and len(data):
+        us = [l.uv[0] for l in data]
+        vs = [l.uv[1] for l in data]
+        lo_u, lo_v = min(us), min(vs)
+        span = max(max(us) - lo_u, max(vs) - lo_v, 1e-4)
+        for loop in data:
+            loop.uv = ((loop.uv[0] - lo_u) / span, (loop.uv[1] - lo_v) / span)
+    pad = 0.5 / 512
+    for loop in data:
+        loop.uv = (u0 + pad + min(1, max(0, loop.uv[0])) * (s - 2 * pad), v0 + pad + min(1, max(0, loop.uv[1])) * (s - 2 * pad))
+
+
+def flat_uvs(obj, tile, faces=None):
+    u0, v0, s = tile
+    data = obj.data.uv_layers.active.data
+    polys = obj.data.polygons if faces is None else [p for p in obj.data.polygons if p.index in faces]
+    for poly in polys:
+        for li in poly.loop_indices:
+            data[li].uv = (u0 + s / 2, v0 + s / 2)
 
 
 # ----------------------------------------------------------------------------------------------
 # Assembly
 # ----------------------------------------------------------------------------------------------
-def keep_legs(body, clothes, below):
-    group = body.vertex_groups.get("Delete." + clothes)
+def keep_skin(body, asset, keep):
+    """Undo MPFB's skin deletion under part of a garment we cut away (keep(world_pos) true)."""
+    group = body.vertex_groups.get("Delete." + asset)
     if group is None:
         return
     world = body.matrix_world
-    group.remove([v.index for v in body.data.vertices if (world @ v.co).z < below])
+    group.remove([v.index for v in body.data.vertices if keep(world @ v.co)])
 
 
 def triangles(obj):
     return sum(len(p.vertices) - 2 for p in obj.data.polygons)
 
 
-def place_uvs(obj, tile):
-    u0, v0, s = tile
-    for loop in obj.data.uv_layers.active.data:
-        loop.uv = (u0 + loop.uv[0] * s, v0 + loop.uv[1] * s)
-
-
-def flat_uvs(obj, swatch):
-    (u0, v0) = swatch
-    for loop in obj.data.uv_layers.active.data:
-        loop.uv = (u0 + SWATCH_SIZE / 2, v0 + SWATCH_SIZE / 2)
-
-
 def decimate(obj, ratio):
     if ratio >= 0.999:
         return
     modifier = obj.modifiers.new("decimate", "DECIMATE")
-    modifier.ratio = ratio
+    modifier.ratio = max(0.02, ratio)
     modifier.use_collapse_triangulate = True
     with bpy.context.temp_override(object=obj, active_object=obj):
         bpy.ops.object.modifier_move_to_index(modifier=modifier.name, index=0)
@@ -650,7 +1595,6 @@ def material(name, image, alpha):
     tree.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
     bsdf.inputs["Roughness"].default_value = 0.62 if name == "Skin" else 0.85
     bsdf.inputs["Metallic"].default_value = 0.0
-    # Skin is a closed surface (single-sided); hair cards and cloth edges need both sides.
     mat.use_backface_culling = not alpha
     if alpha:
         # Rounding the alpha makes the glTF exporter write alphaMode MASK (cut-out hair cards).
@@ -661,130 +1605,28 @@ def material(name, image, alpha):
     return mat
 
 
-def build(spec, human_service, workdir):
-    clear()
-    basemesh, rig = make_human(spec, human_service)
-    collection = basemesh.users_collection[0]
-    children = [o for o in rig.children if o.type == "MESH"]
-    proxy = next((o for o in children if spec["proxy"] and spec["proxy"] in o.name), None)
-    body = proxy or basemesh
-    if spec.get("drop") == "lower":
-        # Keep the skin of the legs that MPFB would hide under the jeans; only the top stays covered.
-        keep_legs(body, spec["clothes"], bone_head(rig, "Hips").z + 0.02)
-    for obj in children:
-        bake(obj)
-    # MPFB adds the delete-group masks; the lungi figure keeps its legs (only the jeans go).
-    by_kind = {"body": body}
-    for obj in children:
-        if obj in (basemesh, proxy):
-            continue
-        for kind in ("eyebrow", "eyelashes", "low-poly", spec["hair"][0], spec["clothes"], spec["shoes"]):
-            if kind in obj.name:
-                by_kind[{"eyebrow": "eyebrows", "low-poly": "eyes", spec["hair"][0]: "hair", spec["clothes"]: "clothes", spec["shoes"]: "shoes"}.get(kind, kind)] = obj
-    if proxy:
-        bpy.data.objects.remove(basemesh, do_unlink=True)
+def delete_faces(obj, indices):
+    if not indices:
+        return
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.faces.ensure_lookup_table()
+    bmesh.ops.delete(bm, geom=[bm.faces[i] for i in sorted(set(indices))], context="FACES")
+    loose = [v for v in bm.verts if not v.link_faces]
+    bmesh.ops.delete(bm, geom=loose, context="VERTS")
+    bm.to_mesh(obj.data)
+    bm.free()
 
-    size = spec["texture"]
-    # --- Skin
-    skin_pixels = skin_texture(spec, body, size)
-    skin_image = write_image(skin_pixels, os.path.join(workdir, f"{spec['name']}_skin.png"), f"{spec['name']}_skin")
 
-    # --- Outfit atlas
-    atlas = np.zeros((size, size, 4), np.float32)
-    atlas[..., 3] = 1
-
-    def put(name, pixels):
-        u0, v0, s = TILES[name]
-        n = int(round(s * size))
-        tile = pixels if pixels.shape[0] == n else read_resized(pixels, n)
-        atlas[int(v0 * size):int(v0 * size) + n, int(u0 * size):int(u0 * size) + n] = tile
-
-    clothes = by_kind["clothes"]
-    garment = read_image(image_path(clothes), size)
-    split_z = bone_head(rig, "Hips").z + 0.03
-
-    def is_upper(centre, uv):
-        return uv.y > 0.5 if spec["split"] == "uv" else centre.z > split_z
-
-    upper = uv_mask(clothes, size, is_upper)
-    lower = uv_mask(clothes, size, lambda c, uv: not is_upper(c, uv))
-    if spec.get("prints"):
-        paint_out_prints(garment, upper)
-    if spec["split"] == "uv":
-        # The jeans' waistband faces reach the plain grey margin of the texture: denim there too.
-        rgb = garment[..., :3]
-        grey = lower & ~upper & (rgb.max(axis=2) - rgb.min(axis=2) < 0.08) & (rgb @ LUMA > 0.6)
-        garment[grey, :3] = np.median(rgb[lower & ~upper & ~grey], axis=0)
-    if "upper" in spec["garments"]:
-        recolour(garment, upper, spec["garments"]["upper"])
-    if "lower" in spec["garments"]:
-        recolour(garment, lower & ~upper, spec["garments"]["lower"])
-    if spec.get("drop") == "lower":
-        cut_faces(clothes, lambda c, uv: not is_upper(c, uv))
-    put("clothes", garment)
-
-    hair_pixels = read_image(image_path(by_kind["hair"]), size)
-    recolour(hair_pixels, hair_pixels[..., 3] > 0.05, spec["hair"][1])
-    put("hair", hair_pixels)
-    eyes = read_image(image_path(by_kind["eyes"]), size)
-    grey = (eyes[..., :3] @ LUMA)[..., None]
-    eyes[..., :3] = grey + (eyes[..., :3] - grey) * 0.55  # the stock brown iris reads red-brown
-    put("eyes", eyes)
-    brows = read_image(image_path(by_kind["eyebrows"]), size)
-    recolour(brows, brows[..., 3] > 0.05, tuple(0.85 * c for c in spec["hair"][1]))
-    put("eyebrows", brows)
-    if "eyelashes" in by_kind:
-        put("eyelashes", read_image(image_path(by_kind["eyelashes"]), size))
-    if "shoes" in by_kind:
-        put("shoes", read_image(image_path(by_kind["shoes"]), size))
-    for (u0, v0), colour in SWATCHES.values():
-        n = int(SWATCH_SIZE * size)
-        atlas[int(v0 * size):int(v0 * size) + n, int(u0 * size):int(u0 * size) + n, :3] = colour
-    if spec.get("lungi"):
-        put("lungi", lungi_texture(int(TILES["lungi"][2] * size)))
-    outfit_image = write_image(atlas, os.path.join(workdir, f"{spec['name']}_outfit.png"), f"{spec['name']}_outfit")
-
-    skin_mat = material("Skin", skin_image, alpha=False)
-    outfit_mat = material("Outfit", outfit_image, alpha=True)
-
-    parts = []
-    for kind, obj in by_kind.items():
-        if kind == "body":
-            continue
-        place_uvs(obj, TILES[kind])
-        parts.append(obj)
-    if spec.get("lungi"):
-        lungi = make_lungi(rig, body, collection)
-        place_uvs(lungi, TILES["lungi"])
-        parts.append(lungi)
-    if spec["shoes"] == "sandals":
-        for part, obj in make_sandals(rig, body):
-            flat_uvs(obj, SWATCHES[part][0])
-            parts.append(obj)
-    for obj in parts:
-        obj.data.materials.clear()
-        obj.data.materials.append(outfit_mat)
-    body.data.materials.clear()
-    body.data.materials.append(skin_mat)
-
-    # --- Triangle budget: shave the heavy parts (body, clothes, hair), never the small ones.
-    total = triangles(body) + sum(triangles(o) for o in parts)
-    heavy = [body] + [by_kind[k] for k in ("clothes", "hair", "shoes") if k in by_kind]
-    if total > spec["budget"]:
-        heavy_tris = sum(triangles(o) for o in heavy)
-        ratio = (spec["budget"] * 0.97 - (total - heavy_tris)) / heavy_tris
-        for obj in heavy:
-            decimate(obj, ratio)
-
-    # --- One skinned mesh, two materials
+def join(rig, body, parts, name):
     bpy.ops.object.select_all(action="DESELECT")
     for obj in parts:
         obj.select_set(True)
     body.select_set(True)
     bpy.context.view_layer.objects.active = body
     bpy.ops.object.join()
-    body.name = "Body"
-    body.data.name = "Body"
+    body.name = name
+    body.data.name = name
     with bpy.context.temp_override(object=body, active_object=body):
         bpy.ops.object.vertex_group_limit_total(group_select_mode="BONE_DEFORM", limit=4)
         bpy.ops.object.vertex_group_normalize_all(group_select_mode="BONE_DEFORM", lock_active=False)
@@ -797,21 +1639,281 @@ def build(spec, human_service, workdir):
             body.modifiers.remove(modifier)
     if not any(m.type == "ARMATURE" for m in body.modifiers):
         body.modifiers.new("Armature", "ARMATURE").object = rig
+    return body
+
+
+def fit_budget(objs, heavy, budget, cap=0.3, spare=()):
+    """Decimate the heavy parts so the whole figure fits the triangle budget. First no single
+    part may take more than `cap` of the budget (some community clothes are very dense), then
+    everything heavy is shaved by the same ratio; `spare` parts (the body) only if needed."""
+    for obj in heavy:
+        if triangles(obj) > cap * budget:
+            decimate(obj, cap * budget / triangles(obj))
+    total = sum(triangles(o) for o in objs)
+    if total > budget and spare:
+        rest = [o for o in heavy if o not in spare]
+        rest_tris = sum(triangles(o) for o in rest)
+        need = total - budget * 0.97
+        if rest_tris and need < rest_tris * 0.5:
+            heavy = rest
+    total = sum(triangles(o) for o in objs)
+    if total <= budget:
+        return
+    heavy_tris = sum(triangles(o) for o in heavy)
+    ratio = (budget * 0.97 - (total - heavy_tris)) / heavy_tris
+    for obj in heavy:
+        decimate(obj, ratio)
+    total = sum(triangles(o) for o in objs)
+    if total > budget:  # collapse overshoots a little on small parts: once more, harder
+        heavy_tris = sum(triangles(o) for o in heavy)
+        ratio = (budget * 0.95 - (total - heavy_tris)) / heavy_tris
+        for obj in heavy:
+            decimate(obj, ratio)
+
+
+def duplicate(obj):
+    copy = obj.copy()
+    copy.data = obj.data.copy()
+    for col in obj.users_collection:
+        col.objects.link(copy)
+    return copy
+
+
+def build(spec, human_service, workdir):
+    clear()
+    basemesh, rig = make_human(spec, human_service)
+    collection = basemesh.users_collection[0]
+    children = [o for o in rig.children if o.type == "MESH"]
+    proxy = next((o for o in children if mpfb_info(o)[0] == "Proxymeshes"), None)
+    body = proxy or basemesh
+    kinds = {}  # role -> object
+    clothes_objs = []
+    for obj in children:
+        kind, source = mpfb_info(obj)
+        if obj in (basemesh, proxy):
+            continue
+        if kind == "Clothes":
+            asset = source.split("/")[0]
+            item = next((i for i in spec["clothes"] if i["asset"] == asset), None)
+            if item is None:
+                kinds["shoes"] = obj
+            else:
+                clothes_objs.append((item, obj))
+        elif kind == "Hair":
+            kinds["hair"] = obj
+        elif kind == "Eyebrows":
+            kinds["eyebrows"] = obj
+        elif kind == "Eyelashes":
+            kinds["eyelashes"] = obj
+        elif kind == "Eyes":
+            kinds["eyes"] = obj
+    hips_z = bone_head(rig, "Hips").z
+    for item, obj in clothes_objs:
+        if item.get("drop") == "lower":
+            keep_skin(body, item["asset"], lambda p: p.z < hips_z + 0.02)
+        elif item.get("drop") == "upper":
+            keep_skin(body, item["asset"], lambda p: p.z > hips_z + 0.06)
+    for obj in children:
+        bake(obj)
+    if proxy:
+        bpy.data.objects.remove(basemesh, do_unlink=True)
+    lm = measure_landmarks(rig, body, kinds["eyes"])
+
+    size = spec["texture"]
+    # --- Garments made here (they read the body before its hidden skin is removed)
+    made = []  # (name, obj, texture spec or colour, uv mode)
+    hidden = set()
+    for i, g in enumerate(spec["garments"]):
+        name = f"g{i}_{g['kind']}"
+        if g["kind"] == "tube":
+            obj, inside = make_tube(rig, body, collection, lm, g, name)
+            made.append((name, obj, ("fabric", g["texture"]), "uv"))
+            hidden.update(inside)
+        elif g["kind"] == "region":
+            obj, inside = make_region(rig, body, collection, lm, g, name)
+            if "texture" in g:
+                made.append((name, obj, ("fabric", g["texture"]), "uv"))
+            else:
+                made.append((name, obj, ("fabric", ("plain", g["colour"], g.get("pattern"))), "bbox"))
+            hidden.update(inside)
+        elif g["kind"] == "belt":
+            obj, buckle = make_belt(rig, body, collection, lm, [o for _, o in clothes_objs], name)
+            made.append((name, obj, ("flat", g.get("colour", c("#2a2018"))), "flat"))
+            made.append((name + "_buckle", obj, ("flat", c("#9a968c")), ("faces", {len(obj.data.polygons) - 1})))
+        elif g["kind"] == "idtag":
+            obj = make_idtag(rig, body, collection, lm, name)
+            made.append((name, obj, ("flat", g["colour"]), ("faces", {1, 2})))
+            made.append((name + "_card", obj, ("flat", c("#f2f2ee")), ("faces", {0})))
+        elif g["kind"] in ("cap", "hardhat"):
+            obj = make_headgear(rig, body, kinds.get("hair"), collection, lm, g, name)
+            made.append((name, obj, ("flat", g["colour"]), "flat"))
+            if g.get("band"):
+                band_faces = {p.index for p in obj.data.polygons if (obj.matrix_world @ p.center).z < lm["brow_z"] + 0.035}
+                made.append((name + "_band", obj, ("flat", g["band"]), ("faces", band_faces)))
+    if spec["shoes"] == "sandals":
+        lift_feet(body, 0.012)
+        for part, obj in make_sandals(rig, body):
+            colour = spec["sandal_colours"][0 if part == "sole" else 1]
+            made.append((f"sandal_{part}_{obj.name}", obj, ("flat", colour), "flat"))
+    headwear = any(g["kind"] in ("cap", "hardhat") or g.get("region") == "headcloth" for g in spec["garments"])
+
+    # --- Skin
+    skin_pixels = skin_texture(spec, body, size, lm)
+    skin_image = write_image(skin_pixels, os.path.join(workdir, f"{spec['id']}_skin.png"), f"{spec['id']}_skin")
+    delete_faces(body, hidden)
+
+    # --- Outfit atlas
+    requests = []
+    for idx, (item, obj) in enumerate(clothes_objs):
+        requests.append((f"clothes{idx}", 0.5 if idx == 0 else 0.25))
+    requests.append(("hair", 0.5 if spec["sex"] == "female" or size > 512 else 0.25))
+    requests += [("eyes", 0.125), ("eyebrows", 0.125)]
+    if "eyelashes" in kinds:
+        requests.append(("eyelashes", 0.125))
+    if "shoes" in kinds:
+        requests.append(("shoes", 0.25))
+    for name, obj, tex, mode in made:
+        if tex[0] == "fabric":
+            requests.append((name, 0.25))
+        else:
+            requests.append((name, 1 / 32))
+    tiles = allocate(requests)
+    atlas = np.zeros((size, size, 4), np.float32)
+    atlas[..., 3] = 1
+
+    def put(name, pixels):
+        u0, v0, s = tiles[name]
+        n = int(round(s * size))
+        atlas[int(v0 * size):int(v0 * size) + n, int(u0 * size):int(u0 * size) + n] = resized(pixels, n)
+
+    for idx, (item, obj) in enumerate(clothes_objs):
+        garment = read_image(colour_texture_path(obj), size)
+        split = item.get("split")
+        if split:
+            split_z = hips_z + 0.03
+
+            def is_upper(centre, uv, split=split, split_z=split_z):
+                return uv.y > 0.5 if split == "uv" else centre.z > split_z
+
+            upper = uv_mask(obj, size, is_upper)
+            lower = uv_mask(obj, size, lambda cc, uv, f=is_upper: not f(cc, uv)) & ~upper
+        else:
+            upper = uv_mask(obj, size, lambda cc, uv: True)
+            lower = np.zeros_like(upper)
+        if item.get("prints"):
+            paint_out_prints(garment, upper)
+            paint_out_prints(garment, lower)
+        if split == "uv":
+            # The jeans' waistband faces reach the plain grey margin of the texture: denim there too.
+            rgb = garment[..., :3]
+            grey = lower & (rgb.max(axis=2) - rgb.min(axis=2) < 0.08) & (rgb @ LUMA > 0.6)
+            if (lower & ~grey).any():
+                garment[grey, :3] = np.median(rgb[lower & ~grey], axis=0)
+        if "colour" in item:
+            # Plain cloth: flatten any print, keep the large folds of the texture's shading.
+            soft = blur(garment[..., :3], max(2, size // 96))
+            lum = garment[..., :3] @ LUMA
+            soft_lum = soft @ LUMA
+            garment[upper, :3] = (soft * (0.6 + 0.4 * (lum / np.maximum(soft_lum, 1e-3)))[..., None])[upper]
+            recolour(garment, upper, item["colour"])
+        if "upper" in item:
+            recolour(garment, upper, item["upper"])
+        if "lower" in item:
+            recolour(garment, lower, item["lower"])
+        if item.get("pattern"):
+            apply_pattern(garment, upper.astype(np.float32), item["pattern"])
+        if item.get("border"):
+            # A contrasting band along the bottom of the garment (a pavadai's border).
+            zs = [(obj.matrix_world @ p.center).z for p in obj.data.polygons]
+            low = min(zs) + 0.06
+            band = uv_mask(obj, size, lambda cc, uv, low=low: cc.z < low)
+            recolour(garment, band, item["border"])
+        if item.get("drop") == "lower":
+            cut_faces(obj, lambda cc, uv, f=is_upper: not f(cc, uv))
+        elif item.get("drop") == "upper":
+            cut_faces(obj, lambda cc, uv, f=is_upper: f(cc, uv))
+        put(f"clothes{idx}", garment)
+        place_uvs(obj, tiles[f"clothes{idx}"])
+
+    hair = kinds.get("hair")
+    hair_pixels = read_image(colour_texture_path(hair), size)
+    recolour(hair_pixels, hair_pixels[..., 3] > 0.05, spec["hair"][1])
+    put("hair", hair_pixels)
+    eyes = read_image(colour_texture_path(kinds["eyes"]), size)
+    grey = (eyes[..., :3] @ LUMA)[..., None]
+    eyes[..., :3] = grey + (eyes[..., :3] - grey) * 0.55
+    put("eyes", eyes)
+    brows = read_image(colour_texture_path(kinds["eyebrows"]), size)
+    recolour(brows, brows[..., 3] > 0.05, tuple(0.85 * x for x in (spec["hair"][1] if spec["age"] != "elderly" else spec["facial_colour"])))
+    put("eyebrows", brows)
+    if "eyelashes" in kinds:
+        put("eyelashes", read_image(colour_texture_path(kinds["eyelashes"]), size))
+    if "shoes" in kinds:
+        put("shoes", read_image(colour_texture_path(kinds["shoes"]), size))
+    for name, obj, tex, mode in made:
+        if tex[0] == "fabric":
+            put(name, fabric(tex[1], int(tiles[name][2] * size)))
+        else:
+            n = int(tiles[name][2] * size)
+            put(name, np.concatenate([np.ones((n, n, 3), np.float32) * np.array(tex[1], np.float32), np.ones((n, n, 1), np.float32)], axis=2))
+    outfit_image = write_image(atlas, os.path.join(workdir, f"{spec['id']}_outfit.png"), f"{spec['id']}_outfit")
+
+    skin_mat = material("Skin", skin_image, alpha=False)
+    outfit_mat = material("Outfit", outfit_image, alpha=True)
+
+    parts = []
+    for kind in ("hair", "eyes", "eyebrows", "eyelashes", "shoes"):
+        if kind in kinds:
+            place_uvs(kinds[kind], tiles[kind])
+            parts.append(kinds[kind])
+    if "braid" in hair_asset(spec):
+        # The plait assets come with a side fringe over one eye; hair here is worn pulled back.
+        cut_faces(hair, lambda cc, uv: cc.y < lm["head"].y + 0.045 and cc.z < lm["brow_z"] + 0.06)
+    if headwear and hair is not None and spec["hair"][0].startswith("short"):
+        # Short hair would poke through caps and head cloths: keep only what shows below them.
+        cut_faces(hair, lambda cc, uv: cc.z > lm["brow_z"] + 0.025)
+    parts += [obj for _, obj in clothes_objs]
+    for name, obj, tex, mode in made:
+        if mode == "uv":
+            place_uvs(obj, tiles[name])
+        elif mode == "bbox":
+            place_uvs(obj, tiles[name], bbox=True)
+        elif mode == "flat":
+            flat_uvs(obj, tiles[name])
+        else:
+            flat_uvs(obj, tiles[name], mode[1])
+        if obj not in parts:
+            parts.append(obj)
+    parts = [p for p in parts if len(p.data.polygons)]
+    for obj in parts:
+        obj.data.materials.clear()
+        obj.data.materials.append(outfit_mat)
+    body.data.materials.clear()
+    body.data.materials.append(skin_mat)
+
+    # --- LOD1: copies of the parts, without eyelashes, decimated hard
+    lod1 = None
+    if spec["budget"] <= 10000 and not NO_LOD:
+        lod_body = duplicate(body)
+        lod_parts = [duplicate(p) for p in parts if p is not kinds.get("eyelashes")]
+        small = [p for p in lod_parts if triangles(p) < 60]
+        fit_budget([lod_body] + lod_parts, [lod_body] + [p for p in lod_parts if p not in small], LOD1_BUDGET, cap=0.5)
+        lod1 = join(rig, lod_body, lod_parts, "Body")
+        lod1.hide_set(True)
+
+    # --- Triangle budget: shave the heavy parts, never the small ones
+    heavy = [body] + [o for _, o in clothes_objs] + [o for o in (hair, kinds.get("shoes")) if o is not None]
+    heavy += [o for name, o, tex, mode in made if triangles(o) > 400]
+    fit_budget([body] + parts, list(dict.fromkeys(heavy)), spec["budget"], cap=0.3 if spec["proxy"] else 0.9, spare=[body])
+    body = join(rig, body, parts, "Body")
     rig.name = "Armature"
     tris = triangles(body)
-    print(f"{spec['name']}: {tris} triangles, {len(body.data.materials)} materials, {len(rig.data.bones)} bones")
-    assert tris <= spec["budget"], f"{spec['name']} is over budget: {tris}"
-    return rig, body, tris
-
-
-def read_resized(pixels, n):
-    img = bpy.data.images.new("resize", pixels.shape[1], pixels.shape[0], alpha=True, float_buffer=True)
-    img.pixels.foreach_set(pixels.astype(np.float32).ravel())
-    img.scale(n, n)
-    out = np.empty(n * n * 4, np.float32)
-    img.pixels.foreach_get(out)
-    bpy.data.images.remove(img)
-    return out.reshape(n, n, 4)
+    print(f"{spec['id']}: {tris} triangles{f', LOD1 {triangles(lod1)}' if lod1 else ''}, {len(body.data.materials)} materials, {len(rig.data.bones)} bones")
+    assert tris <= spec["budget"], f"{spec['id']} is over budget: {tris}"
+    if lod1:
+        assert triangles(lod1) <= LOD1_BUDGET, f"{spec['id']} LOD1 is over budget: {triangles(lod1)}"
+    height = max((body.matrix_world @ v.co).z for v in body.data.vertices)
+    return rig, body, lod1, {"triangles": tris, "lod1Triangles": triangles(lod1) if lod1 else None, "heightM": round(lm["top"], 3), "topM": round(height, 3)}
 
 
 def cut_faces(obj, drop):
@@ -825,6 +1927,8 @@ def cut_faces(obj, drop):
         if drop(world @ face.calc_center_median(), uv):
             doomed.append(face)
     bmesh.ops.delete(bm, geom=doomed, context="FACES")
+    loose = [v for v in bm.verts if not v.link_faces]
+    bmesh.ops.delete(bm, geom=loose, context="VERTS")
     bm.to_mesh(obj.data)
     bm.free()
 
@@ -832,6 +1936,7 @@ def cut_faces(obj, drop):
 def export(rig, body, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     bpy.ops.object.select_all(action="DESELECT")
+    body.hide_set(False)
     rig.select_set(True)
     body.select_set(True)
     bpy.context.view_layer.objects.active = rig
@@ -853,32 +1958,44 @@ def export(rig, body, path):
     )
 
 
-def preview(rig, body, path):
-    """Front and three-quarter Cycles renders (Eevee needs a GPU context headless builds lack)."""
+def preview(rig, body, path, others=()):
+    """Cycles renders: front, three-quarter, back and a face close-up (Eevee needs a GPU
+    context that headless builds lack)."""
+    for other in others:
+        other.hide_render = True
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
-    scene.cycles.samples = 24
-    scene.render.resolution_x, scene.render.resolution_y = 480, 720
-    world = bpy.data.worlds.new("sky") if not scene.world else scene.world
+    scene.cycles.samples = 20
+    scene.render.resolution_x, scene.render.resolution_y = 400, 640
+    world = scene.world or bpy.data.worlds.new("sky")
     scene.world = world
     world.use_nodes = True
-    world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.75, 0.78, 0.82, 1)
-    world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.8
-    sun = bpy.data.objects.new("sun", bpy.data.lights.new("sun", "SUN"))
-    sun.data.energy = 3.5
-    sun.rotation_euler = (math.radians(40), math.radians(10), math.radians(-30))
-    scene.collection.objects.link(sun)
-    cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
-    scene.collection.objects.link(cam)
+    world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.7, 0.74, 0.8, 1)
+    world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.9
+    if not bpy.data.objects.get("sun"):
+        sun = bpy.data.objects.new("sun", bpy.data.lights.new("sun", "SUN"))
+        sun.data.energy = 3.2
+        sun.rotation_euler = (math.radians(40), math.radians(10), math.radians(-30))
+        scene.collection.objects.link(sun)
+        bpy.ops.mesh.primitive_plane_add(size=6)
+        ground = bpy.context.active_object
+        ground.name = "ground"
+        mat = bpy.data.materials.new("ground")
+        mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.35, 0.33, 0.3, 1)
+        ground.data.materials.append(mat)
+    cam = bpy.data.objects.get("cam") or bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
+    if cam.name not in scene.collection.objects:
+        scene.collection.objects.link(cam)
     scene.camera = cam
     shots = []
-    for i, (angle, zoom) in enumerate(((0, False), (35, False), (0, True))):
+    top = max((body.matrix_world @ v.co).z for v in body.data.vertices)
+    for i, (angle, zoom) in enumerate(((0, False), (35, False), (180, False), (15, True))):
         a = math.radians(angle)
         if zoom:
-            target, dist, lens = Vector((0, 0, 1.6)), 0.9, 70
+            target, dist, lens = Vector((0, 0, top - 0.12)), 0.9, 70
         else:
-            target, dist, lens = Vector((0, 0, 0.9)), 4.2, 50
+            target, dist, lens = Vector((0, 0, 0.88)), 4.2, 50
         cam.data.lens = lens
         cam.location = target + Vector((math.sin(a) * dist, -math.cos(a) * dist, 0.05))
         cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
@@ -889,17 +2006,47 @@ def preview(rig, body, path):
     return shots
 
 
+def manifest_entry(spec, stats):
+    return {
+        "id": spec["id"],
+        "file": spec["file"],
+        "lod1": spec["file"].replace(".glb", "_lod1.glb"),
+        "sex": spec["sex"],
+        "age": spec["age"],
+        "roles": spec["roles"],
+        "heightM": stats["heightM"],
+        "triangles": stats["triangles"],
+        "lod1Triangles": stats["lod1Triangles"],
+        "texture": spec["texture"],
+    }
+
+
 def main():
     human_service = load_mpfb()
+    manifest_path = os.path.join(OUT, "people", "people.json")
+    entries = {}
+    if os.path.exists(manifest_path):
+        with open(manifest_path) as f:
+            entries = {e["id"]: e for e in json.load(f)["people"]}
     with tempfile.TemporaryDirectory() as workdir:
-        for spec in CHARACTERS:
-            if ONLY and spec["name"] != ONLY:
+        for spec in CAST:
+            if ONLY and spec["id"] not in ONLY:
                 continue
-            rig, body, _ = build(spec, human_service, workdir)
+            rig, body, lod1, stats = build(spec, human_service, workdir)
             export(rig, body, os.path.join(OUT, spec["file"]))
+            if lod1:
+                export(rig, lod1, os.path.join(OUT, spec["file"].replace(".glb", "_lod1.glb")))
+            if spec["roles"]:
+                entries[spec["id"]] = manifest_entry(spec, stats)
             if PREVIEW:
                 os.makedirs(PREVIEW, exist_ok=True)
-                preview(rig, body, os.path.join(PREVIEW, spec["name"]))
+                preview(rig, body, os.path.join(PREVIEW, spec["id"]), [lod1] if lod1 else [])
+    order = [s["id"] for s in CAST]
+    people = [entries[i] for i in order if i in entries]
+    os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
+    with open(manifest_path, "w") as f:
+        json.dump({"people": people}, f, indent=2)
+        f.write("\n")
 
 
 main()
