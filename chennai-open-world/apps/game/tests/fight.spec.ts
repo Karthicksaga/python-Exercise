@@ -4,7 +4,7 @@
  * part of it (hurt by the player, knocked out or killed, the police told).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { GAME_WAIT, ready, snapshot, teleport, waitGameTime } from "./support";
+import { GAME_WAIT, holdButton, ready, snapshot, teleport, waitGameTime } from "./support";
 
 const FIRST_SIX = ["morning-walk", "borrowed-wheels", "auto-shift", "parcel-run", "cross-town", "bike-courier"];
 
@@ -108,12 +108,13 @@ test("a bullet hits a pedestrian standing in the line of fire; a second one kill
   await ready(page);
   await page.evaluate(() => (window as unknown as { __cow: { giveWeapon(id: string, n: number): void } }).__cow.giveWeapon("pistol", 10));
   await pedestrianInFront(page, 6);
-  await tap(page, "Fire");
-  await page.getByRole("button", { name: "Fire", exact: true }).dispatchEvent("pointerup", { pointerId: 51, pointerType: "touch" });
+  // FIRE is a held button, read every physics step: a press and release in the same instant can
+  // fall between two steps and fire nothing (it did on a slow CI runner). Held 0.2 s of game time:
+  // one pistol shot (0.32 s between shots).
+  await holdButton(page, "Fire", 200);
   await expect.poll(async () => (await view(page)).fightView.lastAssault?.outcome, { timeout: GAME_WAIT }).toBe("flinch");
   await waitGameTime(page, 0.5);
-  await tap(page, "Fire");
-  await page.getByRole("button", { name: "Fire", exact: true }).dispatchEvent("pointerup", { pointerId: 51, pointerType: "touch" });
+  await holdButton(page, "Fire", 200);
   await expect.poll(async () => (await view(page)).fightView.lastAssault?.outcome, { timeout: GAME_WAIT }).toBe("killed");
   await expect.poll(async () => (await view(page)).police.stars, { timeout: GAME_WAIT }).toBeGreaterThanOrEqual(1);
 });
