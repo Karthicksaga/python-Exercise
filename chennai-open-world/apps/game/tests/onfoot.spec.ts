@@ -65,7 +65,8 @@ test("dragging the right side rotates the camera", async ({ page }) => {
 
 test("jump lifts the player and gravity brings them back", async ({ page }) => {
   await ready(page);
-  await page.waitForTimeout(300);
+  // Game time, not wall clock: the player spawns 10 cm up and a jump only starts from the ground.
+  await waitGameTime(page, 0.5);
   await page.getByRole("button", { name: "Jump", exact: true }).dispatchEvent("pointerdown", { pointerId: 33, pointerType: "touch" });
   // Wall-clock limits only: on a slow machine a jump takes longer than its game time.
   await expect.poll(async () => (await snapshot(page)).y, { timeout: 10_000, intervals: [30] }).toBeGreaterThan(0.5);
@@ -75,6 +76,8 @@ test("jump lifts the player and gravity brings them back", async ({ page }) => {
 
 test("real buildings are solid", async ({ page }) => {
   await ready(page);
+  // Game time, not wall clock: ray casts see the city's walls only after the physics has stepped.
+  await waitGameTime(page, 0.5);
   const s = await snapshot(page);
   // Find a wall: look east, west, south and north from the start for the nearest building.
   const directions = [

@@ -29,8 +29,8 @@ Do not move rendering into React Native/Hermes: Rapier (WebAssembly) cannot run 
 ## Before a major feature
 1. Read the relevant packages and docs. 2. List dependencies and Android/WebView limits.
 3. Write the plan in `docs/development-roadmap.md`. 4. Build in small steps.
-5. `npm run typecheck && npm test && npm run test:e2e` (alone on the machine; see below when
-several agents work at once). 6. Build the APK and run it
+5. `npm run typecheck && npm test`, and the browser specs your change touches
+(`npm run test:e2e -- tests/<spec>.spec.ts`). The full browser suite runs in CI (below). 6. Build the APK and run it
 (emulator at least; a real phone for anything touching performance or touch input).
 7. Update `docs/progress.md`, and `docs/technical-decisions.md` if a decision was made.
 
@@ -45,8 +45,12 @@ Browser tests are the bottleneck: each run is software-rendered Chromium and use
 - **Run only your own browser specs** while you work: `npm run test:e2e -- tests/<yours>.spec.ts`,
   plus any existing spec your change touches (for example the driving specs if you change
   driving input). Typecheck and unit tests are cheap: run them as often as you like.
-- **Don't run the full browser suite in a feature branch.** Whoever merges runs it once, on the
-  merged code, before pushing to `feat/chennai-open-world`.
+- **The full browser suite runs in CI, not on this machine** (the user's decision, 22 Nov 2026).
+  CI splits it into 4 shards on 4 runners (about a quarter of the 37-minute local run). Whoever
+  merges: run typecheck, unit tests and the specs the merged branches touched locally, push the
+  merge to an `agent/merge-*` branch, and fast-forward `feat/chennai-open-world` only when that
+  push's CI run is green (`test`, all 4 `e2e` shards). Run the full suite locally
+  (`npm run test:e2e`) only to chase a CI failure you cannot reproduce with one spec.
 - **Branches:** work on `agent/<topic>` made from the latest `feat/chennai-open-world`; push it
   after every working milestone (`git push -u origin HEAD:agent/<topic>`); only the coordinator
   merges into `feat/chennai-open-world`.
