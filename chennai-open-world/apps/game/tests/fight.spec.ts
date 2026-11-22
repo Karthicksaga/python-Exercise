@@ -4,7 +4,7 @@
  * part of it (hurt by the player, knocked out or killed, the police told).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { GAME_WAIT, holdButton, ready, snapshot, teleport, waitGameTime } from "./support";
+import { GAME_WAIT, ready, snapshot, teleport, waitGameTime } from "./support";
 
 const FIRST_SIX = ["morning-walk", "borrowed-wheels", "auto-shift", "parcel-run", "cross-town", "bike-courier"];
 
@@ -104,17 +104,28 @@ test("a pedestrian punched twice is knocked out, and the police hear about it", 
   expect((await view(page)).fightView.civiliansNear).toHaveLength(0);
 });
 
+/**
+ * One shot: hold FIRE until a round has left the pistol, then let go. FIRE is held and read each
+ * physics step, so an instant tap can fall between two steps and fire nothing (seen on a slow CI
+ * runner), and a hold for a fixed time can fire twice (the pistol fires every 0.32 s).
+ */
+async function fireOnce(page: Page): Promise<void> {
+  const rounds = async () => ((await snapshot(page)) as unknown as { ammo: number }).ammo;
+  const before = await rounds();
+  const fire = page.getByRole("button", { name: "Fire", exact: true });
+  await fire.dispatchEvent("pointerdown", { pointerId: 52, pointerType: "touch" });
+  await expect.poll(rounds, { timeout: GAME_WAIT, intervals: [20] }).toBeLessThan(before);
+  await fire.dispatchEvent("pointerup", { pointerId: 52, pointerType: "touch" });
+}
+
 test("a bullet hits a pedestrian standing in the line of fire; a second one kills", async ({ page }) => {
   await ready(page);
   await page.evaluate(() => (window as unknown as { __cow: { giveWeapon(id: string, n: number): void } }).__cow.giveWeapon("pistol", 10));
   await pedestrianInFront(page, 6);
-  // FIRE is a held button, read every physics step: a press and release in the same instant can
-  // fall between two steps and fire nothing (it did on a slow CI runner). Held 0.2 s of game time:
-  // one pistol shot (0.32 s between shots).
-  await holdButton(page, "Fire", 200);
+  await fireOnce(page);
   await expect.poll(async () => (await view(page)).fightView.lastAssault?.outcome, { timeout: GAME_WAIT }).toBe("flinch");
   await waitGameTime(page, 0.5);
-  await holdButton(page, "Fire", 200);
+  await fireOnce(page);
   await expect.poll(async () => (await view(page)).fightView.lastAssault?.outcome, { timeout: GAME_WAIT }).toBe("killed");
   await expect.poll(async () => (await view(page)).police.stars, { timeout: GAME_WAIT }).toBeGreaterThanOrEqual(1);
 });
