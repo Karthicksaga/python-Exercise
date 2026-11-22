@@ -861,3 +861,27 @@ Difficulty has not been play-tested by a person.
   also fails 1 in 3 on the untouched base (`suggestions/2026-11-22-chennai-combat-stage-flakes.md`).
   Game speed in headless Chromium measured with and without sound started, next to traffic:
   0.69–0.72 game seconds per second either way (no measurable cost).
+
+## 22 Nov 2026: combat redesign: pedestrians in fights, moves, reactions, block and dodge (TD-26)
+- **Before (audit):** a punch was the arm snapped forward for 0.22 s; shots an arm held out and a
+  0.07 s tracer; enemies showed nothing until they fell flat in one frame; pedestrians could only
+  be hurt by vehicles (punches and bullets passed through them); enemies walked straight at the
+  player and all attacked at once; no block, dodge or targeting.
+- **Now:** jab/cross/hook combo and bat swing, gun recoil and muzzle flash; enemies square up,
+  wind up before striking, flinch and stagger, are knocked back, fall over half a second; health
+  bar over a hurt enemy, lock-on brackets, hit markers; DODGE and BLOCK in a fight; brawlers take
+  turns and circle, gunmen strafe and keep their distance, the badly hurt back off; pedestrians
+  flinch, stagger, are knocked out (and get up later) or killed by guns; bystanders flee or
+  cower; the police are told. Combat sounds (impacts, bat crack, block, dodge, wind-up, grunts).
+- **Found and fixed while testing:** the lock-on stayed on a farther enemy while another stood in
+  the player's face (punches whiffed): an enemy within arm's reach now takes it. A pedestrian's
+  health reset after each hit (keyed on a counter that moving them bumps): now kept by place.
+  Stage 15 stuck: a hurt enemy backed into the enclosed space by the clock tower and could not
+  get out: backing off now needs open ground and steering tries both sides.
+- **Tests:** unit `Melee.test.ts` (combo, reactions, block, dodge timing, turns, circling,
+  gunman strafing, retreat, steering, lock-on, pedestrians), `combatMoves.test.ts`; three combat
+  tests updated on purpose (new hit events; knock-back; wind-up needs small steps). Browser
+  `fight.spec.ts` (fight mode and controls, lock-on, health bar, block, dodge; a pedestrian
+  knocked out by two punches with the police told; bullets hitting a pedestrian).
+- **Checked by eye** (screenshots frozen mid-move at phone quality, not kept): thugs squared up;
+  jab with hit marker and health bar; block with forearms up; dodge crouch; knocked-down thug.

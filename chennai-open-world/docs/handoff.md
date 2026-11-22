@@ -760,3 +760,13 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - **Not done / uncertain:** not listened to by anyone yet, on a phone or otherwise: levels and
   timbres were set from the design and checked by measurement only (offline renders). Listen
   to the samples (see the PR) and tune `profiles.ts`.
+
+## 22 Nov 2026: combat redesign (branch `agent/combat-redesign`, on top of `agent/sound-design`): where I left off
+- **Done** (details in `progress.md`, TD-26): rules, procedural moves, reactions, marks,
+  contextual DODGE/BLOCK, lock-on, pedestrians in fights, smarter enemies, sounds.
+- **Shared files touched:** `Game.ts` (fight step: lock, block, dodge, civilians, events;
+  snapshot `fightView`), `Population.ts` (`civilians`, `assault`, `scareAt`, cowering),
+  `Fighters.ts`, `HumanFigure.ts`, `PlayerController.ts` (`dash`), `TouchControls.ts`,
+  `Combat.ts`, `Wanted.ts` (new crime), `index.ts` export lists.
+- **Not done / uncertain:** never played on a phone (block and dodge timing by touch); moves
+  judged by eye at low resolution; pedestrians do not fight back; no manual target switching.

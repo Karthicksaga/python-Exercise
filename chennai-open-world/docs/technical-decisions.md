@@ -455,3 +455,37 @@ player make no footsteps. Not yet heard on a phone.
 
 **Revisit when** recorded samples are licensed (swap a voice's builder, keep the profiles and
 tests), or the mix needs per-bus volume settings.
+
+## TD-26: Combat redesign: pedestrians in fights, procedural moves, telegraphed enemies, contextual controls
+
+**Decision (the user's, 22 Nov 2026).** Pedestrians take part in fights, and fights are redesigned
+for visible attacks, hit reactions, touch controls and smarter enemies.
+- **Rules** (`@cow/combat`, `Melee.ts` for the numbers): a punch combo (jab, cross, hook x1.4);
+  hits stun and knock back (light 0.35 s / 0.25 m, heavy 0.9 s / 1.3 m, stopped by walls); block
+  cuts melee hits to a fifth (bullets are not blocked); a dodge is 0.35 s untouchable plus a 2.6 m
+  dash; enemies wind up 0.4 s before a melee strike; two brawlers attack at once while the rest
+  circle at 3.6 m; gunmen strafe between shots and back away when close; the badly hurt back off
+  once (only into open ground); lock-on (`chooseLock`, an enemy within arm's reach takes it).
+- **Pedestrians:** punches, the bat and bullets hit them (`civilianHit`); `attackOutcome` on
+  60 health gives flinch, stumble, injured (knocked out: down, then up and limping, the existing
+  casualty states) or killed (guns). Bystanders flee or cower. New crime `pedestrianAssaulted`
+  (1 point, a star); knocking someone out or killing them uses the existing crimes.
+- **Look:** the model has only idle, walk and run clips, so moves are procedural poses
+  (`combatMoves.ts`: keyframed arm directions, spine bend and twist, head, body offset) blended
+  over the walk cycle, solved once per model. An animated fall replaces the instant tip-over.
+  `CombatMarks` (DOM) draws a hurt enemy's health bar, lock-on brackets and hit markers; muzzle
+  flashes are sprites. Synthesised impact, block, dodge, wind-up and grunt sounds.
+- **Controls:** no new permanent buttons. In a fight (a hostile within 15 m, or a hit in the last
+  4 s) JUMP becomes DODGE and a BLOCK hold button appears; attacks turn to the locked target.
+
+**Why procedural moves.** No licensed combat animations are in the project (assets/README.md),
+and the figures already pose limbs in code (aim, wave, riding). Posed moves cost a few bone
+writes per figure per frame, only while a move or stance is active.
+
+**Trade-offs.** The moves are judged by eye and simpler than motion-captured animation; the fall
+is a tip onto the back, not a physical ragdoll. Pedestrians do not fight back. Lock-on has no
+manual target switch (the nearest in front, or the one in the player's face). Not tried on a
+phone, where touch timing for block and dodge matters most.
+
+**Revisit when** licensed combat animation clips are available (replace the poses, keep the
+rules and tests), or players need to pick targets themselves.
