@@ -6,7 +6,7 @@
  * walking or running. Works with any manifest of the schema (the fixture or the real one).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { ready, snapshot, waitGameTime } from "./support";
+import { probe, ready, snapshot, teleport, waitGameTime } from "./support";
 
 interface Entry {
   id: string;
@@ -109,7 +109,19 @@ test("figures stand on the ground: walkers, someone standing, and the player idl
   expect(samples.some((x) => /pedestrian .* standing/.test(x.who))).toBe(true);
   expect(samples.some((x) => /pedestrian .* walking/.test(x.who))).toBe(true);
 
-  // The player walking, then running (touch stick held, sampled while moving).
+  // The player walking, then running (touch stick held, sampled while moving), towards open
+  // street: facing a direction clear for 25 m, so no bump into a parked vehicle (they all stand
+  // near the spawn) stops the player between two samples and a blend is measured as a gait.
+  const here = await snapshot(page);
+  let clear = 0;
+  for (let k = 0; k < 16; k++) {
+    const yaw = (k * Math.PI) / 8;
+    if ((await probe(page, here.x, here.z, -Math.sin(yaw), -Math.cos(yaw), 25)) === null) {
+      clear = yaw;
+      break;
+    }
+  }
+  await teleport(page, here.x, here.z, clear);
   const zone = page.getByTestId("move-zone");
   const pointer = { pointerId: 11, pointerType: "touch", isPrimary: true, bubbles: true };
   for (const [push, label] of [[-30, "walking"], [-80, "running"]] as const) {
