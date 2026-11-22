@@ -13,6 +13,7 @@ Proposals, reviews and recommendations for Hop. These are things suggested, not 
 
 | Date | Suggestion | Status |
 |---|---|---|
+| 2026-11-22 | [Chennai Open World: stage 12 and 15 browser tests fail intermittently](2026-11-22-chennai-combat-stage-flakes.md) | Proposed |
 | 2026-11-05 | [Intercity carpool app next to Hop](2026-11-05-intercity-carpool-app.md) | Proposed |
 | 2026-11-05 | [Brand name conflict: "Hop"](2026-11-05-brand-name-conflict.md) | Deferred, keeping Hop for now |
 | 2026-11-05 | [UI review follow-ups](2026-11-05-ui-review-follow-ups.md) | Proposed |
