@@ -47,6 +47,10 @@ async function goToTarget(page: Page): Promise<void> {
 
 /** Beat the stage's group: stand 6 m from each enemy in turn, facing it, and hold FIRE. */
 async function shootItOut(page: Page, objective: string, group: string, restart: string): Promise<void> {
+  // When the enemy we shot at last round still has the same health, come at them from another
+  // side next time (a CI run once spent 75 rounds firing from one spot without a hit).
+  let last: { x: number; z: number; health: number } | null = null;
+  let turn = 0;
   for (let round = 0; round < 80; round++) {
     const s = await state(page);
     if (s.objective === restart) {
@@ -63,9 +67,12 @@ async function shootItOut(page: Page, objective: string, group: string, restart:
     }
     // Stand 6 m off in a direction with nothing solid between (the ray starts clear of the
     // enemy's own collision box), trying the side the player is on first.
+    if (last && Math.hypot(last.x - enemy.x, last.z - enemy.z) < 1.5 && last.health === enemy.health) turn++;
+    last = { x: enemy.x, z: enemy.z, health: enemy.health };
     const toward = Math.atan2(s.x - enemy.x, s.z - enemy.z);
     let from = { x: enemy.x + Math.sin(toward) * 6, z: enemy.z + Math.cos(toward) * 6 };
-    for (let k = 0; k < 8; k++) {
+    for (let j = 0; j < 8; j++) {
+      const k = (j + turn) % 8;
       const a = toward + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 4);
       const dx = Math.sin(a);
       const dz = Math.cos(a);
@@ -77,7 +84,10 @@ async function shootItOut(page: Page, objective: string, group: string, restart:
     await teleport(page, from.x, from.z, Math.atan2(-(enemy.x - from.x), -(enemy.z - from.z)));
     await heal(page);
     // A line per few rounds, so a failure shows how the fight went.
-    if (round % 5 === 0) console.log(`${group} round ${round}: health ${Math.round(s.health)}, standing ${s.enemies.filter((e) => e.group === group && e.health > 0).map((e) => `${e.weapon}:${e.health}`).join(" ")}`);
+    if (round % 5 === 0) {
+      const at = (p: { x: number; z: number }) => `${p.x.toFixed(1)},${p.z.toFixed(1)}`;
+      console.log(`${group} round ${round}: health ${Math.round(s.health)}, standing ${s.enemies.filter((e) => e.group === group && e.health > 0).map((e) => `${e.weapon}:${e.health}`).join(" ")}; target ${enemy.weapon} at ${at(enemy)}, shooting from ${at(from)} (side ${turn % 8})`);
+    }
     await holdButton(page, "Fire", 500);
   }
 }
