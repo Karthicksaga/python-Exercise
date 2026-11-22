@@ -9,7 +9,7 @@ import { GAME_WAIT, ready, snapshot, teleport, waitGameTime } from "./support";
 const FIRST_SIX = ["morning-walk", "borrowed-wheels", "auto-shift", "parcel-run", "cross-town", "bike-courier"];
 
 type Fight = { combatMode: boolean; locked: number | null; blocking: boolean; dodging: boolean; lastSwing: string | null; playerMove: string | null; lastAssault: { id: number; outcome: string } | null; civiliansNear: Array<{ id: number; distance: number }> };
-type View = { x: number; z: number; yaw: number; cameraYaw: number; health: number; wanted: number; target: { x: number; z: number } | null; enemies: Array<{ x: number; z: number; health: number }>; fightView: Fight };
+type View = { x: number; z: number; yaw: number; cameraYaw: number; health: number; police: { stars: number; lastCrime: string | null }; target: { x: number; z: number } | null; enemies: Array<{ x: number; z: number; health: number }>; fightView: Fight };
 const view = async (page: Page) => (await snapshot(page)) as unknown as View;
 const tap = (page: Page, name: string) => page.getByRole("button", { name, exact: true }).dispatchEvent("pointerdown", { pointerId: 51, pointerType: "touch" });
 
@@ -46,7 +46,8 @@ test("in a fight: fists up, DODGE and BLOCK, a lock-on, and a health bar and hit
     landed = (await view(page)).enemies.some((e) => e.health > 0 && e.health < 100);
   }
   expect(landed).toBe(true);
-  await expect(page.getByTestId("enemy-health").first()).toBeVisible();
+  // The hurt one's bar (an unhurt enemy's stays hidden).
+  await expect(page.locator('[data-testid="enemy-health"]:visible')).not.toHaveCount(0);
   expect(["jab", "cross", "hook"]).toContain((await view(page)).fightView.lastSwing);
 });
 
@@ -86,17 +87,19 @@ test("a pedestrian punched twice is knocked out, and the police hear about it", 
   await ready(page);
   await pedestrianInFront(page);
   expect((await view(page)).fightView.civiliansNear.length).toBeGreaterThan(0);
-  expect((await view(page)).wanted).toBe(0);
+  expect((await view(page)).police.stars).toBe(0);
 
   await tap(page, "Punch");
   await expect.poll(async () => (await view(page)).fightView.lastAssault?.outcome, { timeout: GAME_WAIT }).toBe("flinch");
   // A punch in the street turns on fight mode and draws a wanted star.
   expect((await view(page)).fightView.combatMode).toBe(true);
-  await expect.poll(async () => (await view(page)).wanted, { timeout: GAME_WAIT }).toBeGreaterThanOrEqual(1);
+  await expect.poll(async () => (await view(page)).police.stars, { timeout: GAME_WAIT }).toBeGreaterThanOrEqual(1);
+  expect((await view(page)).police.lastCrime).toBe("pedestrianAssaulted");
 
   await waitGameTime(page, 0.6); // the punch's recovery
   await tap(page, "Punch");
   await expect.poll(async () => (await view(page)).fightView.lastAssault?.outcome, { timeout: GAME_WAIT }).toBe("injured");
+  expect((await view(page)).police.lastCrime).toBe("pedestrianInjured");
   // Down on the ground: no longer someone to hit.
   expect((await view(page)).fightView.civiliansNear).toHaveLength(0);
 });
@@ -112,5 +115,5 @@ test("a bullet hits a pedestrian standing in the line of fire; a second one kill
   await tap(page, "Fire");
   await page.getByRole("button", { name: "Fire", exact: true }).dispatchEvent("pointerup", { pointerId: 51, pointerType: "touch" });
   await expect.poll(async () => (await view(page)).fightView.lastAssault?.outcome, { timeout: GAME_WAIT }).toBe("killed");
-  await expect.poll(async () => (await view(page)).wanted, { timeout: GAME_WAIT }).toBeGreaterThanOrEqual(1);
+  await expect.poll(async () => (await view(page)).police.stars, { timeout: GAME_WAIT }).toBeGreaterThanOrEqual(1);
 });

@@ -885,3 +885,7 @@ Difficulty has not been play-tested by a person.
   knocked out by two punches with the police told; bullets hitting a pedestrian).
 - **Checked by eye** (screenshots frozen mid-move at phone quality, not kept): thugs squared up;
   jab with hit marker and health bar; block with forearms up; dodge crouch; knocked-down thug.
+- **Results on this branch:** typecheck clean; unit 540/540; browser (affected specs, per
+  AGENTS.md): `combat`, `gangs`, `missions2`, `stages3`, `police`, `pedestrians`, `weapons`,
+  `onfoot` 37/38 on the first run (stage 15 stuck, fixed as above, then 1/1 again with
+  `missions2` 9/9 and `combat` 4/4); `fight.spec` 4/4. The full suite runs in CI.
