@@ -3,7 +3,7 @@
  * the long drives across town, as `combat.spec.ts` does for stages 7 and 8).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { GAME_WAIT, board, holdButton, probe, ready, snapshot, teleport, waitGameTime } from "./support";
+import { GAME_WAIT, board, holdButton, probe, ready, snapshot, tapButton, teleport, waitGameTime } from "./support";
 
 const FIRST_TEN = ["morning-walk", "borrowed-wheels", "auto-shift", "parcel-run", "cross-town", "bike-courier", "park-trouble", "bike-thieves", "godown-raid", "roundtana-showdown"];
 const LATER = ["courier-chase", "tea-shop", "drive-by", "snake-pit", "turf-war"];
@@ -19,6 +19,7 @@ interface State {
   target: { x: number; z: number } | null;
   quarry: { x: number; z: number } | null;
   weapons: string[];
+  weapon: string;
   weaponAmmo: Record<string, number>;
   enemies: Array<{ x: number; z: number; health: number; group: string; weapon: string }>;
 }
@@ -60,6 +61,10 @@ async function shootItOut(page: Page, objective: string, group: string, restart:
     }
     if (s.objective !== objective) break;
     await heal(page);
+    // A teleport can land on a weapon lying in the street (stage 14's hideout has a shotgun with
+    // eight shells on its street), and a new gun goes straight into the hand: once it is empty,
+    // switch to a gun that still has rounds, as a player would (CI once fired an empty gun for 65 rounds).
+    for (let k = 0; k < 6 && !((await state(page)).weaponAmmo[(await state(page)).weapon]! > 0); k++) await tapButton(page, "Switch weapon");
     const enemy = s.enemies.filter((e) => e.group === group && e.health > 0)[0];
     if (!enemy) {
       await waitGameTime(page, 0.3);
