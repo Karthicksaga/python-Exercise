@@ -76,6 +76,21 @@ describe("enemies spawned inside a building", async () => {
     expect(combatWorld(physics).lineOfSight(enemy.x + 6, enemy.z, enemy.x, enemy.z) || combatWorld(physics).lineOfSight(enemy.x - 6, enemy.z, enemy.x, enemy.z) || combatWorld(physics).lineOfSight(enemy.x, enemy.z + 6, enemy.x, enemy.z) || combatWorld(physics).lineOfSight(enemy.x, enemy.z - 6, enemy.x, enemy.z)).toBe(true);
   });
 
+  it("are moved out of a larger enclosed space too, from near one of its walls", async () => {
+    // As measured at the clock tower: walls 0.7 m away on one side and 3.6 m on the other.
+    const yard = await PhysicsWorld.create();
+    const [a0, a1, b0, b1] = [196.5, 203.5, 199.3, 205.3];
+    const box = [[a0, 0, b0], [a1, 0, b0], [a1, 0, b1], [a0, 0, b1], [a0, 6, b0], [a1, 6, b0], [a1, 6, b1], [a0, 6, b1]];
+    const idx: number[] = [];
+    for (const [a, b, c, d] of [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]]) idx.push(a!, b!, c!, a!, c!, d!, a!, c!, b!, a!, d!, c!);
+    yard.createStaticGroup().addMesh(new Float32Array(box.flat()), new Uint32Array(idx));
+    yard.step(1 / 60);
+    const combat = new Combat(combatWorld(yard), () => 0.5);
+    combat.spawnGroup("turf", [{ x: 200, z: 200, armed: false, weapon: "bat" }]);
+    const enemy = combat.enemies[0]!;
+    expect(enemy.x < a0 || enemy.x > a1 || enemy.z < b0 || enemy.z > b1).toBe(true);
+  });
+
   it("stay where they were asked to stand when that spot is open, even right beside a wall", () => {
     const combat = new Combat(combatWorld(physics), () => 0.5);
     combat.spawnGroup("corner", [{ x: 100, z: 102, armed: true, weapon: "pistol" }]);
