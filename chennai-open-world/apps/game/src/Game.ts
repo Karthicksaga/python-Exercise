@@ -5,7 +5,7 @@
  */
 import * as THREE from "three";
 import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, Motion, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
-import { Sound } from "@cow/audio";
+import { Sound, soundKind, type SoundState } from "@cow/audio";
 import { Combat, PLAYER_MAX_HEALTH, hitPenalty, isPoliceGroup, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState, type WeaponId } from "@cow/combat";
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
@@ -76,6 +76,8 @@ export interface LoadProgress {
 export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
   /** The title menu is showing (`title`), or the game is (`game`, playing or paused). */
   readonly screen: "title" | "game";
+  /** What the sound system is playing (engine, traffic voices, ambience, one-shots heard). */
+  readonly audio: SoundState;
   readonly x: number;
   readonly y: number;
   readonly z: number;
@@ -188,6 +190,15 @@ function loadDistricts(): VisitedDistricts {
   }
 }
 
+const SOUND_KEY = "cow-sound-v1";
+function loadSoundOn(): boolean {
+  try {
+    return localStorage.getItem(SOUND_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
 const HOUR_KEY = "cow-hour-v1";
 function loadHour(): number | undefined {
   try {
@@ -293,6 +304,12 @@ export class Game {
   private readonly title: TitleDesk;
   /** `start` has run once (the first PLAY from the title menu, or straight away in tests). */
   private started = false;
+  /** Accelerator sent to the driven vehicle at the last step, 0..1 (the engine's load). */
+  private pedal = 0;
+  /** Seconds the player has been off the ground (a landing thud after a jump or drop). */
+  private airborne = 0;
+  /** Seconds since the traffic and ambience sound was last updated (it runs at 20 Hz). */
+  private sinceSound = 0;
 
   private constructor(
     private readonly map: WorldMap,
@@ -363,7 +380,18 @@ export class Game {
     renderer.scene.add(this.placeMarkers.object);
     this.cityMap = this.makeCityMap();
     minimap.onTap(() => this.cityMap.open());
+    sound.setMuted(!loadSoundOn());
     this.title = this.makeTitle();
+  }
+
+  /** Sound on or off, from the title menu or the pause menu, and remembered. */
+  private toggleSound(): void {
+    this.sound.setMuted(!this.sound.isMuted);
+    try {
+      localStorage.setItem(SOUND_KEY, this.sound.isMuted ? "off" : "on");
+    } catch {
+      // Not saved; the setting still applies now.
+    }
   }
 
   /** The title menu and what it reads from, and does to, the game. */
@@ -382,6 +410,10 @@ export class Game {
       },
       toggleWeather: () => {
         this.setWeather(this.weather === "rain" ? "clear" : "rain");
+        this.title.refresh();
+      },
+      toggleSound: () => {
+        this.toggleSound();
         this.title.refresh();
       },
       // Only the Android app can close itself; a browser tab has nothing to quit to.
@@ -404,6 +436,7 @@ export class Game {
       place: { area: this.districtIndex.at(at)?.name ?? this.map.name, street },
       time: `${this.clock.label} · ${this.clock.text()}`,
       weather: this.weather === "rain" ? "Rain" : "Clear",
+      sound: this.sound.isMuted ? "Off" : "On",
       controls: CONTROLS,
       about: [
         "An original open-world game set on the real streets of Chennai, from Anna Nagar to the Marina. Early build.",
@@ -432,6 +465,14 @@ export class Game {
       this.avatar.update(dt, 0, true);
     }
     for (const vehicle of this.vehicles) vehicle.sync(0, 1);
+    // The city's background plays behind the menu (once a first touch has allowed sound).
+    this.sinceSound += dt;
+    if (this.sinceSound >= 0.05) {
+      const at = this.where();
+      this.sound.setListener(camera.position.x, camera.position.z, this.camera.yaw);
+      this.sound.setAmbience(this.sinceSound, { hour: this.clock.hour, rain: this.weather === "rain" ? 1 : 0, coast: distanceToCoast(this.map.sea, at), traffic: 0.5, enclosed: false });
+      this.sinceSound = 0;
+    }
     this.mapView.follow(camera);
     this.renderer.focusShadows(target.x, target.z);
     this.renderer.setTimeOfDay(this.clock.hour);
@@ -799,6 +840,16 @@ export class Game {
       this.hud.addOverlayAction({ label: "Share progress", quiet: true, run: () => this.share() });
       this.hud.addOverlayAction({ label: `Time: ${this.clock.label} (${this.clock.text()})`, quiet: true, run: () => this.nextTimeOfDay() });
       this.hud.addOverlayAction({ label: `Weather: ${this.weather === "rain" ? "Rain" : "Clear"}`, quiet: true, run: () => this.toggleWeather() });
+      this.hud.addOverlayAction({
+        label: `Sound: ${this.sound.isMuted ? "Off" : "On"}`,
+        quiet: true,
+        run: () => {
+          this.toggleSound();
+          // Rebuild the pause screen so the button shows the new setting.
+          this.paused = false;
+          this.setPaused(true);
+        },
+      });
       this.hud.addOverlayAction({ label: "New game", quiet: true, run: () => this.newGame() });
       this.hud.addOverlayAction({ label: "Main menu", quiet: true, run: () => void this.showTitle() });
     } else {
@@ -806,6 +857,31 @@ export class Game {
       this.loop.start();
     }
     sendToShell({ type: "paused", paused });
+  }
+
+  /**
+   * The street's sound round the player, 20 times a second: the nearest traffic's engines and
+   * horns, and the city's background (time of day, rain, the sea, how busy the road is).
+   */
+  private soundFrame(dt: number, at: { x: number; z: number }): void {
+    this.sinceSound += dt;
+    if (this.sinceSound < 0.05) return;
+    const step = this.sinceSound;
+    this.sinceSound = 0;
+    const eye = this.renderer.camera.position;
+    this.sound.setListener(eye.x, eye.z, this.camera.yaw);
+    const traffic = this.population.trafficPositions();
+    this.sound.setTraffic(traffic, step, this.clock.hour);
+    const busy = traffic.filter((t) => Math.hypot(t.x - at.x, t.z - at.z) < 120).length;
+    // Windows up in a car, bus or ambulance, or inside a train: the street is muffled.
+    const enclosed = Boolean(this.railway?.riding) || (this.driving !== null && this.driving.kind !== "auto" && this.driving.kind !== "bike");
+    this.sound.setAmbience(step, {
+      hour: this.clock.hour,
+      rain: this.renderer.raining ? 1 : 0,
+      coast: distanceToCoast(this.map.sea, at),
+      traffic: Math.min(1, busy / 6),
+      enclosed,
+    });
   }
 
   /** Forget progress and put everything back where it started. */
@@ -917,7 +993,7 @@ export class Game {
     const vehicle = this.boarder.active;
     const direction = this.boarder.direction;
     for (const event of this.boarder.fixedUpdate(dt)) {
-      if (event === "shut") this.sound.door();
+      if (event === "shut") this.sound.door(vehicle ? soundKind(vehicle.kind) : "car");
       else if (event === "done" && direction === "in" && vehicle) this.enterVehicle(vehicle);
       else if (event === "free" && vehicle) {
         const place = this.boarder.exitPlace();
@@ -993,7 +1069,7 @@ export class Game {
     const out = exit === sides[2] ? vehicle.type.physics.halfExtents.z + 0.9 : reach;
     vehicle.setSiren(false);
     this.sound.setSiren(false);
-    this.sound.door();
+    this.sound.door(soundKind(vehicle.kind));
     this.standUp();
     this.player.respawn({ x: p.x - Math.sin(exit) * out, y: 0.1, z: p.z - Math.cos(exit) * out }, yaw);
   }
@@ -1070,6 +1146,7 @@ export class Game {
       grounded: this.driving ? true : this.player.grounded,
       speed: this.driving ? Math.abs(this.driving.body.forwardSpeed()) : this.player.speed,
       fps: this.loop.fps,
+      audio: this.sound.state(),
       paused: this.paused,
       screen: this.title.isOpen ? "title" : "game",
       drawCalls: stats.calls,
@@ -1416,6 +1493,7 @@ export class Game {
       this.player.update({ moveX, moveY, jump, cameraYaw: this.camera.yaw }, dt);
     }
     for (const vehicle of this.vehicles) vehicle.update(vehicle === this.driving ? driverInput : null, dt);
+    this.pedal = driverInput ? Math.abs(driverInput.throttle) : 0;
     // Crashes: a thump, and a bump on the job's record. Parked vehicles' knocks are forgotten.
     let impact = 0;
     for (const vehicle of this.vehicles) {
@@ -1534,14 +1612,15 @@ export class Game {
       if (shiftedUp(this.lastGear, gear)) this.sound.gearChange();
       this.lastGear = gear;
       const top = this.driving.type.physics.maxSpeed;
-      this.sound.setEngine(Math.abs(this.driving.body.forwardSpeed()) / top, this.driving.kind === "auto" || this.driving.kind === "bike");
+      // Each vehicle's own engine (profiles in @cow/audio): revs follow speed, gear and accelerator.
+      this.sound.setEngine({ kind: soundKind(this.driving.kind), speed: Math.min(top, Math.abs(this.driving.body.forwardSpeed())), throttle: this.pedal });
       this.sound.setSkid(body.drifting());
       if (this.controls.consumeHorn()) {
         // The ambulance's button switches the siren; everything else has a horn.
         if (this.driving.type.siren) {
           this.driving.setSiren(!this.driving.siren);
           this.sound.setSiren(this.driving.siren);
-        } else this.sound.horn();
+        } else this.sound.horn(soundKind(this.driving.kind));
       }
       const seat = this.driving.riderPose();
       this.avatar.object.position.set(seat.x, seat.y, seat.z);
@@ -1558,6 +1637,13 @@ export class Game {
       this.sound.setEngine(null);
       this.sound.setSkid(null);
       this.lastGear = "";
+      // Footsteps at the stride's cadence (splashier in the rain), and a thud on landing.
+      this.sound.walk(dt, this.player.speed, this.player.grounded, this.renderer.raining ? 1 : 0);
+      if (!this.player.grounded) this.airborne += dt;
+      else {
+        if (this.airborne > 0.3) this.sound.land(Math.min(1, this.airborne / 1.2));
+        this.airborne = 0;
+      }
 
       // Offer to get in the closest vehicle within reach.
       this.nearby = null;
@@ -1644,6 +1730,7 @@ export class Game {
       const coast = distanceToCoast(this.map.sea, at);
       this.renderer.setHaze(1 + 0.6 * Math.max(0, 1 - coast / 600));
     }
+    this.soundFrame(dt, at);
     this.mapView.follow(this.renderer.camera);
     this.renderer.focusShadows(at.x, at.z);
     // Light and sky follow the clock; rain, headlight pool and speed blur follow the player.

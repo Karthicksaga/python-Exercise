@@ -1,4 +1,5 @@
 import type { WeaponId } from "@cow/combat";
+import { renderVehicleSound, type VehicleSoundKind } from "@cow/audio";
 import { LoadingScreen } from "@cow/ui";
 import { STATION_FONT } from "@cow/game-engine";
 import { Game, LOAD_STEPS, type GameSnapshot } from "./Game";
@@ -44,6 +45,8 @@ declare global {
       giveAmmo(rounds: number): void;
       /** Tests only: give a weapon with rounds and take it in hand (skips finding a pickup). */
       giveWeapon(id: WeaponId, ammo: number): void;
+      /** Tests only: render a vehicle's engine or horn offline and return the samples (22.05 kHz). */
+      renderSound(what: "engine" | "horn", kind: VehicleSoundKind, options?: { speed?: number; throttle?: number; seconds?: number }): Promise<number[]>;
     };
   }
 }
@@ -75,6 +78,8 @@ async function boot(): Promise<void> {
       giveAmmo: (rounds) => game.debugGiveAmmo(rounds),
       // For tests only: the later stages need guns the player would have found by then.
       giveWeapon: (id, ammo) => game.debugGiveWeapon(id, ammo),
+      // For tests only (sound.spec.ts): hear what each vehicle's engine and horn are made of.
+      renderSound: async (what, kind, options) => Array.from(await renderVehicleSound(what, kind, options)),
     };
     if (startAtOnce()) {
       game.start();

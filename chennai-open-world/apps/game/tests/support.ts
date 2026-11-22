@@ -13,6 +13,15 @@ export interface Snapshot {
   paused: boolean;
   /** The title menu is showing, or the game (playing or paused). */
   screen: "title" | "game";
+  /** What the sound system is playing (`Sound.state()` in @cow/audio). */
+  audio: {
+    unlocked: boolean;
+    muted: boolean;
+    engine: { kind: string; rpm: number } | null;
+    traffic: Array<{ id: number; kind: string }>;
+    ambience: string[];
+    played: Record<string, number>;
+  };
   drawCalls: number;
   triangles: number;
   mode: "foot" | "car" | "auto" | "bike" | "ambulance" | "bus";

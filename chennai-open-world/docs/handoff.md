@@ -749,3 +749,14 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   device. The world behind the menu is still (no traffic moving). A graphics-quality setting
   would need a reload and was not added.
 - **Results:** typecheck clean; unit 503/503; full browser suite 104/104 (38.9 min).
+
+## 22 Nov 2026: sound design (branch `agent/sound-design`, on top of `agent/loading-screen`): where I left off
+- **Done and tested** (details in `progress.md`, TD-25): engine and horn per vehicle kind,
+  traffic voices and honks, footsteps, ambience, mix and SOUND setting.
+- **Shared files touched:** `Game.ts` (`soundFrame`, engine state with kind and accelerator,
+  horn and door by kind, footsteps, landing, SOUND toggle in pause and title, snapshot
+  `audio`), `Population.ts` (`trafficPositions` has `id`), `main.ts` (`renderSound` test hook),
+  `packages/ui/src/TitleScreen.ts` and `apps/game/src/TitleDesk.ts` (SOUND item), `support.ts`.
+- **Not done / uncertain:** not listened to by anyone yet, on a phone or otherwise: levels and
+  timbres were set from the design and checked by measurement only (offline renders). Listen
+  to the samples (see the PR) and tune `profiles.ts`.

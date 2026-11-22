@@ -22,6 +22,7 @@ export interface TitleHooks {
   newGame(): void;
   nextTime(): void;
   toggleWeather(): void;
+  toggleSound(): void;
   quit?: () => void;
 }
 
@@ -101,6 +102,7 @@ export class TitleDesk {
       newGame: () => hooks.newGame(),
       nextTime: () => hooks.nextTime(),
       toggleWeather: () => hooks.toggleWeather(),
+      toggleSound: () => hooks.toggleSound(),
       ...(hooks.quit ? { quit: hooks.quit } : {}),
     });
   }

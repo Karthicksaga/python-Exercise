@@ -830,3 +830,28 @@ Difficulty has not been play-tested by a person.
   1024×768 and 1440×900 for the loading screen and the title menu; settings, controls and about
   pages; pause menu at 915×412 and 740×360.
 - **Results on this branch:** typecheck clean (game and `apps/mobile`, which also lints clean); unit 503/503; full browser suite **104/104** in 38.9 min (run once, alone, with the lock); `title.spec.ts` 8/8 again after the last change (reduced-motion redraw on resize).
+
+## 22 Nov 2026: sound design: every vehicle its own engine and horn; traffic, footsteps, city (TD-25)
+- **Before:** one horn for every vehicle; one engine tone in two pitches (auto and bike shared
+  the "small" one, car, bus and ambulance the other); no footsteps, no traffic sound, no
+  background.
+- **Now** (`packages/audio`: `profiles.ts` data and maths, `voices.ts` graphs, `Sound.ts` mix):
+  each vehicle's engine follows its own cylinders, idle and change-up revs and the gears, its
+  own horn, its own door (car thunk, bus air hiss, none for the auto and bike); nearby traffic
+  heard as its own kinds and honking when stood; footsteps and landing; city hum, rain, sea,
+  crickets, crows, the koel at dawn, distant horns; muffled inside closed vehicles and trains;
+  a compressor on the master. SOUND on/off in Settings and the pause menu (saved).
+- **Measured** (offline renders in Chromium, `sound.spec.ts`): idle notes car 26.5 Hz (designed
+  26.7), auto 11.5 (11.25), bike 13.5 (13.3), bus 32.5 (32.5), ambulance 22.5 (22.7); each
+  more than doubles when driven; horn peaks car 523, auto 680, bike 560, bus 699 (2 × 349),
+  ambulance 494 Hz, all different; the auto's horn is silent between its two taps. The first
+  render found the multi-cylinder engines an octave low and the auto and bike horns about a
+  third as loud as the car's: both fixed.
+- **Tests:** unit `profiles.test.ts` (12: notes distinct, gear changes, free revs, horns,
+  panning, cadence, time of day, honking); it caught two engine pairs within 7 % of each other
+  (car and ambulance, auto and bike), retuned. Browser `sound.spec.ts` (4): the two offline
+  measurements above; in the game, footsteps on a walk, the car's and the auto's own engines
+  (revs rise with GAS) and horns, traffic voices of traffic kinds, the city bed, SOUND off
+  saved; rain and night beds.
+- **Not done:** not listened to on a phone (only measured); no footsteps for other people; no
+  per-bus volume settings.

@@ -410,3 +410,48 @@ device until the APK is built and run (no Android SDK on the machine where this 
 **Revisit when** the menu should show more of the city (a few fixed camera shots across
 districts would need their chunks loaded), or a settings page grows options that need a reload
 (graphics quality).
+
+## TD-25: Sound design as data: a voice per vehicle kind, placed traffic, a city ambience, a mix bus
+
+**Decision (22 Nov 2026).** Every vehicle kind has its own engine and horn, described as data
+in `packages/audio/src/profiles.ts` and synthesised by `voices.ts` (still no sound files).
+- **Engines** are modelled on the vehicles of Chennai's streets (estimated, not recorded): a
+  1.2 L four-cylinder petrol car, a single-cylinder auto, a 150 cc single motorbike, a
+  six-cylinder diesel bus and a four-cylinder diesel ambulance. Pitch is the firing frequency
+  (rpm / 60 × cylinders / 2), and rpm follows the same gear rule as the HUD (`engineRpm`): it
+  climbs through each gear and drops at each change; a standstill with the accelerator down revs
+  freely. Each voice is a firing pulse and a sine on the firing note through an exhaust
+  resonance and a low-pass that opens with load, noise chopped by every firing (the auto's
+  putt and rattle, the bike's rasp, diesel clatter), a slow lope at idle for singles, a turbo
+  whistle for the diesels, and wind and tyre roar with speed (more on the open auto and bike).
+- **Horns:** twin disc horns for the car, a buzzy double "pee-peep" for the auto, one small
+  disc horn for the bike, a swelling three-note air horn for the bus, the ambulance's own pair.
+- **Traffic** is heard: the three nearest AI vehicles within 45 m each get their own kind's
+  engine, panned and dulled by distance (`place`), and traffic that has stood still may honk
+  (`honkChance`: more in the rush hours, rarely at night).
+- **On foot:** footsteps at the stride's cadence (`stepInterval`), alternating feet, splashing
+  in the rain, and a thud on landing.
+- **Ambience:** a low city hum by hour (`cityLevel`, loudest in the evening rush) and nearby
+  traffic, rain, waves within about 450 m of the coast, crickets at night; crows by day, the
+  koel at dawn and distant horns as one-shots. Muffled inside a car, bus, ambulance or train.
+  It also plays behind the title menu.
+- **Mix:** master → compressor → speakers, with vehicle, world, ambience and interface buses.
+  SOUND on/off in the title Settings and the pause menu, saved (`cow-sound-v1`).
+
+**Why data.** The design can be tuned and tested without ears: unit tests check the maths
+(notes, gear changes, panning, cadence, time of day), and `sound.spec.ts` renders each engine
+and horn offline in Chromium and measures that every one is on its designed note and that no
+two vehicles share an engine note or a horn.
+
+**Cost.** At most four engine voices (the player's and three traffic), a few ambience beds that
+start only when heard and stop when silent, one-shots that free themselves. Traffic and
+ambience are updated 20 times a second, not every frame.
+
+**Trade-offs.** Synthesised sound is recognisable but not photographic: recordings would sound
+more real (and would need licences and download size). Phone speakers cannot play the engines'
+low fundamentals (11–33 Hz at idle); what is heard there is the harmonics and the exhaust and
+noise colour, which is why those carry each vehicle's character. Pedestrians other than the
+player make no footsteps. Not yet heard on a phone.
+
+**Revisit when** recorded samples are licensed (swap a voice's builder, keep the profiles and
+tests), or the mix needs per-bus volume settings.

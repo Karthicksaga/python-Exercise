@@ -35,6 +35,8 @@ export interface TitleModel {
   readonly time: string;
   /** "Clear" or "Rain". */
   readonly weather: string;
+  /** "On" or "Off". */
+  readonly sound: string;
   readonly controls: readonly TitleControlsGroup[];
   /** Lines for the About page (credits, data source and date, what is estimated). */
   readonly about: readonly string[];
@@ -49,6 +51,7 @@ export interface TitleActions {
   newGame(): void;
   nextTime(): void;
   toggleWeather(): void;
+  toggleSound(): void;
   /** Close the app (only inside the Android app; absent in a browser). */
   quit?: () => void;
 }
@@ -299,6 +302,9 @@ export class TitleScreen {
     const settings = this.pages.get("settings");
     const time = settings?.querySelector<HTMLElement>('[data-action="time"] .ct-value');
     const weather = settings?.querySelector<HTMLElement>('[data-action="weather"] .ct-value');
+    const sound = settings?.querySelector<HTMLElement>('[data-action="sound"] .ct-value');
+    if (sound) sound.textContent = model.sound;
+    settings?.querySelector('[data-action="sound"]')?.setAttribute("aria-label", `Sound: ${model.sound}`);
     if (time) time.textContent = model.time;
     if (weather) weather.textContent = model.weather;
     settings?.querySelector('[data-action="time"]')?.setAttribute("aria-label", `Time of day: ${model.time}`);
@@ -400,7 +406,7 @@ export class TitleScreen {
     } else {
       this.item(list, "Play", () => this.actions.play(), { detail: model.firstStage, className: "primary", action: "play" });
     }
-    this.item(list, "Settings", () => this.go("settings", this.button("settings")), { detail: "Time of day and weather", action: "settings" });
+    this.item(list, "Settings", () => this.go("settings", this.button("settings")), { detail: "Time of day, weather and sound", action: "settings" });
     this.item(list, "Controls", () => this.go("controls", this.button("controls")), { detail: "Touch controls on foot and driving", action: "controls" });
     this.item(list, "About", () => this.go("about", this.button("about")), { detail: "Credits and map data", action: "about" });
     const quit = this.actions.quit;
@@ -414,6 +420,7 @@ export class TitleScreen {
     const list = this.list(page);
     this.item(list, "Time of day", () => this.actions.nextTime(), { value: model.time, action: "time" });
     this.item(list, "Weather", () => this.actions.toggleWeather(), { value: model.weather, action: "weather" });
+    this.item(list, "Sound", () => this.actions.toggleSound(), { value: model.sound, action: "sound" });
     this.item(list, "Back", () => this.back(), { className: "ct-back", action: "back" });
   }
 
