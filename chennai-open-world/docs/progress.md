@@ -886,7 +886,7 @@ Difficulty has not been play-tested by a person.
   Game speed in headless Chromium measured with and without sound started, next to traffic:
   0.69–0.72 game seconds per second either way (no measurable cost).
 
-## 22 Nov 2026: combat redesign: pedestrians in fights, moves, reactions, block and dodge (TD-26)
+## 22 Nov 2026: combat redesign: pedestrians in fights, moves, reactions, block and dodge (TD-27)
 - **Before (audit):** a punch was the arm snapped forward for 0.22 s; shots an arm held out and a
   0.07 s tracer; enemies showed nothing until they fell flat in one frame; pedestrians could only
   be hurt by vehicles (punches and bullets passed through them); enemies walked straight at the

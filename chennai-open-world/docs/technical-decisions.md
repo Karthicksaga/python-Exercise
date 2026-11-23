@@ -485,7 +485,7 @@ player make no footsteps. Not yet heard on a phone.
 **Revisit when** recorded samples are licensed (swap a voice's builder, keep the profiles and
 tests), or the mix needs per-bus volume settings.
 
-## TD-26: Combat redesign: pedestrians in fights, procedural moves, telegraphed enemies, contextual controls
+## TD-27: Combat redesign: pedestrians in fights, procedural moves, telegraphed enemies, contextual controls
 
 **Decision (the user's, 22 Nov 2026).** Pedestrians take part in fights, and fights are redesigned
 for visible attacks, hit reactions, touch controls and smarter enemies.
