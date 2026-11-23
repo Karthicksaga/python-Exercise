@@ -33,6 +33,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import vkit as K  # noqa: E402
+import train_detail as TD  # noqa: E402
 from vkit import Vector, role  # noqa: E402
 
 OUT = os.path.join(K.ROOT, "assets", "trains")
@@ -43,7 +44,58 @@ LOD_DIST = (60, 300, 900)  # research note: LOD0 <= 60 m, LOD1 60-300 m, LOD2 30
 # Half cross-section (x, z) from the belly centre up the right side to the roof centre.
 COACH_PROFILE = [(0.0, 1.05), (1.56, 1.05), (1.625, 1.13), (1.625, 3.02), (1.6, 3.3), (1.5, 3.53), (1.27, 3.74), (0.8, 3.9), (0.0, 3.96)]
 LOCO_PROFILE = [(0.0, 1.12), (1.5, 1.12), (1.575, 1.2), (1.575, 3.55), (1.5, 3.78), (1.25, 3.92), (0.0, 3.98)]
-VB_PROFILE = [(0.0, 0.9), (1.5, 0.9), (1.62, 1.05), (1.63, 2.95), (1.58, 3.35), (1.42, 3.62), (1.1, 3.82), (0.6, 3.92), (0.0, 3.95)]
+VB_PROFILE = [(0.0, 0.9), (1.5, 0.9), (1.63, 1.05), (1.63, 2.95), (1.58, 3.35), (1.42, 3.62), (1.1, 3.82), (0.6, 3.92), (0.0, 3.95)]
+
+
+def refine(profile, head):
+    """LOD0: one Chaikin pass over the roof curve (above the cant rail) for a rounder roof."""
+    roof = [p for p in profile if p[1] >= head - 1e-6]
+    rest = [p for p in profile if p[1] < head - 1e-6]
+    out = [roof[0]]
+    for a, b in zip(roof, roof[1:]):
+        out.append((a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25))
+        out.append((a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75))
+    out.append(roof[-1])
+    return rest + out
+
+
+def emu_windows(kind, length, front, doors):
+    """Saloon windows between the doorways (and behind the cab), as (y_front, y_rear)."""
+    cab_end = front - 2.6 if kind == "cab" else front - 0.4
+    edges = sorted([cab_end] + [y for d in doors for y in (d + 0.65, d - 0.65)] + [front - length + 0.4])
+    edges = list(reversed(edges))
+    out = []
+    for a, b in zip(edges[0::2], edges[1::2]):
+        y = a - 0.35
+        while y - 0.9 > b + 0.2:
+            out.append((y, y - 0.9))
+            y -= 1.25
+    return out
+
+
+def lhb_windows(length, front):
+    out, y = [], front - 2.2
+    while y > front - length + 2.2 + 1.3:
+        out.append((y, y - 1.3))
+        y -= 1.6
+    return out
+
+
+def vb_windows(kind, length, front):
+    out = []
+    y = (front - 5.4) if kind == "cab" else (front - 1.75)
+    while y - 1.2 > front - length + 1.75:
+        out.append((y, y - 1.2))
+        y -= 1.5
+    return out
+
+
+def wap7_louvres(length, front):
+    out, y = [], front - 3.0
+    while y > front - length + 3.0 + 0.8:
+        out.append((y, y - 0.8))
+        y -= 1.05
+    return out
 
 
 def simplify(profile, lod):
@@ -151,21 +203,18 @@ def emu_livery(kind, length, front, doors, ac):
     else:
         lv.band(1.45, 1.58, GREEN)
         lv.band(1.58, 1.7, CREAM)
-    # Windows between the doors; the doorways dark (the sliding leaves cover them).
-    cab_end = front - 2.6 if kind == "cab" else front - 0.4
-    edges = sorted([front - 0.4 if kind != "cab" else cab_end] + [y for d in doors for y in (d + 0.65, d - 0.65)] + [front - length + 0.4])
-    edges = list(reversed(edges))
-    for a, b in zip(edges[0::2], edges[1::2]):
-        y = a - 0.35
-        while y - 0.9 > b + 0.2:
-            lv.window(y, y - 0.9, 2.05, 2.75, (0.03, 0.04, 0.05) if ac else DARK, bars=None if ac else (0.25, 0.25, 0.25))
-            y -= 1.25
+    # Windows between the doors; the doorways dark (the sliding leaves cover them). LOD0 sets
+    # real openings over the same rectangles; LOD1 shows these.
+    for y0, y1 in emu_windows(kind, length, front, doors):
+        lv.window(y0, y1, 2.05, 2.75, (0.03, 0.04, 0.05) if ac else DARK, bars=None if ac else (0.25, 0.25, 0.25))
     for d in doors:
         lv.band(1.13, 3.0, (0.01, 0.01, 0.012), d + 0.65, d - 0.65)
     if kind == "cab":
-        # Cab side window and the cab door.
+        # Cab side window and the cab door (an outline: the door is shut).
         lv.window(front - 0.5, front - 1.4, 2.15, 2.85, DARK)
-        lv.band(1.13, 3.0, (0.01, 0.01, 0.012), front - 1.6, front - 2.3)
+        for y0, y1 in ((front - 1.6, front - 1.63), (front - 2.27, front - 2.3)):
+            lv.band(1.2, 2.95, (0.1, 0.1, 0.1), y0, y1)
+        lv.band(2.92, 2.95, (0.1, 0.1, 0.1), front - 1.6, front - 2.3)
     if kind == "motor":
         lv.band(1.3, 1.36, YELLOW, front - 3, front - 5)  # an invented equipment marking, no lettering
     # Door leaf (rows 0..128, cols 0..64): body colour with a window and the stripes.
@@ -196,10 +245,8 @@ def lhb_livery(length, front):
     lv.band(1.95, 2.85, GREY)
     lv.band(1.85, 1.92, CREAM)
     lv.roof(3.3, ROOF)
-    y = front - 2.2
-    while y > front - length + 2.2 + 1.3:
-        lv.window(y, y - 1.3, 2.05, 2.75, DARK)
-        y -= 1.6
+    for y0, y1 in lhb_windows(length, front):
+        lv.window(y0, y1, 2.05, 2.75, DARK)
     for d in (front - 0.95, front - length + 0.95):
         lv.band(1.13, 3.0, (0.1, 0.1, 0.1), d + 0.4, d - 0.4)
         lv.window(d + 0.25, d - 0.25, 2.2, 2.7, DARK)
@@ -222,10 +269,8 @@ def wap7_livery(length, front):
         lv.band(1.25, 3.25, (0.2, 0.02, 0.015), end + sgn * 1.55, end + sgn * 2.25)
         lv.band(1.25, 1.3, (0.05, 0.05, 0.05), end + sgn * 1.55, end + sgn * 2.25)
     # Machine-room louvres along the side.
-    y = front - 3.0
-    while y > front - length + 3.0 + 0.8:
-        lv.window(y, y - 0.8, 2.45, 3.25, (0.06, 0.02, 0.015), bars=(0.14, 0.03, 0.02))
-        y -= 1.05
+    for y0, y1 in wap7_louvres(length, front):
+        lv.window(y0, y1, 2.45, 3.25, (0.06, 0.02, 0.015), bars=(0.14, 0.03, 0.02))
     lv.end_rect(CAB_COLS, -1.575, 1.575, 1.12, 3.98, LOCO_RED, hw=1.575, zb=1.12, zt=3.98)
     lv.end_rect(CAB_COLS, -1.575, 1.575, 1.2, 1.75, YELLOW, hw=1.575, zb=1.12, zt=3.98)
     for k in range(5):
@@ -421,6 +466,235 @@ def build_car(spec, lod):
     hw = max(x for x, _ in prof)
     nose = spec.get("nose")
     body_front = front - (nose["length"] if nose else 0)
+    if lod == 0:
+        prof = refine(prof, spec["head"])
+        parts = detailed_body(spec, mat, prof, L, front, rear, hw, zb, zt)
+    else:
+        parts = simple_body(spec, mat, prof, L, front, rear, hw, zb, zt, lod, body_front, nose)
+    for (bw, bl, bh, by) in spec.get("roof_boxes", []) if lod < 2 else []:
+        parts.append(K.box("roof_box", (bw, bl, bh), (0, by, zt + bh / 2 - 0.02), role("dark_grey"), bevel=0.04))
+    for (bw, bl, bh, by) in spec.get("roof_units", []) if lod < 2 else []:
+        parts.append(K.box("roof_unit", (bw, bl, bh), (0, by, zt + bh / 2 - 0.05), role("mid_grey"), bevel=0.05))
+        if lod == 0:
+            for sx in (1, -1):  # condenser grilles on the unit's sides
+                parts.append(K.box("grille", (0.02, bl * 0.7, bh * 0.55), (sx * (bw / 2 + 0.005), by, zt + bh / 2 - 0.05), role("dark_grey")))
+    nodes = {"doors": [], "pivots": [], "bogies": [], "wheels": []}
+    # Bogies (LOD0 nodes; LOD1 a merged low box per bogie; LOD2 none).
+    wr = spec["wheel_r"]
+    for bname, by in (("bogie_front", spec["bogie_y"]), ("bogie_rear", -spec["bogie_y"])):
+        if lod == 0:
+            b, _pivot = TD.bogie(bname, by, wr, spec["axles"], spec["axle_spacing"], loco=spec.get("loco", False))
+            sets = []
+            span = spec["axle_spacing"] * (spec["axles"] - 1)
+            for k in range(spec["axles"]):
+                ay = by + span / 2 - k * spec["axle_spacing"]
+                ws = TD.wheelset(f"wheelset_{bname.split('_')[1][0]}{k + 1}", ay, wr, GAUGE_HALF, 9)
+                K.parent_keep(ws, b)
+                sets.append((ws.name, ay))
+            nodes["bogies"].append(bname)
+            nodes["pivots"].append(dict(node=bname, what="bogie, turns on the curve", pivot=K.g((0, by, wr)), axis=[0, 1, 0], range_deg=[-8, 8]))
+            for ws, ay in sets:
+                nodes["wheels"].append(dict(node=ws, centre=K.g((0, ay, wr)), radius=wr, steers=False, driven=spec.get("loco", False) or spec.get("motor", False),
+                                            lod_max=0))
+        elif lod == 1:
+            span = spec["axle_spacing"] * (spec["axles"] - 1) + 0.9
+            parts.append(K.box("bogie", (2.3, span, 0.7), (0, by, wr + 0.1), role("bogie")))
+            for sx in (1, -1):
+                parts.append(K.box("wheels", (0.12, span - 0.2, 2 * wr), (sx * GAUGE_HALF, by, wr), role("steel")))
+    body_obj = K.join(parts, "body")
+    if lod == 2:
+        K.decimate(body_obj, spec["lod2_budget"] - 8)
+    # Doors: sliding leaves, LOD0 only.
+    if lod == 0:
+        for i, dy in enumerate(spec.get("doors", [])):
+            for sx in (1, -1):
+                nm = f"door_{'r' if sx > 0 else 'l'}{i + 1}"
+                hwd = spec.get("door_w", 1.3) / 2
+                dx = hw - 0.05  # inside the doorway's recess, behind the wall face it slides into
+                lf = leaf(nm, dy + hwd, dy - hwd, spec["sill"] + 0.01, spec.get("door_top", 3.0) - 0.01, sx * dx, mat)
+                lf = K.join([lf], nm)
+                K.set_origin(lf, (sx * dx, dy + hwd, 0))
+                nodes["doors"].append(dict(node=nm, hinge=K.g((sx * dx, dy + hwd, 0)), axis=[0, 1, 0], open_deg=0,
+                                           slide=K.g_axis((0, 1, 0) if dy > 0 else (0, -1, 0)), slide_m=round(2 * hwd * 0.95, 3),
+                                           side="right" if sx > 0 else "left", notes="sliding leaf: translate along `slide` by slide_m"))
+        for pn, py in spec.get("pantographs", []):
+            p, base = TD.pantograph(pn, py, zt, 1 if py <= 0 else -1)
+            nodes["pivots"].append(dict(node=pn, what="pantograph arm, raises", pivot=K.g(base), axis=[1, 0, 0], range_deg=[0, 35]))
+        for nm, p in spec.get("anchors", {}).items():
+            K.empty(nm, p)
+    elif lod == 1:
+        for pn, py in spec.get("pantographs", []):
+            p, base = pantograph(pn, py, zt, lod)
+    lo, hi = K.scene_bounds()
+    # The front marker on the leading face (coupler or nose tip): where the next car's coupler meets.
+    K.empty("marker_front", (0, hi.y, zb))
+    path = os.path.join(OUT, spec["name"] + ("" if lod == 0 else f"_lod{lod}") + ".glb")
+    tris = K.export_glb(path)
+    return dict(tris=tris, lo=lo, hi=hi, nodes=nodes)
+
+
+def side_openings(spec, hw):
+    """The side wall's openings (both sides alike): windows, louvres, doorways."""
+    ops = []
+    frame_win = role("alloy") if spec.get("frames", "alloy") == "alloy" else role("black")
+    for ya, yb, z0, z1, style in spec.get("windows", []):
+        a = (min(ya, yb), max(ya, yb))
+        if style == "barred":
+            ops.append(dict(a=a, b=(z0, z1), depth=0.07, back=role("inside_dark"), frame=frame_win, frame_w=0.03, bars=3, bar=role("steel")))
+        elif style == "louvre":
+            ops.append(dict(a=a, b=(z0, z1), depth=0.045, back=role("underframe"), frame=role("dark_grey"), frame_w=0.025, bars=7, bar=role("dark_grey")))
+        else:
+            ops.append(dict(a=a, b=(z0, z1), depth=0.05, back=role("glass"), frame=frame_win, frame_w=0.03))
+    w = spec.get("door_w", 1.3)
+    for dy in spec.get("doors", []):
+        ops.append(dict(a=(dy - w / 2, dy + w / 2), b=(spec["sill"] + 0.002, spec.get("door_top", 3.0)), depth=0.55, back=role("inside_dark"),
+                        floor=role("steel"), jamb=role("interior"), frame=frame_win, frame_w=0.03))
+    return ops
+
+
+def gangway_end(mb, extra, spec, prof, y, sgn, mat, hw, zb, zt):
+    c0, c1 = END_COLS
+    uv = lambda x, z: ((c0 + (x + hw) / (2 * hw) * (c1 - c0)) / W, (z - zb) / (zt - zb) * WRAP0 / W)
+    TD.end_face(mb, prof, y, sgn, mat, uv, spec["sill"], spec["head"])
+    extra += TD.bellows(None, y, sgn, zb, role("dark_grey"), role("underframe"))
+    extra.append(K.box("coupler", (0.32, 0.55, 0.28), (0, y + sgn * 0.3, zb - 0.05), role("bogie")))
+    if spec.get("buffers"):
+        for sx in (1, -1):
+            extra.append(K.cylinder("buffer", 0.19, 0.42, (sx * 0.95, y + sgn * 0.21, zb - 0.05), role("bogie"), rot=(math.pi / 2, 0, 0), verts=8))
+    for sx in (1, -1):
+        extra.append(TD.grab_rail(sx * (hw - 0.12), y + sgn * 0.03, 1.5, 2.9))
+
+
+def cab_face(mb, extra, spec, prof, y, sgn, mat, hw, zb, zt):
+    """A cab front: recessed windscreens, route board, head and marker lamps, horn, wipers, grab
+    rails, footsteps, pilot and coupler; a locomotive adds the projecting lower nose."""
+    c0, c1 = CAB_COLS
+    uv = lambda x, z: ((c0 + (x + hw) / (2 * hw) * (c1 - c0)) / W, (z - zb) / (zt - zb) * WRAP0 / W)
+    ops = [dict(a=(x0, x1), b=(z0, z1), depth=0.12, back=role("glass"), frame=role("black"), frame_w=0.045)
+           for x0, x1, z0, z1 in spec["cab_windows"]]
+    TD.end_face(mb, prof, y, sgn, mat, uv, spec["sill"], spec["head"], openings=ops)
+    head = spec["head"]
+    loco = spec.get("loco", False)
+    top = head + (0.18 if not loco else 0.12)
+    # Route / destination board (blank LED panel: no text) between the head lamps.
+    extra.append(K.box("board_frame", (1.5, 0.06, 0.32), (0, y + sgn * 0.03, top), role("black")))
+    extra.append(K.box("route_board", (1.36, 0.04, 0.2), (0, y + sgn * 0.06, top), role("led_amber")))
+    for sx in (1, -1):
+        extra += TD.lamp(sx * (hw - 0.45), y, top, sgn, 0.1, role("headlamp"))
+        extra += TD.lamp(sx * (hw - 0.3), y, spec["sill"] + 0.45, sgn, 0.06, role("taillamp"), depth=0.04)
+        extra += TD.lamp(sx * (hw - 0.55), y, spec["sill"] + 0.45, sgn, 0.06, role("headlamp"), depth=0.04)
+        extra.append(TD.grab_rail(sx * (hw - 0.1), y + sgn * 0.06, spec["sill"] + 0.2, head - 0.3))
+        x0, x1, z0, z1 = spec["cab_windows"][0 if sx < 0 else 1]
+        wiper = K.box("wiper", (0.025, 0.02, (z1 - z0) * 0.85), ((x0 + x1) / 2 + 0.25, y + sgn * 0.03, (z0 + z1) / 2), role("black"))
+        wiper.rotation_euler = (0, sgn * 0.5, 0)
+        extra.append(wiper)
+    for k, z in enumerate((0.55, 0.85)):
+        extra.append(K.box("footstep", (0.5, 0.25, 0.04), (0.9, y + sgn * 0.12, z), role("steel")))
+    extra.append(K.cylinder("horn", 0.06, 0.32, (0.35, y - sgn * 0.35, zt + 0.02), role("chrome"), rot=(math.pi / 2, 0, 0), verts=8))
+    extra.append(K.cylinder("horn", 0.06, 0.32, (-0.35, y - sgn * 0.35, zt + 0.02), role("chrome"), rot=(math.pi / 2, 0, 0), verts=8))
+    # Pilot (cowcatcher): a raked plate under the buffer beam, and the coupler.
+    pil = K.box("pilot", (2.3, 0.08, 0.5), (0, y + sgn * 0.2, 0.45), role("dark_grey"))
+    pil.rotation_euler = (sgn * 0.25, 0, 0)
+    extra.append(pil)
+    extra.append(K.box("beam", (2.9, 0.18, 0.32), (0, y + sgn * 0.09, spec["sill"] - 0.12), role("underframe")))
+    extra.append(K.box("coupler", (0.32, 0.55, 0.28), (0, y + sgn * 0.3, spec["sill"] - 0.12), role("bogie")))
+    if spec.get("buffers"):
+        for sx in (1, -1):
+            extra.append(K.cylinder("buffer", 0.19, 0.42, (sx * 0.95, y + sgn * 0.21, spec["sill"] - 0.12), role("bogie"), rot=(math.pi / 2, 0, 0), verts=8))
+    if loco:
+        # The projecting lower nose of the cab, with its own head lamps.
+        nose = K.box("nose", (2.9, 0.38, 0.95), (0, y + sgn * 0.19, spec["sill"] + 0.55), mat_role_nose(spec), bevel=0.08, segments=2)
+        extra.append(nose)
+        for sx in (1, -1):
+            extra += TD.lamp(sx * 0.85, y + sgn * 0.38, spec["sill"] + 0.75, sgn, 0.09, role("headlamp"))
+
+
+def mat_role_nose(spec):
+    return role("loco_red")
+
+
+def detailed_body(spec, mat, prof, L, front, rear, hw, zb, zt):
+    """LOD0: belly and roof strips, side walls with real openings, gangway or cab ends, the VB
+    nose, gutters, roof ventilators, doorway grab rails and steps, underframe equipment."""
+    sill, head = spec["sill"], spec["head"]
+    belly, roofh, s_vals, S, hw, s_sill = TD.section_parts(prof, sill, head)
+    nose = spec.get("nose")
+    body_front = front - (nose["length"] if nose else 0)
+    ys = [body_front, rear]
+    mb = TD.MB("shell")
+    cz = (sill + head) / 2
+    for half in (belly, roofh):
+        pts, sv = TD.full_path(half)
+        TD.strip(mb, pts, sv, S, ys, front, L, mat, cz)
+    uvw = lambda a, b: ((front - a) / L, 0.25 + 0.75 * (s_sill + (b - sill)) / S)
+    ops = side_openings(spec, hw)
+    for sx in (1, -1):
+        P = (lambda sx: lambda a, b, d: Vector((sx * (hw - d), a, b)))(sx)
+        TD.panel(mb, (rear, body_front), (sill, head), ops, P, (sx, 0, 0), uvw, mat)
+    extra = []
+    if spec.get("twin_cab"):
+        cab_face(mb, extra, spec, prof, rear, -1, mat, hw, zb, zt)
+    else:
+        gangway_end(mb, extra, spec, prof, rear, -1, mat, hw, zb, zt)
+    if nose:
+        extra += build_nose(spec, prof, body_front, front, mat, 0, hw, zb, zt)
+    elif spec["kind"] == "cab":
+        cab_face(mb, extra, spec, prof, front, 1, mat, hw, zb, zt)
+    else:
+        gangway_end(mb, extra, spec, prof, front, 1, mat, hw, zb, zt)
+    shell = mb.build()
+    K.paint_faces(shell, role("roof_grey"), lambda c, n: c.z > head + 0.12 and n.z > 0.25 and abs(c.y) < L / 2 - 0.02 and body_front > c.y)
+    K.smooth(shell, 28)
+    parts = [shell] + extra
+    # Gutters along the cant rail, roof ventilators or AC units, a roof walkway on the loco.
+    if spec.get("gutter", True):
+        for sx in (1, -1):
+            parts.append(K.box("gutter", (0.05, body_front - rear - 0.1, 0.05), (sx * (hw + 0.015), (body_front + rear) / 2, head + 0.06), role("roof_grey")))
+    for i, y in enumerate(spec.get("roof_vents", [])):
+        for sx in (1, -1):
+            parts.append(TD.torpedo_vent(sx * 0.42, y + sx * 0.35, zt - 0.02))
+    if spec.get("loco"):
+        parts.append(K.box("walkway", (0.6, 8.0, 0.05), (0, 0, zt + 0.02), role("dark_grey")))
+        for sx in (1, -1):
+            parts.append(K.cylinder("roof_bar", 0.04, 9.8, (sx * 0.25, 0, zt + 0.32), role("pantograph"), rot=(math.pi / 2, 0, 0), verts=6, caps=False))
+        for y in (-1.6, 1.6):
+            parts.append(K.cylinder("breaker", 0.22, 0.5, (0.0, y, zt + 0.25), role("insulator"), verts=10))
+            parts.append(K.box("breaker_base", (0.7, 0.7, 0.12), (0, y, zt + 0.03), role("dark_grey")))
+        for sx in (1, -1):
+            for y in (-3.0, 3.0):
+                parts.append(K.cylinder("insulator", 0.06, 0.3, (sx * 0.25, y, zt + 0.15), role("insulator"), verts=6))
+    # Doorway grab rails and steps.
+    w = spec.get("door_w", 1.3)
+    for dy in spec.get("doors", []):
+        for sx in (1, -1):
+            for e in (-1, 1):
+                parts.append(TD.grab_rail(sx * (hw + 0.04), dy + e * (w / 2 + 0.07), sill + 0.3, spec.get("door_top", 3.0) - 0.3))
+            parts.append(K.box("step", (0.2, w, 0.05), (sx * (hw + 0.03), dy, sill - 0.2), role("steel")))
+            parts.append(K.box("step_hanger", (0.04, w, 0.2), (sx * (hw - 0.04), dy, sill - 0.1), role("underframe")))
+    if spec["kind"] == "cab" and not spec.get("loco") and not nose:
+        for sx in (1, -1):
+            for e in (front - 1.62, front - 2.28):
+                parts.append(TD.grab_rail(sx * (hw + 0.04), e, sill + 0.3, head - 0.3))
+    if spec.get("loco"):
+        for end, sg in ((front, -1), (rear, 1)):
+            for sx in (1, -1):
+                for e in (end + sg * 1.5, end + sg * 2.3):
+                    parts.append(TD.grab_rail(sx * (hw + 0.04), e, sill + 0.2, 3.1))
+    # Underframe: solebars, equipment cases and tanks, brake cylinders.
+    for sx in (1, -1):
+        parts.append(K.box("solebar", (0.1, body_front - rear - 0.6, 0.22), (sx * (hw - 0.12), (body_front + rear) / 2, zb - 0.1), role("underframe")))
+    y = (body_front + rear) / 2 + L * 0.28
+    for i, (bw, bl, bh) in enumerate(spec.get("under", [(1.6, 2.2, 0.5), (1.2, 1.6, 0.4), (1.8, 2.6, 0.55)])):
+        parts.append(K.box("case", (bw * 0.85, bl, bh * 0.8), ((0.25 if i % 2 else -0.25), y - bl / 2, zb - 0.12 - bh * 0.4), role("underframe"), bevel=0.04))
+        y -= bl + 0.45
+    for k, yy in enumerate((2.2, -2.2)):
+        parts.append(K.cylinder("tank", 0.2, 1.2, ((-0.7 if k else 0.7), yy, zb - 0.45), role("dark_grey"), rot=(math.pi / 2, 0, 0), verts=8))
+        parts.append(K.cylinder("brake", 0.13, 0.35, ((0.75 if k else -0.75), yy * 1.6, zb - 0.35), role("underframe"), rot=(0, math.pi / 2, 0), verts=8))
+    return parts
+
+
+def simple_body(spec, mat, prof, L, front, rear, hw, zb, zt, lod, body_front, nose):
+    """LOD1 and LOD2: the wrapped shell with painted windows, simple ends and underframe."""
     ys = [body_front, rear] if lod == 2 else [body_front] + [y for y in spec.get("ring_ys", []) if rear < y < body_front] + [rear]
     ys = sorted(set(ys), reverse=True)
     body = wrap_body("shell", prof, ys, front, L, mat)
@@ -443,56 +717,7 @@ def build_car(spec, lod):
             parts += coupler_end(rear, zb + 0.0, -1, lod, gangway=spec.get("gangway", True), buffers=spec.get("buffers", False))
         if spec["kind"] == "coach":
             parts += coupler_end(front, zb + 0.0, 1, lod, gangway=spec.get("gangway", True), buffers=spec.get("buffers", False))
-    for (bw, bl, bh, by) in spec.get("roof_units", []) if lod < 2 else []:
-        parts.append(K.box("roof_unit", (bw, bl, bh), (0, by, zt + bh / 2 - 0.05), role("light_grey"), bevel=0.05))
-    if lod == 0:
-        for y in spec.get("roof_vents", []):
-            parts.append(K.box("vent", (0.5, 0.5, 0.14), (0, y, zt + 0.02), role("roof_grey"), bevel=0.03))
-    nodes = {"doors": [], "pivots": [], "bogies": [], "wheels": []}
-    # Bogies (LOD0 nodes; LOD1 a merged low box per bogie; LOD2 none).
-    wr = spec["wheel_r"]
-    for bname, by in (("bogie_front", spec["bogie_y"]), ("bogie_rear", -spec["bogie_y"])):
-        if lod == 0:
-            b, sets = bogie(bname, by, wr, spec["axles"], spec["axle_spacing"], lod, loco=spec.get("loco", False))
-            nodes["bogies"].append(bname)
-            nodes["pivots"].append(dict(node=bname, what="bogie, turns on the curve", pivot=K.g((0, by, wr)), axis=[0, 1, 0], range_deg=[-8, 8]))
-            for ws, ay in sets:
-                nodes["wheels"].append(dict(node=ws, centre=K.g((0, ay, wr)), radius=wr, steers=False, driven=spec.get("loco", False) or spec.get("motor", False),
-                                            lod_max=0))
-        elif lod == 1:
-            span = spec["axle_spacing"] * (spec["axles"] - 1) + 0.9
-            parts.append(K.box("bogie", (2.3, span, 0.7), (0, by, wr + 0.1), role("bogie")))
-            for sx in (1, -1):
-                parts.append(K.box("wheels", (0.12, span - 0.2, 2 * wr), (sx * GAUGE_HALF, by, wr), role("steel")))
-    body_obj = K.join(parts, "body")
-    if lod == 2:
-        K.decimate(body_obj, spec["lod2_budget"] - 8)
-    # Doors: sliding leaves, LOD0 only.
-    if lod == 0:
-        for i, dy in enumerate(spec.get("doors", [])):
-            for sx in (1, -1):
-                nm = f"door_{'r' if sx > 0 else 'l'}{i + 1}"
-                hwd = spec.get("door_w", 1.3) / 2
-                lf = leaf(nm, dy + hwd, dy - hwd, zb + 0.08, spec.get("door_top", 3.0), sx * spec.get("door_x", 1.625), mat)
-                lf = K.join([lf], nm)
-                K.set_origin(lf, (sx * spec.get("door_x", 1.625), dy + hwd, 0))
-                nodes["doors"].append(dict(node=nm, hinge=K.g((sx * spec.get("door_x", 1.625), dy + hwd, 0)), axis=[0, 1, 0], open_deg=0,
-                                           slide=K.g_axis((0, 1, 0) if dy > 0 else (0, -1, 0)), slide_m=round(2 * hwd * 0.95, 3),
-                                           side="right" if sx > 0 else "left", notes="sliding leaf: translate along `slide` by slide_m"))
-        for pn, py in spec.get("pantographs", []):
-            p, base = pantograph(pn, py, zt, lod)
-            nodes["pivots"].append(dict(node=pn, what="pantograph arm, raises", pivot=K.g(base), axis=[1, 0, 0], range_deg=[0, 35]))
-        for nm, p in spec.get("anchors", {}).items():
-            K.empty(nm, p)
-    elif lod == 1:
-        for pn, py in spec.get("pantographs", []):
-            p, base = pantograph(pn, py, zt, lod)
-    lo, hi = K.scene_bounds()
-    # The front marker on the leading face (coupler or nose tip): where the next car's coupler meets.
-    K.empty("marker_front", (0, hi.y, zb))
-    path = os.path.join(OUT, spec["name"] + ("" if lod == 0 else f"_lod{lod}") + ".glb")
-    tris = K.export_glb(path)
-    return dict(tris=tris, lo=lo, hi=hi, nodes=nodes)
+    return parts
 
 
 def flat_cab(spec, prof, y, mat, lod, hw, zb, zt, sgn=1):
@@ -527,14 +752,30 @@ def build_nose(spec, prof, body_front, front, mat, lod, hw, zb, zt):
     """The Vande-Bharat-style nose: the section shrinks and drops to a rounded snout over
     `nose.length` m; its UVs come from a side projection into the cab region of the livery."""
     nl = spec["nose"]["length"]
-    steps = [0.0, 0.18, 0.38, 0.58, 0.76, 0.9, 1.0] if lod == 0 else ([0.0, 0.4, 0.75, 1.0] if lod == 1 else [0.0, 1.0])
+    if lod == 0:
+        steps = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.78, 0.85, 0.905, 0.95, 0.98, 1.0]
+    else:
+        steps = [0.0, 0.4, 0.75, 1.0] if lod == 1 else [0.0, 1.0]
     rings = []
     for t in steps:
         y = body_front + t * nl
         k = 1 - 0.55 * t ** 2.2  # half width scale
         top = zt - (zt - 1.85) * t ** 1.6  # roof drops to the snout
         bot = zb + 0.25 * t ** 2  # the skirt rises a little
+        if lod == 0 and t > 0.85:
+            # Round the snout off: width and height close in towards the tip.
+            r = math.sqrt(max(0.0, 1 - ((t - 0.85) / 0.15) ** 2 * 0.8))
+            mid = (top + bot) / 2
+            k *= r
+            top, bot = mid + (top - mid) * r, mid + (bot - mid) * r
         rings.append((y, k, top, bot))
+    if lod == 0:
+        # Extra points up the straight side wall so the windscreen band has rows to follow
+        # (collinear with the body's ring, so the seam stays closed).
+        sill, head = spec["sill"], spec["head"]
+        wall = [(hw, z) for z in (1.35, 1.6, 1.8, 2.0, 2.2, 2.45, 2.7) if sill < z < head]
+        i = next(k for k, p in enumerate(prof) if abs(p[1] - sill) < 1e-6 and abs(p[0] - hw) < 1e-6)
+        prof = prof[:i + 1] + wall + prof[i + 1:]
     full = prof + [(-x, z) for x, z in reversed(prof[1:-1])]
     n = len(full)
     verts, uvs = [], []
@@ -552,13 +793,24 @@ def build_nose(spec, prof, body_front, front, mat, lod, hw, zb, zt):
     last = (len(rings) - 1) * n
     faces.append(tuple(range(last, last + n)))
     o = K.mesh_object("nose", verts, faces, mat, uvs)
+    if lod == 0:
+        # The wrap-round windscreen as real glossy glass faces (crisp at any distance): a band
+        # continuing the window line that sweeps down towards the snout.
+        def screen(c, n_):
+            t = (c.y - body_front) / nl
+            if not (0.0 <= t <= 0.74) or n_.z < -0.2:
+                return False
+            low = 2.0 - 0.3 * min(1.0, t / 0.6)
+            high = 2.85 - 0.45 * (t / 0.74) ** 1.4
+            return low < c.z < high
+        K.paint_faces(o, role("glass"), screen)
     K.smooth(o, 50)
     out = [o]
     if lod < 2:
         for sx in (1, -1):
-            out.append(K.box("head", (0.45, 0.1, 0.12), (sx * 0.62, front - 0.55, 1.42), role("headlamp"), rot=(0, 0, sx * 0.5)))
-        out.append(K.box("skirt", (2.6, 1.0, 0.35), (0, front - 0.9, 0.75), role("dark_grey"), bevel=0.1))
-        out.append(K.box("coupler_cover", (0.6, 0.12, 0.3), (0, front - 0.05, 1.3), role("dark_grey")))
+            out.append(K.box("head", (0.42, 0.08, 0.1), (sx * 0.5, front - 0.62, 1.45), role("headlamp"), rot=(0, 0, sx * 0.55)))
+        out.append(K.box("skirt", (2.5, 1.6, 0.3), (0, front - 1.9, 0.8), role("dark_grey"), bevel=0.08))
+        out.append(K.box("coupler_cover", (0.5, 0.1, 0.24), (0, front - 0.06, 1.55), role("dark_grey")))
     return out
 
 
@@ -575,7 +827,10 @@ def emu_spec(kind, ac):
         roof_units=[(2.2, 3.0, 0.42, 5.0), (2.2, 3.0, 0.42, -5.0)] if ac else [],
         pantographs=[("pantograph", -3.6)] if kind == "motor" else [],
         motor=kind == "motor", metal=0.3 if not ac else 0.1, rough=0.5,
-        lod2_budget=150 if kind == "cab" else 120,
+        lod2_budget=150 if kind == "cab" else 120, sill=1.13, head=3.02,
+        windows=[(a, b, 2.05, 2.75, "sealed" if ac else "barred") for a, b in emu_windows(kind, L, L / 2, doors)] +
+                ([(L / 2 - 0.5, L / 2 - 1.4, 2.15, 2.85, "sealed")] if kind == "cab" else []),
+        cab_windows=[(-1.38, -0.1, 2.25, 2.9), (0.1, 1.38, 2.25, 2.9)], frames="alloy" if not ac else "black",
         anchors={"seat_driver": (0.6, L / 2 - 1.2, 2.25), "grip_master_controller": (0.45, L / 2 - 0.75, 2.2)} if kind == "cab" else
                 {"standing_area": (0, 0.0, 1.2)},
     )
@@ -587,29 +842,35 @@ def emu_spec(kind, ac):
 WAP7 = dict(
     name="wap7", family="wap7", kind="cab", length=20.56, profile=LOCO_PROFILE, twin_cab=True, buffers=True, gangway=False,
     livery=lambda: wap7_livery(20.56, 10.28), doors=[], wheel_r=0.546, axles=3, axle_spacing=2.0, bogie_y=5.6, loco=True,
-    ring_ys=[10.28 - 2.25, -10.28 + 2.25], roof_units=[(2.0, 6.0, 0.35, 0.0)], pantographs=[("pantograph_front", 4.9), ("pantograph_rear", -4.9)],
-    under=[(1.6, 3.5, 0.6)], metal=0.1, rough=0.4, lod2_budget=150,
+    ring_ys=[10.28 - 2.25, -10.28 + 2.25], roof_units=[], roof_boxes=[(1.6, 2.6, 0.32, 0.0)], pantographs=[("pantograph_front", 4.9), ("pantograph_rear", -4.9)],
+    under=[(1.6, 3.5, 0.6)], metal=0.1, rough=0.4, lod2_budget=150, sill=1.2, head=3.55,
+    windows=[(a, b, 2.45, 3.25, "louvre") for a, b in wap7_louvres(20.56, 10.28)] +
+            [(10.28 - 0.6, 10.28 - 1.4, 2.35, 3.0, "sealed"), (-10.28 + 1.4, -10.28 + 0.6, 2.35, 3.0, "sealed")],
+    cab_windows=[(-1.32, -0.1, 2.55, 3.3), (0.1, 1.32, 2.55, 3.3)], frames="black", gutter=True,
     anchors={"seat_driver": (0.6, 10.28 - 1.0, 2.35), "grip_master_controller": (0.45, 10.28 - 0.6, 2.3)},
 )
 LHB = dict(
     name="lhb_coach", family="lhb", kind="coach", length=23.54, profile=COACH_PROFILE, buffers=True,
     livery=lambda: lhb_livery(23.54, 11.77), doors=[11.77 - 0.95, -11.77 + 0.95], door_w=0.8, door_top=2.95,
     wheel_r=0.4575, axles=2, axle_spacing=2.56, bogie_y=7.4, ring_ys=[11.77 - 1.35, 11.77 - 0.55, -11.77 + 1.35, -11.77 + 0.55],
-    roof_units=[(2.0, 2.2, 0.4, 8.6), (2.0, 2.2, 0.4, -8.6)], metal=0.05, rough=0.4, lod2_budget=120,
+    roof_units=[(2.0, 2.2, 0.4, 8.6), (2.0, 2.2, 0.4, -8.6)], metal=0.05, rough=0.4, lod2_budget=120, sill=1.13, head=3.02,
+    windows=[(a, b, 2.05, 2.75, "sealed") for a, b in lhb_windows(23.54, 11.77)], frames="black",
     anchors={"standing_area": (0, 0.0, 1.3)},
 )
 VB_CAB = dict(
     name="vb_cab", family="vb_cab", kind="cab", length=25.0, profile=VB_PROFILE, nose=dict(length=4.2),
     livery=lambda: vb_livery("cab", 25.0, 12.5), doors=[12.5 - 4.6, -12.5 + 0.9], door_w=0.9, door_top=2.9, door_x=1.63,
     wheel_r=0.46, axles=2, axle_spacing=2.6, bogie_y=7.2, ring_ys=[12.5 - 4.15, 12.5 - 5.05, -12.5 + 1.35, -12.5 + 0.45],
-    under=[(2.6, 6.0, 0.6), (2.6, 4.0, 0.6)], metal=0.15, rough=0.32, lod2_budget=150,
+    under=[(2.6, 6.0, 0.6), (2.6, 4.0, 0.6)], metal=0.15, rough=0.32, lod2_budget=150, sill=1.05, head=2.95, gutter=False,
+    windows=[(a, b, 2.1, 2.75, "sealed") for a, b in vb_windows("cab", 25.0, 12.5)], frames="black",
     anchors={"seat_driver": (0.0, 12.5 - 3.3, 2.2), "grip_master_controller": (0.25, 12.5 - 2.9, 2.15)},
 )
 VB_COACH = dict(
     name="vb_coach", family="vb_coach", kind="coach", length=24.0, profile=VB_PROFILE,
     livery=lambda: vb_livery("coach", 24.0, 12.0), doors=[12.0 - 0.9, -12.0 + 0.9], door_w=0.9, door_top=2.9, door_x=1.63,
     wheel_r=0.46, axles=2, axle_spacing=2.6, bogie_y=8.0, ring_ys=[12.0 - 1.35, 12.0 - 0.45, -12.0 + 1.35, -12.0 + 0.45],
-    under=[(2.6, 6.0, 0.6), (2.6, 4.0, 0.6)], metal=0.15, rough=0.32, lod2_budget=120,
+    under=[(2.6, 6.0, 0.6), (2.6, 4.0, 0.6)], metal=0.15, rough=0.32, lod2_budget=120, sill=1.05, head=2.95, gutter=False,
+    windows=[(a, b, 2.1, 2.75, "sealed") for a, b in vb_windows("coach", 24.0, 12.0)], frames="black",
     anchors={"standing_area": (0, 0.0, 1.2)},
 )
 
@@ -622,6 +883,31 @@ FORMATIONS = {
     "express": dict(cars=["wap7"] + ["lhb_coach"] * 18, notes="WAP-7-style locomotive with up to 22 LHB-style coaches; 18 shown (estimated)"),
     "vb": dict(cars=["vb_cab"] + ["vb_coach"] * 6 + ["vb_cab@reversed"], notes="8-car semi-high-speed set (estimated)"),
 }
+
+
+def livery_samples(spec):
+    """Texels of the car's livery that must hold its colour family (read back by the tests)."""
+    fam, L = spec["family"], spec["length"]
+    lv = Livery("probe", L, L / 2, spec["profile"], (0, 0, 0))
+    img = "livery_" + fam
+    y = 1.0 if spec["kind"] == "cab" and spec.get("family", "").startswith("emu") else 3.5
+    if fam.startswith("wap7"):
+        y = 3.4
+    pts = {
+        "emu_": [("stainless body", 1.85, STAINLESS), ("green line", 1.51, GREEN), ("cream line", 1.64, CREAM)],
+        "emu_ac": [("white body", 1.8, WHITE), ("blue window band", 2.8, BLUE)],
+        "lhb": [("red body", 1.6, LHB_RED), ("grey window band", 2.8, GREY), ("cream line", 1.885, CREAM)],
+        "wap7": [("red body", 1.7, LOCO_RED), ("cream band", 2.09, CREAM)],
+        "vb_": [("saffron body", 1.6, SAFFRON), ("grey skirt", 1.2, VB_GREY)],
+    }
+    key = next(k for k in ("emu_ac", "emu_", "lhb", "wap7", "vb_") if fam.startswith(k))
+    out = []
+    for what, z, rgb in pts[key]:
+        out.append(K.texture_sample(what, img, (lv.col(y) + 0.5) / W, (lv.row_s(lv.s_of_z(z)) + 0.5) / W, rgb))
+    if key in ("emu_", "emu_ac") and spec["kind"] == "cab":
+        c0, c1 = CAB_COLS
+        out.append(K.texture_sample("yellow cab front band", img, ((c0 + c1) / 2) / W, ((1.3 - 1.05) / (3.98 - 1.05) * WRAP0) / W, YELLOW))
+    return out
 
 
 def run(spec, family):
@@ -644,6 +930,7 @@ def run(spec, family):
         coupler_faces_z=dict(front=K.g(hi)[2], rear=K.g(lo)[2], notes="Godot z of the leading and trailing faces: car pitch in a rake = sum of the faces' distance"),
         collision=[dict(shape="box", centre=K.g((0, 0, (lo.z + hi.z) / 2 + 0.25)), half_extents=[round((hi.x - lo.x) / 2, 3), round((hi.z - lo.z) / 2 - 0.25, 3),
                                                                                                 round(spec["length"] / 2, 3)])],
+        texture_samples=livery_samples(spec),
         livery=dict(texture=f"embedded livery_{spec['family']} 512 px", family=family,
                     notes="shapes and colour families only: no logos, lettering or real numbers"),
         formation=FORMATIONS.get(family) if spec["name"] in ("emu_cab", "emu_ac_cab", "wap7", "vb_cab") else None,

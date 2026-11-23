@@ -11,6 +11,6 @@ cd "$ROOT"
 for script in cars aircraft trains; do
   "$BLENDER" -b --factory-startup --python "$HERE/$script.py" -- "$@" 2>&1 | grep -E '^(MODEL|MANIFEST)|Error|Traceback' || true
 done
-python3 "$HERE/port_road_vehicles.py"
+python3 "$HERE/port_road_vehicles.py"   # manifests for the synced legacy vehicles (assets/vehicles/legacy/)
 rm -rf "$HERE/__pycache__"
-timeout 600 "$GODOT" --headless --audio-driver Dummy --script "$ROOT/tests/models/test_models.gd" 2>&1 | grep -E '^FAIL|MODEL TESTS'
+GODOT="$GODOT" "$ROOT/run_tests.sh" --filter=vehicle_models 2>&1 | grep -E 'vehicle_models|model checks|TESTS' 

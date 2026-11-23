@@ -421,6 +421,60 @@
    "what": "tailplane"
   }
  ],
+ "texture_samples": [
+  {
+   "what": "white fuselage top",
+   "image": "livery_airliner",
+   "uv": [
+    0.5,
+    0.25
+   ],
+   "srgb": [
+    234,
+    234,
+    231
+   ]
+  },
+  {
+   "what": "teal belly",
+   "image": "livery_airliner",
+   "uv": [
+    0.5,
+    0.496
+   ],
+   "srgb": [
+    25,
+    97,
+    101
+   ]
+  },
+  {
+   "what": "teal fin",
+   "image": "livery_airliner",
+   "uv": [
+    0.0293,
+    0.9707
+   ],
+   "srgb": [
+    25,
+    97,
+    101
+   ]
+  },
+  {
+   "what": "coral fin disc",
+   "image": "livery_airliner",
+   "uv": [
+    0.2441,
+    0.7754
+   ],
+   "srgb": [
+    231,
+    124,
+    85
+   ]
+  }
+ ],
  "livery": {
   "texture": "embedded livery_airliner 1024 px",
   "colours": {

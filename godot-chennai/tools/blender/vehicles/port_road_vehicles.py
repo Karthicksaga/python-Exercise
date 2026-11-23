@@ -1,15 +1,16 @@
 """
-Ports the Three.js game's road vehicles (hatchback, motorbike, auto-rickshaw, bus, ambulance)
-into the Godot layout: copies their GLBs from `chennai-open-world/assets/models/vehicles/`
-unchanged into `godot-chennai/assets/vehicles/` and writes a manifest per vehicle with the data
+Manifests for the Three.js game's road vehicles (hatchback, motorbike, auto-rickshaw, bus,
+ambulance). Their GLBs are copied byte for byte into `godot-chennai/assets/vehicles/legacy/` by
+Foundation's `tools/sync_from_threejs.py` (the one source of truth for them, G-36); this script
+only checks they are there and writes a manifest beside each, with the data
 the old game keeps in code (`packages/vehicles/src/specs.ts`, `models.ts` DOOR_SWING,
 `docs/vehicles.md`): wheels, handling, driver's hip point and pose, grips, doors and hinges,
 passenger doors, cargo anchors. Plain Python 3, no Blender needed:
 
     python3 godot-chennai/tools/blender/vehicles/port_road_vehicles.py
 
-The models' sources are copied beside it (`road/vehicles.py`, `road/auto_rickshaw.py`); to
-rebuild them, run those with Blender exactly as in the old game (`-- godot-chennai/assets/vehicles`).
+The models' sources are kept beside it for reference (`road/vehicles.py`, `road/auto_rickshaw.py`,
+copies of the old game's scripts); the GLBs themselves come from the old game through the sync.
 
 Frames: the old game measures riding points in the *chassis* frame (+X right, -Z forwards, y up
 from the chassis centre). The GLBs' frame has the ground at y = 0. The manifests here are in the
@@ -18,14 +19,13 @@ groundBelow = wheel.y - SETTLED_SUSPENSION (0.3) - wheel.radius, exactly as `spe
 """
 import json
 import os
-import shutil
 import struct
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))  # godot-chennai/
 OLD = os.path.abspath(os.path.join(ROOT, "..", "chennai-open-world"))
 SRC = os.path.join(OLD, "assets", "models", "vehicles")
-OUT = os.path.join(ROOT, "assets", "vehicles")
+OUT = os.path.join(ROOT, "assets", "vehicles", "legacy")
 SETTLED = 0.3
 
 LICENCE = ("Original work for the Three.js game, made by `chennai-open-world/tools/blender/{vehicles,auto_rickshaw}.py` "
@@ -126,13 +126,10 @@ def r3(v):
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    road = os.path.join(HERE, "road")
-    os.makedirs(road, exist_ok=True)
-    for script in ("vehicles.py", "auto_rickshaw.py"):
-        shutil.copyfile(os.path.join(OLD, "tools", "blender", script), os.path.join(road, script))
     for name, v in VEHICLES.items():
         for f in v["files"]:
-            shutil.copyfile(os.path.join(SRC, f), os.path.join(OUT, f))
+            if not os.path.exists(os.path.join(OUT, f)):
+                raise SystemExit(f"{f} missing in assets/vehicles/legacy/: run python3 godot-chennai/tools/sync_from_threejs.py first")
         w0 = v["wheels"][0]
         ground = w0[2] - SETTLED - w0[4]  # groundBelow: negative, metres below the chassis centre
         up = -ground
@@ -192,7 +189,7 @@ def main():
         with open(os.path.join(OUT, name + ".json"), "w") as f:
             json.dump(manifest, f, indent=1)
             f.write("\n")
-        print("PORTED", name, [l["triangles"] for l in manifest["lods"]])
+        print("MANIFEST", name, [l["triangles"] for l in manifest["lods"]])
 
 
 if __name__ == "__main__":

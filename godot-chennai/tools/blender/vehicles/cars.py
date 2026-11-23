@@ -67,36 +67,37 @@ SALOON = dict(
 )
 
 SUV = dict(
-    name="suv", label="Large SUV", mass=2150,
-    wheelbase=2.86, track=0.83, tyre=0.385, tyre_w=0.255, arch_x=0.97,
-    belt=1.10, a_line=((1.10, 1.09), (0.42, 1.70)), c_line=((-1.62, 1.72), (-1.90, 1.12)),
-    b_pillar=-0.12, roof_z=1.78, glass_top=1.68,
-    doors=[("door_fr", 1, 1.10, -0.08, 65), ("door_fl", -1, 1.10, -0.08, -65),
-           ("door_rr", 1, -0.16, -1.12, 65), ("door_rl", -1, -0.16, -1.12, -65)],
-    door_z=(0.40, 1.68),
+    name="suv", label="Large SUV", mass=2250,
+    wheelbase=2.85, track=0.84, tyre=0.40, tyre_w=0.265, arch_x=0.99,
+    belt=1.22, a_line=((1.08, 1.22), (0.62, 1.8)), c_line=((-1.7, 1.86), (-1.95, 1.25)),
+    b_pillar=-0.1, roof_z=1.88, glass_top=1.80,
+    doors=[("door_fr", 1, 1.04, -0.06, 65), ("door_fl", -1, 1.04, -0.06, -65),
+           ("door_rr", 1, -0.14, -1.06, 65), ("door_rl", -1, -0.14, -1.06, -65)],
+    door_z=(0.56, 1.80),
+    # Tall and square: a high, flat bonnet, an upright windscreen and tailgate, short overhangs.
     sections=[
-        (-2.05, 0.84, 0.52, 1.02, 1.10, 0.76, 0.12, 0.08),
-        (-2.00, 0.93, 0.42, 1.10, 1.50, 0.80, 0.10, 0.10),
-        (-1.94, 0.955, 0.38, 1.12, 1.72, 0.79, 0.09, 0.12),
-        (-1.70, 0.965, 0.36, 1.12, 1.78, 0.79, 0.09, 0.14),
-        (-0.60, 0.975, 0.36, 1.115, 1.785, 0.79, 0.09, 0.14),
-        (0.30, 0.975, 0.36, 1.11, 1.78, 0.79, 0.09, 0.14),
-        (0.55, 0.975, 0.36, 1.105, 1.70, 0.81, 0.09, 0.12),
-        (0.90, 0.97, 0.36, 1.10, 1.36, 0.86, 0.09, 0.10),
-        (1.15, 0.965, 0.36, 1.08, 1.135, 0.90, 0.09, 0.08),
-        (1.75, 0.96, 0.37, 1.05, 1.10, 0.90, 0.09, 0.08),
-        (2.20, 0.95, 0.38, 1.00, 1.06, 0.88, 0.09, 0.08),
-        (2.42, 0.92, 0.42, 0.95, 1.01, 0.84, 0.10, 0.08),
-        (2.50, 0.84, 0.50, 0.86, 0.92, 0.74, 0.12, 0.08),
+        (-2.02, 0.90, 0.62, 1.12, 1.20, 0.82, 0.12, 0.08),
+        (-1.98, 0.96, 0.52, 1.22, 1.62, 0.84, 0.10, 0.10),
+        (-1.93, 0.975, 0.50, 1.24, 1.84, 0.83, 0.09, 0.12),
+        (-1.70, 0.985, 0.49, 1.24, 1.88, 0.83, 0.09, 0.14),
+        (-0.60, 0.99, 0.49, 1.235, 1.885, 0.83, 0.09, 0.14),
+        (0.30, 0.99, 0.49, 1.23, 1.88, 0.83, 0.09, 0.14),
+        (0.62, 0.99, 0.49, 1.225, 1.78, 0.85, 0.09, 0.12),
+        (0.95, 0.985, 0.49, 1.22, 1.42, 0.90, 0.09, 0.10),
+        (1.08, 0.98, 0.49, 1.215, 1.29, 0.93, 0.09, 0.08),
+        (1.75, 0.975, 0.50, 1.20, 1.27, 0.93, 0.09, 0.07),
+        (2.20, 0.965, 0.52, 1.17, 1.24, 0.91, 0.09, 0.07),
+        (2.38, 0.94, 0.56, 1.12, 1.19, 0.88, 0.10, 0.07),
+        (2.45, 0.88, 0.64, 1.02, 1.08, 0.80, 0.12, 0.07),
     ],
-    hip=(0.42, 0.20, 0.82),
-    seats=[("seat_driver", 0.42, 0.20), ("seat_front_left", -0.42, 0.20), ("seat_rear_right", 0.44, -0.72),
-           ("seat_rear_left", -0.44, -0.72), ("seat_third_row", 0.0, -1.55)],
-    seat_z=0.72, cargo=(0, -1.82, 0.62), roof_rails=True, spoiler=False,
+    hip=(0.42, 0.20, 0.95),
+    seats=[("seat_driver", 0.42, 0.20), ("seat_front_left", -0.42, 0.20), ("seat_rear_right", 0.44, -0.66),
+           ("seat_rear_left", -0.44, -0.66), ("seat_third_row", 0.0, -1.45)],
+    seat_z=0.85, cargo=(0, -1.72, 0.74), roof_rails=True, spoiler=False,
     paints=[("forest green", (0.03, 0.08, 0.05)), ("sand", (0.45, 0.38, 0.27)), ("gunmetal", (0.07, 0.075, 0.08)),
             ("white", (0.8, 0.8, 0.78)), ("terracotta", (0.33, 0.1, 0.05)), ("midnight", (0.01, 0.015, 0.03))],
-    physics=dict(engineForce=11500, maxSpeed=35, maxSteer=0.55, brakeForce=210, drift=0.45, gears=8),
-    ride=0.92, rim="alloy",
+    physics=dict(engineForce=12000, maxSpeed=35, maxSteer=0.55, brakeForce=220, drift=0.45, gears=8),
+    ride=1.0, rim="alloy",
 )
 
 COUPE = dict(
@@ -183,22 +184,25 @@ def steering_wheel(centre, radius, tilt):
 
 
 def roof_crossing(sec, z, front):
-    """y where the roof line of the sections crosses height z, on the front or rear slope."""
-    pairs = list(zip(sec, sec[1:]))
-    if front:
-        pairs = list(reversed(pairs))
-    for a, b in pairs:
-        za, zb = a[4], b[4]
+    """y where the roof line of the sections crosses height z, walking from the highest section
+    towards the front or the rear (so a high bonnet ahead of the windscreen is not mistaken for it)."""
+    top = max(range(len(sec)), key=lambda i: sec[i][4])
+    idx = list(range(top, len(sec))) if front else list(range(top, -1, -1))
+    for i, j in zip(idx, idx[1:]):
+        za, zb = sec[i][4], sec[j][4]
         if (za - z) * (zb - z) <= 0 and za != zb:
-            return a[0] + (b[0] - a[0]) * (z - za) / (zb - za)
-    return 0.0
+            return sec[i][0] + (sec[j][0] - sec[i][0]) * (z - za) / (zb - za)
+    return sec[idx[-1]][0]
 
 
 def pillar_lines(d):
     """A and C pillar lines (y at the waist, y at the roof) measured off the sections."""
     sec = d["sections"]
     zl, zh = d["belt"] + 0.03, d["roof_z"] - 0.03
-    d["a_line"] = ((roof_crossing(sec, zl, True), zl), (roof_crossing(sec, zh, True), zh))
+    # The windscreen starts above the bonnet: a high, flat bonnet (the SUV) is higher than the belt.
+    bonnet = max(s_[4] for s_ in sec if s_[0] > d["wheelbase"] / 2)
+    zf = max(zl, bonnet + 0.04)
+    d["a_line"] = ((roof_crossing(sec, zf, True), zf), (roof_crossing(sec, zh, True), zh))
     d["c_line"] = ((roof_crossing(sec, zh, False), zh), (roof_crossing(sec, zl, False), zl))
 
 
@@ -267,11 +271,11 @@ def car_body(d):
     if d["name"] == "suv":
         # Unpainted cladding round the arches and along the sills: reads as an off-roader.
         def clad(c, n):
-            if abs(n.x) < 0.3 or c.z > 0.95:
+            if abs(n.x) < 0.3 or c.z > 1.08:
                 return False
-            if c.z < 0.55:
+            if c.z < 0.7:
                 return True
-            return any(math.hypot(c.y - y, c.z - tyre) < tyre + 0.14 for y in (axle, -axle))
+            return any(math.hypot(c.y - y, c.z - tyre) < tyre + 0.17 for y in (axle, -axle))
         K.paint_faces(shell, role("dark_grey"), clad)
 
     def groove(c, n):
@@ -374,10 +378,19 @@ def fittings(d, shell):
             parts.append(K.box("rail", (0.04, 2.3, 0.035), (sx * rh, -0.6, rz + 0.05), role("dark_alloy"), bevel=0.012))
             for yy in (-1.7, 0.45):
                 parts.append(K.box("rail_foot", (0.05, 0.08, 0.07), (sx * rh, yy, rz + 0.02), role("black")))
+        # Flared arch mouldings: a thick dark lip round each wheel arch.
+        axle = d["wheelbase"] / 2
+        r = d["tyre"] + 0.11
+        for y in (axle, -axle):
+            for sx in (1, -1):
+                pts = [(sx * (d["arch_x"] - 0.02), y + r * math.cos(a), d["tyre"] + r * math.sin(a))
+                       for a in [math.radians(8 + i * 164 / (8 if K.LOD == 0 else 4)) for i in range((8 if K.LOD == 0 else 4) + 1)]]
+                parts.append(K.path_tube("arch_lip", pts, 0.055, role("dark_grey"), verts=K.seg(6, 4)))
+        parts.append(K.box("skid_rear", (1.0, 0.22, 0.06), (0, rear + 0.13, 0.66), role("dark_alloy")))
         # Skid plate and side steps.
-        parts.append(K.box("skid", (1.0, 0.3, 0.06), (0, front - 0.22, 0.42), role("light_grey")))
+        parts.append(K.box("skid", (1.0, 0.25, 0.06), (0, front - 0.18, 0.6), role("dark_alloy")))
         for sx in (1, -1):
-            parts.append(K.box("step", (0.14, 1.9, 0.05), (sx * (d["arch_x"] - 0.02), -0.05, 0.36), role("dark_alloy"), bevel=0.012))
+            parts.append(K.box("step", (0.16, 1.85, 0.05), (sx * (d["arch_x"] - 0.01), -0.05, 0.44), role("dark_alloy"), bevel=0.012))
     if d["spoiler"]:
         hit = K.surface((0, rear + 0.25, 3), (0, 0, -1), only=shell)
         if hit:
