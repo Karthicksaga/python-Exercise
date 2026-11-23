@@ -13,6 +13,7 @@ Proposals, reviews and recommendations for Hop. These are things suggested, not 
 
 | Date | Suggestion | Status |
 |---|---|---|
+| 2026-11-23 | [Chennai Open World: real Tamil Nadu trains and buildings (Google 3D Tiles ruled out)](2026-11-23-chennai-real-trains-and-buildings.md) | Proposed |
 | 2026-11-22 | [Chennai Open World: stage 12 and 15 browser tests fail intermittently](2026-11-22-chennai-combat-stage-flakes.md) | Done |
 | 2026-11-05 | [Intercity carpool app next to Hop](2026-11-05-intercity-carpool-app.md) | Proposed |
 | 2026-11-05 | [Brand name conflict: "Hop"](2026-11-05-brand-name-conflict.md) | Deferred, keeping Hop for now |
