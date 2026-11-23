@@ -21,17 +21,25 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 1,
       "figureLabel": "College Student",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "students-1",
+          "figureLabel": "College Boy"
+        }
+      ],
+      "note": "",
       "heightM": 1.678,
       "seatHeightM": 0.402,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9695,
+          "triangles": 9696,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3389,
+          "triangles": 3387,
           "from": 30.0
         }
       ],
@@ -76,6 +84,19 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 2,
       "figureLabel": "IT Professional",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "office-1",
+          "figureLabel": "Software Engineer"
+        },
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "families-8",
+          "figureLabel": "Young Couple (man)"
+        }
+      ],
+      "note": "",
       "heightM": 1.826,
       "seatHeightM": 0.449,
       "lods": [
@@ -130,17 +151,30 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 3,
       "figureLabel": "Delivery Rider",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "transport-5",
+          "figureLabel": "Delivery Rider"
+        },
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "transport-6",
+          "figureLabel": "Logistics Rider"
+        }
+      ],
+      "note": "",
       "heightM": 1.786,
       "seatHeightM": 0.452,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9697,
+          "triangles": 9695,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3388,
+          "triangles": 3389,
           "from": 30.0
         }
       ],
@@ -183,6 +217,14 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 4,
       "figureLabel": "Auto Driver",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "transport-1",
+          "figureLabel": "Auto Driver"
+        }
+      ],
+      "note": "",
       "heightM": 1.751,
       "seatHeightM": 0.445,
       "lods": [
@@ -236,17 +278,25 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 5,
       "figureLabel": "Shopkeeper",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "vendors-7",
+          "figureLabel": "Petty Shop Owner"
+        }
+      ],
+      "note": "",
       "heightM": 1.748,
       "seatHeightM": 0.446,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9698,
+          "triangles": 9699,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3382,
+          "triangles": 3388,
           "from": 30.0
         }
       ],
@@ -288,6 +338,19 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 6,
       "figureLabel": "Police Constable",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "police-2",
+          "figureLabel": "Police Constable"
+        },
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "police-4",
+          "figureLabel": "Home Guard"
+        }
+      ],
+      "note": "",
       "heightM": 1.819,
       "seatHeightM": 0.457,
       "lods": [
@@ -341,17 +404,25 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 7,
       "figureLabel": "Construction Worker",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "workers-1",
+          "figureLabel": "Construction Worker"
+        }
+      ],
+      "note": "",
       "heightM": 1.779,
       "seatHeightM": 0.464,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9697,
+          "triangles": 9653,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3386,
+          "triangles": 3340,
           "from": 30.0
         }
       ],
@@ -396,6 +467,14 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 8,
       "figureLabel": "Office Employee",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "office-3",
+          "figureLabel": "Office Executive"
+        }
+      ],
+      "note": "",
       "heightM": 1.823,
       "seatHeightM": 0.45,
       "lods": [
@@ -451,6 +530,19 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 9,
       "figureLabel": "Elderly Man",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "elderly-1",
+          "figureLabel": "Elderly Man (Veshti)"
+        },
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "traditional-1",
+          "figureLabel": "Man (Veshti)"
+        }
+      ],
+      "note": "",
       "heightM": 1.711,
       "seatHeightM": 0.453,
       "lods": [
@@ -503,17 +595,25 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 10,
       "figureLabel": "Street Vendor (Tea)",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "vendors-1",
+          "figureLabel": "Tea Stall Owner"
+        }
+      ],
+      "note": "",
       "heightM": 1.757,
       "seatHeightM": 0.447,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8330,
+          "triangles": 8553,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3387,
+          "triangles": 3388,
           "from": 30.0
         }
       ],
@@ -556,6 +656,14 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 11,
       "figureLabel": "College Student",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "students-2",
+          "figureLabel": "College Girl"
+        }
+      ],
+      "note": "",
       "heightM": 1.516,
       "seatHeightM": 0.344,
       "lods": [
@@ -566,7 +674,7 @@
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3388,
+          "triangles": 3389,
           "from": 30.0
         }
       ],
@@ -610,6 +718,14 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 12,
       "figureLabel": "IT Professional",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "office-2",
+          "figureLabel": "Product Analyst"
+        }
+      ],
+      "note": "",
       "heightM": 1.645,
       "seatHeightM": 0.377,
       "lods": [
@@ -665,12 +781,14 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 13,
       "figureLabel": "Working Professional",
+      "alsoFigures": [],
+      "note": "",
       "heightM": 1.633,
       "seatHeightM": 0.373,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 7784,
+          "triangles": 7800,
           "until": 30.0
         },
         {
@@ -718,6 +836,8 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 14,
       "figureLabel": "Homemaker",
+      "alsoFigures": [],
+      "note": "",
       "heightM": 1.582,
       "seatHeightM": 0.364,
       "lods": [
@@ -771,17 +891,19 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 15,
       "figureLabel": "Shopkeeper",
+      "alsoFigures": [],
+      "note": "",
       "heightM": 1.606,
       "seatHeightM": 0.367,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9048,
+          "triangles": 9104,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3381,
+          "triangles": 3383,
           "from": 30.0
         }
       ],
@@ -824,6 +946,14 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 16,
       "figureLabel": "Nurse",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "healthcare-2",
+          "figureLabel": "Nurse"
+        }
+      ],
+      "note": "",
       "heightM": 1.626,
       "seatHeightM": 0.379,
       "lods": [
@@ -834,7 +964,7 @@
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3389,
+          "triangles": 3388,
           "from": 30.0
         }
       ],
@@ -876,17 +1006,25 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 17,
       "figureLabel": "School Student",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "students-6",
+          "figureLabel": "School Girl"
+        }
+      ],
+      "note": "",
       "heightM": 1.321,
       "seatHeightM": 0.276,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9697,
+          "triangles": 9695,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3385,
+          "triangles": 3384,
           "from": 30.0
         }
       ],
@@ -929,6 +1067,14 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 18,
       "figureLabel": "Elderly Woman",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "elderly-2",
+          "figureLabel": "Elderly Woman (Saree)"
+        }
+      ],
+      "note": "",
       "heightM": 1.533,
       "seatHeightM": 0.356,
       "lods": [
@@ -979,6 +1125,14 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 19,
       "figureLabel": "Street Vendor (Flowers)",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "vendors-3",
+          "figureLabel": "Flower Seller"
+        }
+      ],
+      "note": "",
       "heightM": 1.593,
       "seatHeightM": 0.365,
       "lods": [
@@ -1032,17 +1186,25 @@
       "board": "docs/concept/characters/phase1-20-characters.webp",
       "figure": 20,
       "figureLabel": "Young Professional",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "families-8",
+          "figureLabel": "Young Couple (woman)"
+        }
+      ],
+      "note": "",
       "heightM": 1.63,
       "seatHeightM": 0.372,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 7719,
+          "triangles": 7727,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3388,
+          "triangles": 3384,
           "from": 30.0
         }
       ],
@@ -1091,12 +1253,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9698,
+          "triangles": 9696,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3389,
+          "triangles": 3385,
           "from": 30.0
         }
       ],
@@ -1148,12 +1310,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9697,
+          "triangles": 9695,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3389,
+          "triangles": 3387,
           "from": 30.0
         }
       ],
@@ -1204,12 +1366,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9697,
+          "triangles": 9693,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3389,
+          "triangles": 3385,
           "from": 30.0
         }
       ],
@@ -1480,12 +1642,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 7953,
+          "triangles": 8178,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3386,
+          "triangles": 3385,
           "from": 30.0
         }
       ],
@@ -1933,12 +2095,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8338,
+          "triangles": 8565,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3387,
+          "triangles": 3386,
           "from": 30.0
         }
       ],
@@ -2046,12 +2208,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9697,
+          "triangles": 9698,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3384,
+          "triangles": 3386,
           "from": 30.0
         }
       ],
@@ -2163,7 +2325,7 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9696,
+          "triangles": 9697,
           "until": 30.0
         },
         {
@@ -2273,16 +2435,16 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.436,
-      "seatHeightM": 0.316,
+      "seatHeightM": 0.314,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9696,
+          "triangles": 9698,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3385,
+          "triangles": 3383,
           "from": 30.0
         }
       ],
@@ -2496,12 +2658,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 7728,
+          "triangles": 7736,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3387,
+          "triangles": 3385,
           "from": 30.0
         }
       ],
@@ -2540,7 +2702,7 @@
         "uniform",
         "office"
       ],
-      "outfit": "white knee-length coat over a blue salwar, blank ID card, shoes, bun",
+      "outfit": "white knee-length coat over blue trousers, blank ID card, shoes, bun",
       "board": "docs/concept/characters/phase2-60-characters.webp",
       "figure": "healthcare-1",
       "figureLabel": "Doctor",
@@ -2556,7 +2718,7 @@
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3384,
+          "triangles": 3386,
           "from": 30.0
         }
       ],
@@ -2577,7 +2739,6 @@
         "eyebrows/eyebrow010",
         "eyes/low-poly",
         "eyelashes/eyelashes01",
-        "clothes/toigo_harem_pants",
         "clothes/shoes04"
       ]
     },
@@ -2669,12 +2830,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8000,
+          "triangles": 8016,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3389,
+          "triangles": 3384,
           "from": 30.0
         }
       ],
@@ -3111,12 +3272,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9696,
+          "triangles": 9695,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3384,
+          "triangles": 3387,
           "from": 30.0
         }
       ],

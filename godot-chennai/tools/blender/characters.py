@@ -802,7 +802,10 @@ def make_tube(rig, body, collection, lm, g, name, extra=()):
         k = (i - h) / max(1, len(fits) - 1 - h)
         hz, hcx, hcy, ha, hb = profile[h]
         la, lb = ha + (hem_a - ha) * k, hb + (hem_b - hb) * k
-        profile.append((z, hcx + (end[1] - hcx) * k, hcy + (end[2] - hcy) * k, max(la, a + 0.004), max(lb, b + 0.004)))
+        if g.get("straight"):
+            profile.append((z, hcx + (end[1] - hcx) * k, hcy + (end[2] - hcy) * k, la, lb))
+        else:
+            profile.append((z, hcx + (end[1] - hcx) * k, hcy + (end[2] - hcy) * k, max(la, a + 0.004), max(lb, b + 0.004)))
     for r, (z, cx, cy, a, b) in enumerate(profile):
         t = r / (rings - 1)
         for s in range(segments + 1):
@@ -1389,13 +1392,19 @@ def flat_uvs(obj, tile, faces=None):
 # ----------------------------------------------------------------------------------------------
 # Assembly
 # ----------------------------------------------------------------------------------------------
-def keep_skin(body, asset, keep):
-    """Undo MPFB's skin deletion under part of a garment we cut away (keep(world_pos) true)."""
+def keep_skin(body, asset, keep, remember=None):
+    """Undo MPFB's skin deletion under part of a garment we cut away (keep(world_pos) true).
+    With `remember`, the kept vertices also go into that vertex group (to delete them later)."""
     group = body.vertex_groups.get("Delete." + asset)
     if group is None:
         return
     world = body.matrix_world
-    group.remove([v.index for v in body.data.vertices if keep(world @ v.co)])
+    ids = [v.index for v in body.data.vertices if keep(world @ v.co)]
+    if remember:
+        in_group = {v.index for v in body.data.vertices if any(g.group == group.index for g in v.groups)}
+        mark = body.vertex_groups.get(remember) or body.vertex_groups.new(name=remember)
+        mark.add([i for i in ids if i in in_group], 1.0, "REPLACE")
+    group.remove(ids)
 
 
 def triangles(obj):
@@ -1559,7 +1568,7 @@ def build(spec, human_service, workdir):
         # Towels, vests and straps are cut from the body's own surface: keep the skin under a
         # shirt there so they have something to be made from (they sit outside the shirt).
         for item, obj in clothes_objs:
-            keep_skin(body, item["asset"], lambda p: p.z > hips_z - 0.05)
+            keep_skin(body, item["asset"], lambda p: p.z > hips_z - 0.05, remember="KeptUnderClothes")
     for obj in children:
         bake(obj)
     if proxy:
@@ -1610,6 +1619,11 @@ def build(spec, human_service, workdir):
     # --- Skin
     skin_pixels = skin_texture(spec, body, size, lm)
     skin_image = write_image(skin_pixels, os.path.join(workdir, f"{spec['id']}_skin.png"), f"{spec['id']}_skin")
+    kept = body.vertex_groups.get("KeptUnderClothes")
+    if kept is not None:
+        # Skin kept only to cut towels, vests and straps from: delete it again under the shirt.
+        marked = {v.index for v in body.data.vertices if any(g.group == kept.index and g.weight > 0.5 for g in v.groups)}
+        hidden.update(p.index for p in body.data.polygons if all(i in marked for i in p.vertices))
     delete_faces(body, hidden)
 
     # --- Outfit atlas
