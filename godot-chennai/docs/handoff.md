@@ -22,10 +22,17 @@ emulator smoke run. Decisions G-1…G-9 in `technical-decisions.md`.
   (add steps to `Main.STEPS`, each real work).
 - `roads_near()` is a linear scan; keep roads per chunk (`roadSpansByChunk`) for streaming.
 
+**CI.** Green on `agent/godot-foundation` (run 45185128445): tests, the `godot-chennai-apk`
+artifact, emulator smoke. The first emulator runs stalled: the emulator's Vulkan failed to
+present and the main loop stopped; the smoke emulator now runs without Vulkan, so it tests the
+OpenGL fallback, not the Mobile renderer.
+
 **Weak or not done.**
 - The test ground is deliberately empty: no city meshes, no player, no touch joystick yet.
 - 640×320 screens get readable but small text (14 at 0.7 scale ≈ 10 px).
-- Mobile renderer is checked only on the CI emulator (software); never on a phone yet.
+- The Mobile (Vulkan) renderer has not run anywhere real yet: the CI emulator cannot present
+  with Vulkan and runs the OpenGL fallback. First check on the owner's phone (Adreno 613).
+- The frame watchdog is not covered by a test (it would need a deliberately stalled main loop).
 - The APK carries every synced asset (about 50 MB of data, mostly the legacy cast) although
   phase 0 uses none of the models.
 - Safe-area insets are coded but only real on a phone with a notch; untested there.

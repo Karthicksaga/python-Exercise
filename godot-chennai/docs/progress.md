@@ -13,4 +13,4 @@ What runs and how it was tested. "Emulator" and "phone" are different statements
 | World reader: `WorldCodec`, `WorldIndex`, `WorldFiles`, `WorldSource`/`FileWorldSource`, format-version check (G-4, G-6) | Done | `tests/unit/test_world_codec.gd`, `test_world_index.gd`, `test_world_source.gd`: values from the TS decoder on the same files, every chunk decoded, hand-made and truncated files, other versions refused |
 | Floating origin `WorldOrigin` (G-7) | Done (not yet used by moving things) | `tests/unit/test_world_source.gd::test_floating_origin` |
 | Headless test runner (G-8) | Done: 21 tests, 432 assertions | `./run_tests.sh` locally and in CI; a broken assertion exits 1 |
-| CI: import, tests, Android APK, emulator smoke (G-9) | See `handoff.md` for the latest run | GitHub Actions `Godot Chennai` |
+| CI: import, tests, Android APK, emulator smoke (G-9) | Done: green (run 45185128445) | GitHub Actions `Godot Chennai`: APK 77 MB (arm64, min SDK 24, target 36); emulator API 34 x86_64 reached `[boot] play` 13 s after launch on the OpenGL fallback and kept running |

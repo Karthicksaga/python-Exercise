@@ -114,6 +114,10 @@ as artifact `godot-chennai-apk`, and the `Android Smoke` preset (x86_64, debug, 
 `--start=play`) for the emulator; prints the APKs' SDK levels), **android-smoke** (API 34
 x86_64 emulator, `tools/android_smoke.sh`: install, launch, wait for the `[boot] play` line the
 main scene prints to logcat, press ENTER if the title menu shows instead, fail on
-`[boot] failed`, a crash of this app or a timeout, then check it still runs 10 s later). No
-Gradle build: Godot's prebuilt template, so the minimum SDK is the template's (the CI step
-prints it). Package `com.chennaiopenworld.godot`, so it installs beside the Three.js app.
+`[boot] failed`, a crash of this app or a timeout, then check it still runs 10 s later). The emulator starts **without Vulkan** (`-feature
+-Vulkan`): its SwiftShader Vulkan failed to present on the runner and Godot's main loop stopped
+after the first step, so the smoke run takes the OpenGL fallback and thereby proves it; the
+Mobile renderer is judged on real phones. While loading, a watchdog thread prints
+`[boot] no frame for N s` if the main loop stalls, so a device log never goes silent. No
+Gradle build: Godot's prebuilt template, so the minimum SDK is the template's: API 24
+(Android 7.0), target 36 (printed by CI). Package `com.chennaiopenworld.godot`, so it installs beside the Three.js app.
