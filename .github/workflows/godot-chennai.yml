@@ -7,6 +7,13 @@ on:
   pull_request:
     paths: ['godot-chennai/**', '.github/workflows/godot-chennai.yml']
   workflow_dispatch:
+    inputs:
+      smoke_runs:
+        description: 'Emulator smoke runs in parallel, as a list (e.g. "1,2,3,4,5,6") to check it is not flaky'
+        default: '1'
+      smoke_settle:
+        description: 'Wait for the emulator to settle before installing (1), or not (0, the old behaviour)'
+        default: '1'
 
 # A newer push to the same branch or PR cancels the run still in progress.
 concurrency:
@@ -140,6 +147,12 @@ jobs:
     needs: android
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        run: ${{ fromJSON(format('[{0}]', inputs.smoke_runs || '1')) }}
+    env:
+      SMOKE_SETTLE: ${{ inputs.smoke_settle || '1' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -174,7 +187,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: godot-chennai-android-smoke-logcat
+          name: godot-chennai-android-smoke-logcat-${{ matrix.run }}
           path: godot-chennai/android-smoke/
           if-no-files-found: ignore
           retention-days: 14
