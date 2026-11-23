@@ -65,6 +65,12 @@ export class FollowCamera {
     this.baseFov = camera.fov;
   }
 
+  /** Where the camera is and how far it stands from its target this frame (tests, debugging). */
+  pose(): { x: number; y: number; z: number; distance: number } {
+    const p = this.camera.position;
+    return { x: p.x, y: p.y, z: p.z, distance: this.distance };
+  }
+
   /** Apply a drag of (dx, dy) CSS pixels. */
   look(dx: number, dy: number): void {
     if (dx !== 0 || dy !== 0) this.sinceLook = 0;

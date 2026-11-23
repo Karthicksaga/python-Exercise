@@ -98,6 +98,8 @@ export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
   readonly z: number;
   readonly yaw: number;
   readonly cameraYaw: number;
+  /** The camera's position and distance from what it follows (jitter checks). */
+  readonly camera: { x: number; y: number; z: number; distance: number };
   readonly cameraPitch: number;
   readonly grounded: boolean;
   readonly speed: number;
@@ -1230,6 +1232,7 @@ export class Game {
       z: p.z,
       yaw: this.driving ? this.driving.body.yaw() : this.player.yaw,
       cameraYaw: this.camera.yaw,
+      camera: this.camera.pose(),
       cameraPitch: this.camera.pitch,
       grounded: this.driving ? true : this.player.grounded,
       speed: this.driving ? Math.abs(this.driving.body.forwardSpeed()) : this.player.speed,
