@@ -186,6 +186,19 @@ of the reconstruction work, and build the migration phases (§5) without waiting
 | Trains: ICF EMU, AC EMU, WAP-7 + LHB, Vande Bharat by Blender script, budgets per LOD | Same models (Phase 6), imported GLBs with LODs via visibility ranges |
 | Tests: fusion (pytest), codec round trip, archetype determinism, triangle budgets, reference screenshots | GUT/headless GDScript tests for the reader and builders; Compatibility screenshots at the same reference places; pytest stays for `tools/geo` |
 
+**Owner's answers (23 Nov 2026):**
+- **Scope: the entire city of Chennai**, taken as the Greater Chennai Corporation area (about
+  426 km², *to verify*; about 3.6× today's box). Nothing may hard-code the current box: bounds come
+  from `index.json`. The wider metropolitan area is not in scope unless the owner says so.
+- **Keep the same structure as the existing game.** The Godot project mirrors the Three.js game's
+  modules with the same names and boundaries under `godot-chennai/src/`: `game_engine`,
+  `game_world`, `map_data`, `physics`, `player`, `vehicles`, `ai`, `combat`, `missions`, `rail`,
+  `audio`, `ui`, plus a composition root like `apps/game` (the main scene wires systems and holds
+  no gameplay logic, like `Game.ts`). Same data formats and 250 m chunk streaming, same coordinates
+  (TD-2) and scale, same game flow (loading screen → title menu → play), same content tables.
+- Still open (blueprint §21): real business names on signs (TD-18 forbids them today), the
+  imagery source, the Open Buildings licence choice, the pilot neighbourhoods.
+
 Ordering: the migration phases in §5 come first (the game must run in Godot), and the
 reconstruction work joins at Phase 1 (world) as data and tools, then Phase 7 (visual upgrade) for
 kits, archetypes, roads and landmarks. The chunk reader is written once, versioned, so the richer
