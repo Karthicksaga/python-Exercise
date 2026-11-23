@@ -31,9 +31,9 @@ func _init(file_path: String = DEFAULT_PATH) -> void:
 func read() -> SaveStore:
 	data = {}
 	if FileAccess.file_exists(path):
-		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-		if parsed is Dictionary:
-			data = parsed
+		var json := JSON.new()
+		if json.parse(FileAccess.get_file_as_string(path)) == OK and json.data is Dictionary:
+			data = json.data
 	return self
 
 
