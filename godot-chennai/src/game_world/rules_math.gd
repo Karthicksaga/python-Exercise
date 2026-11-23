@@ -36,3 +36,17 @@ static func angle_between(a: float, b: float) -> float:
 ## Rounded to one decimal, as the TypeScript `Math.round(v * 10) / 10`.
 static func round1(v: float) -> float:
 	return js_round(v * 10.0) / 10.0
+
+
+## A stable sort (JavaScript's `Array.prototype.sort` is stable; Godot's `sort_custom` is not),
+## so ties keep their order as in the TypeScript rules. Returns a new array.
+static func stable_sorted(list: Array, less: Callable) -> Array:
+	var out := list.duplicate()
+	for i in range(1, out.size()):
+		var item: Variant = out[i]
+		var j := i - 1
+		while j >= 0 and less.call(item, out[j]):
+			out[j + 1] = out[j]
+			j -= 1
+		out[j + 1] = item
+	return out
