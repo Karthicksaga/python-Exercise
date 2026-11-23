@@ -239,3 +239,30 @@ behaviour and its tests, not the code.
 The unfinished branches are specs to finish in Godot, not code to merge. Where a spec was never
 tested end to end (the WIP branches), design the tests first in Godot.
 
+## 11. New vehicles and the airport (owner, 23 Nov 2026)
+The owner asked for a realistic airport with aeroplane flying, a helicopter, a race car and
+premium cars. Rules that apply to all of them: **original designs only** (no real makes, models,
+badges, airline names or liveries: TD-18 of the Three.js game; invented airline colours),
+built in Blender by script like the other vehicles, phone budgets with LODs, licences recorded.
+
+| What | Scope | Phase |
+|---|---|---|
+| **Premium cars** (an original luxury saloon, SUV and sports coupé) | Parked in richer districts and as rare traffic; drivable with their own handling (faster, grippier, quieter engines); stealable like any car; a garage to keep the ones the player owns | 2 (vehicles), traffic use in 3 |
+| **Race car** (original open-wheel or GT design) | Very high grip and speed; races as city jobs or events: a street circuit (the Island Grounds area, where Chennai held a street race in 2024, is inside the map) and point-to-point races on arterials at night; checkpoints, opponents on the racing line, timing, rewards | Car in 2; races in 4 (missions/jobs) |
+| **Helicopter** | Takes off from helipads (airport, a hospital roof, a police station); arcade-realistic flight (collective up/down, cyclic tilt, yaw), auto-hover when the stick is released, landing gear contact, crash when it hits buildings fast; touch controls designed for it (`input-systems`, `chennai-game-design` §3) | New phase 6b, after the railway |
+| **Aeroplane and the airport** | Chennai International Airport (Meenambakkam) from OSM: runways, taxiways, aprons, terminals, the ATC tower (aeroways are mapped in OSM); a small original airliner and a light aircraft; taxi, take-off, climb, turn, approach and land; ground handling on the runway (Jolt body with custom lift, drag and thrust forces, `physics-tuning`); a simple flight HUD (speed, altitude, heading, attitude) | New phase 6b |
+
+What this needs beyond the vehicles themselves:
+- **World scope:** the airport is just outside the current box and (*to verify*) outside the
+  Greater Chennai Corporation limits. The world boundary is extended to include the airport
+  and its approach (decision noted here; tell the owner the size it adds).
+- **Seeing the city from the air:** a far-city layer (merged low-poly district blocks, or
+  impostors) streamed beyond the 250 m chunk radius when flying, so the city doesn't vanish into
+  fog at altitude; chunk streaming follows the aircraft's ground track with look-ahead.
+  Performance budgets apply at altitude too (`performance-optimization`).
+- **Physics and camera:** high-speed and flight cameras (`camera-systems`), continuous collision
+  for fast bodies, crash rules per vehicle (crash ejection, §10, extended to aircraft as a crash
+  and respawn).
+- **Police and missions:** wanted level reacts to stealing aircraft and flying low over the city;
+  aircraft can't be flown in early stages (unlock through missions or a pilot job).
+
