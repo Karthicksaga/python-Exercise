@@ -352,6 +352,11 @@ def solve_frame(tgt, sampler, local, extra_hips=Vector((0, 0, 0))):
 # ----------------------------------------------------------------------------------------------
 # Clips
 # ----------------------------------------------------------------------------------------------
+# The Mixamo idle stands with the thighs ~9 degrees out, on top of MakeHuman's own slightly open
+# rest: legs looked splayed. Standing clips bring the thighs in (the feet turned back flat).
+LEGS_IN_DEG = {"idle": 7.0}
+
+
 def retarget_pose(src, tgt, align, clip, t):
     srot, _ = src.world(src.local_rotations(clip, t))
     world = {}
@@ -366,6 +371,13 @@ def retarget_pose(src, tgt, align, clip, t):
     world = world_from_locals(tgt, local)
     for side, sign in (("Left", 1), ("Right", -1)):
         turn_subtree(tgt, local, world, side + "Arm", Vector((0, 1, 0)), sign * ARM_IN_DEG)
+    legs_in = LEGS_IN_DEG.get(clip, 0.0)
+    if legs_in:
+        for side, sign in (("Left", 1), ("Right", -1)):
+            world = world_from_locals(tgt, local)
+            turn_subtree(tgt, local, world, side + "UpLeg", Vector((0, 1, 0)), sign * legs_in)
+            world = world_from_locals(tgt, local)
+            turn_subtree(tgt, local, world, side + "Foot", Vector((0, 1, 0)), -sign * legs_in)
     return local
 
 

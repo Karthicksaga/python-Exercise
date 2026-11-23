@@ -21,7 +21,7 @@ else
   ln -s "$here/tests" "$project/tests"
 fi
 if [[ $mode == test ]]; then
-  timeout 900 "$godot_bin" --headless --audio-driver Dummy --path "$project" --script res://tests/people/test_people.gd "$@"
+  timeout 900 "$godot_bin" --headless --audio-driver Dummy --path "$project" --script res://tests/people/test_people.gd -- "$@"
 else
   timeout 300 xvfb-run -a -s "-screen 0 1830x824x24" "$godot_bin" --rendering-method gl_compatibility --rendering-driver opengl3 \
     --audio-driver Dummy --path "$project" --script res://tests/people/people_lineup.gd -- "$@"

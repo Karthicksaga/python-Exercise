@@ -16,13 +16,17 @@
 extends SceneTree
 
 const PeopleGltf := preload("res://tests/people/people_gltf.gd")
+const SolePlant := preload("res://assets/people/sole_plant.gd")
 const CLIPS: Array[String] = ["idle", "walk", "run", "sit", "talk"]
 const LOD0_BUDGET := 10000
 const LOD1_BUDGET := 3500
 const TEXTURE_MAX := 512
 const SOLE_TOLERANCE := 0.02  # metres: lowest sole vs the ground in a clip
-const BLEND_SINK := 0.04  # metres: how far a sole may dip during a 0.22 s blend
-const WRIST_MAX_DEG := 35.0
+const BLEND_SINK := 0.02  # metres: how far a sole may dip during a 0.22 s blend (with SolePlant)
+## Largest angle between the forearm's line and the hand (wrist to middle knuckle) per clip. The
+## Mixamo clips themselves flex the wrist up to 8.9 deg (idle), 33.6 (walk) and 40.8 (run); a
+## retarget that misses the hand frames bends every wrist ~70 deg, which these limits catch.
+const WRIST_MAX_DEG := {"idle": 20.0, "walk": 40.0, "run": 46.0, "sit": 35.0, "talk": 40.0}
 const SAMPLES := 12
 
 var passed := 0
@@ -47,7 +51,7 @@ func _initialize() -> void:
 		if test_person(entry) != true:
 			failed += 1
 			push_error("FAIL %s: test did not finish (runtime error?)" % entry["id"])
-	print("worst sole %.3f m, worst blend dip %.3f m, worst wrist %.1f deg" % [worst["sole"], worst["blend"], worst["wrist"]])
+	print("worst sole %.3f m, worst blend %.3f m (%.3f m without planting), worst wrist %.1f deg" % [worst["sole"], worst["blend"], worst.get("blend_raw", 0.0), worst["wrist"]])
 	print("Results: %d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -122,7 +126,7 @@ func test_person(entry: Dictionary) -> bool:
 		for clip in CLIPS:
 			if player.has_animation(clip):
 				_check_clip(id, player, skeleton, sole, clip)
-		_check_blends(id, player, skeleton, sole)
+		_check_blends(id, player, skeleton, lod0, sole)
 	scene.queue_free()
 	return true
 
@@ -197,22 +201,32 @@ func _check_clip(id: String, player: AnimationPlayer, skeleton: Skeleton3D, sole
 	worst["wrist"] = maxf(worst["wrist"], wrist)
 	check(absf(low) <= SOLE_TOLERANCE and absf(high) <= SOLE_TOLERANCE,
 		"%s %s: lowest sole stays on the ground (%.3f .. %.3f m)" % [id, clip, low, high])
-	check(wrist <= WRIST_MAX_DEG, "%s %s: wrists straight enough (%.1f deg)" % [id, clip, wrist])
+	check(wrist <= WRIST_MAX_DEG[clip], "%s %s: wrists straight enough (%.1f <= %.0f deg)" % [id, clip, wrist, WRIST_MAX_DEG[clip]])
 
 
-func _check_blends(id: String, player: AnimationPlayer, skeleton: Skeleton3D, sole: SoleProbe) -> void:
+func _check_blends(id: String, player: AnimationPlayer, skeleton: Skeleton3D, body: MeshInstance3D, sole: SoleProbe) -> void:
+	# Cross-fades between the gaits, advanced in game time, with the runtime sole planting the
+	# game uses (assets/people/sole_plant.gd); the dip without it is reported for information.
+	skeleton.reset_bone_poses()
+	var plant := SolePlant.new(skeleton, body)
 	var dip := 0.0
-	for pair in [["idle", "walk"], ["walk", "run"], ["run", "walk"], ["walk", "idle"], ["run", "idle"]]:
+	var raw_dip := 0.0
+	for pair in [["idle", "walk"], ["walk", "run"], ["run", "walk"], ["walk", "idle"], ["run", "idle"], ["idle", "talk"], ["talk", "walk"]]:
 		player.play(pair[0])
 		player.seek(0.0, true)
 		player.advance(0.37)
 		player.play(pair[1], 0.22)
 		for k in 12:
 			player.advance(0.022)
-			dip = maxf(dip, -sole.lowest())
+			skeleton.position.y = plant.base_y
+			raw_dip = maxf(raw_dip, -sole.lowest())
+			plant.apply()
+			dip = maxf(dip, absf(sole.lowest()))
 		player.stop()
+	skeleton.position.y = plant.base_y
 	worst["blend"] = maxf(worst["blend"], dip)
-	check(dip <= BLEND_SINK, "%s: soles dip at most %.3f m in gait blends (%.3f)" % [id, BLEND_SINK, dip])
+	worst["blend_raw"] = maxf(worst.get("blend_raw", 0.0), raw_dip)
+	check(dip <= BLEND_SINK, "%s: soles within %.3f m of the ground in gait blends (%.3f; %.3f without planting)" % [id, BLEND_SINK, dip, raw_dip])
 
 
 func _wrist_angle(skeleton: Skeleton3D) -> float:

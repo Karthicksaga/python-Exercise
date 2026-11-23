@@ -421,13 +421,13 @@ def fabric(spec_tex, size):
         # Body colour with small woven motifs, a broad border at the hem and a thin zari line.
         _, base, border, motif = spec_tex
         pixels = weave(size, base, strength=0.06)
-        # Small woven motifs: more across (u runs round the whole body) than down.
-        u = (coords[None, :] * 90) % 1.0
-        row = np.floor(coords[:, None] * 30)
-        v = (coords[:, None] * 30) % 1.0
+        # Small woven motifs, sparse enough to survive a 512 px atlas (u runs round the body).
+        u = (coords[None, :] * 44) % 1.0
+        row = np.floor(coords[:, None] * 18)
+        v = (coords[:, None] * 18) % 1.0
         u = (u + 0.5 * (row % 2)) % 1.0
-        dots = (((u - 0.5) * 1.0) ** 2 + ((v - 0.5) * 0.45) ** 2) < 0.03
-        pixels[dots, :3] = pixels[dots, :3] * 0.4 + np.array(motif, np.float32) * 0.6
+        dots = (((u - 0.5) * 1.0) ** 2 + ((v - 0.5) * 0.6) ** 2) < 0.014
+        pixels[dots, :3] = pixels[dots, :3] * 0.65 + np.array(motif, np.float32) * 0.35
         v = coords[:, None].repeat(size, 1)
         pixels[(v < 0.11), :3] = np.array(border, np.float32)
         pixels[(v > 0.115) & (v < 0.125), :3] = np.array(motif, np.float32)
@@ -437,7 +437,7 @@ def fabric(spec_tex, size):
         # The end of the saree that goes over the shoulder: borders along both long edges.
         _, base, border, motif = spec_tex
         pixels = weave(size, base, strength=0.06)
-        apply_pattern(pixels, np.ones((size, size), np.float32), ("dots", motif, 20))
+        apply_pattern(pixels, np.ones((size, size), np.float32), ("dots", motif, 14))
         u = coords[None, :].repeat(size, 0)
         edge = (u < 0.07) | (u > 0.93)
         pixels[edge, :3] = np.array(border, np.float32)
@@ -725,6 +725,7 @@ def set_weights(obj, weights):
 # ----------------------------------------------------------------------------------------------
 # GARMENT BUILDERS
 # ----------------------------------------------------------------------------------------------
+OVER_CLOTHES = {"towel", "vest", "straps", "apron_bib", "dupatta"}
 TUBE_TOPS = {"navel": lambda lm: lm["Hips"].z + 0.075, "waist": lambda lm: lm["Hips"].z + 0.06, "hip": lambda lm: lm["Hips"].z - 0.02}
 
 
@@ -789,6 +790,9 @@ def make_tube(rig, body, collection, lm, g, name, extra=()):
     hem_a = max(end[3] + flare, fits[h][3] * 0.82)
     hem_b = max(end[4] + flare * 0.8, fits[h][4] * 0.85)
     profile = []
+    if g.get("straight"):
+        # A kurta or tunic falls straight from the hips: no flare, never narrower than the hips.
+        hem_a, hem_b = fits[h][3] + flare, fits[h][4] + flare * 0.8
     for i, (z, cx, cy, a, b) in enumerate(fits):
         if i <= h:
             if profile:
@@ -825,13 +829,13 @@ def make_tube(rig, body, collection, lm, g, name, extra=()):
             weights.append({"Hips": hip_share, "LeftUpLeg": leg * side * (1 - shin), "RightUpLeg": leg * (1 - side) * (1 - shin),
                             "LeftLeg": leg * side * shin, "RightLeg": leg * (1 - side) * shin})
     faces = []
-    slit_from = hips_z - 0.12
+    slit_from = (knee + hips_z) / 2 if g.get("straight") else hips_z - 0.12
     for r in range(rings - 1):
         z_low = top + (bottom - top) * (r + 1) / (rings - 1)
         for s in range(segments):
             if g.get("slits") and z_low < slit_from:
                 mid_angle = -math.pi / 2 + 2 * math.pi * (s + 0.5) / segments
-                if abs(math.cos(mid_angle)) > 0.97:  # side slits of a kurta
+                if abs(math.cos(mid_angle)) > 0.985:  # side slits of a kurta
                     continue
             if g.get("front"):
                 mid_angle = -math.pi / 2 + 2 * math.pi * (s + 0.5) / segments
@@ -953,7 +957,7 @@ def region_parts(lm, rig, g):
         parts = []
         for side in ("Left", "Right"):
             x = (lm[side + "Arm"].x + lm["Neck"].x) / 2
-            half = 0.022
+            half = 0.016
             parts.append((torso | {side + "Arm"}, [(Vector((x - half, 0, 0)), Vector((1, 0, 0))), (Vector((x + half, 0, 0)), Vector((-1, 0, 0))),
                                                    (Vector((0, 0, lm["Spine1"].z - 0.04)), up)]))
         return parts
@@ -1034,7 +1038,7 @@ def cylinder_uvs(obj, lm):
     z0, z1 = lm["Hips"].z - 0.05, lm["Neck"].z + 0.02
     for loop in obj.data.loops:
         p = world @ obj.data.vertices[loop.vertex_index].co
-        ang = (math.atan2(p.x, -(p.y - lm["Spine1"].y)) / (2 * math.pi)) % 1.0
+        ang = (math.atan2(p.x, p.y - lm["Spine1"].y) / (2 * math.pi)) % 1.0  # front = 0.5, seam at the back
         uv[loop.index].uv = (ang, min(1, max(0, (p.z - z0) / (z1 - z0))))
 
 
@@ -1111,7 +1115,7 @@ def make_idtag(rig, body, collection, lm, name):
     tree = body_bvh(body)
     z = lm["Spine1"].z + 0.03
     hit = tree.ray_cast(Vector((0.0, -1.0, z)), Vector((0, 1, 0)))
-    front = (hit[0].y if hit[0] else lm["chest_front"]) - 0.025
+    front = (hit[0].y if hit[0] else lm["chest_front"]) - 0.042  # clear of shirts and kurtas
     w, h = 0.055, 0.085
     verts = [(-w / 2, front, z - h / 2), (w / 2, front, z - h / 2), (w / 2, front, z + h / 2), (-w / 2, front, z + h / 2)]
     faces = [(0, 1, 2, 3)]
@@ -1450,6 +1454,13 @@ def join(rig, body, parts, name):
     bpy.ops.object.join()
     body.name = name
     body.data.name = name
+    # Zero-area faces (decimation leaves a few): Godot's importer drops them, so the counts
+    # in the manifest would not match the game's.
+    bm = bmesh.new()
+    bm.from_mesh(body.data)
+    bmesh.ops.dissolve_degenerate(bm, dist=1e-7, edges=bm.edges)
+    bm.to_mesh(body.data)
+    bm.free()
     bones = {b.name for b in rig.data.bones}
     for group in list(body.vertex_groups):
         if group.name not in bones:
@@ -1544,6 +1555,11 @@ def build(spec, human_service, workdir):
             keep_skin(body, item["asset"], lambda p: p.z < hips_z + 0.02)
         elif item.get("drop") == "upper":
             keep_skin(body, item["asset"], lambda p: p.z > hips_z + 0.06)
+    if any(g.get("region") in OVER_CLOTHES for g in spec["garments"]):
+        # Towels, vests and straps are cut from the body's own surface: keep the skin under a
+        # shirt there so they have something to be made from (they sit outside the shirt).
+        for item, obj in clothes_objs:
+            keep_skin(body, item["asset"], lambda p: p.z > hips_z - 0.05)
     for obj in children:
         bake(obj)
     if proxy:
@@ -1607,7 +1623,9 @@ def build(spec, human_service, workdir):
     if "shoes" in kinds:
         requests.append(("shoes", 0.25))
     for name, obj, tex, mode in made:
-        if tex[0] == "fabric":
+        if tex[0] == "fabric" and tex[1][0] in ("saree", "check", "veshti", "pallu"):
+            requests.append((name, 0.5))  # wrapped cloth is large: more pixels (halved if the atlas is full)
+        elif tex[0] == "fabric":
             requests.append((name, 0.25))
         else:
             requests.append((name, 1 / 32))
@@ -1634,6 +1652,8 @@ def build(spec, human_service, workdir):
 
             def is_upper(centre, uv, split=split, split_z=split_z, split_v=split_v, boxes=boxes):
                 if boxes:
+                    if centre.z < split_z - 0.08 and abs(centre.x) < 0.18:
+                        return False  # on the legs, whatever the UV island (stray trouser pieces)
                     return not any(u0 <= uv.x <= u1 and v0 <= uv.y <= v1 for u0, v0, u1, v1 in boxes)
                 return uv.y > split_v if split == "uv" else centre.z > split_z
 
@@ -1878,6 +1898,8 @@ def manifest_entry(spec, stats):
         "board": BOARDS[spec["board"]],
         "figure": spec["figure"],
         "figureLabel": spec["label"],
+        "alsoFigures": [{"board": BOARDS[b], "figure": f, "figureLabel": lab} for b, f, lab in spec["also"]],
+        "note": spec["note"],
         "heightM": stats["heightM"],
         "seatHeightM": stats.get("seatHeightM"),
         "lods": [

@@ -22,11 +22,11 @@
       "figure": 1,
       "figureLabel": "College Student",
       "heightM": 1.678,
-      "seatHeightM": 0.391,
+      "seatHeightM": 0.402,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9989,
+          "triangles": 9695,
           "until": 30.0
         },
         {
@@ -53,6 +53,7 @@
         "eyes/low-poly",
         "eyelashes/eyelashes01",
         "clothes/male_casualsuit02",
+        "clothes/male_casualsuit06",
         "clothes/shoes05"
       ]
     },
@@ -76,7 +77,7 @@
       "figure": 2,
       "figureLabel": "IT Professional",
       "heightM": 1.826,
-      "seatHeightM": 0.513,
+      "seatHeightM": 0.449,
       "lods": [
         {
           "mesh": "Body",
@@ -111,6 +112,61 @@
       ]
     },
     {
+      "id": "delivery-rider",
+      "file": "delivery_rider.glb",
+      "sex": "male",
+      "age": "young",
+      "years": 25,
+      "child": false,
+      "roles": [
+        "delivery",
+        "pedestrian"
+      ],
+      "clothing": [
+        "casual",
+        "work"
+      ],
+      "outfit": "plain teal riding jacket (board's branded orange replaced, no logo), black cargo trousers, grey trainers, dark backpack",
+      "board": "docs/concept/characters/phase1-20-characters.webp",
+      "figure": 3,
+      "figureLabel": "Delivery Rider",
+      "heightM": 1.786,
+      "seatHeightM": 0.452,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9697,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3388,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit05",
+        "clothes/cortu_cargo_pants",
+        "clothes/shoes06"
+      ]
+    },
+    {
       "id": "auto-driver",
       "file": "auto_driver.glb",
       "sex": "male",
@@ -128,7 +184,7 @@
       "figure": 4,
       "figureLabel": "Auto Driver",
       "heightM": 1.751,
-      "seatHeightM": 0.516,
+      "seatHeightM": 0.445,
       "lods": [
         {
           "mesh": "Body",
@@ -181,7 +237,7 @@
       "figure": 5,
       "figureLabel": "Shopkeeper",
       "heightM": 1.748,
-      "seatHeightM": 0.435,
+      "seatHeightM": 0.446,
       "lods": [
         {
           "mesh": "Body",
@@ -233,7 +289,7 @@
       "figure": 6,
       "figureLabel": "Police Constable",
       "heightM": 1.819,
-      "seatHeightM": 0.52,
+      "seatHeightM": 0.457,
       "lods": [
         {
           "mesh": "Body",
@@ -264,7 +320,61 @@
         "eyes/low-poly",
         "eyelashes/eyelashes01",
         "clothes/male_casualsuit01",
-        "clothes/shoes01"
+        "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "construction-worker",
+      "file": "construction_worker.glb",
+      "sex": "male",
+      "age": "young",
+      "years": 32,
+      "child": false,
+      "roles": [
+        "construction",
+        "worker"
+      ],
+      "clothing": [
+        "work"
+      ],
+      "outfit": "purple T-shirt, plain orange hi-visibility vest with reflective bands, grey-olive cargo trousers, work boots, yellow hard hat",
+      "board": "docs/concept/characters/phase1-20-characters.webp",
+      "figure": 7,
+      "figureLabel": "Construction Worker",
+      "heightM": 1.779,
+      "seatHeightM": 0.464,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9697,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3386,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/elvs_crude_t-shirt_male",
+        "clothes/cortu_cargo_pants",
+        "clothes/shoes03"
       ]
     },
     {
@@ -287,7 +397,7 @@
       "figure": 8,
       "figureLabel": "Office Employee",
       "heightM": 1.823,
-      "seatHeightM": 0.514,
+      "seatHeightM": 0.45,
       "lods": [
         {
           "mesh": "Body",
@@ -342,7 +452,7 @@
       "figure": 9,
       "figureLabel": "Elderly Man",
       "heightM": 1.711,
-      "seatHeightM": 0.521,
+      "seatHeightM": 0.453,
       "lods": [
         {
           "mesh": "Body",
@@ -394,7 +504,7 @@
       "figure": 10,
       "figureLabel": "Street Vendor (Tea)",
       "heightM": 1.757,
-      "seatHeightM": 0.518,
+      "seatHeightM": 0.447,
       "lods": [
         {
           "mesh": "Body",
@@ -447,7 +557,7 @@
       "figure": 11,
       "figureLabel": "College Student",
       "heightM": 1.516,
-      "seatHeightM": 0.388,
+      "seatHeightM": 0.344,
       "lods": [
         {
           "mesh": "Body",
@@ -501,7 +611,7 @@
       "figure": 12,
       "figureLabel": "IT Professional",
       "heightM": 1.645,
-      "seatHeightM": 0.428,
+      "seatHeightM": 0.377,
       "lods": [
         {
           "mesh": "Body",
@@ -556,7 +666,7 @@
       "figure": 13,
       "figureLabel": "Working Professional",
       "heightM": 1.633,
-      "seatHeightM": 0.425,
+      "seatHeightM": 0.373,
       "lods": [
         {
           "mesh": "Body",
@@ -609,7 +719,7 @@
       "figure": 14,
       "figureLabel": "Homemaker",
       "heightM": 1.582,
-      "seatHeightM": 0.354,
+      "seatHeightM": 0.364,
       "lods": [
         {
           "mesh": "Body",
@@ -662,7 +772,7 @@
       "figure": 15,
       "figureLabel": "Shopkeeper",
       "heightM": 1.606,
-      "seatHeightM": 0.418,
+      "seatHeightM": 0.367,
       "lods": [
         {
           "mesh": "Body",
@@ -715,7 +825,7 @@
       "figure": 16,
       "figureLabel": "Nurse",
       "heightM": 1.626,
-      "seatHeightM": 0.369,
+      "seatHeightM": 0.379,
       "lods": [
         {
           "mesh": "Body",
@@ -767,7 +877,7 @@
       "figure": 17,
       "figureLabel": "School Student",
       "heightM": 1.321,
-      "seatHeightM": 0.306,
+      "seatHeightM": 0.276,
       "lods": [
         {
           "mesh": "Body",
@@ -820,7 +930,7 @@
       "figure": 18,
       "figureLabel": "Elderly Woman",
       "heightM": 1.533,
-      "seatHeightM": 0.345,
+      "seatHeightM": 0.356,
       "lods": [
         {
           "mesh": "Body",
@@ -870,7 +980,7 @@
       "figure": 19,
       "figureLabel": "Street Vendor (Flowers)",
       "heightM": 1.593,
-      "seatHeightM": 0.416,
+      "seatHeightM": 0.365,
       "lods": [
         {
           "mesh": "Body",
@@ -923,7 +1033,7 @@
       "figure": 20,
       "figureLabel": "Young Professional",
       "heightM": 1.63,
-      "seatHeightM": 0.425,
+      "seatHeightM": 0.372,
       "lods": [
         {
           "mesh": "Body",
@@ -950,6 +1060,2245 @@
         "skins/young_caucasian_female",
         "proxymeshes/female1605",
         "hair/long01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "engineering-student",
+      "file": "engineering_student.glb",
+      "sex": "male",
+      "age": "young",
+      "years": 21,
+      "child": false,
+      "roles": [
+        "college",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "casual"
+      ],
+      "outfit": "beige shirt, blue jeans, dark backpack, blank ID card, trainers, beard",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "students-3",
+      "figureLabel": "Engineering Student",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.67,
+      "seatHeightM": 0.406,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9698,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3389,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/male_casualsuit06",
+        "clothes/shoes06"
+      ]
+    },
+    {
+      "id": "school-boy",
+      "file": "school_boy.glb",
+      "sex": "male",
+      "age": "child",
+      "years": 10,
+      "child": true,
+      "roles": [
+        "school",
+        "passenger"
+      ],
+      "clothing": [
+        "school",
+        "uniform"
+      ],
+      "outfit": "generic uniform: white shirt, navy trousers, black belt, black shoes, backpack (no school name)",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "students-5",
+      "figureLabel": "School Boy",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.311,
+      "seatHeightM": 0.258,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9697,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3389,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "clothes/male_casualsuit01",
+        "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "sports-student",
+      "file": "sports_student.glb",
+      "sex": "male",
+      "age": "teen",
+      "years": 16,
+      "child": false,
+      "roles": [
+        "school",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "sport",
+        "school"
+      ],
+      "outfit": "white polo shirt, navy track trousers, white trainers",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "students-8",
+      "figureLabel": "Student (Sports)",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.525,
+      "seatHeightM": 0.348,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9697,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3389,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/namuhekam_male_polo_shirt",
+        "clothes/toigo_wool_pants",
+        "clothes/shoes05"
+      ]
+    },
+    {
+      "id": "manager",
+      "file": "manager.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 46,
+      "child": false,
+      "roles": [
+        "office",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "office"
+      ],
+      "outfit": "lavender formal shirt, charcoal trousers, belt, blank ID card, black shoes, moustache",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "office-5",
+      "figureLabel": "Manager",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.765,
+      "seatHeightM": 0.446,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9905,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3394,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short04",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "cab-driver",
+      "file": "cab_driver.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 38,
+      "child": false,
+      "roles": [
+        "cab-driver",
+        "pedestrian"
+      ],
+      "clothing": [
+        "uniform"
+      ],
+      "outfit": "cream shirt, grey trousers, brown shoes, moustache",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "transport-2",
+      "figureLabel": "Cab Driver",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.771,
+      "seatHeightM": 0.443,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9696,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3389,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/shoes01"
+      ]
+    },
+    {
+      "id": "bus-driver",
+      "file": "bus_driver.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 47,
+      "child": false,
+      "roles": [
+        "bus-driver",
+        "pedestrian"
+      ],
+      "clothing": [
+        "uniform"
+      ],
+      "outfit": "generic light blue uniform shirt, navy trousers, belt, blank ID card, black shoes (no transport-corporation badge)",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "transport-3",
+      "figureLabel": "Bus Driver",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.769,
+      "seatHeightM": 0.45,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9696,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3387,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "bus-conductor",
+      "file": "bus_conductor.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 41,
+      "child": false,
+      "roles": [
+        "bus-conductor",
+        "pedestrian"
+      ],
+      "clothing": [
+        "uniform"
+      ],
+      "outfit": "generic light blue uniform shirt, navy trousers, belt, blank ID card, sandals, moustache and stubble",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "transport-4",
+      "figureLabel": "Bus Conductor",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.759,
+      "seatHeightM": 0.444,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 7322,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3385,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short04",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01"
+      ]
+    },
+    {
+      "id": "fruit-vendor",
+      "file": "fruit_vendor.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 52,
+      "child": false,
+      "roles": [
+        "vendor",
+        "pedestrian"
+      ],
+      "clothing": [
+        "lungi"
+      ],
+      "outfit": "khaki-brown shirt, dark green checked lungi to the knee, towel, sandals, short grey hair",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "vendors-4",
+      "figureLabel": "Fruit Vendor",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.744,
+      "seatHeightM": 0.449,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 7953,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3386,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short04",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01"
+      ]
+    },
+    {
+      "id": "electrician",
+      "file": "electrician.glb",
+      "sex": "male",
+      "age": "young",
+      "years": 34,
+      "child": false,
+      "roles": [
+        "worker",
+        "services",
+        "pedestrian"
+      ],
+      "clothing": [
+        "work"
+      ],
+      "outfit": "khaki-brown work shirt, blue jeans, belt, work boots, moustache",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "workers-2",
+      "figureLabel": "Electrician",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.775,
+      "seatHeightM": 0.464,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9695,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3389,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/male_casualsuit06",
+        "clothes/shoes03"
+      ]
+    },
+    {
+      "id": "security-guard",
+      "file": "security_guard.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 49,
+      "child": false,
+      "roles": [
+        "security",
+        "pedestrian"
+      ],
+      "clothing": [
+        "uniform"
+      ],
+      "outfit": "generic light blue shirt, navy trousers, black belt, navy peaked cap (no badge or company name), black shoes",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "workers-6",
+      "figureLabel": "Security Guard",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.766,
+      "seatHeightM": 0.45,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9696,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3389,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "traffic-police",
+      "file": "traffic_police.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 40,
+      "child": false,
+      "roles": [
+        "traffic-police",
+        "police"
+      ],
+      "clothing": [
+        "uniform"
+      ],
+      "outfit": "generic white shirt, navy trousers, black belt, white peaked cap with a dark band (no insignia), black shoes",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "police-3",
+      "figureLabel": "Traffic Police",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.816,
+      "seatHeightM": 0.455,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9697,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3389,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "police-inspector",
+      "file": "police_inspector.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 50,
+      "child": false,
+      "roles": [
+        "police"
+      ],
+      "clothing": [
+        "uniform"
+      ],
+      "outfit": "generic khaki uniform, brown belt, darker khaki peaked cap (no insignia, badges or shoulder marks), black shoes, moustache",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "police-1",
+      "figureLabel": "Police Inspector",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.81,
+      "seatHeightM": 0.46,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9697,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3387,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "middle-aged-man",
+      "file": "middle_aged_man.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 52,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "family"
+      ],
+      "clothing": [
+        "casual"
+      ],
+      "outfit": "cream half-sleeve-look shirt, dark grey trousers, sandals, grey moustache",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "families-3",
+      "figureLabel": "Middle-aged Man",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.765,
+      "seatHeightM": 0.451,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9207,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3389,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01"
+      ]
+    },
+    {
+      "id": "father",
+      "file": "father.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 40,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "family"
+      ],
+      "clothing": [
+        "casual"
+      ],
+      "outfit": "white shirt, brown trousers, sandals, moustache",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "families-5",
+      "figureLabel": "Father",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "families-7",
+          "figureLabel": "Parent (Kid)"
+        }
+      ],
+      "note": "",
+      "heightM": 1.781,
+      "seatHeightM": 0.448,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9208,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3388,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01"
+      ]
+    },
+    {
+      "id": "retired-man",
+      "file": "retired_man.glb",
+      "sex": "male",
+      "age": "elderly",
+      "years": 66,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "elderly"
+      ],
+      "clothing": [
+        "casual"
+      ],
+      "outfit": "light blue checked shirt, beige trousers, sandals, grey hair and moustache",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "elderly-3",
+      "figureLabel": "Retired Man",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "elderly-5",
+          "figureLabel": "Elderly Couple (man)"
+        }
+      ],
+      "note": "",
+      "heightM": 1.737,
+      "seatHeightM": 0.454,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9203,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3390,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/old_african_male",
+        "skins/old_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01"
+      ]
+    },
+    {
+      "id": "elderly-man-lungi",
+      "file": "elderly_man_lungi.glb",
+      "sex": "male",
+      "age": "elderly",
+      "years": 76,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "elderly"
+      ],
+      "clothing": [
+        "lungi"
+      ],
+      "outfit": "striped beige shirt, maroon checked lungi to the ankle, towel on the shoulder, sandals, white hair and beard (no stick yet)",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "elderly-6",
+      "figureLabel": "Elderly Man (Walking Stick)",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.697,
+      "seatHeightM": 0.453,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 8338,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3387,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/old_african_male",
+        "skins/old_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short04",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01"
+      ]
+    },
+    {
+      "id": "teen-boy",
+      "file": "teen_boy.glb",
+      "sex": "male",
+      "age": "teen",
+      "years": 16,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "casual"
+      ],
+      "outfit": "navy polo shirt, blue jeans, trainers",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "children-3",
+      "figureLabel": "Teen Boy",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.558,
+      "seatHeightM": 0.355,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9695,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3387,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short04",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/namuhekam_male_polo_shirt",
+        "clothes/male_casualsuit06",
+        "clothes/shoes06"
+      ]
+    },
+    {
+      "id": "temple-goer-m",
+      "file": "temple_goer_m.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 58,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "temple",
+        "traditional"
+      ],
+      "clothing": [
+        "veshti",
+        "traditional"
+      ],
+      "outfit": "white shirt, white veshti with a gold border, cream angavastram (towel) with a gold stripe, sandals, salt-and-pepper beard",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "traditional-3",
+      "figureLabel": "Man (Temple Goer)",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.752,
+      "seatHeightM": 0.453,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9697,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3384,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01"
+      ]
+    },
+    {
+      "id": "jogger",
+      "file": "jogger.glb",
+      "sex": "male",
+      "age": "young",
+      "years": 29,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "sport"
+      ],
+      "clothing": [
+        "sport"
+      ],
+      "outfit": "light blue T-shirt, navy shorts, white trainers",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "lifestyle-1",
+      "figureLabel": "Jogger",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "lifestyle-2",
+          "figureLabel": "Gym Enthusiast"
+        }
+      ],
+      "note": "",
+      "heightM": 1.824,
+      "seatHeightM": 0.463,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9920,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3387,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short04",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/elvs_crude_t-shirt_male",
+        "clothes/cortu_jeans_shorts",
+        "clothes/shoes05"
+      ]
+    },
+    {
+      "id": "tourist",
+      "file": "tourist.glb",
+      "sex": "male",
+      "age": "young",
+      "years": 33,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "tourist"
+      ],
+      "clothing": [
+        "casual"
+      ],
+      "outfit": "white shirt, blue jeans, dark backpack, trainers",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "lifestyle-4",
+      "figureLabel": "Tourist",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.818,
+      "seatHeightM": 0.464,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9696,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3386,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/male_casualsuit06",
+        "clothes/shoes05"
+      ]
+    },
+    {
+      "id": "arts-student",
+      "file": "arts_student.glb",
+      "sex": "female",
+      "age": "young",
+      "years": 20,
+      "child": false,
+      "roles": [
+        "college",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "casual"
+      ],
+      "outfit": "coral T-shirt, blue jeans, blank ID card, trainers, long open hair",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "students-4",
+      "figureLabel": "Arts Student",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.508,
+      "seatHeightM": 0.343,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9697,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3387,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_female",
+        "skins/young_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/long01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/joepal_crude_t-shirt_female",
+        "clothes/female_casualsuit01",
+        "clothes/shoes05"
+      ]
+    },
+    {
+      "id": "student-backpack",
+      "file": "student_backpack.glb",
+      "sex": "female",
+      "age": "teen",
+      "years": 17,
+      "child": false,
+      "roles": [
+        "school",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "school"
+      ],
+      "outfit": "white shirt, navy trousers, backpack, blank ID card, sandals, plait",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "students-7",
+      "figureLabel": "Student (Backpack)",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.436,
+      "seatHeightM": 0.316,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9696,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3385,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_female",
+        "skins/young_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/female_elegantsuit01",
+        "clothes/female_sportsuit01"
+      ]
+    },
+    {
+      "id": "hr-professional",
+      "file": "hr_professional.glb",
+      "sex": "female",
+      "age": "middle",
+      "years": 36,
+      "child": false,
+      "roles": [
+        "office",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "saree",
+        "office"
+      ],
+      "outfit": "soft pink cotton saree with a gold border, pink blouse, plait, bindi, sandals",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "office-4",
+      "figureLabel": "HR Professional",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.61,
+      "seatHeightM": 0.367,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 8276,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3386,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_female",
+        "skins/middleage_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "vegetable-vendor",
+      "file": "vegetable_vendor.glb",
+      "sex": "female",
+      "age": "middle",
+      "years": 44,
+      "child": false,
+      "roles": [
+        "vendor",
+        "pedestrian"
+      ],
+      "clothing": [
+        "saree"
+      ],
+      "outfit": "maroon saree with a green border, green blouse, plait, bindi, sandals",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "vendors-5",
+      "figureLabel": "Vegetable Vendor",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.583,
+      "seatHeightM": 0.364,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 8210,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3385,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_female",
+        "skins/middleage_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "facility-staff",
+      "file": "facility_staff.glb",
+      "sex": "female",
+      "age": "young",
+      "years": 31,
+      "child": false,
+      "roles": [
+        "services",
+        "worker",
+        "pedestrian"
+      ],
+      "clothing": [
+        "uniform"
+      ],
+      "outfit": "generic navy tunic over a white shirt, navy trousers, blank ID card, sandals, hair in a bun (no company name)",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "workers-8",
+      "figureLabel": "Facility Staff",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.622,
+      "seatHeightM": 0.369,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 8193,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3388,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_female",
+        "skins/young_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "health-worker",
+      "file": "health_worker.glb",
+      "sex": "female",
+      "age": "young",
+      "years": 34,
+      "child": false,
+      "roles": [
+        "healthcare",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "uniform",
+        "kurta"
+      ],
+      "outfit": "pink knee-length tunic and pink trousers (no badge), blank ID card, sandals, bun",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "healthcare-4",
+      "figureLabel": "Health Worker",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.617,
+      "seatHeightM": 0.368,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 7728,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3387,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_female",
+        "skins/young_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "doctor-f",
+      "file": "doctor_f.glb",
+      "sex": "female",
+      "age": "middle",
+      "years": 38,
+      "child": false,
+      "roles": [
+        "healthcare",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "uniform",
+        "office"
+      ],
+      "outfit": "white knee-length coat over a blue salwar, blank ID card, shoes, bun",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "healthcare-1",
+      "figureLabel": "Doctor",
+      "alsoFigures": [],
+      "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split",
+      "heightM": 1.63,
+      "seatHeightM": 0.368,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9696,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3384,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_female",
+        "skins/middleage_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/toigo_harem_pants",
+        "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "teacher-f",
+      "file": "teacher_f.glb",
+      "sex": "female",
+      "age": "middle",
+      "years": 42,
+      "child": false,
+      "roles": [
+        "teacher",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "saree"
+      ],
+      "outfit": "pale green cotton saree with a maroon border, maroon blouse, plait, bindi, sandals",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "office-7",
+      "figureLabel": "Teacher",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "office-8",
+          "figureLabel": "Lecturer"
+        }
+      ],
+      "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split",
+      "heightM": 1.603,
+      "seatHeightM": 0.367,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 8276,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3387,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_female",
+        "skins/middleage_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "bank-employee-f",
+      "file": "bank_employee_f.glb",
+      "sex": "female",
+      "age": "young",
+      "years": 29,
+      "child": false,
+      "roles": [
+        "office",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "chudidar",
+        "kurta",
+        "office"
+      ],
+      "outfit": "blue calf-length kurta, white leggings, white dupatta, blank ID card, sandals, plait",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "office-6",
+      "figureLabel": "Bank Employee",
+      "alsoFigures": [],
+      "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split",
+      "heightM": 1.631,
+      "seatHeightM": 0.372,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 8000,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3389,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_female",
+        "skins/young_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "sanitation-worker-f",
+      "file": "sanitation_worker_f.glb",
+      "sex": "female",
+      "age": "middle",
+      "years": 39,
+      "child": false,
+      "roles": [
+        "sanitation",
+        "worker",
+        "services"
+      ],
+      "clothing": [
+        "saree",
+        "work"
+      ],
+      "outfit": "faded green saree, plain orange hi-visibility vest with reflective bands, head cloth, sandals",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "workers-4",
+      "figureLabel": "Sanitation Worker",
+      "alsoFigures": [
+        {
+          "board": "docs/concept/characters/phase2-60-characters.webp",
+          "figure": "workers-5",
+          "figureLabel": "Municipal Worker"
+        }
+      ],
+      "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split",
+      "heightM": 1.59,
+      "seatHeightM": 0.365,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 8529,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3383,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_female",
+        "skins/middleage_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "young-woman",
+      "file": "young_woman.glb",
+      "sex": "female",
+      "age": "young",
+      "years": 26,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "office"
+      ],
+      "clothing": [
+        "casual",
+        "office"
+      ],
+      "outfit": "beige shirt, beige trousers, blank ID card, sandals, long open hair",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "families-2",
+      "figureLabel": "Young Woman",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.645,
+      "seatHeightM": 0.376,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9696,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3385,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_female",
+        "skins/young_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/long01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/female_elegantsuit01",
+        "clothes/female_sportsuit01"
+      ]
+    },
+    {
+      "id": "middle-aged-woman",
+      "file": "middle_aged_woman.glb",
+      "sex": "female",
+      "age": "middle",
+      "years": 50,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "family"
+      ],
+      "clothing": [
+        "saree"
+      ],
+      "outfit": "lilac saree with a pink and gold border, lilac blouse, plait, bindi, sandals",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "families-4",
+      "figureLabel": "Middle-aged Woman",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.585,
+      "seatHeightM": 0.365,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 8202,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3386,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_female",
+        "skins/middleage_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "mother",
+      "file": "mother.glb",
+      "sex": "female",
+      "age": "young",
+      "years": 34,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "family",
+        "homemaker"
+      ],
+      "clothing": [
+        "saree"
+      ],
+      "outfit": "orange saree with a maroon border, maroon blouse, plait, bindi, sandals",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "families-6",
+      "figureLabel": "Mother",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.622,
+      "seatHeightM": 0.369,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 8272,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3387,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_female",
+        "skins/young_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "retired-woman",
+      "file": "retired_woman.glb",
+      "sex": "female",
+      "age": "elderly",
+      "years": 66,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "elderly"
+      ],
+      "clothing": [
+        "saree",
+        "traditional"
+      ],
+      "outfit": "cream cotton saree with a gold border, cream blouse, grey hair in a plait, sandals",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "elderly-4",
+      "figureLabel": "Retired Woman",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.551,
+      "seatHeightM": 0.359,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 7827,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3384,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/old_african_female",
+        "skins/old_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly"
+      ]
+    },
+    {
+      "id": "elderly-woman-blue",
+      "file": "elderly_woman_blue.glb",
+      "sex": "female",
+      "age": "elderly",
+      "years": 72,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "elderly"
+      ],
+      "clothing": [
+        "saree",
+        "traditional"
+      ],
+      "outfit": "slate blue saree with a maroon border, blue blouse, grey hair in a plait, sandals",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "elderly-5",
+      "figureLabel": "Elderly Couple (woman)",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.534,
+      "seatHeightM": 0.357,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 7836,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3386,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/old_african_female",
+        "skins/old_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly"
+      ]
+    },
+    {
+      "id": "girl-8-10",
+      "file": "girl_8_10.glb",
+      "sex": "female",
+      "age": "child",
+      "years": 9,
+      "child": true,
+      "roles": [
+        "passenger",
+        "family"
+      ],
+      "clothing": [
+        "casual"
+      ],
+      "outfit": "white top with pink sleeves, pink knee-length skirt, sandals, plait",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "children-2",
+      "figureLabel": "Girl (8-10)",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.168,
+      "seatHeightM": 0.233,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 7200,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3390,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_female",
+        "skins/young_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly"
+      ]
+    },
+    {
+      "id": "teen-girl",
+      "file": "teen_girl.glb",
+      "sex": "female",
+      "age": "teen",
+      "years": 15,
+      "child": false,
+      "roles": [
+        "school",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "school",
+        "uniform"
+      ],
+      "outfit": "generic uniform: white shirt, navy knee-length skirt, white socks, black shoes, backpack, blank ID card (no school name)",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "children-4",
+      "figureLabel": "Teen Girl",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.384,
+      "seatHeightM": 0.295,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9696,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3384,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_female",
+        "skins/young_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "girl-cycle",
+      "file": "girl_cycle.glb",
+      "sex": "female",
+      "age": "child",
+      "years": 12,
+      "child": true,
+      "roles": [
+        "passenger",
+        "family"
+      ],
+      "clothing": [
+        "casual"
+      ],
+      "outfit": "lilac T-shirt, pink leggings, sandals, plait (no bicycle yet)",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "children-6",
+      "figureLabel": "Girl (Cycle)",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.321,
+      "seatHeightM": 0.282,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 8498,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3383,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_female",
+        "skins/young_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "clothes/joepal_crude_t-shirt_female"
+      ]
+    },
+    {
+      "id": "woman-traditional",
+      "file": "woman_traditional.glb",
+      "sex": "female",
+      "age": "middle",
+      "years": 40,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "traditional"
+      ],
+      "clothing": [
+        "saree",
+        "traditional"
+      ],
+      "outfit": "red silk-look saree with a mustard and gold border, mustard blouse, plait, bindi, sandals",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "traditional-2",
+      "figureLabel": "Woman (Traditional)",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.602,
+      "seatHeightM": 0.366,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 8275,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3387,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_female",
+        "skins/middleage_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
+        "eyebrows/eyebrow010",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "temple-goer-f",
+      "file": "temple_goer_f.glb",
+      "sex": "female",
+      "age": "middle",
+      "years": 46,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "temple",
+        "traditional"
+      ],
+      "clothing": [
+        "saree",
+        "traditional"
+      ],
+      "outfit": "mustard-orange saree with a green border, green blouse, plait, bindi, sandals",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "traditional-4",
+      "figureLabel": "Woman (Temple Goer)",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.591,
+      "seatHeightM": 0.366,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 8205,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3385,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_female",
+        "skins/middleage_caucasian_female",
+        "proxymeshes/female1605",
+        "hair/braid01",
         "eyebrows/eyebrow010",
         "eyes/low-poly",
         "eyelashes/eyelashes01"
