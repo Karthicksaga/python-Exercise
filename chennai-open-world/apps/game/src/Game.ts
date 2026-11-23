@@ -5,7 +5,7 @@
  */
 import * as THREE from "three";
 import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, Motion, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
-import { Sound } from "@cow/audio";
+import { Sound, soundKind, type SoundState } from "@cow/audio";
 import { Combat, PLAYER_MAX_HEALTH, hitPenalty, isPoliceGroup, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState, type WeaponId } from "@cow/combat";
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
@@ -33,6 +33,8 @@ import { LandmarkLabels } from "@cow/ui";
 import { loadRail, loadWorld } from "./WorldFiles";
 import { Railway, type RailSnapshot } from "./Railway";
 import { CityMapDesk } from "./CityMapDesk";
+import { CONTROLS, TitleDesk } from "./TitleDesk";
+import type { LoadStep, StreetSketch, TitleModel } from "@cow/ui";
 import type { CityMapState } from "@cow/ui";
 import { RidePanel } from "@cow/ui";
 import { STATION_FONT_HI, loadStationFont } from "@cow/game-engine";
@@ -52,8 +54,32 @@ import dish from "../../../assets/optimized/props/dish_antenna.glb?inline";
 import handcart from "../../../assets/optimized/props/handcart.glb?inline";
 import autoRickshaw from "../../../assets/optimized/vehicles/auto_rickshaw_lod1.glb?inline";
 
+/**
+ * The named steps of `Game.create`, in order, shown on the loading screen. Each is reported when
+ * it starts; the bar fills a segment as each one finishes. No percentage is invented.
+ */
+export const LOAD_STEPS: readonly LoadStep[] = [
+  { id: "world", label: "Reading the map of Chennai" },
+  { id: "physics", label: "Starting the physics" },
+  { id: "streets", label: "Building the streets around you" },
+  { id: "people", label: "Bringing people onto the streets" },
+  { id: "traffic", label: "Parking vehicles and starting traffic" },
+  { id: "rail", label: "Opening the railway stations" },
+];
+
+/** What `Game.create` tells the loading screen as it goes. */
+export interface LoadProgress {
+  step(id: (typeof LOAD_STEPS)[number]["id"]): void;
+  /** The world file has been read: its streets can be drawn behind the loading screen. */
+  world?(map: StreetSketch): void;
+}
+
 /** What tests and the debug console can read about the running game (places and life included). */
 export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
+  /** The title menu is showing (`title`), or the game is (`game`, playing or paused). */
+  readonly screen: "title" | "game";
+  /** What the sound system is playing (engine, traffic voices, ambience, one-shots heard). */
+  readonly audio: SoundState;
   readonly x: number;
   readonly y: number;
   readonly z: number;
@@ -166,6 +192,15 @@ function loadDistricts(): VisitedDistricts {
   }
 }
 
+const SOUND_KEY = "cow-sound-v1";
+function loadSoundOn(): boolean {
+  try {
+    return localStorage.getItem(SOUND_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
 const HOUR_KEY = "cow-hour-v1";
 function loadHour(): number | undefined {
   try {
@@ -200,6 +235,26 @@ function saveProgress(progress: Progress): void {
   } catch {
     // Storage can be unavailable (private mode); the game still plays, without saving.
   }
+}
+
+/**
+ * Let the page draw before the next loading step. The steps are long stretches of work with no
+ * break; on a slow phone the loading screen's new step label (and anything else that changed)
+ * never got drawn, and showed as white boxes. One frame per step costs a few frames in all.
+ * Bounded by a timeout so a hidden page (no animation frames) does not wait.
+ */
+function shown(): Promise<void> {
+  return new Promise((resolve) => {
+    const done = () => {
+      window.clearTimeout(timer);
+      // After the frame is drawn, not before it: a task queued from the frame callback.
+      window.setTimeout(resolve, 0);
+    };
+    // A slow phone can take far longer than 100 ms to draw a frame; a second is still cheap
+    // next to the steps themselves, and the screen must show which step is running.
+    const timer = window.setTimeout(resolve, 1000);
+    requestAnimationFrame(done);
+  });
 }
 
 export class Game {
@@ -269,6 +324,16 @@ export class Game {
   private fareFigures!: FareFigures;
   /** The stage objective seen last step, to notice one starting (`storyPolice`). */
   private lastObjective: Objective | null = null;
+  /** The title menu over the live city (`TitleDesk.ts`). */
+  private readonly title: TitleDesk;
+  /** `start` has run once (the first PLAY from the title menu, or straight away in tests). */
+  private started = false;
+  /** Accelerator sent to the driven vehicle at the last step, 0..1 (the engine's load). */
+  private pedal = 0;
+  /** Seconds the player has been off the ground (a landing thud after a jump or drop). */
+  private airborne = 0;
+  /** Seconds since the traffic and ambience sound was last updated (it runs at 20 Hz). */
+  private sinceSound = 0;
 
   private constructor(
     private readonly map: WorldMap,
@@ -339,6 +404,145 @@ export class Game {
     renderer.scene.add(this.placeMarkers.object);
     this.cityMap = this.makeCityMap();
     minimap.onTap(() => this.cityMap.open());
+    sound.setMuted(!loadSoundOn());
+    this.title = this.makeTitle();
+  }
+
+  /** Sound on or off, from the title menu or the pause menu, and remembered. */
+  private toggleSound(): void {
+    this.sound.setMuted(!this.sound.isMuted);
+    try {
+      localStorage.setItem(SOUND_KEY, this.sound.isMuted ? "off" : "on");
+    } catch {
+      // Not saved; the setting still applies now.
+    }
+  }
+
+  /** The title menu and what it reads from, and does to, the game. */
+  private makeTitle(): TitleDesk {
+    return new TitleDesk(this.hud.root.parentElement ?? document.body, {
+      model: () => this.titleModel(),
+      centre: () => ({ ...this.where(), yaw: this.driving ? this.driving.body.yaw() : this.player.yaw }),
+      draw: (dt, eye, target) => this.drawTitle(dt, eye, target),
+      play: () => void this.leaveTitle(false),
+      newGame: () => void this.leaveTitle(true),
+      nextTime: () => {
+        this.clock.next();
+        this.saveHour();
+        this.renderer.setTimeOfDay(this.clock.hour);
+        this.title.refresh();
+      },
+      toggleWeather: () => {
+        this.setWeather(this.weather === "rain" ? "clear" : "rain");
+        this.title.refresh();
+      },
+      toggleSound: () => {
+        this.toggleSound();
+        this.title.refresh();
+      },
+      // Only the Android app can close itself; a browser tab has nothing to quit to.
+      ...(insideShell() ? { quit: () => sendToShell({ type: "exit" }) } : {}),
+    });
+  }
+
+  private titleModel(): TitleModel {
+    const missions = this.missions;
+    const mission = missions.mission;
+    const stage = mission ? `Stage ${mission.stage} · ${mission.title}` : "Free roam";
+    const at = this.where();
+    const road = nearestRoadPoint(this.map, at, false);
+    const street = road && road.distance < road.road.width / 2 + 6 && road.road.name ? road.road.name : "";
+    const saved = missions.stagesDone > 0 || missions.balance > 0;
+    const date = this.map.dataDate ? `, extract of ${this.map.dataDate.slice(0, 10)}` : "";
+    return {
+      save: saved ? { headline: stage, detail: `₹${missions.balance.toLocaleString("en-IN")} · ${missions.stagesDone} of ${missions.stageCount} stages` } : null,
+      firstStage: stage,
+      place: { area: this.districtIndex.at(at)?.name ?? this.map.name, street },
+      time: `${this.clock.label} · ${this.clock.text()}`,
+      weather: this.weather === "rain" ? "Rain" : "Clear",
+      sound: this.sound.isMuted ? "Off" : "On",
+      controls: CONTROLS,
+      about: [
+        "An original open-world game set on the real streets of Chennai, from Anna Nagar to the Marina. Early build.",
+        `Map data ${this.map.attribution}${date}. Building heights, colours and road widths that the map does not record are estimated.`,
+        "Characters, stories, jobs and shop signs are invented; no real business is named. Tamil and Hindi lettering: Noto Sans (SIL Open Font Licence).",
+      ],
+      credit: `Map data ${this.map.attribution}`,
+    };
+  }
+
+  /** One frame of the city behind the title menu: the rules stand still, only the camera moves. */
+  private drawTitle(dt: number, eye: { x: number; y: number; z: number }, target: { x: number; y: number; z: number }): void {
+    // Keep the camera out of buildings: pull it in front of the first solid between it and the player.
+    const dx = eye.x - target.x;
+    const dy = eye.y - target.y;
+    const dz = eye.z - target.z;
+    const length = Math.hypot(dx, dy, dz) || 1;
+    const hit = this.physics.raycast(target, { x: dx / length, y: dy / length, z: dz / length }, length, this.player.body);
+    const reach = hit === null ? length : Math.max(4, hit - 1.2);
+    const camera = this.renderer.camera;
+    camera.position.set(target.x + (dx / length) * reach, target.y + (dy / length) * reach, target.z + (dz / length) * reach);
+    camera.lookAt(target.x, target.y, target.z);
+    if (!this.driving) {
+      this.avatar.object.position.set(this.player.position.x, this.player.position.y, this.player.position.z);
+      this.avatar.object.rotation.y = this.player.yaw;
+      this.avatar.update(dt, 0, true);
+    }
+    for (const vehicle of this.vehicles) vehicle.sync(0, 1);
+    // The city's background plays behind the menu (once a first touch has allowed sound).
+    this.sinceSound += dt;
+    if (this.sinceSound >= 0.05) {
+      const at = this.where();
+      this.sound.setListener(camera.position.x, camera.position.z, this.camera.yaw);
+      this.sound.setAmbience(this.sinceSound, { hour: this.clock.hour, rain: this.weather === "rain" ? 1 : 0, coast: distanceToCoast(this.map.sea, at), traffic: 0.5, enclosed: false });
+      this.sinceSound = 0;
+    }
+    this.mapView.follow(camera);
+    this.renderer.focusShadows(target.x, target.z);
+    this.renderer.setTimeOfDay(this.clock.hour);
+    this.renderer.update(dt, 0, null);
+    this.renderer.render();
+  }
+
+  /** Show the title menu: at launch (after loading), or from the pause menu. */
+  showTitle(): Promise<void> | void {
+    const stop = (): void => {
+      this.cityMap.close();
+      this.hud.hideOverlay();
+      this.paused = true;
+      this.held = false;
+      this.loop.stop();
+      this.sound.suspend();
+      this.controls.setVisible(false);
+      this.hud.root.hidden = true;
+      this.renderer.setRain(this.weather === "rain", true);
+      sendToShell({ type: "paused", paused: true });
+    };
+    // At launch the loading screen fades out over it; later, fade through black from the game.
+    if (!this.started) {
+      stop();
+      this.title.open();
+      return;
+    }
+    return this.title.show(stop);
+  }
+
+  /** PLAY / CONTINUE (or NEW GAME after the player confirmed) on the title menu. */
+  private leaveTitle(fresh: boolean): Promise<void> {
+    return this.title.close(async () => {
+      if (fresh) await this.resetProgress();
+      this.hud.root.hidden = false;
+      this.paused = false;
+      this.controls.setVisible(true);
+      if (!this.started) this.start();
+      else {
+        this.loop.start();
+        sendToShell({ type: "paused", paused: false });
+        const mission = this.missions.mission;
+        if (fresh && mission) this.hud.showToast(`Stage ${mission.stage}: ${mission.title}`, mission.brief, 5);
+      }
+      document.documentElement.dataset.ready = "true";
+    });
   }
 
   /** The city map and what it reads from the game when it opens. */
@@ -394,7 +598,9 @@ export class Game {
     this.combat.arsenal.select(id);
   }
 
-  static async create(canvas: HTMLCanvasElement, stage: HTMLElement): Promise<Game> {
+  static async create(canvas: HTMLCanvasElement, stage: HTMLElement, progress?: LoadProgress): Promise<Game> {
+    progress?.step("world");
+    await shown();
     // The Tamil font for shop signs loads while the world does; the game starts without it.
     const signFontLoaded = loadSignFont(signFont);
     // Street props made in Blender (assets/README.md), baked once and merged per chunk.
@@ -409,6 +615,9 @@ export class Game {
     // The world files are produced from OpenStreetMap by `npm run build:world` (TD-16).
     const world = await loadWorld();
     const map = world.map;
+    progress?.world?.(map);
+    progress?.step("physics");
+    await shown();
     const content = buildContent(map);
     const { spawn } = content;
 
@@ -429,6 +638,8 @@ export class Game {
     // Solids are streamed with the meshes: a chunk is solid exactly while it is visible.
     const solids = new Map<string, StaticGroup>();
     let minimap: Minimap | undefined;
+    progress?.step("streets");
+    await shown();
     await signFontLoaded;
     const props = await propsLoaded;
     const chunks = new ChunkManager(map, world.chunks, renderer.scene, createChunkAssets(facadeAtlas(), props), {
@@ -458,6 +669,8 @@ export class Game {
 
     const body = physics.createCharacter({ radius: PLAYER_RADIUS, height: PLAYER_HEIGHT, feet: { x: spawn.x, y: 0.1, z: spawn.z } });
     const player = new PlayerController(body, spawn.yaw);
+    progress?.step("people");
+    await shown();
     const people = peopleSources();
     const humans = await HumanAssets.load({ model: playerModel, animations: locomotion, ...(people ? { people } : {}) });
     // The people the street needs from the first frame; everyone else loads when first wanted.
@@ -467,6 +680,8 @@ export class Game {
     avatar.plantsFeet = true;
     renderer.scene.add(avatar.object);
 
+    progress?.step("traffic");
+    await shown();
     await vehiclesLoaded;
     const vehicles = content.parking.map((spot) => new Vehicle(spot.id, spot.kind, physics, spot, spot.yaw, spot.color));
     for (const vehicle of vehicles) renderer.scene.add(vehicle.object);
@@ -511,6 +726,8 @@ export class Game {
     game.arms = new Arms(content, combat, renderer.scene, humans, hud, controls);
     game.fareFigures = new FareFigures(renderer.scene, humans);
     game.humans = humans;
+    progress?.step("rail");
+    await shown();
     const railFile = await railLoaded;
     if (railFile) {
       const railway = new Railway(railFile, renderer.scene, physics, new RidePanel(hud.root), {
@@ -550,6 +767,10 @@ export class Game {
   }
 
   start(): void {
+    if (this.started) return;
+    this.started = true;
+    this.hud.root.hidden = false;
+    this.controls.setVisible(true);
     this.renderer.setRain(this.weather === "rain", true);
     // Drawn from the spawn point until the first fixed steps have run.
     const at = this.where();
@@ -563,7 +784,14 @@ export class Game {
 
   /** Android Back (sent by the shell only while the city map is open). */
   back(): void {
+    if (this.title.isOpen) {
+      // Back on the title menu leaves a sub-page, then closes the app (as on any Android home screen).
+      if (!this.title.back() && insideShell()) sendToShell({ type: "exit" });
+      return;
+    }
     if (this.cityMap.isOpen) this.cityMap.close();
+    // A second Back while paused goes to the title menu (it used to leave to the shell's menu).
+    else if (this.paused) void this.showTitle();
     else this.setPaused(true);
   }
 
@@ -634,19 +862,26 @@ export class Game {
 
   /** Pause menu: switch between clear weather and light rain, and remember it. */
   private toggleWeather(): void {
-    this.weather = this.weather === "rain" ? "clear" : "rain";
+    this.setWeather(this.weather === "rain" ? "clear" : "rain");
+    this.renderer.render();
+    this.paused = false;
+    this.setPaused(true);
+  }
+
+  /** Clear or rain, remembered, and drawn at once. */
+  private setWeather(weather: Weather): void {
+    this.weather = weather;
     try {
       localStorage.setItem(WEATHER_KEY, this.weather);
     } catch {
       // Not saved; the weather still changes.
     }
     this.renderer.setRain(this.weather === "rain", true);
-    this.renderer.render();
-    this.paused = false;
-    this.setPaused(true);
   }
 
   setPaused(paused: boolean): void {
+    // The title menu keeps the game paused: only its PLAY / CONTINUE resumes it.
+    if (this.title.isOpen) return;
     if (paused === this.paused) return;
     this.paused = paused;
     if (paused) this.arms.save();
@@ -662,8 +897,18 @@ export class Game {
       this.hud.addOverlayAction({ label: "Share progress", quiet: true, run: () => this.share() });
       this.hud.addOverlayAction({ label: `Time: ${this.clock.label} (${this.clock.text()})`, quiet: true, run: () => this.nextTimeOfDay() });
       this.hud.addOverlayAction({ label: `Weather: ${this.weather === "rain" ? "Rain" : "Clear"}`, quiet: true, run: () => this.toggleWeather() });
+      this.hud.addOverlayAction({
+        label: `Sound: ${this.sound.isMuted ? "Off" : "On"}`,
+        quiet: true,
+        run: () => {
+          this.toggleSound();
+          // Rebuild the pause screen so the button shows the new setting.
+          this.paused = false;
+          this.setPaused(true);
+        },
+      });
       this.hud.addOverlayAction({ label: "New game", quiet: true, run: () => this.newGame() });
-      if (insideShell()) this.hud.addOverlayAction({ label: "Main menu", quiet: true, run: () => sendToShell({ type: "exit" }) });
+      this.hud.addOverlayAction({ label: "Main menu", quiet: true, run: () => void this.showTitle() });
     } else {
       this.hud.hideOverlay();
       this.loop.start();
@@ -671,8 +916,41 @@ export class Game {
     sendToShell({ type: "paused", paused });
   }
 
+  /**
+   * The street's sound round the player, 20 times a second: the nearest traffic's engines and
+   * horns, and the city's background (time of day, rain, the sea, how busy the road is).
+   */
+  private soundFrame(dt: number, at: { x: number; z: number }): void {
+    this.sinceSound += dt;
+    if (this.sinceSound < 0.05) return;
+    const step = this.sinceSound;
+    this.sinceSound = 0;
+    const eye = this.renderer.camera.position;
+    this.sound.setListener(eye.x, eye.z, this.camera.yaw);
+    const traffic = this.population.trafficPositions();
+    this.sound.setTraffic(traffic, step, this.clock.hour);
+    const busy = traffic.filter((t) => Math.hypot(t.x - at.x, t.z - at.z) < 120).length;
+    // Windows up in a car, bus or ambulance, or inside a train: the street is muffled.
+    const enclosed = Boolean(this.railway?.riding) || (this.driving !== null && this.driving.kind !== "auto" && this.driving.kind !== "bike");
+    this.sound.setAmbience(step, {
+      hour: this.clock.hour,
+      rain: this.renderer.raining ? 1 : 0,
+      coast: distanceToCoast(this.map.sea, at),
+      traffic: Math.min(1, busy / 6),
+      enclosed,
+    });
+  }
+
   /** Forget progress and put everything back where it started. */
   private newGame(): void {
+    void this.resetProgress();
+    this.setPaused(false);
+    const mission = this.missions.mission;
+    if (mission) this.hud.showToast(`Stage ${mission.stage}: ${mission.title}`, mission.brief, 5);
+  }
+
+  /** Forget progress and put the player and vehicles back; resolves once the start is loaded. */
+  private resetProgress(): Promise<void> {
     this.missions.reset();
     saveProgress(this.missions.progress());
     this.desk.reset();
@@ -688,10 +966,7 @@ export class Game {
     this.police.clear();
     if (this.driving) this.leaveVehicle(true);
     this.content.parking.forEach((spot, i) => this.vehicles[i]?.body.teleport({ x: spot.x, y: (this.vehicles[i]?.type.rideHeight ?? 0.7) + 0.1, z: spot.z }, spot.yaw));
-    this.teleport(this.content.spawn.x, this.content.spawn.z, this.content.spawn.yaw);
-    this.setPaused(false);
-    const mission = this.missions.mission;
-    if (mission) this.hud.showToast(`Stage ${mission.stage}: ${mission.title}`, mission.brief, 5);
+    return this.teleport(this.content.spawn.x, this.content.spawn.z, this.content.spawn.yaw);
   }
 
   /** Where the player is: their vehicle when driving, otherwise their feet. */
@@ -775,7 +1050,7 @@ export class Game {
     const vehicle = this.boarder.active;
     const direction = this.boarder.direction;
     for (const event of this.boarder.fixedUpdate(dt)) {
-      if (event === "shut") this.sound.door();
+      if (event === "shut") this.sound.door(vehicle ? soundKind(vehicle.kind) : "car");
       else if (event === "done" && direction === "in" && vehicle) this.enterVehicle(vehicle);
       else if (event === "free" && vehicle) {
         const place = this.boarder.exitPlace();
@@ -851,7 +1126,7 @@ export class Game {
     const out = exit === sides[2] ? vehicle.type.physics.halfExtents.z + 0.9 : reach;
     vehicle.setSiren(false);
     this.sound.setSiren(false);
-    this.sound.door();
+    this.sound.door(soundKind(vehicle.kind));
     this.standUp();
     this.player.respawn({ x: p.x - Math.sin(exit) * out, y: 0.1, z: p.z - Math.cos(exit) * out }, yaw);
   }
@@ -928,7 +1203,9 @@ export class Game {
       grounded: this.driving ? true : this.player.grounded,
       speed: this.driving ? Math.abs(this.driving.body.forwardSpeed()) : this.player.speed,
       fps: this.loop.fps,
+      audio: this.sound.state(),
       paused: this.paused,
+      screen: this.title.isOpen ? "title" : "game",
       drawCalls: stats.calls,
       triangles: stats.triangles,
       gpu: this.renderer.gpu(),
@@ -1277,6 +1554,7 @@ export class Game {
       this.player.update({ moveX, moveY, jump, cameraYaw: this.camera.yaw }, dt);
     }
     for (const vehicle of this.vehicles) vehicle.update(vehicle === this.driving ? driverInput : null, dt);
+    this.pedal = driverInput ? Math.abs(driverInput.throttle) : 0;
     // Crashes: a thump, and a bump on the job's record. Parked vehicles' knocks are forgotten.
     let impact = 0;
     for (const vehicle of this.vehicles) {
@@ -1395,14 +1673,15 @@ export class Game {
       if (shiftedUp(this.lastGear, gear)) this.sound.gearChange();
       this.lastGear = gear;
       const top = this.driving.type.physics.maxSpeed;
-      this.sound.setEngine(Math.abs(this.driving.body.forwardSpeed()) / top, this.driving.kind === "auto" || this.driving.kind === "bike");
+      // Each vehicle's own engine (profiles in @cow/audio): revs follow speed, gear and accelerator.
+      this.sound.setEngine({ kind: soundKind(this.driving.kind), speed: Math.min(top, Math.abs(this.driving.body.forwardSpeed())), throttle: this.pedal });
       this.sound.setSkid(body.drifting());
       if (this.controls.consumeHorn()) {
         // The ambulance's button switches the siren; everything else has a horn.
         if (this.driving.type.siren) {
           this.driving.setSiren(!this.driving.siren);
           this.sound.setSiren(this.driving.siren);
-        } else this.sound.horn();
+        } else this.sound.horn(soundKind(this.driving.kind));
       }
       const seat = this.driving.riderPose();
       this.avatar.object.position.set(seat.x, seat.y, seat.z);
@@ -1419,6 +1698,13 @@ export class Game {
       this.sound.setEngine(null);
       this.sound.setSkid(null);
       this.lastGear = "";
+      // Footsteps at the stride's cadence (splashier in the rain), and a thud on landing.
+      this.sound.walk(dt, this.player.speed, this.player.grounded, this.renderer.raining ? 1 : 0);
+      if (!this.player.grounded) this.airborne += dt;
+      else {
+        if (this.airborne > 0.3) this.sound.land(Math.min(1, this.airborne / 1.2));
+        this.airborne = 0;
+      }
 
       // Offer to get in the closest vehicle within reach.
       this.nearby = null;
@@ -1505,6 +1791,7 @@ export class Game {
       const coast = distanceToCoast(this.map.sea, at);
       this.renderer.setHaze(1 + 0.6 * Math.max(0, 1 - coast / 600));
     }
+    this.soundFrame(dt, at);
     this.mapView.follow(this.renderer.camera);
     this.renderer.focusShadows(at.x, at.z);
     // Light and sky follow the clock; rain, headlight pool and speed blur follow the player.

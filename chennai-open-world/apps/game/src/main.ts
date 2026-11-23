@@ -1,6 +1,30 @@
 import type { WeaponId } from "@cow/combat";
-import { Game, type GameSnapshot } from "./Game";
+import { renderVehicleSound, type VehicleSoundKind } from "@cow/audio";
+import { LoadingScreen } from "@cow/ui";
+import { STATION_FONT } from "@cow/game-engine";
+import { Game, LOAD_STEPS, type GameSnapshot } from "./Game";
+import { startLoadReport } from "./loadReport";
 import { sendToShell } from "./nativeBridge";
+
+/** Shown one at a time while the city loads. Every tip describes something the game really does. */
+const TIPS: readonly string[] = [
+  "On foot, the left side of the screen moves you and the right side looks around.",
+  "Driving: steer with the left stick; GAS and BRAKE are on the right. Hold BRAKE to reverse.",
+  "JOBS opens the job board. City jobs pay, and doing them well builds your reputation.",
+  "Tap the minimap to open the full city map.",
+  "Suburban trains run to a timetable. Board at a platform when a train is standing there: a ticket is ₹5.",
+  "No new jobs while the police are after you. Lose them first.",
+  "Pause to change the time of day or bring in the rain.",
+  "The streets are real: they come from OpenStreetMap, from Anna Nagar to the Marina.",
+  "The ambulance has a SIREN button where other vehicles have a horn.",
+  "Places you can go into have a marker at their entrance: walk up and press ENTER.",
+];
+
+/**
+ * `?start=play` skips the title menu and starts at once. The browser tests use it, and so does
+ * the Android smoke-test build (which must reach a running game with no taps); players never do.
+ */
+const startAtOnce = (): boolean => new URLSearchParams(location.search).get("start") === "play";
 
 declare global {
   interface Window {
@@ -22,6 +46,8 @@ declare global {
       giveAmmo(rounds: number): void;
       /** Tests only: give a weapon with rounds and take it in hand (skips finding a pickup). */
       giveWeapon(id: WeaponId, ammo: number): void;
+      /** Tests only: render a vehicle's engine or horn offline and return the samples (22.05 kHz). */
+      renderSound(what: "engine" | "horn", kind: VehicleSoundKind, options?: { speed?: number; throttle?: number; seconds?: number }): Promise<number[]>;
       /** Tests only: who plays the pedestrians, drivers and enemies, and how their feet meet the ground. */
       people(): unknown;
     };
@@ -34,8 +60,16 @@ async function boot(): Promise<void> {
   const loading = document.getElementById("loading");
   if (!(canvas instanceof HTMLCanvasElement) || !stage || !loading) throw new Error("Game page is missing its canvas.");
 
+  const screen = new LoadingScreen(loading, { steps: LOAD_STEPS, tips: TIPS, tamilFont: STATION_FONT });
+  const report = startLoadReport(canvas);
   try {
-    const game = await Game.create(canvas, stage);
+    const game = await Game.create(canvas, stage, {
+      step: (id) => {
+        screen.step(id);
+        report.step(id, LOAD_STEPS.find((s) => s.id === id)?.label ?? id);
+      },
+      world: (map) => screen.sketch(map),
+    });
     window.__cow = {
       snapshot: () => game.snapshot(),
       setPaused: (paused) => game.setPaused(paused),
@@ -51,16 +85,24 @@ async function boot(): Promise<void> {
       giveAmmo: (rounds) => game.debugGiveAmmo(rounds),
       // For tests only: the later stages need guns the player would have found by then.
       giveWeapon: (id, ammo) => game.debugGiveWeapon(id, ammo),
+      // For tests only (sound.spec.ts): hear what each vehicle's engine and horn are made of.
+      renderSound: async (what, kind, options) => Array.from(await renderVehicleSound(what, kind, options)),
       people: () => game.debugPeople(),
     };
-    game.start();
-    loading.remove();
-    document.documentElement.dataset.ready = "true";
+    if (startAtOnce()) {
+      game.start();
+      document.documentElement.dataset.ready = "true";
+    } else {
+      // The title menu over the live city; the loading screen fades out on top of it.
+      void game.showTitle();
+      document.documentElement.dataset.ready = "title";
+    }
+    await screen.finish();
+    report.done();
   } catch (error) {
     // Never leave a black screen: say what failed (usually no WebGL on the device).
     const message = error instanceof Error ? error.message : String(error);
-    loading.textContent = `The game could not start on this device. ${message}`;
-    loading.setAttribute("role", "alert");
+    screen.fail(message, () => location.reload());
     document.documentElement.dataset.ready = "error";
     sendToShell({ type: "error", message });
   }

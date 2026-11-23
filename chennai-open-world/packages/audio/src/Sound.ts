@@ -2,18 +2,68 @@
  * All sound is synthesised with Web Audio: no sound files to download or license. Browsers
  * only allow sound after the player has touched the screen, so `unlock()` is called from the
  * first touch and everything is silent (and harmless) before that.
+ *
+ * The mix (TD-26): master → compressor → speakers, with four buses under the master so each
+ * family can be balanced: vehicles (engines, horns, tyres, sirens, crashes), world (footsteps,
+ * fights, guns, doors, trains), ambience (the city's background) and interface (rewards, stage
+ * music). What each vehicle sounds like is data in `profiles.ts`; the graphs are in `voices.ts`.
  */
+import { honkChance, place, soundKind, stepInterval, type Listener, type VehicleSoundKind } from "./profiles";
+import { Ambience, EngineVoice, noiseBuffer, playFootstep, playHorn, playLanding, type AmbienceState, type EngineState } from "./voices";
 
 type Tone = { frequency: number; duration: number; type?: OscillatorType; volume?: number; delay?: number; slideTo?: number };
+
+/** A traffic vehicle near the player, as the game reports it. */
+export interface TrafficSound {
+  readonly id: number;
+  readonly x: number;
+  readonly z: number;
+  /** m/s. */
+  readonly speed: number;
+  /** Vehicle kind name ("car", "auto", "bike", "bus"…). */
+  readonly kind: string;
+}
+
+/** What the sound system is doing, for tests and the debug snapshot. */
+export interface SoundState {
+  readonly unlocked: boolean;
+  readonly muted: boolean;
+  /** The player's engine: kind and engine speed, or null on foot. */
+  readonly engine: { readonly kind: VehicleSoundKind; readonly rpm: number } | null;
+  /** Traffic engines heard now (the nearest few). */
+  readonly traffic: ReadonlyArray<{ readonly id: number; readonly kind: VehicleSoundKind }>;
+  readonly ambience: readonly string[];
+  /** Counts of one-shots so far: horns by kind, footsteps, crows, the koel, distant and traffic honks. */
+  readonly played: Readonly<Record<string, number>>;
+}
+
+/** Traffic engines heard at once (each is a small graph; phones have little to spare). */
+const TRAFFIC_VOICES = 3;
+/** Metres within which traffic engines are heard. */
+const TRAFFIC_HEARD = 45;
+const MASTER = 0.55;
 
 export class Sound {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
   private noise: AudioBuffer | null = null;
-  private engine: { oscillator: OscillatorNode; rumble: OscillatorNode; gain: GainNode } | null = null;
+  private vehicles: GainNode | null = null;
+  private world: GainNode | null = null;
+  private ambienceBus: GainNode | null = null;
+  private ui: GainNode | null = null;
+  private engine: EngineVoice | null = null;
   private siren: { oscillator: OscillatorNode; wobble: OscillatorNode; gain: GainNode } | null = null;
   private skid: { source: AudioBufferSourceNode; whine: OscillatorNode; filter: BiquadFilterNode; gain: GainNode } | null = null;
   private muted = false;
+  private listener: Listener = { x: 0, z: 0, yaw: 0 };
+  private readonly trafficVoices = new Map<number, EngineVoice>();
+  /** Seconds each nearby traffic vehicle has stood still (honking gets likelier). */
+  private readonly stood = new Map<number, number>();
+  private honkWait = 0;
+  private ambience: Ambience | null = null;
+  private stepClock = 0;
+  private stepSide = 1;
+  private readonly counts: Record<string, number> = { footstep: 0, trafficHonk: 0 };
 
   /** Start the audio system. Safe to call many times; must be called from a touch or key press. */
   unlock(): void {
@@ -28,26 +78,183 @@ export class Sound {
     } catch {
       return;
     }
-    this.master = this.context.createGain();
-    this.master.gain.value = this.muted ? 0 : 0.5;
-    this.master.connect(this.context.destination);
-    // One second of white noise, reused for gunshots and impacts.
-    this.noise = this.context.createBuffer(1, this.context.sampleRate, this.context.sampleRate);
-    const data = this.noise.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const context = this.context;
+    // A gentle compressor keeps a busy junction (engines, horns, a siren) from clipping on phone speakers.
+    const glue = context.createDynamicsCompressor();
+    glue.threshold.value = -16;
+    glue.knee.value = 12;
+    glue.ratio.value = 4;
+    glue.attack.value = 0.005;
+    glue.release.value = 0.2;
+    glue.connect(context.destination);
+    this.master = context.createGain();
+    this.master.gain.value = this.muted ? 0 : MASTER;
+    this.master.connect(glue);
+    const bus = (level: number): GainNode => {
+      const gain = context.createGain();
+      gain.gain.value = level;
+      gain.connect(this.master!);
+      return gain;
+    };
+    this.vehicles = bus(1);
+    this.world = bus(0.9);
+    this.ambienceBus = bus(0.85);
+    this.ui = bus(0.8);
+    this.noise = noiseBuffer(context);
+    this.ambience = new Ambience(context, this.ambienceBus, this.noise);
+  }
+
+  get isMuted(): boolean {
+    return this.muted;
   }
 
   setMuted(muted: boolean): void {
     this.muted = muted;
-    if (this.master) this.master.gain.value = muted ? 0 : 0.5;
+    if (this.master && this.context) this.master.gain.setTargetAtTime(muted ? 0 : MASTER, this.context.currentTime, 0.03);
   }
 
-  /** Silence everything that is sustained (when the game pauses). */
+  /** Silence everything that is sustained (when the game pauses or a menu opens). */
   suspend(): void {
     this.setEngine(null);
     this.setSiren(false);
     this.setPoliceSiren(null);
     this.setSkid(null);
+    this.setTraffic([]);
+    this.ambience?.stop();
+  }
+
+  /** Where the player hears from (the camera), so traffic and birds are placed around them. */
+  setListener(x: number, z: number, yaw: number): void {
+    this.listener = { x, z, yaw };
+  }
+
+  /**
+   * The player's vehicle engine, or silence with null (on foot, paused). Its voice follows the
+   * vehicle's kind, speed and accelerator: see `ENGINES` in `profiles.ts`.
+   */
+  setEngine(state: EngineState | null): void {
+    const { context, vehicles, noise } = this;
+    if (!context || !vehicles || !noise) return;
+    if (state === null) {
+      this.engine?.stop(0.25);
+      this.engine = null;
+      return;
+    }
+    if (this.engine && this.engine.kind !== state.kind) {
+      this.engine.stop(0.1);
+      this.engine = null;
+    }
+    this.engine ??= new EngineVoice(context, vehicles, noise, state.kind);
+    this.engine.update(state);
+  }
+
+  /**
+   * The traffic round the player: the nearest few are heard as their own kind of engine, placed
+   * and panned in the street. Vehicles that have stood a while may sound their horn (more in the
+   * rushes; `honkChance`).
+   * @param hour the game clock, for how impatient the traffic is
+   */
+  setTraffic(traffic: readonly TrafficSound[], dt = 0, hour = 12): void {
+    const { context, vehicles, noise } = this;
+    if (!context || !vehicles || !noise) return;
+    const listener = this.listener;
+    const near = traffic
+      .map((t) => ({ t, d: Math.hypot(t.x - listener.x, t.z - listener.z) }))
+      .filter((n) => n.d < TRAFFIC_HEARD)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, TRAFFIC_VOICES);
+    const keep = new Set(near.map((n) => n.t.id));
+    for (const [id, voice] of this.trafficVoices) {
+      if (!keep.has(id)) {
+        voice.stop(0.3);
+        this.trafficVoices.delete(id);
+      }
+    }
+    for (const { t } of near) {
+      const kind = soundKind(t.kind);
+      const at = place(listener, t.x, t.z, 5, TRAFFIC_HEARD);
+      let voice = this.trafficVoices.get(t.id);
+      if (!voice || voice.kind !== kind) {
+        voice?.stop(0.1);
+        voice = new EngineVoice(context, vehicles, noise, kind, { ...at, gain: 0 });
+        this.trafficVoices.set(t.id, voice);
+      }
+      // Traffic is a little quieter than the player's own engine, and pulls away gently.
+      voice.update({ speed: t.speed, throttle: t.speed > 0.5 ? 0.35 : 0 }, 0.6, at);
+    }
+
+    // Horns from stopped traffic within earshot.
+    if (dt <= 0) return;
+    this.honkWait = Math.max(0, this.honkWait - dt);
+    const seen = new Set<number>();
+    for (const t of traffic) {
+      const d = Math.hypot(t.x - listener.x, t.z - listener.z);
+      if (d > 70) continue;
+      seen.add(t.id);
+      const stood = t.speed < 0.3 ? (this.stood.get(t.id) ?? 0) + dt : 0;
+      this.stood.set(t.id, stood);
+      if (this.honkWait > 0 || Math.random() >= honkChance(hour, stood) * dt) continue;
+      const kind = soundKind(t.kind);
+      playHorn(context, vehicles, kind, 0.8, place(listener, t.x, t.z, 6, 90));
+      this.counts.trafficHonk = (this.counts.trafficHonk ?? 0) + 1;
+      this.stood.set(t.id, 0);
+      this.honkWait = 1.2 + Math.random() * 1.5;
+    }
+    for (const id of [...this.stood.keys()]) if (!seen.has(id)) this.stood.delete(id);
+  }
+
+  /** The city's background (call every frame while playing). */
+  setAmbience(dt: number, state: AmbienceState): void {
+    this.ambience?.update(dt, state);
+  }
+
+  /**
+   * Walking and running: call every frame on foot. Footsteps fall at the stride's cadence
+   * (`stepInterval`), alternating feet, with a splash when it rains.
+   * @param speed m/s along the ground; @param grounded false in the air
+   */
+  walk(dt: number, speed: number, grounded: boolean, wet: number): void {
+    const { context, world, noise } = this;
+    if (!context || !world || !noise) return;
+    if (!grounded || speed < 0.6) {
+      // Start the next walk on a step, not part-way through one.
+      this.stepClock = stepInterval(speed) * 0.6;
+      return;
+    }
+    this.stepClock += dt;
+    const interval = stepInterval(speed);
+    if (this.stepClock < interval) return;
+    this.stepClock -= interval;
+    this.stepSide = -this.stepSide;
+    playFootstep(context, world, noise, Math.max(0, Math.min(1, (speed - 2) / 3)), wet, this.stepSide * 0.12);
+    this.counts.footstep = (this.counts.footstep ?? 0) + 1;
+  }
+
+  /** Landing after a jump or a drop. @param strength 0..1 */
+  land(strength: number): void {
+    const { context, world, noise } = this;
+    if (!context || !world || !noise) return;
+    playLanding(context, world, noise, Math.max(0, Math.min(1, strength)));
+  }
+
+  /** The player's horn: each vehicle has its own (`HORNS` in `profiles.ts`). */
+  horn(kind: VehicleSoundKind = "car"): void {
+    const { context, vehicles } = this;
+    if (!context || !vehicles) return;
+    playHorn(context, vehicles, kind);
+    this.counts[`horn:${kind}`] = (this.counts[`horn:${kind}`] ?? 0) + 1;
+  }
+
+  /** For tests and the debug snapshot. */
+  state(): SoundState {
+    return {
+      unlocked: this.context !== null,
+      muted: this.muted,
+      engine: this.engine ? { kind: this.engine.kind, rpm: Math.round(this.engine.rpm) } : null,
+      traffic: [...this.trafficVoices].map(([id, voice]) => ({ id, kind: voice.kind })),
+      ambience: this.ambience?.active ?? [],
+      played: { ...this.counts, ...(this.ambience?.played ?? {}) },
+    };
   }
 
   /**
@@ -56,8 +263,8 @@ export class Sound {
    * @param level 0 (gripping) to 1 (a full drift)
    */
   setSkid(level: number | null): void {
-    const { context, master, noise } = this;
-    if (!context || !master || !noise) return;
+    const { context, vehicles, noise } = this;
+    if (!context || !vehicles || !noise) return;
     if (level === null) {
       if (!this.skid) return;
       const { source, whine, gain } = this.skid;
@@ -84,7 +291,7 @@ export class Sound {
       gain.gain.value = 0;
       source.connect(filter);
       whine.connect(whineGain).connect(filter);
-      filter.connect(gain).connect(master);
+      filter.connect(gain).connect(vehicles);
       source.start();
       whine.start();
       this.skid = { source, whine, filter, gain };
@@ -99,22 +306,22 @@ export class Sound {
 
   /** A short blip as the gearbox changes up: the engine note dips and catches. */
   gearChange(): void {
-    this.tone({ frequency: 150, slideTo: 95, duration: 0.09, type: "square", volume: 0.07 });
-    this.burst(0.05, 0.12, 900);
+    this.tone({ frequency: 150, slideTo: 95, duration: 0.09, type: "square", volume: 0.05 }, this.vehicles);
+    this.burst(0.05, 0.1, 900, this.vehicles);
   }
 
   /** A crash: a dull thump, louder for harder hits. @param strength change of speed, m/s */
   crash(strength: number): void {
     const loud = Math.max(0.25, Math.min(1, strength / 8));
-    this.burst(0.25, 0.9 * loud, 600);
-    this.tone({ frequency: 70, slideTo: 38, duration: 0.25, volume: 0.45 * loud });
-    if (strength > 4) this.burst(0.18, 0.3 * loud, 5000); // glass and metal
+    this.burst(0.25, 0.9 * loud, 600, this.vehicles);
+    this.tone({ frequency: 70, slideTo: 38, duration: 0.25, volume: 0.45 * loud }, this.vehicles);
+    if (strength > 4) this.burst(0.18, 0.3 * loud, 5000, this.vehicles); // glass and metal
   }
 
   /** Two-tone wail of an ambulance siren, on until switched off. */
   setSiren(on: boolean): void {
-    const { context, master } = this;
-    if (!context || !master) return;
+    const { context, vehicles } = this;
+    if (!context || !vehicles) return;
     if (!on) {
       if (!this.siren) return;
       const { oscillator, wobble, gain } = this.siren;
@@ -137,7 +344,7 @@ export class Sound {
     depth.gain.value = 200;
     wobble.connect(depth).connect(oscillator.frequency);
     gain.gain.value = 0.07;
-    oscillator.connect(gain).connect(master);
+    oscillator.connect(gain).connect(vehicles);
     oscillator.start();
     wobble.start();
     this.siren = { oscillator, wobble, gain };
@@ -151,8 +358,8 @@ export class Sound {
    * @param level 0 (barely heard) to 1 (right beside the player)
    */
   setPoliceSiren(level: number | null): void {
-    const { context, master } = this;
-    if (!context || !master) return;
+    const { context, vehicles } = this;
+    if (!context || !vehicles) return;
     if (level === null || level <= 0) {
       if (!this.policeSiren) return;
       const { oscillator, wobble, gain } = this.policeSiren;
@@ -175,7 +382,7 @@ export class Sound {
       depth.gain.value = 200;
       wobble.connect(depth).connect(oscillator.frequency);
       gain.gain.value = 0;
-      oscillator.connect(gain).connect(master);
+      oscillator.connect(gain).connect(vehicles);
       oscillator.start();
       wobble.start();
       this.policeSiren = { oscillator, wobble, gain };
@@ -185,12 +392,12 @@ export class Sound {
 
   /** Coins for a paid job. */
   cash(): void {
-    [1318, 1568].forEach((frequency, i) => this.tone({ frequency, duration: 0.16, type: "square", volume: 0.08, delay: i * 0.08 }));
+    [1318, 1568].forEach((frequency, i) => this.tone({ frequency, duration: 0.16, type: "square", volume: 0.08, delay: i * 0.08 }, this.ui));
   }
 
-  private tone(tone: Tone): void {
-    const { context, master } = this;
-    if (!context || !master) return;
+  private tone(tone: Tone, bus: GainNode | null = this.world): void {
+    const { context } = this;
+    if (!context || !bus) return;
     const start = context.currentTime + (tone.delay ?? 0);
     const oscillator = context.createOscillator();
     const gain = context.createGain();
@@ -199,14 +406,14 @@ export class Sound {
     if (tone.slideTo) oscillator.frequency.exponentialRampToValueAtTime(tone.slideTo, start + tone.duration);
     gain.gain.setValueAtTime(tone.volume ?? 0.25, start);
     gain.gain.exponentialRampToValueAtTime(0.001, start + tone.duration);
-    oscillator.connect(gain).connect(master);
+    oscillator.connect(gain).connect(bus);
     oscillator.start(start);
     oscillator.stop(start + tone.duration + 0.02);
   }
 
-  private burst(duration: number, volume: number, cutoff: number): void {
-    const { context, master, noise } = this;
-    if (!context || !master || !noise) return;
+  private burst(duration: number, volume: number, cutoff: number, bus: GainNode | null = this.world): void {
+    const { context, noise } = this;
+    if (!context || !bus || !noise) return;
     const source = context.createBufferSource();
     source.buffer = noise;
     const filter = context.createBiquadFilter();
@@ -215,7 +422,7 @@ export class Sound {
     const gain = context.createGain();
     gain.gain.setValueAtTime(volume, context.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
-    source.connect(filter).connect(gain).connect(master);
+    source.connect(filter).connect(gain).connect(bus);
     source.start();
     source.stop(context.currentTime + duration + 0.02);
   }
@@ -246,23 +453,36 @@ export class Sound {
 
   /** Objective reached. */
   chime(): void {
-    this.tone({ frequency: 660, duration: 0.14, type: "triangle" });
-    this.tone({ frequency: 880, duration: 0.2, type: "triangle", delay: 0.12 });
+    this.tone({ frequency: 660, duration: 0.14, type: "triangle" }, this.ui);
+    this.tone({ frequency: 880, duration: 0.2, type: "triangle", delay: 0.12 }, this.ui);
   }
 
   /** Stage complete. */
   fanfare(): void {
-    [523, 659, 784, 1047].forEach((frequency, i) => this.tone({ frequency, duration: 0.24, type: "triangle", delay: i * 0.13, volume: 0.3 }));
+    [523, 659, 784, 1047].forEach((frequency, i) => this.tone({ frequency, duration: 0.24, type: "triangle", delay: i * 0.13, volume: 0.3 }, this.ui));
   }
 
   /** Stage failed or player knocked out. */
   fail(): void {
-    this.tone({ frequency: 330, slideTo: 150, duration: 0.5, type: "sawtooth", volume: 0.22 });
+    this.tone({ frequency: 330, slideTo: 150, duration: 0.5, type: "sawtooth", volume: 0.22 }, this.ui);
   }
 
-  door(): void {
+  /**
+   * A door shutting. A car's is a solid thunk; a bus's is the hiss of its air door; an auto has
+   * none (a creak of the seat instead).
+   */
+  door(kind: VehicleSoundKind | "house" = "car"): void {
+    if (kind === "bus") {
+      this.burst(0.35, 0.18, 5200);
+      this.tone({ frequency: 70, duration: 0.1, volume: 0.2 });
+      return;
+    }
+    if (kind === "auto" || kind === "bike") {
+      this.tone({ frequency: 180, slideTo: 150, duration: 0.07, type: "triangle", volume: 0.08 });
+      return;
+    }
     this.burst(0.06, 0.35, 500);
-    this.tone({ frequency: 90, duration: 0.08, volume: 0.3 });
+    this.tone({ frequency: kind === "ambulance" ? 75 : 90, duration: 0.08, volume: 0.3 });
   }
 
   /**
@@ -284,8 +504,8 @@ export class Sound {
    */
   stationChime(): void {
     [659, 523, 784].forEach((frequency, i) => this.tone({ frequency, duration: 0.7, type: "sine", volume: 0.16, delay: i * 0.42 }));
-    const { context, master } = this;
-    if (!context || !master) return;
+    const { context, world } = this;
+    if (!context || !world) return;
     const start = context.currentTime + 1.6;
     const voice = context.createOscillator();
     voice.type = "sawtooth";
@@ -303,53 +523,9 @@ export class Sound {
       gain.gain.linearRampToValueAtTime(0.012, t + 0.17);
     }
     gain.gain.linearRampToValueAtTime(0.0001, start + 12 * 0.19 + 0.1);
-    voice.connect(formant).connect(gain).connect(master);
+    voice.connect(formant).connect(gain).connect(world);
     voice.start(start);
     voice.stop(start + 12 * 0.19 + 0.2);
   }
-
-  horn(): void {
-    this.tone({ frequency: 415, duration: 0.35, type: "square", volume: 0.16 });
-    this.tone({ frequency: 520, duration: 0.35, type: "square", volume: 0.12 });
-  }
-
-  /**
-   * Engine note that rises with speed, or silence with null.
-   * @param load 0 (idling) to 1 (top speed)
-   */
-  setEngine(load: number | null, small = false): void {
-    const { context, master } = this;
-    if (!context || !master) return;
-    if (load === null) {
-      if (!this.engine) return;
-      const { oscillator, rumble, gain } = this.engine;
-      gain.gain.setTargetAtTime(0, context.currentTime, 0.08);
-      oscillator.stop(context.currentTime + 0.4);
-      rumble.stop(context.currentTime + 0.4);
-      this.engine = null;
-      return;
-    }
-    if (!this.engine) {
-      const oscillator = context.createOscillator();
-      const rumble = context.createOscillator();
-      const filter = context.createBiquadFilter();
-      const gain = context.createGain();
-      oscillator.type = "sawtooth";
-      rumble.type = "square";
-      filter.type = "lowpass";
-      filter.frequency.value = 520;
-      gain.gain.value = 0;
-      oscillator.connect(filter);
-      rumble.connect(filter);
-      filter.connect(gain).connect(master);
-      oscillator.start();
-      rumble.start();
-      this.engine = { oscillator, rumble, gain };
-    }
-    const base = (small ? 78 : 52) + Math.max(0, Math.min(1, load)) * (small ? 150 : 105);
-    const now = context.currentTime;
-    this.engine.oscillator.frequency.setTargetAtTime(base, now, 0.08);
-    this.engine.rumble.frequency.setTargetAtTime(base / 2, now, 0.08);
-    this.engine.gain.gain.setTargetAtTime(0.07 + load * 0.06, now, 0.1);
-  }
 }
+

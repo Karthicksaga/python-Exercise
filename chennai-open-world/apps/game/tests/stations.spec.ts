@@ -31,7 +31,7 @@ const LINE = "beach-tambaram";
 
 /** Start at `hour` (crowds follow the time of day), standing at the foot of a station's platform. */
 async function atStation(page: Page, name: string, hour: number): Promise<RailState["stops"][number]> {
-  await page.goto("/?quality=lite");
+  await page.goto("/?quality=lite&start=play");
   await page.evaluate((h) => {
     localStorage.clear();
     localStorage.setItem("cow-hour-v1", String(h));

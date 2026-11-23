@@ -273,8 +273,8 @@ export class Population {
   }
 
   /** Positions of the AI vehicles on the streets, for the minimap and tests. */
-  trafficPositions(): Array<{ x: number; z: number; speed: number; kind: string }> {
-    return this.traffic.agents.filter((a) => a.active).map((a) => ({ x: a.x, z: a.z, speed: a.speed, kind: this.traffic.kinds[a.kind]!.name }));
+  trafficPositions(): Array<{ id: number; x: number; z: number; speed: number; kind: string }> {
+    return this.traffic.agents.filter((a) => a.active).map((a) => ({ id: a.id, x: a.x, z: a.z, speed: a.speed, kind: this.traffic.kinds[a.kind]!.name }));
   }
 
   /** Work out how many agents should be out, now and then. */
