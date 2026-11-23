@@ -676,8 +676,9 @@ Difficulty has not been play-tested by a person.
   (bike, auto) with a riding pose; in closed vehicles they are hidden. Pedestrians react only to someone being hit near them (not to gunfire or the horn); being hit is a knock-down pose, with no ragdoll or limp animation. No police
   or wanted level.
 - **Combat:** enemies have no pathfinding (they head straight for the player and side-step
-  walls), don't take cover, and exist only during their stage. Punching and aiming are arm
-  poses, not animations; a beaten enemy simply lies down. Shooting only works on foot. Bullets
+  walls), don't take cover, and exist only during their stage. Punches and bat swings are
+  blended arm poses over the walk cycle (TD-25), one-handed for the bat; aiming is a fixed arm
+  pose; a beaten enemy tips over onto its back (no fall animation). Shooting only works on foot. Bullets
   are instant and never hit pedestrians or vehicles. Balance is a first guess.
 - **Vehicles:** cannot roll or pitch (by design, TD-8); no damage; no collision or tyre sound.
 - **Sound:** synthesised tones, not recordings, and no music or city ambience.
@@ -813,3 +814,24 @@ Difficulty has not been play-tested by a person.
 - **Cost** (lite, software GPU, worst of four headings; fixture cast): spawn 207 -> 187 draw
   calls, 300k -> 258k triangles; T. Nagar 154 -> 124, 270k -> 197k; two-star police stop 225 ->
   200, 316k -> 266k; Egmore platform 153 -> 131, 230k -> 165k.
+
+## 23 Nov 2026: natural arms and hands, visible hits, pedestrians keep their room (branch `agent/combat-pose`)
+- **Arms and hands (everyone):** the T-pose Mixamo clips bent every A-pose MPFB hand about 70°
+  in towards the body (stiff hands held in front of the hips). `retargetClips` now lines up the
+  hand by its whole frame and each finger joint after its parent, so the clips' wrists and their
+  relaxed finger curl come through as recorded: arms hang and swing close to the body, fingers
+  gently curled, for the player and all 37 people (checked numerically on the player and
+  `girl-pavadai`: retargeted arm, wrist and finger directions equal the source's).
+- **Hits (TD-25):** punch and bat swing with wind-up, blow and recovery; damage, sound, a pale
+  flash and dust puff, and a light camera shake at the strike frame; enemies wind up too and
+  their blow lands after it; whoever is hit flinches and is knocked back a short step that stops
+  at walls (gun hits: a small flinch); a fist for punches, a grip round a held weapon.
+  Non-graphic. Damage, ranges and cooldowns unchanged.
+- **Pedestrians** step sideways round the player and people coming the other way, and are never
+  left inside them (`personalSpace`); routes unchanged.
+- **Tested:** typecheck; unit 534/534 (new `Strikes.test.ts`, `strikePose.test.ts`, hand
+  retarget test, camera shake, two agent tests; `ridingPose.test.ts` unchanged and passing);
+  browser `combat` 4/4, `gangs`, `people`, `onfoot`, `pedestrians`, `weapons` 22/22 (not the
+  full suite: CI runs it). Checked by eye in Playwright screenshots (915x412, normal quality,
+  camera close, not kept in the repo): people standing and walking before/after, a punch and a
+  bat swing landing frame by frame. Not tried on a phone.

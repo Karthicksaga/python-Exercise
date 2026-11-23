@@ -777,3 +777,22 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   typecheck, unit tests and the affected specs (AGENTS.md).
 - Open: faces smooth up close; pallu and dupatta are flat bands; long hems can show a shin when
   running; older women wear a plait, not a bun; no player LOD1; nothing tried on a phone.
+
+## 23 Nov 2026: combat and pose (branch `agent/combat-pose`): where I left off
+- **Done:** hands and fingers retargeted onto A-pose rigs (root cause of the bent, stiff hands:
+  `retarget.ts` aligned arms but not hands, so each hand kept 45° of A-pose bend on top of the
+  clip's wrist turn); punches and bat swings with wind-up, damage at the strike frame, flinch,
+  knock-back that respects walls, impact puffs, camera shake, enemy wind-ups (TD-25);
+  pedestrians step round the player and each other (`AgentSettings.personalSpace`).
+- **Files:** new `packages/combat/src/Strikes.ts`, `packages/player/src/strikePose.ts`,
+  `apps/game/src/HitPuffs.ts`; `Combat.ts` (Enemy `windup`/`stagger`/`pushX`/`pushZ`, event
+  `enemySwing`), `Weapons.ts` (`meleeReadyIn`), `HumanFigure.ts` (`strike`, `flinch`, fists;
+  `punch()` removed), `Fighters.ts` (`enemySwing`, `struck`, `impact`), `Game.ts` (swing clock in
+  `fight`, `debugView`, `debugStep`), `main.ts` (`__cow.view`, `__cow.step` for screenshots),
+  `FollowCamera.ts` (`shake`), `Agents.ts`/`presets.ts`.
+- **Tests:** typecheck; unit 534/534; browser combat, gangs, people, onfoot, pedestrians,
+  weapons 26/26. Two unit tests changed on purpose (see the commit): they now wait in fixed
+  steps because blows land after a wind-up and knock the enemy back.
+- **Not done / uncertain:** the bat is swung one-handed; no fall animation for a knock-down (it
+  tips over as before); `missions2.spec.ts` and `stages3.spec.ts` fights not run here (CI);
+  nothing tried on a phone (the wind-up might feel late at 43 fps).

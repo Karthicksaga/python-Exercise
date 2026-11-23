@@ -400,3 +400,35 @@ dip up to about 5 cm. The dye colours a whole outfit, trousers and all.
 
 **Revisit when** the cast grows past what fits in the script (stream people as files, TD-16), or
 people need per-garment colours (a mask channel in the atlas).
+
+## TD-25: A blow's damage lands at its strike frame; knock-back is a rule; people keep their room
+
+**Decision (23 Nov 2026, branch `agent/combat-pose`).** A punch or bat swing is a wind-up, the
+blow and a recovery (`@cow/combat` `Strikes.ts`: punch 0.12 s + 0.26 s, bat 0.22 s + 0.38 s,
+inside each weapon's interval). Pressing HIT starts the swing (`SwingClock`); `Combat.punch` is
+called when the wind-up ends, so the damage, the sound, the puff and the camera shake come at
+the frame the arm is out or the bat is across the front. Enemies do the same: `enemySwing`
+starts the figure's wind-up and `enemyPunch` (the damage) follows when it ends, and misses if
+the player has stepped more than 0.6 m beyond reach. A hit also pushes the person struck
+straight back over 0.22 s (0.4 m for a fist, 0.65 m for the bat, 0.12 m for a bullet), never
+into a building, tree or vehicle (`knockBackRoom` asks `CombatWorld.solidDistance`), and they
+do nothing else while it lasts. The figures draw it: arm poses solved per skeleton and blended
+over the clip, a turn of the upper body, a fist, and a flinch away from the blow
+(`packages/player/src/strikePose.ts`, `HumanFigure.strike`/`flinch`). Pedestrians
+(`AgentSettings.personalSpace`, 0.3 m) step sideways round the player and round people coming
+the other way, and are moved out if they ever stand inside them.
+
+**Why.** The user played on a phone and saw no impact: damage landed on the press while the arm
+snapped straight for 0.22 s and nobody reacted. Timing the damage to the drawn strike is what
+makes a hit read as one; the knock-back is a position change, so it belongs to the rules, where
+walls are known and it can be tested. A pedestrian stood inside the player in the same session:
+walkers only stopped for what was ahead of them, so one coming from the side or turning walked
+into the player, and people coming the other way walked through each other (TD-15).
+
+**Trade-offs.** The first blow lands 0.12 s (0.22 s with the bat) after the press; the rate of
+blows is unchanged (the next may start while the last recovers). A hit enemy loses 0.22 s of
+moving; a fist's knock-back takes them just out of a fist's reach, so they step back in. Routes
+are unchanged: the sidestep only moves a person sideways and steering brings them back.
+
+**Revisit when** fights need combos or blocks (the swing clock becomes a small state machine), or
+a phone test shows the wind-up feels late.
