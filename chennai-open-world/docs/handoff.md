@@ -820,3 +820,17 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   `Combat.ts`, `Wanted.ts` (new crime), `index.ts` export lists.
 - **Not done / uncertain:** never played on a phone (block and dodge timing by touch); moves
   judged by eye at low resolution; pedestrians do not fight back; no manual target switching.
+
+## 23 Nov 2026: carjacking (branch `agent/carjacking`, from a60eb30): where I left off
+- **Done and tested** (unit 572/572; browser 30/30 across boarding, driving, traffic, police, people, pedestrians, carjack; TD-30): HIJACK on a stopped or crawling
+  car, auto or motorbike in traffic; the driver pulled out and running off; a drivable stand-in
+  from a capped pool (2 per kind); new crime `carjacking`.
+- **Shared files touched:** `Game.ts` (small: `jackable`, `carjacker`, `carjack()`, `getIn(…, pull)`,
+  the `pulled` event, `cancelBoarding` releases the driver, HIJACK in the foot branch, snapshot
+  `carjack`), `Population.ts` (`Driver` keeps tint and colour; `jackCandidates`, `takeTraffic`,
+  `releaseDriver`; `trafficPositions` has `heading`), `Police.ts` (`carjacked`), `Wanted.ts`
+  (new crime entry only), `@cow/ai` `index.ts` (exports `Carjack`), `Agents.ts` (`placeAt`),
+  `Boarding.ts` (`pull` phase), `Boarder.ts`, `Vehicle.ts` (`color`, `repaint`).
+- **Not done / uncertain:** the fleeing driver is one of the street's walkers, so a different
+  person from the one at the wheel; drivers never fight back; never tried on a phone or the
+  emulator. The pull is a standing swing (the "cross" move), not a dedicated animation.

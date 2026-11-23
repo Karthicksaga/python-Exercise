@@ -130,3 +130,24 @@ describe("pedestrians near a hit", () => {
     expect(system.isScared(agent)).toBe(false);
   });
 });
+
+describe("placing someone on the nearest road (a driver pulled out of a taken car)", () => {
+  it("puts them there, on that road going the way asked, and they run off when frightened", () => {
+    const system = walkers(3);
+    const agent = first(system);
+    system.hold(agent);
+    // Facing east (heading -π/2), a step off the street's centre line.
+    system.placeAt(agent, 50, 2, -Math.PI / 2);
+    expect(system.isHeld(agent)).toBe(false);
+    expect([agent.x, agent.z]).toEqual([50, 2]);
+    const graph = buildRoadGraph(street, () => true, false);
+    expect(graph.edges[agent.edge]!.dx).toBeGreaterThan(0.9);
+    // Frightened from behind (the player at the door): runs off east, away from them, crossing
+    // to their side of the street (the left, as they go) on the way.
+    system.scare(48, 2, 4, 3);
+    run(system, 2);
+    expect(agent.x).toBeGreaterThan(51.5);
+    expect(Math.hypot(agent.x - 48, agent.z - 2)).toBeGreaterThan(5);
+    expect(agent.speed).toBeGreaterThan(3);
+  });
+});

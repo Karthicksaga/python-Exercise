@@ -28,7 +28,9 @@ export type Crime =
   /** A police officer punched, shot or run into, but still standing. */
   | "officerAssaulted"
   /** A police officer knocked out. */
-  | "officerDown";
+  | "officerDown"
+  /** A vehicle taken from AI traffic, its driver pulled out (worse than taking a parked one). */
+  | "carjacking";
 
 export interface CrimeRule {
   /** Heat points added. */
@@ -55,6 +57,8 @@ export const WANTED = {
     policeCarShot: { points: 2, minStars: 1, every: 2 },
     officerAssaulted: { points: 4, minStars: 2, every: 1 },
     officerDown: { points: 10, minStars: 3, every: 0 },
+    // A star for one; two in quick succession make two stars (3 + 3 points passes starAt[2]).
+    carjacking: { points: 3, minStars: 1, every: 0 },
   } satisfies Record<Crime, CrimeRule>,
   /**
    * Seconds unseen by any police unit before the level drops one star (index = stars). One star

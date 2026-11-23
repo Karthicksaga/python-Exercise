@@ -11,12 +11,14 @@ import {
   TrafficSignals,
   areaBusyness,
   buildRoadGraph,
+  carjackable,
   edgeBusyness,
   pedestrianDensity,
   pedestrianSettings,
   trafficDensity,
   trafficSettings,
   type AgentKind,
+  type JackCandidate,
   type Obstacle,
   type RoadGraph,
   type Siren,
@@ -84,6 +86,9 @@ interface Driver {
   readonly car: TrafficCar;
   /** Who sits at the wheel (a manifest id; null: the player's model). */
   readonly person: string | null;
+  /** Shirt tint of the person at the wheel, and the vehicle's paint (a taken vehicle keeps both). */
+  readonly tint: number | undefined;
+  readonly color: number;
   readonly body: KinematicBox;
   generation: number;
   /** The last two fixed steps, drawn in between (smooth on any display rate). */
@@ -203,12 +208,13 @@ export class Population {
     for (const agent of this.traffic.agents) {
       const name = this.traffic.kinds[agent.kind]!.name;
       const kind = isVehicleKind(name) ? name : "car";
-      const car = new TrafficCar(kind, kind === "auto" ? AUTO_YELLOW : CAR_COLORS[agent.id % CAR_COLORS.length]!);
+      const color = kind === "auto" ? AUTO_YELLOW : CAR_COLORS[agent.id % CAR_COLORS.length]!;
+      const car = new TrafficCar(kind, color);
       // Every moving vehicle has someone at the wheel (a baked seated person, shared per shirt).
       const driver = humans.look(kind === "auto" ? "auto-driver" : "driver", agent.id);
       car.setDriver(humans.seatedStatic(driver.tint, car.type.pose, driver.person));
       scene.add(car.object);
-      this.drivers.push({ car, person: driver.person, body: physics.createKinematicBox(car.type.physics.halfExtents), generation: -1, motion: new Motion() });
+      this.drivers.push({ car, person: driver.person, tint: driver.tint, color, body: physics.createKinematicBox(car.type.physics.halfExtents), generation: -1, motion: new Motion() });
     }
     for (const agent of this.walkers.agents) {
       // Variety comes from the people themselves (consecutive ids get different people), not tints.
@@ -273,8 +279,60 @@ export class Population {
   }
 
   /** Positions of the AI vehicles on the streets, for the minimap and tests. */
-  trafficPositions(): Array<{ id: number; x: number; z: number; speed: number; kind: string }> {
-    return this.traffic.agents.filter((a) => a.active).map((a) => ({ id: a.id, x: a.x, z: a.z, speed: a.speed, kind: this.traffic.kinds[a.kind]!.name }));
+  trafficPositions(): Array<{ id: number; x: number; z: number; speed: number; kind: string; heading: number }> {
+    return this.traffic.agents.filter((a) => a.active).map((a) => ({ id: a.id, x: a.x, z: a.z, speed: a.speed, kind: this.traffic.kinds[a.kind]!.name, heading: a.heading }));
+  }
+
+  /** AI vehicles within `radius` of a point, as the carjacking rules see them (`@cow/ai` `pickCarjack`). */
+  jackCandidates(at: { x: number; z: number }, radius = 12): JackCandidate[] {
+    const out: JackCandidate[] = [];
+    for (const a of this.traffic.agents) {
+      if (!a.active || Math.hypot(a.x - at.x, a.z - at.z) > radius) continue;
+      const kind = this.traffic.kinds[a.kind]!;
+      out.push({ id: a.id, kind: kind.name, x: a.x, z: a.z, heading: a.heading, speed: a.speed, halfWidth: kind.halfWidth, halfLength: kind.halfLength });
+    }
+    return out;
+  }
+
+  /**
+   * The player takes an AI vehicle: it leaves the traffic at once (the agent is recycled out of
+   * sight round `focus`, like any far-off vehicle) and what it was is returned, so a drivable
+   * vehicle can take its place. Null when it can no longer be taken.
+   */
+  takeTraffic(id: number, focus: { x: number; z: number }): { kind: VehicleKind; color: number; x: number; z: number; heading: number; person: string | null; tint: number | undefined } | null {
+    const index = this.traffic.agents.findIndex((a) => a.id === id);
+    const agent = this.traffic.agents[index];
+    const driver = this.drivers[index];
+    if (!agent || !driver || !agent.active) return null;
+    const kind = this.traffic.kinds[agent.kind]!;
+    if (!carjackable(kind.name, agent.speed) || !isVehicleKind(kind.name)) return null;
+    const taken = { kind: kind.name, color: driver.color, x: agent.x, z: agent.z, heading: agent.heading, person: driver.person, tint: driver.tint };
+    this.traffic.letGo(agent, focus);
+    return taken;
+  }
+
+  /**
+   * A driver pulled out of their vehicle at (x, z): one of the walkers (one far from the player,
+   * so nobody sees them vanish) is put there on the nearest road, facing away from `from`, and
+   * frightened, so they run off. Returns the walker's id, or null when nobody is free.
+   */
+  releaseDriver(x: number, z: number, from: { x: number; z: number }): number | null {
+    let chosen: (typeof this.walkers.agents)[number] | null = null;
+    let farthest = -1;
+    for (const a of this.walkers.agents) {
+      if (!a.active || this.walkers.isHeld(a) || this.casualties.get(a.id)) continue;
+      const d = Math.hypot(a.x - from.x, a.z - from.z);
+      if (d > farthest) {
+        farthest = d;
+        chosen = a;
+      }
+    }
+    if (!chosen) return null;
+    const away = Math.atan2(-(x - from.x), -(z - from.z));
+    this.walkers.placeAt(chosen, x, z, away);
+    this.civilianHealth.delete(chosen.id);
+    this.walkers.scare(from.x, from.z, Math.hypot(x - from.x, z - from.z) + 1.5, PEDESTRIAN_HIT.scareFor);
+    return chosen.id;
   }
 
   /** Work out how many agents should be out, now and then. */

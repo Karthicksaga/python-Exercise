@@ -234,6 +234,15 @@ export class Police {
     return "No new jobs while the police are after you. Lose them first.";
   }
 
+  /**
+   * The player took a vehicle from AI traffic, pulling its driver out (`Carjacker.ts`): a
+   * carjacking, reported once; getting into it does not count again as a plain theft.
+   */
+  carjacked(vehicleId: string): void {
+    this.taken.add(vehicleId);
+    this.report("carjacking");
+  }
+
   /** Report a crime; the level may rise. */
   report(crime: Crime): void {
     this.lastCrime = crime;
