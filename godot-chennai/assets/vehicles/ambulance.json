@@ -1,0 +1,302 @@
+{
+ "name": "ambulance",
+ "label": "Ambulance",
+ "kind": "ambulance",
+ "licence": "Original work for the Three.js game, made by `chennai-open-world/tools/blender/{vehicles,auto_rickshaw}.py` in Blender 5.2 LTS; copied unchanged. No maker's badges, logos, grilles or liveries copied; plates are not real registrations (chennai-open-world/assets/README.md).",
+ "source": "chennai-open-world/tools/blender/vehicles.py (copied to tools/blender/vehicles/road/)",
+ "frame": "metres; +Y up, front faces -Z, +X right; ground at y = 0; origin centred between the axles",
+ "size_m": {
+  "width": 2.42,
+  "height": 2.4,
+  "length": 5.29
+ },
+ "body_size_m": {
+  "width": 1.96,
+  "height": 2.22,
+  "length": 5.1
+ },
+ "size_note": "size_m is the measured overall size (mirrors, beacons, handlebars); body_size_m is docs/vehicles.md",
+ "mass_kg": 2300,
+ "ported": true,
+ "lods": [
+  {
+   "file": "ambulance.glb",
+   "triangles": 14576,
+   "max_distance_m": 28
+  },
+  {
+   "file": "ambulance_lod1.glb",
+   "triangles": 3900,
+   "min_distance_m": 34,
+   "max_distance_m": 300
+  }
+ ],
+ "wheels": [
+  {
+   "node": "wheel_fl",
+   "centre": [
+    -0.86,
+    0.38,
+    -1.6
+   ],
+   "radius": 0.38,
+   "steers": true,
+   "driven": true
+  },
+  {
+   "node": "wheel_fr",
+   "centre": [
+    0.86,
+    0.38,
+    -1.6
+   ],
+   "radius": 0.38,
+   "steers": true,
+   "driven": true
+  },
+  {
+   "node": "wheel_rl",
+   "centre": [
+    -0.86,
+    0.38,
+    1.55
+   ],
+   "radius": 0.38,
+   "steers": false,
+   "driven": false
+  },
+  {
+   "node": "wheel_rr",
+   "centre": [
+    0.86,
+    0.38,
+    1.55
+   ],
+   "radius": 0.38,
+   "steers": false,
+   "driven": false
+  }
+ ],
+ "steering": {
+  "node": null,
+  "hub": [
+   0.45,
+   1.55,
+   -1.12
+  ],
+  "radius": 0.19
+ },
+ "doors": [
+  {
+   "node": "door_cab",
+   "hinge": [
+    0.985,
+    0,
+    -1.22
+   ],
+   "axis": [
+    0,
+    1,
+    0
+   ],
+   "open_deg": 65,
+   "side": "right",
+   "notes": null
+  },
+  {
+   "node": "door_back_l",
+   "hinge": [
+    -0.7,
+    0,
+    2.56
+   ],
+   "axis": [
+    0,
+    1,
+    0
+   ],
+   "open_deg": -110,
+   "side": "left",
+   "notes": null
+  },
+  {
+   "node": "door_back_r",
+   "hinge": [
+    0.7,
+    0,
+    2.56
+   ],
+   "axis": [
+    0,
+    1,
+    0
+   ],
+   "open_deg": 110,
+   "side": "right",
+   "notes": null
+  }
+ ],
+ "seats": [
+  {
+   "node": null,
+   "name": "seat_driver",
+   "hip": [
+    0.45,
+    1.25,
+    -0.7
+   ],
+   "role": "driver"
+  },
+  {
+   "node": null,
+   "name": "passenger_0",
+   "hip": [
+    0,
+    1.3,
+    1.9
+   ],
+   "role": "passenger",
+   "door_leaf": 1,
+   "stand": [
+    0,
+    0,
+    3.5
+   ]
+  }
+ ],
+ "grips": [
+  {
+   "node": null,
+   "name": "grip_steer_l",
+   "position": [
+    0.28,
+    1.55,
+    -1.12
+   ]
+  },
+  {
+   "node": null,
+   "name": "grip_steer_r",
+   "position": [
+    0.62,
+    1.55,
+    -1.12
+   ]
+  }
+ ],
+ "pose": {
+  "lean": -0.05,
+  "hand": [
+   0.17,
+   0.3,
+   -0.42
+  ],
+  "foot": [
+   0.12,
+   -0.38,
+   -0.7
+  ],
+  "knees": null
+ },
+ "entry": {
+  "side": 1,
+  "point": [
+   1.5,
+   0,
+   -0.5
+  ],
+  "door": "hinged",
+  "style": "door",
+  "aisle": []
+ },
+ "cargo": [
+  {
+   "node": null,
+   "what": "stretcher place",
+   "position": [
+    0,
+    0.6,
+    1.45
+   ]
+  }
+ ],
+ "collision": [
+  {
+   "shape": "box",
+   "centre": [
+    0,
+    1.1,
+    0
+   ],
+   "half_extents": [
+    0.98,
+    0.8,
+    2.5
+   ]
+  }
+ ],
+ "physics": {
+  "mass": 2300,
+  "rideHeight": 0.95,
+  "wheels": [
+   {
+    "x": -0.86,
+    "y": -0.42,
+    "z": -1.6,
+    "radius": 0.38,
+    "steers": true,
+    "driven": true
+   },
+   {
+    "x": 0.86,
+    "y": -0.42,
+    "z": -1.6,
+    "radius": 0.38,
+    "steers": true,
+    "driven": true
+   },
+   {
+    "x": -0.86,
+    "y": -0.42,
+    "z": 1.55,
+    "radius": 0.38,
+    "steers": false,
+    "driven": false
+   },
+   {
+    "x": 0.86,
+    "y": -0.42,
+    "z": 1.55,
+    "radius": 0.38,
+    "steers": false,
+    "driven": false
+   }
+  ],
+  "halfExtents": [
+   0.98,
+   0.8,
+   2.5
+  ],
+  "engineForce": 12500,
+  "maxSpeed": 25,
+  "maxSteer": 0.55,
+  "brakeForce": 230,
+  "drift": 0.45,
+  "gears": 5
+ },
+ "chassis_to_model_y": 1.1,
+ "notes": "Ported unchanged; riding data from specs.ts (measured off the models by the old game's tests).",
+ "cargo_clear": {
+  "min": [
+   -0.6,
+   0.62,
+   0.05
+  ],
+  "max": [
+   0.3,
+   2.0,
+   2.45
+  ]
+ },
+ "siren": true
+}

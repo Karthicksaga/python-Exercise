@@ -63,9 +63,9 @@ ROLES = {
     "alloy": ((0.62, 0.63, 0.65), 0.28, 1.0, None),
     "dark_alloy": ((0.12, 0.12, 0.13), 0.32, 1.0, None),
     "steel": ((0.42, 0.42, 0.43), 0.45, 1.0, None),
-    "glass": ((0.035, 0.05, 0.065), 0.06, 0.2, None),
+    "glass": ((0.012, 0.018, 0.024), 0.08, 0.0, None),
     "glass_cockpit": ((0.06, 0.09, 0.11), 0.05, 0.3, None),
-    "headlamp": ((0.85, 0.87, 0.9), 0.1, 0.6, (1.0, 0.97, 0.9)),
+    "headlamp": ((0.85, 0.87, 0.9), 0.15, 0.0, (0.9, 0.88, 0.82)),
     "taillamp": ((0.45, 0.02, 0.02), 0.2, 0.0, (1.0, 0.05, 0.03)),
     "indicator": ((0.9, 0.42, 0.02), 0.2, 0.0, (1.0, 0.45, 0.02)),
     "interior": ((0.06, 0.058, 0.055), 0.8, 0.0, None),
@@ -145,8 +145,10 @@ def palette_images():
                     for x in range(cell):
                         j = base + x * 4
                         px[j], px[j + 1], px[j + 2], px[j + 3] = col[0], col[1], col[2], 1.0
-            img.pixels = px
+            # Colour space first: changing it on a generated image regenerates (blanks) the pixels.
             img.colorspace_settings.name = "sRGB" if key != "mr" else "Non-Color"
+            img.pixels.foreach_set(px)
+            img.update()
             img.pack()
         imgs[key] = img
     return imgs
@@ -164,6 +166,7 @@ def save_palette(directory):
 
 def _principled(m):
     m.use_nodes = True
+    m.use_backface_culling = True
     return m.node_tree.nodes["Principled BSDF"]
 
 
@@ -275,7 +278,8 @@ class Painter:
 
     def image(self):
         img = bpy.data.images.new(self.name, self.w, self.h, alpha=False)
-        img.pixels = self.px
+        img.pixels.foreach_set(self.px)
+        img.update()
         img.pack()
         return img
 
@@ -748,9 +752,12 @@ def triangles(objs=None):
 def to_atlas(obj):
     """Role materials -> the shared atlas: each face's UVs at its role's cell centre."""
     me = obj.data
-    if not me.uv_layers:
+    if len(me.uv_layers) == 0:
         me.uv_layers.new(name="UVMap")
-    uv = me.uv_layers.active.data
+    while len(me.uv_layers) > 1:  # one UV set only (joins can bring several)
+        me.uv_layers.remove(me.uv_layers[-1])
+    me.uv_layers.active_index = 0
+    uv = me.uv_layers[0].data
     atlas = atlas_material()
     keep = {}
     new_mats = []
@@ -763,20 +770,24 @@ def to_atlas(obj):
 
     remap = {}
     for i, m in enumerate(me.materials):
-        if m is not None and m.name.startswith("r_"):
+        if m is None:  # faces added by a boolean cutter (arch liners, cut edges): dark trim
+            remap[i] = (slot_for(atlas), cell_uv("black"))
+        elif m.name.startswith("r_"):
             remap[i] = (slot_for(atlas), cell_uv(m.name[2:]))
         else:
             remap[i] = (slot_for(m), None)
+    slots = []
     for p in me.polygons:
         slot, cuv = remap.get(p.material_index, (0, None))
         if cuv is not None:
             for li in p.loop_indices:
                 uv[li].uv = cuv
-        p.material_index = slot
-    me.materials.clear()
+        slots.append(slot)
+    me.materials.clear()  # (this resets every face's material index)
     for m in new_mats:
         me.materials.append(m)
-    # Merge duplicate slots of the same material.
+    for p, slot in zip(me.polygons, slots):
+        p.material_index = slot
     return obj
 
 
