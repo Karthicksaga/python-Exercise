@@ -176,10 +176,12 @@ function addLivery(object: THREE.Object3D): void {
   const bandY = (bounds.min.y - object.position.y) + (roof - (bounds.min.y - object.position.y)) * 0.42;
   const left = new THREE.PlaneGeometry(length * 0.62, bandHeight);
   left.rotateY(-Math.PI / 2);
-  left.translate(bounds.min.x - 0.01, bandY, midZ);
+  // On the doors: the body's own width (the bounds include the mirrors).
+  const side = VEHICLE_TYPES.car.physics.halfExtents.x + 0.04;
+  left.translate(-side, bandY, midZ);
   const right = new THREE.PlaneGeometry(length * 0.62, bandHeight);
   right.rotateY(Math.PI / 2);
-  right.translate(bounds.max.x + 0.01, bandY, midZ);
+  right.translate(side, bandY, midZ);
   const bands = new THREE.Mesh(mergeGeometries([left, right], false)!, m.livery);
   object.add(red, blue, bands);
 }

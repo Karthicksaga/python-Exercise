@@ -13,7 +13,7 @@
 import * as THREE from "three";
 import { cargoAboard, FARES, type GoodsKind, type GoodsStop, type Job, type JobRunner, type Mission, type MissionRunner } from "@cow/missions";
 import type { CarryKind, Cast, HumanAssets, HumanFigure } from "@cow/player";
-import type { Vehicle, VehicleKind } from "@cow/vehicles";
+import { VEHICLE_TYPES, type Vehicle, type VehicleKind } from "@cow/vehicles";
 import { GOODS_CARRY, GOODS_HEIGHT, makeGoods } from "./goodsModels";
 
 /** People farther than this from the player are not drawn (metres), as for fares. */
@@ -34,21 +34,24 @@ interface CargoPlace {
 }
 
 /**
- * Where goods ride in each vehicle (estimated from the procedural models in `@cow/vehicles`).
- * TODO: switch to the per-vehicle `cargo` anchor of the vehicle type data once the vehicles
- * branch (`agent/vehicles-real`) lands; this table is the only place to change.
+ * Where goods ride in each vehicle: slots round the vehicle type's `cargo` anchor (the middle of a
+ * load's base on the Blender models, `docs/vehicles.md`). This table is the only place to change.
  */
+const at = (kind: VehicleKind, dx: number, dy: number, dz: number) => {
+  const c = VEHICLE_TYPES[kind].cargo;
+  return { x: c.x + dx, y: c.y + dy, z: c.z + dz };
+};
 export const CARGO: Readonly<Record<VehicleKind, CargoPlace>> = {
-  // On the pillion half of the long seat (top 0.245 m), behind the rider; a second item behind it.
-  bike: { slots: [{ x: 0, y: 0.245, z: 0.6 }, { x: 0, y: 0.17, z: 0.97 }], stand: { x: -0.75, z: 0.7 }, mirror: true },
-  // The back seat, through the kerb-side rear door.
-  car: { slots: [{ x: -0.42, y: 0.0, z: 0.95 }, { x: 0, y: 0.0, z: 0.95 }, { x: 0.42, y: 0.0, z: 0.95 }], stand: { x: -1.2, z: 1.35 }, leaf: 1, mirror: true },
+  // On the rear carrier behind the seat, then on the pillion half of the seat (top about 0.26 m) ahead of it.
+  bike: { slots: [at("bike", 0, 0, 0), at("bike", 0, -0.01, -0.25)], stand: { x: -0.75, z: 0.7 }, mirror: true },
+  // The back seat (seen through the glass), through the kerb-side rear door.
+  car: { slots: [at("car", -0.42, 0, 0), at("car", 0, 0, 0), at("car", 0.42, 0, 0)], stand: { x: -1.2, z: 1.35 }, leaf: 1, mirror: true },
   // The rear bench, from the open side.
-  auto: { slots: [{ x: -0.38, y: 0.07, z: 0.82 }, { x: 0, y: 0.07, z: 0.82 }, { x: 0.38, y: 0.07, z: 0.82 }], stand: { x: -0.95, z: 0.8 }, mirror: true },
-  // The floor behind the rear doors.
-  ambulance: { slots: [{ x: 0, y: -0.5, z: 1.9 }, { x: 0, y: -0.5, z: 1.45 }], stand: { x: 0, z: 3.2 }, leaf: 1, mirror: false },
+  auto: { slots: [at("auto", -0.38, 0, 0), at("auto", 0, 0, 0), at("auto", 0.38, 0, 0)], stand: { x: -0.95, z: 0.8 }, mirror: true },
+  // The floor of the patient's compartment, behind the rear doors.
+  ambulance: { slots: [at("ambulance", 0, 0, 0.45), at("ambulance", 0, 0, 0)], stand: { x: 0, z: 3.2 }, leaf: 1, mirror: false },
   // The floor beside the front door.
-  bus: { slots: [{ x: -0.85, y: -0.33, z: -2.9 }, { x: -0.85, y: -0.33, z: -2.45 }], stand: { x: -1.85, z: -3.6 }, leaf: 0, mirror: false },
+  bus: { slots: [at("bus", 0, 0, 0), at("bus", 0, 0, 0.45)], stand: { x: -1.85, z: -3.6 }, leaf: 0, mirror: false },
 };
 
 /** What the game hands over each frame. */

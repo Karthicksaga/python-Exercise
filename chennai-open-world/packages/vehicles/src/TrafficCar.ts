@@ -4,10 +4,7 @@
  */
 import type * as THREE from "three";
 import { buildVehicleModel, type VehicleModel } from "./models";
-import { VEHICLE_TYPES, type VehicleKind, type VehicleType } from "./specs";
-
-/** How far the suspension sits compressed when parked, metres. */
-const SETTLED_SUSPENSION = 0.3;
+import { SETTLED_SUSPENSION, VEHICLE_TYPES, type VehicleKind, type VehicleType } from "./specs";
 
 export class TrafficCar {
   readonly type: VehicleType;
@@ -18,7 +15,8 @@ export class TrafficCar {
 
   constructor(kind: VehicleKind, color: number) {
     this.type = VEHICLE_TYPES[kind];
-    this.model = buildVehicleModel(kind, color);
+    // Traffic is seen from a distance: the light model (LOD1).
+    this.model = buildVehicleModel(kind, color, "far");
     this.type.physics.wheels.forEach((wheel, i) => this.model.wheels[i]?.position.set(wheel.x, wheel.y - SETTLED_SUSPENSION, wheel.z));
   }
 

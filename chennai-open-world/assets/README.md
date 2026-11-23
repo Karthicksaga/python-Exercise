@@ -9,10 +9,12 @@
 | `osm/anna-nagar.osm.json` | Map extract | OpenStreetMap via Overpass API | ODbL 1.0, © OpenStreetMap contributors; see `osm/README.md` |
 
 | `models/props/*.glb` | Street props: barrel, crates, clay pots, AC unit, dish antenna, awning, rolling shutter (`ShutterOpen` clip), vegetable handcart (`Roll` clip) | Original, made by `tools/blender/street_props.py` in Blender 5.2 LTS (`npm run blender:props`) | Original work for this project |
-| `models/vehicles/auto_rickshaw.glb`, `auto_rickshaw_lod1.glb` | Auto-rickshaw (detailed 16k triangles; traffic 12k), wheels as separate nodes | Original, made by `tools/blender/auto_rickshaw.py` in Blender 5.2 LTS (`npm run blender:auto`) | Original work for this project. Not used by the game yet (awaiting review) |
+| `models/vehicles/auto_rickshaw.glb`, `auto_rickshaw_lod1.glb` | Auto-rickshaw (detailed 16k triangles; traffic 12k), wheels as separate nodes | Original, made by `tools/blender/auto_rickshaw.py` in Blender 5.2 LTS (`npm run blender:auto`) | Original work for this project. Both used by the game (detailed near the player, LOD1 in traffic) |
+| `models/vehicles/hatchback.glb`, `motorbike.glb`, `ambulance.glb`, `bus.glb` and their `_lod1.glb` | Hatchback (10.5k / 3.1k triangles), commuter motorbike (7.6k / 2.3k), van ambulance (14.6k / 3.9k), city bus (12.4k / 5.3k); wheels and doors as separate nodes (`docs/vehicles.md`) | Original, made by `tools/blender/vehicles.py` in Blender 5.2 LTS (`npm run blender:vehicles`); no textures in the files (plates and lettering are drawn by the game, `vehicleDecalTexture`) | Original work for this project: no maker's badges, logos, grilles or liveries copied; number plates are not real registrations |
 | `optimized/*.glb` | What the game embeds: the models above after `npm run optimize:assets` (blend shapes dropped, textures 512 px WebP (the player's 1024 px, people LOD1 128 px), meshopt-compressed geometry) | Generated from the sources above | Same licences as their sources |
 
-Vehicles, buildings, trees and all textures are generated in code and are original, including
+Vehicles are the Blender models above (the code-built bodies in `models.ts` only stand in before
+they load). Buildings, trees and all textures are generated in code and are original, including
 the shop signboards: their words and names are invented (see `shopSigns.ts`), not real businesses.
 
 ## Optimising
@@ -20,6 +22,9 @@ the shop signboards: their words and names are invented (see `shopSigns.ts`), no
 MIT; sharp, Apache 2.0) rewrites every `models/*.glb` and `animations/*.glb` into `optimized/` (and `models/props`, `models/vehicles`,
 `models/people` into the folders of the same name). 17 Nov 2026, MPFB characters: player 2,798 KB → 351 KB;
 elder 920 → 185 KB, lungi 986 → 161 KB, tshirt 808 → 148 KB, worker 889 → 162 KB.
+23 Nov 2026, vehicles: hatchback 432 → 112 KB (LOD1 155 → 49), motorbike 282 → 82 (107 → 43),
+ambulance 522 → 134 (181 → 58), bus 462 → 100 (205 → 52); with the auto's detailed model (130 KB)
+now embedded too, the game script grew by about 1.0 MB.
 22 Nov 2026, the full cast: 37 people, LOD0 + LOD1, 6,824 KB optimised (meshopt "high" for people); player 354 KB.
 16 Nov 2026: player 1,796 KB → 484 KB, locomotion 189 KB → 123 KB; the game script went from
 7.9 MB to 6.1 MB. Run it after changing any model and commit both the source and the output.

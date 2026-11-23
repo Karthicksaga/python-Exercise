@@ -875,3 +875,23 @@ Difficulty has not been play-tested by a person.
   rear doors and out at the hospital. In the hatchback the parcels are on the back seat but the
   current model's glass is opaque, so they are seen only while the rear door is open.
 - **Results:** typecheck clean; unit 532/532; browser fares + jobs + places 16/16, stages3 16–21 + missions2 stage 11: 8/8, people 3/3 (local, with the lock; full suite left to CI).
+## 23 Nov 2026: realistic vehicles (branch `agent/vehicles-real`)
+- **Done** (`docs/vehicles.md`, TD-26): original Blender models by script
+  (`tools/blender/vehicles.py`, `npm run blender:vehicles`) for the hatchback (also cab, police and
+  gang cars), commuter motorbike, van ambulance and city bus, replacing the code-built boxes: lofted
+  and subdivided bodies with wheel arches, panel seams, tinted glass, headlamp clusters, tail lamps,
+  mirrors, plates (no real registration), bumpers, interiors (seats, dashboard, steering wheel),
+  wheels as separate nodes (alloy, steel or spoked), doors cut from the body on the old hinges.
+  Detailed model for parked and drivable vehicles within 28 m of the player, LOD1 for traffic and
+  police (and beyond 34 m). The auto's detailed model is now used too. `VehicleType.cargo` (and the
+  ambulance's `cargoClear`) for job props. Physics, colliders, poses and entry points unchanged.
+- **Tested:** typecheck; unit tests (new `blenderVehicles.test.ts`: size round the collider, ground
+  contact, wheel radii, triangle and draw-call budgets, grips, pegs and steering-wheel rims under
+  the hand points, cargo surfaces, the ambulance's empty stretcher space; `doors.test.ts` now runs
+  on the Blender doors, triangle limits raised on purpose; `ridingPose.test.ts` unchanged and
+  passing); browser specs listed in `handoff.md`. Looked at in Cycles renders and in the game at
+  915x412 (lite and normal quality): every kind parked, riding the bike and driving the car with
+  the wheels turning, the car's door open while boarding. Not tried on a phone.
+- **Cost** (`?quality=lite`, production build, software GPU, worst of four headings) before ->
+  after: spawn 183 -> 183 draw calls, 273k -> 285k triangles; T. Nagar 118 -> 118, 212k -> 216k;
+  Anna Salai 135 -> 135, 220k -> 220k; Egmore 140 -> 140, 182k -> 188k. Game script +1.0 MB.

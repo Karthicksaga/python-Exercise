@@ -1,7 +1,7 @@
 /** One drivable vehicle: its physics body, its model, and keeping the two in step. */
 import * as THREE from "three";
 import type { PhysicsWorld, VehicleBody, VehicleControls } from "@cow/physics";
-import { buildVehicleModel, type VehicleModel } from "./models";
+import { buildVehicleModel, type VehicleDetail, type VehicleModel } from "./models";
 import { VEHICLE_TYPES, type VehicleKind, type VehicleType } from "./specs";
 
 /** A move longer than this in one fixed step is a teleport: drawn at once (metres). */
@@ -16,11 +16,23 @@ const IDLE: VehicleControls = { throttle: 0, steer: 0, brake: 0.4 };
 const IMPACT = 1.6;
 /** Share of speed kept after a crash. */
 const CRASH_KEEP = 0.65;
+/**
+ * The detailed model is drawn within this distance of the player (metres), the light one (as
+ * traffic uses) further away; a few metres of overlap so it doesn't flicker on the boundary.
+ */
+const NEAR = 28;
+const FAR = 34;
 
 export class Vehicle {
   readonly type: VehicleType;
   readonly body: VehicleBody;
-  private readonly model: VehicleModel;
+  /** What the scene holds: the model in use is its only child. */
+  private readonly root = new THREE.Group();
+  /** The detailed model (made when first needed) and the light one. */
+  private near: VehicleModel | null = null;
+  private readonly far: VehicleModel;
+  private model: VehicleModel;
+  private readonly color: number;
   private roll = 0;
   private lean = 0;
   private readonly seatPoint = new THREE.Vector3();
@@ -45,11 +57,39 @@ export class Vehicle {
   ) {
     this.type = VEHICLE_TYPES[kind];
     this.body = physics.createVehicle(this.type.physics, { x: position.x, y: this.type.rideHeight + 0.1, z: position.z }, yaw);
-    this.model = buildVehicleModel(kind, color);
+    this.color = color;
+    this.far = buildVehicleModel(kind, color, "far");
+    this.model = this.far;
+    this.useDetail("near");
   }
 
+  /** The vehicle in the scene (its position and turn are on this group; the model is inside it). */
   get object(): THREE.Group {
-    return this.model.object;
+    return this.root;
+  }
+
+  /** Which model is drawn: "near" (detailed) or "far" (as traffic). */
+  get detail(): VehicleDetail {
+    return this.model === this.far && this.near !== this.far ? "far" : "near";
+  }
+
+  /** Swap to the detailed or the light model, keeping the doors' positions. */
+  private useDetail(detail: VehicleDetail): void {
+    if (detail === "near") this.near ??= buildVehicleModel(this.type.kind, this.color, "near");
+    const next = detail === "near" ? this.near! : this.far;
+    if (next === this.model && next.object.parent === this.root) return;
+    this.root.remove(this.model.object);
+    this.model = next;
+    this.root.add(next.object);
+    if (next.door) {
+      next.door(this.doorAmount);
+      this.leafAmounts.forEach((a, leaf) => next.door!(a ?? 0, leaf));
+    }
+  }
+
+  /** A door is open (the detailed model, which has them, stays while one is). */
+  private get doorsOpen(): boolean {
+    return this.doorAmount > 0 || this.leafAmounts.some((a) => (a ?? 0) > 0);
   }
 
   get kind(): VehicleKind {
@@ -78,6 +118,7 @@ export class Vehicle {
 
   /** Swing the driver's door (`Boarding` decides how far). Ignored on vehicles without one. */
   setDoor(amount: number): void {
+    if (amount > 0) this.useDetail("near");
     if (!this.model.door) return;
     this.doorAmount = Math.min(1, Math.max(0, amount));
     this.model.door(this.doorAmount);
@@ -91,6 +132,7 @@ export class Vehicle {
    * with the driver). Ignored on vehicles without doors.
    */
   setPassengerDoor(leaf: number, amount: number): void {
+    if (amount > 0) this.useDetail("near");
     if (!this.model.door) return;
     const a = Math.min(1, Math.max(0, amount));
     if (leaf === 0) {
@@ -188,8 +230,16 @@ export class Vehicle {
    * Copy the physics state onto the model. Call once per rendered frame. `alpha` (0 to 1): how far
    * the clock is past the last fixed step; the model is drawn that far between the pose before
    * that step and the pose after it, so it moves evenly whatever the display rate.
+   * @param viewer where the player is: the detailed model is drawn near them, the light one
+   *   further away (always the detailed one without it, or while a door is open)
    */
-  sync(dt: number, alpha = 1): void {
+  sync(dt: number, alpha = 1, viewer?: { readonly x: number; readonly z: number }): void {
+    if (viewer) {
+      const p = this.body.position();
+      const d = Math.hypot(p.x - viewer.x, p.z - viewer.z);
+      if (d < NEAR || this.doorsOpen) this.useDetail("near");
+      else if (d > FAR) this.useDetail("far");
+    }
     if (this.sirenOn) {
       // Red and blue take turns, about three flashes a second.
       this.sirenClock += dt;

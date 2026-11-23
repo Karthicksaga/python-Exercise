@@ -432,3 +432,27 @@ are unchanged: the sidestep only moves a person sideways and steering brings the
 
 **Revisit when** fights need combos or blocks (the swing clock becomes a small state machine), or
 a phone test shows the wind-up feels late.
+## TD-26: Vehicles are Blender models in two levels of detail, built round the unchanged physics
+
+**Decision (23 Nov 2026, `agent/vehicles-real`, after the user asked for realistic machines).**
+The hatchback, motorbike, ambulance and bus are original models made by script
+(`tools/blender/vehicles.py`), like the auto-rickshaw, replacing the code-built boxes. Each kind has
+a detailed model and a light one (LOD1). AI traffic, police and gang cars always use the light one;
+parked and drivable vehicles use the detailed one within 28 m of the player (34 m to switch back)
+or while a door is open. The physics (`VEHICLE_TYPES.physics`), riding poses, entry points and door
+hinges did not change: the models were built to them, and tests check the grips, steering-wheel
+rims, pegs, wheel radii and ground contact against that data. Doors are cut from the body shell so
+they keep its curvature; their hinges live in `models.ts`, not in the files (the optimiser moves
+node origins). Details in `docs/vehicles.md`.
+
+**Why.** The same draw-call scheme as the auto (one call per material role, colours in vertices,
+shared materials and buffers) keeps a vehicle at 9-15 calls, about what the boxes cost, so realism
+is paid for in triangles, which LOD1 keeps low where vehicles are many (traffic: 2.3k to 5.3k).
+
+**Trade-offs.** The game script grows by about 1.0 MB (760 kB of models, base64). Spawn rose from
+273k to 285k triangles (`?quality=lite`), near the 300k budget of TD-18. Glass is one shared
+transparent material, so the closed vehicles' cabins show dimly; doors' windows are opaque (one
+vertex-coloured door mesh).
+
+**Revisit when** the spawn budget is needed for something else (lower the 28 m switch), or phones
+show the transparent glass costs too much.

@@ -89,6 +89,38 @@ export interface VehicleType {
   readonly entry: VehicleEntry;
   /** Doors passengers use, kerb (left) side first. None on the motorbike. */
   readonly passengers?: readonly PassengerDoor[];
+  /**
+   * Where a load sits (a parcel, a box, a patient's stretcher): the middle of its base, in the
+   * chassis frame (+X right, -Z forwards, y up from the chassis centre; y is the surface it rests
+   * on). For the job props (`JobDesk`, `FareFigures`); measured off the Blender models
+   * (`tools/blender/vehicles.py`, `auto_rickshaw.py`). See `docs/vehicles.md`.
+   */
+  readonly cargo: Point3;
+  /**
+   * A box (chassis frame) the model keeps empty for loads: the ambulance's stretcher space, from
+   * just behind the cabinets to the rear doors, left of the crew bench. Nothing of the vehicle is
+   * inside it (`glbModels.test.ts`).
+   */
+  readonly cargoClear?: { readonly min: Point3; readonly max: Point3 };
+}
+
+/** A point in a vehicle's chassis frame, metres. */
+export interface Point3 {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+/** How far the suspension sits compressed when parked, metres (traffic draws its wheels there). */
+export const SETTLED_SUSPENSION = 0.3;
+
+/**
+ * Where the ground is below a vehicle's chassis centre when parked: a wheel's mount height, less
+ * the settled suspension and its radius. The models are placed on it (`loadVehicleModels`).
+ */
+export function groundBelow(kind: VehicleKind): number {
+  const wheel = VEHICLE_TYPES[kind].physics.wheels[0]!;
+  return wheel.y - SETTLED_SUSPENSION - wheel.radius;
 }
 
 export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
@@ -106,6 +138,9 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
       { point: { x: 1.2, z: 1.35 }, inside: { x: 0.35, y: 0.1, z: 0.95 }, leaf: 2 },
     ],
     cameraDistance: 8.5,
+    // The middle of the back seat (seen through the glass; the rear doors open beside it). The boot
+    // floor behind it is at (0, -0.3, 1.62).
+    cargo: { x: 0, y: -0.15, z: 0.95 },
     gears: 5,
     physics: {
       halfExtents: { x: 0.82, y: 0.42, z: 1.95 },
@@ -128,6 +163,8 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     label: "Auto-rickshaw",
     rideHeight: 0.7,
     cameraDistance: 7,
+    // The middle of the passengers' bench (top 0.065 m up; the floor in front of it is at y -0.29).
+    cargo: { x: 0, y: 0.065, z: 0.82 },
     gears: 4,
     openSeat: true,
     // Saddle top 0.21 m above the chassis centre; grips 0.47 m up, 0.78 m ahead, 0.335 m out;
@@ -164,6 +201,8 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     label: "Motorbike",
     rideHeight: 0.62,
     cameraDistance: 6.5,
+    // The rear carrier on top of the grab rail, behind the seat.
+    cargo: { x: 0, y: 0.27, z: 0.85 },
     gears: 5,
     openSeat: true,
     // Front of the seat (top 0.245 m), grips at (±0.33, 0.52, -0.42), pegs at (±0.24, -0.265, 0.12): `models.ts`.
@@ -192,6 +231,9 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     label: "Ambulance",
     rideHeight: 0.95,
     cameraDistance: 10.5,
+    // The stretcher's place on the floor of the patient's compartment, kept clear in the model.
+    cargo: { x: 0, y: -0.5, z: 1.45 },
+    cargoClear: { min: { x: -0.6, y: -0.48, z: 0.05 }, max: { x: 0.3, y: 0.9, z: 2.45 } },
     gears: 5,
     siren: true,
     driver: { x: 0.45, y: 0.15, z: -0.7 },
@@ -237,6 +279,8 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     // Passengers use the same front door as the driver, and walk up the aisle out of sight.
     passengers: [{ point: { x: -1.85, z: -3.6 }, inside: { x: -0.6, y: 0.3, z: -3.0 }, leaf: 0 }],
     cameraDistance: 15,
+    // The floor beside the front door (kerb side), in front of the first row of seats on that side.
+    cargo: { x: -0.85, y: -0.34, z: -2.9 },
     gears: 5,
     physics: {
       // A short city bus (about 10 m), so it fits Anna Nagar's side streets.

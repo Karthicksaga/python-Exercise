@@ -10,7 +10,7 @@
 import * as THREE from "three";
 import { FARES, type FarePerson, type FareStop } from "@cow/missions";
 import type { HumanAssets, HumanFigure } from "@cow/player";
-import type { Vehicle } from "@cow/vehicles";
+import { VEHICLE_TYPES, type Vehicle } from "@cow/vehicles";
 import { makeGoods } from "./goodsModels";
 
 const SHOW_RADIUS = 220;
@@ -24,11 +24,16 @@ const UNIFORM = 0xa9c9de;
 
 /**
  * The stretcher's way into the ambulance, relative to its chassis centre: from behind the rear
- * doors (`out`) to its place on the floor (`in`), the floor this far above the ground. The
- * ambulance's rear-door area (estimated). TODO: take these from the vehicle type's `cargo`
- * anchor once the vehicles branch lands.
+ * doors (`out`) to its place on the floor (`in`, the ambulance's `cargo` anchor, in the stretcher
+ * space its model keeps clear), the floor this far above the ground.
  */
-const AMBULANCE = { out: { x: 0, z: 3.7 }, in: { x: 0, z: 1.35 }, floor: 0.42, leaf: 1 } as const;
+const AMBULANCE_TYPE = VEHICLE_TYPES.ambulance;
+const AMBULANCE = {
+  out: { x: 0, z: 3.7 },
+  in: { x: AMBULANCE_TYPE.cargo.x, z: AMBULANCE_TYPE.cargo.z },
+  floor: AMBULANCE_TYPE.cargo.y + AMBULANCE_TYPE.rideHeight,
+  leaf: 1,
+} as const;
 /** Mattress top on the trolley (metres), where the patient lies. */
 const MATTRESS = 0.79;
 /** The paramedic walks this far behind the trolley's centre, at its push bar (metres). */
