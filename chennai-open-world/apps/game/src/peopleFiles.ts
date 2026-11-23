@@ -1,7 +1,7 @@
 /**
- * The people manifest and their model files, as the build embeds them (TD-3: binary assets are
- * `?inline` base64 inside the one script). Each model is a lazy import, so its data is decoded
- * only when someone first needs that person (`HumanAssets.look`).
+ * The people manifest and their model files. The cast's models are files next to the page (served
+ * from the APK's assets like the world files, TD-16), each fetched only when someone first needs
+ * that person (`HumanAssets.look`); the player's model is `?inline` in the script (TD-3).
  *
  * `assets/models/people/people.json` is the real manifest, written by the assets pipeline
  * (`docs/characters.md`). A `people.fixture.json` beside it is used only when there is no real
@@ -10,7 +10,13 @@
 import { parsePeopleManifest, type PeopleSources } from "@cow/player";
 
 const manifests = import.meta.glob<unknown>("../../../assets/models/people/people*.json", { eager: true, import: "default" });
-const models = import.meta.glob<string>(["../../../assets/optimized/people/**/*.glb", "../../../assets/optimized/player.glb"], { query: "?inline", import: "default" });
+// The cast's models are separate files beside the page, fetched when someone first needs that
+// person: inlined as base64 they made the one script 16 MB, which a phone must read, parse and
+// hold in memory before the loading screen can even start (23 Nov 2026, TD-25). The player's own
+// model stays inline: the game cannot start without it.
+const castModels = import.meta.glob<string>("../../../assets/optimized/people/**/*.glb", { query: "?url", import: "default" });
+const playerModels = import.meta.glob<string>("../../../assets/optimized/player.glb", { query: "?inline", import: "default" });
+const models = { ...castModels, ...playerModels };
 
 const OPTIMIZED = "/assets/optimized/";
 

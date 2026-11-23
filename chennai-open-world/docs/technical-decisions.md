@@ -59,6 +59,11 @@ the APK, not downloaded.
 The Android app now serves the game through `WebViewAssetLoader` on an https origin (TD-16),
 where module scripts and `fetch` would work. The classic script and `base: "./"` stay anyway: the
 build still opens from disk, and changing them buys nothing yet.
+**Amended 23 Nov 2026:** the Chennai cast (TD-24) is 75 model files, 6.9 MB; inlined they made the
+script 16 MB, and a phone stalled on the loading screen with its drawing breaking up (memory).
+The cast's models are now separate files in `dist/assets/` (`?url`), fetched over the https
+origin when a person is first needed; the script is 6.7 MB again. The player's model stays
+inline. Opened from disk (`file://`) the cast cannot load; the app never does that.
 
 ## TD-4: Workspace packages are TypeScript source, not built libraries
 
@@ -435,6 +440,12 @@ keyboards, D-pads and accessibility. This adds no keyboard *gameplay* controls (
 camera, the player's idle pose and the rain animate), drawn at most 30 times a second, and not at
 all with reduced motion. The shell's Back handling moved into the game: an untested path on a
 device until the APK is built and run (no Android SDK on the machine where this was made).
+
+**On a phone (23 Nov 2026).** The first device run stalled on "Reading the map of Chennai" with
+bands of the screen undrawn and the progress panel a white box: the GPU and memory ran short,
+not the steps. Two fixes outside this screen: the cast's models left the script (TD-3 amended,
+16 MB → 6.7 MB, about 45 MB less JavaScript memory after loading) and the WebView no longer
+uses `androidLayerType="hardware"`, which copied the whole page into one more full-screen texture.
 
 **Revisit when** the menu should show more of the city (a few fixed camera shots across
 districts would need their chunks loaded), or a settings page grows options that need a reload

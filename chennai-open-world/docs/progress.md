@@ -913,3 +913,15 @@ Difficulty has not been play-tested by a person.
   AGENTS.md): `combat`, `gangs`, `missions2`, `stages3`, `police`, `pedestrians`, `weapons`,
   `onfoot` 37/38 on the first run (stage 15 stuck, fixed as above, then 1/1 again with
   `missions2` 9/9 and `combat` 4/4); `fight.spec` 4/4. The full suite runs in CI.
+## 23 Nov 2026: the game stalled loading on a phone (branch `agent/loading-screen`)
+- **Seen on a device:** the loading screen stopped at "Reading the map of Chennai", with bands of
+  the background undrawn and the progress panel a white box. Not reproducible in headless
+  Chromium (no GPU memory budget); there, with the CPU slowed 4×, loading finished in 15 s.
+- **Cause found:** the merged Chennai cast inlined 75 model files (6.9 MB) as base64, so the one
+  script went from 6.7 MB to 16 MB. And the WebView used `androidLayerType="hardware"`, an extra
+  full-screen GPU texture for the whole page.
+- **Fix:** the cast's models are files beside the page (`peopleFiles.ts`, `?url`), fetched when a
+  person is first needed; the player's model stays inline. Script 6.7 MB again; JavaScript memory
+  after loading 157 → 116 MB (CPU slowed 4×, 800×360 at 2.5×). The hardware layer is gone.
+- **Not yet:** checked on the phone that showed it.
+
