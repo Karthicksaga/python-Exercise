@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://teamf6mdl3n7"
-path="res://.godot/imported/bus_lod1.glb-a7d85a001bc7a1a3131ccd7ab7ee084c.scn"
+uid="uid://dnsiqo3dmv4s8"
+path="res://.godot/imported/emu_ac_trailer_lod2.glb-c0077b23507c742d21e15459e709dacf.scn"
 
 [deps]
 
-source_file="res://assets/vehicles/bus_lod1.glb"
-dest_files=["res://.godot/imported/bus_lod1.glb-a7d85a001bc7a1a3131ccd7ab7ee084c.scn"]
+source_file="res://assets/trains/emu_ac_trailer_lod2.glb"
+dest_files=["res://.godot/imported/emu_ac_trailer_lod2.glb-c0077b23507c742d21e15459e709dacf.scn"]
 
 [params]
 

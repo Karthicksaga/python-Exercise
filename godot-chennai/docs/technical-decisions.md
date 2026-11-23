@@ -271,16 +271,23 @@ Godot imports a GLB into its own mesh and texture resources and compresses textu
 GLB would need the extension on import. So the GLBs stay as Blender writes them. The repository
 holds 8.5 MB of them in all, and size on the phone is decided by import settings.
 
-### G-36 The Three.js road vehicles are copied unchanged, with manifests made from `specs.ts`
-`port_road_vehicles.py` copies the five vehicles' GLBs and LOD1s into `assets/vehicles/`, copies
-their source scripts to `road/`, and writes manifests holding the data the old game keeps in code
-(wheels, handling, hip points, poses, grips, door hinges, passenger doors, cargo anchors, the
-ambulance's clear box). Each manifest records its overall measured size and the documented body
-size. If Foundation's asset sync also brings these GLBs, the copies under `assets/vehicles/`
-are the ones the manifests describe.
+### G-36 The Three.js road vehicles come from the sync, into `assets/vehicles/legacy/`
+One source of truth: `tools/sync_from_threejs.py` copies the five vehicles' GLBs and LOD1s byte
+for byte into `assets/vehicles/legacy/` (as it does for `assets/people/legacy/`), and its
+`--check` covers them. `assets/vehicles/` itself holds only the new models, which the sync never
+touches. `port_road_vehicles.py` no longer copies anything. It checks that the synced GLBs are
+there and writes a manifest beside each, holding the data the old game keeps in code: wheels,
+handling, hip points, poses, grips, door hinges, passenger doors, cargo anchors and the
+ambulance's clear box. Each manifest records the overall measured size and the documented body
+size. The model agent's earlier copies were byte-identical and were dropped. The old source
+scripts stay in `tools/blender/vehicles/road/` for reference. These vehicles are interim: a Tamil
+Nadu road-vehicle redesign replaces them.
 
-### G-37 Model tests run standalone, reading the files with GLTFDocument
-`tests/models/test_models.gd` needs no `project.godot` and no import step. It checks every
+### G-37 Model tests read the files with GLTFDocument, in the project's runner
+`tests/models/model_checks.gd` (`ModelChecks`, typed under the project's strict warnings) is run by
+`tests/unit/test_vehicle_models.gd` in `./run_tests.sh` and CI, one assertion per check. It reads the
+GLBs with GLTFDocument as they are, with no dependence on import settings, and handles both
+`MeshInstance3D` (in the project) and `ImporterMeshInstance3D` (outside one). It checks every
 manifest against its GLBs: triangle budgets per kind and LOD, manifest counts equal to the
 measured ones, node names, the frame (size, ground, front marker or steered wheels at -Z),
 wheels on the ground or rail at their axles, hinges and pivots at their origins, no vertex
@@ -288,8 +295,7 @@ colours, texture sizes, and the texture contents: each embedded palette is check
 `palette.json` cell by cell, and each manifest's `texture_samples` texel is read back from the
 images in the GLB. This was added after a line-up render was taken while a diagnostic livery
 build (with a bright green roof) was on disk; the committed files were right, but nothing would
-have caught a wrong texture. It exits 1 on any failure, so it can be called from the project's test
-runner or CI as is.
+have caught a wrong texture.
 
 ### G-38 Liveries: invented colours; real colour families for trains only, without marks
 The cars, race car and aircraft use invented colours. The airline has white, deep teal, coral and

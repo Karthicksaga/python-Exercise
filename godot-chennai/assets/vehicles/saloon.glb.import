@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://b41igmcvude68"
-path="res://.godot/imported/motorbike_lod1.glb-f07d04b91c8aeb30b247a92523f0312a.scn"
+uid="uid://cjmow8bb2ttis"
+path="res://.godot/imported/saloon.glb-db295c4fee4b5e7a8cb8a99e8996607d.scn"
 
 [deps]
 
-source_file="res://assets/vehicles/motorbike_lod1.glb"
-dest_files=["res://.godot/imported/motorbike_lod1.glb-f07d04b91c8aeb30b247a92523f0312a.scn"]
+source_file="res://assets/vehicles/saloon.glb"
+dest_files=["res://.godot/imported/saloon.glb-db295c4fee4b5e7a8cb8a99e8996607d.scn"]
 
 [params]
 

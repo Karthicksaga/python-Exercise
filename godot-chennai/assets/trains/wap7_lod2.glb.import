@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://rk76vd14alej"
-path="res://.godot/imported/auto_rickshaw_lod1.glb-cbc3e7b35b03394d2f36b0d660d15df1.scn"
+uid="uid://df4lu03os0mfm"
+path="res://.godot/imported/wap7_lod2.glb-f4d5a431c1f0071ee6ca6d20abf3f2dc.scn"
 
 [deps]
 
-source_file="res://assets/vehicles/auto_rickshaw_lod1.glb"
-dest_files=["res://.godot/imported/auto_rickshaw_lod1.glb-cbc3e7b35b03394d2f36b0d660d15df1.scn"]
+source_file="res://assets/trains/wap7_lod2.glb"
+dest_files=["res://.godot/imported/wap7_lod2.glb-f4d5a431c1f0071ee6ca6d20abf3f2dc.scn"]
 
 [params]
 

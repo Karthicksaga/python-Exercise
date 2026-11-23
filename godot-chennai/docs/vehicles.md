@@ -14,7 +14,7 @@ lettering or real numbers (TD-18 of the Three.js game; brief §11). Decisions G-
 | `vehicles/suv` | original large SUV (7 seats): high ride, 0.80 m wheels, flat high bonnet, upright screen and tailgate, flared arch cladding, short overhangs | 4.6 × 2.1 × 1.9 | 9,958 / 2,096 | ~470 KB |
 | `vehicles/coupe` | original sports coupé, 2 doors, 6 paints | 4.58 × 1.93 × 1.25 | 9,018 / 2,090 | 410 KB |
 | `vehicles/formula` | original open-wheel race car, 4 invented team-less liveries | 5.60 × 2.36 × 1.19 | 6,834 / 1,638 | 353 KB |
-| `vehicles/hatchback`, `motorbike`, `auto_rickshaw`, `ambulance`, `bus` | ported unchanged from the Three.js game | as before | 10,460 / 3,050 · 7,616 / 2,262 · 16,382 / 12,306 · 14,576 / 3,900 · 12,370 / 5,328 | 3.3 MB |
+| `vehicles/legacy/hatchback`, `motorbike`, `auto_rickshaw`, `ambulance`, `bus` | the Three.js game's, synced byte for byte by `tools/sync_from_threejs.py` (G-36); manifests by `port_road_vehicles.py` | as before | 10,460 / 3,050 · 7,616 / 2,262 · 16,382 / 12,306 · 14,576 / 3,900 · 12,370 / 5,328 | 3.3 MB |
 | `aircraft/helicopter` | light utility helicopter: 3-blade main rotor, tail rotor, skids, 5 seats | 12.8 (rotor) × 9.4 × 2.9 | 5,580 / 2,162 / 322 | 392 KB |
 | `aircraft/airliner` | small narrow-body twin, about 150 seats, invented airline colours | 37.4 × 34.6 × 11.8 | 7,704 / 2,664 / 556 | 595 KB |
 | `aircraft/light_aircraft` | high-wing four-seat single-engine | 8.5 × 11.1 × 2.8 | 6,470 / 1,886 / 340 | 394 KB |
@@ -24,11 +24,11 @@ lettering or real numbers (TD-18 of the Three.js game; brief §11). Decisions G-
 | `trains/lhb_coach` | LHB-style express coach | 24.6 × 3.27 × 4.3 | 2,638 / 416 / 40 | ~0.2 MB |
 | `trains/vb_cab`, `vb_coach` | Vande-Bharat-style set, saffron and grey colour family, rounded aerodynamic nose with a wrap-round glass windscreen | 25.6 × 3.28 × 4.0 | nose car 3,393 / 364 / 56; coach 2,370 / 248 / 40 | ~0.4 MB |
 
-The figures come from the manifests, which the tests check against the files. All assets together
-come to **9.7 MB** of GLB and JSON. Train and aircraft dimensions are estimates from published
+The figures come from the manifests, which the tests check against the files. The models together
+come to **6.1 MB** of GLB and JSON, plus 3.3 MB of synced legacy vehicles. Train and aircraft dimensions are estimates from published
 figures (broad gauge 1,676 mm), and each manifest says so.
 
-## Budgets (held by `tests/models/test_models.gd`)
+## Budgets (held by `tests/models/model_checks.gd`, run in `./run_tests.sh`)
 
 | Kind | LOD0 | LOD1 | LOD2 | Source |
 |---|---|---|---|---|
@@ -146,13 +146,13 @@ It keeps the Three.js game's vehicle data model (`packages/vehicles/src/specs.ts
 ```bash
 godot-chennai/tools/blender/vehicles/build_all.sh         # everything, then the checks
 blender -b --factory-startup --python godot-chennai/tools/blender/vehicles/cars.py -- --only saloon,suv
-python3 godot-chennai/tools/blender/vehicles/port_road_vehicles.py   # re-copy the Three.js vehicles
-godot --headless --audio-driver Dummy --script godot-chennai/tests/models/test_models.gd
+python3 godot-chennai/tools/sync_from_threejs.py                      # the legacy GLBs (assets/vehicles/legacy/)
+python3 godot-chennai/tools/blender/vehicles/port_road_vehicles.py   # their manifests
+godot-chennai/run_tests.sh --filter=vehicle_models                   # the model checks
 ```
 
 Review screenshots (Compatibility renderer, not committed) come from
-`tests/models/model_shot.gd`. It loads any GLBs at run time and needs a throwaway project
-folder for the windowed run, as noted in the script header. `OPEN_DOORS=1` swings the doors
+`tools/models/model_shot.gd`. It loads any GLBs at run time; the command is in the script header. `OPEN_DOORS=1` swings the doors
 open.
 
 ## Not done, or weak

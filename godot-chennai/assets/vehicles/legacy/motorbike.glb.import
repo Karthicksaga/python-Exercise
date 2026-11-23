@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://ce8m07h5hodde"
-path="res://.godot/imported/ambulance_lod1.glb-91caf3e90e7301be1f0f7a14abc99c11.scn"
+uid="uid://chgdo0rnm0liy"
+path="res://.godot/imported/motorbike.glb-699c9c055d35cb9fbdd6fb51bdba01eb.scn"
 
 [deps]
 
-source_file="res://assets/vehicles/ambulance_lod1.glb"
-dest_files=["res://.godot/imported/ambulance_lod1.glb-91caf3e90e7301be1f0f7a14abc99c11.scn"]
+source_file="res://assets/vehicles/legacy/motorbike.glb"
+dest_files=["res://.godot/imported/motorbike.glb-699c9c055d35cb9fbdd6fb51bdba01eb.scn"]
 
 [params]
 

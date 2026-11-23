@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://lwnw1tjdhfc"
-path="res://.godot/imported/bus.glb-930a61502963de563b5c6e9b417ff407.scn"
+uid="uid://tbenltkudxuv"
+path="res://.godot/imported/airliner.glb-1c6e48b5a8cb4c4c6d0529e93e62e00a.scn"
 
 [deps]
 
-source_file="res://assets/vehicles/bus.glb"
-dest_files=["res://.godot/imported/bus.glb-930a61502963de563b5c6e9b417ff407.scn"]
+source_file="res://assets/aircraft/airliner.glb"
+dest_files=["res://.godot/imported/airliner.glb-1c6e48b5a8cb4c4c6d0529e93e62e00a.scn"]
 
 [params]
 

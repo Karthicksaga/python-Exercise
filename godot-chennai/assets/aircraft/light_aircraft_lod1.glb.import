@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://d1yuwc5fokocn"
-path="res://.godot/imported/hatchback_lod1.glb-88b1ed47f3a5890ff7a7f82b3d019773.scn"
+uid="uid://cwokxv7khxon2"
+path="res://.godot/imported/light_aircraft_lod1.glb-bb734e111c71a46a4a4a64c669536872.scn"
 
 [deps]
 
-source_file="res://assets/vehicles/hatchback_lod1.glb"
-dest_files=["res://.godot/imported/hatchback_lod1.glb-88b1ed47f3a5890ff7a7f82b3d019773.scn"]
+source_file="res://assets/aircraft/light_aircraft_lod1.glb"
+dest_files=["res://.godot/imported/light_aircraft_lod1.glb-bb734e111c71a46a4a4a64c669536872.scn"]
 
 [params]
 

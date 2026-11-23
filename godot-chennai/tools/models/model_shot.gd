@@ -2,9 +2,9 @@ extends SceneTree
 ## Review screenshots of vehicle GLBs in the Compatibility renderer (not a test; output is not
 ## committed). Loads the files at run time with GLTFDocument, so no project import is needed.
 ##
-##   xvfb-run -a -s "-screen 0 1830x824x24" godot --rendering-method gl_compatibility \
+##   xvfb-run -a -s "-screen 0 1830x824x24" godot --path godot-chennai --rendering-method gl_compatibility \
 ##     --rendering-driver opengl3 --audio-driver Dummy --resolution 1830x824 \
-##     --script godot-chennai/tests/models/model_shot.gd -- <out.png> <view> <span_m> <file.glb[@x,z[,yaw[,r:g:b]]]> ...
+##     --script res://tools/models/model_shot.gd -- <out.png> <view> <span_m> <file.glb[@x,z[,yaw[,r:g:b]]]> ...
 ##
 ## view: three_quarter | side | front | rear | top | low (low three-quarter); span_m frames the
 ## camera (about the length of the line-up). A colour applies to the material named `paint`.

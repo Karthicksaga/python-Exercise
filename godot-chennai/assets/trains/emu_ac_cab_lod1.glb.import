@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://d0r7wq72r605n"
-path="res://.godot/imported/ambulance.glb-3bd64a040be5e1913db11ad1cbc4e47c.scn"
+uid="uid://xbc1adybxmnl"
+path="res://.godot/imported/emu_ac_cab_lod1.glb-368c15d8dcf7b0888af767f6f7c9701b.scn"
 
 [deps]
 
-source_file="res://assets/vehicles/ambulance.glb"
-dest_files=["res://.godot/imported/ambulance.glb-3bd64a040be5e1913db11ad1cbc4e47c.scn"]
+source_file="res://assets/trains/emu_ac_cab_lod1.glb"
+dest_files=["res://.godot/imported/emu_ac_cab_lod1.glb-368c15d8dcf7b0888af767f6f7c9701b.scn"]
 
 [params]
 
