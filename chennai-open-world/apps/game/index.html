@@ -24,13 +24,15 @@
           linear-gradient(180deg, #0a0d1c 0%, #0d1020 55%, #1a1416 100%);
         display: grid; grid-template-columns: 1fr auto; grid-template-rows: 1fr auto;
         padding: max(22px, env(safe-area-inset-top)) max(26px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(26px, env(safe-area-inset-left));
-        gap: 16px 32px; box-sizing: border-box; transition: opacity .65s ease;
+        gap: 16px 32px; box-sizing: border-box;
       }
       #loading[data-state="done"] { opacity: 0; pointer-events: none; }
       /* While it fades over the first frames of the game, nothing in it moves. */
       #loading[data-state="done"] *, #loading[data-state="done"] *::before, #loading[data-state="done"] *::after { animation: none !important; }
-      #loading .ld-map { position: absolute; inset: -8%; width: 116%; height: 116%; opacity: 0; transition: opacity 1.4s ease;
-        transform-origin: 60% 55%; animation: ld-drift 48s ease-in-out infinite alternate; }
+      /* Nothing on this screen loops or fades (23 Nov 2026): on a phone short of GPU memory each
+         animated element became a layer of its own that could not be drawn (white boxes), and
+         the game is busiest exactly while this screen shows. */
+      #loading .ld-map { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
       #loading .ld-map.drawn { opacity: .9; }
       #loading .ld-shade { position: absolute; inset: 0; pointer-events: none;
         background:
@@ -48,20 +50,18 @@
       #loading .ld-tag { margin: 12px 0 0; font-size: 12px; letter-spacing: .28em; text-transform: uppercase; color: var(--muted); }
       #loading .ld-tip { align-self: end; max-width: 46ch; border-left: 3px solid var(--amber); padding: 4px 0 4px 14px; }
       #loading .ld-tip small { display: block; font-size: 10px; font-weight: 800; letter-spacing: .3em; color: var(--amber); margin-bottom: 4px; text-transform: uppercase; }
-      #loading .ld-tip-text { margin: 0; font-size: 14px; line-height: 1.45; color: var(--text); min-height: 2.9em; transition: opacity .28s ease, transform .28s ease; }
-      #loading .ld-tip-text.swap { opacity: 0; transform: translateY(4px); }
+      #loading .ld-tip-text { margin: 0; font-size: 14px; line-height: 1.45; color: var(--text); min-height: 2.9em; }
       #loading .ld-status { align-self: end; justify-self: end; width: min(300px, 42vw); text-align: right; }
       #loading .ld-step { margin: 0 0 9px; font-size: 13px; font-weight: 600; letter-spacing: .02em; min-height: 1.3em; }
       #loading .ld-bar { position: relative; display: flex; gap: 4px; height: 4px; }
-      /* Before the first step: an honest "working" sweep, not a percentage. */
-      #loading .ld-bar:not(.ld-bar-steps) { overflow: hidden; background: rgba(255, 255, 255, .12); border-radius: 2px; }
-      #loading .ld-bar:not(.ld-bar-steps)::after { content: ""; position: absolute; inset: 0; width: 34%;
-        background: linear-gradient(90deg, transparent, var(--amber), transparent); animation: ld-sweep 1.4s ease-in-out infinite; }
-      #loading .ld-bar i { flex: 1; position: relative; overflow: hidden; border-radius: 2px; background: rgba(255, 255, 255, .14); }
-      #loading .ld-bar i::before { content: ""; position: absolute; inset: 0; background: var(--amber); transform: scaleX(0); transform-origin: left; transition: transform .45s cubic-bezier(.2, .7, .2, 1); }
-      #loading .ld-bar i.done::before { transform: scaleX(1); }
-      #loading .ld-bar i.active::after { content: ""; position: absolute; inset: 0; width: 60%;
-        background: linear-gradient(90deg, transparent, rgba(255, 183, 3, .85), transparent); animation: ld-sweep 1.2s ease-in-out infinite; }
+      /* Before the first step: a dim bar (working, no percentage). Then one segment per step: a
+         finished step is filled, the one running is a third filled. No animation (see above). */
+      #loading .ld-bar:not(.ld-bar-steps) { background: rgba(255, 255, 255, .12); }
+      #loading .ld-bar:not(.ld-bar-steps)::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 34%; background: rgba(255, 183, 3, .45); }
+      #loading .ld-bar i { flex: 1; position: relative; background: rgba(255, 255, 255, .14); }
+      #loading .ld-bar i::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--amber); }
+      #loading .ld-bar i.active::before { width: 34%; opacity: .7; }
+      #loading .ld-bar i.done::before { width: 100%; opacity: 1; }
       #loading .ld-credit { margin: 10px 0 0; font-size: 10px; color: var(--muted); letter-spacing: .04em; }
       #loading .ld-error { margin: 10px 0 0; font-size: 12px; color: #ffb4a8; line-height: 1.4; }
       #loading .ld-retry { margin-top: 12px; min-height: 46px; min-width: 160px; padding: 0 22px; border: 0; border-radius: 4px;
@@ -80,9 +80,7 @@
         #loading .ld-title .ld-w1 { font-size: clamp(30px, 6vw, 52px); }
         #loading .ld-tag { margin-top: 8px; }
       }
-      @keyframes ld-drift { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.1) translate(-2.5%, -1.5%); } }
       @keyframes ld-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-      @keyframes ld-sweep { from { transform: translateX(-110%); } to { transform: translateX(310%); } }
       @media (prefers-reduced-motion: reduce) {
         #loading, #loading * { animation: none !important; transition: none !important; }
       }

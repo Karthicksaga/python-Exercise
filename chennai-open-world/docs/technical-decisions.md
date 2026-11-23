@@ -423,7 +423,8 @@ native menu followed by a web loading screen and the game is two menus and two l
 in the page also works the same in the browser preview and the tests.
 
 **Progress is real.** `Game.create` reports six named steps (`LOAD_STEPS`); the bar fills one
-segment per finished step and shows an indeterminate sweep before the first. No percentage is
+segment per finished step (the running one shows a third filled, and a dim bar before the
+first; nothing on the loading screen loops or fades, see "On a phone" below). No percentage is
 computed or invented. The background is the real street network from the world file, drawn as
 soon as it has been read.
 
@@ -446,6 +447,14 @@ bands of the screen undrawn and the progress panel a white box: the GPU and memo
 not the steps. Two fixes outside this screen: the cast's models left the script (TD-3 amended,
 16 MB → 6.7 MB, about 45 MB less JavaScript memory after loading) and the WebView no longer
 uses `androidLayerType="hardware"`, which copied the whole page into one more full-screen texture.
+That was not enough: the phone still showed white boxes, then a black screen after about a
+minute, and sometimes the app closed (a WebView draws in the app's own process, so a graphics
+failure there closes the app). Every animated element is a GPU layer of its own, and those were
+what failed. So the loading screen no longer animates anything after its opening rise: the map
+does not drift, the bar does not sweep, tips swap without a fade, and the screen is removed at
+once instead of fading over the game's first frames (a full-screen layer at the worst moment).
+`Game.create` also waits one frame after each step, so the screen is drawn between long
+stretches of work. The title menu's entrance and the game itself are unchanged.
 
 **Revisit when** the menu should show more of the city (a few fixed camera shots across
 districts would need their chunks loaded), or a settings page grows options that need a reload

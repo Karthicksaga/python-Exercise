@@ -923,5 +923,11 @@ Difficulty has not been play-tested by a person.
 - **Fix:** the cast's models are files beside the page (`peopleFiles.ts`, `?url`), fetched when a
   person is first needed; the player's model stays inline. Script 6.7 MB again; JavaScript memory
   after loading 157 → 116 MB (CPU slowed 4×, 800×360 at 2.5×). The hardware layer is gone.
+- **Phone, second try:** still white boxes, then black after about a minute, and the app
+  sometimes closed. The white boxes are layers the phone could not draw, and each animated element
+  is one: the loading screen now animates nothing after its opening rise (no map drift, no bar
+  sweep, no tip fade, no fade-out over the game; running animations mid-load 2 → 0), its map
+  sketch is drawn at CSS pixels, and `Game.create` waits a frame after each step so the screen is
+  drawn between long stretches of work.
 - **Not yet:** checked on the phone that showed it.
 
