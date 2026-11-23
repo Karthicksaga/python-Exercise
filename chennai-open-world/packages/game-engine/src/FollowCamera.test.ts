@@ -77,4 +77,24 @@ describe("FollowCamera", () => {
     expect(camera.yaw).toBe(yaw);
     expect(Math.abs(aim().x)).toBeLessThan(2);
   });
+
+  it("shakes the view for a moment when a blow lands, then settles where it was", async () => {
+    const { camera, lens, frames } = await rig();
+    frames(1, null);
+    const still = lens.quaternion.clone();
+    const position = lens.position.clone();
+    camera.shake(1);
+    let most = 0;
+    for (let i = 0; i < 6; i++) {
+      frames(DT, null);
+      most = Math.max(most, lens.quaternion.angleTo(still));
+      expect(lens.position.distanceTo(position)).toBeLessThan(1e-6); // the camera itself stays put
+    }
+    expect(most).toBeGreaterThan(0.002);
+    expect(most).toBeLessThan(0.05);
+    frames(0.3, null);
+    expect(camera.shakeAngle).toBe(0);
+    expect(lens.quaternion.angleTo(still)).toBeLessThan(1e-6);
+  });
 });
+

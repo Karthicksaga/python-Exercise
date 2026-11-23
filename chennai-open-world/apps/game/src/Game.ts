@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { Beacon, ChunkManager, FIXED_STEP, FollowCamera, GameLoop, HAZE, MapView, Motion, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
-import { Combat, PLAYER_MAX_HEALTH, hitPenalty, isPoliceGroup, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState, type WeaponId } from "@cow/combat";
+import { Combat, PLAYER_MAX_HEALTH, STRIKES, SwingClock, hitPenalty, isPoliceGroup, strikeKind, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState, type WeaponId } from "@cow/combat";
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
@@ -213,6 +213,8 @@ export class Game {
   /** Seconds the pistol stays raised after a shot. */
   private aimFor = 0;
   private sinceClick = 1;
+  /** The player's punch or bat swing between pressing HIT and the blow landing (`Strikes.ts`). */
+  private readonly swing = new SwingClock();
   private street = "";
   private sinceStreet = 1;
   private sinceHaze = 1;
@@ -1095,18 +1097,26 @@ export class Game {
     this.aimFor = Math.max(0, this.aimFor - dt);
     this.sinceClick += dt;
 
+    // A swing started earlier lands now (at the frame its animation strikes), where the player faces.
+    const landed = this.driving || this.boarder.busy ? (this.swing.cancel(), null) : this.swing.step(dt);
+    if (landed) {
+      const hit = this.combat.punch({ ...state, heading: this.player.yaw }, events);
+      if (hit) {
+        this.sound.punch();
+        this.fighters.struck(hit, state.x, state.z, landed);
+        this.camera.shake(landed === "bat" ? 1 : 0.6);
+      } else if (hit === null) this.sound.whiff();
+    }
+
     if (!this.driving && !this.boarder.busy && (punch || fire)) {
       // Attacks go where the camera looks, so turn the player to face that way first.
       this.player.yaw = this.camera.yaw;
       const facing = { ...state, heading: this.camera.yaw };
-      if (punch) {
-        const hit = this.combat.punch(facing, events);
-        if (hit !== undefined) {
-          this.arms.swung();
-          this.avatar.punch();
-          if (hit) this.sound.punch();
-          else this.sound.whiff();
-        }
+      // A punch or swing starts with its wind-up; the damage lands when the blow does (above).
+      const kind = strikeKind(this.combat.arsenal.melee.id);
+      if (punch && this.combat.arsenal.meleeReadyIn <= STRIKES[kind].windup && this.swing.begin(kind)) {
+        this.arms.swung();
+        this.avatar.strike(kind, STRIKES[kind].windup, STRIKES[kind].recover);
       }
       if (fire) {
         const shot = this.combat.shoot(facing, events);
@@ -1115,7 +1125,10 @@ export class Game {
           this.sound.shot();
           const muzzle = { x: at.x - Math.sin(this.camera.yaw) * 0.7, z: at.z - Math.cos(this.camera.yaw) * 0.7 };
           // One tracer per pellet: the shotgun's spread is visible.
-          for (const pellet of shot.pellets) this.fighters.tracer(muzzle.x, muzzle.z, pellet.toX, pellet.toZ);
+          for (const pellet of shot.pellets) {
+            this.fighters.tracer(muzzle.x, muzzle.z, pellet.toX, pellet.toZ);
+            if (pellet.hit) this.fighters.struck(pellet.hit, at.x, at.z, "shot");
+          }
           this.police.gunfire(at.x, at.z, shot.toX, shot.toZ);
         } else if (this.combat.arsenal.ammoOf(this.combat.arsenal.gun.id) === 0 && this.sinceClick > 0.4) {
           this.sinceClick = 0;
@@ -1133,9 +1146,16 @@ export class Game {
       if (event.type === "enemyShot") {
         this.sound.shot(true);
         this.fighters.tracer(event.fromX, event.fromZ, event.toX, event.toZ);
+        if (event.hit && !this.driving) this.avatar.flinch(event.fromX, event.fromZ, 0.6);
+      } else if (event.type === "enemySwing") {
+        this.fighters.enemySwing(event.enemy);
       } else if (event.type === "enemyPunch") {
-        this.fighters.enemyPunch(event.enemy);
+        // The blow lands at the end of the enemy's wind-up: the player reels and the view shakes.
         this.sound.punch();
+        const kind = strikeKind(event.enemy.weapon);
+        if (!this.driving) this.avatar.flinch(event.enemy.x, event.enemy.z, kind === "bat" ? 1.4 : 1);
+        this.fighters.impact(state.x, state.z, event.enemy.x, event.enemy.z, kind);
+        this.camera.shake(kind === "bat" ? 1 : 0.8);
       } else if (event.type === "playerHurt") {
         this.hud.flashHurt();
         this.sound.hurt();
@@ -1150,6 +1170,7 @@ export class Game {
 
   /** The player ran out of health: a hospital bill, and the stage starts again. */
   private knockedOut(): void {
+    this.swing.cancel();
     const bill = this.missions.charge(100);
     this.missions.restartStage();
     saveProgress(this.missions.progress());

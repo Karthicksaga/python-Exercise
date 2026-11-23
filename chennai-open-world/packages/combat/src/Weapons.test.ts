@@ -241,7 +241,8 @@ describe("Combat with the new weapons", () => {
     const hurtBy = (weapon: "pistol" | "shotgun" | "bat" | "fists", z: number) => {
       const combat = new Combat(open, () => 0); // always hits
       combat.spawnGroup("a", [{ x: 0, z, armed: weapon === "pistol" || weapon === "shotgun", weapon }]);
-      combat.update(2, player());
+      // In fixed steps: a blow lands after its wind-up, a step or more after it starts.
+      for (let i = 0; i < 120; i++) combat.update(1 / 60, player());
       return 100 - combat.health;
     };
     expect(hurtBy("shotgun", -8)).toBeGreaterThan(hurtBy("pistol", -8));

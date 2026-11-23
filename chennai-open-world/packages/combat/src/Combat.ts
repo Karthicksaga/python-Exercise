@@ -1,5 +1,6 @@
 import { Arsenal, WEAPONS, hitDamage, strayAngle, type WeaponId, type WeaponSpec } from "./Weapons";
 import { GANG_RULES, hearsGunshot, lingerStep } from "./Gangs";
+import { KNOCK_BACK, STAGGER_TIME, STRIKES, knockBackRoom, strikeKind } from "./Strikes";
 
 /**
  * Fighting rules: the player's health and ammunition, punches and gunshots, and enemies that
@@ -58,6 +59,12 @@ export interface Enemy {
   cooldown: number;
   /** Seconds since death, or -1 while alive. */
   downFor: number;
+  /** Seconds until this enemy's punch or swing lands (it has started it), or 0. */
+  windup: number;
+  /** Seconds left of being knocked back by a blow, and the push (m/s) meanwhile. */
+  stagger: number;
+  pushX: number;
+  pushZ: number;
 }
 
 export interface PlayerState {
@@ -75,6 +82,9 @@ export interface PlayerState {
 
 export type CombatEvent =
   | { readonly type: "enemyShot"; readonly fromX: number; readonly fromZ: number; readonly toX: number; readonly toZ: number; readonly hit: boolean }
+  /** An enemy starts a punch or a bat swing; it lands (`enemyPunch`) after its wind-up, if the player is still in reach. */
+  | { readonly type: "enemySwing"; readonly enemy: Enemy }
+  /** An enemy's punch or swing lands on the player. */
   | { readonly type: "enemyPunch"; readonly enemy: Enemy }
   | { readonly type: "enemyDown"; readonly enemy: Enemy }
   | { readonly type: "groupCleared"; readonly group: string }
@@ -130,6 +140,8 @@ const ENEMY_SPEED = 3.4;
 /** How far ahead (from the centre) an enemy looks for walls before stepping: body half-width 0.28 m plus a margin. */
 const WALL_LOOKAHEAD = 0.9;
 const ENEMY_PUNCH_RANGE = 1.7;
+/** An enemy's blow still lands if the player is this much further away by then (arm's reach). */
+const ENEMY_REACH_MARGIN = 0.6;
 const REGEN_DELAY = 6;
 const REGEN_RATE = 7;
 const RUN_OVER_SPEED = 4;
@@ -172,7 +184,7 @@ export class Combat {
       // A gun for the armed, fists or a bat for the rest, whatever the spot asked for.
       const asked = spot.weapon && (WEAPONS[spot.weapon].kind === "gun") === spot.armed ? spot.weapon : null;
       const weapon = asked ?? (spot.armed ? "pistol" : "fists");
-      this.enemies.push({ id: this.nextId++, group, armed: spot.armed, maxHealth: health, weapon, tint: spot.tint, calm: spot.calm === true, unease: 0, x: spot.x, z: spot.z, heading: 0, health, speed: 0, alerted: false, cooldown: 1, downFor: -1 });
+      this.enemies.push({ id: this.nextId++, group, armed: spot.armed, maxHealth: health, weapon, tint: spot.tint, calm: spot.calm === true, unease: 0, x: spot.x, z: spot.z, heading: 0, health, speed: 0, alerted: false, cooldown: 1, downFor: -1, windup: 0, stagger: 0, pushX: 0, pushZ: 0 });
     }
   }
 
@@ -212,9 +224,18 @@ export class Combat {
     this.sinceHurt = 99;
   }
 
-  private damageEnemy(enemy: Enemy, amount: number, events: CombatEvent[]): void {
+  /**
+   * @param knock a push away from whoever hit them (unit direction and metres): the person
+   *   staggers back over `STAGGER_TIME`, never into a wall (`knockBackRoom`)
+   */
+  private damageEnemy(enemy: Enemy, amount: number, events: CombatEvent[], knock?: { dx: number; dz: number; distance: number }): void {
     if (enemy.health <= 0) return;
     enemy.health = Math.max(0, enemy.health - amount);
+    if (knock && knock.distance > 0) {
+      enemy.stagger = STAGGER_TIME;
+      enemy.pushX = (knock.dx * knock.distance) / STAGGER_TIME;
+      enemy.pushZ = (knock.dz * knock.distance) / STAGGER_TIME;
+    }
     // Hitting one of a calm crew turns all of them.
     if (enemy.calm) this.provoke(enemy.group, events);
     enemy.alerted = true;
@@ -243,7 +264,7 @@ export class Combat {
         bestDistance = distance;
       }
     }
-    if (best) this.damageEnemy(best, melee.damage, events);
+    if (best) this.damageEnemy(best, melee.damage, events, this.knock(player, best, KNOCK_BACK[strikeKind(melee.id)]));
     return best;
   }
 
@@ -269,7 +290,7 @@ export class Combat {
     const pellets: Pellet[] = [];
     for (let i = 0; i < gun.pellets; i++) {
       if (gun.spread === 0 && target) {
-        this.damageEnemy(target, hitDamage(gun, Math.hypot(target.x - player.x, target.z - player.z)), events);
+        this.damageEnemy(target, hitDamage(gun, Math.hypot(target.x - player.x, target.z - player.z)), events, this.knock(player, target, KNOCK_BACK.shot));
         pellets.push({ toX: target.x, toZ: target.z, hit: target });
       } else {
         // Nobody in the sights, or a gun that strays: the shot flies until it meets someone or a wall.
@@ -319,8 +340,16 @@ export class Combat {
       }
     }
     if (!hit) return { toX: player.x + dx * wall, toZ: player.z + dz * wall, hit: null };
-    this.damageEnemy(hit, hitDamage(gun, nearest), events);
+    this.damageEnemy(hit, hitDamage(gun, nearest), events, this.knock(player, hit, KNOCK_BACK.shot));
     return { toX: hit.x, toZ: hit.z, hit };
+  }
+
+  /** A push straight away from the player. */
+  private knock(player: { x: number; z: number }, enemy: Enemy, distance: number): { dx: number; dz: number; distance: number } {
+    const dx = enemy.x - player.x;
+    const dz = enemy.z - player.z;
+    const length = Math.hypot(dx, dz);
+    return length < 1e-6 ? { dx: 0, dz: 0, distance: 0 } : { dx: dx / length, dz: dz / length, distance };
   }
 
   private hurtPlayer(amount: number, events: CombatEvent[]): void {
@@ -340,6 +369,22 @@ export class Combat {
 
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i]!;
+      if (enemy.stagger > 0) {
+        // Knocked back by a blow: a short step away, stopping at walls; nothing else meanwhile.
+        const step = Math.min(dt, enemy.stagger);
+        enemy.stagger -= step;
+        const speed = Math.hypot(enemy.pushX, enemy.pushZ);
+        if (speed > 0) {
+          const room = knockBackRoom(this.world, enemy.x, enemy.z, enemy.pushX / speed, enemy.pushZ / speed, speed * step);
+          enemy.x += (enemy.pushX / speed) * room;
+          enemy.z += (enemy.pushZ / speed) * room;
+        }
+        if (enemy.health > 0) {
+          enemy.cooldown = Math.max(0, enemy.cooldown - dt);
+          enemy.speed = 0;
+          continue;
+        }
+      }
       if (enemy.health <= 0) {
         enemy.downFor += dt;
         if (enemy.downFor > DOWN_TIME) this.enemies.splice(i, 1);
@@ -376,6 +421,17 @@ export class Combat {
       }
       if (this.health <= 0 || distance < 0.01) continue;
       enemy.heading = Math.atan2(-dx, -dz);
+      if (enemy.windup > 0) {
+        // A punch or swing on its way: it lands when the wind-up ends, if the player is still in reach.
+        enemy.windup = Math.max(0, enemy.windup - dt);
+        if (enemy.windup === 0 && !player.inVehicle && distance <= ENEMY_PUNCH_RANGE + ENEMY_REACH_MARGIN) {
+          events.push({ type: "enemyPunch", enemy });
+          // Someone with a gun up close hits with it, a little softer than a fist (as before).
+          const fist = ENEMY_MELEE.fists!;
+          this.hurtPlayer(enemy.armed ? fist * 0.7 : (ENEMY_MELEE[enemy.weapon] ?? fist), events);
+        }
+        continue;
+      }
       const ux = dx / distance;
       const uz = dz / distance;
 
@@ -397,10 +453,9 @@ export class Combat {
       if (distance <= ENEMY_PUNCH_RANGE) {
         if (enemy.cooldown === 0 && !player.inVehicle) {
           enemy.cooldown = 1.3;
-          events.push({ type: "enemyPunch", enemy });
-          // Someone with a gun up close hits with it, a little softer than a fist (as before).
-          const fist = ENEMY_MELEE.fists!;
-          this.hurtPlayer(enemy.armed ? fist * 0.7 : (ENEMY_MELEE[enemy.weapon] ?? fist), events);
+          // The blow lands after the wind-up the figure shows (`Strikes.ts`).
+          enemy.windup = STRIKES[strikeKind(enemy.weapon)].windup;
+          events.push({ type: "enemySwing", enemy });
         }
         continue;
       }

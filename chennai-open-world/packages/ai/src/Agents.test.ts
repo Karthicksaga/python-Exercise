@@ -126,6 +126,52 @@ describe("agents", () => {
     }
   });
 
+  it("pedestrians step round the player standing in their way, never walking into them", () => {
+    const lane: WorldMap = { ...map, roads: [{ id: 1, kind: "residential", width: 7, oneway: false, points: [{ x: -60, z: 0 }, { x: 0, z: 0 }, { x: 60, z: 0 }] }] };
+    const walk = (settings: ReturnType<typeof pedestrianSettings>) => {
+      const system = new AgentSystem(buildRoadGraph(lane, () => true, false), lane.bounds, settings, 4);
+      system.populate(far);
+      const agent = system.agents[0]!;
+      // Let them settle on their line, then stand the player on it 5 m ahead.
+      for (let i = 0; i < 60; i++) system.update(1 / 60, [], far);
+      const player = { x: agent.x - Math.sin(agent.heading) * 5, z: agent.z - Math.cos(agent.heading) * 5, radius: 0.5 };
+      const way = { x: -Math.sin(agent.heading), z: -Math.cos(agent.heading) };
+      let closest = Infinity;
+      for (let i = 0; i < 60 * 10; i++) {
+        system.update(1 / 60, [player], far);
+        closest = Math.min(closest, Math.hypot(agent.x - player.x, agent.z - player.z));
+      }
+      return { closest, past: (agent.x - player.x) * way.x + (agent.z - player.z) * way.z };
+    };
+    const stepping = walk(pedestrianSettings(1));
+    expect(stepping.closest).toBeGreaterThan(0.5 + 0.3 - 0.02); // the player's room and their own
+    expect(stepping.past).toBeGreaterThan(3); // walked on past
+    // Without personal space they stopped behind the player and waited.
+    const { personalSpace: _, ...before } = pedestrianSettings(1);
+    expect(walk(before).past).toBeLessThan(0);
+  });
+
+  it("pedestrians coming the other way pass beside each other, not through each other", () => {
+    const lane: WorldMap = { ...map, roads: [{ id: 1, kind: "residential", width: 7, oneway: false, points: [{ x: -60, z: 0 }, { x: 0, z: 0 }, { x: 60, z: 0 }] }] };
+    const closest = (settings: ReturnType<typeof pedestrianSettings>) => {
+      const system = new AgentSystem(buildRoadGraph(lane, () => true, false), lane.bounds, settings, 7);
+      system.populate(far);
+      let least = Infinity;
+      for (let i = 0; i < 60 * 120; i++) {
+        system.update(1 / 60, [], far);
+        const people = system.agents.filter((a) => a.active);
+        for (let a = 0; a < people.length; a++) {
+          // After the first two seconds: people can be put down on top of each other when they first appear.
+          for (let b = a + 1; b < people.length; b++) if (i > 120) least = Math.min(least, Math.hypot(people[a]!.x - people[b]!.x, people[a]!.z - people[b]!.z));
+        }
+      }
+      return least;
+    };
+    expect(closest(pedestrianSettings(8))).toBeGreaterThan(0.6 - 0.05);
+    const { personalSpace: _, ...before } = pedestrianSettings(8);
+    expect(closest(before)).toBeLessThan(0.3); // they used to walk through each other
+  });
+
   it("turn round at a dead end instead of circling in front of it", () => {
     // One street with nothing at either end: every agent must reach an end and come back.
     const lane: WorldMap = { ...map, roads: [{ id: 1, kind: "residential", width: 7, oneway: false, points: [{ x: -60, z: 0 }, { x: 0, z: 0 }, { x: 60, z: 0 }] }] };
