@@ -226,6 +226,24 @@ function saveProgress(progress: Progress): void {
   }
 }
 
+/**
+ * Let the page draw before the next loading step. The steps are long stretches of work with no
+ * break; on a slow phone the loading screen's new step label (and anything else that changed)
+ * never got drawn, and showed as white boxes. One frame per step costs a few frames in all.
+ * Bounded by a timeout so a hidden page (no animation frames) does not wait.
+ */
+function shown(): Promise<void> {
+  return new Promise((resolve) => {
+    const done = () => {
+      window.clearTimeout(timer);
+      // After the frame is drawn, not before it: a task queued from the frame callback.
+      window.setTimeout(resolve, 0);
+    };
+    const timer = window.setTimeout(resolve, 100);
+    requestAnimationFrame(done);
+  });
+}
+
 export class Game {
   private readonly loop: GameLoop;
   private paused = false;
@@ -539,6 +557,7 @@ export class Game {
 
   static async create(canvas: HTMLCanvasElement, stage: HTMLElement, progress?: LoadProgress): Promise<Game> {
     progress?.step("world");
+    await shown();
     // The Tamil font for shop signs loads while the world does; the game starts without it.
     const signFontLoaded = loadSignFont(signFont);
     // Street props made in Blender (assets/README.md), baked once and merged per chunk.
@@ -555,6 +574,7 @@ export class Game {
     const map = world.map;
     progress?.world?.(map);
     progress?.step("physics");
+    await shown();
     const content = buildContent(map);
     const { spawn } = content;
 
@@ -576,6 +596,7 @@ export class Game {
     const solids = new Map<string, StaticGroup>();
     let minimap: Minimap | undefined;
     progress?.step("streets");
+    await shown();
     await signFontLoaded;
     const props = await propsLoaded;
     const chunks = new ChunkManager(map, world.chunks, renderer.scene, createChunkAssets(facadeAtlas(), props), {
@@ -606,6 +627,7 @@ export class Game {
     const body = physics.createCharacter({ radius: PLAYER_RADIUS, height: PLAYER_HEIGHT, feet: { x: spawn.x, y: 0.1, z: spawn.z } });
     const player = new PlayerController(body, spawn.yaw);
     progress?.step("people");
+    await shown();
     const people = peopleSources();
     const humans = await HumanAssets.load({ model: playerModel, animations: locomotion, ...(people ? { people } : {}) });
     // The people the street needs from the first frame; everyone else loads when first wanted.
@@ -616,6 +638,7 @@ export class Game {
     renderer.scene.add(avatar.object);
 
     progress?.step("traffic");
+    await shown();
     await vehiclesLoaded;
     const vehicles = content.parking.map((spot) => new Vehicle(spot.id, spot.kind, physics, spot, spot.yaw, spot.color));
     for (const vehicle of vehicles) renderer.scene.add(vehicle.object);
@@ -661,6 +684,7 @@ export class Game {
     game.fareFigures = new FareFigures(renderer.scene, humans);
     game.humans = humans;
     progress?.step("rail");
+    await shown();
     const railFile = await railLoaded;
     if (railFile) {
       const railway = new Railway(railFile, renderer.scene, physics, new RidePanel(hud.root), {
