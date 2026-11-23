@@ -29,6 +29,10 @@ the manifest's `paints`. Trains get one 512 px livery each and the airliner one 
 with windows and doors painted in (research note). There are no vertex colours (the MPFB lesson,
 §7) and no transparent glass (fill rate on the Adreno 613).
 
+Train LOD0 bodies (G-32 addendum) are built from panels with real openings (recessed windows,
+frames and bars, doorway vestibules, louvres) and roofs drawn with the atlas `roof_grey` role.
+LOD1 and LOD2 keep painted windows from the same window lists, so the LODs line up.
+
 ### G-33 LODs as separate GLBs with distances in the manifest
 `<name>.glb`, `<name>_lod1.glb` and `<name>_lod2.glb`, as in the Three.js layout (`_lod1`). The game
 can load only LOD1 for traffic and switch the rest with visibility ranges. Cars switch at 28 m,
@@ -62,7 +66,11 @@ are the ones the manifests describe.
 manifest against its GLBs: triangle budgets per kind and LOD, manifest counts equal to the
 measured ones, node names, the frame (size, ground, front marker or steered wheels at -Z),
 wheels on the ground or rail at their axles, hinges and pivots at their origins, no vertex
-colours, and texture sizes. It exits 1 on any failure, so it can be called from the project's test
+colours, texture sizes, and the texture contents: each embedded palette is checked against
+`palette.json` cell by cell, and each manifest's `texture_samples` texel is read back from the
+images in the GLB. This was added after a line-up render was taken while a diagnostic livery
+build (with a bright green roof) was on disk; the committed files were right, but nothing would
+have caught a wrong texture. It exits 1 on any failure, so it can be called from the project's test
 runner or CI as is.
 
 ### G-38 Liveries: invented colours; real colour families for trains only, without marks

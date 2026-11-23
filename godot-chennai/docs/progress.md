@@ -16,8 +16,10 @@
   pantographs, formations (LOD0/1/2).
 - [x] Road vehicles ported from the Three.js game (hatchback, motorbike, auto-rickshaw, bus,
   ambulance) with manifests from `specs.ts` (G-36).
-- [x] Headless model checks: `tests/models/test_models.gd`, 1,570 checks on 22 models, all
-  passing (G-37).
+- [x] Headless model checks: `tests/models/test_models.gd`, 1,648 checks on 22 models, all
+  passing, including the embedded palette and livery texels (G-37).
+- [x] Review round: train LOD0 rebuilt with real openings, rounded roofs, vents, gangways,
+  cab fronts, the WAP-7 nose and roof gear, the VB nose; the SUV reshaped; texture checks added.
 - [ ] Use in the game (Phase 2, 6, 6b): manifest loader, visibility ranges, wheel, door and
   pivot animation, train MultiMesh.
 - [ ] Seen on a phone (nothing tried on a device yet).

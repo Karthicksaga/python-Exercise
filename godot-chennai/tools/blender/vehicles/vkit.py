@@ -81,7 +81,7 @@ ROLES = {
     "dark_grey": ((0.075, 0.078, 0.08), 0.6, 0.0, None),
     "underframe": ((0.05, 0.048, 0.045), 0.8, 0.2, None),
     "bogie": ((0.07, 0.068, 0.065), 0.7, 0.4, None),
-    "roof_grey": ((0.3, 0.3, 0.29), 0.7, 0.2, None),
+    "roof_grey": ((0.11, 0.11, 0.105), 0.8, 0.1, None),
     "pantograph": ((0.45, 0.45, 0.44), 0.45, 0.8, None),
     "insulator": ((0.55, 0.12, 0.06), 0.3, 0.0, None),
     "engine": ((0.5, 0.5, 0.52), 0.35, 0.9, None),
@@ -104,6 +104,9 @@ ROLES = {
     "saffron": ((0.85, 0.25, 0.02), 0.4, 0.0, None),
     "brown": ((0.12, 0.05, 0.02), 0.5, 0.0, None),
     "inside_dark": ((0.012, 0.012, 0.014), 0.9, 0.0, None),
+    # Roles below were added later: new roles go at the end so existing cells keep their place.
+    "led_amber": ((0.04, 0.02, 0.0), 0.2, 0.0, (0.9, 0.42, 0.03)),
+    "loco_red": ((0.38, 0.03, 0.02), 0.4, 0.1, None),
 }
 ROLE_CELL = {name: i for i, name in enumerate(ROLES)}
 assert len(ROLES) <= CELLS * CELLS
@@ -155,13 +158,28 @@ def palette_images():
 
 
 def save_palette(directory):
-    """Write the atlas PNGs (the shared copy the docs and a Godot material can point at)."""
+    """Write the atlas PNGs (the shared copy the docs and a Godot material can point at) and
+    `palette.json` (each role's cell and colours), which the model tests check every GLB's
+    embedded atlas against."""
     os.makedirs(directory, exist_ok=True)
     for key, img in palette_images().items():
         path = os.path.join(directory, f"vehicle_palette_{key}.png")
         img.filepath_raw = path
         img.file_format = "PNG"
         img.save()
+    cells = {}
+    for name, (rgb, rough, metal, emit) in ROLES.items():
+        u, v = cell_uv(name)
+        cells[name] = dict(cell=ROLE_CELL[name], uv=[round(u, 4), round(1 - v, 4)], albedo_srgb=[round(_srgb(c) * 255) for c in rgb],
+                           roughness=rough, metallic=metal)
+    with open(os.path.join(directory, "palette.json"), "w") as f:
+        json.dump(dict(size=ATLAS_PX, cells_per_side=CELLS, uv_origin="top-left (glTF)", roles=cells), f, indent=1)
+        f.write("\n")
+
+
+def texture_sample(what, image, u_blender, v_blender, rgb_linear):
+    """A texel the tests read back from an embedded image: glTF UV (top-left origin), sRGB 0..255."""
+    return dict(what=what, image=image, uv=[round(u_blender, 4), round(1 - v_blender, 4)], srgb=[round(_srgb(c) * 255) for c in rgb_linear])
 
 
 def _principled(m):

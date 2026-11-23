@@ -20,7 +20,11 @@ extends SceneTree
 ##   the flange depth for rail wheels) and sit where the manifest says;
 ## - door, gear and control-surface nodes have their origins on the hinge or pivot;
 ## - no vertex colours used as albedo (no COLOR attribute, no material with it on);
-## - textures at most 512 px (1024 for the airliner's livery).
+## - textures at most 512 px (1024 for the airliner's livery);
+## - textures hold the right colours: every GLB's embedded palette atlas matches
+##   `assets/vehicles/shared/palette.json` cell by cell, and each manifest's `texture_samples`
+##   (livery texels: body colour, bands, cab front) read back with the expected sRGB colour, so a
+##   wrong or stale atlas or livery region fails (the green-roof mix-up of 23 Nov).
 
 const DIRS := ["assets/vehicles", "assets/aircraft", "assets/trains"]
 
@@ -45,6 +49,7 @@ const BODY_BUDGET := {"train_coach": 3000, "train_cab": 6000}
 const BOGIE_BUDGET := 400
 
 var root_dir := ""
+var palette: Dictionary = {}
 var passed := 0
 var failed := 0
 var models := 0
@@ -54,6 +59,9 @@ func _initialize() -> void:
 	await process_frame
 	var args := OS.get_cmdline_user_args()
 	root_dir = args[0] if args.size() > 0 else _default_root()
+	var pal_text := FileAccess.get_file_as_string(root_dir.path_join("assets/vehicles/shared/palette.json"))
+	palette = JSON.parse_string(pal_text) if pal_text != "" else {}
+	_ok(not palette.is_empty(), "palette.json present")
 	for d in DIRS:
 		var dir := DirAccess.open(root_dir.path_join(d))
 		if dir == null:
@@ -125,6 +133,7 @@ func _check_model(dir: String, file: String) -> void:
 			scene.free()
 	if lod0 == null:
 		return
+	_check_textures(dir.path_join(lods[0]["file"]), m, name)
 	_check_frame(lod0, m, name, kind)
 	_check_nodes(lod0, m, name, kind)
 	lod0.free()
@@ -307,13 +316,65 @@ func _check_nodes(scene: Node3D, m: Dictionary, name: String, kind: String) -> v
 	if BODY_BUDGET.has(kind):
 		var bogies := 0
 		var bogie_nodes: Array = m.get("bogies", [])
+		# 400 triangles per two-axle bogie with its wheelsets (research note); a Co-Co bogie has three.
+		var axles_per_bogie := maxi(2, int(round(float(m.get("wheels", []).size()) / maxf(1.0, bogie_nodes.size()))))
+		var bogie_budget := BOGIE_BUDGET * axles_per_bogie / 2
 		for bn: String in bogie_nodes:
 			var n := _find(scene, bn)
 			if _ok(n != null, "%s: bogie node %s" % [name, bn]):
 				var t := _triangles(n)
 				bogies += t
-				_ok(t <= BOGIE_BUDGET, "%s: %s %d triangles <= %d" % [name, bn, t, BOGIE_BUDGET])
+				_ok(t <= bogie_budget, "%s: %s %d triangles <= %d" % [name, bn, t, bogie_budget])
 		var body := _triangles(scene) - bogies
 		_ok(body <= int(BODY_BUDGET[kind]), "%s: body %d triangles <= %d" % [name, body, int(BODY_BUDGET[kind])])
 	for req: String in m.get("required_nodes", []):
 		_ok(_find(scene, req) != null, "%s: node %s" % [name, req])
+
+
+## The PNG images embedded in a GLB, by name (decoded from the BIN chunk, as the file holds them).
+func _glb_images(path: String) -> Dictionary:
+	var out := {}
+	var data := FileAccess.get_file_as_bytes(path)
+	if data.size() < 28:
+		return out
+	var json_len := data.decode_u32(12)
+	var j: Dictionary = JSON.parse_string(data.slice(20, 20 + json_len).get_string_from_utf8())
+	var bin_start := 20 + json_len + 8
+	for im: Dictionary in j.get("images", []):
+		if not im.has("bufferView"):
+			continue
+		var bv: Dictionary = j["bufferViews"][int(im["bufferView"])]
+		var off := bin_start + int(bv.get("byteOffset", 0))
+		var img := Image.new()
+		if img.load_png_from_buffer(data.slice(off, off + int(bv["byteLength"]))) == OK:
+			out[String(im.get("name", ""))] = img
+	return out
+
+
+func _texel(img: Image, uv: Array) -> Color:
+	var x := clampi(int(float(uv[0]) * img.get_width()), 0, img.get_width() - 1)
+	var y := clampi(int(float(uv[1]) * img.get_height()), 0, img.get_height() - 1)
+	return img.get_pixel(x, y)
+
+
+func _close(c: Color, srgb: Array, tol: int = 6) -> bool:
+	return absi(c.r8 - int(srgb[0])) <= tol and absi(c.g8 - int(srgb[1])) <= tol and absi(c.b8 - int(srgb[2])) <= tol
+
+
+func _check_textures(path: String, m: Dictionary, name: String) -> void:
+	var images := _glb_images(path)
+	if images.has("vehicle_palette_albedo") and not palette.is_empty():
+		var img: Image = images["vehicle_palette_albedo"]
+		var bad := ""
+		var roles: Dictionary = palette["roles"]
+		for r: String in roles:
+			var cell: Dictionary = roles[r]
+			if not _close(_texel(img, cell["uv"]), cell["albedo_srgb"], 2):
+				bad += r + " "
+		_ok(bad == "", "%s: embedded palette atlas matches palette.json %s" % [name, bad])
+	for smp: Dictionary in m.get("texture_samples", []):
+		var img2: Image = images.get(smp["image"])
+		if not _ok(img2 != null, "%s: texture %s embedded" % [name, smp["image"]]):
+			continue
+		var c := _texel(img2, smp["uv"])
+		_ok(_close(c, smp["srgb"]), "%s: %s texel is %s (got %d,%d,%d)" % [name, smp["what"], smp["srgb"], c.r8, c.g8, c.b8])
