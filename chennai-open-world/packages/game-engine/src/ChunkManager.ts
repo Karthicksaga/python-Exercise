@@ -26,10 +26,18 @@ export interface ChunkSource {
 
 /** How many chunk files may be in flight at once. */
 const IN_FLIGHT = 4;
+/**
+ * Milliseconds of chunk building per call to `update` (once a frame) while the player moves. A
+ * chunk is built over several frames and shown when complete, instead of in one go (which took
+ * about 20 ms on a desktop and so a visible jerk on a phone each time one appeared, 23 Nov 2026).
+ */
+const BUILD_BUDGET_MS = 4;
 
 type Slot =
   | { state: "loading" }
   | { state: "ready"; data: ChunkData }
+  /** Being built step by step; added to the scene once complete. */
+  | { state: "building"; data: ChunkData; view: ChunkView }
   | { state: "shown"; data: ChunkData; view: ChunkView };
 
 export class ChunkManager {
@@ -120,6 +128,7 @@ export class ChunkManager {
       const ref = this.refs.get(key)!;
       if (this.distance(ref, x, z) <= this.unloadDistance) continue;
       if (slot.state === "shown") this.drop(key, slot);
+      else if (slot.state === "building") slot.view.dispose();
       // A chunk still loading is forgotten; its data is ignored when it arrives.
       this.slots.delete(key);
     }
@@ -129,12 +138,38 @@ export class ChunkManager {
       if (!this.slots.has(ref.key)) this.fetch(ref);
     }
     let built = false;
-    for (const ref of wanted) {
-      const slot = this.slots.get(ref.key);
-      if (slot?.state !== "ready") continue;
-      this.show(ref.key, slot.data);
-      built = true;
-      if (!all) break;
+    if (all) {
+      // First frame or a teleport: build everything that has arrived now.
+      for (const ref of wanted) {
+        const slot = this.slots.get(ref.key);
+        if (slot?.state === "building") {
+          slot.view.finish();
+          this.show(ref.key, slot.data, slot.view);
+          built = true;
+        } else if (slot?.state === "ready") {
+          this.show(ref.key, slot.data, this.view(ref.key, slot.data, false));
+          built = true;
+        }
+      }
+    } else {
+      // Moving: one chunk at a time, a few milliseconds of it per frame, nearest first.
+      let building = [...this.slots.entries()].find(([, slot]) => slot.state === "building");
+      if (!building) {
+        const next = wanted.find((ref) => this.slots.get(ref.key)?.state === "ready");
+        const slot = next && this.slots.get(next.key);
+        if (next && slot?.state === "ready") {
+          const started: Slot = { state: "building", data: slot.data, view: this.view(next.key, slot.data, true) };
+          this.slots.set(next.key, started);
+          building = [next.key, started];
+        }
+      }
+      if (building) {
+        const [key, slot] = building;
+        if (slot.state === "building" && slot.view.advance(BUILD_BUDGET_MS)) {
+          this.show(key, slot.data, slot.view);
+          built = true;
+        }
+      }
     }
     if (!built || all) this.settle();
   }
@@ -180,8 +215,11 @@ export class ChunkManager {
     );
   }
 
-  private show(key: string, data: ChunkData): void {
-    const view = new ChunkView(data, this.assets, this.spans.get(key) ?? [], chunkFurniture(this.map, data), chunkProps(this.map, data));
+  private view(key: string, data: ChunkData, stepwise: boolean): ChunkView {
+    return new ChunkView(data, this.assets, this.spans.get(key) ?? [], () => chunkFurniture(this.map, data), () => chunkProps(this.map, data), stepwise);
+  }
+
+  private show(key: string, data: ChunkData, view: ChunkView): void {
     this.slots.set(key, { state: "shown", data, view });
     this.scene.add(view.object);
     this.hooks.loaded(data);

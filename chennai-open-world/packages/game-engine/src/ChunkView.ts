@@ -414,25 +414,79 @@ export function applyChunkLook(assets: ChunkAssets, look: Look): void {
   if (assets.props) applyPropLook(assets.props, look);
 }
 
+/** Something worked out when it is needed: a value, or a function that makes it. */
+type Later<T> = T | (() => T);
+const now = <T>(value: Later<T>): T => (typeof value === "function" ? (value as () => T)() : value);
+
+/** Buildings added between pauses when a chunk is built step by step. */
+const BUILDINGS_PER_STEP = 6;
+
 export class ChunkView {
   readonly object = new THREE.Group();
   private readonly owned: THREE.BufferGeometry[] = [];
+  /** The build still to run (step by step), or null once the chunk is complete. */
+  private steps: Generator<void, void, void> | null;
 
   /**
    * @param roads the stretches of road whose segments lie in this chunk (`roadSpansByChunk`)
-   * @param furniture the chunk's bus shelters, poles and kerbs (`chunkFurniture`)
-   * @param props the chunk's pavement props (`chunkProps`); drawn only when `assets.props` is set
+   * @param furniture the chunk's bus shelters, poles and kerbs (`chunkFurniture`), or a function that works them out
+   * @param props the chunk's pavement props (`chunkProps`, or a function); drawn only when `assets.props` is set
+   * @param stepwise build only when `advance` is called, a few milliseconds at a time, instead of
+   *   all at once here. Building a chunk in one go took about 20 ms on a desktop and so several
+   *   times that on a phone: a visible jerk every time a chunk appeared while driving (23 Nov 2026).
    */
-  constructor(chunk: ChunkData, assets: ChunkAssets, roads: readonly RoadSpan[] = [], furniture?: ChunkFurniture, props: readonly PropPlacement[] = []) {
+  constructor(
+    chunk: ChunkData,
+    assets: ChunkAssets,
+    roads: readonly RoadSpan[] = [],
+    furniture?: Later<ChunkFurniture | undefined>,
+    props: Later<readonly PropPlacement[]> = [],
+    stepwise = false,
+  ) {
     this.object.name = `chunk:${chunk.key}`;
+    this.steps = this.build(chunk, assets, roads, furniture, props);
+    if (!stepwise) this.finish();
+  }
+
+  /** Whether every part of the chunk has been built. */
+  get complete(): boolean {
+    return this.steps === null;
+  }
+
+  /** Run build steps for about `budgetMs` milliseconds (at least one). True once the chunk is complete. */
+  advance(budgetMs: number): boolean {
+    const end = performance.now() + budgetMs;
+    while (this.steps) {
+      if (this.steps.next().done) this.steps = null;
+      else if (performance.now() >= end) return false;
+    }
+    return true;
+  }
+
+  /** Build whatever is left at once. */
+  finish(): void {
+    this.advance(Infinity);
+  }
+
+  private *build(
+    chunk: ChunkData,
+    assets: ChunkAssets,
+    roads: readonly RoadSpan[],
+    furnitureLater: Later<ChunkFurniture | undefined>,
+    propsLater: Later<readonly PropPlacement[]>,
+  ): Generator<void, void, void> {
     const ground = buildGround(roads, chunk.areas, assets.ground);
     this.owned.push(...ground.owned);
     for (const mesh of ground.meshes) this.object.add(mesh);
+    yield;
+    const furniture = now(furnitureLater);
     if (furniture) {
       const street = buildStreetFurniture(furniture, assets.furniture);
       this.owned.push(...street.owned);
       for (const mesh of street.meshes) this.object.add(mesh);
     }
+    yield;
+    const props = now(propsLater);
     const walls = new MeshBuilder();
     const roofs = new MeshBuilder();
     const kit = new MeshBuilder();
@@ -440,11 +494,17 @@ export class ChunkView {
     const fixtures: PropInstance[] = [];
     const boxes = assets.props ? buildingBoxes(chunk.buildings) : [];
     const free = (x: number, z: number) => !inBuilding(chunk.buildings, boxes, { x, z }, 0);
+    let sincePause = 0;
     for (const building of chunk.buildings) {
       const plan = planFacade(building, roads);
       addBuilding(walls, roofs, building, kit, plan);
       if (assets.props) fixtures.push(...buildingFixtures(building, plan, buildingFrame(building), free));
+      if (++sincePause >= BUILDINGS_PER_STEP) {
+        sincePause = 0;
+        yield;
+      }
     }
+    yield;
     if (assets.props) {
       for (const mesh of [buildStreetProps(pavementInstances(props), assets.props), buildStreetProps(fixtures, assets.props, false)]) {
         if (!mesh) continue;
@@ -462,6 +522,7 @@ export class ChunkView {
       mesh.castShadow = material !== assets.kit;
       mesh.receiveShadow = true;
       this.object.add(mesh);
+      yield;
     }
 
     const matrix = new THREE.Matrix4();
@@ -486,6 +547,7 @@ export class ChunkView {
       tanks.computeBoundingSphere();
       this.object.add(tanks);
     }
+    yield;
 
     const palms = chunk.trees.filter((tree) => treeHash(tree, 51) < PALMS);
     const trees = chunk.trees.filter((tree) => treeHash(tree, 51) >= PALMS);
@@ -529,6 +591,8 @@ export class ChunkView {
 
   /** Free this chunk's own GPU buffers. Shared assets stay. Remove `object` from the scene first. */
   dispose(): void {
+    // A chunk dropped part-way through its build: stop building it.
+    this.steps = null;
     for (const geometry of this.owned) geometry.dispose();
     this.object.traverse((node) => {
       if (node instanceof THREE.InstancedMesh) node.dispose();
