@@ -4,7 +4,7 @@
  * and owns the one piece of state they share: whether the player is on foot or driving.
  */
 import * as THREE from "three";
-import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, Motion, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
+import { Beacon, ChunkManager, FIXED_STEP, FollowCamera, GameLoop, HAZE, MapView, Motion, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
 import { Combat, PLAYER_MAX_HEALTH, hitPenalty, isPoliceGroup, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState, type WeaponId } from "@cow/combat";
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
@@ -386,6 +386,25 @@ export class Game {
       player: { feet: this.driving ? null : this.avatar.feetHeight(), speed: this.player.speed, grounded: this.player.grounded },
       crowd: this.railway?.crowdPeople ?? 0,
     };
+  }
+
+  /** For screenshots and debugging only: how far behind the camera sits, its pitch and its heading. */
+  debugView(reach: number, pitch?: number, yaw?: number): void {
+    this.camera.reach = reach;
+    if (pitch !== undefined) this.camera.pitch = pitch;
+    if (yaw !== undefined) this.camera.yaw = yaw;
+  }
+
+  /**
+   * For screenshots and debugging only: stop the clock and play `seconds` of game time in fixed
+   * steps, then draw one frame (a fight frame by frame on a slow machine). `resume` restarts it.
+   */
+  debugStep(seconds: number, resume = false): void {
+    this.loop.stop();
+    const steps = Math.round(seconds / FIXED_STEP);
+    for (let i = 0; i < steps; i++) this.fixedUpdate(FIXED_STEP);
+    this.frame(Math.max(FIXED_STEP, seconds), 1);
+    if (resume) this.loop.start();
   }
 
   /** For tests and debugging only: give a weapon and rounds, and take it in hand if it is a gun. */
