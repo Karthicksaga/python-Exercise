@@ -1,0 +1,59 @@
+# Handoff (godot-chennai)
+
+<!-- Data agent section. Other agents append their own sections. -->
+
+## Data (tools/geo, world format 2)
+
+Where things are:
+- Tools: `tools/geo/chennai_geo/` (`cli.py` is the entry point; `world.py` the builder;
+  `codec_v2.py`/`writer.py` the format; `codec_v1.py` today's format; `fusion.py` phase 2).
+  Tests: `tools/geo/run_tests.sh`. Format spec: `docs/world-format.md`. Decisions G-20 to G-29.
+- Data: `world/` (committed game data), `data/MANIFEST.json`, `data/boundary/world-boundary.geojson`;
+  downloads go to `data/raw/` (git-ignored). `tools/geo/` and `data/` carry a `.gdignore` so
+  Godot doesn't scan them.
+
+To rebuild: `docs/world-format.md` §7 (venv with `requirements.txt`, `apt-get install
+osmium-tool`, then `fetch`, `clip`, `build --max-ring 3`, `run_tests.sh`). About 2.5 min and 3 GB
+RAM for the whole world.
+
+For the World agent writing the GDScript reader of format 2:
+- Read `world.json`, check `format == 2`, take grid, tile size and rings from it (never constants).
+- Stream tiles around the player: `tile.json` (chunk table with pack offsets), `roads.bin`
+  (pieces: join by road id and piece; neighbouring pieces share their end point), then chunk
+  records by `FileAccess.seek(offset)` into `chunks.bin`. `areas.bin` is for the map/far layer.
+- The chunk record is today's record plus fields; Foundation's `WorldCodec` (v1) can be extended
+  with a `format == 2` branch. Today's chunk (c, r) = (c + 107, r + 225); same centres.
+- Export filter: the APK must include `world/**/*.json` and `*.bin` (non-resource files).
+- Size per tile: 0.1–2.5 MB; the densest tile (city centre) about 2.5 MB of chunks plus about
+  1 MB roads.
+
+Hosts needed for phase 2 (fusion), to ask the owner to allow:
+- Overture buildings (GeoParquet, read with DuckDB `httpfs`/`spatial` and a bbox filter):
+  `overturemaps-us-west-2.s3.us-west-2.amazonaws.com` (or the Azure mirror
+  `overturemapswestus2.blob.core.windows.net`), `extensions.duckdb.org` (DuckDB's spatial and
+  httpfs extensions), and `docs.overturemaps.org`/`stac.overturemaps.org` to pin a release.
+  `duckdb` itself comes from PyPI (already allowed).
+- Google Open Buildings 2.5D Temporal (heights raster): an Earth Engine export, needing
+  `earthengine.googleapis.com`, `oauth2.googleapis.com`, `accounts.google.com` and an Earth
+  Engine account, with the export landing in `storage.googleapis.com` (a GCS bucket) or Drive;
+  or the owner exports it once and puts the GeoTIFF on an allowed host. Open Buildings v3
+  polygons (only if Overture lacks them): `storage.googleapis.com` (bucket `open-buildings-data`).
+- `rasterio` (PyPI) for reading the GeoTIFF.
+
+Weak or not done:
+- Fusion not run: rings 2–3 have only 15,345 OSM buildings for about 3,000 km² of towns and
+  villages; those areas look empty until Overture is fused in. Heights are 97.8 % estimated.
+- Archetypes: the byte is there (0 = unassigned); no archetype rules yet.
+- Rail (`rail.json`) not rebuilt for the region; today's `rail.json` (Beach–Tambaram) still
+  applies to ring 0 only. Rivers (waterway lines) and the Buckingham Canal as lines are not kept
+  (water polygons are).
+- Areas: big rural landuse is thin in OSM (farmland 136 polygons); the rural look will need a
+  default ground plus scrub/paddy texture by rule, not data.
+- The sea is one coastline chain (16 ways joined); islands and the Pulicat lagoon mouths are not
+  special-cased. The outline is fine for drawing water, not for exact shore physics.
+- Region tiles hold areas and aeroways by their centre; a reader drawing a tile edge must also
+  look at the neighbouring tile's `areas.bin`.
+- Equirectangular scale at the world's edges (about 50 km from the origin) is slightly off true
+  distance (estimate 0.4 %); consistent for game data, wrong for survey use.
+- The format-2 ring-0 world is 1.4× today's bytes; if phone storage matters, provenance could
+  move to a per-tile side table.

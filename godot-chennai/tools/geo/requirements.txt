@@ -1,0 +1,7 @@
+# tools/geo (build time only; never shipped). Python 3.11+.
+osmium==4.3.2
+shapely==2.2.0
+pyproj==3.8.0
+numpy>=2.0
+pytest>=8.0
+mypy>=1.10
