@@ -35,6 +35,9 @@ const streets = { roads: city.roads.filter((r) => r.kind !== "footway") };
 const fares: Array<{ where: string; stop: Point & { radius: number }; fare: Fare }> = [
   ...content.missions.flatMap((m) => m.objectives.flatMap((o) => (o.type === "reach" && o.fare ? [{ where: `stage ${m.stage}: ${o.label}`, stop: o, fare: o.fare }] : []))),
   ...content.jobs.flatMap((j) => j.stops.flatMap((s) => (s.fare ? [{ where: `${j.id}: ${s.label}`, stop: s, fare: s.fare }] : []))),
+  // Whoever hands goods over or takes them waits on the same kind of spot (`goods.ts`).
+  ...content.missions.flatMap((m) => m.objectives.flatMap((o) => (o.type === "reach" && o.goods ? [{ where: `stage ${m.stage}: ${o.label} (goods)`, stop: o, fare: { kerb: o.goods.kerb } }] : []))),
+  ...content.jobs.flatMap((j) => j.stops.flatMap((s) => (s.goods ? [{ where: `${j.id}: ${s.label} (goods)`, stop: s, fare: { kerb: s.goods.kerb } }] : []))),
 ];
 
 describe("passengers' waiting spots", () => {
@@ -46,8 +49,14 @@ describe("passengers' waiting spots", () => {
       const job = content.jobs.find((j) => j.id === id)!;
       expect(job.stops.every((s) => s.fare), id).toBe(true);
     }
-    // Parcels and lunch boxes are not people.
+    // Parcels and lunch boxes are not people: they are goods, handed over at every stop.
     expect(content.jobs.find((j) => j.id === "courier")!.stops.some((s) => s.fare)).toBe(false);
+    for (const id of ["courier", "food-delivery", "medicine-run"]) {
+      const job = content.jobs.find((j) => j.id === id)!;
+      expect(job.stops.every((s) => s.goods), id).toBe(true);
+    }
+    const goodsStages = content.missions.filter((m) => m.objectives.some((o) => o.type === "reach" && o.goods)).map((m) => m.stage);
+    expect(goodsStages).toEqual([4, 6, 11, 19, 20]);
   });
 
   it("stand on the pavement beside the marker: off the carriageway, outside buildings, close enough to walk", () => {

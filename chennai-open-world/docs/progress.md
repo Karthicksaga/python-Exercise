@@ -835,3 +835,43 @@ Difficulty has not been play-tested by a person.
   full suite: CI runs it). Checked by eye in Playwright screenshots (915x412, normal quality,
   camera close, not kept in the repo): people standing and walking before/after, a punch and a
   bat swing landing frame by frame. Not tried on a phone.
+## 23 Nov 2026: job goods and the ambulance stretcher (branch `agent/job-props`)
+- **Goods change hands** (`@cow/missions` `goods.ts`: `Goods`, `GoodsStop`, `cargoAboard`; a
+  `goods` field on reach objectives and job stops, next to `fare`). At a pick-up someone waits
+  on the pavement holding the goods, walks to the stopped vehicle and puts them in its cargo
+  place; at a drop someone walks up and takes them, then walks off with them. The stop counts
+  once the goods have changed hands (not after the old dwell), the stage or job clock waits
+  while they do, and pay is unchanged. One person per stop carries everything handed over there.
+- **Where:** stage 4 (three parcels on the car's back seat from the start, one taken at each
+  drop), stage 6 (two steel tiffin carriers, one per drop), stage 11 (the bag of money, handed
+  to the tea shop's owner), stage 19 (the harmonium, taken by the accompanist at Egmore
+  station), stage 20 (an insulated bag of biryani parcels and a boxed parcel for the scorers),
+  and the courier, lunch rush (three delivery bags) and medicine run jobs.
+- **Drawn** (`GoodsFigures.ts`, `goodsModels.ts`): original code-built models: taped cardboard
+  parcel with a blank label, teal insulated bag with a reflective band, three-tier steel tiffin
+  carrier, white medicine box with a green cross, tied cloth sack, harmonium in a wooden case
+  (under 300 triangles each and the stretcher under 500, one or two meshes, two shared materials). Cargo places per vehicle are
+  one table (`CARGO`, estimated; to switch to the vehicle types' `cargo` anchor when the vehicles
+  branch lands): the bike's pillion seat, the car's and auto's back seat (the car's kerb-side
+  rear door opens), the ambulance and bus floors. On a stage with no vehicle named (11, 19) the
+  goods ride in whatever the player drives, or in the player's hands on foot.
+- **Ambulance patients** (`StretcherFigures.ts`) lie on a wheeled stretcher at the kerb with a
+  paramedic (office clothes dyed pale blue); the rear doors open, the stretcher is wheeled to the
+  back, lifted to the floor and rolled in, the paramedic climbs in, the doors shut; at the
+  hospital the reverse, then it is wheeled across the pavement towards the entrance. Timings are
+  the patient fare's (`FareStop`); `FareFigures` no longer draws patients walking in.
+- **Carrying poses** (`@cow/player` `carryPose.ts`, `HumanFigure.setCarry`): box in both hands,
+  bag in one, pushing a trolley. New casts `sender`, `recipient`, `shopkeeper`, `paramedic`
+  (adults only).
+- **Tests:** unit `goods.test.ts` (missions: the handover rules, walking back, cargo aboard
+  across stops, both runners with goods and clock paused), `apps/game/src/goods.test.ts` (model
+  budget, cargo places inside each body, carrying poses on the player's model),
+  `fareSpots.test.ts` (goods spots on the pavement, outside buildings, for every goods stop).
+  Browser: `fares.spec.ts` + courier handover and ambulance stretcher, `stages3.spec.ts` (stage
+  19 harmonium aboard, stage 20 cargo), `missions2.spec.ts` stage 11 (money bag aboard).
+- **Checked by eye** (Playwright, 915x412, normal quality, not kept): courier clerk holding the
+  parcel, walking to the bike, parcel on the pillion, recipient taking it and walking off;
+  two tiffins carried and on the bike; the stretcher wheeled into the ambulance through the open
+  rear doors and out at the hospital. In the hatchback the parcels are on the back seat but the
+  current model's glass is opaque, so they are seen only while the rear door is open.
+- **Results:** typecheck clean; unit 532/532; browser fares + jobs + places 16/16, stages3 16–21 + missions2 stage 11: 8/8, people 3/3 (local, with the lock; full suite left to CI).

@@ -7,3 +7,4 @@ export * from "./stories";
 export * from "./shareAuto";
 export * from "./chase";
 export * from "./fares";
+export * from "./goods";

@@ -5,6 +5,7 @@
 import type { Mission, MissionEvent, Objective, PlayerStatus, Progress } from "./types";
 import { pathLength, pointAlong, quarrySpeed, type QuarryPlace } from "./chase";
 import { FareStop } from "./fares";
+import { GoodsStop } from "./goods";
 
 /** Below this speed (m/s) a vehicle counts as stopped. */
 const STOPPED = 1.2;
@@ -19,6 +20,8 @@ export class MissionRunner {
   private chased = 0;
   /** People getting in or out at the current objective, when it has a fare. */
   private fareStop: FareStop | null = null;
+  /** Goods changing hands at the current objective, when it has any. */
+  private goodsStop: GoodsStop | null = null;
   /** Passengers in the vehicle before the current objective (picked up earlier in the stage). */
   private riders = 0;
   /** An evade objective: the wanted level has been raised since it started. */
@@ -66,6 +69,16 @@ export class MissionRunner {
     return this.fareStop;
   }
 
+  /** The goods handover under way at the current objective, or null when it has none. */
+  get goods(): GoodsStop | null {
+    return this.goodsStop;
+  }
+
+  /** Where the current objective sits in its stage (for `cargoAboard`). */
+  get objectiveNumber(): number {
+    return this.objectiveIndex;
+  }
+
   /** Passengers in the vehicle now (picked up earlier, less any already out at this stop). */
   get aboard(): number {
     return this.riders + (this.fareStop?.change ?? 0);
@@ -95,6 +108,7 @@ export class MissionRunner {
     // Back at the start of a stage nobody is aboard (a failed fare's passenger has gone home).
     if (this.objectiveIndex === 0) this.riders = 0;
     this.fareStop = objective?.type === "reach" && objective.fare ? new FareStop(objective.fare, objective.mode && objective.mode !== "foot" ? objective.mode : "car") : null;
+    this.goodsStop = objective?.type === "reach" && objective.goods ? new GoodsStop(objective.goods, objective.mode && objective.mode !== "foot" ? objective.mode : "car") : null;
   }
 
   private met(objective: Objective, player: PlayerStatus): boolean {
@@ -121,7 +135,7 @@ export class MissionRunner {
 
     if (objective.type === "evade" && (player.wanted ?? 0) > 0) this.wantedSeen = true;
     // The clock waits while people get in or out: arriving in time is what counts.
-    if (this.timeLeft !== null && !this.fareStop?.started) {
+    if (this.timeLeft !== null && !this.fareStop?.started && !this.goodsStop?.started) {
       this.timeLeft -= dt;
       if (this.timeLeft <= 0) {
         // Out of time: the stage starts again from its first objective.
@@ -144,6 +158,9 @@ export class MissionRunner {
     if (this.fareStop) {
       // Stopped in the marker: the passengers walk over and get in (or out) before it counts.
       if (!this.fareStop.step(dt, this.met(objective, player), player)) return events;
+    } else if (this.goodsStop) {
+      // Stopped in the marker: someone walks over and hands the goods in (or takes them) first.
+      if (!this.goodsStop.step(dt, this.met(objective, player), player)) return events;
     } else if (!this.met(objective, player)) return events;
 
     this.riders = this.aboard;

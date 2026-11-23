@@ -17,6 +17,7 @@ import { captureRig, solveRidingPose, type Rig, type RidingPose, type SolvedPose
 import { simplifiedIndex } from "./simplify";
 import { FLINCH_TIME, STRIKE_POSES, STRIKE_TWIST, fistAmount, flinchAmount, strikeFrame, type StrikeKey, type StrikeMove } from "./strikePose";
 import { weaponGeometry, weaponMaterial, type HeldWeapon } from "./weaponModels";
+import { CARRY_KINDS, CARRY_POSES, type CarryKind } from "./carryPose";
 
 /** The people the game can cast (`people.ts`), and their model files. */
 export interface PeopleSources {
@@ -677,6 +678,9 @@ export class HumanFigure {
   /** Waving an arm (someone waiting for a ride), and the wave's clock. */
   private waving = false;
   private waveClock = 0;
+  /** Carrying something (`setCarry`), and each carrying pose solved on this skeleton. */
+  private carrying: CarryKind | null = null;
+  private readonly carryPoses = new Map<CarryKind, Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>>();
   /** The two ends of a wave, solved on this skeleton. */
   private readonly wavePoses: { out: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>; in: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }> };
 
@@ -728,6 +732,11 @@ export class HumanFigure {
       return b instanceof THREE.Bone ? [{ bone: b, bend }] : [];
     });
     this.fists = { Left: HumanFigure.solveFist(model, "Left"), Right: HumanFigure.solveFist(model, "Right") };
+    // Carrying poses (`carryPose.ts`), solved the same way.
+    for (const kind of CARRY_KINDS) {
+      const bones = CARRY_POSES[kind];
+      this.carryPoses.set(kind, HumanFigure.solvePose(model, bones).filter((entry) => entry.bone.name in bones));
+    }
 
     // The weapon is held in the right hand and moves with it; enemies show their pistol only
     // while aiming. Geometry and material are shared by every figure (`weaponModels.ts`).
@@ -1005,6 +1014,16 @@ export class HumanFigure {
     this.waving = waving;
   }
 
+  /** Hold a box in both hands, a bag in one, push a trolley (`carryPose.ts`), or nothing (null). */
+  setCarry(kind: CarryKind | null): void {
+    this.carrying = kind;
+  }
+
+  /** What the figure is carrying (for tests), or null. */
+  get carry(): CarryKind | null {
+    return this.carrying;
+  }
+
   /**
    * Throw a punch or swing the bat: drawn back, the blow, and back to normal (`strikePose.ts`).
    * @param windup seconds to the blow (when its damage lands, `@cow/combat` `STRIKES`)
@@ -1229,6 +1248,8 @@ export class HumanFigure {
       const t = 0.5 + 0.5 * Math.sin(this.waveClock * WAVE_RATE * Math.PI * 2);
       const { out, in: back } = this.wavePoses;
       out.forEach(({ bone, quaternion }, i) => bone.quaternion.copy(quaternion).slerp(back[i]!.quaternion, t));
+    } else if (this.carrying) {
+      for (const { bone, quaternion } of this.carryPoses.get(this.carrying) ?? []) bone.quaternion.copy(quaternion);
     }
     // Hands: a fist for a blow, a grip round a weapon held; otherwise the clip's relaxed curl.
     const fist = this.strikeMove ? fistAmount(this.strikeClock, this.strikeWindup, this.strikeRecover) : 0;

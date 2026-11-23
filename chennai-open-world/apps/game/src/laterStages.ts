@@ -13,7 +13,7 @@ import { nearestRoadPoint, type Point, type Road, type WorldMap } from "@cow/gam
 import type { EnemySpot, WeaponId } from "@cow/combat";
 import type { Mission, Objective } from "@cow/missions";
 import type { Parking } from "./content";
-import { fareAt } from "./fareSpots";
+import { fareAt, goodsAt } from "./fareSpots";
 import { roadPathOn } from "./streetWar";
 
 /** Station positions as in `world/rail.json` (checked by `laterStages.test.ts`). */
@@ -171,7 +171,8 @@ export function buildLaterStages(city: WorldMap): LaterStages {
         reach("Take a train from Park to Chennai Egmore (BOARD on the platform)", STATIONS.egmore, { radius: 120, byTrain: true }),
         { type: "enter", label: "Step off and get on the motorbike outside Egmore station", vehicle: "bike" },
         { type: "chase", label: "Catch the thief on EVR Periyar Salai", path: thiefPath, speed: 10, radius: 5, quarry: "bike" },
-        reach("Bring the harmonium back to Egmore station", egmoreGate, { radius: 9, stop: true }),
+        // The accompanist waits at the station gate and takes it off the bike.
+        reach("Bring the harmonium back to Egmore station", egmoreGate, { radius: 9, stop: true, goods: goodsAt(city, egmoreGate, { action: "unload", items: ["harmonium"], aboard: "here" }, STATIONS.egmore) }),
       ],
     },
     {
@@ -183,9 +184,11 @@ export function buildLaterStages(city: WorldMap): LaterStages {
       reputation: 2,
       objectives: [
         { type: "enter", label: "Get on a motorbike", vehicle: "bike" },
-        reach("Collect the biryani near Egmore station", kitchen, { mode: "bike", radius: 7, stop: true }),
-        reach("Deliver it to the stadium gate, Wallajah Road", stadiumGate, { mode: "bike", radius: 7, stop: true, timeLimit: allow(kitchen, stadiumGate, 13) }),
-        reach("Last box to the scorers, Victoria Hostel Road", hostelGate, { mode: "bike", radius: 7, stop: true, timeLimit: allow(stadiumGate, hostelGate, 9) }),
+        // The cook hands over a big insulated bag of parcels and one boxed parcel for the scorers.
+        reach("Collect the biryani near Egmore station", kitchen, { mode: "bike", radius: 7, stop: true, goods: goodsAt(city, kitchen, { action: "load", items: ["food-bag", "parcel"], who: "shopkeeper" }, kitchenPoi) }),
+        reach("Deliver it to the stadium gate, Wallajah Road", stadiumGate, { mode: "bike", radius: 7, stop: true, timeLimit: allow(kitchen, stadiumGate, 13), goods: goodsAt(city, stadiumGate, { action: "unload", items: ["food-bag"] }, chepauk) }),
+        // The scorers' runner waits 8 m back from the gate: right at it the pavement spot falls on a side lane.
+        reach("Last box to the scorers, Victoria Hostel Road", hostelGate, { mode: "bike", radius: 7, stop: true, timeLimit: allow(stadiumGate, hostelGate, 9), goods: goodsAt(city, hostelGate, { action: "unload", items: ["parcel"] }, chepauk, -8) }),
       ],
     },
     {
