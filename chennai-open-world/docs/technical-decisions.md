@@ -554,3 +554,52 @@ phone, where touch timing for block and dodge matters most.
 
 **Revisit when** licensed combat animation clips are available (replace the poses, keep the
 rules and tests), or players need to pick targets themselves.
+
+## TD-30: Carjacking swaps a traffic agent for a pooled drivable vehicle; the driver becomes a walker
+
+**Decision (23 Nov 2026, from a player's request: "if a pedestrian is driving a car, I should be
+able to stop that car, pull them out, and get in").** The player on foot can take a car,
+auto-rickshaw or motorbike from AI traffic. Buses and ambulances cannot be taken.
+- **Rules** (`@cow/ai` `Carjack.ts`, game-design estimates): only a vehicle going slower than
+  1.2 m/s (`CARJACK.maxSpeed`: at a light, in a jam, or braking for the player) and within 2.6 m
+  of its body (`CARJACK.reach`, measured to the rotated footprint). Traffic already brakes for
+  the player standing ahead (the player is one of `AgentSystem.update`'s obstacles), so standing
+  in the lane stops a car about 2.3 m short: within reach. No new braking rule was needed.
+- **Control:** the existing context button shows HIJACK (accessible name "Take car" / "Take
+  auto" / "Take motorbike") when no parked vehicle is in range (parked vehicles' ENTER comes
+  first, then HIJACK, then a place's entrance).
+- **The swap** (`apps/game/src/Carjacker.ts`): the traffic agent leaves the traffic at once
+  (`Population.takeTraffic` recycles it out of sight, as for any far-off agent, so the traffic
+  pool and its models stay as they were) and a drivable `Vehicle` of the same kind and colour is
+  put at its place and heading, with the same person baked seated at the wheel
+  (`HumanAssets.seatedStatic`). The get-in sequence (`Boarder`, `Boarding`) gains an optional
+  `pull` phase (0.9 s, after the door opens, before sitting; event `pulled`): the player turns
+  to the seat and swings; at `pulled` the seated figure is removed and one of the walkers (the
+  one farthest from the player, so nobody sees them vanish) is put beside the door on the
+  nearest road (`AgentSystem.placeAt`) and frightened, so they run off. Stopping the sequence
+  (teleport, knocked out) releases the driver the same way.
+- **Crime:** a new `carjacking` entry in `WANTED.crimes` (3 points, at least one star, every
+  take counts, so two in a row make two stars). `Police.carjacked` reports it and marks the
+  vehicle as taken, so getting in is not counted again as `vehicleTheft`. Existing crimes are
+  unchanged.
+- **No leaks:** the drivable stand-ins are a pool of at most `CARJACK.perKind` (2) per kind,
+  6 in all (`chooseJackSlot`): a free one of the same kind and colour is reused, else a new one
+  under the cap, else the free one handed out longest ago is moved and repainted
+  (`Vehicle.repaint` rebuilds the model in place and frees its own geometry; shared wheel and
+  auto geometry and all materials are kept). One left behind stays parked like any other vehicle
+  until its slot is needed. Physics bodies are never created past the cap, so none needs removing.
+
+**Why a swap, not driving the traffic agent.** AI traffic is kinematic (the AI sets its pose)
+and has no suspension or engine; the player's vehicles are Rapier bodies with the handling,
+gearbox, sounds and crash rules. Swapping keeps both systems as they are, and pooling avoids
+destroying Rapier bodies mid-game (no removal API was needed).
+
+**Trade-offs.** The driver who runs off is one of the street's walkers, not the same person who
+was at the wheel (the walkers' figures are fixed per agent; making a new animated figure per
+take would grow without bound). The driver never fights back (the combat brawler exists, but a
+driver turning into a story-style enemy group needs its own rules; left out). A reused spare
+can vanish from where the player left it once more than two of that kind have been taken. Not
+tried on a phone.
+
+**Revisit when** walkers can change who they are (then the driver keeps their face), or drivers
+should sometimes fight back (a one-person `Combat` group from the pulled-out driver).

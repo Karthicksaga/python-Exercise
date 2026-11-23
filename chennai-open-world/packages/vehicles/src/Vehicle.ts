@@ -20,7 +20,8 @@ const CRASH_KEEP = 0.65;
 export class Vehicle {
   readonly type: VehicleType;
   readonly body: VehicleBody;
-  private readonly model: VehicleModel;
+  private model: VehicleModel;
+  private paint: number;
   private roll = 0;
   private lean = 0;
   private readonly seatPoint = new THREE.Vector3();
@@ -46,6 +47,39 @@ export class Vehicle {
     this.type = VEHICLE_TYPES[kind];
     this.body = physics.createVehicle(this.type.physics, { x: position.x, y: this.type.rideHeight + 0.1, z: position.z }, yaw);
     this.model = buildVehicleModel(kind, color);
+    this.paint = color;
+  }
+
+  /** Body colour. */
+  get color(): number {
+    return this.paint;
+  }
+
+  /**
+   * Give the vehicle another colour: its model is rebuilt in place (same parent, pose and door)
+   * and the old one's own geometry freed. Used when a spare vehicle stands in for a different
+   * taken traffic vehicle (`@cow/ai` `chooseJackSlot`), so no new vehicle is made.
+   */
+  repaint(color: number): void {
+    if (color === this.paint) return;
+    const old = this.model.object;
+    const next = buildVehicleModel(this.kind, color);
+    next.object.position.copy(old.position);
+    next.object.quaternion.copy(old.quaternion);
+    next.object.visible = old.visible;
+    const parent = old.parent;
+    parent?.remove(old);
+    parent?.add(next.object);
+    // Wheel geometry ("spin") is shared by every wheel of its size, and the auto's Blender parts
+    // by every auto of its colour; the rest (merged body, door) belongs to this model alone.
+    if (this.kind !== "auto") {
+      old.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.name !== "spin") child.geometry.dispose();
+      });
+    }
+    this.model = next;
+    this.paint = color;
+    this.model.door?.(this.doorAmount);
   }
 
   get object(): THREE.Group {

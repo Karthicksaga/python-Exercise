@@ -51,6 +51,8 @@ export class Boarder {
   private heading = 0;
   private lastHeading = 0;
   private lastPhase: BoardingPhase | null = null;
+  /** The sequence whose pull has started its swing (played once per sequence). */
+  private lastPulled: Boarding | null = null;
   private readonly local = new THREE.Vector3();
   private readonly turnY = new THREE.Quaternion();
   private readonly up = new THREE.Vector3(0, 1, 0);
@@ -91,8 +93,11 @@ export class Boarder {
     return { x: at.x, y: at.y, z: at.z, yaw: vehicle.body.yaw() };
   }
 
-  /** Start getting in: the player stands at `feet` (world space). */
-  startIn(vehicle: Vehicle, feet: Point3, yaw: number): void {
+  /**
+   * Start getting in: the player stands at `feet` (world space). With `pull`, someone is at the
+   * wheel (a vehicle taken from traffic): after the door opens the player drags them out first.
+   */
+  startIn(vehicle: Vehicle, feet: Point3, yaw: number, pull = false): void {
     this.begin(vehicle);
     vehicle.object.updateMatrixWorld(true);
     const from = vehicle.object.worldToLocal(this.local.set(feet.x, feet.y, feet.z));
@@ -103,7 +108,7 @@ export class Boarder {
     this.where.x = feet.x;
     this.where.y = feet.y;
     this.where.z = feet.z;
-    this.boarding = new Boarding("in", vehicle.type.entry, pathLength(this.path), this.aisleLength);
+    this.boarding = new Boarding("in", vehicle.type.entry, pathLength(this.path), this.aisleLength, pull);
   }
 
   /** Start getting out of the vehicle the player is driving. */
@@ -174,6 +179,17 @@ export class Boarder {
       heading = step.heading;
       const time = boarding.durationOf("approach");
       avatar.update(dt, time > 0 ? pathLength(this.path) / time : 0, true);
+    } else if (phase === "pull") {
+      // At the door, turned to the seat, grabbing and dragging the driver out (a shove's swing).
+      at = { ...this.aisle[0]! };
+      const seat = type.driver;
+      const toSeat = Math.atan2(-(seat.x - at.x), -(seat.z - at.z));
+      heading = turn(this.heading, toSeat, Math.min(1, boarding.phaseProgress * 4));
+      if (this.lastPulled !== boarding) {
+        this.lastPulled = boarding;
+        avatar.play("cross");
+      }
+      avatar.update(dt, 0, true);
     } else if (phase === "climb" || phase === "out") {
       // Along the floor inside (the bus): walking, facing the way of the walk.
       const step = this.alongAisle(boarding.aisle);

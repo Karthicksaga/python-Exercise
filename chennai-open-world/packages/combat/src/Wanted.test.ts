@@ -236,3 +236,13 @@ describe("vehicle theft", () => {
     expect(isVehicleTheft({ id: "car-3", kind: "car" }, { ...rules, taken: new Set(["car-3"]) })).toBe(false);
   });
 });
+
+describe("carjacking", () => {
+  it("gives a star, weighs more than taking a parked vehicle, and two make two stars", () => {
+    const w = new Wanted();
+    expect(w.report("carjacking")).toEqual({ type: "raised", stars: 1, crime: "carjacking" });
+    expect(WANTED.crimes.carjacking.points).toBeGreaterThan(WANTED.crimes.vehicleTheft.points);
+    // Every take counts (no "one report per few seconds" window).
+    expect(w.report("carjacking")).toEqual({ type: "raised", stars: 2, crime: "carjacking" });
+  });
+});

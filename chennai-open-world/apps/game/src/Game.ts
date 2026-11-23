@@ -34,6 +34,8 @@ import { LandmarkLabels } from "@cow/ui";
 import { loadRail, loadWorld } from "./WorldFiles";
 import { Railway, type RailSnapshot } from "./Railway";
 import { CityMapDesk } from "./CityMapDesk";
+import { Carjacker } from "./Carjacker";
+import type { JackCandidate } from "@cow/ai";
 import { CONTROLS, TitleDesk } from "./TitleDesk";
 import type { LoadStep, StreetSketch, TitleModel } from "@cow/ui";
 import type { CityMapState } from "@cow/ui";
@@ -123,6 +125,8 @@ export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
   readonly vehicles: Array<{ id: string; kind: string; x: number; z: number; yaw: number; door: number }>;
   /** Getting in or out of a vehicle (the animated sequence), or null. */
   readonly boarding: BoardingSnapshot | null;
+  /** Taking vehicles from traffic: the spares in use, a driver still to pull out, the vehicle HIJACK would take. */
+  readonly carjack: ReturnType<Carjacker["snapshot"]> & { readonly jackable: { readonly id: number; readonly kind: string } | null };
   readonly traffic: Array<{ x: number; z: number; speed: number; kind: string }>;
   readonly pedestrians: number;
   /** AI vehicles the time of day and area call for (`traffic` catches up as they go out of sight). */
@@ -278,6 +282,10 @@ export class Game {
   /** The vehicle being driven, or null on foot. */
   private driving: Vehicle | null = null;
   private nearby: Vehicle | null = null;
+  /** A traffic vehicle within reach that can be taken (HIJACK), when no parked one is (`Carjacker.ts`). */
+  private jackable: JackCandidate | null = null;
+  /** Taking vehicles from traffic (set in `create`). */
+  carjacker!: Carjacker;
   /** Enemy groups the player has beaten during the current stage. */
   private readonly cleared = new Set<string>();
   /** Seconds the pistol stays raised after a shot. */
@@ -757,6 +765,7 @@ export class Game {
       busted: (fine, stars, station) => game?.arrested(fine, stars, station),
     });
     game.arms = new Arms(content, combat, renderer.scene, humans, hud, controls);
+    game.carjacker = new Carjacker(renderer.scene, physics, humans, population, vehicles);
     game.fareFigures = new FareFigures(renderer.scene, humans);
     game.humans = humans;
     progress?.step("rail");
@@ -1042,14 +1051,22 @@ export class Game {
   }
 
   /** Start getting in: the figure walks to the door, opens it, sits down and shuts it (`Boarder`). */
-  private getIn(vehicle: Vehicle): void {
+  private getIn(vehicle: Vehicle, pull = false): void {
     this.avatar.setAiming(false);
     this.player.body.setEnabled(false);
     this.controls.setMode("busy");
     // Pull the camera back far enough to see the whole vehicle and the door (the bus is 10 m long).
     this.camera.reach = Math.max(5.6, vehicle.type.cameraDistance * 0.8);
     this.controls.setAction(null);
-    this.boarder.startIn(vehicle, this.player.position, this.player.yaw);
+    this.boarder.startIn(vehicle, this.player.position, this.player.yaw, pull);
+  }
+
+  /** Take a vehicle from traffic (`Carjacker.ts`): a crime, and getting in starts by pulling the driver out. */
+  private carjack(target: JackCandidate): void {
+    const vehicle = this.carjacker.take(target, this.where(), (v) => v === this.driving || v === this.boarder.active);
+    if (!vehicle) return;
+    this.police.carjacked(vehicle.id);
+    this.getIn(vehicle, true);
   }
 
   /** Start getting out; refused while moving. With the door's side blocked, out the other way at once. */
@@ -1084,6 +1101,7 @@ export class Game {
     const direction = this.boarder.direction;
     for (const event of this.boarder.fixedUpdate(dt)) {
       if (event === "shut") this.sound.door(vehicle ? soundKind(vehicle.kind) : "car");
+      else if (event === "pulled") this.carjacker.release(this.where());
       else if (event === "done" && direction === "in" && vehicle) this.enterVehicle(vehicle);
       else if (event === "free" && vehicle) {
         const place = this.boarder.exitPlace();
@@ -1095,6 +1113,8 @@ export class Game {
 
   /** Stop a sequence at once (teleport, new game, knocked out): getting in, back on foot; getting out, back in the seat. */
   private cancelBoarding(): void {
+    // A driver still at the wheel of a vehicle being taken gets out and runs.
+    this.carjacker.release(this.where());
     const vehicle = this.boarder.active;
     if (!vehicle) return;
     const busy = this.boarder.busy;
@@ -1264,6 +1284,7 @@ export class Game {
       chunkKeys: this.chunks.loadedKeys(),
       vehicles: this.vehicles.map((v) => ({ id: v.id, kind: v.kind, x: v.body.position().x, z: v.body.position().z, yaw: v.body.yaw(), door: v.door })),
       boarding: this.boarder.snapshot(),
+      carjack: { ...this.carjacker.snapshot(), jackable: this.jackable ? { id: this.jackable.id, kind: this.jackable.kind } : null },
       traffic: this.population.trafficPositions(),
       pedestrians: this.population.pedestrianCount,
       trafficWanted: this.population.trafficWanted,
@@ -1637,6 +1658,7 @@ export class Game {
     } else if (action) {
       if (this.driving) this.getOut();
       else if (this.nearby) this.getIn(this.nearby);
+      else if (this.jackable) this.carjack(this.jackable);
       else this.enteringPlace = this.placeDesk.near(this.player.position);
     }
 
@@ -1739,14 +1761,14 @@ export class Game {
       this.hud.setSpeed(null);
       this.sound.setEngine(null);
       this.sound.setSkid(null);
-      this.nearby = null;
+      this.nearby = this.jackable = null;
       this.controls.setAction(null);
     } else if (this.railway?.walking) {
       // Walking through a coach's doorway, getting on or off a train.
       this.railway.walkFrame(dt);
       this.camera.update(dt, at, this.physics, this.player.body);
       this.hud.setSpeed(null);
-      this.nearby = null;
+      this.nearby = this.jackable = null;
       if (!this.railWalk) this.controls.setMode("busy");
       this.railWalk = true;
       this.controls.setAction(this.railway.action);
@@ -1764,7 +1786,7 @@ export class Game {
       this.hud.setSpeed(null);
       this.sound.setEngine(null);
       this.sound.setSkid(null);
-      this.nearby = null;
+      this.nearby = this.jackable = null;
       this.controls.setAction(this.railway?.action ?? null);
     } else if (this.driving) {
       const body = this.driving.body;
@@ -1789,7 +1811,7 @@ export class Game {
       const seat = this.driving.riderPose();
       this.avatar.object.position.set(seat.x, seat.y, seat.z);
       this.avatar.object.quaternion.copy(seat.quaternion);
-      this.nearby = null;
+      this.nearby = this.jackable = null;
       this.controls.setAction("EXIT");
     } else {
       this.avatar.object.position.set(at.x, at.y, at.z);
@@ -1824,8 +1846,11 @@ export class Game {
       }
       // The train's BOARD / STEP OFF comes first, then a vehicle within reach, then a place's entrance.
       const railAction = this.railway?.action ?? null;
-      const place = railAction || this.nearby ? null : this.placeDesk.near(at);
-      this.controls.setAction(railAction ?? (this.nearby || place ? "ENTER" : null), place ? "Go inside" : undefined);
+      // Then a stopped or crawling car, auto or motorbike in traffic: HIJACK (`Carjacker.ts`).
+      this.jackable = railAction || this.nearby ? null : this.carjacker.candidate(at);
+      const place = railAction || this.nearby || this.jackable ? null : this.placeDesk.near(at);
+      if (this.jackable) this.controls.setAction("HIJACK", `Take ${this.jackable.kind === "bike" ? "motorbike" : this.jackable.kind}`);
+      else this.controls.setAction(railAction ?? (this.nearby || place ? "ENTER" : null), place ? "Go inside" : undefined);
     }
 
     // Mission marker, panel and minimap.

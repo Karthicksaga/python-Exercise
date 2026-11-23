@@ -447,6 +447,49 @@ export class AgentSystem {
     agent.generation++;
   }
 
+  /**
+   * Put an agent at a point at once, on the nearest stretch of road (within 100 m), going the way
+   * of that stretch closest to `heading`. Unlike `moveAgent` it changes the agent's road, so it
+   * walks on from there (a driver pulled out of a taken car). Lets go of a held agent.
+   */
+  placeAt(agent: Agent, x: number, z: number, heading: number): void {
+    const { graph } = this;
+    if (graph.edges.length === 0) return;
+    const fx = -Math.sin(heading);
+    const fz = -Math.cos(heading);
+    const cx = Math.floor(x / CELL);
+    const cz = Math.floor(z / CELL);
+    let best = -1;
+    let bestScore = Infinity;
+    for (let i = -1; i <= 1; i++) {
+      for (let j = -1; j <= 1; j++) {
+        for (const e of this.cells.get(cellKey(cx + i, cz + j)) ?? []) {
+          const edge = graph.edges[e]!;
+          const from = graph.nodes[edge.from]!;
+          const s = Math.max(0, Math.min(edge.length, (x - from.x) * edge.dx + (z - from.z) * edge.dz));
+          const d = Math.hypot(from.x + edge.dx * s - x, from.z + edge.dz * s - z);
+          // Nearest first; between stretches about as near, the one going the wanted way.
+          const score = d - (edge.dx * fx + edge.dz * fz);
+          if (score < bestScore) {
+            bestScore = score;
+            best = e;
+          }
+        }
+      }
+    }
+    this.held.delete(agent.id);
+    this.releaseAll(agent);
+    if (best >= 0) {
+      agent.edge = best;
+      agent.next = nextEdge(graph, best, this.random);
+    }
+    agent.x = x;
+    agent.z = z;
+    agent.heading = heading;
+    agent.stuck = 0;
+    agent.generation++;
+  }
+
   /** Keep an agent below `speed` (m/s) for `seconds` (someone limping). */
   slow(agent: Agent, speed: number, seconds: number): void {
     this.slowed.set(agent.id, { speed, left: seconds });

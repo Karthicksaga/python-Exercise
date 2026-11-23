@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { APPROACH_LIMIT, BOARD_WALK_SPEED, Boarding, DOOR_CLOSE_TIME, DOOR_OPEN_TIME, SIT_TIME, SWING_TIME, alongPath, approachPath, ease, pathLength, type BoardingEvent } from "./Boarding";
+import { APPROACH_LIMIT, BOARD_WALK_SPEED, Boarding, DOOR_CLOSE_TIME, DOOR_OPEN_TIME, PULL_TIME, SIT_TIME, SWING_TIME, alongPath, approachPath, ease, pathLength, type BoardingEvent } from "./Boarding";
 import { VEHICLE_TYPES, type VehicleKind } from "./specs";
 
 /** Run a sequence to its end in steps of `dt`, recording each phase seen, the door and every event. */
@@ -32,6 +32,20 @@ describe("Boarding: getting in", () => {
     expect(t).toBeCloseTo(boarding.duration, 1);
     // The slam comes at the very end, after the seat.
     expect(events.find((e) => e.event === "shut")!.t).toBeGreaterThan(events.find((e) => e.event === "seated")!.t + DOOR_CLOSE_TIME - 0.05);
+  });
+
+  it("taking a vehicle from its driver: the door opens, the driver is pulled out, then the player sits", () => {
+    const boarding = new Boarding("in", car, 1.4, 0, true);
+    expect(boarding.durationOf("pull")).toBe(PULL_TIME);
+    const { phases, events, doors } = run(boarding);
+    expect(phases).toEqual(["approach", "open", "pull", "sit", "close"]);
+    expect(events.map((e) => e.event)).toEqual(["doorOpening", "pulled", "seated", "shut", "done"]);
+    // The door stays wide open while the driver is dragged out.
+    expect(Math.max(...doors)).toBe(1);
+    // Doorless vehicles (motorbike, auto) go straight from the walk to the pull.
+    const bike = run(new Boarding("in", VEHICLE_TYPES.bike.entry, 1.4, 0, true));
+    expect(bike.phases).toEqual(["approach", "pull", "sit"]);
+    expect(bike.events.map((e) => e.event)).toEqual(["pulled", "seated", "done"]);
   });
 
   it("hurries a long walk: never more than the limit", () => {

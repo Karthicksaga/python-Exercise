@@ -19,22 +19,25 @@ export const SIT_TIME = 0.7;
 /** Swinging a leg over a motorbike is a little slower than sliding onto a car seat. */
 export const SWING_TIME = 0.8;
 export const DOOR_CLOSE_TIME = 0.4;
+/** Pulling the driver out of a vehicle being taken (carjacking), seconds. */
+export const PULL_TIME = 0.9;
 /** Walking the floor inside (the bus): at most this long, seconds. */
 export const AISLE_LIMIT = 1.2;
 
 /**
- * approach: walking to the entry point. open: the door opening. climb: up the step and along the
+ * approach: walking to the entry point. open: the door opening. pull: dragging the driver out
+ * (taking a vehicle from its driver; the door, if any, stays open). climb: up the step and along the
  * floor (bus). sit: from standing to seated. close: the door shutting. stand and out are sit and
  * climb in reverse.
  */
-export type BoardingPhase = "approach" | "open" | "climb" | "sit" | "close" | "stand" | "out" | "done";
+export type BoardingPhase = "approach" | "open" | "pull" | "climb" | "sit" | "close" | "stand" | "out" | "done";
 
 /**
  * doorOpening: the door starts to open (a click). shut: the door has closed (the slam). seated:
- * the driver is in the seat. free: getting out, the player has their feet on the ground and
+ * the driver is in the seat. pulled: the driver being taken from is out of the seat. free: getting out, the player has their feet on the ground and
  * takes control again. done: the sequence is over.
  */
-export type BoardingEvent = "doorOpening" | "shut" | "seated" | "free" | "done";
+export type BoardingEvent = "doorOpening" | "pulled" | "shut" | "seated" | "free" | "done";
 
 interface Step {
   readonly phase: Exclude<BoardingPhase, "done">;
@@ -58,12 +61,14 @@ export class Boarding {
    * @param direction "in" to get in, "out" to get out
    * @param approach length of the walk to the entry point, metres (getting in)
    * @param aisle length of the walk along the floor inside, metres (0 when there is none)
+   * @param pull getting in: someone is at the wheel and is pulled out first (`PULL_TIME`)
    */
   constructor(
     readonly direction: "in" | "out",
     readonly entry: VehicleEntry,
     approach = 0,
     aisle = 0,
+    pull = false,
   ) {
     const door = entry.door !== "none";
     const sit = entry.style === "swing" ? SWING_TIME : SIT_TIME;
@@ -74,6 +79,7 @@ export class Boarding {
     if (direction === "in") {
       push("approach", Math.min(APPROACH_LIMIT, Math.max(0, approach) / BOARD_WALK_SPEED));
       if (door) push("open", DOOR_OPEN_TIME);
+      if (pull) push("pull", PULL_TIME);
       push("climb", climb);
       push("sit", sit);
       if (door) push("close", DOOR_CLOSE_TIME);
@@ -153,7 +159,7 @@ export class Boarding {
   get aisle(): number {
     const phase = this.phase;
     if (this.direction === "in") {
-      if (phase === "approach" || phase === "open") return 0;
+      if (phase === "approach" || phase === "open" || phase === "pull") return 0;
       return phase === "climb" ? this.phaseProgress : 1;
     }
     if (phase === "open" || phase === "stand") return 1;
@@ -183,6 +189,7 @@ export class Boarding {
       const finished = this.steps[this.index]!.phase;
       this.time -= this.steps[this.index]!.duration;
       this.index++;
+      if (finished === "pull") events.push("pulled");
       if (finished === "sit") events.push("seated");
       if (finished === "close") events.push("shut");
       const next = this.phase;
