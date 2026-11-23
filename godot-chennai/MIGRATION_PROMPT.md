@@ -197,9 +197,21 @@ of the reconstruction work, and build the migration phases (§5) without waiting
 | Tests: fusion (pytest), codec round trip, archetype determinism, triangle budgets, reference screenshots | GUT/headless GDScript tests for the reader and builders; Compatibility screenshots at the same reference places; pytest stays for `tools/geo` |
 
 **Owner's answers (23 Nov 2026):**
-- **Scope: the entire city of Chennai**, taken as the Greater Chennai Corporation area (about
-  426 km², *to verify*; about 3.6× today's box). Nothing may hard-code the current box: bounds come
-  from `index.json`. The wider metropolitan area is not in scope unless the owner says so.
+- **Scope (updated by the owner, 23 Nov): Chengalpattu to Pulicat.** The world runs from
+  Chengalpattu in the south (≈12.68°N) to Pulicat and Ponneri at the Tamil Nadu border in the
+  north (≈13.45°N, the exact edge follows the state border at build time), and from about
+  79.95°E (Chengalpattu, Sriperumbudur side) east to the coast: roughly 80–85 km × 40 km, about
+  25–30× today's 117 km² box. It covers all of Chennai, the airport (§11), Tambaram and the GST
+  Road, Ennore port and Pulicat Lake; Tada (Andhra Pradesh) is a possible later extension. All in
+  Tamil Nadu, so the openstreetmap.fr Tamil Nadu extract remains the single OSM source.
+  Engine requirements from day one (Foundation is told): a **floating origin** (recentre the
+  world on the player; float32 precision far from the origin), a **regional index** (e.g. 10 km
+  tiles, each with its own chunk table and roads, streamed; today's single `index.json` and
+  `roads.bin` would be 30–50 MB at this size), bounds always read from data, a cheaper **rural
+  look** (fields, scrub, lakes, highways) and the **far-city layer** (§11) for distance and flight.
+  Build order: today's box first (parity), then grow outward in rings (whole city, then the
+  suburbs and corridors, then the rural edges), each ring with its coverage report and phone
+  check.
 - **Keep the same structure as the existing game.** The Godot project mirrors the Three.js game's
   modules with the same names and boundaries under `godot-chennai/src/`: `game_engine`,
   `game_world`, `map_data`, `physics`, `player`, `vehicles`, `ai`, `combat`, `missions`, `rail`,
@@ -238,4 +250,30 @@ behaviour and its tests, not the code.
 
 The unfinished branches are specs to finish in Godot, not code to merge. Where a spec was never
 tested end to end (the WIP branches), design the tests first in Godot.
+
+## 11. New vehicles and the airport (owner, 23 Nov 2026)
+The owner asked for a realistic airport with aeroplane flying, a helicopter, a race car and
+premium cars. Rules that apply to all of them: **original designs only** (no real makes, models,
+badges, airline names or liveries: TD-18 of the Three.js game; invented airline colours),
+built in Blender by script like the other vehicles, phone budgets with LODs, licences recorded.
+
+| What | Scope | Phase |
+|---|---|---|
+| **Premium cars** (an original luxury saloon, SUV and sports coupé) | Parked in richer districts and as rare traffic; drivable with their own handling (faster, grippier, quieter engines); stealable like any car; a garage to keep the ones the player owns | 2 (vehicles), traffic use in 3 |
+| **Race car** (original open-wheel or GT design) | Very high grip and speed; races as city jobs or events: a street circuit (the Island Grounds area, where Chennai held a street race in 2024, is inside the map) and point-to-point races on arterials at night; checkpoints, opponents on the racing line, timing, rewards | Car in 2; races in 4 (missions/jobs) |
+| **Helicopter** | Takes off from helipads (airport, a hospital roof, a police station); arcade-realistic flight (collective up/down, cyclic tilt, yaw), auto-hover when the stick is released, landing gear contact, crash when it hits buildings fast; touch controls designed for it (`input-systems`, `chennai-game-design` §3) | New phase 6b, after the railway |
+| **Aeroplane and the airport** | Chennai International Airport (Meenambakkam) from OSM: runways, taxiways, aprons, terminals, the ATC tower (aeroways are mapped in OSM); a small original airliner and a light aircraft; taxi, take-off, climb, turn, approach and land; ground handling on the runway (Jolt body with custom lift, drag and thrust forces, `physics-tuning`); a simple flight HUD (speed, altitude, heading, attitude) | New phase 6b |
+
+What this needs beyond the vehicles themselves:
+- **World scope:** the airport is inside the Chengalpattu–Pulicat world (§9), in the ring after
+  the current box.
+- **Seeing the city from the air:** a far-city layer (merged low-poly district blocks, or
+  impostors) streamed beyond the 250 m chunk radius when flying, so the city doesn't vanish into
+  fog at altitude; chunk streaming follows the aircraft's ground track with look-ahead.
+  Performance budgets apply at altitude too (`performance-optimization`).
+- **Physics and camera:** high-speed and flight cameras (`camera-systems`), continuous collision
+  for fast bodies, crash rules per vehicle (crash ejection, §10, extended to aircraft as a crash
+  and respawn).
+- **Police and missions:** wanted level reacts to stealing aircraft and flying low over the city;
+  aircraft can't be flown in early stages (unlock through missions or a pilot job).
 
