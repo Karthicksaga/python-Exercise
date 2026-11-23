@@ -27,17 +27,17 @@ boot_log() { adb logcat -d -s godot:V 2>/dev/null; }
 # Crashes of this app only (the crash buffer; native crashes name the process, truncated).
 crashed() { adb logcat -d -b crash 2>/dev/null | grep -qE "chennaiopenworld|openworld\.godot"; }
 config() { dev dumpsys window | grep -m1 -oE "mGlobalConfiguration=\{[^}]*\}"; }
-LAUNCHED_AT=""
 
 diagnose() {
   echo "---- the app's log (tag godot) ----"
   boot_log | tail -120
-  echo "---- system events since launch (activity and window lifecycle, configuration, kills) ----"
-  adb logcat -d -b events ${LAUNCHED_AT:+-T "$LAUNCHED_AT"} 2>/dev/null \
-    | grep -E "am_|wm_|configuration_changed|chennaiopenworld|godot" | grep -vE "am_pss|am_mem_factor|am_freeze|am_unfreeze" | head -200
-  echo "---- activity, window and memory messages since launch ----"
-  adb logcat -d ${LAUNCHED_AT:+-T "$LAUNCHED_AT"} 2>/dev/null \
-    | grep -E "chennaiopenworld|ActivityTaskManager|WindowManager|AndroidRuntime|lowmemorykiller|lmkd|Relaunch|config" | head -200
+  echo "---- why the app's process ended (ApplicationExitInfo) ----"
+  dev dumpsys activity exit-info "$PACKAGE" | head -40
+  echo "---- system events (activity and window lifecycle, configuration, kills), last 120 ----"
+  adb logcat -d -b events 2>/dev/null | grep -E "am_|wm_|configuration_changed" \
+    | grep -vE "am_pss|am_mem_factor|am_freeze|am_unfreeze|am_compact" | tail -120
+  echo "---- system and main log, last 200 lines (without package-filter noise) ----"
+  adb logcat -d -b main,system 2>/dev/null | grep -vE "AppsFilter|BlockstoreStorage| godot   :" | tail -200
   echo "---- crash buffer ----"
   adb logcat -d -b crash 2>/dev/null | tail -60
   echo "---- global configuration now ----"
@@ -112,7 +112,6 @@ case "$ACTIVITY" in */*) ;; *) fail "no launcher activity for $PACKAGE: $ACTIVIT
 adb logcat -c -b all
 dev am force-stop "$PACKAGE"
 log "configuration at launch: $(config)"
-LAUNCHED_AT=$(dev date '+%m-%d %H:%M:%S.000')
 log "launching $ACTIVITY"
 dev am start -W -n "$ACTIVITY" | grep -E "Status|LaunchState|TotalTime" | sed 's/^/  /'
 start=$(date +%s)
