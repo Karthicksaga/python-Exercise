@@ -1,0 +1,185 @@
+name: Chennai Open World
+# Tests, the Android APK and an emulator check for chennai-open-world/ (an Android-only game, TD-20). Nothing else in this repo is built here.
+on:
+  push:
+    paths: ['chennai-open-world/**', '.github/workflows/chennai-open-world.yml']
+  pull_request:
+    paths: ['chennai-open-world/**', '.github/workflows/chennai-open-world.yml']
+  workflow_dispatch:
+
+# A newer push to the same branch or PR cancels the run still in progress.
+concurrency:
+  group: chennai-open-world-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: chennai-open-world
+
+jobs:
+  test:
+    # Typecheck and unit tests: quick, and the browser shards and the APK wait for them.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: chennai-open-world/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  e2e:
+    # The browser suite, split into 4 shards on 4 runners. Each runner runs one copy of the game
+    # at a time (software WebGL is CPU-bound, so tests on one machine must not overlap), so the
+    # suite takes about a quarter of the time with nothing shared between shards.
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      # Every shard reports, so one failure does not hide another.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      # Playwright starts its own build + preview server and never reuses one in CI.
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: chennai-open-world/package-lock.json
+      - run: npm ci
+      # Installs the Chromium build that matches the pinned @playwright/test in package-lock.json.
+      - run: npx playwright install --with-deps chromium
+      # The browser tests hold controls for game time, not wall-clock time, so a slow shared
+      # runner with software WebGL gives the same results (see AGENTS.md). No retries are added:
+      # a failure here should be looked at, not hidden.
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
+      - name: Upload Playwright results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results-${{ matrix.shard }}
+          path: |
+            chennai-open-world/apps/game/playwright-report/
+            chennai-open-world/apps/game/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  android:
+    needs: [test, e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            chennai-open-world/package-lock.json
+            chennai-open-world/apps/mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            chennai-open-world/apps/mobile/android/*.gradle*
+            chennai-open-world/apps/mobile/android/app/*.gradle*
+            chennai-open-world/apps/mobile/android/gradle/wrapper/gradle-wrapper.properties
+      # The runner ships an Android SDK at $ANDROID_HOME. Accepting the licences lets Gradle
+      # download what the project asks for (platform 37, build-tools 37, NDK 27.1, CMake).
+      - name: Accept Android SDK licences
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - run: npm ci
+      # Builds the game and copies it into the Android app's assets.
+      - run: npm run sync:android
+      # The React Native shell has its own lockfile (not part of the root workspaces).
+      - run: npm ci
+        working-directory: chennai-open-world/apps/mobile
+      # The release APK is signed with the debug key (app/debug.keystore): for testing only,
+      # not for the Play Store.
+      # arm64 only, as the APKs built so far: modern phones, and a quarter of the native build time.
+      - run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+        working-directory: chennai-open-world/apps/mobile/android
+      # Copied out first: the smoke build below writes to the same output path.
+      - run: mkdir -p apk && cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk apk/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chennai-open-world-apk
+          path: chennai-open-world/apk/app-release.apk
+          if-no-files-found: error
+      # Smoke-test APK for the android-smoke job: the same release build, but x86_64 (the emulator)
+      # and with test hooks on (WebView debugging and the TEST_AUTOPLAY launch extra, see
+      # apps/mobile/android/app/build.gradle). Built here rather than in its own job because it
+      # reuses this job's npm installs, game build, Gradle cache, compiled Kotlin and JS bundle;
+      # only the x86_64 native code is new. Not for players: WebView debugging is on.
+      - run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=x86_64 -PcowTestHooks=true
+        working-directory: chennai-open-world/apps/mobile/android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chennai-open-world-apk-smoke
+          path: chennai-open-world/apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  android-smoke:
+    # Installs the smoke-test APK on an Android emulator and checks the game starts from its
+    # WebViewAssetLoader origin and streams the city (scripts/android-smoke.mjs, TD-16).
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      # Node 22: the smoke script uses the built-in fetch and WebSocket (no npm install).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: chennai-open-world-apk-smoke
+          path: chennai-open-world/smoke-apk
+      # Hardware acceleration for the emulator (from the android-emulator-runner README).
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run the smoke test on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: true
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          # Off: the smoke script only installs the APK and checks the game loads; Android's window
+          # animations don't matter to it. The step that turns them off runs `adb shell settings`
+          # straight after boot and once failed the job with "can't fork" before the app ran.
+          disable-animations: false
+          working-directory: chennai-open-world
+          # One line: the action runs each script line as a separate command.
+          script: node scripts/android-smoke.mjs smoke-apk/app-release.apk android-smoke
+      - name: Upload device log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-smoke-logcat
+          path: chennai-open-world/android-smoke/
+          if-no-files-found: ignore
+          retention-days: 14

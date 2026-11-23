@@ -1,0 +1,40 @@
+{
+  "name": "chennai-open-world",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Original open-world game set in real Chennai geography (Android).",
+  "workspaces": [
+    "packages/*",
+    "apps/game"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @cow/game",
+    "build": "npm run build -w @cow/game",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "node scripts/e2e.mjs",
+    "sync:android": "npm run build && node scripts/sync-android.mjs",
+    "android": "npm run sync:android && cd apps/mobile && npx react-native run-android",
+    "build:world": "tsx scripts/build-world.ts",
+    "build:rail": "tsx scripts/build-rail.ts",
+    "fetch:osm": "node scripts/fetch-osm.mjs",
+    "optimize:assets": "node scripts/optimize-assets.mjs",
+    "blender:props": "node scripts/blender.mjs tools/blender/street_props.py -- assets/models/props",
+    "blender:auto": "node scripts/blender.mjs tools/blender/auto_rickshaw.py -- assets/models/vehicles",
+    "blender:vehicles": "node scripts/blender.mjs tools/blender/vehicles.py -- assets/models/vehicles",
+    "blender:characters": "node scripts/blender.mjs tools/blender/characters.py -- assets/models"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "@playwright/test": "1.64.1",
+    "@types/node": "^26.6.6",
+    "meshoptimizer": "^1.3.0",
+    "sharp": "^0.35.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.0"
+  }
+}

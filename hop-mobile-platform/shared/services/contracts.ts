@@ -10,6 +10,14 @@ export type Area = {
 };
 export type RoutePoint = { lat: number; lng: number };
 export type Ride = {
+  /** Price promise: the most the rider pays, and what Hop covered if the fare came out higher. */
+  promised_fare_paise?: number | null;
+  promise_refund_paise?: number;
+  /** Accepted means coming: times a captain cancelled after accepting, and the rider's credit. */
+  captain_cancels?: number;
+  cancel_credit_paise?: number;
+  back_seat?: "clear" | "found" | null;
+  completed_at?: string | null;
   id: string;
   version: number;
   created_at?: string;
@@ -85,7 +93,7 @@ export type State = {
 };
 export type Config = {
   areas: Area[];
-  vehicles: { area_id: string; category: string; name: string }[];
+  vehicles: { area_id: string; category: string; name: string; meter_base_paise?: number | null; meter_base_meters?: number | null; meter_per_km_paise?: number | null }[];
   development: boolean;
   routing_configured: boolean;
   phone_login: boolean;
@@ -96,6 +104,8 @@ export type Config = {
   translate_available?: boolean;
 };
 export type Quote = {
+  /** The official meter fare for this distance (autos), when operations set a tariff. */
+  meter_fare_paise?: number;
   payable_paise?: number;
   shared_fare_paise?: number;
   id: string;
@@ -107,6 +117,8 @@ export type Quote = {
 };
 
 export type ScheduledRide = {
+  train_no?: string | null;
+  delay_minutes?: number;
   id: string;
   category: string;
   pickup_label: string;

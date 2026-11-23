@@ -1,0 +1,75 @@
+import type { WeaponId } from "@cow/combat";
+import { Game, type GameSnapshot } from "./Game";
+import { sendToShell } from "./nativeBridge";
+
+declare global {
+  interface Window {
+    /** Debug and test handle; not used by gameplay code. */
+    __cow?: {
+      snapshot(): GameSnapshot;
+      setPaused(paused: boolean): void;
+      teleport(x: number, z: number, yaw?: number): Promise<void>;
+      probe(x: number, z: number, dx: number, dz: number, max: number): number | null;
+      /** Tests only: move the railway clock forward by this many seconds. */
+      railAdvance(seconds: number): void;
+      /** Tests only: set the player's health (to check that treatment and rest restore it). */
+      setHealth(health: number): void;
+      /** Hold a pedestrian standing at a point until a vehicle hits them; false when nobody is free. */
+      stagePedestrian(x: number, z: number, heading: number): boolean;
+      /** Tests only: set the wanted level (0 to 5 stars), e.g. to look at a three-star chase. */
+      setWanted(stars: number): void;
+      /** Tests only: give the player this many pistol rounds (to fire in the street). */
+      giveAmmo(rounds: number): void;
+      /** Tests only: give a weapon with rounds and take it in hand (skips finding a pickup). */
+      giveWeapon(id: WeaponId, ammo: number): void;
+      /** Tests only: who plays the pedestrians, drivers and enemies, and how their feet meet the ground. */
+      people(): unknown;
+      /** Screenshots and debugging only: camera distance (metres), pitch and heading (radians). */
+      view(reach: number, pitch?: number, yaw?: number): void;
+      /** Screenshots and debugging only: stop the clock and play this many game seconds, then draw a frame. */
+      step(seconds: number, resume?: boolean): void;
+    };
+  }
+}
+
+async function boot(): Promise<void> {
+  const canvas = document.getElementById("view");
+  const stage = document.getElementById("stage");
+  const loading = document.getElementById("loading");
+  if (!(canvas instanceof HTMLCanvasElement) || !stage || !loading) throw new Error("Game page is missing its canvas.");
+
+  try {
+    const game = await Game.create(canvas, stage);
+    window.__cow = {
+      snapshot: () => game.snapshot(),
+      setPaused: (paused) => game.setPaused(paused),
+      // For tests and debugging only: missions need long drives that tests skip with this.
+      teleport: (x, z, yaw) => game.teleport(x, z, yaw),
+      probe: (x, z, dx, dz, max) => game.probe(x, z, dx, dz, max),
+      // For tests only: trains run on a timetable; a test skips the wait for the next one.
+      railAdvance: (seconds) => game.railway?.advance(seconds),
+      setHealth: (health) => game.debugSetHealth(health),
+      stagePedestrian: (x, z, heading) => game.stagePedestrian(x, z, heading),
+      // For tests only (police.spec.ts): jump to a wanted level, and have rounds to fire.
+      setWanted: (stars) => game.debugSetWanted(stars),
+      giveAmmo: (rounds) => game.debugGiveAmmo(rounds),
+      // For tests only: the later stages need guns the player would have found by then.
+      giveWeapon: (id, ammo) => game.debugGiveWeapon(id, ammo),
+      people: () => game.debugPeople(),
+      view: (reach, pitch, yaw) => game.debugView(reach, pitch, yaw),
+      step: (seconds, resume) => game.debugStep(seconds, resume),
+    };
+    game.start();
+    loading.remove();
+    document.documentElement.dataset.ready = "true";
+  } catch (error) {
+    // Never leave a black screen: say what failed (usually no WebGL on the device).
+    const message = error instanceof Error ? error.message : String(error);
+    loading.textContent = `The game could not start on this device. ${message}`;
+    loading.setAttribute("role", "alert");
+    document.documentElement.dataset.ready = "error";
+    sendToShell({ type: "error", message });
+  }
+}
+
+void boot();

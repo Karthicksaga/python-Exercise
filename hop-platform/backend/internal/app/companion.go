@@ -44,6 +44,9 @@ func (s *Server) companionRoutes() map[string]http.HandlerFunc {
 		"POST /api/rides/{id}/pay":               s.createPaymentOrder, "POST /api/rides/{id}/pay/verify": s.verifyPayment,
 		"POST /api/scheduled-rides":             s.scheduleRide,
 		"POST /api/scheduled-rides/{id}/cancel": s.cancelScheduledRide,
+		"POST /api/scheduled-rides/{id}/delay":  s.delayScheduledRide,
+		"POST /api/rides/{id}/back-seat":        s.backSeat,
+		"POST /api/operator/meter-tariff":       s.saveMeterTariff,
 	}
 }
 
@@ -147,7 +150,7 @@ func (s *Server) companion(w http.ResponseWriter, r *http.Request) {
  WHERE f.owner_id=$1 OR f.member_id=$1 ORDER BY f.created_at DESC`},
 		{"favorite_drivers", `SELECT fd.driver_id AS id,a.name,d.vehicle_number FROM favorite_drivers fd
  JOIN accounts a ON a.id=fd.driver_id JOIN drivers d ON d.user_id=fd.driver_id WHERE fd.rider_id=$1 ORDER BY fd.created_at DESC`},
-		{"scheduled_rides", "SELECT id,category,pickup_label,dropoff_label,scheduled_for,status FROM scheduled_rides WHERE rider_id=$1 AND scheduled_for>now()-interval '1 day' ORDER BY scheduled_for"},
+		{"scheduled_rides", "SELECT id,category,pickup_label,dropoff_label,scheduled_for,status,train_no,delay_minutes FROM scheduled_rides WHERE rider_id=$1 AND scheduled_for>now()-interval '1 day' ORDER BY scheduled_for"},
 		{"lost_items", "SELECT id,ride_id,description,status,created_at FROM lost_items WHERE reporter_id=$1 ORDER BY created_at DESC LIMIT 20"},
 	}
 	for _, q := range queries {
@@ -564,8 +567,14 @@ func (s *Server) scheduleRide(w http.ResponseWriter, r *http.Request) {
 		DropoffLabel string    `json:"dropoff_label"`
 		ScheduledFor time.Time `json:"scheduled_for"`
 		Payment      string    `json:"payment_method"`
+		TrainNo      string    `json:"train_no"`
 	}
 	if !decode(w, r, &in) {
+		return
+	}
+	in.TrainNo = strings.TrimSpace(in.TrainNo)
+	if in.TrainNo != "" && !trainNo.MatchString(in.TrainNo) {
+		fail(w, 400, "Train numbers have 5 digits")
 		return
 	}
 	if in.Payment == "" {
@@ -608,6 +617,12 @@ func (s *Server) scheduleRide(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		dbError(w, e)
 		return
+	}
+	if in.TrainNo != "" {
+		if _, e = s.DB.Exec(ctx, "UPDATE scheduled_rides SET train_no=$2 WHERE id=$1", id, in.TrainNo); e != nil {
+			dbError(w, e)
+			return
+		}
 	}
 	write(w, 201, map[string]string{"id": id})
 }

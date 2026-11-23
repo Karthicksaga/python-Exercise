@@ -73,7 +73,7 @@ export class LiveHistory {
       .map((r) => {
         if (this.tab === "Upcoming") {
           const s = r as ScheduledRide;
-          return `<article class="activity-card"><div class="row"><strong>${escape(s.category)}</strong><span class="badge neutral">${escape(s.status)}</span></div><p>${escape(s.pickup_label)} → ${escape(s.dropoff_label)}</p><p class="small muted">${escape(date(s.scheduled_for))}</p><button class="secondary" data-history-cancel-schedule="${escape(s.id)}">Cancel scheduled ride</button></article>`;
+          return `<article class="activity-card"><div class="row"><strong>${escape(s.category)}</strong><span class="badge neutral">${escape(s.status)}</span></div><p>${escape(s.pickup_label)} → ${escape(s.dropoff_label)}</p><p class="small muted">${escape(date(s.scheduled_for))}${s.train_no ? ` · Train ${escape(s.train_no)}` : ""}${s.delay_minutes ? ` · moved ${s.delay_minutes} min later` : ""}</p>${s.status === "scheduled" ? `<div class="hop-train-late"><span>Train late?</span><button class="secondary" data-history-delay="${escape(s.id)}" data-minutes="15">+15 min</button><button class="secondary" data-history-delay="${escape(s.id)}" data-minutes="30">+30 min</button></div>` : ""}<button class="secondary" data-history-cancel-schedule="${escape(s.id)}">Cancel scheduled ride</button></article>`;
         }
         const ride = r as Ride;
         return `<article class="activity-card"><div class="row"><span class="badge neutral">${escape(nice(ride.status))}</span><strong>${money((ride.payable_paise ?? ride.fare_paise) / 100)}</strong></div><p class="small muted">${escape(date(ride.created_at))} · ${escape(nice(ride.vehicle_category))} · ${escape(nice(ride.trip_type || "city"))}</p><div class="route-line"><i class="location-dot"></i><strong>${escape(ride.pickup_label)}</strong></div><div class="route-line"><i class="location-dot destination"></i><strong>${escape(ride.dropoff_label)}</strong></div>${ride.driver_name ? `<p class="small">Captain: ${escape(ride.driver_name)} · ${escape(ride.vehicle_number || "")}</p>` : ""}<div class="product-row activity-actions">${active(ride) ? `<button class="secondary" data-history-track="${escape(ride.id)}">Track ride</button>${ride.mine ? `<button class="text-button" data-history-cancel="${escape(ride.id)}">Cancel ride</button>` : ""}` : this.role === "rider" ? `<button class="secondary" data-history-rebook="${escape(ride.id)}">Book again</button>` : ""}${["in_progress", "completed"].includes(ride.status) ? `<button class="text-button" data-history-pay="${escape(ride.id)}">Receipt</button>` : ""}<button class="text-button" data-history-report="${escape(ride.id)}">Report an issue</button>${ride.status === "completed" ? `<button class="text-button" data-history-receipt="${escape(ride.id)}">Statement</button>` : ""}</div></article>`;
@@ -209,6 +209,13 @@ export class LiveHistory {
         });
         this.report = undefined;
         this.bridge.notify("Report submitted to the operator.");
+      } else if (d.historyDelay) {
+        const moved = await api.request<{ scheduled_for: string }>(
+          `/api/scheduled-rides/${encodeURIComponent(d.historyDelay)}/delay`,
+          { minutes: Number(d.minutes) },
+        );
+        this.bridge.notify(`Pickup moved to ${date(moved.scheduled_for)}.`);
+        await this.loadSchedules();
       } else if (d.historyCancelSchedule) {
         await api.request(
           `/api/scheduled-rides/${encodeURIComponent(d.historyCancelSchedule)}/cancel`,

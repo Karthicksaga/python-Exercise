@@ -5,7 +5,7 @@ import { inr, paymentMethods } from "./components";
 import { checkout, type Order, type Verification } from "./checkout";
 import { countUp } from "../design/tripMoments";
 import { enhanceSlides } from "../design/slideToConfirm";
-import { fareStory, arrivalResult } from "../design/tripExtras";
+import { fareStory, arrivalResult, backSeatCard, lostItemHint } from "../design/tripExtras";
 
 // A 1–2 star rating asks what went wrong; the picks are sent as the rating comment.
 const LOW_REASONS = {
@@ -60,6 +60,7 @@ export class LivePayment {
   /** The settled status whose success motion has already played. */
   private gave?: number;
   private lowReasons = new Set<string>();
+  private usualSaved = false;
   private celebrated = "";
   private isSettled(status?: string) {
     return status === "paid_online" || status === "driver_reported_received" || status === "rider_reported_paid";
@@ -153,12 +154,28 @@ export class LivePayment {
   }
   private click = (event: Event) => {
     const button = (event.target as Element).closest<HTMLElement>(
-      "[data-live-method],[data-live-pay],[data-live-rate],[data-live-gave],[data-live-reason]",
+      "[data-live-method],[data-live-pay],[data-live-rate],[data-live-gave],[data-live-reason],[data-live-seat],[data-live-usual]",
     );
     if (!button) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     if (this.busy) return;
+    if (button.dataset.liveSeat) {
+      const found = button.dataset.liveSeat === "found";
+      void this.run(async () => {
+        const note = found ? (prompt("What did you find? (optional)", "") || "").trim().slice(0, 200) : "";
+        const out = await api.request<{ back_seat: "clear" | "found" }>(`/api/rides/${this.ride.id}/back-seat`, { found, note });
+        this.ride = { ...this.ride, back_seat: out.back_seat };
+      });
+      return;
+    }
+    if (button.dataset.liveUsual !== undefined) {
+      void this.run(async () => {
+        await api.request("/api/favorite-drivers", { ride_id: this.ride.id });
+        this.usualSaved = true;
+      });
+      return;
+    }
     if (button.dataset.liveReason) {
       const r = button.dataset.liveReason;
       this.lowReasons.has(r) ? this.lowReasons.delete(r) : this.lowReasons.add(r);
@@ -408,8 +425,16 @@ export class LivePayment {
   private ratingCard() {
     if (this.ride.status !== "completed" || !(this.role === "captain" || this.ride.driver_name)) return "";
     const other = this.role === "rider" ? "your Captain" : "your rider";
-    if (this.ride.my_rating)
-      return `<div class="section-card payment-rating" data-rated="${this.ride.my_rating}"><p>You rated ${other} ${"★".repeat(this.ride.my_rating)}</p></div>`;
+    if (this.ride.my_rating) {
+      // Your usual captain: after a 5-star ride, they get your next ride first when nearby.
+      const name = escape((this.ride.driver_name || "your Captain").split(" ")[0]);
+      const usual = this.role === "rider" && this.ride.my_rating === 5
+        ? this.usualSaved
+          ? `<p class="hop-usual saved" role="status">${name} is now your usual captain. When they're nearby, they get your rides first.</p>`
+          : `<button type="button" class="secondary hop-usual" data-live-usual>Make ${name} your usual captain</button>`
+        : "";
+      return `<div class="section-card payment-rating" data-rated="${this.ride.my_rating}"><p>You rated ${other} ${"★".repeat(this.ride.my_rating)}</p>${usual}</div>`;
+    }
     const reasons = this.rating >= 1 && this.rating <= 2
       ? `<div class="hop-low-rating"><p>What went wrong? <small>(optional)</small></p><div class="hop-notes-chips">${LOW_REASONS[this.role].map((r) => `<button type="button" class="product-chip ${this.lowReasons.has(r) ? "active" : ""}" aria-pressed="${this.lowReasons.has(r)}" data-live-reason="${escape(r)}">${escape(r)}</button>`).join("")}</div></div>`
       : "";
@@ -451,6 +476,7 @@ export class LivePayment {
       this.rating,
       this.gave,
       [...this.lowReasons],
+      this.usualSaved,
     ]);
     // Re-draw when nothing changed only if the app's renderer has drawn over this page.
     if (signature === this.lastRendered && this.app.dataset.livePayment === this.ride.id && this.app.querySelector(".payment-intro")) return;
@@ -620,6 +646,8 @@ export class LivePayment {
       actions += this.button("Direct UPI QR", "direct-upi", true);
     this.app.className = `app ${this.role} payment-prototype`;
     this.app.dataset.livePayment = this.ride.id;
+    // Left something behind: the captain checks the back seat; the rider hears if something was found.
+    content = (this.role === "captain" ? backSeatCard(this.ride) : lostItemHint(this.ride)) + content;
     this.app.innerHTML = `<header class="app-head"><div class="brand">hop<span class="role-tag">${this.role.toUpperCase()}</span></div><span class="badge neutral" data-keep>Ride payment</span></header><div class="screen-body"><section class="payment-intro"><span>THE LAST LITTLE STEP</span><h1>${escape(title)}</h1><p>${escape(copy)}</p></section><div class="payment-content">${this.error ? `<div class="payment-hint payment-error" role="alert">${escape(this.error)}</div>` : ""}${content}</div></div><footer class="action-bar payment-actions">${actions}<p class="fineprint">Status comes from your Hop account · ${this.busy ? "Updating…" : "Secure payment handling"}</p></footer>`;
     // "I’ve paid my Captain" and "Record payment received" are slides (trip steps and money records).
     enhanceSlides(this.app);

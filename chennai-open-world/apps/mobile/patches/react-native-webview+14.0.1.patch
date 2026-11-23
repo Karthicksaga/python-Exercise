@@ -1,0 +1,65 @@
+diff --git a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewClient.java b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewClient.java
+index 209b855..b1765e8 100644
+--- a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewClient.java
++++ b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewClient.java
+@@ -1,6 +1,7 @@
+ package com.reactnativecommunity.webview;
+ 
+ import android.graphics.Bitmap;
++import android.net.Uri;
+ import android.net.http.SslError;
+ import android.os.Build;
+ import android.os.SystemClock;
+@@ -15,6 +16,7 @@ import android.webkit.WebViewClient;
+ 
+ import androidx.annotation.Nullable;
+ import androidx.core.util.Pair;
++import androidx.webkit.WebViewAssetLoader;
+ 
+ import com.facebook.common.logging.FLog;
+ import com.facebook.react.bridge.Arguments;
+@@ -32,6 +34,8 @@ import com.reactnativecommunity.webview.events.TopRenderProcessGoneEvent;
+ import com.reactnativecommunity.webview.events.TopShouldStartLoadWithRequestEvent;
+ import android.webkit.CookieManager;
+ 
++import java.io.ByteArrayInputStream;
++import java.util.Collections;
+ import java.util.concurrent.atomic.AtomicReference;
+ 
+ public class RNCWebViewClient extends WebViewClient {
+@@ -46,6 +50,35 @@ public class RNCWebViewClient extends WebViewClient {
+         basicAuthCredential = credential;
+     }
+ 
++    // Chennai Open World patch (apps/mobile/patches, TD-16): serve the APK's assets at
++    // https://appassets.androidplatform.net/assets/ through androidx.webkit's WebViewAssetLoader,
++    // so the game page has a real https origin (fetch works, no file access needed). Requests to
++    // any other host are not touched.
++    private static final String APP_ASSETS_HOST = "appassets.androidplatform.net";
++    private volatile @Nullable WebViewAssetLoader appAssetLoader = null;
++
++    @Override
++    public @Nullable WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
++        final Uri url = request.getUrl();
++        if (url == null || !"https".equals(url.getScheme()) || !APP_ASSETS_HOST.equals(url.getHost())) {
++            return super.shouldInterceptRequest(view, request);
++        }
++        WebViewAssetLoader loader = appAssetLoader;
++        if (loader == null) {
++            // Called on a WebView background thread; building two identical loaders in a race is harmless.
++            loader = new WebViewAssetLoader.Builder()
++                .setDomain(APP_ASSETS_HOST)
++                .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(view.getContext().getApplicationContext()))
++                .build();
++            appAssetLoader = loader;
++        }
++        final WebResourceResponse response = loader.shouldInterceptRequest(url);
++        if (response != null) return response;
++        // Never let a request for this host reach the network: anything outside /assets/ is a 404.
++        return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found",
++            Collections.<String, String>emptyMap(), new ByteArrayInputStream(new byte[0]));
++    }
++
+     @Override
+     public void onPageFinished(WebView webView, String url) {
+         super.onPageFinished(webView, url);

@@ -27,7 +27,9 @@ type Config struct {
 	SMSWebhookURL, SMSWebhookToken string
 	MSG91AuthKey, MSG91TemplateID  string
 	// TranslateAPIKey enables chat translation (Google Cloud Translation v2).
-	TranslateAPIKey                                                  string
+	TranslateAPIKey string
+	// SMSInboundSecret enables booking by SMS: the SMS provider's webhook sends it as X-Hop-SMS-Secret.
+	SMSInboundSecret                                                 string
 	PaymentAPIURL, PaymentKeyID, PaymentKeySecret, PaymentWebhookKey string
 	// OperatorEmails: verified emails from the configured identity provider (OIDC) that become operators
 	// when they sign in. Deploy configuration, so only whoever controls the deploy can grant it.
@@ -69,6 +71,7 @@ func ConfigFromEnv() (Config, error) {
 	c.FCMProject = os.Getenv("FCM_PROJECT_ID")
 	c.SMSWebhookURL, c.SMSWebhookToken = os.Getenv("SMS_WEBHOOK_URL"), os.Getenv("SMS_WEBHOOK_TOKEN")
 	c.TranslateAPIKey = os.Getenv("TRANSLATE_API_KEY")
+	c.SMSInboundSecret = os.Getenv("SMS_INBOUND_SECRET")
 	c.PaymentAPIURL = env("PAYMENT_API_URL", env("RAZORPAY_API_URL", "https://api.razorpay.com/v1"))
 	c.PaymentKeyID = strings.TrimSpace(env("PAYMENT_KEY_ID", os.Getenv("RAZORPAY_KEY_ID")))
 	c.PaymentKeySecret = strings.TrimSpace(env("PAYMENT_KEY_SECRET", os.Getenv("RAZORPAY_KEY_SECRET")))

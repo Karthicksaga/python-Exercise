@@ -1,0 +1,216 @@
+/**
+ * The visible side of combat: a figure and a collision box for every enemy, bullet tracers,
+ * and the answers to the two questions the combat rules ask about the world.
+ */
+import * as THREE from "three";
+import { STRIKES, isPoliceGroup, strikeKind, type Combat, type CombatWorld, type Enemy, type StrikeKind } from "@cow/combat";
+import { Motion } from "@cow/game-engine";
+import type { KinematicBox, PhysicsWorld } from "@cow/physics";
+import { detailFor, type HumanAssets, type HumanFigure } from "@cow/player";
+import { HitPuffs } from "./HitPuffs";
+
+const CHEST = 1.2;
+/** Where a blow lands, metres above the ground: a punch at the chest, a bat a little lower, a bullet mid-body. */
+const CONTACT_HEIGHT: Readonly<Record<StrikeKind | "shot", number>> = { punch: 1.3, bat: 1.1, shot: 1.15 };
+/** How hard each kind of blow knocks the upper body back (`HumanFigure.flinch`) and the size of its puff. */
+const BLOW_STRENGTH: Readonly<Record<StrikeKind | "shot", number>> = { punch: 1, bat: 1.4, shot: 0.6 };
+/**
+ * Enemy clothing tints: unarmed thugs in maroon, armed ones in near-black (gang members wear
+ * their gang's colours, `Enemy.tint`). Police officers are "police" people in their own uniform;
+ * a stand-in gets the khaki tint (`CASTS.police.uniform`).
+ */
+const TINT = { unarmed: 0xb04a4a, armed: 0x4a4a55 } as const;
+
+interface Body {
+  figure: HumanFigure;
+  /** The person cast for this enemy; `figure` is a stand-in until they are loaded. */
+  readonly wanted: string | null;
+  readonly box: KinematicBox;
+  placed: boolean;
+  /** The last two fixed steps, drawn in between (smooth on any display rate). */
+  readonly motion: Motion;
+}
+
+/** How the combat rules see the world: ray casts against buildings, trees and vehicles. */
+export function combatWorld(physics: PhysicsWorld): CombatWorld {
+  return {
+    lineOfSight(ax, az, bx, bz) {
+      const distance = Math.hypot(bx - ax, bz - az);
+      if (distance < 0.5) return true;
+      const dx = (bx - ax) / distance;
+      const dz = (bz - az) / distance;
+      // Start and stop a little short so the ray doesn't hit the two people themselves.
+      return physics.raycast({ x: ax + dx * 0.6, y: CHEST, z: az + dz * 0.6 }, { x: dx, y: 0, z: dz }, Math.max(0, distance - 1.2)) === null;
+    },
+    wallDistance(x, z, dx, dz, max) {
+      // Distance from the point itself; the ray starts 0.6 m out so it misses the person standing
+      // there (it reaches 0.6 m further than `max`, which only matters for a null "clear" answer).
+      const hit = physics.raycast({ x: x + dx * 0.6, y: CHEST, z: z + dz * 0.6 }, { x: dx, y: 0, z: dz }, max);
+      return hit === null ? null : hit + 0.6;
+    },
+    solidDistance(x, z, dx, dz, max) {
+      return physics.raycastSolid({ x, y: CHEST, z }, { x: dx, y: 0, z: dz }, max);
+    },
+  };
+}
+
+export class Fighters {
+  private readonly bodies = new Map<number, Body>();
+  private readonly tracers: Array<{ mesh: THREE.Mesh; life: number }> = [];
+  private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.9, depthWrite: false, fog: false });
+  private readonly tracerGeometry = new THREE.BoxGeometry(0.035, 0.035, 1);
+  /** Flashes and dust where blows land. */
+  private readonly puffs: HitPuffs;
+
+  constructor(
+    private readonly combat: Combat,
+    private readonly scene: THREE.Object3D,
+    private readonly physics: PhysicsWorld,
+    private readonly humans: HumanAssets,
+  ) {
+    this.puffs = new HitPuffs(scene);
+  }
+
+  /** After each physics step: move the enemies' collision boxes with them. */
+  fixedUpdate(): void {
+    for (const enemy of this.combat.enemies) {
+      const body = this.body(enemy);
+      if (enemy.health <= 0) {
+        body.box.teleport(enemy.x, -40, enemy.z, 0); // a fallen enemy is no obstacle
+      } else if (body.placed) {
+        body.box.moveTo(enemy.x, 0.87, enemy.z, enemy.heading);
+      } else {
+        body.box.teleport(enemy.x, 0.87, enemy.z, enemy.heading);
+        body.placed = true;
+      }
+      body.motion.step(enemy.x, 0, enemy.z, enemy.heading);
+    }
+  }
+
+  private body(enemy: Enemy): Body {
+    let body = this.bodies.get(enemy.id);
+    if (!body) {
+      const { figure, wanted } = this.figureFor(enemy);
+      body = { figure, wanted, box: this.physics.createKinematicBox({ x: 0.28, y: 0.85, z: 0.28 }), placed: false, motion: new Motion() };
+      body.motion.snap(enemy.x, 0, enemy.z, enemy.heading);
+      this.bodies.set(enemy.id, body);
+    }
+    return body;
+  }
+
+  /**
+   * An enemy's figure: police officers are "police" people, story and gang enemies grown men
+   * from the street ("enemy": never children or teenagers). Gang members wear their gang's colours.
+   */
+  private figureFor(enemy: Enemy): { figure: HumanFigure; wanted: string | null } {
+    const police = isPoliceGroup(enemy.group);
+    const look = this.humans.look(police ? "police" : "enemy", enemy.id);
+    const figure = this.humans.create(police ? look.tint : enemy.tint ?? (enemy.armed ? TINT.armed : TINT.unarmed), true, look.person);
+    // Guns are drawn while aiming; a bat is carried in the hand. Fists: nothing held.
+    if (enemy.weapon === "bat") figure.setWeapon("bat", true);
+    else if (enemy.weapon === "shotgun" || enemy.weapon === "smg") figure.setWeapon(enemy.weapon);
+    else if (!enemy.armed) figure.setWeapon(null);
+    // A boss is visibly bigger.
+    if (enemy.maxHealth > 150) figure.object.scale.setScalar(1.18);
+    this.scene.add(figure.object);
+    return { figure, wanted: look.wanted };
+  }
+
+  /**
+   * Once per rendered frame. `alpha`: how far the clock is past the last fixed step (0 to 1); enemies are drawn that far between their last two steps.
+   * @param viewer where the player is (distant enemies get the cheap model)
+   */
+  frame(dt: number, alpha = 1, viewer?: { x: number; z: number }): void {
+    const alive = new Set<number>();
+    for (const enemy of this.combat.enemies) {
+      alive.add(enemy.id);
+      const body = this.body(enemy);
+      // The person cast for this enemy has loaded since the stand-in was made: swap them in.
+      if (body.wanted !== null && body.figure.person !== body.wanted && this.humans.isLoaded(body.wanted)) {
+        this.scene.remove(body.figure.object);
+        body.figure = this.figureFor(enemy).figure;
+      }
+      const { figure, motion } = body;
+      if (viewer) figure.setDetail(detailFor(Math.hypot(enemy.x - viewer.x, enemy.z - viewer.z), figure.detail));
+      const drawn = motion.at(alpha);
+      figure.object.position.set(drawn.x, 0, drawn.z);
+      figure.object.rotation.y = drawn.heading;
+      figure.setDown(enemy.health <= 0);
+      figure.setAiming(enemy.armed && enemy.alerted && enemy.speed === 0);
+      figure.update(dt, enemy.speed, true);
+    }
+    // Enemies the rules have removed leave the scene too.
+    for (const [id, body] of this.bodies) {
+      if (alive.has(id)) continue;
+      this.scene.remove(body.figure.object);
+      body.box.dispose();
+      this.bodies.delete(id);
+    }
+    this.puffs.frame(dt);
+    for (let i = this.tracers.length - 1; i >= 0; i--) {
+      const tracer = this.tracers[i]!;
+      tracer.life -= dt;
+      if (tracer.life > 0) continue;
+      this.scene.remove(tracer.mesh);
+      this.tracers.splice(i, 1);
+    }
+  }
+
+  /** Tests and debugging only: who plays each enemy (police included) and how high their soles are off the ground. */
+  peopleReport(): Array<{ group: string; person: string | null; wanted: string | null; speed: number; feet: number | null }> {
+    return this.combat.enemies.map((enemy) => {
+      const body = this.bodies.get(enemy.id);
+      return { group: enemy.group, person: body?.figure.person ?? null, wanted: body?.wanted ?? null, speed: enemy.speed, feet: body && enemy.health > 0 ? body.figure.feetHeight() : null };
+    });
+  }
+
+  /** An enemy starts a punch or a bat swing: it lands after the wind-up the rules give it (`STRIKES`). */
+  enemySwing(enemy: Enemy): void {
+    const kind = strikeKind(enemy.weapon);
+    this.bodies.get(enemy.id)?.figure.strike(kind, STRIKES[kind].windup, STRIKES[kind].recover);
+  }
+
+  /**
+   * A blow or a bullet hit an enemy, from a point (x, z): they flinch away from it, and a puff
+   * shows where it landed (between the two, on the enemy's front).
+   */
+  struck(enemy: Enemy, fromX: number, fromZ: number, by: StrikeKind | "shot"): void {
+    this.bodies.get(enemy.id)?.figure.flinch(fromX, fromZ, BLOW_STRENGTH[by]);
+    this.impact(enemy.x, enemy.z, fromX, fromZ, by);
+  }
+
+  /** A puff where a blow or bullet meets someone standing at (x, z), hit from (fromX, fromZ). */
+  impact(x: number, z: number, fromX: number, fromZ: number, by: StrikeKind | "shot"): void {
+    const d = Math.hypot(fromX - x, fromZ - z) || 1;
+    // On the front of the body, towards whoever struck.
+    const front = Math.min(0.3, d / 2);
+    this.puffs.hit(x + ((fromX - x) / d) * front, CONTACT_HEIGHT[by], z + ((fromZ - z) / d) * front, BLOW_STRENGTH[by]);
+  }
+
+  /** Puffs showing now (tests). */
+  get impacts(): number {
+    return this.puffs.showing;
+  }
+
+  /** What the enemies hold in their hands now (tests): weapon ids, one per enemy shown with one. */
+  heldWeapons(): string[] {
+    const held: string[] = [];
+    for (const body of this.bodies.values()) {
+      const weapon = body.figure.shownWeapon;
+      if (weapon) held.push(weapon);
+    }
+    return held;
+  }
+
+  /** Draw a bullet's path for a moment. */
+  tracer(fromX: number, fromZ: number, toX: number, toZ: number): void {
+    const length = Math.hypot(toX - fromX, toZ - fromZ);
+    if (length < 0.5) return;
+    const mesh = new THREE.Mesh(this.tracerGeometry, this.tracerMaterial);
+    mesh.position.set((fromX + toX) / 2, 1.36, (fromZ + toZ) / 2);
+    mesh.scale.z = length;
+    mesh.rotation.y = Math.atan2(toX - fromX, toZ - fromZ);
+    this.scene.add(mesh);
+    this.tracers.push({ mesh, life: 0.07 });
+  }
+}
