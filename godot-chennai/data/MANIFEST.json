@@ -1,0 +1,40 @@
+{
+  "format": 1,
+  "datasets": [
+    {
+      "id": "osm-tamil-nadu",
+      "url": "https://download.openstreetmap.fr/extracts/asia/india/tamil_nadu-latest.osm.pbf",
+      "file": "tamil_nadu-latest.osm.pbf",
+      "bytes": 130638648,
+      "sha256": "f6f3f7cd0e1161d0cecde6b3437a1d05d87f536f042413fcd8a0e4dddb289b01",
+      "osmDataTimestamp": "2026-11-23T00:28:57Z",
+      "lastModified": "Mon, 23 Nov 2026 00:31:39 GMT",
+      "downloaded": "2026-11-23T12:56:00Z",
+      "licence": "ODbL 1.0, © OpenStreetMap contributors",
+      "replicationSequence": 7384370,
+      "stateUrl": "https://download.openstreetmap.fr/extracts/asia/india/tamil_nadu.state.txt"
+    }
+  ],
+  "derived": [
+    {
+      "file": "data/raw/world.osm.pbf (not committed)",
+      "how": "osmium extract -p data/boundary/world-boundary.geojson -s smart -S types=multipolygon,boundary",
+      "from": "osm-tamil-nadu"
+    },
+    {
+      "file": "data/boundary/world-boundary.geojson (committed)",
+      "how": "python -m chennai_geo.cli boundary",
+      "from": "osm-tamil-nadu"
+    }
+  ],
+  "planned": [
+    {
+      "id": "overture-buildings",
+      "status": "not downloaded: hosts not allowed yet"
+    },
+    {
+      "id": "google-openbuildings-2.5d",
+      "status": "not downloaded: needs an Earth Engine export"
+    }
+  ]
+}
