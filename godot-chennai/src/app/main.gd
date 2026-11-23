@@ -13,15 +13,15 @@ extends Node
 
 signal state_changed(state: StringName)
 
-const TEST_WORLD := "res://src/app/test_world/test_world.tscn"
-const STEPS: PackedStringArray = ["Reading the map of Chennai", "Reading the streets", "Preparing the test ground"]
+const CITY := "res://src/game_world/city/city_world.tscn"
+const STEPS: PackedStringArray = ["Reading the map of Chennai", "Reading the streets", "Building the streets around you"]
 ## Longest wait for the ground's collider, in physics frames (game time, not wall clock).
 const GROUND_WAIT_FRAMES := 120
 
 ## &"loading", &"failed", &"title" or &"play".
 var state: StringName = &"loading"
 var source: FileWorldSource = FileWorldSource.new()
-var world: TestWorld = null
+var world: CityWorld = null
 
 @onready var loading: LoadingScreen = $LoadingScreen
 @onready var title: TitleMenu = $TitleMenu
@@ -83,24 +83,30 @@ func _run_step(i: int) -> String:
 			var task := BackgroundTask.start(source.open_roads)
 			return await task.finish(get_tree())
 		2:
-			return await _add_test_world()
+			return await _add_city()
 	return "Unknown step %d." % i
 
 
-func _add_test_world() -> String:
+func _add_city() -> String:
 	if world != null:
 		return ""
-	if ResourceLoader.load_threaded_request(TEST_WORLD) != OK:
-		return "Could not start loading %s." % TEST_WORLD
-	while ResourceLoader.load_threaded_get_status(TEST_WORLD) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+	if ResourceLoader.load_threaded_request(CITY) != OK:
+		return "Could not start loading %s." % CITY
+	while ResourceLoader.load_threaded_get_status(CITY) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 		await get_tree().process_frame
-	var scene := ResourceLoader.load_threaded_get(TEST_WORLD) as PackedScene
+	var scene := ResourceLoader.load_threaded_get(CITY) as PackedScene
 	if scene == null:
-		return "Could not load %s." % TEST_WORLD
-	world = scene.instantiate() as TestWorld
+		return "Could not load %s." % CITY
+	world = scene.instantiate() as CityWorld
 	add_child(world)
 	move_child(world, 0)
-	# The collider is in the physics world after a step or two; wait in game time.
+	var error := await world.setup(source)
+	if error != "":
+		return error
+	# The streets round the spawn are built in the background; wait in game time until they and
+	# their colliders are in (the streamer's gating, G-54).
+	if not await world.wait_ready_around(world.spawn["point"], -1.0, GROUND_WAIT_FRAMES * 60):
+		return "The streets round the start did not load."
 	for f in GROUND_WAIT_FRAMES:
 		if world.ground_ready():
 			return ""
