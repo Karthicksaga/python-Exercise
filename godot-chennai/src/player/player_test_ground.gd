@@ -4,14 +4,15 @@ extends Node3D
 ## until the streamed city lands: a long wall, a corner, a 15 cm kerb, a 30 cm step, a 60 cm
 ## ledge, two street-light poles and a person-sized post (decision G-68).
 
-const TEST_WORLD := preload("res://src/app/test_world/test_world.tscn")
+const TEST_WORLD := "res://src/app/test_world/test_world.tscn"
 
 var world: TestWorld
 var rig: PlayerRig
 
 
 func _ready() -> void:
-	world = TEST_WORLD.instantiate() as TestWorld
+	# Loaded, not preloaded: its script names autoloads, which a --script run compiles late.
+	world = (load(TEST_WORLD) as PackedScene).instantiate() as TestWorld
 	add_child(world)
 	# Wall along x = 6 (from z -10 to 10), 3 m high, 0.3 m thick; a corner wall at z = -10.
 	add_box("WallEast", Vector3(6.15, 1.5, 0.0), Vector3(0.3, 3.0, 20.0), Color(0.86, 0.8, 0.68))
