@@ -21,6 +21,7 @@
     "optimize:assets": "node scripts/optimize-assets.mjs",
     "blender:props": "node scripts/blender.mjs tools/blender/street_props.py -- assets/models/props",
     "blender:auto": "node scripts/blender.mjs tools/blender/auto_rickshaw.py -- assets/models/vehicles",
+    "blender:vehicles": "node scripts/blender.mjs tools/blender/vehicles.py -- assets/models/vehicles",
     "blender:characters": "node scripts/blender.mjs tools/blender/characters.py -- assets/models"
   },
   "devDependencies": {

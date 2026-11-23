@@ -1,13 +1,21 @@
 /**
- * Vehicle bodies built in code: a profile is drawn from the side and extruded across the
- * vehicle's width, which gives rounded, car-like shapes without model files. Each model is
- * built around the chassis centre, facing -Z, and returns its wheels so they can spin and steer.
+ * Vehicle bodies. Each model is built around the chassis centre, facing -Z, and returns its wheels
+ * so they can spin and steer, and its doors.
+ *
+ * Every kind has a model made in Blender (`tools/blender/vehicles.py`, `auto_rickshaw.py`), in two
+ * levels of detail: "near" for the player's, parked and drivable vehicles, "far" (LOD1) for the
+ * AI's traffic and police cars (`TrafficCar`). They are used once `loadVehicleModels` has run.
+ * Before that, and in unit tests that don't load them, the older code-built bodies below stand in:
+ * a profile drawn from the side and extruded across the vehicle's width.
  */
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { AUTO_SIZE, autoPlateTexture, buildAutoParts, type AutoRole } from "./autoModel";
-import { vehicleTemplate } from "./glbModels";
-import type { VehicleKind } from "./specs";
+import { vehicleDecalTexture, vehicleTemplate, type VehicleModelRole, type VehicleTemplate } from "./glbModels";
+import { VEHICLE_TYPES, type VehicleKind } from "./specs";
+
+/** "near": the detailed model (the player's, parked vehicles); "far": the light one (traffic). */
+export type VehicleDetail = "near" | "far";
 
 export interface VehicleModel {
   readonly object: THREE.Group;
@@ -24,7 +32,8 @@ export interface VehicleModel {
 
 /** One door leaf: its parts (built around the hinge, the leaf running along z), and how it swings. */
 interface Leaf {
-  readonly parts: ReadonlyArray<{ readonly geometry: THREE.BufferGeometry; readonly color: number }>;
+  /** Parts around the hinge; without `color`, a part keeps the colours in its vertices. */
+  readonly parts: ReadonlyArray<{ readonly geometry: THREE.BufferGeometry; readonly color?: number }>;
   /** Hinge line, in the chassis frame. */
   readonly hinge: { readonly x: number; readonly z: number };
   /** Angle when fully open, radians; the sign picks the way it swings (positive turns +z towards +x). */
@@ -60,7 +69,8 @@ class DoorMesh {
         part.geometry.computeBoundingBox();
         const bounds = part.geometry.boundingBox!;
         reach = Math.max(reach, Math.abs(bounds.max.z), Math.abs(bounds.min.z));
-        const geometry = tinted(part.geometry.index ? part.geometry.toNonIndexed() : part.geometry, part.color);
+        const flat = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry;
+        const geometry = part.color === undefined ? flat : tinted(flat, part.color);
         geometry.deleteAttribute("uv");
         geometries.push(geometry);
         for (let k = 0; k < geometry.getAttribute("position").count; k++) owners.push(i);
@@ -356,10 +366,10 @@ function car(color: number): VehicleModel {
  * every auto shares the same seven materials whatever its livery: about seven draw calls per auto
  * plus its wheels.
  */
-function auto(color: number): VehicleModel {
+function auto(color: number, detail: VehicleDetail): VehicleModel {
   const object = new THREE.Group();
   const plate = autoPlateTexture();
-  const blender = vehicleTemplate("auto");
+  const blender = pickTemplate("auto", detail);
   const byRole: Record<AutoRole, THREE.Material> = {
     paint: standard("auto-paint", { vertexColors: true, roughness: 0.35, metalness: 0.1 }),
     trim: standard("auto-trim", { vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }),
@@ -374,7 +384,7 @@ function auto(color: number): VehicleModel {
     ? { parts: blender.body(color), wheel: blender.wheel(AUTO_SIZE.wheelRadius) }
     : buildAutoParts(color);
   for (const part of parts) {
-    const mesh = new THREE.Mesh(part.geometry, byRole[part.role]);
+    const mesh = new THREE.Mesh(part.geometry, byRole[part.role as AutoRole] ?? roleMaterial(part.role));
     mesh.castShadow = part.role !== "glass";
     mesh.receiveShadow = true;
     object.add(mesh);
@@ -566,14 +576,135 @@ function bus(): VehicleModel {
   return { object, wheels, door: (amount, leaf) => door.set(amount, leaf) };
 }
 
-export function buildVehicleModel(kind: VehicleKind, color: number): VehicleModel {
+/** The Blender model of a kind at a level of detail, or the other level if only that one is loaded. */
+function pickTemplate(kind: VehicleKind, detail: VehicleDetail): VehicleTemplate | undefined {
+  const near = vehicleTemplate(kind);
+  const far = vehicleTemplate(`${kind}_lod1`);
+  return detail === "near" ? (near ?? far) : (far ?? near);
+}
+
+/** The livery of the bus and the ambulance is their own, whatever colour they are given. */
+const OWN_LIVERY: Partial<Record<VehicleKind, number>> = { bus: 0x1f6f78, ambulance: 0xf3f4f1 };
+
+/**
+ * How each door of a Blender model swings (`door_*` nodes): its hinge line in the chassis frame
+ * (the same lines as `specs.ts` and `tools/blender/vehicles.py`), how far it opens in degrees
+ * (positive turns +z towards +x), and its group (leaves of one group swing together; 0 is the
+ * driver's door).
+ */
+const DOOR_SWING: Partial<Record<VehicleKind, Readonly<Record<string, { readonly hinge: { readonly x: number; readonly z: number }; readonly group: number; readonly open: number }>>>> = {
+  // Driver's door (right front, hinged at z -0.55) and the two rear doors (hinged at z 0.5), about 65°.
+  car: {
+    door_fr: { hinge: { x: 0.845, z: -0.55 }, group: 0, open: 65 },
+    door_rl: { hinge: { x: -0.845, z: 0.5 }, group: 1, open: -65 },
+    door_rr: { hinge: { x: 0.845, z: 0.5 }, group: 2, open: 65 },
+  },
+  // Cab door on the right behind the windscreen; the two rear doors open together, right round to the sides.
+  ambulance: {
+    door_cab: { hinge: { x: 0.985, z: -1.22 }, group: 0, open: 65 },
+    door_back_l: { hinge: { x: -0.7, z: 2.56 }, group: 1, open: -110 },
+    door_back_r: { hinge: { x: 0.7, z: 2.56 }, group: 1, open: 110 },
+  },
+  // The kerb-side front door folds in two leaves, each hinged at its outer edge, both outwards.
+  bus: {
+    door_front_a: { hinge: { x: -1.266, z: -4.15 }, group: 0, open: -80 },
+    door_front_b: { hinge: { x: -1.266, z: -3.05 }, group: 0, open: 80 },
+  },
+};
+
+/** The material of each role of a Blender model; shared by every vehicle. */
+function roleMaterial(role: VehicleModelRole): THREE.Material {
+  switch (role) {
+    case "paint":
+      return standard("veh-paint", { vertexColors: true, roughness: 0.3, metalness: 0.35 });
+    case "metal":
+      return standard("veh-metal", { vertexColors: true, roughness: 0.22, metalness: 0.9 });
+    case "glass":
+      return standard("veh-glass", { color: 0x1f2a32, roughness: 0.05, metalness: 0.6, transparent: true, opacity: 0.62, side: THREE.DoubleSide, depthWrite: false });
+    case "lamp":
+      return lampMaterial();
+    case "tail":
+      return tailMaterial();
+    case "decal": {
+      const map = vehicleDecalTexture();
+      return standard("veh-decal", map ? { map, roughness: 0.5 } : { color: 0xeeeeea, roughness: 0.5 });
+    }
+    case "board":
+      return standard("bus-board", { color: 0xffb21a, emissive: 0xff9a00, emissiveIntensity: 0.6 });
+    case "beaconred":
+      return shared("beacon-red", () => new THREE.MeshStandardMaterial({ color: 0xff2a2a, emissive: 0xff1010, emissiveIntensity: 0.2 }));
+    case "beaconblue":
+      return shared("beacon-blue", () => new THREE.MeshStandardMaterial({ color: 0x2a6bff, emissive: 0x1050ff, emissiveIntensity: 0.2 }));
+    default:
+      return standard("veh-trim", { vertexColors: true, roughness: 0.8 });
+  }
+}
+
+/**
+ * A vehicle from its Blender model: one mesh per material role (colours in the vertices, so every
+ * vehicle of a colour shares its buffers), one per wheel (left wheels mirrored, so the rim faces
+ * out), and its doors as one `DoorMesh` (the detailed model only: traffic never opens a door).
+ */
+function blenderVehicle(kind: VehicleKind, color: number, template: VehicleTemplate): VehicleModel {
+  const object = new THREE.Group();
+  const livery = OWN_LIVERY[kind] ?? color;
+  const beacons: THREE.MeshStandardMaterial[] = [];
+  for (const part of template.body(livery)) {
+    const material = roleMaterial(part.role);
+    const mesh = new THREE.Mesh(part.geometry, material);
+    mesh.castShadow = part.role !== "glass" && part.role !== "decal";
+    mesh.receiveShadow = true;
+    object.add(mesh);
+    // Red first, then blue: `Vehicle` flashes them in turn.
+    if (part.role === "beaconred") beacons.unshift(material as THREE.MeshStandardMaterial);
+    if (part.role === "beaconblue") beacons.push(material as THREE.MeshStandardMaterial);
+  }
+  const wheelMaterial = standard("veh-wheel", { vertexColors: true, roughness: 0.6, metalness: 0.4 });
+  const wheels = VEHICLE_TYPES[kind].physics.wheels.map((spec) => {
+    const pivot = new THREE.Group();
+    const mesh = new THREE.Mesh(template.wheel(spec.radius), wheelMaterial);
+    mesh.castShadow = true;
+    // The spinning part is a child, so steering (on the pivot) and rolling don't interfere.
+    mesh.name = "spin";
+    if (spec.x < 0) mesh.scale.x = -1;
+    pivot.add(mesh);
+    return pivot;
+  });
+  object.add(...wheels);
+  const swing = DOOR_SWING[kind] ?? {};
+  const leaves: Leaf[] = template
+    .doors(livery)
+    .filter((d) => swing[d.name])
+    .map((d) => {
+      const { hinge, open, group } = swing[d.name]!;
+      return { hinge, open: THREE.MathUtils.degToRad(open), group, parts: [{ geometry: d.geometry.translate(-hinge.x, 0, -hinge.z) }] };
+    });
+  const model: { object: THREE.Group; wheels: THREE.Group[]; beacons?: THREE.MeshStandardMaterial[]; door?: (amount: number, leaf?: number) => void } = { object, wheels };
+  if (beacons.length > 0) model.beacons = beacons;
+  if (leaves.length > 0) {
+    const door = new DoorMesh(leaves, doorMaterial(`glb:${kind}:${livery}`));
+    object.add(door.mesh);
+    model.door = (amount, leaf) => door.set(amount, leaf);
+  }
+  return model;
+}
+
+/**
+ * A vehicle's model: the Blender one when loaded (`detail` picks the level), else the code-built
+ * stand-in.
+ */
+export function buildVehicleModel(kind: VehicleKind, color: number, detail: VehicleDetail = "near"): VehicleModel {
+  if (kind !== "auto") {
+    const template = pickTemplate(kind, detail);
+    if (template) return blenderVehicle(kind, color, template);
+  }
   switch (kind) {
     case "car":
       return car(color);
     case "bike":
       return bike(color);
     case "auto":
-      return auto(color);
+      return auto(color, detail);
     case "ambulance":
       return ambulance();
     case "bus":

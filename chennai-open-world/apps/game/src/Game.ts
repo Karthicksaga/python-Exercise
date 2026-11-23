@@ -50,7 +50,7 @@ import clayPots from "../../../assets/optimized/props/clay_pots.glb?inline";
 import crates from "../../../assets/optimized/props/crates.glb?inline";
 import dish from "../../../assets/optimized/props/dish_antenna.glb?inline";
 import handcart from "../../../assets/optimized/props/handcart.glb?inline";
-import autoRickshaw from "../../../assets/optimized/vehicles/auto_rickshaw_lod1.glb?inline";
+import { VEHICLE_MODEL_FILES } from "./vehicleFiles";
 
 /** What tests and the debug console can read about the running game (places and life included). */
 export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
@@ -400,7 +400,7 @@ export class Game {
     // Street props made in Blender (assets/README.md), baked once and merged per chunk.
     const propsLoaded = loadPropAssets({ handcart, crates, barrel, clayPots, acUnit, dish });
     // Vehicles modelled in Blender (tools/blender); ground = ride height plus settled suspension below the chassis centre.
-    const vehiclesLoaded = loadVehicleModels({ auto: { url: autoRickshaw, ground: -0.68 } });
+    const vehiclesLoaded = loadVehicleModels(VEHICLE_MODEL_FILES);
     // Station names in Tamil on the platform boards (a separate subset of the font).
     const stationFontLoaded = loadStationFont(stationFont);
     // Hindi on the three-language boards (Tamil, Hindi, English).

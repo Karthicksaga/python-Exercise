@@ -1,8 +1,9 @@
 /** Doors, the driver's and the passengers': separate from the merged body, one mesh per vehicle, swinging the right way. */
 import * as THREE from "three";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { buildVehicleModel } from "./models";
 import { VEHICLE_TYPES } from "./specs";
+import { loadTestVehicleModels } from "./testModels";
 
 function doorOf(object: THREE.Object3D): THREE.Mesh {
   const door = object.getObjectByName("door");
@@ -18,18 +19,21 @@ function bounds(mesh: THREE.Mesh): THREE.Box3 {
 const triangles = (mesh: THREE.Mesh) => mesh.geometry.getAttribute("position").count / 3;
 
 /** Bounds of the door mesh's vertices that pass `keep` (one door of several in the mesh). */
-function boundsWhere(mesh: THREE.Mesh, keep: (x: number, z: number) => boolean): THREE.Box3 {
+function boundsWhere(mesh: THREE.Mesh, keep: (x: number, z: number, y: number) => boolean): THREE.Box3 {
   const position = mesh.geometry.getAttribute("position");
   const box = new THREE.Box3();
   const v = new THREE.Vector3();
   for (let i = 0; i < position.count; i++) {
     v.fromBufferAttribute(position, i);
-    if (keep(v.x, v.z)) box.expandByPoint(v);
+    if (keep(v.x, v.z, v.y)) box.expandByPoint(v);
   }
   return box;
 }
 
 describe("vehicle doors", () => {
+  // The doors of the Blender models, as the game draws them (the player's and parked vehicles).
+  beforeAll(loadTestVehicleModels);
+
   it("car: the right front door swings out about 65° on its front hinge", () => {
     const model = buildVehicleModel("car", 0xc0392b);
     expect(model.door).toBeDefined();
@@ -46,7 +50,9 @@ describe("vehicle doors", () => {
     // The rear edge has gone out about 1.05 m × sin 65° from the hinge, to the right (+X) and forwards.
     expect(open.max.x).toBeGreaterThan(0.845 + 1.0 * Math.sin(THREE.MathUtils.degToRad(60)));
     expect(open.max.x).toBeLessThan(0.845 + 1.1 * Math.sin(THREE.MathUtils.degToRad(70)) + 0.06);
-    expect(open.max.z).toBeLessThan(0);
+    // The panel below the window has swung forwards of the seam. (The window frame leans in with
+    // the glasshouse, so its top swings round a little further back: judge the panel below it.)
+    expect(boundsWhere(mesh, (x, z, y) => front(x, z) && y < 0.2).max.z).toBeLessThan(0);
     // The hinge stays put.
     expect(open.min.z).toBeGreaterThan(-0.6);
     model.door!(0);
@@ -128,8 +134,10 @@ describe("vehicle doors", () => {
   });
 
   // One mesh (one draw call) for all of a vehicle's doors: the car's holds three doors since the
-  // passengers' rear doors were added, the ambulance's its cab door and two rear doors.
-  const DOOR_TRIANGLES = { car: 180, ambulance: 120, bus: 72 } as const;
+  // passengers' rear doors were added, the ambulance's its cab door and two rear doors. Raised
+  // (from 180, 120, 72) with the Blender models: a door is now the body's own curved panel with
+  // its window, an inside card and a handle (measured 613, 1111 and 144); still one draw call.
+  const DOOR_TRIANGLES = { car: 700, ambulance: 1200, bus: 160 } as const;
   it.each(["car", "ambulance", "bus"] as const)("%s: one door mesh, with almost no triangles", (kind) => {
     const model = buildVehicleModel(kind, 0x3366aa);
     const doors: THREE.Mesh[] = [];

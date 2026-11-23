@@ -9,15 +9,22 @@
  * a colour shares the same buffers. Phone-friendly MeshStandardMaterial replaces the clear coat
  * and transmission materials of the Blender export.
  *
- * Blender files have the ground at y = 0, the front facing -Z, and wheels as separate nodes
- * (`wheel_front`, `wheel_rear_left`, `wheel_rear_right`) with their origins on the axle.
+ * Blender files have the ground at y = 0, the front facing -Z, wheels as separate nodes named
+ * `wheel_*` with their origins on the axle (the auto's `wheel_front`, `wheel_rear_left`…; the
+ * others' `wheel_fl`, `wheel_fr`…), and doors as separate nodes named `door_*` with their origins
+ * on the hinge line in Blender (`tools/blender/vehicles.py`; the game gives the hinges itself).
+ *
+ * Materials of `tools/blender/vehicles.py` are named `v_<role>_<what>`; the auto's are listed in
+ * `ROLES`. `decal` parts keep their UVs, into `vehicleDecalTexture()` (plates, lettering).
  */
 import * as THREE from "three";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
-export type VehicleModelRole = "paint" | "trim" | "metal" | "glass" | "lamp" | "tail" | "plate";
+export type VehicleModelRole = "paint" | "trim" | "metal" | "glass" | "lamp" | "tail" | "plate" | "decal" | "board" | "beaconred" | "beaconblue";
+
+const V_ROLES = new Set<string>(["paint", "trim", "metal", "glass", "lamp", "tail", "decal", "board", "beaconred", "beaconblue"]);
 
 /** Which role each Blender material belongs to (by name; unknown materials count as trim). */
 const ROLES: Readonly<Record<string, VehicleModelRole>> = {
@@ -36,10 +43,28 @@ const ROLES: Readonly<Record<string, VehicleModelRole>> = {
   auto_tail: "tail",
   auto_plate: "plate",
 };
-/** Wheel nodes in the Blender exports. */
-const WHEELS = new Set(["wheel_front", "wheel_rear_left", "wheel_rear_right"]);
+/** The role of a Blender material: the auto's by name, `v_<role>_…` by its second word; unknown ones are trim. */
+function roleOf(name: string): VehicleModelRole {
+  const known = ROLES[name];
+  if (known) return known;
+  const word = /^v_([a-z]+)/.exec(name)?.[1];
+  return word && V_ROLES.has(word) ? (word as VehicleModelRole) : "trim";
+}
+
 /** Materials recoloured with the vehicle's livery colour. */
-const LIVERY = new Set(["auto_paint"]);
+const LIVERY = new Set(["auto_paint", "v_paint_body"]);
+
+/**
+ * A door leaf from a Blender model, coloured in the vertices. Its hinge is not read from the file:
+ * the optimiser moves node origins to the middle of their meshes (quantisation), so hinges are
+ * given by the game (`DOOR_SWING` in `models.ts`, on the lines in `specs.ts`).
+ */
+export interface TemplateDoor {
+  /** Node name, e.g. `door_fr`. */
+  readonly name: string;
+  /** The leaf's parts merged, in the chassis frame (shut); a fresh copy. */
+  readonly geometry: THREE.BufferGeometry;
+}
 
 interface Part {
   readonly geometry: THREE.BufferGeometry;
@@ -53,6 +78,10 @@ export interface VehicleTemplate {
   body(colour: number): ReadonlyArray<{ readonly role: VehicleModelRole; readonly geometry: THREE.BufferGeometry }>;
   /** One wheel centred on its axle, axis along X, vertex-coloured, scaled to `radius`. */
   wheel(radius: number): THREE.BufferGeometry;
+  /** Door leaves for one livery colour, each a fresh geometry (a door mesh moves its own vertices). */
+  doors(colour: number): TemplateDoor[];
+  /** Triangles in the body (all roles), one wheel and all the doors. */
+  readonly triangles: { readonly body: number; readonly wheel: number; readonly doors: number };
 }
 
 const templates = new Map<string, VehicleTemplate>();
@@ -61,8 +90,8 @@ export function vehicleTemplate(name: string): VehicleTemplate | undefined {
   return templates.get(name);
 }
 
-/** Only position, normal and colour, non-indexed, so any parts can be merged. */
-function plain(geometry: THREE.BufferGeometry, colour: THREE.Color): THREE.BufferGeometry {
+/** Only position, normal and colour (and UVs when asked), non-indexed, so any parts can be merged. */
+function plain(geometry: THREE.BufferGeometry, colour: THREE.Color, uv = false): THREE.BufferGeometry {
   const source = geometry.index ? geometry.toNonIndexed() : geometry;
   const n = source.getAttribute("position").count;
   // Quantised attributes (meshopt) are read through getX/Y/Z into plain floats, so parts merge.
@@ -79,6 +108,12 @@ function plain(geometry: THREE.BufferGeometry, colour: THREE.Color): THREE.Buffe
   const data = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) data.set([colour.r, colour.g, colour.b], i * 3);
   g.setAttribute("color", new THREE.BufferAttribute(data, 3));
+  if (uv) {
+    const from = source.getAttribute("uv");
+    const out = new Float32Array(n * 2);
+    if (from) for (let i = 0; i < n; i++) out.set([from.getX(i), from.getY(i)], i * 2);
+    g.setAttribute("uv", new THREE.BufferAttribute(out, 2));
+  }
   return g;
 }
 
@@ -92,20 +127,25 @@ function recolour(geometry: THREE.BufferGeometry, colour: THREE.Color): THREE.Bu
   return g;
 }
 
+const triangleCount = (g: THREE.BufferGeometry) => g.getAttribute("position").count / 3;
+
 function template(scene: THREE.Object3D, ground: number): VehicleTemplate {
   scene.updateMatrixWorld(true);
   const parts: Part[] = [];
   const wheelParts: THREE.BufferGeometry[] = [];
+  const doorParts = new Map<THREE.Object3D, Part[]>();
   let wheelRadius = 0;
-  const wheelNode = scene.getObjectByName("wheel_front");
+  // One wheel is enough: they are all the same mesh (left ones are mirrored in the game).
+  const wheelNode = scene.children.find((node) => node.name.startsWith("wheel"));
   scene.traverse((node) => {
     if (!(node instanceof THREE.Mesh)) return;
     const material = node.material as THREE.MeshStandardMaterial;
-    // The wheel node this part belongs to (mesh names inside wheels repeat, so match exact node names).
-    let owner: THREE.Object3D | null = node;
-    while (owner && !WHEELS.has(owner.name)) owner = owner.parent;
-    if (owner) {
-      // One wheel is enough: all three are the same mesh.
+    // The top-level node this part belongs to (the body, a wheel or a door; the meshes inside
+    // them are named after the first of their kind, so only the top level counts).
+    let top: THREE.Object3D = node;
+    while (top.parent && top.parent !== scene) top = top.parent;
+    const owner = top.name.startsWith("wheel") || top.name.startsWith("door") ? top : null;
+    if (owner?.name.startsWith("wheel")) {
       if (owner !== wheelNode) return;
       const local = owner.matrixWorld.clone().invert().multiply(node.matrixWorld);
       const g = plain(node.geometry, material.color).applyMatrix4(local);
@@ -115,15 +155,37 @@ function template(scene: THREE.Object3D, ground: number): VehicleTemplate {
       return;
     }
     const name = material.name;
-    const role = ROLES[name] ?? "trim";
+    const role = roleOf(name);
     // To floats first: transforming quantised buffers in place would clamp them to [-1, 1].
-    const geometry = plain(node.geometry, material.color).applyMatrix4(node.matrixWorld).translate(0, ground, 0);
-    parts.push({ geometry, role, material: name, colour: material.color.clone() });
+    const geometry = plain(node.geometry, material.color, role === "decal" && !owner).applyMatrix4(node.matrixWorld).translate(0, ground, 0);
+    const part = { geometry, role, material: name, colour: material.color.clone() };
+    if (owner) {
+      const list = doorParts.get(owner) ?? [];
+      list.push(part);
+      doorParts.set(owner, list);
+    } else parts.push(part);
   });
   const wheel = mergeGeometries(wheelParts, false);
-  if (!wheel) throw new Error("Vehicle model has no wheel_front node");
+  if (!wheel) throw new Error("Vehicle model has no wheel node");
   const bodies = new Map<number, Array<{ role: VehicleModelRole; geometry: THREE.BufferGeometry }>>();
   const wheels = new Map<number, THREE.BufferGeometry>();
+  const doorSets = new Map<number, TemplateDoor[]>();
+  const doorsFor = (colour: number): TemplateDoor[] => {
+    let list = doorSets.get(colour);
+    if (!list) {
+      const livery = new THREE.Color(colour);
+      list = [...doorParts].map(([node, ps]) => {
+        // One vertex-coloured material for the whole door mesh: glass and trim become colours.
+        const coloured = ps.map((p) => (LIVERY.has(p.material) ? recolour(p.geometry, livery) : p.geometry.clone()));
+        const geometry = mergeGeometries(coloured, false);
+        if (!geometry) throw new Error(`Door ${node.name} is empty`);
+        for (const g of coloured) g.dispose();
+        return { name: node.name, geometry };
+      });
+      doorSets.set(colour, list);
+    }
+    return list;
+  };
   return {
     body(colour) {
       let body = bodies.get(colour);
@@ -149,7 +211,72 @@ function template(scene: THREE.Object3D, ground: number): VehicleTemplate {
       }
       return g;
     },
+    doors(colour) {
+      return doorsFor(colour).map((d) => ({ name: d.name, geometry: d.geometry.clone() }));
+    },
+    triangles: {
+      body: parts.reduce((sum, p) => sum + triangleCount(p.geometry), 0),
+      wheel: triangleCount(wheel),
+      doors: [...doorParts.values()].flat().reduce((sum, p) => sum + triangleCount(p.geometry), 0),
+    },
   };
+}
+
+/**
+ * Plates and lettering of the Blender vehicles (`v_decal` parts): a 512 × 256 atlas in four rows
+ * of 64 px, matching `DECAL` in `tools/blender/vehicles.py`: a white private and a yellow
+ * commercial plate (the number is not a real registration), "AMBULANCE", the same mirrored (it
+ * reads right in a mirror ahead), and the bus's destination board. Browser only (null in Node).
+ */
+let decalTexture: THREE.Texture | null | undefined;
+export function vehicleDecalTexture(): THREE.Texture | null {
+  if (decalTexture !== undefined) return decalTexture;
+  if (typeof document === "undefined") return (decalTexture = null);
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 256;
+  const g = canvas.getContext("2d");
+  if (!g) return (decalTexture = null);
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  const plate = (x: number, fill: string) => {
+    g.fillStyle = fill;
+    g.fillRect(x, 0, 256, 64);
+    g.strokeStyle = "#111";
+    g.lineWidth = 4;
+    g.strokeRect(x + 4, 4, 248, 56);
+    g.fillStyle = "#111";
+    g.font = "700 34px monospace";
+    g.fillText("TN 00 X 0000", x + 128, 34);
+  };
+  plate(0, "#f2f2ee");
+  plate(256, "#f4c400");
+  const word = (y: number, mirrored: boolean) => {
+    g.save();
+    g.fillStyle = "#f3f4f1";
+    g.fillRect(0, y, 512, 64);
+    if (mirrored) {
+      g.translate(512, 0);
+      g.scale(-1, 1);
+    }
+    g.fillStyle = "#c8202a";
+    g.font = "900 48px sans-serif";
+    g.fillText("AMBULANCE", 256, y + 34);
+    g.restore();
+  };
+  word(64, false);
+  word(128, true);
+  g.fillStyle = "#111";
+  g.fillRect(0, 192, 512, 64);
+  g.fillStyle = "#ffb21a";
+  g.font = "700 40px monospace";
+  g.fillText("T. NAGAR", 256, 226);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  // glTF UVs count from the top of the image down.
+  texture.flipY = false;
+  texture.anisotropy = 4;
+  return (decalTexture = texture);
 }
 
 /**
