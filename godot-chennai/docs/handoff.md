@@ -38,3 +38,30 @@ renderer itself, so the emulator tests booting, data and flow, not the Mobile re
 - The APK carries every synced asset (about 50 MB of data, mostly the legacy cast) although
   phase 0 uses none of the models.
 - Safe-area insets are coded but only real on a phone with a notch; untested there.
+
+## Vehicles (phase 2), branch `agent/godot-vehicles`, 23 Nov 2026
+**Done.** A ray-cast vehicle body that reproduces the Three.js handling (measured against the
+Rapier vehicles: `tools/reference/threejs_handling.mts`, `tests/data/threejs_handling.json`),
+all five Three.js vehicles plus taxi/police/gang variants, premium and race profiles, the
+gearbox, boarding with doors, crash ejection, the chase camera and the touch driving controls,
+tested in `src/app/vehicle_yard/` (a test ground). Decisions G-70…G-79; details in
+`docs/vehicles.md`.
+
+**For the Player agent.** Extend `VehicleRider` (or give your player its methods): `Driving`
+calls `set_walking`, `place`, `set_seated(type, amount)` (draw `type.pose`: hands on the grips
+or wheel, feet on the pegs or pedals, hips at the origin), `set_figure_visible`, `throw_off`,
+`knockdown`, `consume_landing`. `CrashFlight` moves any `CharacterBody3D` through a throw.
+**For the World agent.** Spawn with `Vehicle.create(variant)` + `place()`, add a `Driving` with
+the rider, and `DrivingWiring.wire(driving, controls, camera)` in `Main`; put vehicles in
+`WorldOrigin.GROUP` when they join the streamed city.
+**For the Models agent.** Drop `saloon.glb`, `suv.glb`, `coupe.glb`, `race_car.glb` with a
+`.vehicle.json` each in `assets/vehicles/` (format in `docs/vehicles.md`); wheels at the physics
+wheel positions of `vehicle_types.json`.
+**For the Sound agent.** Signals: `Driving.horn`, `boarding_event` (door_opening, shut…),
+`crashed`; `Gearbox.shifted_up` for gear changes; `Vehicle.siren()`.
+
+**Weak.** The single-front-wheel vehicles turn ~15 % less from rest than in the Three.js game and
+the rear-driven ones slide a little more at full lock (cause not found; `docs/vehicles.md`).
+Seated riders are a capsule; premium cars are stretched stand-ins; the yard's lighting is a test
+ground, not the city. No physics interpolation: if the phone shows judder at 90+ Hz, revisit
+with G-2.

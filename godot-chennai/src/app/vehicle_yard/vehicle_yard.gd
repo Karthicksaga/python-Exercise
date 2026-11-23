@@ -3,7 +3,8 @@ extends Node3D
 ## A test ground for the vehicles (no city): a big flat lot with a road, a wall to crash into,
 ## golden-hour light and haze, every variant parked in a row, the rider, a `Driving` session,
 ## the chase camera and the touch controls. Used by the scene tests and the screenshots; the
-## real game wires the same pieces into the streamed city (`Main` composition root).
+## real game wires the same pieces into the streamed city (`Main` composition root) with
+## `DrivingWiring`.
 
 const ROW_START := Vector3(-30, 0, 0)
 const ROW_STEP := 7.0
@@ -39,10 +40,9 @@ func _ready() -> void:
 	driving = Driving.new()
 	driving.name = "Driving"
 	driving.rider = rider
-	driving.camera = camera
-	driving.controls = controls
 	add_child(driving)
-	camera.target = rider
+	add_child(DrivingWiring.wire(driving, controls, camera))
+	camera.follow(rider, DrivingWiring.FOOT_DISTANCE, DrivingWiring.FOOT_PIVOT)
 
 
 ## Every variant parked in a row along x, noses north (-Z).

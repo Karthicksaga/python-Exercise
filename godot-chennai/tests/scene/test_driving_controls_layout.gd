@@ -26,7 +26,7 @@ func _visible_rects(c: DrivingControls) -> Dictionary:
 func test_driving_set_fits_every_size() -> bool:
 	for size in SIZES:
 		var c := _controls(size)
-		c.set_mode(&"driving", null)
+		c.set_mode(&"driving")
 		await wait_frames(3)
 		var screen := Rect2(Vector2.ZERO, Vector2(size))
 		var rects := _visible_rects(c)
@@ -54,18 +54,18 @@ func test_driving_set_fits_every_size() -> bool:
 
 func test_on_foot_and_busy_modes() -> bool:
 	var c := _controls(SIZES[0])
-	c.set_mode(&"foot", null)
+	c.set_mode(&"foot")
 	await wait_frames(2)
 	check(_visible_rects(c).is_empty(), "on foot and away from vehicles: nothing (GET IN only when near)")
-	c.get_in.visible = true
+	c.set_get_in(true)
 	await wait_frames(1)
 	var rect := c.get_in.get_global_rect()
 	check(Rect2(Vector2.ZERO, Vector2(SIZES[0])).encloses(rect), "GET IN inside the screen")
 	check(rect.size.y >= UiTheme.MIN_TARGET, "GET IN is a thumb-sized target")
-	c.set_mode(&"boarding", null)
+	c.set_mode(&"boarding")
 	await wait_frames(1)
 	check(_visible_rects(c).is_empty(), "nothing while getting in or out")
-	c.set_mode(&"thrown", null)
+	c.set_mode(&"thrown")
 	check(_visible_rects(c).is_empty(), "nothing while thrown")
 	c.get_parent().queue_free()
 	return true
@@ -73,7 +73,7 @@ func test_on_foot_and_busy_modes() -> bool:
 
 func test_touch_holds_gas_while_another_finger_steers() -> bool:
 	var c := _controls(SIZES[0])
-	c.set_mode(&"driving", null)
+	c.set_mode(&"driving")
 	await wait_frames(2)
 	var down := InputEventScreenTouch.new()
 	down.index = 0

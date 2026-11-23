@@ -15,3 +15,7 @@ assets (for example the new cast in `assets/people/`) outside the markers.
 | `assets/props/*.glb` | Street props: barrel, crates, clay pots, AC unit, dish antenna, awning, rolling shutter (`ShutterOpen` clip), vegetable handcart (`Roll` clip) | Original, made by `chennai-open-world/tools/blender/street_props.py` in Blender 5.2 LTS | Original work for the project |
 | `assets/fonts/*.woff2`, `assets/fonts/OFL.txt` | Noto Sans Tamil Bold cut to the shop-sign glyphs (`noto-sans-tamil-signs`), Noto Sans Tamil and Devanagari cut to the station names; `OFL.txt` is the licence text | Noto fonts (via `@fontsource`), subset with `pyftsubset` (`chennai-open-world/assets/README.md`) | SIL Open Font Licence 1.1, © The Noto Project Authors (`fonts/OFL.txt`) |
 <!-- sync_from_threejs:end -->
+
+| Files | What | Source | Licence |
+|---|---|---|---|
+| `assets/vehicles/*.vehicle.json` | Vehicle model manifests: wheel and door node names, hinge angles, paint and beacon materials (`docs/vehicles.md`) | Written for this project (vehicles agent) | Original work for the project |

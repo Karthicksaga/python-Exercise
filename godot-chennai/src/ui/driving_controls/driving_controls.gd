@@ -7,6 +7,15 @@ extends Control
 ## and gear bottom-centre. Each control appears only when it applies: GET IN on foot next to a
 ## vehicle, the driving set while driving, nothing while getting in or out or thrown.
 ## All sizes are UI units at the 915x412 base (48 is about 9 mm on a phone).
+##
+## It knows nothing of vehicles: the composition root (`DrivingWiring`) reads `gas_held()`,
+## `brake_held()`, `steer_value()`, listens to the signals and pushes the mode, readout and gear
+## state in (AGENTS.md: `ui` gets its data from `app`).
+
+signal gear_selected(gear: String)
+signal exit_pressed
+signal horn_pressed
+signal get_in_pressed
 
 const GUTTER := 16.0
 const GAP := 12.0
@@ -28,10 +37,10 @@ var gears: Dictionary = {}
 var readout: Label
 var toast_label: Label
 
-var _driving: Driving
 var _mode: StringName = &"foot"
 var _toast_time := 0.0
 var _blink := 0.0
+var _pending := ""
 
 
 func _init() -> void:
@@ -62,7 +71,7 @@ func _init() -> void:
 		_corner(b, area, Vector2(1, 1), Vector2(-GEAR_SIZE.x, top), GEAR_SIZE)
 		top -= GEAR_GAP
 		gears[g] = b
-		b.pressed_down.connect(_on_gear.bind(g))
+		b.pressed_down.connect(func() -> void: gear_selected.emit(g))
 	horn = _button("HORN", "Horn", 16)
 	_corner(horn, area, Vector2(1, 1), Vector2(-GAS_SIZE.x - GAP - HORN_SIZE.x, -BRAKE_SIZE.y - GAP - HORN_SIZE.y), HORN_SIZE)
 	exit_button = _button("EXIT", "Exit", 16)
@@ -102,10 +111,10 @@ func _init() -> void:
 	toast_label.offset_bottom = 40
 	toast_label.visible = false
 	area.add_child(toast_label)
-	exit_button.pressed_down.connect(_on_exit)
-	horn.pressed_down.connect(_on_horn)
-	get_in.pressed_down.connect(_on_get_in)
-	set_mode(&"foot", null)
+	exit_button.pressed_down.connect(func() -> void: exit_pressed.emit())
+	horn.pressed_down.connect(func() -> void: horn_pressed.emit())
+	get_in.pressed_down.connect(func() -> void: get_in_pressed.emit())
+	set_mode(&"foot")
 
 
 func _button(text: String, node_name: String, font: int) -> TouchButton:
@@ -144,11 +153,6 @@ func _corner(c: Control, parent: Control, anchor: Vector2, offset: Vector2, size
 	parent.add_child(c)
 
 
-func connect_driving(d: Driving) -> void:
-	_driving = d
-	d.toast.connect(show_toast)
-
-
 func gas_held() -> bool:
 	return gas.held()
 
@@ -161,8 +165,9 @@ func steer_value() -> float:
 	return steer_pad.value
 
 
-## Which controls show: the driving set, GET IN (on foot, when near a vehicle), or none.
-func set_mode(m: StringName, v: Vehicle) -> void:
+## Which controls show: the driving set, or none (GET IN is `set_get_in`). `horn_label` is
+## "HORN", or "SIREN" on vehicles with one.
+func set_mode(m: StringName, horn_label: String = "HORN") -> void:
 	_mode = m
 	var drive := m == &"driving"
 	for c: Control in [steer_pad, gas, brake, horn, exit_button, readout]:
@@ -170,8 +175,29 @@ func set_mode(m: StringName, v: Vehicle) -> void:
 	for g: String in gears:
 		(gears[g] as Control).visible = drive
 	get_in.visible = false
-	if drive and v != null:
-		horn.text = "SIREN" if v.has_siren() else "HORN"
+	horn.text = horn_label
+
+
+## GET IN shows on foot next to a vehicle.
+func set_get_in(on: bool) -> void:
+	get_in.visible = on and _mode == &"foot"
+
+
+## Speed and gear, e.g. "42 km/h   D3".
+func set_readout(text: String) -> void:
+	readout.text = text
+
+
+## The engaged gear lights; a gear asked for while still moving (`pending`) blinks.
+func set_gears(engaged: String, pending: String) -> void:
+	_pending = pending
+	for g: String in gears:
+		(gears[g] as TouchButton).set_pressed_no_signal(engaged == g and pending == "")
+
+
+## The siren button lit while the siren is on.
+func set_siren_lit(on: bool) -> void:
+	horn.set_pressed_no_signal(on)
 
 
 func show_toast(text: String) -> void:
@@ -185,39 +211,7 @@ func _process(delta: float) -> void:
 		_toast_time -= delta
 		if _toast_time <= 0.0:
 			toast_label.visible = false
-	if _driving == null:
-		return
-	if _mode == &"foot":
-		get_in.visible = _driving.nearest_vehicle() != null
-	elif _mode == &"driving" and _driving.vehicle != null:
-		var v := _driving.vehicle
-		readout.text = "%d km/h   %s" % [roundi(v.speed_kmh()), _driving.gear_label()]
-		_blink += delta
-		var box := _driving.gearbox
-		for g: String in gears:
-			var b: TouchButton = gears[g]
-			b.set_pressed_no_signal(box.gear == g and box.pending == "")
-			# The gear asked for while still moving blinks until it engages.
-			b.modulate = Color(1, 1, 1, 0.45 if box.pending == g and int(_blink * 4.0) % 2 == 0 else 1.0)
-		if v.has_siren():
-			horn.set_pressed_no_signal(v.siren())
-
-
-func _on_gear(g: String) -> void:
-	if _driving != null:
-		_driving.select_gear(g)
-
-
-func _on_exit() -> void:
-	if _driving != null:
-		_driving.exit()
-
-
-func _on_horn() -> void:
-	if _driving != null:
-		_driving.press_horn()
-
-
-func _on_get_in() -> void:
-	if _driving != null:
-		_driving.enter(_driving.nearest_vehicle())
+	_blink += delta
+	for g: String in gears:
+		var b: TouchButton = gears[g]
+		b.modulate = Color(1, 1, 1, 0.45 if _pending == g and int(_blink * 4.0) % 2 == 0 else 1.0)

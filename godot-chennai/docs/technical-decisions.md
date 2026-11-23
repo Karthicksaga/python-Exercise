@@ -123,3 +123,83 @@ While loading, a watchdog thread prints `[boot] no frame for N s` if the main lo
 device log never goes silent. No
 Gradle build: Godot's prebuilt template, so the minimum SDK is the template's: API 24
 (Android 7.0), target 36 (printed by CI). Package `com.chennaiopenworld.godot`, so it installs beside the Three.js app.
+
+## G-70: A custom ray-cast vehicle on a Jolt `RigidBody3D`, not `VehicleBody3D`
+**Decision (23 Nov 2026, vehicles).** `RaycastVehicle` (`src/physics/raycast_vehicle.gd`) is a
+`RigidBody3D` whose wheels are rays: suspension spring and damper, a sideways bilateral tyre
+constraint, engine/brake/rolling impulses and Bullet's friction circle, applied in
+`_integrate_forces`. It is a line-by-line port of Rapier 0.21's `DynamicRayCastVehicleController`
+as the Three.js `VehicleBody.ts` drives it (same constants, same order: every spring measured
+before any is applied), plus that file's arcade drift and the two-wheelers' hold-the-line.
+Roll and pitch are locked (as in the Three.js game: predictable on a touchscreen, cannot flip),
+CCD is on, gravity 9.81 (Rapier's), damping 0.08/1.2.
+**Why not `VehicleBody3D`.** It is also a Bullet port, but its friction, the drift hooks and the
+per-step order are not ours to change, and matching the Three.js numbers (G-71) needs exactly
+Rapier's arithmetic. **Revisit** if a ragdoll or real roll is wanted.
+
+## G-71: Handling is tested against measurements of the Three.js vehicles
+`tools/reference/threejs_handling.mts` runs the Three.js `VehicleBody` (Rapier) on a flat plane
+(read-only use of `chennai-open-world/`) and stores speed curve, top speed, braking, coasting,
+reversing, cornering and drift numbers in `tests/data/threejs_handling.json`;
+`tests/scene/test_vehicle_handling.gd` measures the Godot vehicles the same way (all at once,
+each in its own lane) and requires 10 % (15 % for the first second, 20 % for the single-front-
+wheel vehicles' cornering: `docs/vehicles.md`, "Known differences"). Re-run the script if the
+Three.js handling changes.
+
+## G-72: Vehicle kinds and variants are data
+`src/vehicles/data/vehicle_types.json` holds each kind's handling (`VehicleSpec`), seat, pose,
+entry, passenger doors, gears, camera distance and crash rule, and the variants that spawn
+(taxi, police, gang = the car kind with paint and extras). The five Three.js kinds keep the
+Three.js numbers exactly; the premium saloon, SUV, coupé and the race car (MIGRATION_PROMPT §11)
+are invented profiles with a `grip` multiplier (friction limit and side stiffness).
+
+## G-73: One manifest per vehicle model
+`assets/vehicles/<model>.vehicle.json` names the GLB, its LOD1, the wheel nodes in physics-wheel
+order, the door nodes with hinge leaf and opening angle, paint and beacon materials (format in
+`docs/vehicles.md`). The kind names its `model` and a `fallback_model`; the premium and race
+cars use stretched stand-ins until the Models agent's GLBs and manifests land, with no code
+change. Wheels are drawn at the physics wheels, scaled to the physics radius; the model's ground
+sits at the settled ride height. LOD1 beyond 28 m (`visibility_range`).
+
+## G-74: Gearbox P/R/D and the HUD gear rule (Three.js `Gearbox.ts`)
+GAS and BRAKE are pedals; the selector is P, R, D. A change needs the vehicle below 1 m/s; asked
+for while moving, the gearbox brakes and shows N until it engages. The HUD shows P, R, N, D or
+D1…Dn (`gearFor`: the share of top speed in `gears` steps). Getting in selects D. Getting out is
+refused above 2.5 m/s ("Stop the vehicle first").
+
+## G-75: Crash ejection (TD-29) with the rider's own character body
+Impact = the vehicle's change of planar velocity in one step (above 1.6 m/s; driving never
+exceeds 0.4). `CrashRules.judge` applies the per-kind thresholds and damage of TD-29 (table in
+`docs/vehicles.md`). A thrown rider starts at the seat (pushed clear of walls), with collisions
+on, passing through its own vehicle, and `CrashFlight` moves it with `move_and_slide` (swept, so
+it cannot cross a wall), slides it to a stop at 9 m/s², lies, gets up; damage on landing. The
+motorbike topples (drawn) and scrapes to a stop. No ragdoll (same trade-off as TD-29).
+
+## G-76: Collision layers
+1 world, 2 player (and a thrown rider), 3 vehicles, 4 people (`src/physics/physics_layers.gd`).
+Wheel rays see world and vehicles; the chase camera is pulled in by world and vehicles. Player
+and Foundation may name them in `project.godot` `[layer_names]` with these bits.
+
+## G-77: Boarding is a timed sequence; the rider is an interface
+`Boarding` (port of `Boarding.ts`, with TD-30's `pull` phase for carjacking) times walk, door,
+pull, aisle, sit, close; `Driving` turns it into the rider's place and pose and the door angle.
+The rider is a `VehicleRider` (`CharacterBody3D`: `set_walking`, `place`, `set_seated`,
+`throw_off`, `knockdown`, `consume_landing`, health); its default draws a capsule stand-in, and
+the Player agent's character extends it (or implements the same methods) to draw the real seated
+pose (`VehicleType.pose`).
+
+## G-78: Touch driving controls and input
+Layout (chennai-game-design §3): steering pad bottom-left (a thumb slides left/right, deadzone
+8 %), GAS (largest) in the bottom-right corner, BRAKE beside it, P/R/D above GAS, HORN/SIREN above
+BRAKE, EXIT top-right, speed and gear bottom-centre; GET IN only on foot next to a vehicle; nothing
+while boarding or thrown. Buttons are multi-touch (`TouchButton` tracks every finger). Keyboard
+and pad actions (`drive_*`, `gear_*`) are registered at run time by `DriveInput`, so
+`project.godot` is untouched. Module boundaries: `ui` and `vehicles` do not know each other;
+`src/app/driving_wiring.gd` connects them and the camera.
+
+## G-79: Chase camera
+`ChaseCamera` (`src/game_engine/`) follows any node: behind the direction of travel above 3 m/s,
+further back with speed (0.08 m per m/s), looking a quarter-second ahead, pulled in by walls at
+6/s and out at 1.6/s (eased, never snapped), updated in the physics step. A test drives past the
+houses and into a turn and checks the camera never jumps more than 0.6 m in a frame beyond the
+car's own motion. Physics interpolation is off (G-2); revisit together if the phone shows judder.

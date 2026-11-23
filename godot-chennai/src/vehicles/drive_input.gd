@@ -1,8 +1,9 @@
 class_name DriveInput
 extends RefCounted
 ## Keyboard and gamepad driving (input-systems): actions registered at run time so the vehicle
-## code does not edit `project.godot` (decision G-78). Touch comes from `DrivingControls`;
-## both are combined: a key or a touch holds GAS.
+## code does not edit `project.godot` (decision G-78). Touch comes in through
+## `Driving.touch_*` (set by the composition root from the touch controls); a key or a touch
+## holds GAS.
 ##
 ## | Action | Keys | Pad |
 ## |---|---|---|
@@ -52,10 +53,9 @@ func _add(action: StringName, keys: Array[int], buttons: Array[int], axis: int =
 ## Reads the held keys and touch controls into `driving` (only what changed, so tests that set
 ## `gas`/`brake`/`steer` directly are not overwritten while nothing is pressed).
 func read(driving: Driving) -> void:
-	var touch := driving.controls
-	var gas := Input.is_action_pressed(&"drive_gas") or (touch != null and touch.gas_held())
-	var brake := Input.is_action_pressed(&"drive_brake") or (touch != null and touch.brake_held())
-	var steer := Input.get_axis(&"drive_left", &"drive_right") + (touch.steer_value() if touch != null else 0.0)
+	var gas := Input.is_action_pressed(&"drive_gas") or driving.touch_gas
+	var brake := Input.is_action_pressed(&"drive_brake") or driving.touch_brake
+	var steer := Input.get_axis(&"drive_left", &"drive_right") + driving.touch_steer
 	_apply(driving, &"gas", gas)
 	_apply(driving, &"brake", brake)
 	var steering := absf(steer) > 0.001

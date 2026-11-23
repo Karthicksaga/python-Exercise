@@ -6,9 +6,11 @@ extends Node
 ## rider off. A port of the vehicle parts of the Three.js `Game.ts`, `Boarder.ts` and
 ## `Crashes.ts`; it holds no world or mission logic.
 ##
-## Wire it with a `rider`, optionally a `camera` (`ChaseCamera`) and `controls`
-## (`DrivingControls`); the composition root does that. Input comes from `controls` and the
-## keyboard actions of `DriveInput`, or is set directly (`gas`, `brake`, `steer`) by tests.
+## Wire it with a `rider`; the composition root connects the camera and the touch controls
+## (`DrivingWiring` in `src/app/`), so this module uses no UI or camera code (AGENTS.md module
+## boundaries). Input: the keyboard and pad actions of `DriveInput` plus the touch state the
+## wiring copies into `touch_gas`, `touch_brake`, `touch_steer`; tests set `gas`, `brake`,
+## `steer` directly.
 
 ## Faster than this (m/s) the driver cannot get out ("Stop the vehicle first").
 const EXIT_SPEED := 2.5
@@ -32,8 +34,11 @@ signal horn(vehicle: Vehicle)
 signal boarding_event(vehicle: Vehicle, event: StringName)
 
 @export var rider: VehicleRider
-@export var camera: ChaseCamera
-@export var controls: DrivingControls
+
+## Touch controls held (copied in by the composition root each step).
+var touch_gas := false
+var touch_brake := false
+var touch_steer := 0.0
 
 ## Held inputs (set by `DriveInput`/the touch controls, or directly by tests).
 var gas := false
@@ -59,8 +64,6 @@ var _input := DriveInput.new()
 func _ready() -> void:
 	process_physics_priority = -10
 	_input.register_actions()
-	if controls != null:
-		controls.connect_driving(self)
 
 
 ## &"foot", &"boarding" (getting in or out), &"driving", &"thrown".
@@ -72,8 +75,6 @@ func _set_mode(m: StringName) -> void:
 	if m == _mode:
 		return
 	_mode = m
-	if controls != null:
-		controls.set_mode(m, vehicle)
 	mode_changed.emit(m)
 
 
@@ -178,8 +179,15 @@ func _physics_process(delta: float) -> void:
 			_drive_step()
 		&"thrown":
 			_thrown_step()
-	if camera != null:
-		camera.target = vehicle if _mode == &"driving" else (boarding_vehicle if _mode == &"boarding" else rider)
+
+
+## What the camera should follow now: the vehicle driven or being boarded, else the rider.
+func camera_target() -> Node3D:
+	if _mode == &"driving" and vehicle != null:
+		return vehicle
+	if boarding_vehicle != null and _mode == &"boarding":
+		return boarding_vehicle
+	return rider
 
 
 func _drive_step() -> void:
