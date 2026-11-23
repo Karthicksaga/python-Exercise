@@ -777,3 +777,25 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   typecheck, unit tests and the affected specs (AGENTS.md).
 - Open: faces smooth up close; pallu and dupatta are flat bands; long hems can show a shin when
   running; older women wear a plait, not a bun; no player LOD1; nothing tried on a phone.
+
+## 22 Nov 2026: loading screen and title menu (branch `agent/loading-screen`): where I left off
+- **Done and tested** (details in `progress.md`, decision TD-25): loading screen with the six
+  real `Game.create` steps and the real street network behind; title menu over the live city
+  (`TitleScreen`, `TitleDesk`); pause overlay no longer clips its buttons; MAIN MENU returns to the
+  title menu; the shell has no menu of its own and forwards Back to the game.
+- **Shared files touched:** `Game.ts` (`LOAD_STEPS`, `LoadProgress`, `create(…, progress)`,
+  title wiring, `back()`, `setWeather`, `resetProgress`, snapshot `screen`), `main.ts`,
+  `index.html`, `packages/ui` `Hud.ts` (overlay CSS, `.cow-actions`) and `index.ts`,
+  `apps/mobile` `App.tsx` / `GameScreen.tsx` (`MainMenu.tsx` removed), every spec's `goto`
+  (`&start=play`), `support.ts` (`screen`), `AGENTS.md` (testing note).
+- **Not done / uncertain:** not built as an APK or run on the emulator or a phone (no Android SDK
+  here): the shell's Back routing, QUIT and the Tamil wordmark in the WebView are untested on a
+  device. The world behind the menu is still (no traffic moving). A graphics-quality setting
+  would need a reload and was not added.
+- **Results:** typecheck clean; unit 503/503; full browser suite 104/104 (38.9 min).
+- **23 Nov, after a phone stalled on the loading screen:** the cast's models are no longer inlined
+  (script 16 MB → 6.7 MB, TD-3 amended) and the WebView's hardware layer is gone (`GameScreen.tsx`).
+  Second try: the loading screen no longer loops or fades anything, and `Game.create` waits a
+  frame between steps (TD-25 "On a phone"). Third try: the shell shows a native status panel
+  from the game's loading reports (`loadReport.ts`, `GameScreen.tsx`) after 20 s. Ask for a
+  screenshot of that panel from the phone: it names the GPU, the step, and whether the page answers.

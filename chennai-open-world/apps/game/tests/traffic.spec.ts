@@ -1,6 +1,6 @@
 /** Chennai traffic (milestone J3): signals, the traffic mix, and density by time of day. */
 import { expect, test, type Page } from "@playwright/test";
-import { ready, snapshot } from "./support";
+import { ready, snapshot, waitGameTime } from "./support";
 
 interface TrafficState {
   traffic: Array<{ x: number; z: number; speed: number; kind: string }>;
@@ -38,7 +38,9 @@ test("late at night there is less traffic than in the evening rush", async ({ pa
   expect(evening.hour).toBeLessThan(20);
   await page.evaluate(() => localStorage.setItem("cow-hour-v1", "3"));
   await ready(page, true);
-  await page.waitForTimeout(1500);
+  // Game time, not wall clock: the density is worked out once a second of game time
+  // (Population DENSITY_EVERY); 1.5 s of wall clock was barely one on a slow CI runner.
+  await waitGameTime(page, 1.5);
   const night = await traffic(page);
   expect(night.hour).toBeLessThan(4);
   expect(night.trafficWanted).toBeLessThan(evening.trafficWanted);
