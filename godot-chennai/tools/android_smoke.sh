@@ -16,7 +16,15 @@ TIMEOUT=240
 mkdir -p "$OUT"
 log() { echo "[smoke $(date +%H:%M:%S)] $*"; }
 save() { adb logcat -d > "$OUT/logcat.txt" 2>/dev/null; log "device log in $OUT/logcat.txt"; }
-fail() { log "FAIL: $*"; save; exit 1; }
+fail() {
+  log "FAIL: $*"
+  echo "---- the app's log (tag godot, last 150 lines) ----"
+  boot_log | tail -150
+  echo "---- crash buffer ----"
+  adb logcat -d -b crash 2>/dev/null | tail -60
+  save
+  exit 1
+}
 boot_log() { adb logcat -d -s godot:V 2>/dev/null; }
 # Crashes of this app only (the crash buffer; native crashes name the process, truncated).
 crashed() { adb logcat -d -b crash 2>/dev/null | grep -qE "chennaiopenworld|openworld\.godot"; }

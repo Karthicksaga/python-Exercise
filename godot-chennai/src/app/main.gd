@@ -77,14 +77,29 @@ func _load() -> void:
 func _run_step(i: int) -> String:
 	match i:
 		0:
-			var task := BackgroundTask.start(source.open_index)
-			return await task.finish(get_tree())
+			return await _background(i, source.open_index)
 		1:
-			var task := BackgroundTask.start(source.open_roads)
-			return await task.finish(get_tree())
+			return await _background(i, source.open_roads)
 		2:
 			return await _add_test_world()
 	return "Unknown step %d." % i
+
+
+## Runs a step's work on a worker thread; prints a heartbeat every 5 s while it runs (a slow
+## device then shows where it is, the TD-25 lesson). The work returns "" or an error.
+func _background(i: int, work: Callable) -> String:
+	var task := BackgroundTask.start(work)
+	var started := Time.get_ticks_msec()
+	var beat := started
+	while not task.is_done():
+		await get_tree().process_frame
+		if Time.get_ticks_msec() - beat >= 5000:
+			beat = Time.get_ticks_msec()
+			print("[boot] step %d still running after %d s" % [i + 1, roundi((beat - started) / 1000.0)])
+	var result: Variant = task.result()
+	if typeof(result) != TYPE_STRING:
+		return "Step %d stopped with an error (see the log)." % (i + 1)
+	return result
 
 
 func _add_test_world() -> String:
