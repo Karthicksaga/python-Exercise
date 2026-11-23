@@ -107,7 +107,7 @@ Weak or not done:
   `JobData`, `JobRunner`, `FareStop`, `GoodsStop`, `ShareShift`, `RouteLine`, `Chase`, `Life`,
   `StoryRunner`, `GameContent`, `SaveStore`, `Combat`, `CombatWorld`, `EnemySpot`, `Melee`,
   `Weapons`, `Arsenal`, `Gangs`, `PedestrianHits`, `Casualties`, `WeaponPickups`, `Wanted`,
-  `PoliceFleet`, `Carjack`, `DayClock`, `DistrictIndex`, `VisitedDistricts`, `RulesMath`,
+  `PoliceFleet`, `Carjack`, `DistrictIndex`, `VisitedDistricts`, `RulesMath`,
   `SeededRandom`. There is one clock: Foundation's `GameClock` (my duplicate port was removed;
   `SaveStore` and the tests use `GameClock`). If the Data agent also ports `districts.ts`, keep
   one of the two.
