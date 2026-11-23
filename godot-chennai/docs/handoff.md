@@ -24,14 +24,16 @@ emulator smoke run. Decisions G-1…G-9 in `technical-decisions.md`.
 
 **CI.** Green on `agent/godot-foundation` (run 45185128445): tests, the `godot-chennai-apk`
 artifact, emulator smoke. The first emulator runs stalled: the emulator's Vulkan failed to
-present and the main loop stopped; the smoke emulator now runs without Vulkan, so it tests the
-OpenGL fallback, not the Mobile renderer.
+present and the main loop stopped; with guest Vulkan off, Godot's own switch to OpenGL worked
+once and then lost the app on the next run. The smoke APK now starts on the Compatibility
+renderer itself, so the emulator tests booting, data and flow, not the Mobile renderer.
 
 **Weak or not done.**
 - The test ground is deliberately empty: no city meshes, no player, no touch joystick yet.
 - 640×320 screens get readable but small text (14 at 0.7 scale ≈ 10 px).
 - The Mobile (Vulkan) renderer has not run anywhere real yet: the CI emulator cannot present
-  with Vulkan and runs the OpenGL fallback. First check on the owner's phone (Adreno 613).
+  with Vulkan, and Godot's automatic Vulkan-to-OpenGL switch was unreliable there. First check
+  on the owner's phone (Adreno 613).
 - The frame watchdog is not covered by a test (it would need a deliberately stalled main loop).
 - The APK carries every synced asset (about 50 MB of data, mostly the legacy cast) although
   phase 0 uses none of the models.

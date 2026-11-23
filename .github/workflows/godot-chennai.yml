@@ -159,12 +159,13 @@ jobs:
           target: google_apis
           arch: x86_64
           force-avd-creation: true
-          # Vulkan off in the guest: on this runner the emulator's Vulkan (SwiftShader through
-          # gfxstream) fails to present ("Couldn't present to Vulkan queue") and Godot's main loop
-          # stops after the first frames. Without Vulkan the game takes its OpenGL fallback
-          # (rendering_device/fallback_to_opengl3, G-1), so this run also proves the fallback
-          # works. The Mobile (Vulkan) renderer is judged on real phones, not here.
-          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -feature -Vulkan -noaudio -no-boot-anim -camera-back none
+          # The emulator's Vulkan (SwiftShader through gfxstream) cannot present on this runner:
+          # Godot's main loop stopped after the first frames. Godot's own Vulkan-to-OpenGL
+          # fallback (guest Vulkan turned off) started the app once and lost it on the next run
+          # while switching. So the smoke APK starts on the Compatibility renderer itself
+          # (launch arguments in the "Android Smoke" preset); the Mobile renderer is judged on
+          # real phones (G-9).
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           working-directory: godot-chennai
           # One line: the action runs each script line as a separate command.

@@ -20,6 +20,8 @@ fail() {
   log "FAIL: $*"
   echo "---- the app's log (tag godot, last 150 lines) ----"
   boot_log | tail -150
+  echo "---- the app's processes and the activity manager ----"
+  adb logcat -d 2>/dev/null | grep -E "chennaiopenworld|ActivityManager|ActivityTaskManager|AndroidRuntime|libc|DEBUG" | tail -80
   echo "---- crash buffer ----"
   adb logcat -d -b crash 2>/dev/null | tail -60
   save
@@ -45,6 +47,7 @@ while true; do
   if echo "$lines" | grep -qF "[boot] failed"; then fail "the game reported a loading failure"; fi
   if crashed; then fail "the app crashed"; fi
   if echo "$lines" | grep -qF "[boot] play"; then break; fi
+  if [ $((now - start)) -gt 20 ] && [ -z "$(adb shell pidof "$PACKAGE" | tr -d '\r')" ]; then fail "the app is no longer running"; fi
   if echo "$lines" | grep -qF "[boot] title" && [ $((now - pressed)) -gt 10 ]; then
     log "title menu shown: pressing ENTER on PLAY"
     adb shell input keyevent KEYCODE_ENTER
