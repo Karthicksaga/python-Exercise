@@ -89,7 +89,7 @@ ROLES = {
     "blade": ((0.07, 0.07, 0.075), 0.5, 0.2, None),
     "blade_tip": ((0.8, 0.45, 0.02), 0.4, 0.0, None),
     "skid": ((0.45, 0.46, 0.47), 0.5, 0.7, None),
-    "teal": ((0.02, 0.2, 0.2), 0.4, 0.0, None),
+    "teal": ((0.006, 0.07, 0.075), 0.4, 0.0, None),
     "amber": ((1.0, 0.45, 0.0), 0.4, 0.0, None),
     "red": ((0.42, 0.02, 0.02), 0.4, 0.0, None),
     "navy": ((0.01, 0.03, 0.1), 0.4, 0.0, None),
@@ -831,6 +831,7 @@ def g_axis(v):
 
 
 def scene_bounds(objs=None):
+    bpy.context.view_layer.update()  # matrix_world is stale after setting locations
     lo = Vector((1e9, 1e9, 1e9))
     hi = -lo
     for o in objs if objs is not None else bpy.context.scene.objects:

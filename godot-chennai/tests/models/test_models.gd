@@ -218,7 +218,7 @@ func _check_materials(scene: Node, name: String, lod: int, kind: String) -> void
 func _check_wheels(scene: Node, m: Dictionary, name: String, lod: int) -> void:
 	var rail: bool = String(m["kind"]).begins_with("train")
 	for w: Dictionary in m.get("wheels", []):
-		if lod > 0 and w.get("lod0_only", false):
+		if lod > int(w.get("lod_max", 99)):
 			continue
 		var node := _find(scene, w["node"])
 		if not _ok(node != null, "%s LOD%d: wheel node %s" % [name, lod, w["node"]]):
@@ -247,8 +247,11 @@ func _check_frame(scene: Node3D, m: Dictionary, name: String, kind: String) -> v
 	_ok(b.position.y > -0.06 and b.position.y < 0.06, "%s: rests on y = 0 (lowest %.3f)" % [name, b.position.y])
 	var front := _find(scene, "marker_front")
 	if front != null:
+		# Against the body's bounds: a helicopter's rotor blade can reach further forwards.
+		var body := _find(scene, "body")
+		var bb := _bounds(body) if body != null else b
 		var z := _xf(front).origin.z
-		_ok(z < 0.0 and absf(z - b.position.z) < 0.2, "%s: front marker at the -Z end (%.2f, bounds %.2f)" % [name, z, b.position.z])
+		_ok(z < 0.0 and absf(z - bb.position.z) < 0.2, "%s: front marker at the body's -Z end (%.2f, bounds %.2f)" % [name, z, bb.position.z])
 	else:
 		var steer_z := 0.0
 		var other_z := 0.0
