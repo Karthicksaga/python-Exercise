@@ -16,6 +16,16 @@ const IDLE: VehicleControls = { throttle: 0, steer: 0, brake: 0.4 };
 const IMPACT = 1.6;
 /** Share of speed kept after a crash. */
 const CRASH_KEEP = 0.65;
+/**
+ * A fallen two-wheeler (`topple`): how far it tips (radians, nearly flat on its side), how fast
+ * it goes over and back up (share per second), how much lower its centre sits lying down
+ * (metres, estimated off the model) and how hard it scrapes to a stop on its side (m/s²).
+ */
+const FALLEN_TILT = 1.35;
+const TIP_RATE = 2.4;
+const RIGHT_RATE = 1.6;
+const FALLEN_DROP = 0.26;
+const SCRAPE = 6;
 
 export class Vehicle {
   readonly type: VehicleType;
@@ -34,6 +44,10 @@ export class Vehicle {
   private sirenOn = false;
   private sirenClock = 0;
   private doorAmount = 0;
+  /** Lying on its side after its rider came off (two-wheelers): which way (1 right, -1 left), and how far over it is drawn (0 to 1, eased). */
+  private fallenSide: 1 | -1 | 0 = 0;
+  private tip = 0;
+  private lastSide: 1 | -1 = 1;
 
   constructor(
     readonly id: string,
@@ -142,6 +156,25 @@ export class Vehicle {
   }
 
   /**
+   * Fall over onto its side (`side` 1 right, -1 left) after the rider came off, or (0) stand back
+   * up. Ignored by vehicles that do not lean. While down it scrapes to a stop and does not drive.
+   */
+  topple(side: 1 | -1 | 0): void {
+    if (!this.type.leans) return;
+    this.fallenSide = side;
+  }
+
+  /** Lying on its side (see `topple`). */
+  get fallen(): boolean {
+    return this.fallenSide !== 0;
+  }
+
+  /** How far over it is drawn, 0 upright to 1 on its side (tests, the debug snapshot). */
+  get tipped(): number {
+    return this.tip;
+  }
+
+  /**
    * Points along the vehicle's length with a radius, so AI traffic sees a long bus as a row
    * of circles instead of one huge one.
    */
@@ -181,6 +214,13 @@ export class Vehicle {
     this.before.position.set(start.x, start.y, start.z);
     this.before.rotation.set(turn.x, turn.y, turn.z, turn.w);
     this.before.set = true;
+    if (this.fallenSide !== 0) {
+      // On its side: no wheels on the road, it scrapes to a stop.
+      const speed = Math.hypot(after.x, after.z);
+      if (speed > 0) this.knock(Math.max(0, speed - SCRAPE * dt) / speed);
+      this.body.drive({ throttle: 0, steer: 0, brake: 1 }, dt);
+      return;
+    }
     this.body.drive(controls ?? IDLE, dt);
   }
 
@@ -213,7 +253,13 @@ export class Vehicle {
       // body stays upright.
       const wanted = Math.max(-0.5, Math.min(0.5, this.body.steering() * Math.abs(this.body.forwardSpeed()) * 0.16));
       this.lean += (wanted - this.lean) * Math.min(1, dt * 6);
-      this.object.rotateZ(this.lean);
+      // Fallen: over onto its side (eased in), and back up when someone picks it up.
+      const down = this.fallenSide !== 0 ? 1 : 0;
+      this.tip = down > this.tip ? Math.min(1, this.tip + dt * TIP_RATE) : Math.max(0, this.tip - dt * RIGHT_RATE);
+      if (this.fallenSide !== 0) this.lastSide = this.fallenSide;
+      const e = this.tip * this.tip * (3 - 2 * this.tip);
+      this.object.position.y -= FALLEN_DROP * e;
+      this.object.rotateZ(this.lean * (1 - e) - this.lastSide * FALLEN_TILT * e);
     }
 
     const spec = this.type.physics;

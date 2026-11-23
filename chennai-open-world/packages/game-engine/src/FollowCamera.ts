@@ -147,10 +147,12 @@ export class FollowCamera {
     const cosPitch = Math.cos(this.pitch);
     const dir = { x: Math.sin(this.yaw) * cosPitch, y: Math.sin(this.pitch), z: Math.cos(this.yaw) * cosPitch };
 
-    // Pull in at once when blocked, ease back out when the view clears.
+    // Pull in at once when blocked, ease back out when the view clears. A shorter `reach` with
+    // nothing in the way (back on foot after driving, or after a crash's throw) eases in too.
     const hit = physics.raycast(this.focus, dir, reach + 0.3, ignore);
     const allowed = hit === null ? reach : Math.max(MIN_DISTANCE, hit - 0.3);
-    this.distance = allowed < this.distance ? allowed : this.distance + (allowed - this.distance) * Math.min(1, dt * 5);
+    const blocked = hit !== null && allowed < this.distance;
+    this.distance = blocked ? allowed : this.distance + (allowed - this.distance) * Math.min(1, dt * 5);
 
     this.camera.position.set(
       this.focus.x + dir.x * this.distance,

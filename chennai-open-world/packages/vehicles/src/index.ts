@@ -5,3 +5,4 @@ export * from "./TrafficCar";
 export * from "./glbModels";
 export * from "./Gearbox";
 export * from "./Boarding";
+export * from "./crash";

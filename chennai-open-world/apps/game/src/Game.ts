@@ -16,6 +16,7 @@ import { CombatMarks, Hud, Minimap, TouchControls, type MinimapMarker } from "@c
 import { Gearbox, Vehicle, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
 import { buildContent, type GameContent } from "./content";
 import { Boarder, type BoardingSnapshot } from "./Boarder";
+import { Crashes, type CrashSnapshot } from "./Crashes";
 import { Fighters, combatWorld } from "./Fighters";
 import { Arms, type ArmsSnapshot } from "./Arms";
 import { JobDesk, type ShareSnapshot } from "./JobDesk";
@@ -120,7 +121,7 @@ export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
   /** Grid keys ("col,row") of the loaded chunks. */
   readonly chunkKeys: string[];
   /** Each vehicle; `door` is how far its driver's door is open (0 shut, 1 open). */
-  readonly vehicles: Array<{ id: string; kind: string; x: number; z: number; yaw: number; door: number }>;
+  readonly vehicles: Array<{ id: string; kind: string; x: number; z: number; yaw: number; door: number; tipped: number }>;
   /** Getting in or out of a vehicle (the animated sequence), or null. */
   readonly boarding: BoardingSnapshot | null;
   readonly traffic: Array<{ x: number; z: number; speed: number; kind: string }>;
@@ -170,6 +171,8 @@ export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
   /** The wanted level, police cars and officers, the last arrest (`Police.ts`). */
   readonly police: ReturnType<Police["snapshot"]>;
   /** People getting in and out at the current pick-up or drop (`FareFigures.ts`), or null. */
+  /** Thrown off a vehicle in a crash (TD-29): the phase, and the last crash judged. */
+  readonly crash: CrashSnapshot;
   readonly fare: (FareFiguresSnapshot & { readonly aboard: number; readonly kerb: { x: number; z: number }; readonly stages: string[]; readonly note: string | null }) | null;
 }
 
@@ -327,6 +330,8 @@ export class Game {
   private lastPedestrianHit: GameSnapshot["lastPedestrianHit"] = null;
   /** Getting in and out of vehicles as an animated sequence (`Boarder.ts`). */
   private readonly boarder: Boarder;
+  /** Crashes that shake or throw the driver (TD-29). */
+  private readonly crashes: Crashes;
   /** The controls are hidden for a walk through a train's doorway. */
   private railWalk = false;
   /** Police and the wanted level (`Police.ts`); made in `create`, once the road graph and HUD exist. */
@@ -396,6 +401,7 @@ export class Game {
       const hit = physics.raycast({ x, y: top, z }, { x: 0, y: -1, z: 0 }, 5, vehicle.body);
       return hit === null ? null : top - hit;
     });
+    this.crashes = new Crashes(physics, player, avatar);
     this.desk = new JobDesk(content.jobs, missions, hud, sound, {
       hold: () => this.hold(),
       release: () => this.release(),
@@ -1020,6 +1026,10 @@ export class Game {
   teleport(x: number, z: number, yaw = 0): Promise<void> {
     this.railway?.endRide(null);
     this.cancelBoarding();
+    if (this.crashes.cancel()) {
+      this.controls.setMode("foot");
+      this.camera.reach = 5.6;
+    }
     const ready = this.chunks.whenLoaded(x, z);
     this.chunks.update(x, z, true);
     if (this.driving) this.driving.body.teleport({ x, y: this.driving.type.rideHeight + 0.1, z }, yaw);
@@ -1043,6 +1053,8 @@ export class Game {
 
   /** Start getting in: the figure walks to the door, opens it, sits down and shuts it (`Boarder`). */
   private getIn(vehicle: Vehicle): void {
+    // A fallen motorbike is picked up as the rider walks to it.
+    vehicle.topple(0);
     this.avatar.setAiming(false);
     this.player.body.setEnabled(false);
     this.controls.setMode("busy");
@@ -1262,7 +1274,7 @@ export class Game {
       frames: this.frames,
       chunksLoaded: this.chunks.loadedCount,
       chunkKeys: this.chunks.loadedKeys(),
-      vehicles: this.vehicles.map((v) => ({ id: v.id, kind: v.kind, x: v.body.position().x, z: v.body.position().z, yaw: v.body.yaw(), door: v.door })),
+      vehicles: this.vehicles.map((v) => ({ id: v.id, kind: v.kind, x: v.body.position().x, z: v.body.position().z, yaw: v.body.yaw(), door: v.door, tipped: v.tipped })),
       boarding: this.boarder.snapshot(),
       traffic: this.population.trafficPositions(),
       pedestrians: this.population.pedestrianCount,
@@ -1296,6 +1308,7 @@ export class Game {
       lastPedestrianHit: this.lastPedestrianHit,
       police: this.police.snapshot(),
       fare: this.fareSnapshot(),
+      crash: this.crashes.snapshot(),
       ...this.arms.snapshot(this.avatar, this.fighters.heldWeapons(), this.missions.quarry),
       cityMap: this.cityMap.state(),
     };
@@ -1411,7 +1424,7 @@ export class Game {
     this.aimFor = Math.max(0, this.aimFor - dt);
     this.sinceClick += dt;
 
-    if (!this.driving && !this.boarder.busy && !this.blocking && (punch || fire)) {
+    if (!this.driving && !this.boarder.busy && !this.crashes.busy && !this.blocking && (punch || fire)) {
       // Attacks go to the locked-on enemy when there is one, otherwise where the camera looks;
       // the player turns to face that way first.
       const yaw = target ? Math.atan2(-(target.x - at.x), -(target.z - at.z)) : this.camera.yaw;
@@ -1494,6 +1507,35 @@ export class Game {
       }
     }
     this.arms.handle(events);
+  }
+
+  /**
+   * The driven vehicle crashed (TD-29, rules in `@cow/vehicles` `judgeCrash`): shaken in the
+   * seat, or thrown off (open vehicles) or through the windscreen. A throw puts the player on
+   * foot at once; the damage comes when the body lands.
+   */
+  private crashed(vehicle: Vehicle, impact: number, steer: number): void {
+    const outcome = this.crashes.judge(vehicle, impact, steer);
+    if (outcome.type === "shaken") this.crashHurt(outcome.damage);
+    if (outcome.type !== "thrown") return;
+    vehicle.setSiren(false);
+    this.sound.setSiren(false);
+    this.standUp();
+    // Keep the driving camera's distance; it eases in once the player is up (`FollowCamera`).
+    this.camera.reach = vehicle.type.cameraDistance;
+    this.controls.setMode("busy");
+    this.controls.setAction(null);
+    this.crashes.throwFrom(vehicle, outcome);
+  }
+
+  /** A crash's damage: the hurt flash and grunt, and a knock-out if it took the last of the health. */
+  private crashHurt(damage: number): void {
+    for (const event of this.combat.hurt(damage)) {
+      if (event.type === "playerHurt") {
+        this.hud.flashHurt();
+        this.sound.hurt();
+      } else if (event.type === "playerDied") this.knockedOut();
+    }
   }
 
   /** The player ran out of health: a hospital bill, and the stage starts again. */
@@ -1612,7 +1654,7 @@ export class Game {
     const moveY = stick.moveY;
     // In a fight JUMP is DODGE: a short dash along the stick (or straight back), untouchable for a moment.
     const jumpPressed = this.controls.consumeJump();
-    const dodge = jumpPressed && this.combatMode && !this.driving && !this.boarder.busy && this.player.grounded;
+    const dodge = jumpPressed && this.combatMode && !this.driving && !this.boarder.busy && !this.crashes.busy && this.player.grounded;
     const jump = jumpPressed && !dodge;
     if (dodge && this.combat.dodge()) {
       const yaw = this.camera.yaw;
@@ -1630,8 +1672,8 @@ export class Game {
     const boarding = this.boarder.busy;
     this.boardingStep(dt);
 
-    if (boarding) {
-      // The sequence has the player.
+    if (boarding || this.crashes.busy) {
+      // The sequence (or a crash's throw) has the player.
     } else if (action && !this.driving && this.railway?.act(this.where())) {
       // Boarded or stepped off a train.
     } else if (action) {
@@ -1665,6 +1707,14 @@ export class Game {
       if (vehicle === this.driving) impact = hit;
     }
     if (impact > 0) this.sound.crash(impact);
+    if (impact > 0 && this.driving && !boarding) this.crashed(this.driving, impact, moveX);
+    for (const event of this.crashes.fixedUpdate()) {
+      if (event.type === "landed") this.crashHurt(event.damage);
+      else {
+        this.controls.setMode("foot");
+        this.camera.reach = 5.6;
+      }
+    }
 
     const before = this.where();
     this.parkedObstacles.length = 0;
@@ -1796,6 +1846,7 @@ export class Game {
       this.avatar.object.rotation.y = drawn.heading;
       // In a fight: forearms up while blocking, fists up when bare-handed.
       this.avatar.setStance(this.blocking ? "block" : this.combatMode && this.avatar.shownWeapon === null ? "guard" : null);
+      this.crashes.frame();
       this.avatar.update(dt, this.player.speed, this.player.grounded);
       this.avatar.setAiming(this.aimFor > 0);
       this.camera.update(dt, at, this.physics, this.player.body);
@@ -1811,9 +1862,9 @@ export class Game {
         this.airborne = 0;
       }
 
-      // Offer to get in the closest vehicle within reach.
+      // Offer to get in the closest vehicle within reach (not while thrown down in a crash).
       this.nearby = null;
-      let closest = ENTER_RANGE;
+      let closest = this.crashes.busy ? 0 : ENTER_RANGE;
       for (const vehicle of this.vehicles) {
         const p = vehicle.body.position();
         const d = Math.hypot(p.x - at.x, p.z - at.z);

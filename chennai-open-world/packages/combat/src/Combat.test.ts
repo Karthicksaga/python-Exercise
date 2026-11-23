@@ -123,4 +123,14 @@ describe("Combat", () => {
     combat.spawnGroup("a", [{ x: 0, z: 0, armed: false }]);
     expect(combat.enemies).toHaveLength(1);
   });
+
+  it("hurt (a crash) takes health whatever the dodge, and reports a knock-out at zero", () => {
+    const combat = new Combat(open);
+    expect(combat.dodge()).toBe(true);
+    expect(combat.hurt(30)).toEqual([{ type: "playerHurt", amount: 30 }]);
+    expect(combat.health).toBe(PLAYER_MAX_HEALTH - 30);
+    expect(combat.hurt(500).map((e) => e.type)).toEqual(["playerHurt", "playerDied"]);
+    expect(combat.health).toBe(0);
+    expect(combat.hurt(10)).toEqual([]);
+  });
 });

@@ -63,12 +63,27 @@ export class CharacterBody {
    * something solid is in the way. Returns the movement that was actually possible.
    */
   move(delta: Vec3): Vec3 {
-    this.controller.computeColliderMovement(this.collider, delta);
+    const ignored = this.ignored;
+    if (ignored) this.controller.computeColliderMovement(this.collider, delta, undefined, undefined, (c) => c.parent()?.handle !== ignored.handle);
+    else this.controller.computeColliderMovement(this.collider, delta);
     const moved = this.controller.computedMovement();
     this.grounded = this.controller.computedGrounded();
     const t = this.body.translation();
     this.body.setNextKinematicTranslation({ x: t.x + moved.x, y: t.y + moved.y, z: t.z + moved.z });
     return { x: moved.x, y: moved.y, z: moved.z };
+  }
+
+  /** A body the capsule's moves pass through (see `passThrough`). */
+  private ignored: RAPIER.RigidBody | null = null;
+
+  /**
+   * Thrown out of a vehicle (TD-29): moves pass through that vehicle, and nothing else is pushed
+   * by the capsule (it becomes a sensor), so a body leaving from the seat does not shove the
+   * vehicle it is leaving. Walls and the ground still stop it. Null makes it solid again.
+   */
+  passThrough(vehicle: VehicleBody | null): void {
+    this.ignored = vehicle ? vehicle.body : null;
+    this.collider.setSensor(vehicle !== null);
   }
 
   /** Switch the capsule off (while the player sits in a vehicle) or back on. */

@@ -27,6 +27,19 @@ const GRAVITY = 24;
 const JUMP_SPEED = 7.2;
 const TURN_RATE = 12; // rad/s towards the direction of travel
 
+/**
+ * Thrown off a vehicle (TD-29): how hard the body scrapes along the ground once down (m/s²),
+ * the share of speed kept when it hits a wall in flight, the speed below which it has stopped
+ * (m/s), and how long getting up takes (s; `HumanFigure`'s rise takes 0.7 s).
+ */
+const TUMBLE_FRICTION = 9;
+const WALL_KEEP = 0.7;
+const TUMBLE_STOP = 0.3;
+export const GET_UP_TIME = 0.75;
+
+/** Thrown off a vehicle: in the air, scraping along the ground, lying still, then getting up. */
+export type Knockdown = "flying" | "sliding" | "lying" | "rising";
+
 export class PlayerController {
   /** Heading the character faces, radians (0 = towards -Z / north). */
   yaw: number;
@@ -37,6 +50,35 @@ export class PlayerController {
   runScale = 1;
   /** A dodge in progress: its velocity on the ground and the seconds it has left. */
   private dashing: { vx: number; vz: number; left: number } | null = null;
+
+  /** Thrown off a vehicle (`throwOff`): phase, velocity, seconds in the phase, and how long to lie still. */
+  private thrown: { phase: Knockdown; v: Vec3; t: number; lie: number; landed: boolean } | null = null;
+
+  /**
+   * Thrown off a vehicle (TD-29): the body flies with `velocity` (m/s), under gravity, stopped by
+   * walls and the ground like walking; then scrapes to a stop, lies still for `lieFor` seconds
+   * and gets up. The stick does nothing until then. Facing stays at `yaw`.
+   */
+  throwOff(velocity: Vec3, lieFor: number, yaw: number): void {
+    this.dashing = null;
+    this.thrown = { phase: "flying", v: { ...velocity }, t: 0, lie: lieFor, landed: false };
+    this.velocity = { x: 0, y: 0, z: 0 };
+    this.yaw = yaw;
+    this.speed = 0;
+  }
+
+  /** Where a throw is (null when on foot and in control). */
+  get knockdown(): Knockdown | null {
+    return this.thrown?.phase ?? null;
+  }
+
+  /** True once per throw, on the step the body first hits the ground. */
+  consumeLanding(): boolean {
+    const t = this.thrown;
+    if (!t || !t.landed) return false;
+    t.landed = false;
+    return true;
+  }
 
   /** Dodge: carried `distance` metres along (dx, dz) over `seconds`, whatever the stick says. */
   dash(dx: number, dz: number, distance: number, seconds: number): void {
@@ -71,6 +113,10 @@ export class PlayerController {
 
   /** Advance one fixed physics step. Call before `PhysicsWorld.step`. */
   update(input: PlayerInput, dt: number): void {
+    if (this.thrown) {
+      this.tumble(this.thrown, dt);
+      return;
+    }
     const magnitude = Math.min(1, Math.hypot(input.moveX, input.moveY));
     const running = magnitude > RUN_THRESHOLD;
     const targetSpeed = magnitude < 0.08 ? 0 : running ? this.runSpeed : WALK_SPEED * Math.min(1, magnitude / RUN_THRESHOLD);
@@ -119,9 +165,51 @@ export class PlayerController {
     }
   }
 
+  /** One step of a throw (see `throwOff`). */
+  private tumble(thrown: NonNullable<PlayerController["thrown"]>, dt: number): void {
+    const v = thrown.v;
+    thrown.t += dt;
+    this.speed = 0;
+    if (thrown.phase === "lying" || thrown.phase === "rising") {
+      // Keep the body on the ground (a kerb's edge, a slope) while still.
+      this.body.move({ x: 0, y: -2 * dt, z: 0 });
+      if (thrown.phase === "lying" && thrown.t >= thrown.lie) Object.assign(thrown, { phase: "rising", t: 0 });
+      else if (thrown.phase === "rising" && thrown.t >= GET_UP_TIME) this.thrown = null;
+      return;
+    }
+    if (thrown.phase === "sliding") {
+      // Scraping along the ground on its back, slowing hard.
+      const flat = Math.hypot(v.x, v.z);
+      const keep = flat > 0 ? Math.max(0, flat - TUMBLE_FRICTION * dt) / flat : 0;
+      v.x *= keep;
+      v.z *= keep;
+      v.y = this.body.grounded ? -2 : Math.max(-40, v.y - GRAVITY * dt);
+    } else {
+      v.y = Math.max(-40, v.y - GRAVITY * dt);
+    }
+    const delta = { x: v.x * dt, y: v.y * dt, z: v.z * dt };
+    const moved = this.body.move(delta);
+    // A wall in the way: the move slid along it; keep only that, less what the hit cost.
+    const wanted = Math.hypot(delta.x, delta.z);
+    if (wanted > 1e-6 && Math.hypot(moved.x, moved.z) < wanted * 0.9) {
+      v.x = (moved.x / dt) * WALL_KEEP;
+      v.z = (moved.z / dt) * WALL_KEEP;
+    }
+    if (v.y > 0 && moved.y < delta.y * 0.5) v.y = 0;
+    if (thrown.phase === "flying" && this.body.grounded && v.y <= 0) {
+      thrown.phase = "sliding";
+      thrown.t = 0;
+      thrown.landed = true;
+    } else if (thrown.phase === "sliding" && Math.hypot(v.x, v.z) < TUMBLE_STOP && this.body.grounded) {
+      thrown.phase = "lying";
+      thrown.t = 0;
+    }
+  }
+
   /** Put the player back at a known place (fell out of the world, or restart). */
   respawn(feet: Vec3, yaw: number): void {
     this.dashing = null;
+    this.thrown = null;
     this.body.teleport(feet);
     this.velocity = { x: 0, y: 0, z: 0 };
     this.yaw = yaw;

@@ -77,4 +77,17 @@ describe("FollowCamera", () => {
     expect(camera.yaw).toBe(yaw);
     expect(Math.abs(aim().x)).toBeLessThan(2);
   });
+
+  it("a shorter reach with nothing in the way (back on foot after a crash) eases in instead of jumping", async () => {
+    const { camera, frames } = await rig();
+    camera.reach = 7;
+    frames(3, null);
+    expect(camera.pose().distance).toBeCloseTo(7, 1);
+    camera.reach = 5.6;
+    frames(DT, null);
+    const next = camera.pose().distance;
+    expect(next).toBeGreaterThan(6.8);
+    frames(2, null);
+    expect(camera.pose().distance).toBeCloseTo(5.6, 1);
+  });
 });

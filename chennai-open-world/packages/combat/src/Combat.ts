@@ -251,6 +251,20 @@ export class Combat {
     return this.enemies.filter((e) => e.group === group && e.health > 0).length;
   }
 
+  /**
+   * Hurt the player by something that is not a fighter (a crash, TD-29): no dodging or blocking
+   * it. Returns the events, as `update` does (`playerHurt`, then `playerDied` at 0).
+   */
+  hurt(amount: number): CombatEvent[] {
+    const events: CombatEvent[] = [];
+    if (amount <= 0 || this.health <= 0) return events;
+    this.health = Math.max(0, this.health - amount);
+    this.sinceHurt = 0;
+    events.push({ type: "playerHurt", amount });
+    if (this.health === 0) events.push({ type: "playerDied" });
+    return events;
+  }
+
   /** Back to full health (after a respawn). */
   revive(): void {
     this.health = PLAYER_MAX_HEALTH;

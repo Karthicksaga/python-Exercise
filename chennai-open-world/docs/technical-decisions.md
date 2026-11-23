@@ -554,3 +554,57 @@ phone, where touch timing for block and dodge matters most.
 
 **Revisit when** licensed combat animation clips are available (replace the poses, keep the
 rules and tests), or players need to pick targets themselves.
+
+## TD-29: Hard crashes throw the rider off; the thresholds are data per vehicle kind
+
+**Decision (23 Nov 2026, from a player's request: "when I hit cars or buildings the whole thing
+just stops").** A hard impact is judged by `judgeCrash` (`packages/vehicles/src/crash.ts`,
+`CRASH_RULES`). The impact is the vehicle's change of velocity in one physics step
+(`Vehicle.consumeImpact`, already used for the crash sound): head on into a wall a vehicle loses
+all its speed in one step, so it is the speed it hit at; a glancing blow or a rear-end hit counts
+only what was lost.
+
+| Vehicle | Shaken (seated) from | Thrown from | Damage when thrown | Falls over |
+|---|---|---|---|---|
+| Motorbike | 18 km/h, 0.4 per km/h above | 35 km/h, off the seat | 12 + 0.9 per km/h above 35 | yes |
+| Auto-rickshaw | 18 km/h, 0.4 | 30 km/h, off the seat | 12 + 0.9 per km/h above 30 | no |
+| Hatchback | 25 km/h, 0.35 | 70 km/h, through the windscreen | 35 + 1.2 per km/h above 70 | no |
+| Ambulance | 25 km/h, 0.35 | 75 km/h, through the windscreen | 35 + 1.2 per km/h above 75 | no |
+| Bus | 30 km/h, 0.25 | never | – | no |
+
+Health is 0–100. The motorbike flat out into a wall (94 km/h) costs 65; a head-on with oncoming
+traffic at about 133 km/h closing speed costs 100 and knocks the player out (the existing
+knock-out: hospital bill, stage restarts). The car's limit is 70 rather than the 80 first
+suggested because the hatchback tops out at 83 km/h, and 80 would almost never happen.
+
+- **The throw** (`PlayerController.throwOff`): the body keeps 80 % of the speed before the crash,
+  leaves 0.45 rad (26°) off the line of travel to the steering side (else the kerb side, left), and
+  goes up 3.2 m/s (windscreen 4.2) plus 0.03 m/s per km/h, at most 6.5. It moves with the
+  player's own character controller, so walls and the ground stop it exactly as they stop walking
+  (a wall dead ahead: it slides along it, keeping 70 % of the speed); then it scrapes along the
+  ground at 9 m/s², lies still 0.8 s + 0.015 s per point of damage (at most 2.4 s) and gets up
+  (0.75 s). The fall and getting up are the figure's existing animated fall (`setDown`, TD-27):
+  it faces the way it flies and tips onto its back, a head-first dive.
+- **No walls crossed:** the start point (the seat, near the road) is pushed out of any wall
+  within the capsule's radius (`raycastSolid` round it), and on landing the body is turned so it
+  does not lie through a wall. During the throw the capsule passes through its own vehicle and is
+  a sensor (`CharacterBody.passThrough`), so leaving from inside the seat does not shove the
+  vehicle; it is solid again once up.
+- **The motorbike** falls on its side (drawn only: the chassis cannot roll) to the side away from
+  the rider, scrapes to a stop at 6 m/s², and is picked up as the rider walks back to get on.
+- **Camera:** the on-foot follow camera stays on the body through the flight at the driving
+  distance, and eases in to the walking distance when the player is up. `FollowCamera` now eases
+  in when its distance shrinks with nothing in the way (it used to jump, also when getting out).
+- **Sound:** the existing crash thump (by impact), the hurt grunt on landing, the landing thud.
+- Damage uses the new `Combat.hurt` (no dodging a crash).
+
+**Why the character controller and not a ragdoll.** There is no ragdoll and the physics package
+keeps the player as one kinematic capsule; reusing it gets wall and ground collisions with
+nothing new to tune. The tumble is the fall pose, not a simulated body.
+
+**Trade-offs.** The thresholds are judgement, not measurement, and nobody has felt them on a phone.
+The tumble does not spin or flail; the body lies on its back from its feet. The car and other
+vehicles do not deform or show damage, and a crashed car drives on as before. No seat belts.
+
+**Revisit when** a player finds a limit too touchy or too forgiving (change `CRASH_RULES` and
+`crash.test.ts`), or ragdoll physics are added.
