@@ -26,13 +26,17 @@ dev() { adb shell "$@" 2>/dev/null | tr -d '\r'; }
 boot_log() { adb logcat -d -s godot:V 2>/dev/null; }
 # Crashes of this app only (the crash buffer; native crashes name the process, truncated).
 crashed() { adb logcat -d -b crash 2>/dev/null | grep -qE "chennaiopenworld|openworld\.godot"; }
-config() { dev dumpsys window | grep -m1 -oE "mGlobalConfiguration=\{[^}]*\}"; }
+# The whole global configuration line, including its sequence numbers (" as.N s.N"), which
+# change with every configuration change (rotation, overlays, SIM country, fonts...).
+config() { dev dumpsys window | grep -m1 -E "mGlobalConfiguration" | sed 's/^ *//'; }
 
 diagnose() {
   echo "---- the app's log (tag godot) ----"
   boot_log | tail -120
   echo "---- why the app's process ended (ApplicationExitInfo) ----"
   dev dumpsys activity exit-info "$PACKAGE" | head -40
+  echo "---- configuration changes and activity relaunches (events log) ----"
+  adb logcat -d -b events 2>/dev/null | grep -E "configuration_changed|handleRelaunchActivity|wm_relaunch" | head -40
   echo "---- system events (activity and window lifecycle, configuration, kills), last 120 ----"
   adb logcat -d -b events 2>/dev/null | grep -E "am_|wm_|configuration_changed" \
     | grep -vE "am_pss|am_mem_factor|am_freeze|am_unfreeze|am_compact" | tail -120
@@ -70,9 +74,12 @@ services() { dev pm path android | grep -q package: && dev cmd activity get-conf
 unlocked() { ! dev dumpsys window | grep -qE "mDreamingLockscreen=true|isKeyguardShowing=true|mShowingLockscreen=true"; }
 landscape() { { dev dumpsys input; dev dumpsys window displays; } | grep -qE "SurfaceOrientation: (1|3)|mRotation=(1|3)|ROTATION_(90|270)"; }
 
-# The global configuration (rotation, overlays, density, locale...) unchanged for 15 s: a change
-# while the game starts makes Android recreate the activity, which an engine that is still
-# starting cannot survive.
+# The global configuration unchanged for 15 s. Root cause of the flaky runs: launched while the
+# emulator was still finishing its boot (boot-completed receivers running), the game's activity
+# was relaunched by a configuration change ("handleRelaunchActivity" in the events log); Godot
+# cannot start twice in one process, so it ends its own process (exit reason SIGNALED, signal 9,
+# no crash) about a second later. Godot's manifest handles rotation, but not every change
+# (overlay asset paths, SIM country, fonts), so the launch waits for a steady configuration.
 config_steady() {
   local limit=120 start last now stable_since
   start=$(date +%s); last=$(config); stable_since=$start
