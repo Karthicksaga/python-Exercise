@@ -813,3 +813,133 @@ Difficulty has not been play-tested by a person.
 - **Cost** (lite, software GPU, worst of four headings; fixture cast): spawn 207 -> 187 draw
   calls, 300k -> 258k triangles; T. Nagar 154 -> 124, 270k -> 197k; two-star police stop 225 ->
   200, 316k -> 266k; Egmore platform 153 -> 131, 230k -> 165k.
+
+## 22 Nov 2026: loading screen, title menu over the live city, pause menu that never clips (TD-25)
+- **Loading screen** (`apps/game/index.html` first frame, `packages/ui/src/LoadingScreen.ts`):
+  wordmark (CHENNAI / OPEN WORLD, and சென்னை in the bundled station font once it is loaded),
+  rotating tips about real features, and a bar of six segments, one per named step of
+  `Game.create` (`LOAD_STEPS`: map, physics, streets, people, traffic, railway). Before the first
+  step the bar is an indeterminate sweep; no percentage is shown anywhere. Once the world file is
+  read, its real road network is drawn behind (amber by road class, the sea in blue), drifting
+  slowly. On failure: the error and a TRY AGAIN button (reload) instead of a line of text.
+- **Title menu** (`packages/ui/src/TitleScreen.ts`, `apps/game/src/TitleDesk.ts`): drawn over
+  the city round the player, seen from a camera circling at about 30 m (about three minutes a
+  turn, pulled in front of buildings with a ray cast), at most 30 frames a second, rules stopped.
+  PLAY (stage 1) or CONTINUE (stage, money, stages done) and NEW GAME (asks first), SETTINGS
+  (time of day, weather: changed live behind the menu and saved), CONTROLS, ABOUT (OSM
+  attribution with the extract date, what is estimated, fonts), QUIT inside the app only. A
+  location card shows the real district and street, time and weather. Arrow keys / Home / End /
+  Enter / Escape; hover selects on a desktop; staggered entrance; fades through black to the game.
+  `prefers-reduced-motion`: no animations, and the city is a still frame.
+- **Pause menu fix** (`packages/ui/src/Hud.ts`): the overlay centred its buttons in a box that
+  could not scroll, so on a landscape phone the first and last fell off the screen (with six
+  buttons in the app at 915×360: "Paused" off the top and MAIN MENU off the bottom). It now
+  centres with auto margins inside a scrolling box and puts the buttons in a wrapping grid: all
+  six fit at 740×360. Job board overlays get the same. MAIN MENU (now also in a browser) returns
+  to the title menu.
+- **Shell** (`apps/mobile`): `MainMenu.tsx` removed; the app opens the game page at once; every
+  Back goes to the game (city map → close, playing → pause, paused → title menu, sub-page →
+  main page, title main page → close the app); failure screen has TRY AGAIN and CLOSE.
+  Typecheck and lint clean. **Not built or run on the emulator or a phone** (no Android SDK on
+  this machine).
+- **Tests:** unit `TitleDesk.test.ts` (camera path, controls list). Browser `title.spec.ts`
+  (8): each real step shown in order then "Ready"; menu over a paused city (sim time still);
+  PLAY starts where the player stands; settings change and save time and weather; keyboard;
+  CONTINUE and NEW GAME with cancel and confirm; every button on screen at 915×412, 640×320,
+  412×915, 1024×768 and 1440×900; inside a stand-in shell, every pause button reachable at
+  915×360 and MAIN MENU → title → PLAY back where the player was; Android Back order and QUIT.
+  The pause test was run against the old `Hud.ts` and failed (a button ended at y=414.5 of 360).
+  Other specs now open `/?quality=lite&start=play`.
+- **Checked by eye** (screenshots, lite quality, not kept): 915×412, 640×320, 412×915,
+  1024×768 and 1440×900 for the loading screen and the title menu; settings, controls and about
+  pages; pause menu at 915×412 and 740×360.
+- **Results on this branch:** typecheck clean (game and `apps/mobile`, which also lints clean); unit 503/503; full browser suite **104/104** in 38.9 min (run once, alone, with the lock); `title.spec.ts` 8/8 again after the last change (reduced-motion redraw on resize).
+
+## 22 Nov 2026: sound design: every vehicle its own engine and horn; traffic, footsteps, city (TD-26)
+- **Before:** one horn for every vehicle; one engine tone in two pitches (auto and bike shared
+  the "small" one, car, bus and ambulance the other); no footsteps, no traffic sound, no
+  background.
+- **Now** (`packages/audio`: `profiles.ts` data and maths, `voices.ts` graphs, `Sound.ts` mix):
+  each vehicle's engine follows its own cylinders, idle and change-up revs and the gears, its
+  own horn, its own door (car thunk, bus air hiss, none for the auto and bike); nearby traffic
+  heard as its own kinds and honking when stood; footsteps and landing; city hum, rain, sea,
+  crickets, crows, the koel at dawn, distant horns; muffled inside closed vehicles and trains;
+  a compressor on the master. SOUND on/off in Settings and the pause menu (saved).
+- **Measured** (offline renders in Chromium, `sound.spec.ts`): idle notes car 26.5 Hz (designed
+  26.7), auto 11.5 (11.25), bike 13.5 (13.3), bus 32.5 (32.5), ambulance 22.5 (22.7); each
+  more than doubles when driven; horn peaks car 523, auto 680, bike 560, bus 699 (2 × 349),
+  ambulance 494 Hz, all different; the auto's horn is silent between its two taps. The first
+  render found the multi-cylinder engines an octave low and the auto and bike horns about a
+  third as loud as the car's: both fixed.
+- **Tests:** unit `profiles.test.ts` (12: notes distinct, gear changes, free revs, horns,
+  panning, cadence, time of day, honking); it caught two engine pairs within 7 % of each other
+  (car and ambulance, auto and bike), retuned. Browser `sound.spec.ts` (4): the two offline
+  measurements above; in the game, footsteps on a walk, the car's and the auto's own engines
+  (revs rise with GAS) and horns, traffic voices of traffic kinds, the city bed, SOUND off
+  saved; rain and night beds.
+- **Not done:** not listened to on a phone (only measured); no footsteps for other people; no
+  per-bus volume settings.
+- **Results on this branch:** typecheck clean; unit 515/515; `sound.spec`, `title.spec`,
+  `driving.spec`, `onfoot.spec` 30/30 (the affected specs, per AGENTS.md; the full suite runs
+  in CI). Before the CI-shard rule, one full local run: 107/108, the failure stage 12, which
+  also fails 1 in 3 on the untouched base (`suggestions/2026-11-22-chennai-combat-stage-flakes.md`).
+  Game speed in headless Chromium measured with and without sound started, next to traffic:
+  0.69–0.72 game seconds per second either way (no measurable cost).
+
+## 22 Nov 2026: combat redesign: pedestrians in fights, moves, reactions, block and dodge (TD-27)
+- **Before (audit):** a punch was the arm snapped forward for 0.22 s; shots an arm held out and a
+  0.07 s tracer; enemies showed nothing until they fell flat in one frame; pedestrians could only
+  be hurt by vehicles (punches and bullets passed through them); enemies walked straight at the
+  player and all attacked at once; no block, dodge or targeting.
+- **Now:** jab/cross/hook combo and bat swing, gun recoil and muzzle flash; enemies square up,
+  wind up before striking, flinch and stagger, are knocked back, fall over half a second; health
+  bar over a hurt enemy, lock-on brackets, hit markers; DODGE and BLOCK in a fight; brawlers take
+  turns and circle, gunmen strafe and keep their distance, the badly hurt back off; pedestrians
+  flinch, stagger, are knocked out (and get up later) or killed by guns; bystanders flee or
+  cower; the police are told. Combat sounds (impacts, bat crack, block, dodge, wind-up, grunts).
+- **Found and fixed while testing:** the lock-on stayed on a farther enemy while another stood in
+  the player's face (punches whiffed): an enemy within arm's reach now takes it. A pedestrian's
+  health reset after each hit (keyed on a counter that moving them bumps): now kept by place.
+  Stage 15 stuck: a hurt enemy backed into the enclosed space by the clock tower and could not
+  get out: backing off now needs open ground and steering tries both sides.
+- **Tests:** unit `Melee.test.ts` (combo, reactions, block, dodge timing, turns, circling,
+  gunman strafing, retreat, steering, lock-on, pedestrians), `combatMoves.test.ts`; three combat
+  tests updated on purpose (new hit events; knock-back; wind-up needs small steps). Browser
+  `fight.spec.ts` (fight mode and controls, lock-on, health bar, block, dodge; a pedestrian
+  knocked out by two punches with the police told; bullets hitting a pedestrian).
+- **Checked by eye** (screenshots frozen mid-move at phone quality, not kept): thugs squared up;
+  jab with hit marker and health bar; block with forearms up; dodge crouch; knocked-down thug.
+- **Results on this branch:** typecheck clean; unit 540/540; browser (affected specs, per
+  AGENTS.md): `combat`, `gangs`, `missions2`, `stages3`, `police`, `pedestrians`, `weapons`,
+  `onfoot` 37/38 on the first run (stage 15 stuck, fixed as above, then 1/1 again with
+  `missions2` 9/9 and `combat` 4/4); `fight.spec` 4/4. The full suite runs in CI.
+## 23 Nov 2026: the game stalled loading on a phone (branch `agent/loading-screen`)
+- **Seen on a device:** the loading screen stopped at "Reading the map of Chennai", with bands of
+  the background undrawn and the progress panel a white box. Not reproducible in headless
+  Chromium (no GPU memory budget); there, with the CPU slowed 4×, loading finished in 15 s.
+- **Cause found:** the merged Chennai cast inlined 75 model files (6.9 MB) as base64, so the one
+  script went from 6.7 MB to 16 MB. And the WebView used `androidLayerType="hardware"`, an extra
+  full-screen GPU texture for the whole page.
+- **Fix:** the cast's models are files beside the page (`peopleFiles.ts`, `?url`), fetched when a
+  person is first needed; the player's model stays inline. Script 6.7 MB again; JavaScript memory
+  after loading 157 → 116 MB (CPU slowed 4×, 800×360 at 2.5×). The hardware layer is gone.
+- **Phone, second try:** still white boxes, then black after about a minute, and the app
+  sometimes closed. The white boxes are layers the phone could not draw, and each animated element
+  is one: the loading screen now animates nothing after its opening rise (no map drift, no bar
+  sweep, no tip fade, no fade-out over the game; running animations mid-load 2 → 0), its map
+  sketch is drawn at CSS pixels, and `Game.create` waits a frame after each step so the screen is
+  drawn between long stretches of work.
+- **Phone, third try:** the progress panel now drew, but the page stopped updating at the first
+  step while the map canvas showed. Added loading reports to the shell (`loadReport.ts`: device,
+  steps, 2 s heartbeat, errors, WebGL context lost) and a native status panel in `GameScreen.tsx`
+  after 20 s or on a problem (step and time, page answering or not, device; TRY AGAIN, CLOSE).
+  New browser test with the stand-in shell: device, the six steps in order, heartbeats that stop
+  when loading ends, no problems. Title spec 9/9.
+- **The phone:** POCO M6 Pro 5G, 6 GB, Snapdragon 4 Gen 2 with an Adreno 613 GPU. The screen
+  flickered. The street sketch (every street, five long round-joined paths) is now drawn on the
+  CPU (`willReadFrequently`): 124 ms with the CPU slowed 6×, one upload to the GPU.
+- **Known good:** the player says the game ran at about 50 fps on this phone before the loading
+  screen and title menu. `androidLayerType="hardware"` (removed on a guess in the first try) is
+  restored to match that build.
+- **Not yet:** checked on the phone that showed it.
+

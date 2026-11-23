@@ -37,7 +37,7 @@ const setHealth = (page: Page, health: number) => page.evaluate((h) => (window a
 
 /** Open the game with this stage save (an old-format save: no `life`). */
 async function startWith(page: Page, completed: string[], money: number): Promise<void> {
-  await page.goto("/?quality=lite");
+  await page.goto("/?quality=lite&start=play");
   await page.evaluate(([done, cash]) => {
     localStorage.clear();
     localStorage.setItem("cow-progress-v1", JSON.stringify({ completed: done, money: cash }));

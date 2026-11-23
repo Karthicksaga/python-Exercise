@@ -8,7 +8,13 @@ export type GameMessage =
   | { type: "paused"; paused: boolean }
   /** The city map opened or closed: while it is open, Android Back should close it (send "back"). */
   | { type: "cityMap"; open: boolean }
-  | { type: "exit" };
+  | { type: "exit" }
+  /** Loading reports for the shell's native status panel (`loadReport.ts`). */
+  | { type: "device"; memoryGB: number | null; cores: number | null; screen: string; gpu: string }
+  | { type: "loading"; step: string; label: string; at: number }
+  | { type: "alive"; at: number; heapMB: number | null }
+  | { type: "problem"; at: number; message: string }
+  | { type: "loaded"; at: number };
 
 export type ShellMessage = { type: "pause" } | { type: "resume" } | { type: "back" };
 

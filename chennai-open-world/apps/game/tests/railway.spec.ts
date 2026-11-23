@@ -29,7 +29,7 @@ const state = (page: Page) => snapshot(page) as unknown as Promise<RailSnapshot>
 const LINE = "beach-tambaram";
 
 async function startWith(page: Page, money: number): Promise<void> {
-  await page.goto("/?quality=lite");
+  await page.goto("/?quality=lite&start=play");
   await page.evaluate((cash) => localStorage.setItem("cow-progress-v1", JSON.stringify({ completed: [], money: cash })), money);
   await ready(page, true);
 }

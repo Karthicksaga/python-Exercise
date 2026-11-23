@@ -59,6 +59,11 @@ the APK, not downloaded.
 The Android app now serves the game through `WebViewAssetLoader` on an https origin (TD-16),
 where module scripts and `fetch` would work. The classic script and `base: "./"` stay anyway: the
 build still opens from disk, and changing them buys nothing yet.
+**Amended 23 Nov 2026:** the Chennai cast (TD-24) is 75 model files, 6.9 MB; inlined they made the
+script 16 MB, and a phone stalled on the loading screen with its drawing breaking up (memory).
+The cast's models are now separate files in `dist/assets/` (`?url`), fetched over the https
+origin when a person is first needed; the script is 6.7 MB again. The player's model stays
+inline. Opened from disk (`file://`) the cast cannot load; the app never does that.
 
 ## TD-4: Workspace packages are TypeScript source, not built libraries
 
@@ -400,3 +405,152 @@ dip up to about 5 cm. The dye colours a whole outfit, trousers and all.
 
 **Revisit when** the cast grows past what fits in the script (stream people as files, TD-16), or
 people need per-garment colours (a mask channel in the atlas).
+
+## TD-25: The game page owns the loading screen and the title menu; the shell opens straight into it
+
+**Decision (22 Nov 2026).** The loading screen and the title menu are part of the game page
+(`apps/game`), not React Native screens. The first frame of the loading screen is plain HTML and
+CSS in `index.html` (it shows while the 6.7 MB script is read); `LoadingScreen` (`@cow/ui`) then
+takes it over. After loading, the title menu (`TitleScreen` in `@cow/ui`, wired by
+`apps/game/src/TitleDesk.ts`) is drawn over the real city: the game renders the street round the
+player with a slow circling camera while its rules stay stopped. The React Native shell no
+longer has a menu (`MainMenu.tsx` removed): it opens the WebView at once, forwards every
+Android Back to the game, and closes the app when the game sends `exit` (QUIT, or Back on the
+title menu's main page). PAUSE → MAIN MENU now returns to the title menu in the game.
+
+**Why.** A React Native menu cannot show the 3D city (it lives in the WebView, TD-1), and a
+native menu followed by a web loading screen and the game is two menus and two loads. One menu
+in the page also works the same in the browser preview and the tests.
+
+**Progress is real.** `Game.create` reports six named steps (`LOAD_STEPS`); the bar fills one
+segment per finished step (the running one shows a third filled, and a dim bar before the
+first; nothing on the loading screen loops or fades, see "On a phone" below). No percentage is
+computed or invented. The background is the real street network from the world file, drawn as
+soon as it has been read.
+
+**Only real options.** PLAY / CONTINUE, NEW GAME (with a confirmation), SETTINGS (time of day and
+weather: the pause menu's settings, applied live behind the menu), CONTROLS (the pause screen's
+help), ABOUT (credits, OSM attribution with the extract date, what is estimated) and QUIT (only
+inside the app). Arrow keys, Home/End, Enter and Escape move through the menus: for Bluetooth
+keyboards, D-pads and accessibility. This adds no keyboard *gameplay* controls (TD-20 stands).
+
+**Tests.** `?start=play` skips the title menu; the browser specs and the smoke-test APK
+(`testAutoplay`) use it. `title.spec.ts` opens the game as a player does.
+
+**Trade-offs.** Behind the menu the world is still (traffic and people do not move; only the
+camera, the player's idle pose and the rain animate), drawn at most 30 times a second, and not at
+all with reduced motion. The shell's Back handling moved into the game: an untested path on a
+device until the APK is built and run (no Android SDK on the machine where this was made).
+
+**On a phone (23 Nov 2026).** The first device run stalled on "Reading the map of Chennai" with
+bands of the screen undrawn and the progress panel a white box: the GPU and memory ran short,
+not the steps. Two fixes outside this screen: the cast's models left the script (TD-3 amended,
+16 MB → 6.7 MB, about 45 MB less JavaScript memory after loading) and the WebView's
+`androidLayerType="hardware"` was removed (later restored, see below).
+That was not enough: the phone still showed white boxes, then a black screen after about a
+minute, and sometimes the app closed (a WebView draws in the app's own process, so a graphics
+failure there closes the app). Every animated element is a GPU layer of its own, and those were
+what failed. So the loading screen no longer animates anything after its opening rise: the map
+does not drift, the bar does not sweep, tips swap without a fade, and the screen is removed at
+once instead of fading over the game's first frames (a full-screen layer at the worst moment).
+`Game.create` also waits one frame after each step, so the screen is drawn between long
+stretches of work. The title menu's entrance and the game itself are unchanged.
+
+Still frozen on the third try: the map (a canvas, drawn on its own) appeared, but the page around
+it stopped updating at the first step. That cannot be told apart from here (a stuck script or a
+failed drawing), so the game now reports to the shell (`loadReport.ts`): the device (GPU name,
+memory class, cores, screen), each step with its time, a heartbeat every 2 s until loading ends,
+script errors and a lost WebGL context. The shell draws a native panel over the WebView when
+loading passes 20 s or something went wrong: the step and how long it has taken, whether the page
+still answers, those errors and the device, with TRY AGAIN and CLOSE. Native, so it shows even
+when the page is not being drawn. The frame wait between steps is now up to 1 s. The phone is a POCO
+M6 Pro 5G (Snapdragon 4 Gen 2, Adreno 613 GPU, 6 GB): memory is ample, the GPU is entry-level,
+and the screen "shook" (flickered). The street sketch is every street as five long round-joined
+paths, a lot of GPU tessellation at the worst moment, and was the part that broke up in every
+screenshot: it is now drawn by the CPU (`willReadFrequently`), 124 ms with the CPU slowed 6×,
+and reaches the GPU once as a picture. The player reports the game ran at about 50 fps on that phone before
+the loading screen and title menu; so the WebView's `androidLayerType="hardware"`, removed on a
+guess in the first try, is back (the known-good setting; the first broken build had it too).
+
+**Revisit when** the menu should show more of the city (a few fixed camera shots across
+districts would need their chunks loaded), or a settings page grows options that need a reload
+(graphics quality).
+
+## TD-26: Sound design as data: a voice per vehicle kind, placed traffic, a city ambience, a mix bus
+
+**Decision (22 Nov 2026).** Every vehicle kind has its own engine and horn, described as data
+in `packages/audio/src/profiles.ts` and synthesised by `voices.ts` (still no sound files).
+- **Engines** are modelled on the vehicles of Chennai's streets (estimated, not recorded): a
+  1.2 L four-cylinder petrol car, a single-cylinder auto, a 150 cc single motorbike, a
+  six-cylinder diesel bus and a four-cylinder diesel ambulance. Pitch is the firing frequency
+  (rpm / 60 × cylinders / 2), and rpm follows the same gear rule as the HUD (`engineRpm`): it
+  climbs through each gear and drops at each change; a standstill with the accelerator down revs
+  freely. Each voice is a firing pulse and a sine on the firing note through an exhaust
+  resonance and a low-pass that opens with load, noise chopped by every firing (the auto's
+  putt and rattle, the bike's rasp, diesel clatter), a slow lope at idle for singles, a turbo
+  whistle for the diesels, and wind and tyre roar with speed (more on the open auto and bike).
+- **Horns:** twin disc horns for the car, a buzzy double "pee-peep" for the auto, one small
+  disc horn for the bike, a swelling three-note air horn for the bus, the ambulance's own pair.
+- **Traffic** is heard: the three nearest AI vehicles within 45 m each get their own kind's
+  engine, panned and dulled by distance (`place`), and traffic that has stood still may honk
+  (`honkChance`: more in the rush hours, rarely at night).
+- **On foot:** footsteps at the stride's cadence (`stepInterval`), alternating feet, splashing
+  in the rain, and a thud on landing.
+- **Ambience:** a low city hum by hour (`cityLevel`, loudest in the evening rush) and nearby
+  traffic, rain, waves within about 450 m of the coast, crickets at night; crows by day, the
+  koel at dawn and distant horns as one-shots. Muffled inside a car, bus, ambulance or train.
+  It also plays behind the title menu.
+- **Mix:** master → compressor → speakers, with vehicle, world, ambience and interface buses.
+  SOUND on/off in the title Settings and the pause menu, saved (`cow-sound-v1`).
+
+**Why data.** The design can be tuned and tested without ears: unit tests check the maths
+(notes, gear changes, panning, cadence, time of day), and `sound.spec.ts` renders each engine
+and horn offline in Chromium and measures that every one is on its designed note and that no
+two vehicles share an engine note or a horn.
+
+**Cost.** At most four engine voices (the player's and three traffic), a few ambience beds that
+start only when heard and stop when silent, one-shots that free themselves. Traffic and
+ambience are updated 20 times a second, not every frame.
+
+**Trade-offs.** Synthesised sound is recognisable but not photographic: recordings would sound
+more real (and would need licences and download size). Phone speakers cannot play the engines'
+low fundamentals (11–33 Hz at idle); what is heard there is the harmonics and the exhaust and
+noise colour, which is why those carry each vehicle's character. Pedestrians other than the
+player make no footsteps. Not yet heard on a phone.
+
+**Revisit when** recorded samples are licensed (swap a voice's builder, keep the profiles and
+tests), or the mix needs per-bus volume settings.
+
+## TD-27: Combat redesign: pedestrians in fights, procedural moves, telegraphed enemies, contextual controls
+
+**Decision (the user's, 22 Nov 2026).** Pedestrians take part in fights, and fights are redesigned
+for visible attacks, hit reactions, touch controls and smarter enemies.
+- **Rules** (`@cow/combat`, `Melee.ts` for the numbers): a punch combo (jab, cross, hook x1.4);
+  hits stun and knock back (light 0.35 s / 0.25 m, heavy 0.9 s / 1.3 m, stopped by walls); block
+  cuts melee hits to a fifth (bullets are not blocked); a dodge is 0.35 s untouchable plus a 2.6 m
+  dash; enemies wind up 0.4 s before a melee strike; two brawlers attack at once while the rest
+  circle at 3.6 m; gunmen strafe between shots and back away when close; the badly hurt back off
+  once (only into open ground); lock-on (`chooseLock`, an enemy within arm's reach takes it).
+- **Pedestrians:** punches, the bat and bullets hit them (`civilianHit`); `attackOutcome` on
+  60 health gives flinch, stumble, injured (knocked out: down, then up and limping, the existing
+  casualty states) or killed (guns). Bystanders flee or cower. New crime `pedestrianAssaulted`
+  (1 point, a star); knocking someone out or killing them uses the existing crimes.
+- **Look:** the model has only idle, walk and run clips, so moves are procedural poses
+  (`combatMoves.ts`: keyframed arm directions, spine bend and twist, head, body offset) blended
+  over the walk cycle, solved once per model. An animated fall replaces the instant tip-over.
+  `CombatMarks` (DOM) draws a hurt enemy's health bar, lock-on brackets and hit markers; muzzle
+  flashes are sprites. Synthesised impact, block, dodge, wind-up and grunt sounds.
+- **Controls:** no new permanent buttons. In a fight (a hostile within 15 m, or a hit in the last
+  4 s) JUMP becomes DODGE and a BLOCK hold button appears; attacks turn to the locked target.
+
+**Why procedural moves.** No licensed combat animations are in the project (assets/README.md),
+and the figures already pose limbs in code (aim, wave, riding). Posed moves cost a few bone
+writes per figure per frame, only while a move or stance is active.
+
+**Trade-offs.** The moves are judged by eye and simpler than motion-captured animation; the fall
+is a tip onto the back, not a physical ragdoll. Pedestrians do not fight back. Lock-on has no
+manual target switch (the nearest in front, or the one in the player's face). Not tried on a
+phone, where touch timing for block and dodge matters most.
+
+**Revisit when** licensed combat animation clips are available (replace the poses, keep the
+rules and tests), or players need to pick targets themselves.

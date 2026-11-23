@@ -23,6 +23,8 @@ export type Crime =
   | "policeCarRammed"
   /** A bullet hit a police car. */
   | "policeCarShot"
+  /** A pedestrian punched, hit with the bat or shot, but not knocked out. */
+  | "pedestrianAssaulted"
   /** A police officer punched, shot or run into, but still standing. */
   | "officerAssaulted"
   /** A police officer knocked out. */
@@ -45,6 +47,8 @@ export const WANTED = {
   crimes: {
     gunfire: { points: 1, minStars: 1, every: 3 },
     pedestrianInjured: { points: 3, minStars: 1, every: 0 },
+    // A scuffle in the street: a star, and a few in a row add up (one report per 2 s).
+    pedestrianAssaulted: { points: 1, minStars: 1, every: 2 },
     pedestrianKilled: { points: 6, minStars: 2, every: 0 },
     vehicleTheft: { points: 1, minStars: 1, every: 0 },
     policeCarRammed: { points: 2, minStars: 1, every: 3 },

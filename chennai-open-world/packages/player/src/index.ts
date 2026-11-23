@@ -4,4 +4,5 @@ export * from "./retarget";
 export * from "./ridingPose";
 export * from "./weaponModels";
 export * from "./CrowdFigures";
+export * from "./combatMoves";
 export * from "./people";

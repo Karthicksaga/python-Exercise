@@ -96,3 +96,45 @@ The city extract is git-ignored (58 MB). To rebuild it: `python3 -m venv .venv &
 | Scope: an open-world game is years of content work | Never finished | Phases with playable milestones; no feature marked done before it is tested |
 | Art: placeholder primitives | Doesn't feel like a game | Blender asset pipeline (glTF + KTX2) from Phase 3 |
 | ODbL licence of OSM | Legal | Attribution in app, keep derived map data separable, document the extract date |
+
+## Loading screen and title menu (22 Nov 2026, branch `agent/loading-screen`)
+
+Plan, as built (TD-25):
+1. Audit: the web loading screen was one line of text; the shell's native menu had one PLAY
+   button; the pause overlay centred six buttons in a box that could not scroll, so on a
+   landscape phone its first and last buttons fell off the screen (Resume, New game, Main menu).
+2. Loading screen: static first frame in `index.html`; `LoadingScreen` shows `Game.create`'s
+   six real steps, tips about real features, and the real street network behind.
+3. Title menu over the live city: `TitleScreen` (UI only) + `TitleDesk` (camera, wiring);
+   options limited to what the game already does.
+4. Pause overlay: scrolls instead of clipping; buttons wrap in a grid on short screens; MAIN MENU
+   goes to the title menu (browser and app).
+5. Shell: no native menu; Back forwarded to the game; failure screen gets Try again / Close.
+6. Tests: `title.spec.ts`; `?start=play` in the other specs; `TitleDesk.test.ts`.
+Dependencies: none added. Android limits: WebView fonts (system fonts plus the bundled Tamil
+station font for the wordmark), no network at runtime, battery (menu capped at 30 fps).
+
+## Combat redesign (22 Nov 2026, branch `agent/combat-redesign`, on top of `agent/sound-design`)
+
+The user's decision: pedestrians take part in fights, and all four areas are redesigned.
+Audit: attacks were an arm snapped forward for 0.22 s and a 0.07 s tracer; enemies showed nothing
+until they fell flat in one frame; pedestrians could only be hurt by vehicles; enemies walked
+straight at the player and all attacked at once; no block, dodge or targeting. The model has
+idle/walk/run clips only, so combat moves are procedural poses (like the existing aim and wave).
+
+Plan:
+1. Rules (`@cow/combat`, pure, unit-tested): a three-hit punch combo (jab, cross, hook with
+   knockback); hit reactions as state (stun, knockback, heavy hits); block (melee damage cut)
+   and dodge (a short dash with invulnerability); lock-on target choice; civilians as targets
+   (`attackOutcome` on the pedestrian casualty states) and a new assault crime.
+2. Enemies: attack in turns (two melee attackers at once, the rest circle at 3-4 m), wind up
+   before a melee strike (time to block or dodge), gunmen keep their distance and strafe between
+   shots, the badly hurt back off.
+3. Figures (`@cow/player`): procedural moves blended over the walk cycle: jab, cross, hook, bat
+   swing, recoil, block, dodge, flinch, stagger, an animated fall, cowering.
+4. Game: reactions and a health bar over a hurt enemy, a lock-on marker, hit markers, muzzle
+   flash, hit/block/dodge sounds; pedestrians hurt, knocked down or killed by attacks, bystanders
+   flee, police told; contextual controls (JUMP becomes DODGE and a BLOCK button appears while a
+   hostile is near; attacks turn to the locked target).
+5. Tests: unit for every rule; browser specs for the new behaviour and the existing combat,
+   gang, police, pedestrian, weapon and stage specs.

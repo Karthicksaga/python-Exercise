@@ -23,6 +23,8 @@ export interface ControlState {
   action: boolean;
   /** Held while the fire button is down (on foot). */
   fire: boolean;
+  /** Held while BLOCK is down (on foot, in a fight). */
+  block: boolean;
   /** Set when the punch button is pressed; cleared by `consumePunch()`. */
   punch: boolean;
   /** Set when the horn is pressed (driving); cleared by `consumeHorn()`. */
@@ -60,6 +62,8 @@ const STYLE = `
 .cow-button.action{right:calc(34px + env(safe-area-inset-right));bottom:calc(138px + env(safe-area-inset-bottom));width:64px;height:64px;background:rgba(255,183,3,.85);color:#1a1a1a;border-color:#fff;font-size:12px}
 .cow-button.fire{right:calc(124px + env(safe-area-inset-right));bottom:calc(92px + env(safe-area-inset-bottom));width:68px;height:68px;background:rgba(170,40,40,.6)}
 .cow-button.fire small{display:block;font:600 10px ui-monospace,monospace;opacity:.9}
+.cow-button.block{right:calc(206px + env(safe-area-inset-right));bottom:calc(104px + env(safe-area-inset-bottom));width:74px;height:52px;border-radius:14px;
+  background:rgba(40,95,150,.62);font-size:12px;letter-spacing:.5px}
 .cow-button.hit{right:calc(122px + env(safe-area-inset-right));bottom:calc(16px + env(safe-area-inset-bottom));width:64px;height:64px;background:rgba(60,70,110,.6)}
 .cow-button.weapon{right:calc(208px + env(safe-area-inset-right));bottom:calc(40px + env(safe-area-inset-bottom));width:78px;height:50px;border-radius:14px;
   background:rgba(25,28,40,.6);font:700 11px system-ui,sans-serif;letter-spacing:.3px;line-height:1.15}
@@ -88,7 +92,7 @@ function capture(element: HTMLElement, pointerId: number): void {
 }
 
 export class TouchControls {
-  readonly state: ControlState = { moveX: 0, moveY: 0, lookDX: 0, lookDY: 0, jump: false, gas: false, brake: false, action: false, fire: false, punch: false, horn: false, gear: null, weaponSwitch: false };
+  readonly state: ControlState = { moveX: 0, moveY: 0, lookDX: 0, lookDY: 0, jump: false, gas: false, brake: false, action: false, fire: false, block: false, punch: false, horn: false, gear: null, weaponSwitch: false };
   private readonly weaponButton: HTMLButtonElement;
   private readonly weaponName: Text;
   private readonly weaponAmmo: HTMLElement;
@@ -96,6 +100,10 @@ export class TouchControls {
   private readonly gearButtons = new Map<GearButton, HTMLButtonElement>();
   private readonly fireButton: HTMLButtonElement;
   private readonly hitButton: HTMLButtonElement;
+  private readonly blockButton: HTMLButtonElement;
+  /** A fight is on: JUMP reads DODGE and BLOCK shows. */
+  private combat = false;
+  private mode: ControlMode = "foot";
   private readonly hornButton: HTMLButtonElement;
   private readonly ammoLabel: HTMLElement;
   private readonly jumpButton: HTMLButtonElement;
@@ -153,6 +161,8 @@ export class TouchControls {
     this.ammoLabel = document.createElement("small");
     this.fireButton.append(this.ammoLabel);
     this.hitButton = button("hit", "HIT", "Punch");
+    this.blockButton = button("block", "BLOCK", "Block");
+    this.blockButton.hidden = true;
     this.hornButton = button("horn", "HORN", "Horn");
     // Weapon switch, left of FIRE and HIT: the gun in hand and its rounds; a tap takes the next gun.
     this.weaponButton = button("weapon", "", "Switch weapon");
@@ -180,7 +190,7 @@ export class TouchControls {
       this.gearPanel.append(element);
     }
 
-    this.root.append(moveZone, lookZone, this.stick, jump, this.gasButton, this.brakeButton, this.gearPanel, this.actionButton, this.fireButton, this.hitButton, this.hornButton, this.weaponButton);
+    this.root.append(moveZone, lookZone, this.stick, jump, this.gasButton, this.brakeButton, this.gearPanel, this.actionButton, this.fireButton, this.hitButton, this.blockButton, this.hornButton, this.weaponButton);
     parent.append(this.root);
 
     // Where the stick rests when no finger is down.
@@ -244,7 +254,7 @@ export class TouchControls {
       jump.addEventListener(type, () => jump.classList.remove("down"));
     }
     // Accelerator and brake are held, not tapped.
-    const hold = (element: HTMLButtonElement, key: "gas" | "brake" | "fire") => {
+    const hold = (element: HTMLButtonElement, key: "gas" | "brake" | "fire" | "block") => {
       element.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         capture(element, e.pointerId);
@@ -261,6 +271,7 @@ export class TouchControls {
     hold(this.gasButton, "gas");
     hold(this.brakeButton, "brake");
     hold(this.fireButton, "fire");
+    hold(this.blockButton, "block");
     const press = (element: HTMLButtonElement, key: "punch" | "horn") => {
       element.addEventListener("pointerdown", (e) => {
         e.preventDefault();
@@ -352,8 +363,27 @@ export class TouchControls {
     }
   }
 
+  /**
+   * A fight is on near the player (on foot): JUMP becomes DODGE and BLOCK appears. The game
+   * reads a JUMP press as a dodge while this is on.
+   */
+  setCombat(on: boolean): void {
+    if (this.combat === on) return;
+    this.combat = on;
+    this.jumpButton.textContent = on ? "DODGE" : "JUMP";
+    this.jumpButton.setAttribute("aria-label", on ? "Dodge" : "Jump");
+    this.blockButton.hidden = !on || this.mode !== "foot";
+    if (!on) {
+      this.state.block = false;
+      this.blockButton.classList.remove("down");
+    }
+  }
+
   /** Swap the button set: jump, punch and fire on foot; accelerator, brake, gears and horn when driving. */
   setMode(mode: ControlMode): void {
+    this.mode = mode;
+    this.blockButton.hidden = !this.combat || mode !== "foot";
+    this.state.block = false;
     this.jumpButton.hidden = this.fireButton.hidden = this.hitButton.hidden = this.weaponButton.hidden = mode !== "foot";
     this.gasButton.hidden = this.brakeButton.hidden = this.hornButton.hidden = this.gearPanel.hidden = mode !== "drive";
     this.state.gas = this.state.brake = this.state.fire = false;

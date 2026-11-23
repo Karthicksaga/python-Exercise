@@ -6,7 +6,7 @@ const FIRST_SIX = ["morning-walk", "borrowed-wheels", "auto-shift", "parcel-run"
 
 /** Open the game with some stages already complete. */
 async function startAt(page: Page, completed: string[], money: number): Promise<void> {
-  await page.goto("/?quality=lite");
+  await page.goto("/?quality=lite&start=play");
   await page.evaluate(([done, cash]) => localStorage.setItem("cow-progress-v1", JSON.stringify({ completed: done, money: cash })), [completed, money] as const);
   await ready(page, true);
 }

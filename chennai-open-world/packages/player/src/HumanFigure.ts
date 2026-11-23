@@ -16,6 +16,16 @@ import { normalizeBoneNames, retargetClips } from "./retarget";
 import { captureRig, solveRidingPose, type Rig, type RidingPose, type SolvedPose } from "./ridingPose";
 import { simplifiedIndex } from "./simplify";
 import { weaponGeometry, weaponMaterial, type HeldWeapon } from "./weaponModels";
+import { MOVES, STANCES, armPoses, poseKey, sampleMove, type ArmBone, type MoveId, type MoveKey, type Stance } from "./combatMoves";
+
+/**
+ * Combat arm poses solved once per character model (they depend only on its rest skeleton), by
+ * pose key, as the local rotation of each posed arm bone.
+ */
+const solvedMoves = new WeakMap<object, Map<string, Map<string, THREE.Quaternion>>>();
+/** Seconds a fall to the ground takes, and getting up again. */
+const FALL_TIME = 0.45;
+const RISE_TIME = 0.7;
 
 /** The people the game can cast (`people.ts`), and their model files. */
 export interface PeopleSources {
@@ -641,6 +651,15 @@ export class HumanFigure {
   private down = false;
   /** Seconds left of a punch (arm thrown forwards). */
   private punching = 0;
+  /** Combat moves (`combatMoves.ts`): the one playing and how far in, the held stance and how much it shows. */
+  private move: { id: MoveId; t: number } | null = null;
+  private stance: Stance | null = null;
+  private stanceWeight = 0;
+  private lastStance: Stance | null = null;
+  private readonly movePoses: Map<string, Map<string, THREE.Quaternion>>;
+  private readonly bones = new Map<string, THREE.Bone>();
+  /** How far down the figure is, 0 standing to 1 on the ground (animated, `setDown`). */
+  private fallen = 0;
   /** Waving an arm (someone waiting for a ride), and the wave's clock. */
   private waving = false;
   private waveClock = 0;
@@ -674,6 +693,22 @@ export class HumanFigure {
     // Like the aim, solved while the model is still in its own frame (unscaled, unturned).
     const waveBones = (pose: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>) => pose.filter((entry) => entry.bone.name in WAVE_OUT);
     this.wavePoses = { out: waveBones(HumanFigure.solvePose(model, WAVE_OUT)), in: waveBones(HumanFigure.solvePose(model, WAVE_IN)) };
+    // Combat poses: solved on the first figure of this model, shared by the rest.
+    model.traverse((node) => {
+      if (node instanceof THREE.Bone) this.bones.set(node.name, node);
+    });
+    let poses = solvedMoves.get(clips);
+    if (!poses) {
+      poses = new Map();
+      for (const [key, arms] of armPoses()) {
+        const names = new Set(Object.keys(arms));
+        const solved = new Map<string, THREE.Quaternion>();
+        for (const { bone, quaternion } of HumanFigure.solvePose(model, arms as Record<string, readonly [number, number, number]>)) if (names.has(bone.name)) solved.set(bone.name, quaternion);
+        poses.set(key, solved);
+      }
+      solvedMoves.set(clips, poses);
+    }
+    this.movePoses = poses;
 
     // The weapon is held in the right hand and moves with it; enemies show their pistol only
     // while aiming. Geometry and material are shared by every figure (`weaponModels.ts`).
@@ -927,17 +962,120 @@ export class HumanFigure {
     this.punching = 0.22;
   }
 
-  /** Knocked out: lie on the ground and stop moving. */
-  setDown(down: boolean): void {
+  /**
+   * Knocked out: fall to the ground (over about half a second) and stop moving; false gets up
+   * again. `instant` skips the fall (a figure placed already lying down).
+   */
+  setDown(down: boolean, instant = false): void {
     if (down === this.down) return;
     this.down = down;
+    this.move = null;
     this.showGun();
-    // Tip the whole figure onto its back.
+    if (instant) {
+      this.fallen = down ? 1 : 0;
+      this.placeFallen();
+    }
+  }
+
+  /** Play a fighting move or a reaction once (`combatMoves.ts`), from the start. */
+  play(move: MoveId): void {
+    if (this.seated || this.down) return;
+    this.move = { id: move, t: 0 };
+  }
+
+  /** The move playing now, if any (tests and the debug snapshot). */
+  get playing(): MoveId | null {
+    return this.move?.id ?? null;
+  }
+
+  /** Hold a stance (fists up, blocking, cowering) until changed; null drops it. */
+  setStance(stance: Stance | null): void {
+    this.stance = stance;
+    if (stance) this.lastStance = stance;
+  }
+
+  /** Tip the figure onto its back by the eased fall amount. */
+  private placeFallen(): void {
     const model = this.object.children[0];
+    if (!model) return;
+    const e = this.fallen * this.fallen * (3 - 2 * this.fallen);
+    model.rotation.x = -Math.PI / 2 * e;
+    model.position.set(0, this.standingLift + (0.16 - this.standingLift) * e, 0.9 * e);
+  }
+
+  /**
+   * Lay the stance and the playing move over the walk cycle: arm bones turned towards their
+   * posed rotations, the spine and head bent and twisted, the body offset.
+   */
+  private applyCombat(dt: number): void {
+    const target = this.stance ? 1 : 0;
+    this.stanceWeight += (target - this.stanceWeight) * Math.min(1, dt * 10);
+    if (this.stanceWeight < 0.01) this.stanceWeight = 0;
+    let sample = null;
+    if (this.move) {
+      this.move.t += dt;
+      sample = sampleMove(MOVES[this.move.id], this.move.t);
+      if (!sample) this.move = null;
+    }
+    const stance = this.stance ?? this.lastStance;
+    const held: MoveKey | null = stance && this.stanceWeight > 0 ? STANCES[stance] : null;
+    const model = this.object.children[0];
+    if (!held && !sample) {
+      if (model) model.position.set(0, this.standingLift, 0);
+      return;
+    }
+    const arms: ArmBone[] = ["RightArm", "RightForeArm", "LeftArm", "LeftForeArm"];
+    const pose = (key: MoveKey | null | undefined, bone: ArmBone) => (key?.arms?.[bone] ? this.movePoses.get(poseKey(key.arms))?.get(bone) : undefined);
+    const work = new THREE.Quaternion();
+    for (const name of arms) {
+      const bone = this.bones.get(name);
+      if (!bone) continue;
+      const stanceQ = pose(held, name);
+      if (stanceQ) bone.quaternion.slerp(stanceQ, this.stanceWeight);
+      if (!sample) continue;
+      const toQ = pose(sample.to, name);
+      const fromQ = pose(sample.from, name);
+      if (!toQ && !fromQ) continue;
+      work.copy(fromQ ?? bone.quaternion).slerp(toQ ?? bone.quaternion, sample.blend);
+      bone.quaternion.slerp(work, sample.weight);
+    }
+    // Spine, head and body: the stance's values, then the move's laid over them.
+    const value = (pick: (k: MoveKey) => number | undefined) => {
+      const base = held ? (pick(held) ?? 0) * this.stanceWeight : 0;
+      if (!sample) return base;
+      const a = sample.from ? (pick(sample.from) ?? 0) : base;
+      const b = pick(sample.to) ?? 0;
+      return base + (a + (b - a) * sample.blend - base) * sample.weight;
+    };
+    const bend = value((k) => k.spine?.bend);
+    const twist = value((k) => k.spine?.twist);
+    const lean = value((k) => k.spine?.lean);
+    const nod = value((k) => k.neck);
     if (model) {
-      model.rotation.x = down ? -Math.PI / 2 : 0;
-      model.position.z = down ? 0.9 : 0;
-      model.position.y = down ? 0.16 : this.standingLift;
+      model.updateMatrixWorld(true);
+      const modelWorld = model.getWorldQuaternion(new THREE.Quaternion());
+      // A turn in the figure's own frame (model space: +X its left, +Y up, +Z forwards) as a world turn.
+      const inWorld = (x: number, y: number, z: number) => {
+        const local = new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z, "YXZ"));
+        return modelWorld.clone().multiply(local).multiply(modelWorld.clone().invert());
+      };
+      let applied = new THREE.Quaternion();
+      const turnBone = (name: string, delta: THREE.Quaternion) => {
+        const bone = this.bones.get(name);
+        if (!bone?.parent) return;
+        const parentWorld = applied.clone().multiply(bone.parent.getWorldQuaternion(new THREE.Quaternion()));
+        const boneWorld = delta.clone().multiply(applied).multiply(bone.getWorldQuaternion(new THREE.Quaternion()));
+        bone.quaternion.copy(parentWorld.invert().multiply(boneWorld));
+        applied = delta.clone().multiply(applied);
+      };
+      // The spine's turn shared between its two upper bones; the head on top.
+      turnBone("Spine1", inWorld(bend / 2, twist / 2, -lean / 2));
+      turnBone("Spine2", inWorld(bend / 2, twist / 2, -lean / 2));
+      if (nod !== 0) turnBone("Neck", inWorld(nod, 0, 0));
+      const forward = value((k) => k.root?.forward);
+      const right = value((k) => k.root?.right);
+      // The figure's group faces -Z (heading 0), its right is +X. Never lowered (see `MoveKey.root`).
+      model.position.set(right, this.standingLift, -forward);
     }
   }
 
@@ -1059,7 +1197,14 @@ export class HumanFigure {
    * @param grounded false while jumping or falling
    */
   update(dt: number, speed: number, grounded: boolean): void {
-    if (this.seated || this.down) return;
+    if (this.seated) return;
+    // Falling down, lying there, or getting up again.
+    const lying = this.down ? 1 : 0;
+    if (this.fallen !== lying) {
+      this.fallen = this.down ? Math.min(1, this.fallen + dt / FALL_TIME) : Math.max(0, this.fallen - dt / RISE_TIME);
+      this.placeFallen();
+      if (this.down) return;
+    } else if (this.down) return;
     const next: Gait = speed < 0.25 ? "idle" : speed < RUN_FROM ? "walk" : "run";
     if (next !== this.gait) {
       // Blend rather than snap, so starting and stopping look natural.
@@ -1089,5 +1234,6 @@ export class HumanFigure {
       const { out, in: back } = this.wavePoses;
       out.forEach(({ bone, quaternion }, i) => bone.quaternion.copy(quaternion).slerp(back[i]!.quaternion, t));
     }
+    if (this.fallen === 0) this.applyCombat(dt);
   }
 }

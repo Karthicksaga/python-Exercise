@@ -61,6 +61,8 @@ Browser tests are the bottleneck: each run is software-rendered Chromium and use
   the end of `docs/handoff.md`.
 
 ## Testing notes
+- Browser specs open `/?quality=lite&start=play`: `start=play` skips the title menu (the
+  smoke-test APK does the same). Only `title.spec.ts` opens the game as a player does.
 - `window.__cow` is for tests and debugging only: `snapshot()` (position, mode, money, mission,
   traffic…), `teleport(x, z, yaw)` and `probe(...)` (ray cast). Gameplay code must not use it.
 - Tests hold controls for **game** time (`waitGameTime`, `waitFrames` in `support.ts`), never a

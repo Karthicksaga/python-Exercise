@@ -33,7 +33,7 @@ const MONEY = 5000;
 
 /** Open the game with money for fines. */
 async function start(page: Page): Promise<void> {
-  await page.goto("/?quality=lite");
+  await page.goto("/?quality=lite&start=play");
   await page.evaluate((money) => {
     localStorage.clear();
     localStorage.setItem("cow-progress-v1", JSON.stringify({ completed: [], money }));

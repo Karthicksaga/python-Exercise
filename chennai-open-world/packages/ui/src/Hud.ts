@@ -36,12 +36,31 @@ const STYLE = `
 .cow-toast{position:absolute;left:50%;top:26%;transform:translateX(-50%);background:rgba(15,18,30,.82);border:1px solid rgba(255,209,102,.7);
   padding:10px 20px;border-radius:12px;text-align:center;font-size:15px;font-weight:700;max-width:70%;transition:opacity .3s}
 .cow-toast small{display:block;font-weight:500;font-size:12px;opacity:.85;margin-top:2px}
-.cow-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
-  background:rgba(10,12,22,.74);pointer-events:auto;text-align:center;padding:24px}
-.cow-overlay h2{margin:0;font-size:24px}
-.cow-overlay p{margin:0;opacity:.8;font-size:13px;max-width:460px}
-.cow-overlay button{min-width:190px;min-height:46px;border-radius:12px;border:0;background:#ffb703;color:#1a1a1a;font:700 15px system-ui,sans-serif}
-.cow-overlay button.quiet{background:rgba(255,255,255,.14);color:#fff}
+.cow-overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:12px;
+  background:radial-gradient(120% 100% at 50% 40%,rgba(7,9,15,.78) 0%,rgba(7,9,15,.92) 100%);pointer-events:auto;text-align:center;
+  padding:max(18px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));
+  box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+/* Centred when it fits, scrollable from the top when it does not: centring with justify-content
+   would cut off the first and last buttons on a short screen (the pause menu on a landscape phone). */
+.cow-overlay>:first-child{margin-top:auto}
+.cow-overlay>:last-child{margin-bottom:auto}
+.cow-overlay h2{margin:0;font-size:13px;font-weight:800;letter-spacing:.34em;text-transform:uppercase;color:#ffb703}
+.cow-overlay p{margin:0;opacity:.82;font-size:13px;line-height:1.45;max-width:520px}
+.cow-overlay button{min-width:190px;min-height:46px;border-radius:6px;border:0;background:#ffb703;color:#14110a;
+  font:800 14px system-ui,sans-serif;letter-spacing:.06em;cursor:pointer;touch-action:manipulation;transition:background-color .15s ease,transform .1s ease}
+.cow-overlay button:active{transform:scale(.97)}
+.cow-overlay button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.cow-overlay button.quiet{background:rgba(255,255,255,.1);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.cow-overlay button.quiet:hover{background:rgba(255,255,255,.16)}
+.cow-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;width:min(620px,100%);flex-shrink:0}
+.cow-actions button{flex:1 1 190px;max-width:300px}
+.cow-actions button:not(.quiet){flex-basis:100%;max-width:400px}
+@media (max-height:480px) and (min-aspect-ratio:1/1){
+  .cow-overlay{gap:8px}
+  .cow-overlay p{font-size:12px;max-width:640px}
+  .cow-overlay button{min-height:42px}
+  .cow-actions{gap:8px}
+}
 .cow-health{width:150px;height:9px;border-radius:5px;background:rgba(0,0,0,.45);overflow:hidden;margin-top:5px}
 .cow-health i{display:block;height:100%;background:#4ccb6b;transition:width .15s}
 .cow-health.low i{background:#ff5d5d}
@@ -86,6 +105,8 @@ export class Hud {
   private readonly reputation: HTMLSpanElement;
   private readonly toast: HTMLDivElement;
   private overlay: HTMLDivElement | null = null;
+  /** The overlay's buttons, in a wrapping row (several per line on a wide, short screen). */
+  private overlayActions: HTMLDivElement | null = null;
   private toastTimer = 0;
 
   constructor(parent: HTMLElement, place: { title: string; subtitle: string }, onPause: () => void, onJobs?: () => void) {
@@ -275,7 +296,8 @@ export class Hud {
   /** Add another button to the overlay that is showing. */
   addOverlayAction(action: { label: string; run: () => void; quiet?: boolean }): void {
     if (!this.overlay) return;
-    const button = element("button", action.quiet ? "quiet" : "", this.overlay);
+    this.overlayActions ??= element("div", "cow-actions", this.overlay);
+    const button = element("button", action.quiet ? "quiet" : "", this.overlayActions);
     button.type = "button";
     button.textContent = action.label;
     button.addEventListener("click", action.run);
@@ -284,5 +306,6 @@ export class Hud {
   hideOverlay(): void {
     this.overlay?.remove();
     this.overlay = null;
+    this.overlayActions = null;
   }
 }
