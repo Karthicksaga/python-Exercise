@@ -44,6 +44,16 @@ steady frame rate.
 | Decoupled systems (missions, police, jobs) | `godot-signals-groups` |
 | Tests that run headless and gate CI | `godot-gdscript-headless-testing` |
 | Android APK export, CI export | `godot-export` |
+| **Art direction, HUD and menus, screenshot review (this game)** | **`chennai-game-design`** (always, for anything visual) |
+| Engine-neutral HUD/menu rules, safe areas, accessibility | `game-ui-ux` (with `godot-ui-control`) |
+| Impact, juice, screen shake, hit-stop | `game-feel` |
+| Chase and orbit cameras | `camera-systems` |
+| Mission spaces, pacing, gating | `level-design` |
+| Build-time generation in Python (world tools, archetypes) | `procedural-gen` |
+| Buses, ducking, adaptive sound | `audio-design` |
+| Frame time, draw calls, stutter (measure first) | `performance-optimization` |
+| Touch actions, deadzones, rebinding | `input-systems` |
+| Fixed step, interpolation, tunnelling, vehicle tuning | `physics-tuning` |
 
 ## 3. Toolchain and environment (verified in this cloud container, 23 Nov 2026)
 - **Godot version: 4.7.2 stable** (latest stable on 23 Nov 2026; `4.7.2.stable.official.ed1daf0bf`).
@@ -203,4 +213,29 @@ Ordering: the migration phases in §5 come first (the game must run in Godot), a
 reconstruction work joins at Phase 1 (world) as data and tools, then Phase 7 (visual upgrade) for
 kits, archetypes, roads and landmarks. The chunk reader is written once, versioned, so the richer
 data drops in without a rewrite.
+
+## 10. Proposed and built solutions to carry into Godot (owner, 23 Nov 2026)
+The owner decided that the solutions designed for the Three.js game, built or only proposed,
+are implemented in the Godot version during the migration. Each line's spec is the decision and
+code on the named branch (read with `git show origin/<branch>:chennai-open-world/<path>`; the
+Three.js TD numbers below are in that branch's `docs/technical-decisions.md`). Port the
+behaviour and its tests, not the code.
+
+| Solution | Spec (branch, decision) | Godot phase |
+|---|---|---|
+| Honest loading screen (real steps, no fake percentage), title menu over the live city, pause menu that never clips, Back routing, QUIT | `agent/loading-screen` (PR #13), TD-25 | 0 (boot) and 1 (HUD); polish in 7 |
+| Phone lessons from the loading screen: nothing loops while loading, no full-screen fades over the first frames, a frame between load steps, a diagnostic panel if loading is slow | `agent/loading-screen`, TD-25 "On a phone" | 0–1 |
+| Chunks built a few ms per frame, shown when complete (the ride stutter fix) | `agent/gameplay-fixes` `eaf40d0` | 1 |
+| Chase camera that eases instead of snapping in on every obstacle | `chennai-game-design` §5 | 1–2 |
+| Crash ejection: bike and auto riders thrown off on hard impacts, car drivers through the windscreen at high speed, damage by impact speed | `agent/crash-ejection` (unfinished WIP), TD-29 | 2 |
+| Carjacking: stop a traffic car/auto/bike, pull the driver out, take it, a crime | `agent/carjacking` (merged into `agent/gameplay-fixes`), TD-30 | 3 (needs traffic) |
+| Crowd density by place and hour (busy beaches, markets, stations; quiet lanes) within the draw budget | `agent/crowd-density` (unfinished WIP), TD-31 | 3 |
+| Sound design: every vehicle kind its own engine and horn, placed traffic, footsteps, city ambience by hour and place, mix buses | `agent/sound-design` (PR #14), TD-26 | 6 (wave 5) |
+| Combat redesign: pedestrians in fights, visible moves, hit reactions, block and dodge, telegraphed enemies, lock-on | `agent/combat-redesign` (PR #15), TD-27 | 5 |
+| Wanted level: heat that builds before a star for street incidents; killed officers stay dead and new units come from out of sight | `agent/police-tuning` (unfinished), TD-28 | 5 |
+| Real Chennai reconstruction (open data heights, archetypes, kits, roads, decks, landmarks) | §9 and the blueprint | 1 (data, tools), 7 (visuals) |
+| Real Tamil Nadu trains (EMU, AC EMU, WAP-7 + LHB, Vande Bharat) by Blender script | `suggestions/2026-11-23-chennai-real-trains-and-buildings.md` | 6 |
+
+The unfinished branches are specs to finish in Godot, not code to merge. Where a spec was never
+tested end to end (the WIP branches), design the tests first in Godot.
 
