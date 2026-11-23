@@ -10,7 +10,7 @@ import { MeshoptDecoder } from "meshoptimizer";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { describe, expect, it } from "vitest";
-import { HumanFigure, PLAYER_HEIGHT, sitWeight } from "@cow/player";
+import { HumanFigure, normalizeBoneNames, PLAYER_HEIGHT, sitWeight } from "@cow/player";
 import { VEHICLE_TYPES, type VehicleKind } from "@cow/vehicles";
 
 /** The optimised character, without its textures (Node has no image decoder). */
@@ -28,10 +28,16 @@ async function loadCharacter(): Promise<THREE.Object3D> {
 /** A seated figure the way the game makes one (`HumanAssets.create`): same scale and lift. */
 async function seatedFigure(): Promise<HumanFigure> {
   const model = await loadCharacter();
+  // As the game loads it (HumanFigure.ts `measure`): bone names without the `mixamorig:` prefix,
+  // and a rig without head-top and toe-end bones (MPFB's) measured on its meshes.
+  normalizeBoneNames(model);
   model.updateMatrixWorld(true);
-  const y = (name: string) => model.getObjectByName(name)!.getWorldPosition(new THREE.Vector3()).y;
-  const low = y("LeftToe_End");
-  const scale = PLAYER_HEIGHT / (y("HeadTop_End") - low);
+  const box = new THREE.Box3().setFromObject(model, true);
+  const end = (name: string) => model.getObjectByName(name)?.getWorldPosition(new THREE.Vector3()).y;
+  const top = end("HeadTop_End");
+  const toes = end("LeftToe_End");
+  const low = top !== undefined && toes !== undefined ? toes : box.min.y;
+  const scale = PLAYER_HEIGHT / ((top !== undefined && toes !== undefined ? top : box.max.y) - low);
   const clips = ["idle", "walk", "run"].map((name) => new THREE.AnimationClip(name, 1, []));
   return new HumanFigure(model, clips, scale, -low * scale);
 }
@@ -39,6 +45,16 @@ async function seatedFigure(): Promise<HumanFigure> {
 /** World position of a bone, or of a palm (60 % from the wrist to the middle knuckle). */
 function point(figure: HumanFigure, name: string): THREE.Vector3 {
   const at = (bone: string) => figure.object.getObjectByName(bone)!.getWorldPosition(new THREE.Vector3());
+  // Rigs without end bones (MPFB's): the top of the head is the highest point of the posed mesh
+  // (hair included), and a fingertip lies one more joint length past the last finger joint.
+  if (!figure.object.getObjectByName(name)) {
+    if (name === "HeadTop_End") return new THREE.Vector3(0, new THREE.Box3().setFromObject(figure.object, true).max.y, 0);
+    const tip = /^(.*)4$/.exec(name);
+    if (tip) {
+      const last = at(`${tip[1]}3`);
+      return last.clone().add(last.clone().sub(at(`${tip[1]}2`)));
+    }
+  }
   if (name === "LeftPalm" || name === "RightPalm") {
     const hand = name.replace("Palm", "Hand");
     return at(hand).lerp(at(`${hand}Middle1`), 0.6);

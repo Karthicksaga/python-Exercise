@@ -34,6 +34,8 @@ export interface Fare {
   readonly kerb: FarePoint;
   /** A patient (the ambulance): slower in and out, said so on the HUD. */
   readonly patient?: boolean;
+  /** Who they are, for how they are drawn only (no effect on the rules): a wedding party dresses in silks. */
+  readonly party?: "wedding";
 }
 
 /** Every timing in one place. Estimates, judged against people getting into Chennai autos, cabs and buses. */

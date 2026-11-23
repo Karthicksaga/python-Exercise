@@ -47,6 +47,8 @@ declare global {
       giveWeapon(id: WeaponId, ammo: number): void;
       /** Tests only: render a vehicle's engine or horn offline and return the samples (22.05 kHz). */
       renderSound(what: "engine" | "horn", kind: VehicleSoundKind, options?: { speed?: number; throttle?: number; seconds?: number }): Promise<number[]>;
+      /** Tests only: who plays the pedestrians, drivers and enemies, and how their feet meet the ground. */
+      people(): unknown;
     };
   }
 }
@@ -80,6 +82,7 @@ async function boot(): Promise<void> {
       giveWeapon: (id, ammo) => game.debugGiveWeapon(id, ammo),
       // For tests only (sound.spec.ts): hear what each vehicle's engine and horn are made of.
       renderSound: async (what, kind, options) => Array.from(await renderVehicleSound(what, kind, options)),
+      people: () => game.debugPeople(),
     };
     if (startAtOnce()) {
       game.start();

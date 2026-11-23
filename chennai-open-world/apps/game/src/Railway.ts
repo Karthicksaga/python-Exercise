@@ -361,6 +361,11 @@ export class Railway {
     }
   }
 
+  /** How many different people the platform crowds are baked from (0 until baked; tests). */
+  get crowdPeople(): number {
+    return this.figures?.peopleCount ?? 0;
+  }
+
   /** The baked crowd figures, once ready (people on the platforms are drawn from then on). */
   useCrowd(figures: CrowdFigures): void {
     this.figures = figures;
@@ -747,7 +752,7 @@ export class Railway {
   /** The crowd's people in the world, standing on the deck; and the tea seller behind the counter. */
   private placePeople(platform: StationPlatform, crowd: StationCrowd, at: { x: number; z: number }): void {
     const path = platform.line.path;
-    const put = (u: number, w: number, heading: number, walked: number | null, look: number) => {
+    const put = (u: number, w: number, heading: number, walked: number | null, look: number, seller = false) => {
       const s = platform.stop.s + u;
       const p = path.beside(s, w);
       // Far down a platform people are a few pixels tall: not drawn (they are still there).
@@ -760,7 +765,7 @@ export class Railway {
       const lz = fx;
       const dx = fx * Math.cos(heading) + lx * Math.sin(heading);
       const dz = fz * Math.cos(heading) + lz * Math.sin(heading);
-      this.people.push({ x: p.x, y: PLATFORM_HEIGHT, z: p.z, yaw: Math.atan2(-dx, -dz), walked, look });
+      this.people.push({ x: p.x, y: PLATFORM_HEIGHT, z: p.z, yaw: Math.atan2(-dx, -dz), walked, look, seller });
     };
     for (const person of crowd.people) {
       if (person.delay > 0) continue;
@@ -768,7 +773,7 @@ export class Railway {
     }
     const tea = stallAt(platform);
     // Facing out over the counter: towards -w when the counter faces -w.
-    put(tea.u - 0.2, tea.w + tea.facing * 0.2, tea.facing > 0 ? Math.PI / 2 : -Math.PI / 2, null, 2);
+    put(tea.u - 0.2, tea.w + tea.facing * 0.2, tea.facing > 0 ? Math.PI / 2 : -Math.PI / 2, null, 2, true);
   }
 
   /** For tests only: move the railway clock forward (trains jump ahead on their timetable). */

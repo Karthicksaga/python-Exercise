@@ -99,7 +99,7 @@ The city extract is git-ignored (58 MB). To rebuild it: `python3 -m venv .venv &
 
 ## Loading screen and title menu (22 Nov 2026, branch `agent/loading-screen`)
 
-Plan, as built (TD-24):
+Plan, as built (TD-25):
 1. Audit: the web loading screen was one line of text; the shell's native menu had one PLAY
    button; the pause overlay centred six buttons in a box that could not scroll, so on a
    landscape phone its first and last buttons fell off the screen (Resume, New game, Main menu).

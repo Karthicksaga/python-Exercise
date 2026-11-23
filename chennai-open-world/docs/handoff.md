@@ -734,8 +734,52 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   test uses `setWanted(0)`; `Railway.frame` still pins the train to the physics clock while
   riding (remove once the camera is interpolated); nothing tried on a phone.
 
+## 22 Nov 2026: people from the manifest in the game (branch `agent/people-game`): where I left off
+- **Branch:** from feat f4e22fe; merged `agent/characters` WIP b69189a (conflicts in
+  `HumanFigure.ts`, `Population.ts`, `Fighters.ts` resolved keeping riding poses, weapons, waving,
+  gang/police tints; feat's `player.glb` kept), then `agent/people-assets` d0e9a2f (first two
+  people and the real `people.json`, so the game now uses it instead of `people.fixture.json`).
+- **Done** (`docs/characters.md` Integration, TD-24): `@cow/player` `people.ts` (manifest parse,
+  casting rules, LOD, height fit, stride), `simplify.ts`; `HumanAssets` lazy per-person loading
+  (`apps/game/src/peopleFiles.ts`), `look(cast, index)`, LOD1 (file or generated), dye tints;
+  `HumanFigure.setDetail`, `feetHeight`, stride-scaled gait; `retargetClips` keeps the lower
+  foot on the ground; casting wired in `Population`, `Fighters`, `ShareRiders`, `FareFigures`
+  (`Fare.party: "wedding"` set on stage 16), `Arms`, `CrowdFigures`/`Railway` (several people
+  plus a tea seller). Debug hook `__cow.people()`.
+- **Shared files touched (additive):** `Game.ts` (people sources, `prepare`, crowd cast,
+  `humans` field, `debugPeople`, `fighters.frame(dt, alpha, at)`), `main.ts`, `assets.d.ts`
+  (`import.meta.glob` types), `Railway.ts` (`seller` flag, `crowdPeople`), `fareSpots.ts`,
+  `laterStages.ts`, `packages/missions/src/fares.ts`, `assets/README.md`.
+- **Tests:** typecheck clean; unit 517/517 (new `people.test.ts`, retarget foot test). Browser,
+  run here (the full suite is left to CI): people, onfoot, pedestrians, police, gangs, combat,
+  boarding, driving, stations, fares, stages3, shareAuto: 54/55 on bfa096d (the failure was the
+  new feet check catching a clip blend; fixed by planting soles on the mesh and sampling steady
+  gaits), then people + onfoot + boarding + stations 16/17 and the feet test 3/3 on the final code.
+- **Not done / uncertain:** the real manifest has two people (a young man, a young woman in a
+  saree): until the assets branch adds more, police, auto drivers and enemies are dyed stand-ins
+  and pedestrians alternate between two people; children, elderly and tea sellers appear once the
+  manifest has them. The player's placeholder model still looks unclothed at lite quality (as on
+  feat). During the 0.22 s blend between two clips (a sudden stop) a sole can dip up to about 5 cm. `people.fixture.json` and the four
+  interim GLBs can be deleted once the cast is complete. Nothing tried on a phone.
+
+## 22 Nov 2026: Chennai cast merged; stage 15 fix
+- `agent/people-game` (casting, LOD, feet) + `agent/people-assets` (37 people, clothed player)
+  merged as `agent/merge-people`; the fixture manifest and four interim GLBs removed;
+  `ridingPose.test.ts` loads the player as the game does (bone names normalised; head top and
+  fingertips measured without end bones on MPFB rigs).
+- Stage 15 CI failures: a turf enemy ended up sealed inside the small building at the
+  Royapettah clock tower. The fight starts as the player arrives, which after a teleport can be
+  before that chunk loads; the bat carrier charged across the footprint before it had walls.
+  `Game` now runs the combat step only while `ChunkManager.isLoaded` round the player.
+  `enemyWalls.test.ts` checks charges round the real building. `missions2.spec.ts`' fight helper
+  changes side when a round misses and logs positions.
+- Testing rule changed (user's decision): the full browser suite runs in CI (4 shards); locally,
+  typecheck, unit tests and the affected specs (AGENTS.md).
+- Open: faces smooth up close; pallu and dupatta are flat bands; long hems can show a shin when
+  running; older women wear a plait, not a bun; no player LOD1; nothing tried on a phone.
+
 ## 22 Nov 2026: loading screen and title menu (branch `agent/loading-screen`): where I left off
-- **Done and tested** (details in `progress.md`, decision TD-24): loading screen with the six
+- **Done and tested** (details in `progress.md`, decision TD-25): loading screen with the six
   real `Game.create` steps and the real street network behind; title menu over the live city
   (`TitleScreen`, `TitleDesk`); pause overlay no longer clips its buttons; MAIN MENU returns to the
   title menu; the shell has no menu of its own and forwards Back to the game.
@@ -751,7 +795,7 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - **Results:** typecheck clean; unit 503/503; full browser suite 104/104 (38.9 min).
 
 ## 22 Nov 2026: sound design (branch `agent/sound-design`, on top of `agent/loading-screen`): where I left off
-- **Done and tested** (details in `progress.md`, TD-25): engine and horn per vehicle kind,
+- **Done and tested** (details in `progress.md`, TD-26): engine and horn per vehicle kind,
   traffic voices and honks, footsteps, ambience, mix and SOUND setting.
 - **Shared files touched:** `Game.ts` (`soundFrame`, engine state with kind and accelerator,
   horn and door by kind, footsteps, landing, SOUND toggle in pause and title, snapshot
