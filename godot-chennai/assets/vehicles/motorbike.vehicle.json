@@ -1,0 +1,21 @@
+{
+ "comment": "Vehicle model manifest (decision G-73, docs/vehicles.md): GLB with the ground at y = 0 and the front facing -Z; wheels listed in the order of the kind's physics wheels; doors swing about their node's Y axis by `open` radians when fully open; `paint` materials take the variant's colour; `beacons` flash with the siren.",
+ "glb": "motorbike.glb",
+ "lod1": "motorbike_lod1.glb",
+ "body": "bike_body",
+ "wheels": [
+  "wheel_front",
+  "wheel_rear"
+ ],
+ "doors": [],
+ "paint": [
+  "v_paint_body"
+ ],
+ "beacons": {},
+ "half_extents": [
+  0.32,
+  0.36,
+  1.0
+ ],
+ "licence": "Original (chennai-open-world/tools/blender), see assets/LICENSES.md"
+}
