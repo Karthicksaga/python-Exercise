@@ -225,11 +225,21 @@ move changed):
 | Fare and share-auto passengers, bus | `passenger`, `pedestrian`, `office`, `college`, `school`; a child only as the second or later of a party | |
 | Wedding party (stage 16) | as passengers, preferring ids with saree, veshti, silk, pattu | |
 | Patients | elderly passengers | |
+| Goods senders (`sender`) | adults with `office`, `shopkeeper`, `vendor` or `delivery` | |
+| Goods recipients (`recipient`) | adults with `office`, `pedestrian` or `passenger` | |
+| Shopkeepers handing over or taking goods (`shopkeeper`) | adults with `shopkeeper`, `tea-worker` or `vendor` | |
+| Paramedic beside a stretcher (`paramedic`) | young or middle-aged adults with `office` (shirt dyed a pale uniform blue) | `pedestrian` adults, dyed the same |
 
 **Children are never cast where they can be hit, shot or hurt**: pedestrians, enemies, police
 and drivers exclude `child` and `teen` (unit-tested against any manifest, and against the real
 one when present). Platform crowds are baked figures nothing can touch; fare passengers are not
 physics or combat bodies.
+
+**Carrying** (`carryPose.ts`, `HumanFigure.setCarry`, 23 Nov 2026): a box in both hands in
+front of the waist, a bag or tiffin carrier in the right hand, or both hands on a trolley's push
+bar. A small pose table of arm directions solved on each skeleton like the wave, laid over the
+walk cycle; separate from the rest and fight poses. `apps/game/src/goods.test.ts` checks where
+the hands land on the player's model.
 
 **Tints.** The player's model keeps its multiply tint (`setClothes` works as before). A manifest
 person's outfit is one atlas of coloured garments, where a multiply tint gave muddy colours (a

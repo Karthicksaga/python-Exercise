@@ -15,7 +15,9 @@ import { PLAYER_HEIGHT } from "./PlayerController";
 import { normalizeBoneNames, retargetClips } from "./retarget";
 import { captureRig, solveRidingPose, type Rig, type RidingPose, type SolvedPose } from "./ridingPose";
 import { simplifiedIndex } from "./simplify";
+import { FLINCH_TIME, STRIKE_POSES, STRIKE_TWIST, fistAmount, flinchAmount, strikeFrame, type StrikeKey, type StrikeMove } from "./strikePose";
 import { weaponGeometry, weaponMaterial, type HeldWeapon } from "./weaponModels";
+import { CARRY_KINDS, CARRY_POSES, type CarryKind } from "./carryPose";
 
 /** The people the game can cast (`people.ts`), and their model files. */
 export interface PeopleSources {
@@ -78,6 +80,24 @@ const WEAPON_POINTS: Readonly<Record<HeldWeapon, readonly [number, number, numbe
 };
 /** From the wrist joint to the middle of the palm, metres (estimate). */
 const PALM = 0.085;
+
+/**
+ * Finger bend for a closed hand, radians, at the knuckle, middle and end joints (the thumb less):
+ * a fist for a punch, a grip round a bat or a pistol. Estimates, judged by eye.
+ */
+const FIST_CURL = [1.35, 1.55, 1.0];
+const FIST_THUMB = [0.35, 0.6, 0.5];
+/** How far the hand holding a weapon is closed round it. */
+const GRIP = 0.85;
+const FINGER_JOINT = /^(Left|Right)Hand(Thumb|Index|Middle|Ring|Pinky)([123])$/;
+
+/** Bones of the back and neck a flinch bends, and each one's share of the bend (radians at full strength). */
+const FLINCH_BEND: Readonly<Record<string, number>> = { Spine: 0.1, Spine1: 0.12, Spine2: 0.1, Neck: 0.08, Head: 0.14 };
+/** Bones that share a blow's turn of the upper body. */
+const TWIST_BONES = ["Spine", "Spine1", "Spine2"];
+const UP = new THREE.Vector3(0, 1, 0);
+/** Scratch rotation for blending a bone's clip rotation with a strike pose. */
+const clipped = new THREE.Quaternion();
 
 /** The bone below each posed limb, which defines the way the limb points at rest. */
 const LIMB_CHILD: Readonly<Record<string, string>> = {
@@ -639,11 +659,28 @@ export class HumanFigure {
   private seated: RidingPose | null = null;
   private aiming = false;
   private down = false;
-  /** Seconds left of a punch (arm thrown forwards). */
-  private punching = 0;
+  /** The blow being thrown (`strike`), how long since it started, and its timing. */
+  private strikeMove: StrikeMove | null = null;
+  private strikeClock = 0;
+  private strikeWindup = 0;
+  private strikeRecover = 0;
+  /** Every strike pose solved on this skeleton: the posed bones' local rotations. */
+  private readonly strikePoses: ReadonlyMap<Exclude<StrikeKey, "clip">, ReadonlyMap<THREE.Bone, THREE.Quaternion>>;
+  private readonly strikeBones: readonly THREE.Bone[];
+  private readonly twistBones: readonly THREE.Bone[];
+  /** Each hand's finger joints and their rotation when closed (`FIST_CURL`). */
+  private readonly fists: { readonly Left: ReadonlyArray<{ bone: THREE.Bone; fist: THREE.Quaternion }>; readonly Right: ReadonlyArray<{ bone: THREE.Bone; fist: THREE.Quaternion }> };
+  /** A flinch: time since the blow, which way it pushed (world, horizontal), and how hard. */
+  private flinchClock = FLINCH_TIME;
+  private readonly flinchAxis = new THREE.Vector3();
+  private flinchStrength = 0;
+  private readonly flinchBones: ReadonlyArray<{ bone: THREE.Bone; bend: number }>;
   /** Waving an arm (someone waiting for a ride), and the wave's clock. */
   private waving = false;
   private waveClock = 0;
+  /** Carrying something (`setCarry`), and each carrying pose solved on this skeleton. */
+  private carrying: CarryKind | null = null;
+  private readonly carryPoses = new Map<CarryKind, Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>>();
   /** The two ends of a wave, solved on this skeleton. */
   private readonly wavePoses: { out: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>; in: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }> };
 
@@ -674,6 +711,32 @@ export class HumanFigure {
     // Like the aim, solved while the model is still in its own frame (unscaled, unturned).
     const waveBones = (pose: Array<{ bone: THREE.Bone; quaternion: THREE.Quaternion }>) => pose.filter((entry) => entry.bone.name in WAVE_OUT);
     this.wavePoses = { out: waveBones(HumanFigure.solvePose(model, WAVE_OUT)), in: waveBones(HumanFigure.solvePose(model, WAVE_IN)) };
+    // Blows and fists, solved the same way.
+    const strikePoses = new Map<Exclude<StrikeKey, "clip">, Map<THREE.Bone, THREE.Quaternion>>();
+    const strikeBones = new Set<THREE.Bone>();
+    for (const [key, pose] of Object.entries(STRIKE_POSES) as Array<[Exclude<StrikeKey, "clip">, (typeof STRIKE_POSES)[keyof typeof STRIKE_POSES]]>) {
+      const solved = new Map<THREE.Bone, THREE.Quaternion>();
+      for (const { bone, quaternion } of HumanFigure.solvePose(model, pose)) {
+        if (!(bone.name in pose)) continue;
+        solved.set(bone, quaternion);
+        strikeBones.add(bone);
+      }
+      strikePoses.set(key, solved);
+    }
+    this.strikePoses = strikePoses;
+    this.strikeBones = [...strikeBones];
+    const bone = (name: string) => model.getObjectByName(name);
+    this.twistBones = TWIST_BONES.map(bone).filter((b): b is THREE.Bone => b instanceof THREE.Bone);
+    this.flinchBones = Object.entries(FLINCH_BEND).flatMap(([name, bend]) => {
+      const b = bone(name);
+      return b instanceof THREE.Bone ? [{ bone: b, bend }] : [];
+    });
+    this.fists = { Left: HumanFigure.solveFist(model, "Left"), Right: HumanFigure.solveFist(model, "Right") };
+    // Carrying poses (`carryPose.ts`), solved the same way.
+    for (const kind of CARRY_KINDS) {
+      const bones = CARRY_POSES[kind];
+      this.carryPoses.set(kind, HumanFigure.solvePose(model, bones).filter((entry) => entry.bone.name in bones));
+    }
 
     // The weapon is held in the right hand and moves with it; enemies show their pistol only
     // while aiming. Geometry and material are shared by every figure (`weaponModels.ts`).
@@ -752,6 +815,35 @@ export class HumanFigure {
     return grips;
   }
 
+  /**
+   * The finger joints of one hand and their rotation in a fist: each joint turned about the line
+   * across the knuckles, towards the palm (the side the thumb is on). Worked out in the rest pose.
+   */
+  private static solveFist(model: THREE.Object3D, side: "Left" | "Right"): Array<{ bone: THREE.Bone; fist: THREE.Quaternion }> {
+    model.updateMatrixWorld(true);
+    const at = (name: string) => model.getObjectByName(`${side}${name}`)?.getWorldPosition(new THREE.Vector3());
+    const hand = at("Hand");
+    const index = at("HandIndex1");
+    const middle = at("HandMiddle1");
+    const pinky = at("HandPinky1");
+    const thumb = at("HandThumb2") ?? at("HandThumb1");
+    if (!hand || !index || !middle || !pinky || !thumb) return [];
+    const along = middle.clone().sub(hand).normalize();
+    const palm = pinky.clone().sub(index).cross(along).normalize();
+    if (palm.dot(thumb.clone().sub(hand)) < 0) palm.negate();
+    // Turning about along × palm moves the fingers towards the palm.
+    const axis = along.clone().cross(palm).normalize();
+    const out: Array<{ bone: THREE.Bone; fist: THREE.Quaternion }> = [];
+    model.traverse((node) => {
+      const match = FINGER_JOINT.exec(node.name);
+      if (!(node instanceof THREE.Bone) || !match || match[1] !== side || !node.parent) return;
+      const angle = (match[2] === "Thumb" ? FIST_THUMB : FIST_CURL)[Number(match[3]) - 1]!;
+      const local = axis.clone().applyQuaternion(node.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+      out.push({ bone: node, fist: new THREE.Quaternion().setFromAxisAngle(local, angle).multiply(node.quaternion) });
+    });
+    return out;
+  }
+
   private placeGun(weapon: HeldWeapon): void {
     const grip = this.grips?.get(weapon);
     if (grip) grip.decompose(this.gun.position, this.gun.quaternion, this.gun.scale);
@@ -760,7 +852,7 @@ export class HumanFigure {
   /** Show the weapon when there is one and the figure is standing and aiming, carrying it, or swinging the bat. */
   private showGun(): void {
     const up = this.weapon !== null && !this.down && this.seated === null;
-    this.gun.visible = up && (this.aiming || this.carried || (this.weapon === "bat" && this.punching > 0));
+    this.gun.visible = up && (this.aiming || this.carried || (this.weapon === "bat" && this.strikeMove !== null));
   }
 
   /**
@@ -922,9 +1014,61 @@ export class HumanFigure {
     this.waving = waving;
   }
 
-  /** Throw the right arm forwards for a moment. */
-  punch(): void {
-    this.punching = 0.22;
+  /** Hold a box in both hands, a bag in one, push a trolley (`carryPose.ts`), or nothing (null). */
+  setCarry(kind: CarryKind | null): void {
+    this.carrying = kind;
+  }
+
+  /** What the figure is carrying (for tests), or null. */
+  get carry(): CarryKind | null {
+    return this.carrying;
+  }
+
+  /**
+   * Throw a punch or swing the bat: drawn back, the blow, and back to normal (`strikePose.ts`).
+   * @param windup seconds to the blow (when its damage lands, `@cow/combat` `STRIKES`)
+   * @param recover seconds from the blow back to standing normally
+   */
+  strike(move: StrikeMove, windup: number, recover: number): void {
+    this.strikeMove = move;
+    this.strikeClock = 0;
+    this.strikeWindup = windup;
+    this.strikeRecover = recover;
+    this.showGun();
+  }
+
+  /** The blow being thrown and seconds since it started, or null (tests and debugging). */
+  get striking(): { move: StrikeMove; t: number } | null {
+    return this.strikeMove ? { move: this.strikeMove, t: this.strikeClock } : null;
+  }
+
+  /**
+   * Hit by something: the upper body is knocked back away from it for a moment.
+   * @param fromX where the blow came from (world)
+   * @param strength 1 a punch; more for a bat, less for a bullet
+   */
+  flinch(fromX: number, fromZ: number, strength = 1): void {
+    const at = this.object.getWorldPosition(new THREE.Vector3());
+    const push = new THREE.Vector3(at.x - fromX, 0, at.z - fromZ);
+    if (push.lengthSq() < 1e-8) push.set(-Math.sin(this.object.rotation.y), 0, -Math.cos(this.object.rotation.y)).negate();
+    push.normalize();
+    // Turning about up × push tips the top of the body along the push.
+    this.flinchAxis.crossVectors(UP, push).normalize();
+    this.flinchStrength = strength;
+    this.flinchClock = 0;
+  }
+
+  /** Turn a bone about a world axis, keeping its parent where it is. */
+  private static turn(bone: THREE.Bone, axis: THREE.Vector3, angle: number): void {
+    if (!bone.parent || angle === 0) return;
+    const local = axis.clone().applyQuaternion(bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+    bone.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(local, angle));
+  }
+
+  /** Close a hand's fingers this far (0 leaves the clip's relaxed curl). */
+  private closeHand(side: "Left" | "Right", amount: number): void {
+    if (amount <= 0) return;
+    for (const { bone, fist } of this.fists[side]) bone.quaternion.slerp(fist, amount);
   }
 
   /** Knocked out: lie on the ground and stop moving. */
@@ -1079,15 +1223,43 @@ export class HumanFigure {
     this.blending = Math.max(0, this.blending - dt);
     if (this.plantsFeet || this.blending > 0) this.keepSolesUp();
     // Arm poses are laid over the walk cycle after it has been applied.
-    this.punching = Math.max(0, this.punching - dt);
+    let frame: ReturnType<typeof strikeFrame> = null;
+    if (this.strikeMove) {
+      this.strikeClock += dt;
+      frame = strikeFrame(this.strikeMove, this.strikeClock, this.strikeWindup, this.strikeRecover);
+      if (!frame) this.strikeMove = null;
+    }
     this.showGun();
-    if (this.aiming || this.punching > 0) {
+    if (frame) {
+      const { from, to, amount } = frame;
+      const a = from === "clip" ? null : this.strikePoses.get(from);
+      const b = to === "clip" ? null : this.strikePoses.get(to);
+      for (const bone of this.strikeBones) {
+        // "clip": the rotation the clip just gave the bone.
+        clipped.copy(bone.quaternion);
+        bone.quaternion.copy(a?.get(bone) ?? clipped).slerp(b?.get(bone) ?? clipped, amount);
+      }
+      const twist = STRIKE_TWIST[from] + (STRIKE_TWIST[to] - STRIKE_TWIST[from]) * amount;
+      for (const bone of this.twistBones) HumanFigure.turn(bone, UP, twist / this.twistBones.length);
+    } else if (this.aiming) {
       for (const { bone, quaternion } of this.aimPose) bone.quaternion.copy(quaternion);
     } else if (this.waving) {
       this.waveClock += dt;
       const t = 0.5 + 0.5 * Math.sin(this.waveClock * WAVE_RATE * Math.PI * 2);
       const { out, in: back } = this.wavePoses;
       out.forEach(({ bone, quaternion }, i) => bone.quaternion.copy(quaternion).slerp(back[i]!.quaternion, t));
+    } else if (this.carrying) {
+      for (const { bone, quaternion } of this.carryPoses.get(this.carrying) ?? []) bone.quaternion.copy(quaternion);
+    }
+    // Hands: a fist for a blow, a grip round a weapon held; otherwise the clip's relaxed curl.
+    const fist = this.strikeMove ? fistAmount(this.strikeClock, this.strikeWindup, this.strikeRecover) : 0;
+    this.closeHand("Right", Math.max(this.strikeMove === "bat" ? 1 : fist, this.gun.visible ? GRIP : 0));
+    this.closeHand("Left", this.strikeMove === "punch" ? fist : 0);
+    // Knocked back by a blow: the upper body bends away from it.
+    if (this.flinchClock < FLINCH_TIME) {
+      this.flinchClock += dt;
+      const bend = flinchAmount(this.flinchClock) * this.flinchStrength;
+      for (const { bone, bend: share } of this.flinchBones) HumanFigure.turn(bone, this.flinchAxis, share * bend);
     }
   }
 }

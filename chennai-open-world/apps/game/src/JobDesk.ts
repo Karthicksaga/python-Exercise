@@ -148,7 +148,7 @@ export class JobDesk {
     const shift = this.runner.share;
     if (shift) return this.shareView(job, shift, inVehicle, vehicle, distance);
     const dwell = this.runner.dwellLeft;
-    const fareNote = this.runner.fare?.note() ?? null;
+    const fareNote = this.runner.fare?.note() ?? this.runner.goods?.note() ?? null;
     const objective = !inVehicle
       ? `${this.runner.started ? "Get back in" : "Get in"} the ${vehicle}`
       : fareNote

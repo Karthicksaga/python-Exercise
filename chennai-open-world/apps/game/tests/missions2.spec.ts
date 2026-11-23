@@ -125,6 +125,8 @@ test("stage 11: catch the gang courier on Peters Road and take the money to the 
   }
   await expect.poll(async () => (await state(page)).objective, { timeout: GAME_WAIT }).toBe("Take the money back to the tea shop, Triplicane High Road");
   expect((await state(page)).quarry).toBeNull();
+  // The bag of money is in the car now; the tea shop's owner takes it at the kerb.
+  expect(((await snapshot(page)) as unknown as { goods: { cargo: string[] } | null }).goods?.cargo).toEqual(["cash-bag"]);
   await goToTarget(page);
   await expect.poll(async () => (await state(page)).mission, { timeout: GAME_WAIT }).toBe("tea-shop");
   expect((await state(page)).money).toBe(10_000 + 2200);

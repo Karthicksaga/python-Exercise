@@ -13,7 +13,11 @@
  *
  * Rest poses may differ (arms straight out on one rig, lowered on the other): for each limb
  * bone the target's rest orientation is first turned so the limb points the way the source's
- * does, which makes the two rest poses equivalent.
+ * does, which makes the two rest poses equivalent. The hands and fingers are lined up too: the
+ * hand by its whole frame (the fingers' direction and the line across the knuckles, so the palm
+ * faces the same way), each finger joint after the joint above it. Without that, an A-pose hand
+ * took the T-pose clips' wrist turn on top of its own 45 degrees down, and every hand was bent
+ * about 70 degrees in towards the body (stiff hands held in front of the hips, seen in play).
  */
 import * as THREE from "three";
 
@@ -62,14 +66,48 @@ const LIMB_CHILD: Readonly<Record<string, string>> = {
   RightLeg: "RightFoot",
 };
 
+/** World direction from one bone to another, or null when either is missing or they coincide. */
+function between(bones: Map<string, THREE.Object3D>, from: string, to: string): THREE.Vector3 | null {
+  const a = bones.get(from);
+  const b = bones.get(to);
+  if (!a || !b) return null;
+  const direction = b.getWorldPosition(new THREE.Vector3()).sub(a.getWorldPosition(new THREE.Vector3()));
+  return direction.lengthSq() < 1e-10 ? null : direction.normalize();
+}
+
 /** World direction from a bone to the named bone below it, or null when either is missing. */
 function limbDirection(bones: Map<string, THREE.Object3D>, name: string): THREE.Vector3 | null {
-  const bone = bones.get(name);
-  const child = bones.get(LIMB_CHILD[name] ?? "");
-  if (!bone || !child) return null;
-  const from = bone.getWorldPosition(new THREE.Vector3());
-  const direction = child.getWorldPosition(new THREE.Vector3()).sub(from);
-  return direction.lengthSq() < 1e-10 ? null : direction.normalize();
+  return between(bones, name, LIMB_CHILD[name] ?? "");
+}
+
+const FINGER = /^(Left|Right)Hand(Thumb|Index|Middle|Ring|Pinky)([1-4])$/;
+
+/**
+ * The turn that lines a hand up with the source's: the fingers' direction (wrist to middle
+ * knuckle) and the line across the knuckles (index to pinky). Null when either rig lacks them.
+ */
+function handTurn(mine: Map<string, THREE.Object3D>, theirs: Map<string, THREE.Object3D>, hand: string): THREE.Quaternion | null {
+  const frame = (bones: Map<string, THREE.Object3D>) => {
+    const along = between(bones, hand, `${hand}Middle1`);
+    const across = between(bones, `${hand}Index1`, `${hand}Pinky1`);
+    if (!along || !across) return null;
+    const side = across.clone().addScaledVector(along, -across.dot(along));
+    if (side.lengthSq() < 1e-8) return null;
+    side.normalize();
+    return new THREE.Matrix4().makeBasis(along, side, along.clone().cross(side));
+  };
+  const a = frame(mine);
+  const b = frame(theirs);
+  if (!a || !b) return null;
+  return new THREE.Quaternion().setFromRotationMatrix(b.multiply(a.transpose()));
+}
+
+/** The joint after a finger joint (`LeftHandIndex1` -> `LeftHandIndex2`), when the rig has it. */
+function nextFingerJoint(bones: Map<string, THREE.Object3D>, name: string): string | null {
+  const match = FINGER.exec(name);
+  if (!match) return null;
+  const next = `${match[1]}Hand${match[2]}${Number(match[3]) + 1}`;
+  return bones.has(next) ? next : null;
 }
 
 export function retargetClips(source: THREE.Object3D, clips: readonly THREE.AnimationClip[], target: THREE.Object3D): THREE.AnimationClip[] {
@@ -96,6 +134,8 @@ export function retargetClips(source: THREE.Object3D, clips: readonly THREE.Anim
   const joints: Joint[] = [];
   const byBone = new Map<THREE.Object3D, Joint>();
   const targetBones = new Map<string, THREE.Object3D>();
+  /** The rest-pose turn given to each hand and finger joint, which the joint below it starts from. */
+  const turns = new Map<string, THREE.Quaternion>();
   target.traverse((node) => {
     if (node instanceof THREE.Bone) targetBones.set(node.name, node);
   });
@@ -107,6 +147,20 @@ export function retargetClips(source: THREE.Object3D, clips: readonly THREE.Anim
     const mine = limbDirection(targetBones, node.name);
     const theirs = limbDirection(sourceBones, node.name);
     if (mine && theirs) restWorld.premultiply(new THREE.Quaternion().setFromUnitVectors(mine, theirs));
+    // Hands by their whole frame; each finger joint by the turn of the joint above, then its own direction.
+    const turn = /^(Left|Right)Hand$/.test(node.name)
+      ? handTurn(targetBones, sourceBones, node.name)
+      : FINGER.test(node.name)
+        ? (turns.get(node.parent?.name ?? "")?.clone() ?? null)
+        : null;
+    if (turn) {
+      const next = nextFingerJoint(targetBones, node.name);
+      const along = next ? between(targetBones, node.name, next) : null;
+      const wanted = next && sourceBones.has(next) ? between(sourceBones, node.name, next) : null;
+      if (along && wanted) turn.premultiply(new THREE.Quaternion().setFromUnitVectors(along.applyQuaternion(turn), wanted));
+      turns.set(node.name, turn);
+      restWorld.premultiply(turn);
+    }
     const joint: Joint = {
       bone: node,
       source: src,

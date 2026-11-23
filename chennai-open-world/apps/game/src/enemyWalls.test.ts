@@ -103,5 +103,7 @@ describe("enemies and the corners of a real building", async () => {
       }
     }
     expect(charges).toBe(4 * 36 * 3);
-  });
+    // 432 charges of 400 steps: about 2 s alone, several times that while browser tests share
+    // the machine (it once overran the default 5 s limit then).
+  }, 60_000);
 });

@@ -3,12 +3,17 @@
  * and the answers to the two questions the combat rules ask about the world.
  */
 import * as THREE from "three";
-import { isPoliceGroup, type Combat, type CombatWorld, type Enemy } from "@cow/combat";
+import { STRIKES, isPoliceGroup, strikeKind, type Combat, type CombatWorld, type Enemy, type StrikeKind } from "@cow/combat";
 import { Motion } from "@cow/game-engine";
 import type { KinematicBox, PhysicsWorld } from "@cow/physics";
 import { detailFor, type HumanAssets, type HumanFigure } from "@cow/player";
+import { HitPuffs } from "./HitPuffs";
 
 const CHEST = 1.2;
+/** Where a blow lands, metres above the ground: a punch at the chest, a bat a little lower, a bullet mid-body. */
+const CONTACT_HEIGHT: Readonly<Record<StrikeKind | "shot", number>> = { punch: 1.3, bat: 1.1, shot: 1.15 };
+/** How hard each kind of blow knocks the upper body back (`HumanFigure.flinch`) and the size of its puff. */
+const BLOW_STRENGTH: Readonly<Record<StrikeKind | "shot", number>> = { punch: 1, bat: 1.4, shot: 0.6 };
 /**
  * Enemy clothing tints: unarmed thugs in maroon, armed ones in near-black (gang members wear
  * their gang's colours, `Enemy.tint`). Police officers are "police" people in their own uniform;
@@ -54,13 +59,17 @@ export class Fighters {
   private readonly tracers: Array<{ mesh: THREE.Mesh; life: number }> = [];
   private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.9, depthWrite: false, fog: false });
   private readonly tracerGeometry = new THREE.BoxGeometry(0.035, 0.035, 1);
+  /** Flashes and dust where blows land. */
+  private readonly puffs: HitPuffs;
 
   constructor(
     private readonly combat: Combat,
     private readonly scene: THREE.Object3D,
     private readonly physics: PhysicsWorld,
     private readonly humans: HumanAssets,
-  ) {}
+  ) {
+    this.puffs = new HitPuffs(scene);
+  }
 
   /** After each physics step: move the enemies' collision boxes with them. */
   fixedUpdate(): void {
@@ -137,6 +146,7 @@ export class Fighters {
       body.box.dispose();
       this.bodies.delete(id);
     }
+    this.puffs.frame(dt);
     for (let i = this.tracers.length - 1; i >= 0; i--) {
       const tracer = this.tracers[i]!;
       tracer.life -= dt;
@@ -154,9 +164,32 @@ export class Fighters {
     });
   }
 
-  /** An enemy throws a punch (arm animation). */
-  enemyPunch(enemy: Enemy): void {
-    this.bodies.get(enemy.id)?.figure.punch();
+  /** An enemy starts a punch or a bat swing: it lands after the wind-up the rules give it (`STRIKES`). */
+  enemySwing(enemy: Enemy): void {
+    const kind = strikeKind(enemy.weapon);
+    this.bodies.get(enemy.id)?.figure.strike(kind, STRIKES[kind].windup, STRIKES[kind].recover);
+  }
+
+  /**
+   * A blow or a bullet hit an enemy, from a point (x, z): they flinch away from it, and a puff
+   * shows where it landed (between the two, on the enemy's front).
+   */
+  struck(enemy: Enemy, fromX: number, fromZ: number, by: StrikeKind | "shot"): void {
+    this.bodies.get(enemy.id)?.figure.flinch(fromX, fromZ, BLOW_STRENGTH[by]);
+    this.impact(enemy.x, enemy.z, fromX, fromZ, by);
+  }
+
+  /** A puff where a blow or bullet meets someone standing at (x, z), hit from (fromX, fromZ). */
+  impact(x: number, z: number, fromX: number, fromZ: number, by: StrikeKind | "shot"): void {
+    const d = Math.hypot(fromX - x, fromZ - z) || 1;
+    // On the front of the body, towards whoever struck.
+    const front = Math.min(0.3, d / 2);
+    this.puffs.hit(x + ((fromX - x) / d) * front, CONTACT_HEIGHT[by], z + ((fromZ - z) / d) * front, BLOW_STRENGTH[by]);
+  }
+
+  /** Puffs showing now (tests). */
+  get impacts(): number {
+    return this.puffs.showing;
   }
 
   /** What the enemies hold in their hands now (tests): weapon ids, one per enemy shown with one. */

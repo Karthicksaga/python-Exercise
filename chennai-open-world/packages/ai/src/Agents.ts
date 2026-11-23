@@ -71,6 +71,12 @@ export interface AgentSettings {
   readonly takesTurnsAtJunctions?: boolean;
   /** Agents left over when the active count drops are put away once this far from the focus. */
   readonly retireBeyond?: number;
+  /**
+   * People only: the room each one takes up, metres from their centre. They step aside for the
+   * player (and anything else in `obstacles`) and for people coming the other way, and are
+   * never left standing inside them. Without it a person walked through whoever was in the way.
+   */
+  readonly personalSpace?: number;
 }
 
 /** How far towards the kerb traffic moves for a siren, metres. */
@@ -169,6 +175,9 @@ const FLEE_SPEED = 3.8;
 /** How far, metres, and how fast, m/s, someone facing the danger steps back from it. */
 const STEP_BACK = 1.2;
 const STEP_BACK_SPEED = 1.5;
+/** How fast a person steps sideways round someone in the way, m/s, and how far ahead they start to, metres. */
+const SIDESTEP_SPEED = 1.3;
+const SIDESTEP_AHEAD = 3.2;
 
 /** Someone frightened by something at (x, z): stops and steps back, or runs off. */
 interface Fear {
@@ -504,6 +513,65 @@ export class AgentSystem {
     return { x: from.x + edge.dx * s + edge.dz * lane, z: from.z + edge.dz * s - edge.dx * lane };
   }
 
+  /**
+   * Step sideways, away from the player (or another obstacle) or someone coming the other way
+   * who is ahead and close to the line the person walks: so they pass beside rather than
+   * walking into them or waiting behind them. Only a sideways step; the route is unchanged, and
+   * steering brings them back to their line once past.
+   */
+  private sidestep(agent: Agent, obstacles: readonly Obstacle[], space: number, fx: number, fz: number, dt: number): void {
+    let side = 0;
+    let need = 0;
+    const look = (x: number, z: number, room: number) => {
+      const rx = x - agent.x;
+      const rz = z - agent.z;
+      const ahead = rx * fx + rz * fz;
+      if (ahead <= 0 || ahead > SIDESTEP_AHEAD + room) return;
+      // Offset of the other to the agent's left (+) or right (-).
+      const offset = rx * fz - rz * fx;
+      const short = room - Math.abs(offset);
+      if (short <= 0 || short <= need) return;
+      need = short;
+      // Step away from them; dead ahead, step left (people keep left, as traffic does).
+      side = Math.abs(offset) > 0.05 ? -Math.sign(offset) : 1;
+    };
+    for (const obstacle of obstacles) look(obstacle.x, obstacle.z, obstacle.radius + space + 0.1);
+    for (const other of this.agents) {
+      if (other === agent || !other.active || Math.cos(other.heading - agent.heading) >= 0) continue;
+      look(other.x, other.z, space * 2 + 0.1);
+    }
+    if (need <= 0) return;
+    const step = Math.min(need, SIDESTEP_SPEED * dt);
+    // (fz, -fx) is the agent's left (heading 0 faces -Z, positive turns left).
+    agent.x += fz * side * step;
+    agent.z += -fx * side * step;
+  }
+
+  /**
+   * Never left standing inside the player, an obstacle or another person: moved out of them
+   * (sideways first, the way a person squeezes past), at most a quick step's worth a step.
+   */
+  private keepApart(agent: Agent, obstacles: readonly Obstacle[], space: number, dt: number): void {
+    const most = SIDESTEP_SPEED * 2 * dt;
+    const push = (x: number, z: number, room: number) => {
+      const rx = agent.x - x;
+      const rz = agent.z - z;
+      const d = Math.hypot(rx, rz);
+      if (d >= room) return;
+      const out = Math.min(most, room - d);
+      if (d < 1e-6) {
+        // Exactly on top: step to the left of the way they face.
+        agent.x += -Math.cos(agent.heading) * out;
+        agent.z += Math.sin(agent.heading) * out;
+        return;
+      }
+      agent.x += (rx / d) * out;
+      agent.z += (rz / d) * out;
+    };
+    for (const obstacle of obstacles) push(obstacle.x, obstacle.z, obstacle.radius + space);
+    for (const other of this.agents) if (other !== agent && other.active) push(other.x, other.z, space * 2);
+  }
+
   /** Speed that brings the front to a halt `room` metres ahead, braking at half the maximum. */
   private stopSpeed(room: number): number {
     const left = room - 0.3;
@@ -639,6 +707,8 @@ export class AgentSystem {
       const from = graph.nodes[edge.from]!;
       const fx = -Math.sin(agent.heading);
       const fz = -Math.cos(agent.heading);
+      // People step round the player, and round people coming the other way, before they meet.
+      if (settings.personalSpace) this.sidestep(agent, obstacles, settings.personalSpace, fx, fz, dt);
 
       // How far ahead is the nearest thing in the agent's path? Distances are from its front
       // to the near side of the other thing, which is a box seen at an angle.
@@ -734,6 +804,7 @@ export class AgentSystem {
 
       agent.x += -Math.sin(agent.heading) * agent.speed * dt;
       agent.z += -Math.cos(agent.heading) * agent.speed * dt;
+      if (settings.personalSpace) this.keepApart(agent, obstacles, settings.personalSpace, dt);
 
       // Reached the end of this stretch: continue on the next one.
       // Reached by the front axle, which is what steers.

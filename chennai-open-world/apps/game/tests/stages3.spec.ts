@@ -152,6 +152,8 @@ test("stage 19: walk to Park station, ride the train to Egmore, and catch the th
     if (s.quarry) await teleport(page, s.quarry.x, s.quarry.z);
   }
   await objective(page, "Bring the harmonium back to Egmore station");
+  // Got back from the thief: it rides on the bike until the accompanist takes it.
+  expect(((await snapshot(page)) as unknown as { goods: { cargo: string[] } | null }).goods?.cargo).toEqual(["harmonium"]);
   await goToTarget(page);
   await expect.poll(async () => (await state(page)).mission, { timeout: GAME_WAIT }).toBe("stadium-biryani");
   // Less the train fare (a few rupees).
@@ -169,8 +171,12 @@ test("stage 20: biryani from Egmore to the Chepauk stadium against the clock", a
   await objective(page, "Deliver it to the stadium gate, Wallajah Road");
   const timed = await snapshot(page);
   expect((timed as unknown as { mission: string }).mission).toBe("stadium-biryani");
+  // The cook handed over the bag of parcels and the scorers' box: both ride on the bike.
+  const cargo = async () => ((await snapshot(page)) as unknown as { goods: { cargo: string[]; onVehicle: number } | null }).goods;
+  expect(await cargo()).toMatchObject({ cargo: ["food-bag", "parcel"], onVehicle: 2 });
   await goToTarget(page);
   await objective(page, "Last box to the scorers, Victoria Hostel Road");
+  expect((await cargo())!.cargo).toEqual(["parcel"]);
   await goToTarget(page);
   await expect.poll(async () => (await state(page)).mission, { timeout: GAME_WAIT }).toBe("beach-road-brawl");
   expect((await state(page)).money).toBe(39_095 + 1600);

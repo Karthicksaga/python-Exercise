@@ -11,6 +11,7 @@ import { nearestRoadPoint, type Point, type Road, type WorldMap } from "@cow/gam
 import type { EnemySpot, PickupSpot, WeaponId } from "@cow/combat";
 import type { Mission, Objective } from "@cow/missions";
 import type { Parking } from "./content";
+import { goodsAt } from "./fareSpots";
 
 export interface Gang {
   readonly id: string;
@@ -245,7 +246,8 @@ export function buildStreetWar(city: WorldMap): StreetWar {
         { type: "enter", label: "Get in a car", vehicle: "car" },
         reach("Wait on Peters Road for the courier", waitAt, { mode: "car", radius: 14 }),
         { type: "chase", label: "Catch the courier: pull up beside him", path: courierPath, speed: 11, radius: 5, quarry: "bike" },
-        reach("Take the money back to the tea shop, Triplicane High Road", shopDoor, { radius: 8, stop: true }),
+        // The tea shop's owner comes out to the kerb and takes the bag.
+        reach("Take the money back to the tea shop, Triplicane High Road", shopDoor, { radius: 8, stop: true, goods: goodsAt(city, shop, { action: "unload", items: ["cash-bag"], who: "shopkeeper", aboard: "here" }, shopDoor) }),
       ],
     },
     {

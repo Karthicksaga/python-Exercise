@@ -4,9 +4,9 @@
  * and owns the one piece of state they share: whether the player is on foot or driving.
  */
 import * as THREE from "three";
-import { Beacon, ChunkManager, FollowCamera, GameLoop, HAZE, MapView, Motion, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
+import { Beacon, ChunkManager, FIXED_STEP, FollowCamera, GameLoop, HAZE, MapView, Motion, SceneRenderer, createChunkAssets, facadeAtlas, loadPropAssets, type Quality } from "@cow/game-engine";
 import { Sound } from "@cow/audio";
-import { Combat, PLAYER_MAX_HEALTH, hitPenalty, isPoliceGroup, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState, type WeaponId } from "@cow/combat";
+import { Combat, PLAYER_MAX_HEALTH, STRIKES, SwingClock, hitPenalty, isPoliceGroup, strikeKind, type CasualtyState, type CombatEvent, type HitOutcome, type PlayerState, type WeaponId } from "@cow/combat";
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
@@ -27,6 +27,8 @@ import { Population, type DrivenVehicle, type PedestrianHit } from "./Population
 import { Police, type PoliceView } from "./Police";
 import { ShareRiders } from "./ShareRiders";
 import { FareFigures, type FareFiguresSnapshot } from "./FareFigures";
+import { GoodsFigures, jobGoodsScene, stageGoodsScene, type GoodsFiguresSnapshot } from "./GoodsFigures";
+import { StretcherFigures, type StretcherSnapshot } from "./StretcherFigures";
 import { LandmarkView } from "@cow/game-engine";
 import { landmarkSolids } from "@cow/game-world";
 import { LandmarkLabels } from "@cow/ui";
@@ -130,6 +132,10 @@ export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
   readonly police: ReturnType<Police["snapshot"]>;
   /** People getting in and out at the current pick-up or drop (`FareFigures.ts`), or null. */
   readonly fare: (FareFiguresSnapshot & { readonly aboard: number; readonly kerb: { x: number; z: number }; readonly stages: string[]; readonly note: string | null }) | null;
+  /** Goods changing hands and riding in the vehicle on the current job or stage (`GoodsFigures.ts`). */
+  readonly goods: (GoodsFiguresSnapshot & { readonly cargo: readonly string[]; readonly note: string | null }) | null;
+  /** An ambulance patient's stretcher (`StretcherFigures.ts`). */
+  readonly stretcher: StretcherSnapshot;
 }
 
 const SAVE_KEY = "cow-progress-v1";
@@ -213,6 +219,8 @@ export class Game {
   /** Seconds the pistol stays raised after a shot. */
   private aimFor = 0;
   private sinceClick = 1;
+  /** The player's punch or bat swing between pressing HIT and the blow landing (`Strikes.ts`). */
+  private readonly swing = new SwingClock();
   private street = "";
   private sinceStreet = 1;
   private sinceHaze = 1;
@@ -267,6 +275,9 @@ export class Game {
   private readonly cityMap: CityMapDesk;
   /** Passengers getting in and out at pick-ups and drops (set in `create`). */
   private fareFigures!: FareFigures;
+  /** Goods handed over at pick-ups and drops, and ambulance patients' stretchers (set in `create`). */
+  private goodsFigures!: GoodsFigures;
+  private stretchers!: StretcherFigures;
   /** The stage objective seen last step, to notice one starting (`storyPolice`). */
   private lastObjective: Objective | null = null;
 
@@ -386,6 +397,25 @@ export class Game {
       player: { feet: this.driving ? null : this.avatar.feetHeight(), speed: this.player.speed, grounded: this.player.grounded },
       crowd: this.railway?.crowdPeople ?? 0,
     };
+  }
+
+  /** For screenshots and debugging only: how far behind the camera sits, its pitch and its heading. */
+  debugView(reach: number, pitch?: number, yaw?: number): void {
+    this.camera.reach = reach;
+    if (pitch !== undefined) this.camera.pitch = pitch;
+    if (yaw !== undefined) this.camera.yaw = yaw;
+  }
+
+  /**
+   * For screenshots and debugging only: stop the clock and play `seconds` of game time in fixed
+   * steps, then draw one frame (a fight frame by frame on a slow machine). `resume` restarts it.
+   */
+  debugStep(seconds: number, resume = false): void {
+    this.loop.stop();
+    const steps = Math.round(seconds / FIXED_STEP);
+    for (let i = 0; i < steps; i++) this.fixedUpdate(FIXED_STEP);
+    this.frame(Math.max(FIXED_STEP, seconds), 1);
+    if (resume) this.loop.start();
   }
 
   /** For tests and debugging only: give a weapon and rounds, and take it in hand if it is a gun. */
@@ -510,6 +540,8 @@ export class Game {
     });
     game.arms = new Arms(content, combat, renderer.scene, humans, hud, controls);
     game.fareFigures = new FareFigures(renderer.scene, humans);
+    game.goodsFigures = new GoodsFigures(renderer.scene, humans);
+    game.stretchers = new StretcherFigures(renderer.scene, humans);
     game.humans = humans;
     const railFile = await railLoaded;
     if (railFile) {
@@ -975,6 +1007,8 @@ export class Game {
       lastPedestrianHit: this.lastPedestrianHit,
       police: this.police.snapshot(),
       fare: this.fareSnapshot(),
+      goods: this.goodsSnapshot(),
+      stretcher: this.stretchers.snapshot(),
       ...this.arms.snapshot(this.avatar, this.fighters.heldWeapons(), this.missions.quarry),
       cityMap: this.cityMap.state(),
     };
@@ -1076,18 +1110,26 @@ export class Game {
     this.aimFor = Math.max(0, this.aimFor - dt);
     this.sinceClick += dt;
 
+    // A swing started earlier lands now (at the frame its animation strikes), where the player faces.
+    const landed = this.driving || this.boarder.busy ? (this.swing.cancel(), null) : this.swing.step(dt);
+    if (landed) {
+      const hit = this.combat.punch({ ...state, heading: this.player.yaw }, events);
+      if (hit) {
+        this.sound.punch();
+        this.fighters.struck(hit, state.x, state.z, landed);
+        this.camera.shake(landed === "bat" ? 1 : 0.6);
+      } else if (hit === null) this.sound.whiff();
+    }
+
     if (!this.driving && !this.boarder.busy && (punch || fire)) {
       // Attacks go where the camera looks, so turn the player to face that way first.
       this.player.yaw = this.camera.yaw;
       const facing = { ...state, heading: this.camera.yaw };
-      if (punch) {
-        const hit = this.combat.punch(facing, events);
-        if (hit !== undefined) {
-          this.arms.swung();
-          this.avatar.punch();
-          if (hit) this.sound.punch();
-          else this.sound.whiff();
-        }
+      // A punch or swing starts with its wind-up; the damage lands when the blow does (above).
+      const kind = strikeKind(this.combat.arsenal.melee.id);
+      if (punch && this.combat.arsenal.meleeReadyIn <= STRIKES[kind].windup && this.swing.begin(kind)) {
+        this.arms.swung();
+        this.avatar.strike(kind, STRIKES[kind].windup, STRIKES[kind].recover);
       }
       if (fire) {
         const shot = this.combat.shoot(facing, events);
@@ -1096,7 +1138,10 @@ export class Game {
           this.sound.shot();
           const muzzle = { x: at.x - Math.sin(this.camera.yaw) * 0.7, z: at.z - Math.cos(this.camera.yaw) * 0.7 };
           // One tracer per pellet: the shotgun's spread is visible.
-          for (const pellet of shot.pellets) this.fighters.tracer(muzzle.x, muzzle.z, pellet.toX, pellet.toZ);
+          for (const pellet of shot.pellets) {
+            this.fighters.tracer(muzzle.x, muzzle.z, pellet.toX, pellet.toZ);
+            if (pellet.hit) this.fighters.struck(pellet.hit, at.x, at.z, "shot");
+          }
           this.police.gunfire(at.x, at.z, shot.toX, shot.toZ);
         } else if (this.combat.arsenal.ammoOf(this.combat.arsenal.gun.id) === 0 && this.sinceClick > 0.4) {
           this.sinceClick = 0;
@@ -1114,9 +1159,16 @@ export class Game {
       if (event.type === "enemyShot") {
         this.sound.shot(true);
         this.fighters.tracer(event.fromX, event.fromZ, event.toX, event.toZ);
+        if (event.hit && !this.driving) this.avatar.flinch(event.fromX, event.fromZ, 0.6);
+      } else if (event.type === "enemySwing") {
+        this.fighters.enemySwing(event.enemy);
       } else if (event.type === "enemyPunch") {
-        this.fighters.enemyPunch(event.enemy);
+        // The blow lands at the end of the enemy's wind-up: the player reels and the view shakes.
         this.sound.punch();
+        const kind = strikeKind(event.enemy.weapon);
+        if (!this.driving) this.avatar.flinch(event.enemy.x, event.enemy.z, kind === "bat" ? 1.4 : 1);
+        this.fighters.impact(state.x, state.z, event.enemy.x, event.enemy.z, kind);
+        this.camera.shake(kind === "bat" ? 1 : 0.8);
       } else if (event.type === "playerHurt") {
         this.hud.flashHurt();
         this.sound.hurt();
@@ -1131,6 +1183,7 @@ export class Game {
 
   /** The player ran out of health: a hospital bill, and the stage starts again. */
   private knockedOut(): void {
+    this.swing.cancel();
     const bill = this.missions.charge(100);
     this.missions.restartStage();
     saveProgress(this.missions.progress());
@@ -1203,7 +1256,25 @@ export class Game {
   private fareFrame(dt: number, at: { x: number; z: number }): void {
     const scene = this.fareScene();
     const vehicle = this.driving && scene && this.driving.kind === scene.kind ? this.driving : null;
-    this.fareFigures.frame(dt, scene, at, vehicle);
+    // An ambulance patient comes on a stretcher (`StretcherFigures`), not walking in.
+    const patient = scene?.stop.fare.patient ? scene : null;
+    this.fareFigures.frame(dt, patient ? null : scene, at, vehicle);
+    this.stretchers.frame(dt, patient?.stop ?? null, patient?.marker ?? null, at, vehicle);
+    const goods = this.goodsScene();
+    const carrier = goods && !goods.kind && !this.driving ? this.avatar : null;
+    const goodsVehicle = goods && this.driving && (!goods.kind || this.driving.kind === goods.kind) ? this.driving : null;
+    this.goodsFigures.frame(dt, goods, at, goodsVehicle, carrier);
+  }
+
+  /** The goods of the city job when on one, else of the stage (none during a story). */
+  private goodsScene(): ReturnType<typeof jobGoodsScene> {
+    if (this.desk.active) return jobGoodsScene(this.desk.active, this.desk.runner);
+    return this.placeDesk.story ? null : stageGoodsScene(this.missions.mission, this.missions);
+  }
+
+  private goodsSnapshot(): GameSnapshot["goods"] {
+    const scene = this.goodsScene();
+    return scene ? { ...this.goodsFigures.snapshot(), cargo: scene.cargo, note: scene.stop?.note() ?? null } : null;
   }
 
   private fareSnapshot(): GameSnapshot["fare"] {
@@ -1458,7 +1529,7 @@ export class Game {
         : mission && objective
         ? {
             title: `Stage ${mission.stage} · ${mission.title}`,
-            objective: this.missions.fare?.note() ? `${objective.label} · ${this.missions.fare.note()}` : objective.label,
+            objective: (this.missions.fare?.note() ?? this.missions.goods?.note()) ? `${objective.label} · ${this.missions.fare?.note() ?? this.missions.goods?.note()}` : objective.label,
             distance: target ? Math.hypot(target.x - at.x, target.z - at.z) : null,
             secondsLeft: this.missions.secondsLeft,
           }

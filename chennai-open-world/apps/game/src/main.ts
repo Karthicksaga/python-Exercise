@@ -24,6 +24,10 @@ declare global {
       giveWeapon(id: WeaponId, ammo: number): void;
       /** Tests only: who plays the pedestrians, drivers and enemies, and how their feet meet the ground. */
       people(): unknown;
+      /** Screenshots and debugging only: camera distance (metres), pitch and heading (radians). */
+      view(reach: number, pitch?: number, yaw?: number): void;
+      /** Screenshots and debugging only: stop the clock and play this many game seconds, then draw a frame. */
+      step(seconds: number, resume?: boolean): void;
     };
   }
 }
@@ -52,6 +56,8 @@ async function boot(): Promise<void> {
       // For tests only: the later stages need guns the player would have found by then.
       giveWeapon: (id, ammo) => game.debugGiveWeapon(id, ammo),
       people: () => game.debugPeople(),
+      view: (reach, pitch, yaw) => game.debugView(reach, pitch, yaw),
+      step: (seconds, resume) => game.debugStep(seconds, resume),
     };
     game.start();
     loading.remove();

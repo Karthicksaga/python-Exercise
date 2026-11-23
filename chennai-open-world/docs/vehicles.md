@@ -1,7 +1,7 @@
 # Vehicles: models, levels of detail, doors, cargo anchors
 
 Every vehicle kind (`VEHICLE_TYPES` in `packages/vehicles/src/specs.ts`) is drawn with an original
-model made by script in Blender 5.2 LTS (TD-18, TD-25). Physics, handling and collider sizes are
+model made by script in Blender 5.2 LTS (TD-18, TD-26). Physics, handling and collider sizes are
 unchanged; the models were built round them.
 
 | Kind (`VehicleKind`) | Model | Script | Detailed / traffic triangles | Draw calls (detailed / traffic) | Optimised size |

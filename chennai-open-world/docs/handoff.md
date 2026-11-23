@@ -778,10 +778,54 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - Open: faces smooth up close; pallu and dupatta are flat bands; long hems can show a shin when
   running; older women wear a plait, not a bun; no player LOD1; nothing tried on a phone.
 
+## 23 Nov 2026: combat and pose (branch `agent/combat-pose`): where I left off
+- **Done:** hands and fingers retargeted onto A-pose rigs (root cause of the bent, stiff hands:
+  `retarget.ts` aligned arms but not hands, so each hand kept 45° of A-pose bend on top of the
+  clip's wrist turn); punches and bat swings with wind-up, damage at the strike frame, flinch,
+  knock-back that respects walls, impact puffs, camera shake, enemy wind-ups (TD-25);
+  pedestrians step round the player and each other (`AgentSettings.personalSpace`).
+- **Files:** new `packages/combat/src/Strikes.ts`, `packages/player/src/strikePose.ts`,
+  `apps/game/src/HitPuffs.ts`; `Combat.ts` (Enemy `windup`/`stagger`/`pushX`/`pushZ`, event
+  `enemySwing`), `Weapons.ts` (`meleeReadyIn`), `HumanFigure.ts` (`strike`, `flinch`, fists;
+  `punch()` removed), `Fighters.ts` (`enemySwing`, `struck`, `impact`), `Game.ts` (swing clock in
+  `fight`, `debugView`, `debugStep`), `main.ts` (`__cow.view`, `__cow.step` for screenshots),
+  `FollowCamera.ts` (`shake`), `Agents.ts`/`presets.ts`.
+- **Tests:** typecheck; unit 534/534; browser combat, gangs, people, onfoot, pedestrians,
+  weapons 26/26. Two unit tests changed on purpose (see the commit): they now wait in fixed
+  steps because blows land after a wind-up and knock the enemy back.
+- **Not done / uncertain:** the bat is swung one-handed; no fall animation for a knock-down (it
+  tips over as before); `missions2.spec.ts` and `stages3.spec.ts` fights not run here (CI);
+  nothing tried on a phone (the wind-up might feel late at 43 fps).
+
+## 23 Nov 2026: job goods and the ambulance stretcher (branch `agent/job-props`): where I left off
+- **Branch:** `agent/job-props` from feat 8e7b598. Details in `docs/progress.md` (same date).
+- **Done:** goods handed over at pick-ups and drops (`@cow/missions` `goods.ts`, a `goods` field
+  beside `fare` on reach objectives and job stops; `MissionRunner.goods`/`objectiveNumber`,
+  `JobRunner.goods`); stages 4, 6, 11, 19, 20 and the courier, lunch rush and medicine jobs
+  carry them. Drawn by `apps/game/src/GoodsFigures.ts` (person, goods in hands, goods in the
+  vehicle, the car's rear door) with code-built models in `goodsModels.ts`. Ambulance patients
+  on a stretcher (`StretcherFigures.ts`); `FareFigures` skips patient fares. Carry poses
+  (`@cow/player` `carryPose.ts`, `HumanFigure.setCarry`, kept apart from the rest/fight poses
+  that `agent/combat-pose` is changing). Casts `sender`, `recipient`, `shopkeeper`, `paramedic`.
+- **Shared files touched (additive):** `Game.ts` (two figure classes created next to
+  `fareFigures`, `fareFrame` hands patient fares to the stretcher and goods to `GoodsFigures`,
+  snapshot `goods` and `stretcher`, HUD note), `JobDesk.ts` (HUD note), `HumanFigure.ts`
+  (`setCarry`, poses solved in the constructor, applied after the wave), `people.ts` (casts),
+  `content.ts`, `laterStages.ts`, `streetWar.ts` (goods data), `fareSpots.ts` (`goodsAt`).
+- **For the vehicles branch:** cargo places are one table, `CARGO` in `GoodsFigures.ts`, and the
+  stretcher's path is `AMBULANCE` in `StretcherFigures.ts`; both are marked to switch to the
+  vehicle types' `cargo` anchor. Nothing in `packages/vehicles` was changed.
+- **Tests:** typecheck clean; unit 532/532 (one run before had a single timing failure that did
+  not repeat). Browser (local, with the lock): fares + jobs + places 16/16; stages3 16–21 and
+  missions2 stage 11: 8/8; people.spec 3/3; after a last clean-up of `StretcherFigures` the courier and ambulance tests again 2/2. The full suite is left to CI.
+- **Not done / open:** the hatchback's glass is opaque, so parcels on its back seat show only
+  through the open door (the new vehicle models may fix that); stage 17's gold chain is handed in
+  on foot with no figure; the goods person is not a physics body (like fare passengers); lunch
+  rush stacks a third bag on top of the first on the bike; nothing tried on a phone.
 ## 23 Nov 2026: realistic vehicles (branch `agent/vehicles-real`): where I left off
 - **Done:** Blender models (original, `tools/blender/vehicles.py`) for every kind but the auto,
   which already had one: hatchback, motorbike, ambulance, bus, each detailed + LOD1
-  (`docs/vehicles.md`, TD-25). Traffic and police use LOD1; parked/drivable vehicles switch to the
+  (`docs/vehicles.md`, TD-26). Traffic and police use LOD1; parked/drivable vehicles switch to the
   detailed model within 28 m of the player (`Vehicle.sync(dt, alpha, viewer)`). Doors are cut from
   the bodies on the old hinges (`DOOR_SWING` in `models.ts`). `VehicleType.cargo` and the
   ambulance's `cargoClear` (values in `docs/vehicles.md`). Police side bands now sit on the doors

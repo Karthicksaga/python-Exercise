@@ -56,5 +56,7 @@ export function pedestrianSettings(count: number): AgentSettings {
     despawn: 160,
     // Beyond the distance people are drawn at.
     retireBeyond: 90,
+    // About a person's half-width (shoulders) plus a little: they pass the player and each other.
+    personalSpace: 0.3,
   };
 }

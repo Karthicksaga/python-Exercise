@@ -96,4 +96,50 @@ describe("retargetClips", () => {
     const still = new THREE.AnimationClip("idle", 1, [new THREE.QuaternionKeyframeTrack("Spine.quaternion", [0, 1], [0, 0, 0, 1, ...bend(0.2)])]);
     expect(retargetClips(skeleton((n) => n), [still], skeleton((n) => n))[0]!.tracks.some((t) => t.name === "Hips.position")).toBe(false);
   });
+
+  it("lines up an A-pose hand and fingers with T-pose clips, so the wrist and fingers bend as recorded", () => {
+    /** A left arm pointing along `d` (straight out: T-pose; 45 degrees down: A-pose), with a hand and three fingers. */
+    const arm = (d: THREE.Vector3) => {
+      const root = new THREE.Group();
+      const bone = (name: string, parent: THREE.Object3D, at: THREE.Vector3) => {
+        const b = new THREE.Bone();
+        b.name = name;
+        b.position.copy(at);
+        parent.add(b);
+        return b;
+      };
+      const hips = bone("Hips", root, new THREE.Vector3(0, 1, 0));
+      const upper = bone("LeftArm", hips, new THREE.Vector3(0.2, 0.4, 0));
+      const fore = bone("LeftForeArm", upper, d.clone().multiplyScalar(0.3));
+      const hand = bone("LeftHand", fore, d.clone().multiplyScalar(0.25));
+      const side = new THREE.Vector3(0, 0, 0.03);
+      bone("LeftHandIndex1", hand, d.clone().multiplyScalar(0.08).add(side));
+      const middle = bone("LeftHandMiddle1", hand, d.clone().multiplyScalar(0.08));
+      bone("LeftHandMiddle2", middle, d.clone().multiplyScalar(0.04));
+      bone("LeftHandPinky1", hand, d.clone().multiplyScalar(0.08).sub(side));
+      root.updateMatrixWorld(true);
+      return root;
+    };
+    const source = arm(new THREE.Vector3(1, 0, 0));
+    const target = arm(new THREE.Vector3(1, -1, 0).normalize());
+    // The clip lowers the arm, bends the wrist up a little and curls the middle finger.
+    const q = (x: number, y: number, z: number, angle: number) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(x, y, z).normalize(), angle).toArray();
+    const clip = new THREE.AnimationClip("idle", 1, [
+      new THREE.QuaternionKeyframeTrack("LeftArm.quaternion", [0, 1], [...q(0, 0, 1, -1.4), ...q(0, 0, 1, -1.4)]),
+      new THREE.QuaternionKeyframeTrack("LeftHand.quaternion", [0, 1], [...q(0, 0, 1, 0.3), ...q(0, 0, 1, 0.3)]),
+      new THREE.QuaternionKeyframeTrack("LeftHandMiddle1.quaternion", [0, 1], [...q(0, 0, 1, -0.6), ...q(0, 0, 1, -0.6)]),
+    ]);
+    const [out] = retargetClips(source, [clip], target);
+    const direction = (root: THREE.Object3D, from: string, to: string) =>
+      root.getObjectByName(to)!.getWorldPosition(new THREE.Vector3()).sub(root.getObjectByName(from)!.getWorldPosition(new THREE.Vector3())).normalize();
+    for (const [root, c] of [[source, clip], [target, out!]] as const) {
+      const mixer = new THREE.AnimationMixer(root);
+      mixer.clipAction(c).play();
+      mixer.setTime(0.5);
+      root.updateMatrixWorld(true);
+    }
+    for (const [from, to] of [["LeftArm", "LeftForeArm"], ["LeftHand", "LeftHandMiddle1"], ["LeftHandMiddle1", "LeftHandMiddle2"], ["LeftHandIndex1", "LeftHandPinky1"]] as const) {
+      expect(direction(target, from, to).angleTo(direction(source, from, to)), `${from} to ${to}`).toBeLessThan(0.01);
+    }
+  });
 });

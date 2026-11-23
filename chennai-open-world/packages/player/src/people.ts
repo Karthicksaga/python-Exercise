@@ -117,7 +117,14 @@ export type Cast =
   /** Stage 16's wedding party (in silks: saree, veshti where the models have them). */
   | "wedding"
   /** Ambulance patients. */
-  | "patient";
+  | "patient"
+  /** Someone handing goods over at a pick-up (an office clerk, a cook), and someone taking them at a drop (`GoodsFigures`). */
+  | "sender"
+  | "recipient"
+  /** A shopkeeper or cook at their own counter handing goods over or taking them. */
+  | "shopkeeper"
+  /** The paramedic wheeling an ambulance patient's stretcher (a stand-in in a pale uniform tint). */
+  | "paramedic";
 
 interface Filter {
   readonly roles: readonly Role[];
@@ -153,6 +160,12 @@ export const CASTS: Readonly<Record<Cast, CastRule>> = {
   passenger: { roles: ["passenger", "pedestrian", "office", "college", "school"], hurtable: false, minors: "withAdult" },
   wedding: { roles: ["passenger", "pedestrian"], hurtable: false, minors: "withAdult", prefer: /saree|sari|veshti|dhoti|silk|pattu|wedding/i },
   patient: { roles: ["passenger", "pedestrian"], ages: ["elderly"], hurtable: false, minors: "never", fallback: { roles: [...ROLES], ages: ["middle", "elderly"] } },
+  // Kerbside goods handovers: adults only (they stand beside the road, though nothing hits them).
+  sender: { roles: ["office", "shopkeeper", "vendor", "delivery"], ages: ADULTS, hurtable: false, minors: "never" },
+  recipient: { roles: ["office", "pedestrian", "passenger"], ages: ADULTS, hurtable: false, minors: "never" },
+  shopkeeper: { roles: ["shopkeeper", "tea-worker", "vendor"], ages: ADULTS, hurtable: false, minors: "never" },
+  // Office clothes dyed a pale uniform blue (`StretcherFigures` lays the tint over them).
+  paramedic: { roles: ["office"], ages: WORKING, hurtable: false, minors: "never", uniform: 0xa9c9de, fallback: { roles: ["pedestrian"], ages: WORKING } },
 };
 
 const matches = (person: Person, filter: Filter): boolean =>

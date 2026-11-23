@@ -168,6 +168,11 @@ export class Arsenal {
     return gun;
   }
 
+  /** Seconds until the next swing or punch may land (0: ready). */
+  get meleeReadyIn(): number {
+    return this.meleeCooldown;
+  }
+
   /** Swing (or punch) if recovered from the last one. */
   trySwing(): WeaponSpec | null {
     if (this.meleeCooldown > 0) return null;

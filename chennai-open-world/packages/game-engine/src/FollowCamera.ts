@@ -27,6 +27,9 @@ const SPEED_REACH = 1.4;
 const SPEED_FOV = 7;
 /** Faster than this (m/s, forwards) the camera trails the direction of travel, not the nose. */
 const TRAVEL_TRAIL_FROM = 3;
+/** A shake (a blow landing) lasts this long, seconds, and turns the view at most this far at strength 1, radians. */
+const SHAKE_TIME = 0.25;
+const SHAKE_ANGLE = 0.014;
 
 /** What the chase camera needs to know about the vehicle, once per frame. */
 export interface ChaseTarget {
@@ -56,6 +59,10 @@ export class FollowCamera {
   /** Share of top speed, eased, for the extra distance and field of view. */
   private pace = 0;
   private readonly baseFov: number;
+  /** A short shake: its strength and seconds left, and a clock for its wobble. */
+  private shaking = 0;
+  private shakeLeft = 0;
+  private shakeClock = 0;
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
@@ -63,6 +70,21 @@ export class FollowCamera {
   ) {
     this.yaw = yaw;
     this.baseFov = camera.fov;
+  }
+
+  /**
+   * Shake the view for a moment: a blow landing (the player's or on the player). Strength 1 is a
+   * punch; a light wobble of the view direction, fading out, that never moves the camera itself.
+   */
+  shake(strength: number): void {
+    this.shaking = Math.max(strength, this.shakeLeft > 0 ? this.shaking : 0);
+    this.shakeLeft = SHAKE_TIME;
+  }
+
+  /** How far the current shake turns the view now, radians (0 when still). */
+  get shakeAngle(): number {
+    const fade = this.shakeLeft / SHAKE_TIME;
+    return this.shakeLeft > 0 ? SHAKE_ANGLE * this.shaking * fade * fade : 0;
   }
 
   /** Apply a drag of (dx, dy) CSS pixels. */
@@ -152,5 +174,12 @@ export class FollowCamera {
       this.focus.z + dir.z * this.distance,
     );
     this.camera.lookAt(this.focus.x + this.lead.x, this.focus.y, this.focus.z + this.lead.z);
+    if (this.shakeLeft > 0) {
+      const angle = this.shakeAngle;
+      this.shakeClock += dt;
+      this.shakeLeft = Math.max(0, this.shakeLeft - dt);
+      this.camera.rotateX(Math.sin(this.shakeClock * 71) * angle);
+      this.camera.rotateY(Math.sin(this.shakeClock * 53 + 1.3) * angle);
+    }
   }
 }

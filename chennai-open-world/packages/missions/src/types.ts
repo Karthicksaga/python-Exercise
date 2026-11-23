@@ -1,5 +1,6 @@
 /** Mission data. Missions are plain data so new ones need no code. */
 import type { Fare } from "./fares";
+import type { Goods } from "./goods";
 
 export type TravelMode = "foot" | "car" | "auto" | "bike" | "ambulance" | "bus";
 
@@ -24,6 +25,11 @@ export type Objective =
        * vehicle and get in (or get out and walk off), and only then is the objective met.
        */
       readonly fare?: Fare;
+      /**
+       * Goods change hands here (`goods.ts`): once stopped in the marker someone walks over and
+       * puts them in the vehicle (or takes them out), and only then is the objective met.
+       */
+      readonly goods?: Goods;
       /** Must be reached riding a train (the marker is a station on the line). */
       readonly byTrain?: boolean;
     }

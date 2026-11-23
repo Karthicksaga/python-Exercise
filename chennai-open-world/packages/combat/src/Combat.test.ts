@@ -30,7 +30,8 @@ describe("Combat", () => {
     const events: CombatEvent[] = [];
     for (let i = 0; i < 3; i++) {
       combat.punch(player(), events);
-      combat.update(0.5, player()); // wait out the recovery; the enemy stays in reach
+      // Wait out the recovery in small steps: knocked back by each punch, the enemy walks back into reach.
+      for (let t = 0; t < 30; t++) combat.update(1 / 60, player());
     }
     expect(events.map((e) => e.type)).toEqual(["enemyDown", "groupCleared"]);
     expect(combat.remaining("a")).toBe(0);
