@@ -130,3 +130,98 @@ test("bus route: three get on at the first stop; at the second some get off befo
   expect(third.fare!.aboard).toBeGreaterThan(0);
   expect(third.fare!.aboard).not.toBe(3 + 1);
 });
+
+interface GoodsState {
+  stage: string | null;
+  action: "load" | "unload" | null;
+  inHands: number;
+  onVehicle: number;
+  leaving: number;
+  carry: string | null;
+  kerb: { x: number; z: number } | null;
+  door: number;
+  cargo: string[];
+  note: string | null;
+  items: Array<{ kind: string; x: number; y: number; z: number; holder: string }>;
+}
+const goods = async (page: Page) => ((await snapshot(page)) as unknown as { goods: GoodsState | null }).goods;
+
+test("courier: a clerk at the kerb hands the parcel over at the bike, it rides on the pillion, and someone takes it at the drop", async ({ page }) => {
+  test.setTimeout(180_000);
+  await ready(page);
+  await page.getByTestId("jobs").click();
+  await page.getByTestId("take-courier").click();
+  await board(page, "bike-start");
+  // From across the road: waiting at the kerb with the parcel held in both hands; nothing on the bike yet.
+  const near = (await goods(page))!.kerb!;
+  const at = (await state(page)).target!;
+  await teleport(page, at.x + (at.x - near.x) * 3, at.z + (at.z - near.z) * 3);
+  await expect.poll(async () => (await goods(page))?.stage, { timeout: GAME_WAIT }).toBe("waiting");
+  const waiting = (await goods(page))!;
+  expect(waiting).toMatchObject({ action: "load", carry: "box", inHands: 1, onVehicle: 0, cargo: [] });
+  const pickup = (await state(page)).target!;
+  await teleport(page, pickup.x, pickup.z);
+  await expect.poll(async () => (await goods(page))?.stage, { timeout: GAME_WAIT }).toBe("walking");
+  expect((await state(page)).jobStop).toBe(0);
+  await expect(page.getByTestId("mission")).toContainText("The parcel being loaded");
+  // Handed over: the job moves on, and the parcel is on the bike.
+  await expect.poll(async () => (await state(page)).jobStop, { timeout: GAME_WAIT }).toBe(1);
+  const riding = (await goods(page))!;
+  expect(riding.cargo).toEqual(["parcel"]);
+  expect(riding.onVehicle).toBe(1);
+  expect(riding.items.find((i) => i.holder === "vehicle")).toBeDefined();
+  // The clerk walks back to the pavement empty-handed.
+  expect(riding.leaving).toBe(1);
+  // At the drop someone walks up and takes it.
+  const drop = (await state(page)).target!;
+  await teleport(page, drop.x, drop.z);
+  await expect.poll(async () => (await goods(page))?.stage, { timeout: GAME_WAIT }).toBe("handing");
+  await expect.poll(async () => (await state(page)).job, { timeout: GAME_WAIT }).toBeNull();
+  await expect(page.getByRole("dialog")).toContainText("Courier delivery complete");
+  await expect(page.getByRole("dialog")).toContainText("Parcel undamaged: +25%");
+});
+
+interface StretcherState {
+  stage: string | null;
+  stretcher: { x: number; y: number; z: number } | null;
+  paramedic: { x: number; z: number } | null;
+  door: number;
+  lying: boolean;
+  leaving: boolean;
+}
+const stretcher = async (page: Page) => ((await snapshot(page)) as unknown as { stretcher: StretcherState }).stretcher;
+
+test("ambulance: the patient lies on a stretcher with a paramedic, is wheeled in through the rear doors, and out at the hospital", async ({ page }) => {
+  test.setTimeout(180_000);
+  await ready(page);
+  await page.getByTestId("jobs").click();
+  await page.getByTestId("take-ambulance-run").click();
+  await board(page, "ambulance");
+  // From the far side of the road (people and stretchers are drawn only near the player).
+  const near = (await state(page)).fare!.kerb;
+  const at = (await state(page)).target!;
+  await teleport(page, at.x + (at.x - near.x) * 3, at.z + (at.z - near.z) * 3);
+  await expect.poll(async () => (await stretcher(page)).stage, { timeout: GAME_WAIT }).toBe("waiting");
+  const waiting = await stretcher(page);
+  expect(waiting.lying).toBe(true);
+  expect(waiting.paramedic).not.toBeNull();
+  const kerb = (await state(page)).fare!.kerb;
+  expect(distance(waiting.stretcher!, kerb)).toBeLessThan(0.5);
+  // Nobody walks in: the fare's own figures show no one.
+  expect((await state(page)).fare!.waiting).toBe(0);
+  const pickup = (await state(page)).target!;
+  await teleport(page, pickup.x, pickup.z);
+  await expect.poll(async () => (await stretcher(page)).stage, { timeout: GAME_WAIT }).toBe("entering");
+  // The rear doors open for it, and it goes up onto the floor.
+  await expect.poll(async () => (await stretcher(page)).door, { timeout: GAME_WAIT }).toBeGreaterThan(0.5);
+  await expect.poll(async () => (await stretcher(page)).stretcher?.y ?? 0, { timeout: GAME_WAIT, intervals: [50] }).toBeGreaterThan(0.2);
+  await expect.poll(async () => (await state(page)).jobStop, { timeout: GAME_WAIT }).toBe(1);
+  // In, and the doors shut again.
+  expect((await stretcher(page)).stretcher).toBeNull();
+  await expect.poll(async () => (await stretcher(page)).door, { timeout: GAME_WAIT }).toBe(0);
+  const hospital = (await state(page)).target!;
+  await teleport(page, hospital.x, hospital.z);
+  await expect.poll(async () => (await stretcher(page)).stage, { timeout: GAME_WAIT }).toBe("exiting");
+  await expect.poll(async () => (await stretcher(page)).stage, { timeout: GAME_WAIT }).toBe("leaving");
+  await expect(page.getByRole("dialog")).toContainText("Ambulance run complete", { timeout: GAME_WAIT });
+});

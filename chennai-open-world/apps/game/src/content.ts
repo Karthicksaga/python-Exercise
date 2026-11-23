@@ -10,7 +10,7 @@ import type { Job, Mission, Objective } from "@cow/missions";
 import type { VehicleKind } from "@cow/vehicles";
 import { busCrowd } from "@cow/missions";
 import { cityJobs } from "./cityJobs";
-import { fareAt } from "./fareSpots";
+import { fareAt, goodsAt } from "./fareSpots";
 import { buildLaterStages } from "./laterStages";
 import { shareAutoJob } from "./shareAutoRoute";
 import { buildStreetWar, type Crew, type Gang } from "./streetWar";
@@ -220,9 +220,10 @@ export function buildContent(city: WorldMap): GameContent {
       reward: 500,
       objectives: [
         { type: "enter", label: "Get in a car", vehicle: "car" },
-        reach("Deliver parcel 1 of 3", parcels[0]!, { mode: "car", radius: 6, stop: true }),
-        reach("Deliver parcel 2 of 3", parcels[1]!, { mode: "car", radius: 6, stop: true, timeLimit: allow(parcels[0]!, parcels[1]!, 12) }),
-        reach("Deliver parcel 3 of 3", parcels[2]!, { mode: "car", radius: 6, stop: true, timeLimit: allow(parcels[1]!, parcels[2]!, 12) }),
+        // The three parcels are on the back seat from the start; someone comes out for each.
+        reach("Deliver parcel 1 of 3", parcels[0]!, { mode: "car", radius: 6, stop: true, goods: goodsAt(map, parcels[0]!, { action: "unload", items: ["parcel"], aboard: "start" }) }),
+        reach("Deliver parcel 2 of 3", parcels[1]!, { mode: "car", radius: 6, stop: true, timeLimit: allow(parcels[0]!, parcels[1]!, 12), goods: goodsAt(map, parcels[1]!, { action: "unload", items: ["parcel"], aboard: "start" }) }),
+        reach("Deliver parcel 3 of 3", parcels[2]!, { mode: "car", radius: 6, stop: true, timeLimit: allow(parcels[1]!, parcels[2]!, 12), goods: goodsAt(map, parcels[2]!, { action: "unload", items: ["parcel"], aboard: "start" }) }),
       ],
     },
     {
@@ -245,9 +246,9 @@ export function buildContent(city: WorldMap): GameContent {
       reward: 1000,
       objectives: [
         { type: "enter", label: "Get on a motorbike", vehicle: "bike" },
-        reach("Collect the lunch boxes", lunch[0]!, { mode: "bike", radius: 5, stop: true }),
-        reach("First drop", lunch[1]!, { mode: "bike", radius: 5, stop: true, timeLimit: allow(lunch[0]!, lunch[1]!, 13) }),
-        reach("Second drop", lunch[2]!, { mode: "bike", radius: 5, stop: true, timeLimit: allow(lunch[1]!, lunch[2]!, 13) }),
+        reach("Collect the lunch boxes", lunch[0]!, { mode: "bike", radius: 5, stop: true, goods: goodsAt(map, lunch[0]!, { action: "load", items: ["tiffin", "tiffin"], who: "sender" }) }),
+        reach("First drop", lunch[1]!, { mode: "bike", radius: 5, stop: true, timeLimit: allow(lunch[0]!, lunch[1]!, 13), goods: goodsAt(map, lunch[1]!, { action: "unload", items: ["tiffin"] }) }),
+        reach("Second drop", lunch[2]!, { mode: "bike", radius: 5, stop: true, timeLimit: allow(lunch[1]!, lunch[2]!, 13), goods: goodsAt(map, lunch[2]!, { action: "unload", items: ["tiffin"] }) }),
       ],
     },
     {
@@ -370,8 +371,8 @@ export function buildContent(city: WorldMap): GameContent {
       brief: "Collect a parcel from the post office and get it across town on the motorbike. No damage earns a bonus.",
       vehicle: "bike",
       stops: [
-        { label: `Collect the parcel at the post office${streetOf(postOffice)}`, ...postOffice, radius: 6, dwell: 2 },
-        { label: `Deliver the parcel${streetOf(parcelTo)}`, ...parcelTo, radius: 6, dwell: 1 },
+        { label: `Collect the parcel at the post office${streetOf(postOffice)}`, ...postOffice, radius: 6, dwell: 2, goods: goodsAt(map, postOffice, { action: "load", items: ["parcel"], who: "sender" }) },
+        { label: `Deliver the parcel${streetOf(parcelTo)}`, ...parcelTo, radius: 6, dwell: 1, goods: goodsAt(map, parcelTo, { action: "unload", items: ["parcel"] }) },
       ],
       timeLimit: allow(postOffice, parcelTo, 12) + 60,
       payout: 450,
@@ -450,8 +451,8 @@ export function buildContent(city: WorldMap): GameContent {
       brief: "Three hot lunches from one kitchen to three homes. Ride fast, ride clean.",
       vehicle: "bike",
       stops: [
-        { label: `Collect the orders${streetOf(kitchen)}`, ...kitchen, radius: 6, dwell: 2 },
-        ...meals.map((p, i) => ({ label: `Delivery ${i + 1} of 3${streetOf(p)}`, ...p, radius: 6, dwell: 1 })),
+        { label: `Collect the orders${streetOf(kitchen)}`, ...kitchen, radius: 6, dwell: 2, goods: goodsAt(map, kitchen, { action: "load", items: ["food-bag", "food-bag", "food-bag"], who: "shopkeeper" }) },
+        ...meals.map((p, i) => ({ label: `Delivery ${i + 1} of 3${streetOf(p)}`, ...p, radius: 6, dwell: 1, goods: goodsAt(map, p, { action: "unload", items: ["food-bag"] }) })),
       ],
       timeLimit: legs([kitchen, ...meals], 12) + 60,
       payout: 650,
@@ -464,8 +465,8 @@ export function buildContent(city: WorldMap): GameContent {
       brief: "A hospital ward has run short. Take a box of medicine from the chemist, quickly.",
       vehicle: "bike",
       stops: [
-        { label: `Collect the medicine${streetOf(chemist)}`, ...chemist, radius: 6, dwell: 2 },
-        { label: `Deliver to the hospital${streetOf(medicine.to)}`, ...medicine.to, radius: 8, dwell: 1 },
+        { label: `Collect the medicine${streetOf(chemist)}`, ...chemist, radius: 6, dwell: 2, goods: goodsAt(map, chemist, { action: "load", items: ["medicine"], who: "shopkeeper" }) },
+        { label: `Deliver to the hospital${streetOf(medicine.to)}`, ...medicine.to, radius: 8, dwell: 1, goods: goodsAt(map, medicine.to, { action: "unload", items: ["medicine"] }) },
       ],
       timeLimit: allow(chemist, medicine.to, 13) + 35,
       payout: 380,

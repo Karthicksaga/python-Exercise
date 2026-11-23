@@ -27,6 +27,8 @@ import { Population, type DrivenVehicle, type PedestrianHit } from "./Population
 import { Police, type PoliceView } from "./Police";
 import { ShareRiders } from "./ShareRiders";
 import { FareFigures, type FareFiguresSnapshot } from "./FareFigures";
+import { GoodsFigures, jobGoodsScene, stageGoodsScene, type GoodsFiguresSnapshot } from "./GoodsFigures";
+import { StretcherFigures, type StretcherSnapshot } from "./StretcherFigures";
 import { LandmarkView } from "@cow/game-engine";
 import { landmarkSolids } from "@cow/game-world";
 import { LandmarkLabels } from "@cow/ui";
@@ -130,6 +132,10 @@ export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
   readonly police: ReturnType<Police["snapshot"]>;
   /** People getting in and out at the current pick-up or drop (`FareFigures.ts`), or null. */
   readonly fare: (FareFiguresSnapshot & { readonly aboard: number; readonly kerb: { x: number; z: number }; readonly stages: string[]; readonly note: string | null }) | null;
+  /** Goods changing hands and riding in the vehicle on the current job or stage (`GoodsFigures.ts`). */
+  readonly goods: (GoodsFiguresSnapshot & { readonly cargo: readonly string[]; readonly note: string | null }) | null;
+  /** An ambulance patient's stretcher (`StretcherFigures.ts`). */
+  readonly stretcher: StretcherSnapshot;
 }
 
 const SAVE_KEY = "cow-progress-v1";
@@ -267,6 +273,9 @@ export class Game {
   private readonly cityMap: CityMapDesk;
   /** Passengers getting in and out at pick-ups and drops (set in `create`). */
   private fareFigures!: FareFigures;
+  /** Goods handed over at pick-ups and drops, and ambulance patients' stretchers (set in `create`). */
+  private goodsFigures!: GoodsFigures;
+  private stretchers!: StretcherFigures;
   /** The stage objective seen last step, to notice one starting (`storyPolice`). */
   private lastObjective: Objective | null = null;
 
@@ -510,6 +519,8 @@ export class Game {
     });
     game.arms = new Arms(content, combat, renderer.scene, humans, hud, controls);
     game.fareFigures = new FareFigures(renderer.scene, humans);
+    game.goodsFigures = new GoodsFigures(renderer.scene, humans);
+    game.stretchers = new StretcherFigures(renderer.scene, humans);
     game.humans = humans;
     const railFile = await railLoaded;
     if (railFile) {
@@ -975,6 +986,8 @@ export class Game {
       lastPedestrianHit: this.lastPedestrianHit,
       police: this.police.snapshot(),
       fare: this.fareSnapshot(),
+      goods: this.goodsSnapshot(),
+      stretcher: this.stretchers.snapshot(),
       ...this.arms.snapshot(this.avatar, this.fighters.heldWeapons(), this.missions.quarry),
       cityMap: this.cityMap.state(),
     };
@@ -1203,7 +1216,25 @@ export class Game {
   private fareFrame(dt: number, at: { x: number; z: number }): void {
     const scene = this.fareScene();
     const vehicle = this.driving && scene && this.driving.kind === scene.kind ? this.driving : null;
-    this.fareFigures.frame(dt, scene, at, vehicle);
+    // An ambulance patient comes on a stretcher (`StretcherFigures`), not walking in.
+    const patient = scene?.stop.fare.patient ? scene : null;
+    this.fareFigures.frame(dt, patient ? null : scene, at, vehicle);
+    this.stretchers.frame(dt, patient?.stop ?? null, patient?.marker ?? null, at, vehicle);
+    const goods = this.goodsScene();
+    const carrier = goods && !goods.kind && !this.driving ? this.avatar : null;
+    const goodsVehicle = goods && this.driving && (!goods.kind || this.driving.kind === goods.kind) ? this.driving : null;
+    this.goodsFigures.frame(dt, goods, at, goodsVehicle, carrier);
+  }
+
+  /** The goods of the city job when on one, else of the stage (none during a story). */
+  private goodsScene(): ReturnType<typeof jobGoodsScene> {
+    if (this.desk.active) return jobGoodsScene(this.desk.active, this.desk.runner);
+    return this.placeDesk.story ? null : stageGoodsScene(this.missions.mission, this.missions);
+  }
+
+  private goodsSnapshot(): GameSnapshot["goods"] {
+    const scene = this.goodsScene();
+    return scene ? { ...this.goodsFigures.snapshot(), cargo: scene.cargo, note: scene.stop?.note() ?? null } : null;
   }
 
   private fareSnapshot(): GameSnapshot["fare"] {
@@ -1457,7 +1488,7 @@ export class Game {
         : mission && objective
         ? {
             title: `Stage ${mission.stage} · ${mission.title}`,
-            objective: this.missions.fare?.note() ? `${objective.label} · ${this.missions.fare.note()}` : objective.label,
+            objective: (this.missions.fare?.note() ?? this.missions.goods?.note()) ? `${objective.label} · ${this.missions.fare?.note() ?? this.missions.goods?.note()}` : objective.label,
             distance: target ? Math.hypot(target.x - at.x, target.z - at.z) : null,
             secondsLeft: this.missions.secondsLeft,
           }

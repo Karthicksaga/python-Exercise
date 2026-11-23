@@ -7,7 +7,7 @@
  * checks none lands inside a building).
  */
 import { nearestRoadPoint, onOtherRoad, type Point, type WorldMap } from "@cow/game-world";
-import type { Fare } from "@cow/missions";
+import type { Fare, Goods } from "@cow/missions";
 
 /** Metres past the carriageway's edge where people stand (estimated: just past the kerb). */
 export const KERB_STEP = 0.6;
@@ -58,4 +58,9 @@ export function fareAt(roads: Pick<WorldMap, "roads">, stop: Point, people: { bo
 export function rightOfRoad(roads: Pick<WorldMap, "roads">, p: Point): Point | undefined {
   const hit = nearestRoadPoint(roads, p);
   return hit ? { x: hit.x + Math.cos(hit.heading) * 20, z: hit.z - Math.sin(hit.heading) * 20 } : undefined;
+}
+
+/** Goods handed over at a stop (`goods.ts`): someone waits on the pavement beside it with them, or comes to take them. */
+export function goodsAt(roads: Pick<WorldMap, "roads">, stop: Point, goods: Omit<Goods, "kerb">, side?: Point, shift = 0): Goods {
+  return { ...goods, kerb: kerbSpot(roads, stop, side, shift) };
 }
