@@ -8,6 +8,7 @@ import type * as THREE from "three";
 import {
   AgentSystem,
   TRAFFIC_KINDS,
+  areaCounts,
   TrafficSignals,
   areaBusyness,
   buildRoadGraph,
@@ -18,6 +19,7 @@ import {
   trafficSettings,
   type AgentKind,
   type Obstacle,
+  type PlaceMap,
   type RoadGraph,
   type Siren,
   type Walker as Spot,
@@ -180,6 +182,14 @@ export class Population {
   private hour: number | null = null;
   private sinceDensity = DENSITY_EVERY;
   private firstDensity = true;
+  /** Kinds of place round the player (TD-31): set how many walk and drive here at this hour. */
+  private places: PlaceMap | null = null;
+
+  /** Use the map's places for how busy each area is (otherwise road classes and shops only). */
+  usePlaces(places: PlaceMap): void {
+    this.places = places;
+    this.sinceDensity = DENSITY_EVERY;
+  }
 
   constructor(map: WorldMap, scene: THREE.Object3D, physics: PhysicsWorld, humans: HumanAssets, focus: { x: number; z: number }, counts: { traffic: number; pedestrians: number }) {
     this.map = map;
@@ -283,9 +293,17 @@ export class Population {
     this.sinceDensity += dt;
     if (this.sinceDensity < DENSITY_EVERY) return;
     this.sinceDensity = 0;
-    const area = areaBusyness(this.driveGraph, this.busyness, focus, AREA_RADIUS);
     const cars = this.traffic.agents.length;
     const people = this.walkers.agents.length;
+    if (this.places) {
+      // Busy beach fronts, markets and stations; quiet lanes, empty at night but for main roads.
+      const counts = areaCounts(this.places.areaLevels(focus, this.hour, AREA_RADIUS), { walkers: people, traffic: cars }, trafficDensity(this.hour));
+      this.traffic.setActiveCount(counts.traffic, this.firstDensity);
+      this.walkers.setActiveCount(counts.walkers, this.firstDensity);
+      this.firstDensity = false;
+      return;
+    }
+    const area = areaBusyness(this.driveGraph, this.busyness, focus, AREA_RADIUS);
     // Even at 3 a.m. the odd vehicle and walker.
     this.traffic.setActiveCount(Math.max(Math.min(2, cars), cars * trafficDensity(this.hour) * area), this.firstDensity);
     this.walkers.setActiveCount(Math.max(Math.min(2, people), people * pedestrianDensity(this.hour)), this.firstDensity);

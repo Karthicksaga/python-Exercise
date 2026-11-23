@@ -11,7 +11,7 @@ import { Combat, PLAYER_MAX_HEALTH, hitPenalty, isPoliceGroup, type CasualtyStat
 import { DistrictIndex, GameClock, VisitedDistricts, boundarySolids, chunkFurniture, chunkProps, chunkSolids, propSolids, coastSolids, furnitureSolids, distanceToCoast, nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import { MissionRunner, type MissionEvent, type Objective, type Progress } from "@cow/missions";
 import { PhysicsWorld, type StaticGroup, type VehicleControls } from "@cow/physics";
-import { CrowdFigures, HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, platformCast, type HumanFigure } from "@cow/player";
+import { CrowdFigures, HumanAssets, PLAYER_HEIGHT, PLAYER_RADIUS, PlayerController, SITTING_ON_GROUND, platformCast, streetCrowdCast, type HumanFigure } from "@cow/player";
 import { CombatMarks, Hud, Minimap, TouchControls, type MinimapMarker } from "@cow/ui";
 import { Gearbox, Vehicle, loadVehicleModels, setVehicleNightLights, shiftedUp } from "@cow/vehicles";
 import { buildContent, type GameContent } from "./content";
@@ -25,6 +25,7 @@ import { PlaceMarkers } from "@cow/game-engine";
 import { PLACE_COLORS, placeIconCanvas } from "@cow/ui";
 import { insideShell, onShellMessage, sendToShell } from "./nativeBridge";
 import { Population, type DrivenVehicle, type PedestrianHit } from "./Population";
+import { StreetCrowds, chunkGround } from "./StreetCrowds";
 import { Police, type PoliceView } from "./Police";
 import { ShareRiders } from "./ShareRiders";
 import { FareFigures, type FareFiguresSnapshot } from "./FareFigures";
@@ -125,6 +126,8 @@ export interface GameSnapshot extends PlaceSnapshot, ArmsSnapshot {
   readonly boarding: BoardingSnapshot | null;
   readonly traffic: Array<{ x: number; z: number; speed: number; kind: string }>;
   readonly pedestrians: number;
+  /** The crowd round the player (TD-31): how many out, drawn, by kind of place; the kind underfoot. */
+  readonly crowd: ReturnType<StreetCrowds["snapshot"]> | null;
   /** AI vehicles the time of day and area call for (`traffic` catches up as they go out of sight). */
   readonly trafficWanted: number;
   /** Signalled junctions, and AI vehicles held at their lights or crossings. */
@@ -317,6 +320,8 @@ export class Game {
   private readonly landmarkLabels: LandmarkLabels;
   /** Suburban trains and stations (`Railway.ts`); null if the rail file could not be read. */
   railway: Railway | null = null;
+  /** People standing, sitting and strolling round the player, as the place and hour call for (TD-31). */
+  streetCrowds: StreetCrowds | null = null;
   /** The character models (the player's and the people of the manifest), for the people report. */
   humans: HumanAssets | null = null;
   /** Places the player can go into (home, hospital, gym, mall, cinema) and the short stories. */
@@ -622,6 +627,7 @@ export class Game {
       enemies: this.fighters.peopleReport(),
       player: { feet: this.driving ? null : this.avatar.feetHeight(), speed: this.player.speed, grounded: this.player.grounded },
       crowd: this.railway?.crowdPeople ?? 0,
+      streetCrowd: this.streetCrowds?.positions() ?? [],
     };
   }
 
@@ -787,6 +793,12 @@ export class Game {
       game.cityMap.setRail(railFile);
       game.railway = railway;
     }
+    // Crowds by place and hour (TD-31): baked people, four walk moments and sitting on the sand.
+    game.streetCrowds = new StreetCrowds(map, railFile?.stations ?? [], renderer.scene, async () => {
+      await humans.prepare(["pedestrian"]);
+      return CrowdFigures.create(humans, 40, humans.manifest ? streetCrowdCast(humans.manifest.people) : undefined, { walkFrames: 4, sit: SITTING_ON_GROUND });
+    }, chunkGround((x, z) => chunks.chunkAt(x, z)));
+    population.usePlaces(game.streetCrowds.places);
 
     window.addEventListener("resize", () => renderer.resize());
     // Stop simulating while the app is in the background: saves battery and avoids a time jump.
@@ -1266,6 +1278,7 @@ export class Game {
       boarding: this.boarder.snapshot(),
       traffic: this.population.trafficPositions(),
       pedestrians: this.population.pedestrianCount,
+      crowd: this.streetCrowds?.snapshot(p) ?? null,
       trafficWanted: this.population.trafficWanted,
       signals: this.population.signalCount,
       waitingAtSignals: this.population.waitingAtSignals,
@@ -1883,6 +1896,10 @@ export class Game {
       this.announceArea();
     }
     this.population.frame(dt, at, alpha);
+    // The crowd steps out of the way of the player and their vehicles; nobody is drawn from a train.
+    const crowdAvoid = this.vehicles.map((v) => ({ ...v.body.position(), radius: Math.max(v.type.physics.halfExtents.x, v.type.physics.halfExtents.z) + 0.3 }));
+    if (!this.driving) crowdAvoid.push({ x: at.x, y: at.y, z: at.z, radius: PLAYER_RADIUS });
+    this.streetCrowds?.frame(at, this.clock.hour, this.simTime, crowdAvoid, !ride);
     this.railway?.frame(at, dt, this.clock.hour);
     // Share auto passengers: waiting at the kerb near the player, and seated in the auto.
     const shareAuto = this.driving && job?.share && this.driving.kind === job.vehicle ? this.driving.object : null;

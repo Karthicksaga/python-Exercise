@@ -943,3 +943,34 @@ Difficulty has not been play-tested by a person.
   restored to match that build.
 - **Not yet:** checked on the phone that showed it.
 
+
+## 23 Nov 2026: crowds by place and hour: busy beaches, markets and stations, quiet lanes (TD-31)
+- **Asked:** "only a couple of people walking in the entire game"; Chennai's beaches are full of
+  people; some places busy, some quiet; traffic in some places and not others.
+- **Before** (base `a60eb30`, `?quality=lite`, measured with the same steps as `crowds.spec.ts`):
+  on the Marina's sand at 18:30, **0** people drawn within 70 m (6 walkers out, all on roads),
+  67 draw calls, 72.5k triangles. Raja Krishna Road (a lane) at 18:30: 1 person within 70 m,
+  81 calls, 138k triangles. Traffic was 9 vehicles wanted in both places (area factor 0.75..1).
+- **Now:** kinds of place from the map and a density table by place and hour (TD-31: beach,
+  promenade, market, station, temple, main road, street, lane); baked crowds standing, sitting
+  and strolling round the player (`CrowdField`, `StreetCrowds`); the AI walker and traffic pools
+  follow the area's place and hour (lanes get about a quarter of the traffic of an arterial).
+  Elliot's Beach, which OSM does not outline as sand, gets an estimated shore strip seaward of
+  the roads. Over the whole extract: 1,871 km of lane, 374 km main road, 309 km street, 30 km
+  promenade, 27 km temple, 25 km market, 18 km station.
+- **After** (same steps): Marina 18:30, **68** people within 70 m (68 crowd: 30 sitting, 7
+  walking; 0 animated walkers), **107 draw calls, 97k triangles** (lite budget < 300, < 300k).
+  Raja Krishna Road 18:30: 4 (2 crowd, 2 walkers), 92 calls, 154k triangles. Marina 03:00: 0.
+  `CrowdField.near` costs about 0.1 ms a frame (90 spots); a new square is up to about 2 ms on
+  the shore (8 at most per frame).
+- **Found while testing:** the estimated shore strip at Besant Nagar ran between the long rows of
+  houses near the water (buildings are not in the map index): squares are now made only once their
+  chunk is loaded, and nobody is put inside or within 0.7 m of a building
+  (`ChunkManager.chunkAt`, `chunkGround`).
+- **Checked by eye** (screenshots at lite, not kept): groups on the Marina sand, sitting people
+  with knees up, strollers; Elliot's Beach crowd on the sand with the houses behind; people on
+  the Kamarajar Salai pavement. Low resolution only; faces and the sitting hands not judged.
+- **Tests:** unit `Places.test.ts` (16: curves, classification on a test town, shore sand,
+  pool counts, crowd spots on sand and off carriageways, same crowd every visit, cap and far
+  thinning, making way, buildings, a few squares per frame). Browser `crowds.spec.ts` (2).
+  Results: see the end of this section.

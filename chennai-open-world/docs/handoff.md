@@ -820,3 +820,17 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   `Combat.ts`, `Wanted.ts` (new crime), `index.ts` export lists.
 - **Not done / uncertain:** never played on a phone (block and dodge timing by touch); moves
   judged by eye at low resolution; pedestrians do not fight back; no manual target switching.
+
+## 23 Nov 2026: crowds by place and hour (branch `agent/crowd-density`): where I left off
+- **Done and tested** (details in `progress.md`, TD-31): kinds of place from the map
+  (`@cow/ai` `Places.ts`), a people/traffic table by place and hour, baked crowds round the
+  player (`Crowds.ts`, `apps/game/src/StreetCrowds.ts`), AI pools by place. Marina at 18:30:
+  0 → 68 people within 70 m, 107 draw calls, 97k triangles at lite.
+- **Shared files touched:** `Game.ts` (field `streetCrowds`, created after the rail file, one
+  call in `frame`, snapshot `crowd`, `people().streetCrowd`), `Population.ts` (`usePlaces`, the
+  density step), `CrowdFigures.ts` (optional `walkFrames` and sitting pose; platform crowds
+  unchanged), `people.ts` (`streetCrowdCast`), `ChunkManager.ts` (`chunkAt`), `ai/index.ts`.
+- **Not done / uncertain:** nothing tried on a phone (the crowd adds up to 30 draw calls and
+  ~25k triangles at the beach; lower `cap` per tier if the Adreno 613 drops below 50 fps).
+  Crowds do not react to fights or gunfire, and vehicles pass beside them only because they are
+  kept off carriageways. The table's numbers and the Elliot's shore strip are estimates.

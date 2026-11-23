@@ -34,13 +34,13 @@ Why the game runs in a WebView: `docs/technical-decisions.md`, TD-1.
 | `game-engine` | Scene and lighting, map and chunk meshes, chunk streaming, follow camera, beacon, fixed-step loop, railway tracks, platforms and trains (`RailView`, `TrainView`) | `three`, `game-world`, `physics` (camera ray), `rail` (data types) |
 | `player` | Movement rules (`PlayerController`), animated humans (`HumanAssets`, `HumanFigure`), animation retargeting | `three`, `physics` |
 | `vehicles` | Vehicle types, procedural models, `Vehicle` (player-drivable), `TrafficCar` (AI-driven view) | `three`, `physics` |
-| `ai` | Road graph, road-following agents, traffic and pedestrian presets. Pure logic | `game-world` |
+| `ai` | Road graph, road-following agents, traffic and pedestrian presets, kinds of place and people/traffic by place and hour (`Places.ts`), crowd spots (`Crowds.ts`, TD-31). Pure logic | `game-world` |
 | `missions` | Mission data types and `MissionRunner`. Pure logic | nothing |
 | `combat` | Health, weapons and the arsenal (`Weapons.ts`), punches, shots, enemy behaviour, gang hostility (`Gangs.ts`), weapon pickups. Pure logic; asks the game two questions about the world | nothing |
 | `audio` | Synthesised sound effects (Web Audio) | nothing |
 | `rail` | Railway data model, OSM extract → rail file (`buildRail`), track geometry, train motion, timetable, boarding rules. Pure logic | `map-data` |
 | `ui` | Touch controls, HUD, minimap, railway ride panel (DOM and 2D canvas) | nothing |
-| `apps/game` | Wires the packages (`Game.ts`), content placed on the map (`content.ts`), AI bodies and models (`Population.ts`), enemy bodies and tracers (`Fighters.ts`), native bridge | all packages |
+| `apps/game` | Wires the packages (`Game.ts`), content placed on the map (`content.ts`), AI bodies and models (`Population.ts`), crowds by place and hour (`StreetCrowds.ts`), enemy bodies and tracers (`Fighters.ts`), native bridge | all packages |
 | `apps/mobile` | React Native shell | none of the above; loads the built bundle |
 
 Dependency direction is one way: data → physics/rendering → gameplay → app. `game-world`,

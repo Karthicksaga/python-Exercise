@@ -250,6 +250,15 @@ export function platformCast(people: readonly Person[], count = 4): { people: st
   };
 }
 
+/**
+ * Who the street and beach crowds are made of (TD-31): a few different pedestrians (adults only:
+ * vehicles pass among them), each baked into cheap poses, so the more people the fewer draw calls
+ * per person.
+ */
+export function streetCrowdCast(people: readonly Person[], count = 5): { people: string[] } {
+  return { people: diverseCast(castPool(people, "pedestrian"), count).map((p) => p.id) };
+}
+
 /** Distance beyond which an animated figure is drawn with its cheaper model (metres). */
 export const LOD1_FROM = 30;
 /** Hysteresis, so a figure walking at the boundary doesn't flicker between the two (metres). */

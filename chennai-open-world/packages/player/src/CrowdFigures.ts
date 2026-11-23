@@ -13,6 +13,7 @@
 import { MeshoptSimplifier } from "meshoptimizer";
 import * as THREE from "three";
 import type { HumanAssets, HumanFigure } from "./HumanFigure";
+import type { RidingPose } from "./ridingPose";
 import { simplifiedIndex } from "./simplify";
 
 /** Moments of the walk cycle baked (more is smoother, each is one more draw call when used). */
@@ -34,7 +35,22 @@ export interface CrowdPlacement {
   readonly look: number;
   /** The stall seller (a person of their own), not one of the crowd. */
   readonly seller?: boolean;
+  /** Sitting on the ground (crowds baked with `sit` only; otherwise drawn standing). */
+  readonly sitting?: boolean;
 }
+
+/** How a crowd is baked: walk-cycle moments (fewer is fewer draw calls), and a sitting pose. */
+export interface CrowdBake {
+  readonly walkFrames?: number;
+  /** Sitting on the ground: a seated pose and the height of the hip joints above the ground, metres. */
+  readonly sit?: { readonly pose: RidingPose; readonly hips: number };
+}
+
+/** Sitting on the sand, knees up, hands resting on them (hip joints `hips` above the ground). */
+export const SITTING_ON_GROUND: NonNullable<CrowdBake["sit"]> = {
+  pose: { lean: 0.22, hand: { x: 0.2, y: 0.26, z: -0.34 }, foot: { x: 0.15, y: -0.02, z: -0.5 }, knees: 0.45, grip: 0.3 },
+  hips: 0.11,
+};
 
 /** Who a crowd is made of: manifest ids (null: the player's model), and the stall seller. */
 export interface CrowdCast {
@@ -47,6 +63,9 @@ interface Baked {
   readonly meshes: THREE.InstancedMesh[];
   readonly shirts: THREE.InstancedBufferAttribute[];
   readonly stride: number;
+  /** Index of the sitting pose's mesh, or -1. */
+  readonly sit: number;
+  readonly walkFrames: number;
 }
 
 export class CrowdFigures {
@@ -64,18 +83,18 @@ export class CrowdFigures {
   private readonly triangles: number[];
 
   private constructor(
-    people: ReadonlyArray<{ geometries: THREE.BufferGeometry[]; stride: number }>,
+    people: ReadonlyArray<{ geometries: THREE.BufferGeometry[]; stride: number; sit: number; walkFrames: number }>,
     hasSeller: boolean,
     readonly capacity: number,
   ) {
     const material = crowdMaterial();
-    this.baked = people.map(({ geometries, stride }, p) => {
+    this.baked = people.map(({ geometries, stride, sit, walkFrames }, p) => {
       const meshes = geometries.map((geometry, i) => {
         const mesh = new THREE.InstancedMesh(geometry, material, capacity);
         mesh.count = 0;
         mesh.frustumCulled = false;
         mesh.castShadow = false;
-        mesh.name = `${i === 0 ? "crowd-standing" : `crowd-walk-${i}`}-${p}`;
+        mesh.name = `${i === 0 ? "crowd-standing" : i === sit ? "crowd-sitting" : `crowd-walk-${i}`}-${p}`;
         this.object.add(mesh);
         return mesh;
       });
@@ -84,7 +103,7 @@ export class CrowdFigures {
         mesh.geometry.setAttribute("crowdShirt", attribute);
         return attribute;
       });
-      return { meshes, shirts, stride };
+      return { meshes, shirts, stride, sit, walkFrames };
     });
     this.sellerIndex = hasSeller ? this.baked.length - 1 : -1;
     this.triangles = this.baked.map((b) => (b.meshes[0]!.geometry.index?.count ?? 0) / 3);
@@ -95,10 +114,10 @@ export class CrowdFigures {
    * Bake the poses of each person of the cast (a fraction of a second each, once).
    * @param cast who (default: the player's model only)
    */
-  static async create(humans: HumanAssets, capacity = 48, cast: CrowdCast = { people: [null] }): Promise<CrowdFigures> {
+  static async create(humans: HumanAssets, capacity = 48, cast: CrowdCast = { people: [null] }, how: CrowdBake = {}): Promise<CrowdFigures> {
     await MeshoptSimplifier.ready;
     const who = [...(cast.people.length > 0 ? cast.people : [null]), ...(cast.seller !== undefined ? [cast.seller] : [])];
-    const people = who.map((person) => bake(humans.create(undefined, true, person)));
+    const people = who.map((person) => bake(humans.create(undefined, true, person), how.walkFrames ?? WALK_FRAMES, how.sit ?? null));
     return new CrowdFigures(people, cast.seller !== undefined, capacity);
   }
 
@@ -125,9 +144,10 @@ export class CrowdFigures {
       const who = person.seller && this.sellerIndex >= 0 ? this.sellerIndex : ((person.look % crowd) + crowd) % crowd;
       const baked = this.baked[who]!;
       let pose = 0;
-      if (person.walked !== null) {
+      if (person.sitting && baked.sit >= 0) pose = baked.sit;
+      else if (person.walked !== null) {
         const phase = (((person.walked / baked.stride) % 1) + 1) % 1;
-        pose = 1 + (Math.floor(phase * WALK_FRAMES) % WALK_FRAMES);
+        pose = 1 + (Math.floor(phase * baked.walkFrames) % baked.walkFrames);
       }
       const index = counts[who]![pose]!;
       if (index >= this.capacity) continue;
@@ -157,8 +177,8 @@ export class CrowdFigures {
   }
 }
 
-/** One person's poses: standing, then the walk cycle; and the ground one walk cycle covers. */
-function bake(figure: HumanFigure): { geometries: THREE.BufferGeometry[]; stride: number } {
+/** One person's poses: standing, then the walk cycle, then sitting (when asked); and the ground one walk cycle covers. */
+function bake(figure: HumanFigure, walkFrames: number, sit: CrowdBake["sit"] | null): { geometries: THREE.BufferGeometry[]; stride: number; sit: number; walkFrames: number } {
   // The simplified triangles are chosen once, on the standing pose, and reused for every pose:
   // all poses share the model's vertices, so the walk frames match the standing figure.
   const parts = skinnedParts(figure);
@@ -170,12 +190,24 @@ function bake(figure: HumanFigure): { geometries: THREE.BufferGeometry[]; stride
   const colours = parts.map((part) => vertexColours(part));
   const geometries = [mergeParts(parts, rest, kept, colours)];
   let cycle = 1;
-  for (let k = 0; k < WALK_FRAMES; k++) {
-    cycle = figure.holdPose("walk", k / WALK_FRAMES);
+  for (let k = 0; k < walkFrames; k++) {
+    cycle = figure.holdPose("walk", k / walkFrames);
     figure.object.updateMatrixWorld(true);
     geometries.push(mergeParts(parts, parts.map((part) => bakePositions(part, toRoot)), kept, colours));
   }
-  return { geometries, stride: cycle * figure.walkSpeed };
+  let sitIndex = -1;
+  if (sit) {
+    // Seated, the figure's root is at its hip joints: lift it so they are `hips` above the ground.
+    figure.setSeated(sit.pose);
+    figure.object.updateMatrixWorld(true);
+    const seated = mergeParts(parts, parts.map((part) => bakePositions(part, toRoot)), kept, colours);
+    seated.translate(0, sit.hips, 0);
+    seated.computeBoundingSphere();
+    sitIndex = geometries.length;
+    geometries.push(seated);
+    figure.setSeated(null);
+  }
+  return { geometries, stride: cycle * figure.walkSpeed, sit: sitIndex, walkFrames };
 }
 
 /** Vertex-coloured, with the shirt tint mixed in by each vertex's tint weight. */

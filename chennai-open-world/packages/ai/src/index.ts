@@ -4,3 +4,5 @@ export * from "./presets";
 export * from "./Signals";
 export * from "./Density";
 export * from "./Pursuit";
+export * from "./Places";
+export * from "./Crowds";

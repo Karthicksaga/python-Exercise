@@ -74,6 +74,18 @@ export class ChunkManager {
     return this.failures;
   }
 
+  /**
+   * The contents of the chunk under a point: its data once shown, null where the map has no chunk
+   * (nothing built there), undefined while it is not loaded (the crowd waits for it, TD-31).
+   */
+  chunkAt(x: number, z: number): ChunkData | null | undefined {
+    const { bounds, chunkSize } = this.map;
+    const key = `${Math.floor((x - bounds.minX) / chunkSize)},${Math.floor((z - bounds.minZ) / chunkSize)}`;
+    if (!this.refs.has(key)) return null;
+    const slot = this.slots.get(key);
+    return slot?.state === "shown" ? slot.data : undefined;
+  }
+
   /** Loaded chunk data, for systems that read chunk contents (the minimap). */
   *loaded(): Generator<ChunkData> {
     for (const slot of this.slots.values()) if (slot.state === "shown") yield slot.data;

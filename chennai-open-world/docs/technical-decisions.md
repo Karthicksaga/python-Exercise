@@ -554,3 +554,70 @@ phone, where touch timing for block and dodge matters most.
 
 **Revisit when** licensed combat animation clips are available (replace the poses, keep the
 rules and tests), or players need to pick targets themselves.
+
+## TD-31: Crowds by place and hour: kinds of place from the map, baked crowds near the player
+
+**Decision (23 Nov 2026, branch `agent/crowd-density`).** How many people and vehicles are out
+is data: a table of people per 100 m of road (per 1000 m² of sand on a beach) for each kind of
+place by hour (`PLACE_PEOPLE` in `@cow/ai` `Places.ts`), and the share of the hour's traffic each
+kind of road carries (`PLACE_TRAFFIC`). The kind of each stretch of road is read from the map,
+in this order: **promenade** (a road named for the beach, or within 70 m of OSM `natural=beach`
+sand), **station** (within 160 m of a rail-file station), **market** (9+ shops within 90 m, from
+OSM shop/amenity POIs), **temple** (within 140 m of a temple landmark or 45 m of a
+`place_of_worship`), **main road** (primary, secondary), **street** (tertiary, or 2+ shops near),
+**lane** (the rest). **Beach** is sand: the OSM beach outlines (Marina, Santhome), and, where OSM
+has a named beach but no outline (Elliot's Beach: a playground and promenade named for it), an
+estimated shore strip: within 110 m of the coastline, within 700 m of the named place, seaward
+of every road. Never inside the sea outline.
+
+| place (per 100 m; beach per 1000 m²) | 03:00 | 07:00 | 12:00 | 18:30 | 22:00 | traffic share |
+|---|---|---|---|---|---|---|
+| beach | 0.1 | 2.3 | 0.6 | **9** | 2 | 0 |
+| promenade | 0.7 | 7 | 2.4 | **11.3** | 5 | 1 |
+| market | 0.4 | 1.8 | 9.7 | 11.5 | 4.3 | 0.85 |
+| station | 0.8 | 6 | 4 | 9.5 | 1.8 | 0.85 |
+| temple | 0.7 | 5.5 | 2 | 6.8 | 0.8 | 0.65 |
+| main road | 0.4 | 2 | 2.6 | 3.3 | 1 | 1 |
+| street | 0.1 | 1.2 | 1.1 | 1.8 | 0.9 | 0.55 |
+| lane | 0 | 0.6 | 0.5 | 0.7 | 0.3 | 0.25 |
+
+(Curves are interpolated; the table samples them. All are estimates of how Chennai is used, not
+counts.) Two things follow from it:
+- **The AI pools** (`Population`): walkers out = pool × (the area's people per 100 m ÷ 2.5, at
+  most 1); vehicles out = pool × `trafficDensity(hour)` × the area's traffic share (weighted by
+  how much each road carries, at least 0.3). Both at least two. The pools are unchanged (7 walkers,
+  9 vehicles on phones).
+- **Crowds** (`CrowdField` in `Crowds.ts`, drawn by `apps/game` `StreetCrowds.ts`): fixed spots
+  per 32 m square, made from the map the first time the square is near (and only once its chunk's
+  buildings are loaded, so nobody stands in a building), generated at the place's busiest and
+  thinned by the hour (each spot has a rank; it is taken while the rank is below the hour's share),
+  so the same people are there every visit and the hour only adds or removes some. Pavement
+  people stand beside the carriageway (never on another road's carriageway) or stroll a few metres
+  up and down it; sand people come in groups of one to four that sit in a ring, stand together, or
+  walk along the beach. Drawn within 70 m; beyond 40 m only 45 % of the spots; a hard cap of 90,
+  the nearest kept; at most 8 new squares a frame. They step out of the way of the player and
+  the player's vehicles. They are drawn by `CrowdFigures` (TD-23): five pedestrians of the cast
+  (`streetCrowdCast`, adults only) baked standing, four walk moments and sitting on the ground
+  (a seated pose solved with the riding-pose IK, `SITTING_ON_GROUND`).
+
+**Why.** The player saw a couple of people in the whole game: the animated walkers are 7 skeletons
+spread along the roads within 120 m, and the beach had none (they walk on the road graph). More
+animated walkers cost 2 draw calls and about 9k triangles each; a baked crowd costs at most
+5 people × 6 poses = 30 draw calls for everyone and a few hundred triangles a person, and
+standing and sitting people need no per-frame work beyond an instance matrix. Places from OSM
+mean a new extract gets busy beaches, markets and stations without hand-placing.
+
+**Measured** (`crowds.spec.ts`, `?quality=lite`, 18:30, software-rendered Chromium): on the
+Marina's sand, people drawn within 70 m went from 0 to 68 (30 sitting), draw calls 67 → 107 and
+triangles 73k → 97k (budget: < 300 calls, < 300k). In a quiet lane (Raja Krishna Road) 1 → 4.
+At 03:00 the Marina has nobody. Not measured on a phone.
+
+**Trade-offs.** Crowd people are scenery: no bodies, the traffic does not see them (they are kept
+off carriageways instead), and they take no part in fights (they do not flee gunfire). The
+walk is a four-frame flip-book; sitting people do not move. The shore strip and every number in
+the table are estimates. The place of a road is decided at its segment's midpoint, so a long
+segment can carry a market's crowd a little past the last shop.
+
+**Revisit when** crowds should react to fights and gunfire (scatter, using the spots' ranks),
+OSM `landuse=retail` or `amenity=marketplace` areas are in the extract (better markets than shop
+counts), or a phone shows the crowd costs too much (lower the cap per quality tier).
