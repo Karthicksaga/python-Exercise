@@ -11,10 +11,14 @@ extends SceneTree
 
 
 
+## Held here: a coroutine on a RefCounted dies when nothing references it.
+var _shots: RefCounted = null
+
+
 func _initialize() -> void:
 	_run.call_deferred()
 
 
 func _run() -> void:
-	var shots: RefCounted = (load("res://tests/tools/player_shots.gd") as GDScript).new()
-	shots.call("run", self)
+	_shots = (load("res://tests/tools/player_shots.gd") as GDScript).new()
+	_shots.call("run", self)

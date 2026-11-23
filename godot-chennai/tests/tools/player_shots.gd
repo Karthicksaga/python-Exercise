@@ -61,16 +61,16 @@ func run(scene_tree: SceneTree) -> void:
 	await _hold(Vector2(0.9, 0.5), 20)
 	await _shot(out + "_run.png")
 	# Back to the east wall with the camera between player and wall: pulled in, not through it.
-	rig.place(Vector3(4.6, 0.0, 0.0), -PI / 2.0)
+	rig.place(Vector3(3.8, 0.0, 0.0), PI / 2.0)
 	rig.camera.yaw = PI / 2.0
 	rig.camera.pitch = 0.3
 	await _hold(Vector2.ZERO, 60)
 	await _shot(out + "_wall.png")
 	# Close up from the front: hands, wrists, feet.
 	rig.place(Vector3(0.0, 0.0, 14.0), PI)
-	rig.camera.reach = 2.4
+	rig.camera.reach = 3.2
 	rig.camera.yaw = 0.4
-	rig.camera.pitch = 0.05
+	rig.camera.pitch = -0.12
 	rig.camera.snap()
 	await _hold(Vector2.ZERO, 60)
 	await _shot(out + "_closeup.png")
