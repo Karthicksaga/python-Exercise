@@ -5,7 +5,7 @@ extends TestCase
 ## hour, and SOUND off remembered. A fresh SoundSystem per test with its own settings file.
 
 const DT := 1.0 / 60.0
-const SETTINGS := "user://test_sound_settings.cfg"
+const SETTINGS := "user://test_sound_save.json"
 
 var s: SoundSystem
 

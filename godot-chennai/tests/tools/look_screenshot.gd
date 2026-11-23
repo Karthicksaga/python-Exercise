@@ -32,7 +32,7 @@ func _run() -> void:
 			out = arg.trim_prefix("--out=")
 	await process_frame
 	var weather: WeatherService = root.get_node("/root/Weather")
-	weather.settings_path = "user://look_screenshot_settings.cfg"
+	weather.settings_path = "user://look_screenshot_save.json"
 	weather.set_raining(false, true, false)
 	var main: Main = MAIN.instantiate()
 	root.add_child(main)

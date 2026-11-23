@@ -15,11 +15,12 @@ extends Node
 ## Tests and the debug HUD:      Sound.state()
 ##
 ## The mix: Vehicles, World, Ambience and UI buses into Master (compressor, limiter), in
-## `default_bus_layout.tres`. Sound off mutes Master and is saved in user://settings.cfg.
+## `default_bus_layout.tres`. Sound off mutes Master and is saved in the save file (`SaveStore`,
+## key "cow-sound-v1": "on" / "off", as the Three.js game stored it).
 
 signal enabled_changed(on: bool)
 
-const SETTINGS := "user://settings.cfg"
+const SOUND_KEY := "cow-sound-v1"
 ## Traffic engines heard at once (each is a few players; phones have little to spare).
 const TRAFFIC_VOICES := 3
 const TRAFFIC_HEARD := 45.0
@@ -32,7 +33,7 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## Ambience plays while true (set by the game flow when play starts).
 var active: bool = false
 var enabled: bool = true
-var settings_path: String = SETTINGS
+var settings_path: String = SaveStore.DEFAULT_PATH
 
 var engine: EngineVoice = null
 var listener: Vector3 = Vector3.ZERO
@@ -107,19 +108,16 @@ func _pool_player(bus: StringName) -> AudioStreamPlayer:
 # --- settings ---------------------------------------------------------------------------
 
 func _load_settings() -> void:
-	var cfg := ConfigFile.new()
-	if cfg.load(settings_path) == OK:
-		enabled = bool(cfg.get_value("sound", "on", true))
+	enabled = str(SaveStore.new(settings_path).read().section(SOUND_KEY, "on")) != "off"
 	_apply_enabled()
 
 
 ## Sound on or off (pause menu); remembered across launches.
 func set_enabled(on: bool) -> void:
 	enabled = on
-	var cfg := ConfigFile.new()
-	cfg.load(settings_path)
-	cfg.set_value("sound", "on", on)
-	cfg.save(settings_path)
+	var store := SaveStore.new(settings_path).read()
+	store.set_section(SOUND_KEY, "on" if on else "off")
+	store.write()
 	_apply_enabled()
 	enabled_changed.emit(on)
 

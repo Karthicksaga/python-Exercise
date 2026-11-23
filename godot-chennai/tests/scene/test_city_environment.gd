@@ -3,7 +3,7 @@ extends TestCase
 ## exposure follow the look, the rain toggles and fades in game time, the ground looks wet, the
 ## street lights come on at night within the light budget, and weather adds at most one draw call.
 
-const SETTINGS := "user://test_weather_settings.cfg"
+const SETTINGS := "user://test_weather_save.json"
 
 var env: CityEnvironment
 var old_hour: float
