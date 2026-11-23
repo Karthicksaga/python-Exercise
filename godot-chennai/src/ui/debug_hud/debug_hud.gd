@@ -29,11 +29,23 @@ func _ready() -> void:
 	_label = UiTheme.label("")
 	_label.name = "Fps"
 	panel.add_child(_label)
-	_credit = UiTheme.label("© OpenStreetMap contributors", 12, UiTheme.TEXT_DIM)
+	# On a small dark plate so it stays readable over a bright street.
+	var plate := PanelContainer.new()
+	plate.size_flags_horizontal = Control.SIZE_SHRINK_END
+	plate.size_flags_vertical = Control.SIZE_SHRINK_END
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(UiTheme.PANEL, 0.6)
+	box.set_corner_radius_all(6)
+	box.content_margin_left = 8
+	box.content_margin_right = 8
+	box.content_margin_top = 2
+	box.content_margin_bottom = 2
+	plate.add_theme_stylebox_override("panel", box)
+	margin.add_child(plate)
+	_credit = UiTheme.label("© OpenStreetMap contributors", 12, UiTheme.TEXT)
 	_credit.name = "Credit"
-	_credit.size_flags_horizontal = Control.SIZE_SHRINK_END
-	_credit.size_flags_vertical = Control.SIZE_SHRINK_END
-	margin.add_child(_credit)
+	plate.add_child(_credit)
 	_refresh()
 
 

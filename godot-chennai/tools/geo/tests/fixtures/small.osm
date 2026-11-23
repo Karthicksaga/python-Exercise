@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-made test extract near the Anna Nagar origin (13.085, 80.2101). Not real data. -->
+<osm version="0.6" generator="hand-made">
+  <!-- closed-way building, 20 m x 15 m -->
+  <node id="1" lat="13.0850000" lon="80.2101000"/>
+  <node id="2" lat="13.0850000" lon="80.2102846"/>
+  <node id="3" lat="13.0851349" lon="80.2102846"/>
+  <node id="4" lat="13.0851349" lon="80.2101000"/>
+  <way id="100"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/>
+    <tag k="building" v="apartments"/><tag k="building:levels" v="4"/><tag k="roof:shape" v="hipped"/></way>
+  <!-- multipolygon building with a courtyard: outer 40 m square, inner 10 m square -->
+  <node id="11" lat="13.0860000" lon="80.2110000"/>
+  <node id="12" lat="13.0860000" lon="80.2113692"/>
+  <node id="13" lat="13.0863597" lon="80.2113692"/>
+  <node id="14" lat="13.0863597" lon="80.2110000"/>
+  <node id="21" lat="13.0861349" lon="80.2111384"/>
+  <node id="22" lat="13.0861349" lon="80.2112307"/>
+  <node id="23" lat="13.0862248" lon="80.2112307"/>
+  <node id="24" lat="13.0862248" lon="80.2111384"/>
+  <way id="200"><nd ref="11"/><nd ref="12"/><nd ref="13"/><nd ref="14"/><nd ref="11"/></way>
+  <way id="201"><nd ref="21"/><nd ref="22"/><nd ref="23"/><nd ref="24"/><nd ref="21"/></way>
+  <relation id="3000">
+    <member type="way" ref="200" role="outer"/><member type="way" ref="201" role="inner"/>
+    <tag k="type" v="multipolygon"/><tag k="building" v="school"/><tag k="height" v="12"/><tag k="name" v="Test School"/>
+  </relation>
+  <!-- a lake with an island (multipolygon area) -->
+  <node id="31" lat="13.0800000" lon="80.2000000"/>
+  <node id="32" lat="13.0800000" lon="80.2020000"/>
+  <node id="33" lat="13.0820000" lon="80.2020000"/>
+  <node id="34" lat="13.0820000" lon="80.2000000"/>
+  <node id="41" lat="13.0805000" lon="80.2005000"/>
+  <node id="42" lat="13.0805000" lon="80.2010000"/>
+  <node id="43" lat="13.0810000" lon="80.2010000"/>
+  <node id="44" lat="13.0810000" lon="80.2005000"/>
+  <way id="300"><nd ref="31"/><nd ref="32"/><nd ref="33"/><nd ref="34"/><nd ref="31"/></way>
+  <way id="301"><nd ref="41"/><nd ref="42"/><nd ref="43"/><nd ref="44"/><nd ref="41"/></way>
+  <relation id="3001">
+    <member type="way" ref="300" role="outer"/><member type="way" ref="301" role="inner"/>
+    <tag k="type" v="multipolygon"/><tag k="natural" v="water"/><tag k="name" v="Test Eri"/>
+  </relation>
+  <!-- a bridge road with tags, a one-way the other way, a runway -->
+  <node id="51" lat="13.0840000" lon="80.2050000"/>
+  <node id="52" lat="13.0840000" lon="80.2150000"/>
+  <node id="53" lat="13.0845000" lon="80.2150000"/>
+  <way id="500"><nd ref="51"/><nd ref="52"/>
+    <tag k="highway" v="primary"/><tag k="name" v="Test Salai"/><tag k="ref" v="SH 99"/><tag k="lanes" v="4"/><tag k="bridge" v="yes"/>
+    <tag k="layer" v="1"/><tag k="surface" v="asphalt"/><tag k="maxspeed" v="50"/></way>
+  <way id="501"><nd ref="52"/><nd ref="53"/><tag k="highway" v="residential"/><tag k="oneway" v="-1"/><tag k="width" v="6.5"/></way>
+  <node id="61" lat="13.0700000" lon="80.2000000"/>
+  <node id="62" lat="13.0700000" lon="80.2200000"/>
+  <way id="600"><nd ref="61"/><nd ref="62"/><tag k="aeroway" v="runway"/><tag k="ref" v="07/25"/><tag k="width" v="45"/><tag k="surface" v="asphalt"/></way>
+  <!-- tagged nodes -->
+  <node id="71" lat="13.0855000" lon="80.2105000"><tag k="natural" v="tree"/></node>
+  <node id="72" lat="13.0841000" lon="80.2060000"><tag k="highway" v="bus_stop"/><tag k="name" v="Test Stop"/></node>
+  <node id="73" lat="13.0846000" lon="80.2090000"><tag k="place" v="neighbourhood"/><tag k="name" v="Test Nagar"/></node>
+  <node id="74" lat="13.0710000" lon="80.2100000"><tag k="aeroway" v="helipad"/></node>
+  <node id="75" lat="13.0848000" lon="80.2080000"><tag k="amenity" v="hospital"/><tag k="name" v="Test Hospital"/></node>
+</osm>
