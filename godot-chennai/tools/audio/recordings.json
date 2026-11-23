@@ -59,6 +59,114 @@
           "what": "Car engine switched off"
         }
       ]
+    },
+    {
+      "title": "OGA:crickets-ambient-noise-loopable",
+      "note": "Crickets at night, loopable.",
+      "pieces": [
+        {
+          "id": "bed.crickets",
+          "start": 0.5,
+          "length": 10.0,
+          "loop": true,
+          "what": "Crickets at night (loop)"
+        }
+      ]
+    },
+    {
+      "title": "OGA:amb-rain-loop-1",
+      "note": "Steady rain.",
+      "pieces": [
+        {
+          "id": "bed.rain",
+          "start": 10.0,
+          "length": 8.0,
+          "loop": true,
+          "what": "Rain (loop)"
+        }
+      ]
+    },
+    {
+      "title": "OGA:crow-caw",
+      "pieces": [
+        {
+          "id": "bird.crow.0",
+          "start": 0.0,
+          "length": 0.54,
+          "what": "A crow's caw"
+        }
+      ]
+    },
+    {
+      "title": "OGA:crow",
+      "pieces": [
+        {
+          "id": "bird.crow.1",
+          "start": 0.0,
+          "length": 0.6,
+          "what": "A crow cawing twice"
+        }
+      ]
+    },
+    {
+      "title": "OGA:crows-singing",
+      "pieces": [
+        {
+          "id": "bird.crow.2",
+          "start": 0.0,
+          "length": 3.0,
+          "fade_out": 0.4,
+          "what": "Several crows"
+        }
+      ]
+    },
+    {
+      "title": "OGA:fantozzis-footsteps-grasssand-stone#StoneL1",
+      "pieces": [
+        {
+          "id": "step.dry.0",
+          "start": 0.0,
+          "length": 0.36,
+          "fade_out": 0.03,
+          "what": "Footstep on stone (left foot)"
+        }
+      ]
+    },
+    {
+      "title": "OGA:fantozzis-footsteps-grasssand-stone#StoneR1",
+      "pieces": [
+        {
+          "id": "step.dry.1",
+          "start": 0.0,
+          "length": 0.36,
+          "fade_out": 0.03,
+          "what": "Footstep on stone (right foot)"
+        }
+      ]
+    },
+    {
+      "title": "OGA:fantozzis-footsteps-grasssand-stone#StoneL2",
+      "pieces": [
+        {
+          "id": "step.dry.2",
+          "start": 0.0,
+          "length": 0.36,
+          "fade_out": 0.03,
+          "what": "Footstep on stone (left foot)"
+        }
+      ]
+    },
+    {
+      "title": "OGA:fantozzis-footsteps-grasssand-stone#StoneR2",
+      "pieces": [
+        {
+          "id": "step.dry.3",
+          "start": 0.0,
+          "length": 0.36,
+          "fade_out": 0.03,
+          "what": "Footstep on stone (right foot)"
+        }
+      ]
     }
   ]
 }

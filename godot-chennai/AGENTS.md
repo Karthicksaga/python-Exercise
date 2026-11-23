@@ -44,14 +44,14 @@ is the source of data, assets and rules until this version reaches parity.
 | `map_data` | Geographic projection; OSM → features in metres | nothing |
 | `game_world` | World data model and reader (`WorldSource`, `WorldCodec`, `WorldIndex`, `ChunkData`, `Road`, `Building`…), time of day (`GameClock`) | `map_data` |
 | `physics` | Jolt bodies, character and vehicle bodies, ray casts | engine |
-| `game_engine` | Scene, light, camera, chunk meshes and streaming, the fixed step (`GameLoop`), floating origin (`WorldOrigin`), `BackgroundTask` | `game_world`, `physics`, `rail` data |
+| `game_engine` | Scene, light (`environment/`: `Lighting`, `CityEnvironment`, rain, street lights, the `Weather` autoload), camera, chunk meshes and streaming, the fixed step (`GameLoop`), floating origin (`WorldOrigin`), `BackgroundTask` | `game_world`, `physics`, `rail` data |
 | `player` | Movement rules, animated humans, retargeting | `physics` |
 | `vehicles` | Vehicle types, models, drivable vehicles, traffic views | `physics` |
 | `ai` | Road graph, agents, traffic and pedestrians. Pure logic | `game_world` |
 | `missions` | Missions, jobs, fares. Pure logic | nothing |
 | `combat` | Health, weapons, fights, wanted level, gangs. Pure logic | nothing |
 | `rail` | Railway data, train motion, timetable. Pure logic | `map_data` |
-| `audio` | Sound | nothing |
+| `audio` | Sound: profiles and synthesised stand-ins (`SoundProfiles`, `Synth`), the manifest (`SoundLibrary`), engines (`EngineBlend`, `EngineVoice`), `Ambience`, the `Sound` autoload | `game_engine` (`GameLoop` clock, `Weather`) |
 | `ui` | Loading screen, title menu, HUD, touch controls, theme (`UiTheme`) | nothing (gets data from `app`) |
 | `app` | Composition root `main.tscn`, the placeholder `test_world` | everything |
 

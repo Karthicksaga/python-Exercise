@@ -61,7 +61,10 @@ def main():
     ap.add_argument("--only", default="")
     args = ap.parse_args()
     spec = json.load(open(SPEC))
-    meta = json.load(open(os.path.join(args.cache, "meta.json")))
+    meta = {}
+    for name in sorted(os.listdir(args.cache)):
+        if name.startswith("meta") and name.endswith(".json"):
+            meta.update(json.load(open(os.path.join(args.cache, name))))
     manifest = json.load(open(MANIFEST))
     files = manifest["files"]
     os.makedirs(os.path.join(ROOT, OUT_DIR), exist_ok=True)
@@ -69,12 +72,13 @@ def main():
     recorded_kinds = set()
     for rec in spec["recordings"]:
         m = meta.get(rec["title"])
-        if not m or not os.path.exists(m["local"]):
+        if not m or not os.path.exists(m["local"] if os.path.isabs(m["local"]) else os.path.join(args.cache, os.path.relpath(m["local"], "dl"))):
             print("skip (not downloaded):", rec["title"])
             continue
         lic = licence_id(m["licence"])
         author = plain(m.get("artist")) or "unknown"
-        x = dsp.decode(m["local"])
+        local = m["local"] if os.path.isabs(m["local"]) else os.path.join(args.cache, os.path.relpath(m["local"], "dl"))
+        x = dsp.decode(local)
         for piece in rec["pieces"]:
             pid = piece["id"]
             if args.only and not pid.startswith(args.only):
@@ -84,7 +88,7 @@ def main():
             base = os.path.join(OUT_DIR, pid.replace(".", "_"))
             row = {"category": piece.get("category", stand_in.get("category", "")), "loop": bool(piece.get("loop", False)),
                    "what": piece.get("what", ""), "source": "recording", "licence": lic, "author": author,
-                   "url": m["url"], "original": m["file_url"].split("?")[0].rsplit("/", 1)[1], "kind": piece.get("kind", stand_in.get("kind", ""))}
+                   "url": m["url"], "original": m.get("original") or m["file_url"].split("?")[0].rsplit("/", 1)[1], "kind": piece.get("kind", stand_in.get("kind", ""))}
             if pid.startswith("engine.") and ".loop." in pid:
                 kind = pid.split(".")[1]
                 recorded_kinds.add(kind)
@@ -97,7 +101,7 @@ def main():
                 row.update({"path": "res://%s.wav" % base, "loop": True, "rpm": round(rpm, 3), "load": piece.get("load", "off"),
                             "edits": "Cut %.2f-%.2f s, %d whole firing periods at %.2f Hz (measured), crossfaded wrap, mono 22.05 kHz, RMS matched to the stand-in" % (piece["start"], piece["start"] + len(y) / dsp.RATE, round(len(y) * hz / dsp.RATE), hz)})
             elif piece.get("loop"):
-                y = dsp.loop(x, piece["start"], piece["length"], 1.0 / piece["length"], fade=0.25)[0]
+                y = dsp.loop(x, piece["start"], piece["length"], 4.0 / piece["length"], fade=0.25)[0]
                 y = dsp.match_rms(y, target)
                 dsp.write_ogg(os.path.join(ROOT, base + ".ogg"), y)
                 row.update({"path": "res://%s.ogg" % base, "edits": "Cut %.2f s from %.2f s, crossfaded wrap, mono 22.05 kHz, RMS matched, OGG Vorbis q3" % (piece["length"], piece["start"])})
@@ -137,8 +141,9 @@ def write_licences(files):
         if row.get("source") != "recording":
             continue
         rel = row["path"].replace("res://", "")
-        lines.append("| `%s` | %s (`%s`) | %s, by %s, from Wikimedia Commons (%s); edited: %s | **%s** |" % (
-            rel, row.get("what") or pid, pid, row["original"], row["author"], row["url"], row["edits"], row["licence"]))
+        site = "OpenGameArt" if "opengameart.org" in row["url"] else "Wikimedia Commons"
+        lines.append("| `%s` | %s (`%s`) | %s, by %s, from %s (%s); edited: %s | **%s** |" % (
+            rel, row.get("what") or pid, pid, row["original"], row["author"], site, row["url"], row["edits"], row["licence"]))
     lines.append(END)
     text = open(LICENSES).read()
     block = "\n".join(lines)
