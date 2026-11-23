@@ -203,3 +203,23 @@ func test_ambulance_siren_and_controls() -> bool:
 	car.set_siren(true)
 	assert_false(car.siren(), "no siren on a plain hatchback")
 	return true
+
+
+func test_chase_camera_settles_behind_and_never_jumps() -> bool:
+	var car := await spawn(&"hatchback", Vector3(0, 0, 30))
+	await board(car)
+	assert_true(yard.camera.target == car, "the chase camera follows the car")
+	await wait_physics_frames(30)
+	yard.camera.reset_jump()
+	await hold_gas(3.5)
+	assert_true(car.forward_speed() > 8.0, "moving at speed")
+	var to_car := car.global_position - yard.camera.global_position
+	var camera_yaw := atan2(-to_car.x, -to_car.z)
+	assert_true(absf(wrapf(camera_yaw - car.yaw(), -PI, PI)) < 0.2, "the camera settled behind the direction of travel")
+	# Down the street between the houses, then a hard turn towards them: the view gets pulled in
+	# by walls, but eased, never a jump (chennai-game-design §5).
+	await hold_gas(1.5, 0.6)
+	assert_true(yard.camera.max_jump < 0.6, "largest frame-to-frame camera jump %.2f m" % yard.camera.max_jump)
+	var back := Vector2(yard.camera.global_position.x - car.global_position.x, yard.camera.global_position.z - car.global_position.z).length()
+	assert_true(back > 1.5 and back < car.type.camera_distance + 4.0, "at a driving distance (%.1f m)" % back)
+	return true
