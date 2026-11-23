@@ -1,0 +1,64 @@
+{
+  "about": "Pieces cut from licensed recordings by import_recordings.py (decision G-85). Times in seconds; hz: the band to look for the firing note in.",
+  "recordings": [
+    {
+      "title": "File:WWS CarPrinzNSU1200Cengine.ogg",
+      "note": "NSU Prinz 1200 C: air-cooled 1.2 L inline four, the nearest licensed match for a small petrol hatchback. Idle, steady 1600 rpm, revs.",
+      "pieces": [
+        {
+          "id": "engine.car.loop.0.off",
+          "start": 40.5,
+          "length": 0.8,
+          "hz": [
+            15,
+            40
+          ],
+          "what": "Car engine idling (four-cylinder petrol)"
+        },
+        {
+          "id": "engine.car.loop.1.off",
+          "start": 9.2,
+          "length": 0.8,
+          "hz": [
+            40,
+            70
+          ],
+          "what": "Car engine held at about 1600 rpm"
+        },
+        {
+          "id": "engine.car.loop.2.off",
+          "start": 50.3,
+          "length": 0.3,
+          "hz": [
+            75,
+            95
+          ],
+          "what": "Car engine revved to about 2500 rpm"
+        },
+        {
+          "id": "engine.car.loop.3.off",
+          "start": 51.5,
+          "length": 0.35,
+          "hz": [
+            100,
+            130
+          ],
+          "what": "Car engine revved to about 3500 rpm"
+        },
+        {
+          "id": "engine.car.start",
+          "start": 0.0,
+          "length": 1.2,
+          "what": "Car engine starting"
+        },
+        {
+          "id": "engine.car.stop",
+          "start": 63.8,
+          "length": 1.9,
+          "fade_out": 0.3,
+          "what": "Car engine switched off"
+        }
+      ]
+    }
+  ]
+}

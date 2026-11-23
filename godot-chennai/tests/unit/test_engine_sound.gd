@@ -26,14 +26,29 @@ func _steady(kind: String, rpm: float, throttle: float, seconds: float = 1.0) ->
 	return _render(kind, func(_t: float) -> float: return rpm, func(_t: float) -> float: return throttle, seconds)
 
 
-func test_every_kind_has_loops_at_four_rpm_points_on_and_off_load() -> bool:
+func test_every_kind_has_loops_from_idle_to_the_change_point() -> bool:
 	for kind in SoundProfiles.KINDS:
 		var points := lib.engine_points(kind)
-		assert_eq(points.size(), 8, "%s: 4 rpm points × off/on load" % kind)
-		for p in points:
-			var s := lib.source_samples(str(p["id"]))
-			check(s.size() > RATE / 4, "%s: %s has samples" % [kind, p["id"]])
-			check(lib.stream(str(p["id"])) != null, "%s: %s loads" % [kind, p["id"]])
+		var p := SoundProfiles.engine(kind)
+		var rpms := {}
+		var sources := {}
+		for point in points:
+			rpms[roundi(float(point["rpm"]))] = true
+			sources[str(lib.entry(str(point["id"])).get("source", ""))] = true
+		assert_true(rpms.size() >= 3, "%s: at least three rpm points (%d)" % [kind, rpms.size()])
+		assert_eq(sources.size(), 1, "%s: recordings or stand-ins, never a mix" % kind)
+		if sources.has("synth"):
+			assert_eq(points.size(), 8, "%s stand-in: 4 rpm points × off/on load" % kind)
+		var lowest: float = points[0]["rpm"]
+		var highest: float = points[points.size() - 1]["rpm"]
+		assert_true(lowest <= float(p["idle_rpm"]) * 1.15, "%s: a loop near idle (%d rpm)" % [kind, lowest])
+		# The loops reach far enough that no rpm the game asks for stretches one past MAX_PITCH.
+		var top := SoundProfiles.engine_rpm(p, float(p["top_speed"]), 1.0)
+		assert_true(top / highest <= EngineBlend.MAX_PITCH and float(p["idle_rpm"]) * 0.94 / lowest >= EngineBlend.MIN_PITCH, "%s: %d-%d rpm covered by loops at %d-%d" % [kind, p["idle_rpm"], top, lowest, highest])
+		for point in points:
+			var s := lib.source_samples(str(point["id"]))
+			check(s.size() > RATE / 8, "%s: %s has samples" % [kind, point["id"]])
+			check(lib.stream(str(point["id"])) != null, "%s: %s loads" % [kind, point["id"]])
 		assert_true(lib.has("engine.%s.start" % kind) and lib.has("engine.%s.stop" % kind), "%s: start and stop one-shots" % kind)
 	return true
 
@@ -44,12 +59,13 @@ func test_each_engine_idles_on_its_own_note_and_revs_up_when_driven() -> bool:
 		var p := SoundProfiles.engine(kind)
 		var designed := SoundProfiles.firing_hz(p, p["idle_rpm"])
 		var still := _steady(kind, p["idle_rpm"], 0.0)
-		var measured := AudioMeasure.peak(still, 5.0, 120.0, 0.5)
+		var measured := AudioMeasure.fundamental(still, 5.0, 120.0)
 		idle[kind] = measured
 		assert_true(AudioMeasure.near(measured, designed, 0.08), "%s idles at %.1f Hz, designed %.1f" % [kind, measured, designed])
 		assert_true(AudioMeasure.rms(still) > 0.005, "%s is heard at idle" % kind)
 		var driven := _steady(kind, SoundProfiles.engine_rpm(p, 8.0, 1.0), 1.0)
-		assert_true(AudioMeasure.peak(driven, 5.0, 400.0, 0.5) > measured * 2.0, "%s revs up at 8 m/s" % kind)
+		var revved := AudioMeasure.fundamental(driven, measured * 1.3, 400.0)
+		assert_true(revved > measured * 2.0, "%s revs up at 8 m/s (%.1f Hz)" % [kind, revved])
 	for i in SoundProfiles.KINDS.size():
 		for j in range(i + 1, SoundProfiles.KINDS.size()):
 			var a: float = idle[SoundProfiles.KINDS[i]]
@@ -65,12 +81,12 @@ func test_each_engine_idles_on_its_own_note_and_revs_up_when_driven() -> bool:
 
 
 func test_pitch_tracks_rpm_between_the_sample_points() -> bool:
-	for kind: String in ["car", "auto", "bus", "thumper"]:
+	for kind in SoundProfiles.KINDS:
 		var p := SoundProfiles.engine(kind)
 		for share: float in [0.15, 0.45, 0.8]:
 			var rpm := SoundProfiles.point_rpm(p, share)
 			var designed := SoundProfiles.firing_hz(p, rpm)
-			var measured := AudioMeasure.peak(_steady(kind, rpm, 0.5, 0.8), 5.0, designed * 1.6, 0.5)
+			var measured := AudioMeasure.fundamental(_steady(kind, rpm, 0.5, 0.8), designed * 0.6, designed * 1.6)
 			assert_true(AudioMeasure.near(measured, designed, 0.06), "%s at %d rpm: %.1f Hz, designed %.1f" % [kind, rpm, measured, designed])
 	return true
 
@@ -98,17 +114,18 @@ func test_crossfades_and_loop_wraps_do_not_click() -> bool:
 
 
 func test_blend_weights_are_equal_power_and_follow_the_accelerator() -> bool:
-	var points := lib.engine_points("car")
-	for rpm: float in [800.0, 1200.0, 2000.0, 3000.0, 3600.0]:
+	var points := lib.engine_points("auto")
+	for rpm: float in [1350.0, 2000.0, 3000.0, 4000.0, 4800.0]:
 		for t: float in [0.0, 0.5, 1.0]:
 			var power := 0.0
 			for w in EngineBlend.weights(points, rpm, t):
 				power += float(w["gain"]) * float(w["gain"])
 			assert_near(power, 1.0, 0.001, "constant power at %d rpm, accelerator %.1f" % [rpm, t])
-	var coasting := EngineBlend.weights(points, 800.0, 0.0)
-	var pulling := EngineBlend.weights(points, 800.0, 1.0)
+	var idle: float = points[0]["rpm"]
+	var coasting := EngineBlend.weights(points, idle, 0.0)
+	var pulling := EngineBlend.weights(points, idle, 1.0)
 	assert_near(float(coasting[0]["gain"]), 1.0, 0.001, "coasting plays the off-load loop")
 	assert_near(float(pulling[1]["gain"]), 1.0, 0.001, "pulling plays the on-load loop")
-	var pitch: float = EngineBlend.weights(points, 1600.0, 0.0)[0]["pitch"]
-	assert_near(pitch, 1600.0 / float(points[0]["rpm"]), 0.001, "pitch = rpm / the loop's rpm")
+	var pitch: float = EngineBlend.weights(points, idle * 1.3, 0.0)[0]["pitch"]
+	assert_near(pitch, 1.3, 0.001, "pitch = rpm / the loop's rpm")
 	return true

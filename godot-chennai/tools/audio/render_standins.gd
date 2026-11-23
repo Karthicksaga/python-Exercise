@@ -88,10 +88,19 @@ static func _rms(samples: PackedFloat32Array) -> float:
 	return sqrt(sum / maxi(1, samples.size()))
 
 
+## True when a kind's engine already plays recordings (then it gets no synthesised loops at all).
+func _recorded(kind: String) -> bool:
+	for id: String in files:
+		var e: Variant = files[id]
+		if id.begins_with("engine.%s.loop." % kind) and e is Dictionary and str((e as Dictionary).get("source", "")) == "recording":
+			return true
+	return false
+
+
 func _engines() -> void:
 	for kind in SoundProfiles.KINDS:
 		var p := SoundProfiles.engine(kind)
-		for i in SoundProfiles.RPM_POINTS.size():
+		for i in (0 if _recorded(kind) else SoundProfiles.RPM_POINTS.size()):
 			var rpm := SoundProfiles.point_rpm(p, SoundProfiles.RPM_POINTS[i])
 			for on: bool in [false, true]:
 				var r := Synth.engine_loop(kind, rpm, 1.0 if on else 0.0, 100 + i * 2 + int(on))

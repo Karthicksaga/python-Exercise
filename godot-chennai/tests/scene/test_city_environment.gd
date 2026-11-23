@@ -45,12 +45,13 @@ func test_sun_sky_and_haze_follow_the_hour() -> bool:
 	assert_true(golden_down.y < 0.0, "the sun shines down")
 	assert_true(golden_down.x > 0.8, "from the west, towards the east (%.2f)" % golden_down.x)
 	assert_eq(env.environment.fog_light_color, env.look.horizon, "the haze is the horizon colour")
-	var golden_begin := env.environment.fog_depth_begin
+	var golden_density := env.environment.fog_density
 	var golden_energy := env.sun.light_energy
 	_at(12.5)
 	assert_true(-env.sun.global_basis.z.y < -0.85, "high noon sun")
-	assert_true(env.environment.fog_depth_begin > golden_begin, "clearer at noon: the haze starts further out")
-	assert_true(env.environment.fog_depth_end <= CityEnvironment.FOG_FAR, "but always hides the streaming edge")
+	assert_true(env.environment.fog_density < golden_density, "clearer at noon than at golden hour")
+	assert_true(1.0 - exp(-env.environment.fog_density * CityEnvironment.FOG_FAR) > 0.85, "but the haze still hides the streaming edge")
+	assert_eq(env.environment.fog_mode, Environment.FOG_MODE_EXPONENTIAL, "fog every renderer draws")
 	_at(21.5)
 	assert_true(env.sun.light_energy < golden_energy / 4.0, "dim moonlight at night")
 	assert_true(env.environment.tonemap_exposure > 1.2, "exposure lifts the night")

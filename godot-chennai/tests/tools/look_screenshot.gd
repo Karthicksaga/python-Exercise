@@ -8,7 +8,8 @@ extends SceneTree
 ##
 ## Prints "draw calls: dry N, rain M" (the rain toggled on the same frame setup).
 
-const MAIN := preload("res://src/app/main.tscn")
+## Loaded at run time and used untyped: this script compiles before the autoloads exist.
+const MAIN := "res://src/app/main.tscn"
 
 
 func _initialize() -> void:
@@ -31,16 +32,16 @@ func _run() -> void:
 		elif arg.begins_with("--out="):
 			out = arg.trim_prefix("--out=")
 	await process_frame
-	var weather: WeatherService = root.get_node("/root/Weather")
-	weather.settings_path = "user://look_screenshot_save.json"
-	weather.set_raining(false, true, false)
-	var main: Main = MAIN.instantiate()
+	var weather: Node = root.get_node("/root/Weather")
+	weather.set("settings_path", "user://look_screenshot_save.json")
+	weather.call("set_raining", false, true, false)
+	var main: Node = (load(MAIN) as PackedScene).instantiate()
 	root.add_child(main)
 	for i in 60 * 120:
-		if main.state == &"title":
+		if main.get("state") == &"title":
 			break
 		await physics_frame
-	main.play()
+	main.call("play")
 	var loop: Node = root.get_node("/root/GameLoop")
 	var clock: GameClock = loop.get("clock")
 	clock.hours_per_second = 0.0
@@ -48,11 +49,11 @@ func _run() -> void:
 	for i in 20:
 		await process_frame
 	var dry := _draw_calls()
-	weather.set_raining(true, true, false)
+	weather.call("set_raining", true, true, false)
 	for i in 10:
 		await process_frame
 	var wet := _draw_calls()
-	weather.set_raining(rain, true, false)
+	weather.call("set_raining", rain, true, false)
 	for i in 20:
 		await process_frame
 	print("draw calls: dry %d, rain %d (hour %.2f)" % [dry, wet, hour])

@@ -14,10 +14,11 @@ extends Node3D
 const SKY_SHADER := preload("res://src/game_engine/environment/sky.gdshader")
 ## Light units: the Three.js intensities and Godot's energies differ by about this much for the
 ## same picture (tuned on the Compatibility screenshots).
-const SUN_ENERGY := 0.42
-const AMBIENT_ENERGY := 0.62
-const FOG_NEAR := 90.0
+const SUN_ENERGY := 0.32
+const AMBIENT_ENERGY := 0.55
+## The haze reaches 1 - e^-FOG_EDGE (about 89 %) at FOG_FAR on a clear noon.
 const FOG_FAR := 340.0
+const FOG_EDGE := 2.2
 const SHADOW_REACH := 40.0
 const RAIN_DROPS := 1100
 ## Re-apply the look when the hour moves this much (half a game minute) or the rain changes.
@@ -57,11 +58,9 @@ func _init(with_poles: bool = false) -> void:
 	environment.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
 	environment.fog_enabled = true
-	environment.fog_mode = Environment.FOG_MODE_DEPTH
-	environment.fog_density = 1.0
-	environment.fog_depth_curve = 1.0
+	environment.fog_mode = Environment.FOG_MODE_EXPONENTIAL
 	environment.fog_sky_affect = 0.0
-	environment.fog_light_energy = 1.0
+	environment.fog_light_energy = 0.85
 	world_environment = WorldEnvironment.new()
 	world_environment.environment = environment
 	add_child(world_environment)
@@ -127,8 +126,9 @@ func _apply(force: bool) -> void:
 	environment.tonemap_exposure = look.exposure
 	environment.fog_light_color = look.horizon
 	var haze := look.haze * place_haze
-	environment.fog_depth_begin = FOG_NEAR / haze
-	environment.fog_depth_end = FOG_FAR / (1.0 + (haze - 1.0) * 0.6)
+	# Exponential haze (depth fog draws nothing on the Compatibility renderer): about 89 % at the
+	# far edge, so the streaming edge melts into the horizon; thicker at golden hour and in rain.
+	environment.fog_density = FOG_EDGE / (FOG_FAR / (1.0 + (haze - 1.0) * 0.6))
 	_sky_material.set_shader_parameter(&"zenith", look.zenith)
 	_sky_material.set_shader_parameter(&"horizon", look.horizon)
 	_sky_material.set_shader_parameter(&"ground", look.hemi_ground)

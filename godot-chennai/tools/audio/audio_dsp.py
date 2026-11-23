@@ -31,7 +31,15 @@ def firing_hz(x, lo, hi, rate=RATE):
     lags = np.arange(int(rate / hi), min(n - 1, int(rate / lo)) + 1)
     if len(lags) == 0:
         return 0.0
+    # Normalised, and the shortest period within 10 % of the best (no octave slips on a strong
+    # second harmonic or an engine's half-order beat).
+    ac = ac / max(1e-12, ac[0])
+    peak = ac[lags].max()
     best = lags[np.argmax(ac[lags])]
+    for lag in lags[1:-1]:
+        if ac[lag] >= 0.9 * peak and ac[lag] >= ac[lag - 1] and ac[lag] >= ac[lag + 1]:
+            best = lag
+            break
     # Parabolic refinement.
     if 1 <= best < n - 1:
         a, b, c = ac[best - 1], ac[best], ac[best + 1]

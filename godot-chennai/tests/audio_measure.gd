@@ -63,6 +63,41 @@ static func peak(samples: PackedFloat32Array, lo: float, hi: float, step: float,
 	return at
 
 
+## The fundamental between lo and hi Hz by normalised autocorrelation: the shortest period whose
+## correlation is within 10 % of the best (so a recording's strong second harmonic, or an
+## engine's half-order beat, does not move it an octave). Parabolic refinement.
+static func fundamental(samples: PackedFloat32Array, lo: float, hi: float, rate: int = Synth.RATE) -> float:
+	var factor := maxi(1, floori(rate / (hi * 8.0)))
+	var x := decimate(samples, factor, rate)
+	var r := float(rate) / factor
+	var n := x.size()
+	var min_lag := maxi(2, floori(r / hi))
+	var max_lag := mini(n / 2, ceili(r / lo))
+	var corr := PackedFloat32Array()
+	corr.resize(max_lag + 2)
+	var best := -1.0
+	for lag in range(min_lag - 1, max_lag + 2):
+		var sxy := 0.0
+		var sxx := 0.0
+		var syy := 0.0
+		for i in n - lag:
+			sxy += x[i] * x[i + lag]
+			sxx += x[i] * x[i]
+			syy += x[i + lag] * x[i + lag]
+		corr[lag] = sxy / sqrt(maxf(1e-12, sxx * syy))
+		if lag >= min_lag and lag <= max_lag:
+			best = maxf(best, corr[lag])
+	for lag in range(min_lag, max_lag + 1):
+		if corr[lag] >= best * 0.9 and corr[lag] >= corr[lag - 1] and corr[lag] >= corr[lag + 1]:
+			var a := corr[lag - 1]
+			var b := corr[lag]
+			var c := corr[lag + 1]
+			var den := a - 2.0 * b + c
+			var d := 0.5 * (a - c) / den if den != 0.0 else 0.0
+			return r / (lag + d)
+	return 0.0
+
+
 ## Largest |second difference| (a click shows as a spike far above the signal's own curvature).
 static func max_curvature(samples: PackedFloat32Array, from: int = 2) -> float:
 	var worst := 0.0
