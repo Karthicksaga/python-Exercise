@@ -445,8 +445,8 @@ device until the APK is built and run (no Android SDK on the machine where this 
 **On a phone (23 Nov 2026).** The first device run stalled on "Reading the map of Chennai" with
 bands of the screen undrawn and the progress panel a white box: the GPU and memory ran short,
 not the steps. Two fixes outside this screen: the cast's models left the script (TD-3 amended,
-16 MB → 6.7 MB, about 45 MB less JavaScript memory after loading) and the WebView no longer
-uses `androidLayerType="hardware"`, which copied the whole page into one more full-screen texture.
+16 MB → 6.7 MB, about 45 MB less JavaScript memory after loading) and the WebView's
+`androidLayerType="hardware"` was removed (later restored, see below).
 That was not enough: the phone still showed white boxes, then a black screen after about a
 minute, and sometimes the app closed (a WebView draws in the app's own process, so a graphics
 failure there closes the app). Every animated element is a GPU layer of its own, and those were
@@ -468,7 +468,9 @@ M6 Pro 5G (Snapdragon 4 Gen 2, Adreno 613 GPU, 6 GB): memory is ample, the GPU i
 and the screen "shook" (flickered). The street sketch is every street as five long round-joined
 paths, a lot of GPU tessellation at the worst moment, and was the part that broke up in every
 screenshot: it is now drawn by the CPU (`willReadFrequently`), 124 ms with the CPU slowed 6×,
-and reaches the GPU once as a picture.
+and reaches the GPU once as a picture. The player reports the game ran at about 50 fps on that phone before
+the loading screen and title menu; so the WebView's `androidLayerType="hardware"`, removed on a
+guess in the first try, is back (the known-good setting; the first broken build had it too).
 
 **Revisit when** the menu should show more of the city (a few fixed camera shots across
 districts would need their chunks loaded), or a settings page grows options that need a reload
