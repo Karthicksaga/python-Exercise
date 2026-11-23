@@ -119,3 +119,25 @@ Weak or not done:
   play (as in the TS game); the police cars' driving, search and spawn-point rules in `Police.ts`
   are game code with routing (`@cow/ai` Pursuit) and are not ported; crash thresholds
   (`vehicles/src/crash.ts`, TD-29) belong to the vehicles phase.
+
+## Models (agent/godot-models)
+State: every model in the brief is built, under budget and passing the model checks. See
+`docs/vehicles.md` for the list, data model, budgets and how to rebuild.
+
+To continue:
+- Rebuild: `godot-chennai/tools/blender/vehicles/build_all.sh` (Blender 5.2.4 LTS and Godot 4.7.2
+  on the PATH). To check only: `./run_tests.sh --filter=vehicle_models`
+  (`tests/unit/test_vehicle_models.gd` runs `tests/models/model_checks.gd`, part of the CI run).
+- Review screenshots: `tools/models/model_shot.gd` (the header has the command; xvfb, Compatibility
+  renderer). Screenshots are not committed.
+- The Three.js road vehicles are the sync's (`assets/vehicles/legacy/`, G-36); a new agent is
+  redesigning the Tamil Nadu road vehicles and will replace them.
+- Add a vehicle: write it in the matching script with `vkit` helpers. Give it named nodes and
+  anchors, write its manifest (copy an existing one's fields), and add its kind's budget to
+  `BUDGETS` in the test if it is a new kind.
+- Next uses: Phase 2 (premium and race cars drivable; read `physics` and `pose` from the manifest),
+  Phase 6 (trains on the line, MultiMesh per car type), Phase 6b (helicopter and aeroplanes).
+
+Weak spots (also in `docs/vehicles.md`): simple car fronts and rears, stepped window outlines up
+close, light trains (painted windows), cabins in the aircraft without gauges, the ported auto
+over the car budget, and nothing seen on a phone.
