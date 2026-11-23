@@ -943,3 +943,28 @@ Difficulty has not been play-tested by a person.
   restored to match that build.
 - **Not yet:** checked on the phone that showed it.
 
+
+## 23 Nov 2026: carjacking: take a car, auto or motorbike from traffic (TD-30, branch `agent/carjacking`)
+- **Asked by a player:** "If a pedestrian is driving a car, I should be able to stop that car,
+  pull them out, and get in."
+- **Now:** stand in the lane in front of a car, auto-rickshaw or motorbike (traffic already brakes
+  for the player) or catch one at a light or in a jam; when it is stopped or crawling (under
+  1.2 m/s) and within 2.6 m, the context button shows HIJACK ("Take car" / "Take auto" / "Take
+  motorbike"). Tapping it: the traffic vehicle is swapped for a drivable one of the same kind and
+  colour with the same person at the wheel; the player walks to the door, opens it, drags the
+  driver out (new 0.9 s `pull` phase) and sits; the driver runs off on foot. A `carjacking` crime
+  (3 points, a star; two make two stars). Buses and ambulances cannot be taken. A taken vehicle
+  left behind stays parked; at most two spares per kind exist (reused and repainted after that).
+- **Tests:** unit `Carjack.test.ts` (which vehicles, reach to the rotated footprint, a car stopped
+  for the player is in reach, spare-vehicle pool stays capped over 50 takes),
+  `Boarding.test.ts` (pull phase, with and without a door), `Reactions.test.ts` (`placeAt`: on
+  the nearest road, the way asked, runs off when frightened), `Wanted.test.ts` (new crime),
+  `repaint.test.ts` (model rebuilt in place, own geometry freed, shared wheels kept). Browser
+  `carjack.spec.ts`: steps in front of the nearest takeable traffic vehicle, waits (game time)
+  for HIJACK, takes it; checks the traffic vehicle left the traffic, the spare of its kind stands
+  where it was, a star with `carjacking` as the crime (not counted again as a theft), the driver
+  pulled out, standing and moving away, the player in the driver's seat of that kind, that it
+  drives 3 m+ on the accelerator, and that once left it stays parked.
+- **Results on this branch:** typecheck clean; unit 572/572; browser `carjack.spec` 1/1, then
+  with the specs the change touches, `boarding`, `driving`, `traffic`, `police`, `people`,
+  `pedestrians` and `carjack` 30/30 (19.0 min). The full suite runs in CI. Not run on a phone.
