@@ -45,12 +45,15 @@ async function faceWall(page: Page, near: number, far: number): Promise<{ dx: nu
 const accelerator = (page: Page) => page.getByRole("button", { name: "Accelerate", exact: true });
 
 test("a motorbike into a wall at speed throws the rider off: hurt, clear of the bike, back on their feet", async ({ page }) => {
+  // Board, run up, crash, tumble and get up: several game seconds on a slow, software-rendered machine.
+  test.setTimeout(180_000);
   await ready(page);
   await board(page, "bike-start");
   const wall = await faceWall(page, 30, 90);
   const ground = (await state(page)).y;
 
-  const gas = accelerator(page);
+  // A handle, not a locator: the driving buttons hide the moment the rider comes off.
+  const gas = (await accelerator(page).elementHandle())!;
   await gas.dispatchEvent("pointerdown", { pointerId: 31, pointerType: "touch" });
   let top = 0;
   let thrownAt: CrashState | null = null;
@@ -111,9 +114,15 @@ test("a motorbike into a wall at speed throws the rider off: hurt, clear of the 
   const feet = await playerFeet(page);
   expect(feet).not.toBeNull();
   expect(Math.abs(feet!)).toBeLessThan(0.05);
-  // ...and on the near side of the wall, not through it.
-  const along = (end.x - wall.x) * wall.dx + (end.z - wall.z) * wall.dz;
-  expect(along).toBeLessThan(wall.distance);
+  // ...and on the near side of the wall, not through it: nothing solid on the straight line back
+  // to where the run started (the wall may be at an angle, so the body can slide along it past
+  // the point the bike was aimed at).
+  const back = Math.hypot(end.x - wall.x, end.z - wall.z);
+  const blocked = await probe(page, wall.x, wall.z, (end.x - wall.x) / back, (end.z - wall.z) / back, back);
+  // The fallen bike may be on that line; it does not count.
+  const hitAt = blocked === null ? null : { x: wall.x + ((end.x - wall.x) / back) * blocked, z: wall.z + ((end.z - wall.z) / back) * blocked };
+  const onBike = hitAt !== null && Math.hypot(hitAt.x - bike.x, hitAt.z - bike.z) < 1.6;
+  expect(blocked === null || onBike, `a solid ${blocked} m along the ${back.toFixed(2)} m back to the start; ended at ${JSON.stringify({ x: end.x, z: end.z, health: end.health, bike })}`).toBe(true);
   // And in control again: the stick walks.
   await expect(page.getByRole("button", { name: "Jump", exact: true })).toBeVisible();
 });

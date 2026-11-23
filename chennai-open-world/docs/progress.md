@@ -943,3 +943,31 @@ Difficulty has not been play-tested by a person.
   restored to match that build.
 - **Not yet:** checked on the phone that showed it.
 
+
+## 23 Nov 2026: crashes throw the rider off (branch `agent/crash-ejection`, TD-29)
+- **Asked by a player:** "When I hit some cars or buildings, the entire thing just stops. I
+  expect the bike to crash and me to be thrown off."
+- **Before:** a hit only played the crash thump and cost the vehicle 35 % of its speed
+  (`Vehicle.update`); the chassis cannot roll, so a wall just stopped it dead.
+- **Now:** `judgeCrash` (`@cow/vehicles` `crash.ts`, table in TD-29) decides from the impact
+  (change of velocity in one step) and the vehicle kind: nothing, shaken (seated damage), or
+  thrown. Motorbike riders come off from 35 km/h, auto drivers from 30, car drivers go through the
+  windscreen from 70 (ambulance 75), the bus never throws. The body flies with the vehicle's
+  speed (`PlayerController.throwOff`, the player's own character controller, so walls stop it),
+  lands (damage then, with the hurt grunt and flash; a knock-out at 0 health), scrapes to a stop,
+  lies still, gets up (the figure's animated fall, `setDown`) and is on foot. The motorbike falls on
+  its side and scrapes to a stop; getting back on picks it up. `Game.ts`: `crashed`, `crashHurt`,
+  input held while thrown, snapshot `crash` and vehicles' `tipped`. New `Crashes.ts` (start
+  point kept clear of walls, lying direction clear of walls), `Combat.hurt`,
+  `CharacterBody.passThrough`. `FollowCamera` eases in when its reach shrinks with nothing in the
+  way (it jumped before).
+- **Tests:** unit `crash.test.ts` (thresholds, damage, launch), `PlayerController.test.ts` (with
+  Rapier: phases, no control while thrown, stopped by a wall and sliding along it, passes through
+  its own bike without moving it, respawn ends it), `Combat.test.ts` (`hurt`),
+  `FollowCamera.test.ts` (eases in). Browser `crash.spec.ts`: the bike run into a real wall at
+  full throttle throws the rider, who ends on foot more than 1.5 m from the bike, hurt, on the
+  ground (feet within 5 cm), with nothing solid between it and the start of the run (not through
+  the wall), with the camera within 10 m all along
+  and the bike tipped over; a bump at about 10 km/h does not throw or hurt.
+- **Not tried on a phone.** Thresholds and the look of the tumble judged in the design, not by a
+  player yet.

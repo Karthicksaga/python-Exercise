@@ -820,3 +820,15 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   `Combat.ts`, `Wanted.ts` (new crime), `index.ts` export lists.
 - **Not done / uncertain:** never played on a phone (block and dodge timing by touch); moves
   judged by eye at low resolution; pedestrians do not fight back; no manual target switching.
+
+## 23 Nov 2026: crash ejection (branch `agent/crash-ejection`, from a60eb30): where I left off
+- **Done** (details in `progress.md`, TD-29): hard impacts shake the driver or throw them off
+  (bike ≥ 35 km/h, auto ≥ 30, car ≥ 70 through the windscreen, ambulance ≥ 75, bus never);
+  damage on landing, knock-out possible; the bike falls over; camera follows the body.
+- **Shared files touched:** `Game.ts` (small: `crashes` field, `crashed`/`crashHurt`, guards
+  while thrown, `getIn` picks the bike up, `teleport` cancels a throw, snapshot `crash` and
+  vehicles' `tipped`), `packages/vehicles` `index.ts` (exports `crash.ts`), `Vehicle.ts`
+  (`topple`), `PlayerController.ts` (`throwOff`), `PhysicsWorld.ts` (`passThrough`),
+  `Combat.ts` (`hurt`), `FollowCamera.ts` (eases in).
+- **Not done / uncertain:** never played on a phone; the tumble is the existing fall pose (no
+  spin or ragdoll); vehicles show no damage; thresholds may need tuning once a player tries them.
