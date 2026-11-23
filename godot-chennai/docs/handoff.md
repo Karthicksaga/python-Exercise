@@ -151,7 +151,7 @@ thread, cached per skeleton), `PeopleManifest`, `FollowCamera` (orbit + chase, e
 thin obstacles, clamps at walls), `PlayerRig` (body + camera + touch + keys),
 `PlayerTestGround`; `src/ui/touch_controls/` (multi-touch stick, look, RUN, JUMP). Decisions
 G-60…G-68 (G-69 free). Tests: `tests/unit/test_retarget.gd`, `tests/scene/test_human_figure.gd`,
-`test_player.gd`, `test_touch_layout.gd`. Screenshots in `docs/screenshots/player/`.
+`test_player.gd`, `test_touch_layout.gd`. Screenshots: regenerate with `tests/tools/player_screenshot.gd` into a scratch folder (never committed, AGENTS.md).
 
 **To wire it into the game** (composition root): add a `PlayerRig` to the world, `await
 rig.load_figure()` during loading (it retargets on a worker thread, about 0.25 s on a desktop),
