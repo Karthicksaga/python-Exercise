@@ -9,7 +9,9 @@ extends SceneTree
 ## States: loading (the first step), title, about, play, failed (a missing world folder).
 ## Waits in game time for the state, then a few frames so the picture is settled.
 
-const MAIN := preload("res://src/app/main.tscn")
+## Loaded at run time and used untyped: this script is compiled before the autoloads exist,
+## and naming `Main` here would compile main.gd (which uses GameLoop) too early.
+const MAIN := "res://src/app/main.tscn"
 
 
 func _initialize() -> void:
@@ -25,25 +27,26 @@ func _run() -> void:
 		elif arg.begins_with("--out="):
 			out = arg.trim_prefix("--out=")
 	await process_frame
-	var main: Main = MAIN.instantiate()
+	var main: Node = (load(MAIN) as PackedScene).instantiate()
 	if want == "failed":
-		main.source = FileWorldSource.new("res://nowhere")
+		main.set("source", FileWorldSource.new("res://nowhere"))
 	root.add_child(main)
 	var target := &"title" if want in ["title", "about"] else StringName(want)
 	if want == "loading":
 		await process_frame
 	else:
 		for i in 60 * 120:
-			if main.state == target or (target == &"play" and main.state == &"title"):
+			var state: StringName = main.get("state")
+			if state == target or (target == &"play" and state == &"title"):
 				break
 			await physics_frame
 		if want == "play":
-			main.play()
+			main.call("play")
 		elif want == "about":
-			main.title.show_about()
+			(main.get("title") as Node).call("show_about")
 	for i in 10:
 		await process_frame
 	var image := root.get_texture().get_image()
 	var err := image.save_png(out)
-	print("screenshot %s (%dx%d, state %s): %s" % [out, image.get_width(), image.get_height(), main.state, error_string(err)])
+	print("screenshot %s (%dx%d, state %s): %s" % [out, image.get_width(), image.get_height(), main.get("state"), error_string(err)])
 	quit(0 if err == OK else 1)
