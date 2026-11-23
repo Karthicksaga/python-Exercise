@@ -1404,7 +1404,7 @@ BUS_G = 1.52
 BUS_TYRE = 0.5
 BUS_HIP = Vector((0.8, 4.0, 1.82))
 BUS_WHEEL = Vector((0.8, 4.42, 2.07))
-BUS_FLOOR = 1.15
+BUS_FLOOR = 1.18  # 0.34 m below the chassis centre
 
 
 def bus(m):
@@ -1523,7 +1523,7 @@ def bus_interior(m):
     for i in rows:
         y = 2.7 - i * 0.78
         for x in (-0.82, 0.82):
-            if x < 0 and -2.6 < y < -1.4:
+            if x < 0 and (-2.6 < y < -1.4 or y > 2.2):  # the doorways, and room for goods by the front door
                 continue
             parts.append(box("bench", (0.85, 0.42, 0.1), (x, y, BUS_FLOOR + 0.44), m["seat"]))
             back = box("bench_back", (0.85, 0.06, 0.5), (x, y - 0.22, BUS_FLOOR + 0.72), m["seat"])

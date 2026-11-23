@@ -813,3 +813,24 @@ Difficulty has not been play-tested by a person.
 - **Cost** (lite, software GPU, worst of four headings; fixture cast): spawn 207 -> 187 draw
   calls, 300k -> 258k triangles; T. Nagar 154 -> 124, 270k -> 197k; two-star police stop 225 ->
   200, 316k -> 266k; Egmore platform 153 -> 131, 230k -> 165k.
+
+## 23 Nov 2026: realistic vehicles (branch `agent/vehicles-real`)
+- **Done** (`docs/vehicles.md`, TD-25): original Blender models by script
+  (`tools/blender/vehicles.py`, `npm run blender:vehicles`) for the hatchback (also cab, police and
+  gang cars), commuter motorbike, van ambulance and city bus, replacing the code-built boxes: lofted
+  and subdivided bodies with wheel arches, panel seams, tinted glass, headlamp clusters, tail lamps,
+  mirrors, plates (no real registration), bumpers, interiors (seats, dashboard, steering wheel),
+  wheels as separate nodes (alloy, steel or spoked), doors cut from the body on the old hinges.
+  Detailed model for parked and drivable vehicles within 28 m of the player, LOD1 for traffic and
+  police (and beyond 34 m). The auto's detailed model is now used too. `VehicleType.cargo` (and the
+  ambulance's `cargoClear`) for job props. Physics, colliders, poses and entry points unchanged.
+- **Tested:** typecheck; unit tests (new `blenderVehicles.test.ts`: size round the collider, ground
+  contact, wheel radii, triangle and draw-call budgets, grips, pegs and steering-wheel rims under
+  the hand points, cargo surfaces, the ambulance's empty stretcher space; `doors.test.ts` now runs
+  on the Blender doors, triangle limits raised on purpose; `ridingPose.test.ts` unchanged and
+  passing); browser specs listed in `handoff.md`. Looked at in Cycles renders and in the game at
+  915x412 (lite and normal quality): every kind parked, riding the bike and driving the car with
+  the wheels turning, the car's door open while boarding. Not tried on a phone.
+- **Cost** (`?quality=lite`, production build, software GPU, worst of four headings) before ->
+  after: spawn 183 -> 183 draw calls, 273k -> 285k triangles; T. Nagar 118 -> 118, 212k -> 216k;
+  Anna Salai 135 -> 135, 220k -> 220k; Egmore 140 -> 140, 182k -> 188k. Game script +1.0 MB.

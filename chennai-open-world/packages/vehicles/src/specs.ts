@@ -138,8 +138,9 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
       { point: { x: 1.2, z: 1.35 }, inside: { x: 0.35, y: 0.1, z: 0.95 }, leaf: 2 },
     ],
     cameraDistance: 8.5,
-    // The boot floor behind the rear seat, through the tailgate.
-    cargo: { x: 0, y: -0.3, z: 1.62 },
+    // The middle of the back seat (seen through the glass; the rear doors open beside it). The boot
+    // floor behind it is at (0, -0.3, 1.62).
+    cargo: { x: 0, y: -0.15, z: 0.95 },
     gears: 5,
     physics: {
       halfExtents: { x: 0.82, y: 0.42, z: 1.95 },
@@ -162,8 +163,8 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     label: "Auto-rickshaw",
     rideHeight: 0.7,
     cameraDistance: 7,
-    // The floor between the driver's seat and the passengers' bench.
-    cargo: { x: 0, y: -0.29, z: 0.45 },
+    // The middle of the passengers' bench (top 0.065 m up; the floor in front of it is at y -0.29).
+    cargo: { x: 0, y: 0.065, z: 0.82 },
     gears: 4,
     openSeat: true,
     // Saddle top 0.21 m above the chassis centre; grips 0.47 m up, 0.78 m ahead, 0.335 m out;
@@ -231,7 +232,7 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     rideHeight: 0.95,
     cameraDistance: 10.5,
     // The stretcher's place on the floor of the patient's compartment, kept clear in the model.
-    cargo: { x: -0.2, y: -0.5, z: 1.3 },
+    cargo: { x: 0, y: -0.5, z: 1.45 },
     cargoClear: { min: { x: -0.6, y: -0.48, z: 0.05 }, max: { x: 0.3, y: 0.9, z: 2.45 } },
     gears: 5,
     siren: true,
@@ -278,8 +279,8 @@ export const VEHICLE_TYPES: Readonly<Record<VehicleKind, VehicleType>> = {
     // Passengers use the same front door as the driver, and walk up the aisle out of sight.
     passengers: [{ point: { x: -1.85, z: -3.6 }, inside: { x: -0.6, y: 0.3, z: -3.0 }, leaf: 0 }],
     cameraDistance: 15,
-    // The floor behind the driver's seat, in front of the first row.
-    cargo: { x: 0.75, y: -0.37, z: -3.35 },
+    // The floor beside the front door (kerb side), in front of the first row of seats on that side.
+    cargo: { x: -0.85, y: -0.34, z: -2.9 },
     gears: 5,
     physics: {
       // A short city bus (about 10 m), so it fits Anna Nagar's side streets.

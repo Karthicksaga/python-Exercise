@@ -777,3 +777,21 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   typecheck, unit tests and the affected specs (AGENTS.md).
 - Open: faces smooth up close; pallu and dupatta are flat bands; long hems can show a shin when
   running; older women wear a plait, not a bun; no player LOD1; nothing tried on a phone.
+
+## 23 Nov 2026: realistic vehicles (branch `agent/vehicles-real`): where I left off
+- **Done:** Blender models (original, `tools/blender/vehicles.py`) for every kind but the auto,
+  which already had one: hatchback, motorbike, ambulance, bus, each detailed + LOD1
+  (`docs/vehicles.md`, TD-25). Traffic and police use LOD1; parked/drivable vehicles switch to the
+  detailed model within 28 m of the player (`Vehicle.sync(dt, alpha, viewer)`). Doors are cut from
+  the bodies on the old hinges (`DOOR_SWING` in `models.ts`). `VehicleType.cargo` and the
+  ambulance's `cargoClear` (values in `docs/vehicles.md`). Police side bands now sit on the doors
+  (the new car's bounds include its mirrors).
+- **Shared files touched:** `Game.ts` (one import, `loadVehicleModels(VEHICLE_MODEL_FILES)`, the
+  viewer passed to `vehicle.sync`), new `apps/game/src/vehicleFiles.ts`, `Police.ts` (band x),
+  `packages/vehicles/*`, `package.json` (`blender:vehicles`), assets, docs.
+- **Tests:** typecheck; unit all passing (new `blenderVehicles.test.ts`, `doors.test.ts` on the
+  Blender doors with raised limits); browser: driving, handling, boarding, traffic, police, fares,
+  shareAuto 29/29. Cost and screenshots in `progress.md`.
+- **Not done:** steering wheels and handlebars don't turn; the bus has single rear wheels; car
+  glass is tinted (parcels on the back seat show dimly); door windows opaque; no damage states;
+  nothing tried on a phone. Blender 5.2.4 is in the scratchpad, not the repository.

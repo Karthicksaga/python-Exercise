@@ -1347,7 +1347,8 @@ export class Game {
     // Drawn part-way between the last two steps (see `playerMotion`).
     const drawn = this.playerMotion.at(alpha);
     const at = { x: drawn.x, y: drawn.y, z: drawn.z };
-    for (const vehicle of this.vehicles) vehicle.sync(dt, alpha);
+    // Vehicles near the player are drawn with their detailed model, the rest as traffic is.
+    for (const vehicle of this.vehicles) vehicle.sync(dt, alpha, at);
 
     const ride = this.railway?.rideChase();
     const boarding = this.boarder.active;

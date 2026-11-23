@@ -584,7 +584,7 @@ function pickTemplate(kind: VehicleKind, detail: VehicleDetail): VehicleTemplate
 }
 
 /** The livery of the bus and the ambulance is their own, whatever colour they are given. */
-const OWN_LIVERY: Partial<Record<VehicleKind, number>> = { bus: 0x1f6f78, ambulance: 0xf3f4f1 };
+const OWN_LIVERY: Partial<Record<VehicleKind, number>> = { bus: 0x2a8790, ambulance: 0xf3f4f1 };
 
 /**
  * How each door of a Blender model swings (`door_*` nodes): its hinge line in the chassis frame
