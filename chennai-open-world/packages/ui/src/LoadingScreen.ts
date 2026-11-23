@@ -54,6 +54,8 @@ export class LoadingScreen {
   private tipIndex = 0;
   private tipTimer = 0;
   private sketchData: StreetSketch | null = null;
+  /** How long the street sketch last took to draw, ms (tests and the debug console). */
+  sketchMs = 0;
   private resizeTimer = 0;
   private readonly onResize = (): void => {
     window.clearTimeout(this.resizeTimer);
@@ -178,7 +180,13 @@ export class LoadingScreen {
     const map = this.sketchData;
     const canvas = this.canvas;
     if (!map || !canvas) return;
-    const g = canvas.getContext("2d");
+    const started = performance.now();
+    // Drawn by the CPU, not the GPU (`willReadFrequently` makes Chrome keep this canvas in
+    // memory): it is every street in Chennai as five long paths with round joins, a lot of
+    // tessellation for a phone GPU at the very moment loading needs it, and the street sketch was
+    // the part of the screen that broke up on an entry-level Adreno (23 Nov 2026). Only the
+    // finished picture goes to the GPU, once.
+    const g = canvas.getContext("2d", { willReadFrequently: true });
     if (!g) return;
     const width = Math.max(1, canvas.clientWidth);
     const height = Math.max(1, canvas.clientHeight);
@@ -220,5 +228,6 @@ export class LoadingScreen {
       g.stroke();
     }
     canvas.classList.add("drawn");
+    this.sketchMs = Math.round(performance.now() - started);
   }
 }

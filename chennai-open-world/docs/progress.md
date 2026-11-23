@@ -907,5 +907,8 @@ Difficulty has not been play-tested by a person.
   after 20 s or on a problem (step and time, page answering or not, device; TRY AGAIN, CLOSE).
   New browser test with the stand-in shell: device, the six steps in order, heartbeats that stop
   when loading ends, no problems. Title spec 9/9.
+- **The phone:** POCO M6 Pro 5G, 6 GB, Snapdragon 4 Gen 2 with an Adreno 613 GPU. The screen
+  flickered. The street sketch (every street, five long round-joined paths) is now drawn on the
+  CPU (`willReadFrequently`): 124 ms with the CPU slowed 6×, one upload to the GPU.
 - **Not yet:** checked on the phone that showed it.
 

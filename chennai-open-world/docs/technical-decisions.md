@@ -463,7 +463,12 @@ memory class, cores, screen), each step with its time, a heartbeat every 2 s unt
 script errors and a lost WebGL context. The shell draws a native panel over the WebView when
 loading passes 20 s or something went wrong: the step and how long it has taken, whether the page
 still answers, those errors and the device, with TRY AGAIN and CLOSE. Native, so it shows even
-when the page is not being drawn. The frame wait between steps is now up to 1 s.
+when the page is not being drawn. The frame wait between steps is now up to 1 s. The phone is a POCO
+M6 Pro 5G (Snapdragon 4 Gen 2, Adreno 613 GPU, 6 GB): memory is ample, the GPU is entry-level,
+and the screen "shook" (flickered). The street sketch is every street as five long round-joined
+paths, a lot of GPU tessellation at the worst moment, and was the part that broke up in every
+screenshot: it is now drawn by the CPU (`willReadFrequently`), 124 ms with the CPU slowed 6×,
+and reaches the GPU once as a picture.
 
 **Revisit when** the menu should show more of the city (a few fixed camera shots across
 districts would need their chunks loaded), or a settings page grows options that need a reload
