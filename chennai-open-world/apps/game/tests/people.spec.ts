@@ -113,13 +113,18 @@ test("figures stand on the ground: walkers, someone standing, and the player idl
   // street: facing a direction clear for 25 m, so no bump into a parked vehicle (they all stand
   // near the spawn) stops the player between two samples and a blend is measured as a gait.
   const here = await snapshot(page);
+  // The most open direction (clear for 25 m if any is; otherwise the one with the most room).
   let clear = 0;
+  let room = -1;
   for (let k = 0; k < 16; k++) {
     const yaw = (k * Math.PI) / 8;
-    if ((await probe(page, here.x, here.z, -Math.sin(yaw), -Math.cos(yaw), 25)) === null) {
+    const hit = await probe(page, here.x, here.z, -Math.sin(yaw), -Math.cos(yaw), 25);
+    const free = hit === null ? 25 : hit;
+    if (free > room) {
+      room = free;
       clear = yaw;
-      break;
     }
+    if (hit === null) break;
   }
   await teleport(page, here.x, here.z, clear);
   const zone = page.getByTestId("move-zone");
@@ -132,7 +137,7 @@ test("figures stand on the ground: walkers, someone standing, and the player idl
     // than the 0.22 s blend between two clips, as when a bump into something stops the player).
     const fast = label === "running" ? 4 : 0.5;
     let steady = 0;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 16; i++) {
       const p = await people(page);
       steady = p.player.grounded && p.player.speed > fast ? steady + 1 : 0;
       if (p.player.feet !== null && steady >= 3) samples.push({ who: `player ${label}`, feet: p.player.feet });
