@@ -854,3 +854,16 @@ Difficulty has not been play-tested by a person.
   1024×768 and 1440×900 for the loading screen and the title menu; settings, controls and about
   pages; pause menu at 915×412 and 740×360.
 - **Results on this branch:** typecheck clean (game and `apps/mobile`, which also lints clean); unit 503/503; full browser suite **104/104** in 38.9 min (run once, alone, with the lock); `title.spec.ts` 8/8 again after the last change (reduced-motion redraw on resize).
+
+## 23 Nov 2026: the game stalled loading on a phone (branch `agent/loading-screen`)
+- **Seen on a device:** the loading screen stopped at "Reading the map of Chennai", with bands of
+  the background undrawn and the progress panel a white box. Not reproducible in headless
+  Chromium (no GPU memory budget); there, with the CPU slowed 4×, loading finished in 15 s.
+- **Cause found:** the merged Chennai cast inlined 75 model files (6.9 MB) as base64, so the one
+  script went from 6.7 MB to 16 MB. And the WebView used `androidLayerType="hardware"`, an extra
+  full-screen GPU texture for the whole page.
+- **Fix:** the cast's models are files beside the page (`peopleFiles.ts`, `?url`), fetched when a
+  person is first needed; the player's model stays inline. Script 6.7 MB again; JavaScript memory
+  after loading 157 → 116 MB (CPU slowed 4×, 800×360 at 2.5×). The hardware layer is gone.
+- **Not yet:** checked on the phone that showed it.
+

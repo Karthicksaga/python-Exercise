@@ -120,7 +120,10 @@ export function GameScreen({ onExit, autoplay = false }: { onExit: () => void; a
       onMessage={onMessage}
       onError={(e) => setFailure(e.nativeEvent.description)}
       onRenderProcessGone={() => setFailure('The graphics process stopped. This device may be out of memory.')}
-      androidLayerType="hardware"
+      // No androidLayerType="hardware": that renders the whole WebView into one more full-screen
+      // texture on top of the game's own WebGL buffers. On a phone short of GPU memory it showed as
+      // missing bands and white boxes on the loading screen (23 Nov 2026). The WebView is still
+      // GPU-drawn without it (the app is hardware accelerated).
       overScrollMode="never"
       bounces={false}
       scrollEnabled={false}
