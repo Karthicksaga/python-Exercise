@@ -777,3 +777,29 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   typecheck, unit tests and the affected specs (AGENTS.md).
 - Open: faces smooth up close; pallu and dupatta are flat bands; long hems can show a shin when
   running; older women wear a plait, not a bun; no player LOD1; nothing tried on a phone.
+
+## 23 Nov 2026: job goods and the ambulance stretcher (branch `agent/job-props`): where I left off
+- **Branch:** `agent/job-props` from feat 8e7b598. Details in `docs/progress.md` (same date).
+- **Done:** goods handed over at pick-ups and drops (`@cow/missions` `goods.ts`, a `goods` field
+  beside `fare` on reach objectives and job stops; `MissionRunner.goods`/`objectiveNumber`,
+  `JobRunner.goods`); stages 4, 6, 11, 19, 20 and the courier, lunch rush and medicine jobs
+  carry them. Drawn by `apps/game/src/GoodsFigures.ts` (person, goods in hands, goods in the
+  vehicle, the car's rear door) with code-built models in `goodsModels.ts`. Ambulance patients
+  on a stretcher (`StretcherFigures.ts`); `FareFigures` skips patient fares. Carry poses
+  (`@cow/player` `carryPose.ts`, `HumanFigure.setCarry`, kept apart from the rest/fight poses
+  that `agent/combat-pose` is changing). Casts `sender`, `recipient`, `shopkeeper`, `paramedic`.
+- **Shared files touched (additive):** `Game.ts` (two figure classes created next to
+  `fareFigures`, `fareFrame` hands patient fares to the stretcher and goods to `GoodsFigures`,
+  snapshot `goods` and `stretcher`, HUD note), `JobDesk.ts` (HUD note), `HumanFigure.ts`
+  (`setCarry`, poses solved in the constructor, applied after the wave), `people.ts` (casts),
+  `content.ts`, `laterStages.ts`, `streetWar.ts` (goods data), `fareSpots.ts` (`goodsAt`).
+- **For the vehicles branch:** cargo places are one table, `CARGO` in `GoodsFigures.ts`, and the
+  stretcher's path is `AMBULANCE` in `StretcherFigures.ts`; both are marked to switch to the
+  vehicle types' `cargo` anchor. Nothing in `packages/vehicles` was changed.
+- **Tests:** typecheck clean; unit 532/532 (one run before had a single timing failure that did
+  not repeat). Browser (local, with the lock): fares + jobs + places 16/16; stages3 16–21 and
+  missions2 stage 11: 8/8; people.spec 3/3; after a last clean-up of `StretcherFigures` the courier and ambulance tests again 2/2. The full suite is left to CI.
+- **Not done / open:** the hatchback's glass is opaque, so parcels on its back seat show only
+  through the open door (the new vehicle models may fix that); stage 17's gold chain is handed in
+  on foot with no figure; the goods person is not a physics body (like fare passengers); lunch
+  rush stacks a third bag on top of the first on the bike; nothing tried on a phone.

@@ -19,6 +19,8 @@ const LINGER = 4;
 const DOOR_RATE = 2.5;
 /** The patient's pale gown, when drawn with the player's model. */
 const GOWN = 0xcfe3ef;
+/** The paramedic's pale blue, laid over their own clothes (the `paramedic` cast's uniform tint). */
+const UNIFORM = 0xa9c9de;
 
 /**
  * The stretcher's way into the ambulance, relative to its chassis centre: from behind the rear
@@ -130,7 +132,7 @@ export class StretcherFigures {
         pose = null;
       }
     }
-    this.draw(pose, dt, stop);
+    this.draw(pose, dt);
     if (car) this.swingDoor(car, wantDoor, dt);
     this.shown = {
       stage: pose ? (person?.stage ?? "gone") : null,
@@ -154,7 +156,6 @@ export class StretcherFigures {
     const inward = car.body.yaw();
     // Waiting along the kerb, foot end towards the marker's side of the road.
     const along = heading(kerb, marker) + Math.PI / 2;
-    const board = person.action === "board";
     const walkTo = (from: THREE.Vector3 | { x: number; z: number }, to: THREE.Vector3 | { x: number; z: number }, share: number, speed: number): Pose => ({
       x: from.x + (to.x - from.x) * share,
       y: 0,
@@ -194,12 +195,11 @@ export class StretcherFigures {
       }
       default:
         // Inside (riding there, or in after the pick-up), or gone.
-        void board;
         return { pose: null, door: 0 };
     }
   }
 
-  private draw(pose: Pose | null, dt: number, stop: FareStop | null): void {
+  private draw(pose: Pose | null, dt: number): void {
     if (!pose) {
       if (this.trolley) this.trolley.visible = false;
       if (this.patient) this.patient.object.visible = false;
@@ -213,7 +213,7 @@ export class StretcherFigures {
     this.trolley.position.set(pose.x, pose.y, pose.z);
     this.trolley.rotation.set(0, pose.yaw, 0);
     const index = this.stop;
-    const patient = this.person("patient", index, stop);
+    const patient = this.person("patient", index);
     patient.object.visible = true;
     patient.setDown(true);
     // Lying on the mattress: `setDown` tips the figure onto its back, centred on its root with the
@@ -221,7 +221,7 @@ export class StretcherFigures {
     const onBed = this.trolley.localToWorld(new THREE.Vector3(0, MATTRESS - 0.02, 0.05));
     patient.object.position.copy(onBed);
     patient.object.rotation.set(0, pose.yaw + Math.PI, 0);
-    const medic = this.person("paramedic", index, stop);
+    const medic = this.person("paramedic", index);
     if (!pose.medic) {
       medic.object.visible = false;
       return;
@@ -230,12 +230,12 @@ export class StretcherFigures {
     medic.setCarry(pose.medic === "behind" ? "push" : null);
     const spot = pose.medic === "behind" ? new THREE.Vector3(0, 0, BEHIND) : new THREE.Vector3(0.75, 0, 0.6);
     const p = this.trolley.localToWorld(spot);
-    medic.object.position.set(p.x, pose.y > 0.05 && pose.medic === "behind" ? Math.min(pose.y, 0) : 0, p.z);
+    medic.object.position.set(p.x, 0, p.z);
     medic.object.rotation.set(0, pose.medic === "behind" ? pose.yaw : pose.yaw + Math.PI / 2, 0);
     medic.update(dt, pose.medicSpeed, true);
   }
 
-  private person(kind: "patient" | "paramedic", index: number, stop: FareStop | null): HumanFigure {
+  private person(kind: "patient" | "paramedic", index: number): HumanFigure {
     const look = this.humans.look(kind, index);
     let figure = kind === "patient" ? this.patient : this.medic;
     if (!figure || figure.person !== look.person) {
@@ -245,8 +245,7 @@ export class StretcherFigures {
       if (kind === "patient") this.patient = figure;
       else this.medic = figure;
     }
-    figure.setClothes(look.tint ?? (kind === "patient" ? GOWN : 0xa9c9de));
-    void stop;
+    figure.setClothes(look.tint ?? (kind === "patient" ? GOWN : UNIFORM));
     return figure;
   }
 

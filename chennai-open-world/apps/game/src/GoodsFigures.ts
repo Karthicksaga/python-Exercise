@@ -212,7 +212,7 @@ export class GoodsFigures {
 
     // Goods in the vehicle (or the player's hands on foot).
     const cargo = scene?.cargo ?? [];
-    this.placeCargo(car, onFoot && !car ? onFoot : null, cargo, dt);
+    this.placeCargo(car, onFoot && !car ? onFoot : null, cargo);
     // The goods in motion between the hands and the vehicle.
     if (moving && stop && this.figure) this.moveBetween(stop, car, onFoot, moving);
 
@@ -412,8 +412,7 @@ export class GoodsFigures {
   }
 
   /** Keep the goods drawn in the vehicle (or in the player's hands) in step with the rules. */
-  private placeCargo(car: Vehicle | null, onFoot: HumanFigure | null, cargo: readonly GoodsKind[], dt: number): void {
-    void dt;
+  private placeCargo(car: Vehicle | null, onFoot: HumanFigure | null, cargo: readonly GoodsKind[]): void {
     if (this.onboard.map((o) => o.kind).join() !== cargo.join() || (car && this.onboard[0]?.object.parent !== car.object)) {
       for (const o of this.onboard) o.object.removeFromParent();
       this.onboard = cargo.map((kind) => ({ kind, object: makeGoods(kind) }));
