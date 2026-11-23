@@ -1,6 +1,6 @@
 /**
  * React Native shell: app lifecycle around the game runtime. The game page owns every menu (the
- * loading screen and the title menu over the live city, TD-24), so the app opens straight into it.
+ * loading screen and the title menu over the live city, TD-25), so the app opens straight into it.
  */
 import React, { useCallback } from 'react';
 import { BackHandler, StatusBar } from 'react-native';

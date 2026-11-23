@@ -44,11 +44,12 @@ export function kerbSpot(roads: Pick<WorldMap, "roads">, stop: Point, side?: Poi
 }
 
 /** A fare at a stop: people getting in (`board`) and out (`alight`), waiting on the pavement beside it. */
-export function fareAt(roads: Pick<WorldMap, "roads">, stop: Point, people: { board?: number; alight?: number; patient?: boolean; shift?: number }, side?: Point): Fare {
+export function fareAt(roads: Pick<WorldMap, "roads">, stop: Point, people: { board?: number; alight?: number; patient?: boolean; shift?: number; party?: "wedding" }, side?: Point): Fare {
   return {
     ...(people.board ? { board: people.board } : {}),
     ...(people.alight ? { alight: people.alight } : {}),
     ...(people.patient ? { patient: true } : {}),
+    ...(people.party ? { party: people.party } : {}),
     kerb: kerbSpot(roads, stop, side, people.shift),
   };
 }

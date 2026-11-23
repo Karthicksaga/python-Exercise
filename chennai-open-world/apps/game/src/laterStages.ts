@@ -118,13 +118,13 @@ export function buildLaterStages(city: WorldMap): LaterStages {
       reputation: 3,
       objectives: [
         { type: "enter", label: "Get in the auto by the clock tower", vehicle: "auto" },
-        reach("Pick up the wedding party on Westcott Road", westcott, { mode: "auto", radius: 7, stop: true, fare: fareAt(city, westcott, { board: 3 }) }),
+        reach("Pick up the wedding party on Westcott Road", westcott, { mode: "auto", radius: 7, stop: true, fare: fareAt(city, westcott, { board: 3, party: "wedding" }) }),
         reach("Get them to the mandapam on North Mada Street, Mylapore", mandapam, {
           mode: "auto",
           radius: 8,
           stop: true,
           timeLimit: allow(westcott, mandapam, 8),
-          fare: fareAt(city, mandapam, { alight: 3 }),
+          fare: fareAt(city, mandapam, { alight: 3, party: "wedding" }),
         }),
       ],
     },

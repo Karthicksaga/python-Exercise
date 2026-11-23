@@ -1,6 +1,17 @@
 # Progress, testing and known issues
 
-Last updated: 21 Nov 2026 (city map, stations, smooth motion merged).
+Last updated: 22 Nov 2026 (the Chennai cast: realistic South Indian people).
+
+- **The Chennai cast (22 Nov; details in `docs/characters.md`, TD-24):** every person in the game
+  is now a realistic South Indian figure built with MakeHuman/MPFB in Blender
+  (`tools/blender/characters.py`, CC0 assets plus one credited CC-BY vest): 37 pedestrians (men,
+  women, children and teens in shirts, T-shirts, veshti, lungi, saree, salwar kameez, chudidar,
+  kurti, school uniforms; auto and cab drivers, traffic police and police, vendors, tea worker,
+  construction workers, delivery riders, shopkeeper, office workers, college students) and a
+  regenerated, clothed player. Cast by role from `assets/models/people/people.json`; children
+  only in platform crowds and as passengers beside an adult; LOD1 beyond 30 m; feet planted on
+  the ground. 6.8 MB optimised. Tested: unit 518/518, the touched browser specs, CI full suite
+  green. Not on a phone yet.
 
 ## What exists
 
@@ -790,7 +801,20 @@ Difficulty has not been play-tested by a person.
   screenshot (the passenger was off screen in the one taken from down the road).
 - **Results on this branch:** typecheck clean; unit 460/460; full browser suite 86/87 in 34.8 min (run once, with the lock); the one failure was `missions2.spec.ts` stage 15 still expecting no stage after the street war: updated on purpose to expect stage 16, then that test passed on its own (1/1).
 
-## 22 Nov 2026: loading screen, title menu over the live city, pause menu that never clips (TD-24)
+## 22 Nov 2026: people from the manifest (branch `agent/people-game`)
+- **Done:** casting from `people.json` (`people.ts`, `HumanAssets.look`), lazy per-person
+  loading, height fit, stride-scaled gait, feet kept on the ground by the retargeted clips, LOD1
+  beyond 30 m, dyed gang colours and stand-in uniforms, several people and a tea seller in
+  platform crowds, wedding party and patients for fares. `docs/characters.md`, TD-24.
+- **Tested:** typecheck; unit tests (`people.test.ts`, `retarget.test.ts`); browser
+  `people.spec.ts` and the touched specs listed in `handoff.md` (not the full suite: CI runs it).
+  Checked by eye at 915x412 lite: street walkers, auto driver, police (khaki dye), platform crowd.
+  Not tried on a phone.
+- **Cost** (lite, software GPU, worst of four headings; fixture cast): spawn 207 -> 187 draw
+  calls, 300k -> 258k triangles; T. Nagar 154 -> 124, 270k -> 197k; two-star police stop 225 ->
+  200, 316k -> 266k; Egmore platform 153 -> 131, 230k -> 165k.
+
+## 22 Nov 2026: loading screen, title menu over the live city, pause menu that never clips (TD-25)
 - **Loading screen** (`apps/game/index.html` first frame, `packages/ui/src/LoadingScreen.ts`):
   wordmark (CHENNAI / OPEN WORLD, and சென்னை in the bundled station font once it is loaded),
   rotating tips about real features, and a bar of six segments, one per named step of
@@ -831,7 +855,7 @@ Difficulty has not been play-tested by a person.
   pages; pause menu at 915×412 and 740×360.
 - **Results on this branch:** typecheck clean (game and `apps/mobile`, which also lints clean); unit 503/503; full browser suite **104/104** in 38.9 min (run once, alone, with the lock); `title.spec.ts` 8/8 again after the last change (reduced-motion redraw on resize).
 
-## 22 Nov 2026: sound design: every vehicle its own engine and horn; traffic, footsteps, city (TD-25)
+## 22 Nov 2026: sound design: every vehicle its own engine and horn; traffic, footsteps, city (TD-26)
 - **Before:** one horn for every vehicle; one engine tone in two pitches (auto and bike shared
   the "small" one, car, bus and ambulance the other); no footsteps, no traffic sound, no
   background.

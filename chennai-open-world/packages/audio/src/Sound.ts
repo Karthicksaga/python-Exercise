@@ -3,7 +3,7 @@
  * only allow sound after the player has touched the screen, so `unlock()` is called from the
  * first touch and everything is silent (and harmless) before that.
  *
- * The mix (TD-25): master → compressor → speakers, with four buses under the master so each
+ * The mix (TD-26): master → compressor → speakers, with four buses under the master so each
  * family can be balanced: vehicles (engines, horns, tyres, sirens, crashes), world (footsteps,
  * fights, guns, doors, trains), ambience (the city's background) and interface (rewards, stage
  * music). What each vehicle sounds like is data in `profiles.ts`; the graphs are in `voices.ts`.

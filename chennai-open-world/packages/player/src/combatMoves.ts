@@ -18,8 +18,12 @@ export interface MoveKey {
   readonly spine?: { readonly bend?: number; readonly twist?: number; readonly lean?: number };
   /** Head: nod forward (+) or back (-). */
   readonly neck?: number;
-  /** Body offset: forward, to the right, and down. */
-  readonly root?: { readonly forward?: number; readonly right?: number; readonly down?: number };
+  /**
+   * Body offset along the ground: forward and to the right. (No "down": the rig has no knee bend,
+   * so lowering the body would push the soles into the road, which the feet check forbids. A
+   * crouch is a deeper bend of the spine and head instead.)
+   */
+  readonly root?: { readonly forward?: number; readonly right?: number };
 }
 
 export interface Move {
@@ -105,7 +109,7 @@ export const MOVES: Readonly<Record<MoveId, Move>> = {
   // Ducking out of the way (the game moves the player; this is the body).
   dodge: {
     duration: 0.38,
-    keys: [{ at: 0.08, arms: { RightArm: [-0.2, -0.6, 0.6], RightForeArm: [0.2, 0.8, 0.5], LeftArm: [0.2, -0.6, 0.6], LeftForeArm: [-0.2, 0.8, 0.5] }, spine: { bend: 0.5 }, root: { down: 0.35 } }],
+    keys: [{ at: 0.08, arms: { RightArm: [-0.2, -0.6, 0.6], RightForeArm: [0.2, 0.8, 0.5], LeftArm: [0.2, -0.6, 0.6], LeftForeArm: [-0.2, 0.8, 0.5] }, spine: { bend: 0.65 }, neck: 0.25 }],
   },
 };
 
@@ -116,16 +120,15 @@ export const STANCES: Readonly<Record<Stance, MoveKey>> = {
   block: {
     at: 0,
     arms: { RightArm: [-0.25, -0.3, 0.9], RightForeArm: [0.45, 0.85, 0.25], LeftArm: [0.25, -0.3, 0.9], LeftForeArm: [-0.45, 0.85, 0.25] },
-    spine: { bend: 0.15 },
-    root: { down: 0.08 },
+    spine: { bend: 0.18 },
+    neck: 0.1,
   },
   // A frightened bystander: crouched, arms over the head.
   cower: {
     at: 0,
     arms: { RightArm: [-0.35, 0.75, 0.45], RightForeArm: [0.65, 0.35, 0.55], LeftArm: [0.35, 0.75, 0.45], LeftForeArm: [-0.65, 0.35, 0.55] },
-    spine: { bend: 0.55 },
-    neck: 0.35,
-    root: { down: 0.3 },
+    spine: { bend: 0.75 },
+    neck: 0.45,
   },
 };
 
