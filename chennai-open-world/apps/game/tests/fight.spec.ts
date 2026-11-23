@@ -9,7 +9,7 @@ import { GAME_WAIT, ready, snapshot, teleport, waitGameTime } from "./support";
 const FIRST_SIX = ["morning-walk", "borrowed-wheels", "auto-shift", "parcel-run", "cross-town", "bike-courier"];
 
 type Fight = { combatMode: boolean; locked: number | null; blocking: boolean; dodging: boolean; lastSwing: string | null; playerMove: string | null; lastAssault: { id: number; outcome: string } | null; civiliansNear: Array<{ id: number; distance: number }> };
-type View = { x: number; z: number; yaw: number; cameraYaw: number; health: number; police: { stars: number; lastCrime: string | null }; target: { x: number; z: number } | null; enemies: Array<{ x: number; z: number; health: number }>; fightView: Fight };
+type View = { x: number; z: number; yaw: number; cameraYaw: number; health: number; police: { stars: number; points: number; lastCrime: string | null }; target: { x: number; z: number } | null; enemies: Array<{ x: number; z: number; health: number }>; fightView: Fight };
 const view = async (page: Page) => (await snapshot(page)) as unknown as View;
 const tap = (page: Page, name: string) => page.getByRole("button", { name, exact: true }).dispatchEvent("pointerdown", { pointerId: 51, pointerType: "touch" });
 
@@ -83,7 +83,7 @@ async function pedestrianInFront(page: Page, metres = 1.1): Promise<void> {
   await waitGameTime(page, 0.3);
 }
 
-test("a pedestrian punched twice is knocked out, and the police hear about it", async ({ page }) => {
+test("a pedestrian punched twice is knocked out, and the police hear about it (no star for one scuffle)", async ({ page }) => {
   await ready(page);
   await pedestrianInFront(page);
   expect((await view(page)).fightView.civiliansNear.length).toBeGreaterThan(0);
@@ -91,15 +91,20 @@ test("a pedestrian punched twice is knocked out, and the police hear about it", 
 
   await tap(page, "Punch");
   await expect.poll(async () => (await view(page)).fightView.lastAssault?.outcome, { timeout: GAME_WAIT }).toBe("flinch");
-  // A punch in the street turns on fight mode and draws a wanted star.
+  // A punch in the street turns on fight mode, and the police hear of it.
   expect((await view(page)).fightView.combatMode).toBe(true);
-  await expect.poll(async () => (await view(page)).police.stars, { timeout: GAME_WAIT }).toBeGreaterThanOrEqual(1);
-  expect((await view(page)).police.lastCrime).toBe("pedestrianAssaulted");
+  await expect.poll(async () => (await view(page)).police.lastCrime, { timeout: GAME_WAIT }).toBe("pedestrianAssaulted");
+  // Changed on purpose (TD-28): this used to draw a star at once, which players found too harsh.
+  // One scuffle only adds heat; a few incidents in a short time make a star (Wanted.test.ts).
+  expect((await view(page)).police.points).toBeGreaterThan(0);
+  expect((await view(page)).police.stars).toBe(0);
 
   await waitGameTime(page, 0.6); // the punch's recovery
   await tap(page, "Punch");
   await expect.poll(async () => (await view(page)).fightView.lastAssault?.outcome, { timeout: GAME_WAIT }).toBe("injured");
   expect((await view(page)).police.lastCrime).toBe("pedestrianInjured");
+  // A punch and a knock-out on one person: still no star (0.3 + 0.45 heat, a star at 1).
+  expect((await view(page)).police.stars).toBe(0);
   // Down on the ground: no longer someone to hit.
   expect((await view(page)).fightView.civiliansNear).toHaveLength(0);
 });

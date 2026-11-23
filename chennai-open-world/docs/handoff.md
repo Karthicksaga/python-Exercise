@@ -820,3 +820,14 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
   `Combat.ts`, `Wanted.ts` (new crime), `index.ts` export lists.
 - **Not done / uncertain:** never played on a phone (block and dodge timing by touch); moves
   judged by eye at low resolution; pedestrians do not fight back; no manual target switching.
+
+## 23 Nov 2026: police tuning (branch `agent/police-tuning`, from a60eb30): where I left off
+- **Done** (details in `progress.md`, TD-28): street incidents build heat before a star (cools
+  while not wanted, counts more once wanted, a star at once if police see it, a kill still a star
+  at once); officers killed stay dead, their car is abandoned in place and a new unit comes from
+  out of sight.
+- **Shared files touched:** `Wanted.ts` (crime rules, `heatCool`, `crewLeft`, `officersToDeploy`,
+  `report(crime, witnessed)`), `Police.ts` (crew, `abandoned` state, snapshot `unit`), no
+  `Game.ts` change. Tests: `Wanted.test.ts`, `police.spec.ts` (new test), `fight.spec.ts` and
+  `pedestrians.spec.ts` (expectations changed on purpose, explained in the tests).
+- **Not done / uncertain:** numbers not tuned by play; not tried on a phone or the emulator.

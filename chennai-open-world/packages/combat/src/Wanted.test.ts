@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { WANTED, Wanted, isPoliceGroup, isVehicleTheft, jobsAllowed, policeUnits, starsFor, type WantedSight } from "./Wanted";
+import { WANTED, Wanted, crewLeft, isPoliceGroup, officersToDeploy, isVehicleTheft, jobsAllowed, policeUnits, starsFor, type WantedSight } from "./Wanted";
 
 const unseen: WantedSight = { seen: false, held: false };
 const seen: WantedSight = { seen: true, held: false };
@@ -48,15 +48,73 @@ describe("raising the wanted level", () => {
     expect(w.stars).toBe(2);
   });
 
-  it("hurting a pedestrian gives one star, killing one at least two", () => {
-    const hurt = new Wanted();
-    hurt.report("pedestrianInjured");
-    expect(hurt.stars).toBe(1);
+  // TD-28 changed these on purpose: one star for any knock-down was too harsh (players' report).
+  // Now one or two street incidents give no star, a few in a short time do, and a death still does.
+  it("knocking one or two pedestrians down gives no star; a third soon after does", () => {
+    const w = new Wanted();
+    expect(w.report("pedestrianInjured")).toBeNull();
+    run(w, 3, unseen);
+    expect(w.report("pedestrianInjured")).toBeNull();
+    expect(w.stars).toBe(0);
+    run(w, 3, unseen);
+    expect(w.report("pedestrianInjured")).toEqual({ type: "raised", stars: 1, crime: "pedestrianInjured" });
+  });
+
+  it("a few punches in the street give no star; a fight with several people does", () => {
+    const w = new Wanted();
+    for (let i = 0; i < 3; i++) {
+      w.report("pedestrianAssaulted");
+      run(w, WANTED.crimes.pedestrianAssaulted.every + 0.05, unseen);
+    }
+    expect(w.stars).toBe(0);
+    w.report("pedestrianInjured"); // the fourth blow knocks someone out
+    expect(w.stars).toBe(1);
+  });
+
+  it("the heat of an incident cools off while not wanted, so incidents far apart never add up", () => {
+    const w = new Wanted();
+    for (let i = 0; i < 10; i++) {
+      w.report("pedestrianInjured");
+      expect(w.stars).toBe(0);
+      run(w, 30, unseen);
+    }
+    expect(w.points).toBeLessThan(WANTED.starAt[1]!);
+    run(w, 60, unseen);
+    expect(w.points).toBe(0);
+  });
+
+  it("once wanted, each further incident raises the heat more, towards two stars", () => {
+    const w = new Wanted();
+    w.report("gunfire");
+    const before = w.points;
+    w.report("pedestrianInjured");
+    expect(w.points - before).toBe(WANTED.crimes.pedestrianInjured.pointsWanted);
+    for (let i = 0; i < 3; i++) w.report("pedestrianInjured");
+    expect(w.stars).toBe(2);
+  });
+
+  it("an incident the police see happen gives a star at once", () => {
+    const w = new Wanted();
+    expect(w.report("pedestrianAssaulted", true)).toEqual({ type: "raised", stars: 1, crime: "pedestrianAssaulted" });
+    const v = new Wanted();
+    v.report("pedestrianInjured", true);
+    expect(v.stars).toBe(1);
+  });
+
+  it("killing a pedestrian gives a star at once, two in a short time two stars; seen by police, two at once", () => {
     const killed = new Wanted();
+    expect(killed.report("pedestrianKilled")).toEqual({ type: "raised", stars: 1, crime: "pedestrianKilled" });
     killed.report("pedestrianKilled");
     expect(killed.stars).toBe(2);
-    killed.report("pedestrianKilled");
-    expect(killed.stars).toBe(3);
+    const seenKill = new Wanted();
+    seenKill.report("pedestrianKilled", true);
+    expect(seenKill.stars).toBe(2);
+  });
+
+  it("being seen doesn't change crimes that give a star anyway", () => {
+    const w = new Wanted();
+    w.report("gunfire", true);
+    expect(w.stars).toBe(1);
   });
 
   it("attacking officers escalates fastest", () => {
@@ -234,5 +292,24 @@ describe("vehicle theft", () => {
   });
   it("is reported once per vehicle", () => {
     expect(isVehicleTheft({ id: "car-3", kind: "car" }, { ...rules, taken: new Set(["car-3"]) })).toBe(false);
+  });
+});
+
+describe("police crews (TD-28)", () => {
+  it("officers killed while out are gone from their car's crew for good", () => {
+    expect(crewLeft(2, 2, 2)).toEqual({ crew: 2, out: 2 });
+    expect(crewLeft(2, 2, 1)).toEqual({ crew: 1, out: 1 });
+    // Both dead: no crew left, the car is abandoned.
+    expect(crewLeft(2, 2, 0)).toEqual({ crew: 0, out: 0 });
+    // One stayed in the car (the level allowed only one out) and the one out died.
+    expect(crewLeft(2, 1, 0)).toEqual({ crew: 1, out: 0 });
+  });
+
+  it("a car lets out only the crew it still has, within the level's officers on foot", () => {
+    expect(officersToDeploy(2, 3, 0)).toBe(2);
+    expect(officersToDeploy(1, 3, 0)).toBe(1); // its partner was killed: one gets out, not two
+    expect(officersToDeploy(0, 5, 0)).toBe(0); // an empty car never refills
+    expect(officersToDeploy(2, 1, 1)).toBe(1); // one star: two on foot at most
+    expect(officersToDeploy(2, 1, 2)).toBe(0);
   });
 });

@@ -12,7 +12,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { Pursuer, findRoute, nearestNode, routeLength, type Obstacle, type RoadGraph, type Siren } from "@cow/ai";
 import type { Sound } from "@cow/audio";
-import { POLICE_GROUP, WANTED, Wanted, isPoliceGroup, isVehicleTheft, jobsAllowed, policeUnits, type Combat, type Crime, type Enemy, type HitOutcome } from "@cow/combat";
+import { POLICE_GROUP, WANTED, Wanted, crewLeft, isPoliceGroup, officersToDeploy, isVehicleTheft, jobsAllowed, policeUnits, type Combat, type Crime, type CrimeRule, type Enemy, type HitOutcome } from "@cow/combat";
 import { Motion } from "@cow/game-engine";
 import { nearestRoadPoint, type WorldMap } from "@cow/game-world";
 import type { CharacterBody, KinematicBox, PhysicsWorld, VehicleBody } from "@cow/physics";
@@ -67,6 +67,11 @@ const POLICE = {
   shotSlack: 0.4,
   /** Gunfire within this distance of a story fight's enemies is part of that fight, not a crime, metres. */
   storyFight: 60,
+  /**
+   * Cars whose whole crew is dead stay where they stopped (TD-28); at most this many beyond the
+   * chasing cars are kept, the one out of sight is taken away first. Estimate, for draw calls.
+   */
+  abandonedMax: 2,
 } as const;
 
 /** White body, khaki band with POLICE, red and blue light bar: an invented livery, no real force's. */
@@ -104,10 +109,17 @@ interface Unit {
   readonly box: KinematicBox;
   readonly pursuer: Pursuer;
   active: boolean;
-  /** "chase" drives after the player (or searches), "parked" waits while officers are out. */
-  state: "chase" | "parked";
+  /**
+   * "chase" drives after the player (or searches), "parked" waits while officers are out,
+   * "abandoned": its whole crew is dead; it stays where it stopped and nobody gets in or out.
+   */
+  state: "chase" | "parked" | "abandoned";
   /** The group its officers are in while they are out. */
   group: string | null;
+  /** Officers of this car still alive (in it or out of it): the dead are never replaced (TD-28). */
+  crew: number;
+  /** How many of them are out now. */
+  out: number;
   deployments: number;
   sinceRecall: number;
   /** Where it searches when the player has not been seen for a while. */
@@ -237,7 +249,10 @@ export class Police {
   /** Report a crime; the level may rise. */
   report(crime: Crime): void {
     this.lastCrime = crime;
-    const event = this.wanted.report(crime);
+    // Street incidents count for more when a police unit sees them happen (`witnessedStars`).
+    const rule: CrimeRule = WANTED.crimes[crime];
+    const witnessed = rule.witnessedStars !== undefined && this.player !== null && this.look(this.player);
+    const event = this.wanted.report(crime, witnessed);
     if (event && event.stars > 0 && this.units.every((u) => !u.active)) this.spawnIn = 0;
     // The police know where the crime happened.
     if (this.player && this.wanted.stars > 0) {
@@ -318,7 +333,7 @@ export class Police {
     if (this.responding === null) return false;
     this.responding += dt;
     const spot = this.lastSeen;
-    const arrived = spot !== null && this.units.some((u) => u.active && Math.hypot(u.pursuer.x - spot.x, u.pursuer.z - spot.z) < POLICE.arrivedWithin);
+    const arrived = spot !== null && this.units.some((u) => u.active && u.state !== "abandoned" && Math.hypot(u.pursuer.x - spot.x, u.pursuer.z - spot.z) < POLICE.arrivedWithin);
     if (arrived || this.seenNow || this.wanted.stars === 0 || this.responding > POLICE.responseMax) this.responding = null;
     return this.responding !== null;
   }
@@ -344,18 +359,32 @@ export class Police {
   }
 
   private putAway(unit: Unit): void {
-    if (unit.group) this.removeGroup(unit.group);
+    if (unit.group) this.removeLiving(unit.group);
     unit.group = null;
+    unit.out = 0;
     unit.active = false;
     unit.state = "chase";
     unit.car.object.visible = false;
     unit.box.teleport(unit.pursuer.x, -200, unit.pursuer.z, 0);
   }
 
-  private removeGroup(group: string): void {
-    const keep = new Set<string>();
-    for (const e of this.combat.enemies) if (e.group !== group) keep.add(e.group);
-    this.combat.keepOnly([...keep]);
+  /**
+   * The living officers of a group leave (back into their car, or away with it). The dead stay
+   * lying where they fell until `Combat` takes them away like any other casualty.
+   */
+  private removeLiving(group: string): void {
+    for (let i = this.combat.enemies.length - 1; i >= 0; i--) {
+      const e = this.combat.enemies[i]!;
+      if (e.group === group && e.health > 0) this.combat.enemies.splice(i, 1);
+    }
+  }
+
+  /** Count the car's officers who died while out: they are no longer part of its crew. */
+  private settleCrew(unit: Unit): void {
+    if (!unit.group) return;
+    const left = crewLeft(unit.crew, unit.out, this.officers().filter((e) => e.group === unit.group && e.health > 0).length);
+    unit.crew = left.crew;
+    unit.out = left.out;
   }
 
   private officers(): Enemy[] {
@@ -376,7 +405,7 @@ export class Police {
   private look(p: PoliceView): boolean {
     const toClear = p.vehicle ? p.vehicle.halfLength + 0.4 : 0.6;
     for (const unit of this.units) {
-      if (!unit.active) continue;
+      if (!unit.active || unit.state === "abandoned") continue;
       const d = Math.hypot(unit.pursuer.x - p.x, unit.pursuer.z - p.z);
       if (d < WANTED.sightCar && this.lineClear(unit.pursuer.x, unit.pursuer.z, 2.6, p.x, p.z, toClear, p.body)) return true;
     }
@@ -417,7 +446,14 @@ export class Police {
   private unit(): Unit | null {
     const free = this.units.find((u) => !u.active);
     if (free) return free;
-    if (this.units.length >= WANTED.cars[WANTED.maxStars]) return null;
+    if (this.units.length >= WANTED.cars[WANTED.maxStars] + POLICE.abandonedMax) {
+      // All in use: an abandoned car the player can't see makes way.
+      const p = this.player;
+      const old = this.units.find((u) => u.state === "abandoned" && (!p || !this.lineClear(p.x, p.z, 0.6, u.pursuer.x, u.pursuer.z, 2.6, p.body)));
+      if (!old) return null;
+      this.putAway(old);
+      return old;
+    }
     // Built the first time each is needed, then reused: no models created or disposed mid-chase.
     const car = new TrafficCar("car", BODY);
     addLivery(car.object);
@@ -433,6 +469,8 @@ export class Police {
       active: false,
       state: "chase",
       group: null,
+      crew: POLICE.officersPerCar,
+      out: 0,
       deployments: 0,
       sinceRecall: 99,
       searchGoal: null,
@@ -448,7 +486,8 @@ export class Police {
 
   private dispatch(graph: RoadGraph, p: PoliceView): void {
     const cap = policeUnits(this.wanted.stars).cars;
-    const active = this.units.filter((u) => u.active).length;
+    // Abandoned cars don't count: a new unit comes in their place (TD-28).
+    const active = this.units.filter((u) => u.active && u.state !== "abandoned").length;
     if (active >= cap || this.spawnIn > 0) return;
     const spot = this.spawnPoint(graph, p, this.lastSeen ?? p);
     if (!spot) {
@@ -459,6 +498,8 @@ export class Police {
     if (!unit) return;
     unit.active = true;
     unit.state = "chase";
+    unit.crew = POLICE.officersPerCar;
+    unit.out = 0;
     unit.searchGoal = null;
     unit.sinceRecall = 99;
     unit.standingDown = 0;
@@ -476,7 +517,7 @@ export class Police {
   /** Officers out of a stopped car, beside its doors. */
   private deploy(unit: Unit): void {
     const living = this.officers().filter((e) => e.health > 0).length;
-    const count = Math.min(POLICE.officersPerCar, policeUnits(this.wanted.stars).officers - living);
+    const count = officersToDeploy(unit.crew, this.wanted.stars, living);
     if (count <= 0) return;
     const armed = policeUnits(this.wanted.stars).armed;
     const { x, z, heading } = unit.pursuer;
@@ -485,6 +526,7 @@ export class Police {
     const rz = -Math.sin(heading);
     const spots = [1, -1].slice(0, count).map((s) => ({ x: x - rx * side * s, z: z - rz * side * s, armed }));
     unit.deployments++;
+    unit.out = count;
     unit.group = `${POLICE_GROUP}${unit.id}-${unit.deployments}`;
     this.combat.spawnGroup(unit.group, spots);
     for (const e of this.combat.enemies) {
@@ -499,10 +541,20 @@ export class Police {
 
   /** Officers back in the car (they vanish into it) and the chase goes on. */
   private recall(unit: Unit): void {
-    if (unit.group) this.removeGroup(unit.group);
+    this.settleCrew(unit);
+    if (unit.group) this.removeLiving(unit.group);
     unit.group = null;
+    unit.out = 0;
     unit.state = "chase";
     unit.sinceRecall = 0;
+  }
+
+  /** The whole crew is dead: the car stays where it is, empty, and is never refilled. */
+  private abandon(unit: Unit): void {
+    unit.group = null;
+    unit.out = 0;
+    unit.state = "abandoned";
+    unit.pursuer.speed = 0;
   }
 
   /** One fixed step, before combat (officers' attacks are held back below three stars). */
@@ -574,6 +626,13 @@ export class Police {
     const toPlayer = Math.hypot(car.x - p.x, car.z - p.z);
     unit.sinceRecall += dt;
 
+    if (unit.state === "abandoned") {
+      // Left where it stopped; taken away only once the player is far off and can't see it.
+      car.speed = 0;
+      const far = toPlayer > POLICE.leaveBeyond && !this.lineClear(p.x, p.z, 0.6, car.x, car.z, 2.6, p.body);
+      if (far || toPlayer > POLICE.recycleBeyond) this.putAway(unit);
+      return;
+    }
     if (stars === 0) {
       // Standing down: officers back in, and the car leaves once the player can't see it.
       if (unit.group) this.recall(unit);
@@ -589,10 +648,11 @@ export class Police {
     }
 
     if (unit.state === "parked") {
-      const living = this.officers().filter((e) => e.group === unit.group && e.health > 0).length;
+      this.settleCrew(unit);
       const escaped = toPlayer > POLICE.recallRange || (p.vehicle !== null && p.speed > 6 && toPlayer > 20);
-      if (living === 0 || escaped) this.recall(unit);
       car.speed = 0;
+      if (unit.crew === 0) this.abandon(unit);
+      else if (unit.out === 0 || escaped) this.recall(unit);
     } else {
       const units = policeUnits(stars);
       // Ram a moving vehicle; a stopped one is boxed in and the officers get out (armed from three stars).
@@ -676,7 +736,11 @@ export class Police {
   /** Police on the minimap: cars flash blue and red, officers are blue dots. */
   markers(): MinimapMarker[] {
     const out: MinimapMarker[] = [];
-    for (const unit of this.units) if (unit.active) out.push({ x: unit.pursuer.x, z: unit.pursuer.z, color: this.flashOn ? "#ff4040" : "#3d7bff", size: 5 });
+    for (const unit of this.units) {
+      if (!unit.active) continue;
+      // An abandoned car's lights still flash on the street, but it is no threat: a plain grey mark.
+      out.push({ x: unit.pursuer.x, z: unit.pursuer.z, color: unit.state === "abandoned" ? "#8a8f99" : this.flashOn ? "#ff4040" : "#3d7bff", size: unit.state === "abandoned" ? 4 : 5 });
+    }
     for (const officer of this.officers()) if (officer.health > 0) out.push({ x: officer.x, z: officer.z, color: "#3d7bff", size: 3.5 });
     return out;
   }
@@ -687,7 +751,7 @@ export class Police {
     seen: boolean;
     points: number;
     unseenFor: number;
-    cars: Array<{ x: number; z: number; speed: number; state: string; mode: string }>;
+    cars: Array<{ x: number; z: number; speed: number; state: string; mode: string; unit: string }>;
     officers: Array<{ x: number; z: number; health: number; armed: boolean }>;
     lastBust: { fine: number; stars: number; x: number; z: number } | null;
     lastCrime: Crime | null;
@@ -697,7 +761,7 @@ export class Police {
       seen: this.wanted.seen,
       points: this.wanted.points,
       unseenFor: this.wanted.unseenFor,
-      cars: this.units.filter((u) => u.active).map((u) => ({ x: u.pursuer.x, z: u.pursuer.z, speed: u.pursuer.speed, state: u.state, mode: u.pursuer.mode })),
+      cars: this.units.filter((u) => u.active).map((u) => ({ x: u.pursuer.x, z: u.pursuer.z, speed: u.pursuer.speed, state: u.state, mode: u.pursuer.mode, unit: `${u.id}-${u.generation}` })),
       officers: this.officers().map((e) => ({ x: e.x, z: e.z, health: e.health, armed: e.armed })),
       lastBust: this.lastBust,
       lastCrime: this.lastCrime,

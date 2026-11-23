@@ -6,7 +6,8 @@ interface PoliceState {
   stars: number;
   seen: boolean;
   unseenFor: number;
-  cars: Array<{ x: number; z: number; speed: number; state: string }>;
+  /** `unit`: which car and which time it was sent out (a new value is a new unit). */
+  cars: Array<{ x: number; z: number; speed: number; state: string; unit: string }>;
   officers: Array<{ x: number; z: number; health: number }>;
   lastBust: { fine: number; stars: number; x: number; z: number } | null;
   lastCrime: string | null;
@@ -139,4 +140,57 @@ test("taking someone else's parked car gives a star, and at two stars the job bo
   await page.getByTestId("jobs").click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator(".cow-toast")).toContainText("Lose them first");
+});
+
+test("officers shot dead stay dead: their car is left where it stopped, and a new unit comes from out of sight", async ({ page }) => {
+  test.setTimeout(480_000);
+  await start(page);
+  const heal = (p: Page) => p.evaluate(() => (window as unknown as { __cow: { setHealth(n: number): void } }).__cow.setHealth(100));
+  // Every unit sent out, and how far from the player it was when first seen in the snapshot.
+  const firstSeen = new Map<string, number>();
+  const sample = async () => {
+    const s = await state(page);
+    for (const car of s.police.cars) if (!firstSeen.has(car.unit)) firstSeen.set(car.unit, Math.hypot(car.x - s.x, car.z - s.z));
+    return s;
+  };
+  await fireOnce(page);
+  // The first car pulls up and its two officers get out.
+  await expect.poll(async () => (await sample()).police.officers.length, { timeout: SLOW, intervals: [250] }).toBe(2);
+  const first = (await sample()).police.cars.find((c) => c.state === "parked")!;
+  expect(first).toBeDefined();
+  // Rounds for a shoot-out (`fireOnce` left only a few), and face the car so the lock-on picks the officers.
+  await page.evaluate(() => (window as unknown as { __cow: { giveAmmo(n: number): void } }).__cow.giveAmmo(150));
+  const facing = await state(page);
+  await teleport(page, facing.x, facing.z, Math.atan2(-(first.x - facing.x), -(first.z - facing.z)));
+  // Shoot both (the lock-on and the pistol's aim assistance pick them; the player is kept alive).
+  const fire = page.getByRole("button", { name: "Fire", exact: true });
+  await fire.dispatchEvent("pointerdown", { pointerId: 53, pointerType: "touch" });
+  try {
+    await expect.poll(async () => {
+      await heal(page);
+      const s = await sample();
+      const crew = s.police.officers.filter((o) => Math.hypot(o.x - first.x, o.z - first.z) < 25);
+      return crew.length > 0 && crew.every((o) => o.health <= 0);
+    }, { timeout: SLOW, intervals: [100] }).toBe(true);
+  } finally {
+    await fire.dispatchEvent("pointerup", { pointerId: 53, pointerType: "touch" });
+  }
+  // The car stays where it stopped, empty: past the time a car takes to let officers out again
+  // (6 s), nobody living is standing by it, and it is the same unit, not one sent again.
+  for (let i = 0; i < 8; i++) {
+    await waitGameTime(page, 1);
+    await heal(page);
+    const s = await sample();
+    const car = s.police.cars.find((c) => c.unit === first.unit);
+    expect(car?.state, "the empty car stays put").toBe("abandoned");
+    expect(Math.hypot(car!.x - first.x, car!.z - first.z)).toBeLessThan(1);
+    const standing = s.police.officers.filter((o) => o.health > 0 && Math.hypot(o.x - first.x, o.z - first.z) < 6);
+    expect(standing, "no officer comes back out of the empty car").toHaveLength(0);
+  }
+  // The dead were taken away like other casualties (`Combat` removes the fallen after 5 s).
+  expect((await sample()).police.officers.filter((o) => o.health <= 0 && Math.hypot(o.x - first.x, o.z - first.z) < 25)).toHaveLength(0);
+  // Still wanted (three stars after killing an officer), so a new unit is sent, from out of sight.
+  expect((await sample()).police.stars).toBeGreaterThanOrEqual(3);
+  await expect.poll(async () => (await sample()).police.cars.filter((c) => c.unit !== first.unit && c.state !== "abandoned").length, { timeout: SLOW, intervals: [100] }).toBeGreaterThan(0);
+  for (const [unit, distance] of firstSeen) if (unit !== first.unit) expect(distance, `unit ${unit} appeared in sight`).toBeGreaterThan(50);
 });

@@ -1,7 +1,12 @@
 /**
  * The wanted level: how hard the police are after the player, from 0 (not wanted) to 5 stars.
  * Crimes add "heat" points; the stars follow from the points, with a minimum for the worse
- * crimes. The level drops one star at a time once no police unit has seen the player for a
+ * crimes. Street incidents (a pedestrian punched, knocked down, run over) add only a fraction of
+ * a star's heat and give no star by themselves: one or two go unreported, a few in a short time
+ * add up to a star, because heat below one star cools off again (`heatCool`). Once wanted, each
+ * further incident adds more (`pointsWanted`), and one the police see happen gives a star at
+ * once (`witnessedStars`). Killing someone, gunfire and anything done to the police still give a
+ * star at once. The level drops one star at a time once no police unit has seen the player for a
  * while (longer at higher levels), and a sighting starts that wait again. At the low levels an
  * officer standing next to a player who keeps still arrests them ("busted").
  *
@@ -33,8 +38,12 @@ export type Crime =
 export interface CrimeRule {
   /** Heat points added. */
   readonly points: number;
+  /** Heat points added instead when the player is already wanted (the police know who to look for). */
+  readonly pointsWanted?: number;
   /** The level is at least this many stars afterwards. */
   readonly minStars: number;
+  /** ...or at least this many if a police unit saw it happen. */
+  readonly witnessedStars?: number;
   /** The same crime counts again only after this many seconds (one burst of gunfire is one report). */
   readonly every: number;
 }
@@ -44,12 +53,21 @@ export const WANTED = {
   maxStars: 5,
   /** Heat points at which each level starts (index = stars). */
   starAt: [0, 1, 5, 12, 22, 35],
+  /**
+   * Heat points lost per second while not wanted: incidents below one star are forgotten (about a
+   * point per 33 s), so only several in a short time add up to a star. Once wanted the heat does
+   * not cool; the stars fade instead (`loseAfter`).
+   */
+  heatCool: 0.03,
   crimes: {
     gunfire: { points: 1, minStars: 1, every: 3 },
-    pedestrianInjured: { points: 3, minStars: 1, every: 0 },
-    // A scuffle in the street: a star, and a few in a row add up (one report per 2 s).
-    pedestrianAssaulted: { points: 1, minStars: 1, every: 2 },
-    pedestrianKilled: { points: 6, minStars: 2, every: 0 },
+    // Street incidents (TD-28): no star by themselves. Knocking two people down goes unreported,
+    // a third in a short time is a star; once wanted, about four more make two stars.
+    pedestrianInjured: { points: 0.45, pointsWanted: 1, minStars: 0, witnessedStars: 1, every: 0 },
+    // A scuffle: a punch or a graze (one report per 2 s). Three on their own make no star.
+    pedestrianAssaulted: { points: 0.3, pointsWanted: 0.5, minStars: 0, witnessedStars: 1, every: 2 },
+    // A death is serious: a star at once, and a second soon after makes two (2.5 + 2.5 = 5).
+    pedestrianKilled: { points: 2.5, minStars: 1, witnessedStars: 2, every: 0 },
     vehicleTheft: { points: 1, minStars: 1, every: 0 },
     policeCarRammed: { points: 2, minStars: 1, every: 3 },
     policeCarShot: { points: 2, minStars: 1, every: 2 },
@@ -146,6 +164,22 @@ export function isPoliceGroup(group: string): boolean {
   return group.startsWith(POLICE_GROUP);
 }
 
+/**
+ * A police car's crew after a look at the officers it let out (TD-28): those who died are gone
+ * for good, so a car never brings a killed officer back. `crew` officers belong to the car, `out`
+ * of them were let out, `livingOut` of those are still standing. Returns the crew still alive
+ * and how many are out; a car whose crew is 0 is abandoned where it stands.
+ */
+export function crewLeft(crew: number, out: number, livingOut: number): { crew: number; out: number } {
+  const living = Math.max(0, Math.min(out, livingOut));
+  return { crew: Math.max(0, crew - (out - living)), out: living };
+}
+
+/** How many of a car's living crew get out: never more than it has, nor than the level allows on foot. */
+export function officersToDeploy(crew: number, stars: number, livingOnFoot: number): number {
+  return Math.max(0, Math.min(crew, policeUnits(stars).officers - livingOnFoot));
+}
+
 export class Wanted {
   /** Heat points; the stars follow from them. */
   points = 0;
@@ -159,15 +193,19 @@ export class Wanted {
   /** Seconds since each crime was last counted. */
   private readonly since = new Map<Crime, number>();
 
-  /** Count a crime. Returns the event when the level rose, otherwise null. */
-  report(crime: Crime): WantedEvent | null {
+  /**
+   * Count a crime. `witnessed`: a police unit saw it happen. Returns the event when the level
+   * rose, otherwise null.
+   */
+  report(crime: Crime, witnessed = false): WantedEvent | null {
     const rule: CrimeRule = WANTED.crimes[crime];
     const since = this.since.get(crime);
     if (since !== undefined && since < rule.every) return null;
     this.since.set(crime, 0);
     const before = this.stars;
-    this.points += rule.points;
-    this.stars = Math.max(starsFor(this.points), rule.minStars, this.stars);
+    this.points += before > 0 ? (rule.pointsWanted ?? rule.points) : rule.points;
+    const minStars = witnessed ? Math.max(rule.minStars, rule.witnessedStars ?? 0) : rule.minStars;
+    this.stars = Math.max(starsFor(this.points), minStars, this.stars);
     this.points = Math.max(this.points, WANTED.starAt[this.stars]!);
     // A fresh crime is a fresh report: the search starts again.
     this.unseenFor = 0;
@@ -193,6 +231,8 @@ export class Wanted {
     for (const [crime, t] of this.since) this.since.set(crime, t + dt);
     this.seen = this.stars > 0 && sight.seen;
     if (this.stars === 0) {
+      // Street incidents that gave no star are forgotten after a while.
+      this.points = Math.max(0, this.points - WANTED.heatCool * dt);
       this.unseenFor = 0;
       this.heldFor = 0;
       return null;

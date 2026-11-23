@@ -554,3 +554,40 @@ phone, where touch timing for block and dodge matters most.
 
 **Revisit when** licensed combat animation clips are available (replace the poses, keep the
 rules and tests), or players need to pick targets themselves.
+
+## TD-28: Street incidents build heat before a star; dead officers stay dead and their car is abandoned
+
+**Decision (from players' reports, 23 Nov 2026).** Two changes to the police (`Wanted.ts` in
+`@cow/combat` for the rules, `apps/game/src/Police.ts` for the cars and officers).
+- **Heat before a star.** Hitting a pedestrian (punch, bat, graze or knock-down by a vehicle) used
+  to give a star at once. Now street incidents add only part of a star's heat and have no minimum:
+  `pedestrianAssaulted` 0.3 points (one report per 2 s), `pedestrianInjured` 0.45; a star starts at
+  1 point. While not wanted the heat cools at 0.03 points/s (`heatCool`, about a point per 33 s),
+  so one or two incidents go unreported and about three in a short time make a star. Once wanted,
+  each further one adds more (`pointsWanted`: 0.5 and 1 point), so about four more knock-downs make
+  two stars. An incident a police unit sees happen gives a star at once (`witnessedStars`;
+  `Police.report` casts the same sight lines it uses to spot the player). Killing a pedestrian is
+  still serious: a star at once (2.5 points, two kills in a short time make two stars; seen by the
+  police, two stars at once; it was a flat two stars). Gunfire, theft and anything done to the
+  police are unchanged (a star or more at once). Once wanted, heat does not cool: the stars fade
+  one at a time as before (`loseAfter`).
+- **Dead officers stay dead.** A police car used to call its officers back when they were all down
+  (their bodies vanished), then let two fresh ones out 6 s later: the same crew back from the dead.
+  Now each car has a crew (two). Officers who die while out are struck off it for good
+  (`crewLeft`), only the living get out again (`officersToDeploy`), bodies lie until `Combat`
+  removes the fallen (5 s, as for any enemy), and a car with no crew left is **abandoned**: it
+  stays where it stopped (still solid, lights still on, a grey minimap mark), sees nothing, sounds
+  no siren, and doesn't count towards the level's cars, so `dispatch` sends a new unit from out of
+  sight as it does for the first car. An abandoned car is taken away once the player is more than
+  90 m off and can't see it; at most two are kept besides the chasing cars (the one out of sight
+  makes way).
+
+**Why data in `Wanted.ts`.** The heat model already existed (points, `starAt`); the change is a
+few numbers and two optional fields per crime, unit-tested without a browser, and easy to tune.
+
+**Trade-offs.** All numbers are game-design estimates, tuned by reasoning and tests, not yet by
+play. A witness is any police unit with a sight line at the moment of the report; there are no
+civilian witnesses or phone calls. Abandoned cars cannot be driven by the player.
+
+**Revisit when** players say the heat is now too lenient (raise `points`, lower `heatCool`), or
+civilian witnesses are added.

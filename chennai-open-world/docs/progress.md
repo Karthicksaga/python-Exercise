@@ -943,3 +943,21 @@ Difficulty has not been play-tested by a person.
   restored to match that build.
 - **Not yet:** checked on the phone that showed it.
 
+
+## 23 Nov 2026: police tuning: heat before a star, dead officers stay dead (TD-28, branch `agent/police-tuning`)
+- **Players' reports:** one knocked-down pedestrian gave a star at once (too harsh); officers shot
+  dead came back out of the same car.
+- **Wanted rules** (`Wanted.ts`): street incidents add heat with no minimum star (assault 0.3,
+  knock-down 0.45, a star at 1); below a star the heat cools at 0.03/s; once wanted they add more
+  (0.5, 1); seen by the police, a star at once. A kill is a star at once (two kills soon after,
+  two stars). Other crimes unchanged.
+- **Police crews** (`Police.ts`): officers killed are struck off their car's crew (`crewLeft`), only
+  the living get out again (`officersToDeploy`), bodies stay until `Combat` removes them, and a
+  car with no crew is abandoned in place; a new unit is sent from out of sight. The snapshot's
+  police cars carry `unit` (car and dispatch number) and the state `abandoned`.
+- **Tested:** unit tests in `Wanted.test.ts` (heat, cooling, witnesses, kills, crews). Browser:
+  new `police.spec.ts` test (shoot both officers: the car stays abandoned in place, no officer
+  comes back out of it for 8 game seconds, the bodies are removed, a new unit appears more than
+  50 m away); `fight.spec.ts` (one scuffle: heat but no star, changed on purpose) and
+  `pedestrians.spec.ts` (a kill gives a star, one knock-down none). Results below.
+- **Not done:** not played on a phone or the emulator; the numbers are untuned by play.

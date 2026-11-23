@@ -11,6 +11,7 @@ interface HitSnapshot {
   reputation: number;
   casualties: Array<{ x: number; z: number; state: string; speed: number }>;
   lastPedestrianHit: { outcome: string; speed: number; fine: number; reputation: number } | null;
+  police: { stars: number; points: number; lastCrime: string | null };
 }
 const state = (page: Page) => snapshot(page) as unknown as Promise<HitSnapshot>;
 const MONEY = 20_000;
@@ -105,6 +106,8 @@ test("hitting a pedestrian at speed kills them: message, fine, reputation; they 
   expect(fined.reputation).toBe(30);
   expect(fined.casualties).toHaveLength(1);
   expect(fined.casualties[0]!.state).toBe("dead");
+  // A death is serious: a wanted star at once (TD-28).
+  expect(fined.police).toMatchObject({ stars: 1, lastCrime: "pedestrianKilled" });
 
   // They do not get up.
   await page.getByRole("button", { name: "Brake", exact: true }).dispatchEvent("pointerdown", { pointerId: 32, pointerType: "touch" });
@@ -147,6 +150,9 @@ test("hitting a pedestrian at medium speed injures them: they lie down, then get
   expect(fined.money).toBe(MONEY - 1500);
   expect(fined.reputation).toBe(42);
   expect(fined.casualties.map((c) => c.state)).toEqual(["down"]);
+  // One knock-down on its own goes unreported: some heat, but no star (TD-28).
+  expect(fined.police).toMatchObject({ stars: 0, lastCrime: "pedestrianInjured" });
+  expect(fined.police.points).toBeGreaterThan(0);
 
   // A few seconds on the road, then up and limping away slowly.
   await waitGameTime(page, 3);
