@@ -796,4 +796,6 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - **23 Nov, after a phone stalled on the loading screen:** the cast's models are no longer inlined
   (script 16 MB → 6.7 MB, TD-3 amended) and the WebView's hardware layer is gone (`GameScreen.tsx`).
   Second try: the loading screen no longer loops or fades anything, and `Game.create` waits a
-  frame between steps (TD-25 "On a phone"). Needs a check on a real phone.
+  frame between steps (TD-25 "On a phone"). Third try: the shell shows a native status panel
+  from the game's loading reports (`loadReport.ts`, `GameScreen.tsx`) after 20 s. Ask for a
+  screenshot of that panel from the phone: it names the GPU, the step, and whether the page answers.

@@ -2,6 +2,7 @@ import type { WeaponId } from "@cow/combat";
 import { LoadingScreen } from "@cow/ui";
 import { STATION_FONT } from "@cow/game-engine";
 import { Game, LOAD_STEPS, type GameSnapshot } from "./Game";
+import { startLoadReport } from "./loadReport";
 import { sendToShell } from "./nativeBridge";
 
 /** Shown one at a time while the city loads. Every tip describes something the game really does. */
@@ -57,9 +58,13 @@ async function boot(): Promise<void> {
   if (!(canvas instanceof HTMLCanvasElement) || !stage || !loading) throw new Error("Game page is missing its canvas.");
 
   const screen = new LoadingScreen(loading, { steps: LOAD_STEPS, tips: TIPS, tamilFont: STATION_FONT });
+  const report = startLoadReport(canvas);
   try {
     const game = await Game.create(canvas, stage, {
-      step: (id) => screen.step(id),
+      step: (id) => {
+        screen.step(id);
+        report.step(id, LOAD_STEPS.find((s) => s.id === id)?.label ?? id);
+      },
       world: (map) => screen.sketch(map),
     });
     window.__cow = {
@@ -88,6 +93,7 @@ async function boot(): Promise<void> {
       document.documentElement.dataset.ready = "title";
     }
     await screen.finish();
+    report.done();
   } catch (error) {
     // Never leave a black screen: say what failed (usually no WebGL on the device).
     const message = error instanceof Error ? error.message : String(error);

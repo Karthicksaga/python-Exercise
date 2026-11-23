@@ -206,6 +206,23 @@ test.describe("inside the Android app", () => {
   const posted = async (page: Page) => (await page.evaluate(() => (window as unknown as { __posted: string[] }).__posted)).map((m) => JSON.parse(m) as { type: string });
   const back = (page: Page) => page.evaluate(() => window.dispatchEvent(new CustomEvent("cow-shell", { detail: JSON.stringify({ type: "back" }) })));
 
+  test("loading reports to the shell: the device, every step in order, heartbeats, then loaded", async ({ page }) => {
+    await openTitle(page);
+    await expect.poll(async () => (await posted(page)).some((m) => m.type === "loaded")).toBe(true);
+    const all = (await posted(page)) as Array<{ type: string; step?: string; gpu?: string; at?: number }>;
+    const device = all.find((m) => m.type === "device");
+    expect(device?.gpu).toBeTruthy();
+    expect(all.filter((m) => m.type === "loading").map((m) => m.step)).toEqual(["world", "physics", "streets", "people", "traffic", "rail"]);
+    // The shell tells a stuck script from a drawing failure by these.
+    expect(all.some((m) => m.type === "alive")).toBe(true);
+    expect(all.filter((m) => m.type === "problem")).toEqual([]);
+    // Heartbeats stop once loading is done.
+    const count = all.filter((m) => m.type === "alive").length;
+    // Wall clock on purpose: the heartbeat is a 2 s timer, and on the title game time stands still.
+    await page.waitForTimeout(2500);
+    expect((await posted(page)).filter((m) => m.type === "alive").length).toBe(count);
+  });
+
   test("the pause menu keeps every button reachable on a short screen, and MAIN MENU returns to the title", async ({ page }) => {
     await page.setViewportSize({ width: 915, height: 360 });
     await openTitle(page);
