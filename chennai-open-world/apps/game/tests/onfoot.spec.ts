@@ -26,6 +26,9 @@ test("streams chunks in and out as the player crosses the city", async ({ page }
   // Instead: jump about 6 km to T. Nagar (Sir Thyagaraya Road) and check that every chunk from
   // Anna Nagar was freed and the ones there were fetched from their files.
   await teleport(page, 3269, 4960);
+  // Game time, not wall clock: loading the new chunks can stall the first frames there, and the
+  // player is put down 10 cm up, so give them half a game second to land.
+  await waitGameTime(page, 0.5);
   const after = await snapshot(page);
   expect(after.chunksLoaded).toBeGreaterThan(3);
   expect(after.chunksLoaded).toBeLessThan(16);
