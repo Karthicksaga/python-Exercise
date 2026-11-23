@@ -42,7 +42,6 @@ const SKETCH: Record<string, { width: number; alpha: number }> = {
   service: { width: 0.5, alpha: 0.11 },
 };
 
-const reducedMotion = (): boolean => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export class LoadingScreen {
   private readonly bar: HTMLElement;
@@ -126,8 +125,8 @@ export class LoadingScreen {
     this.bar.setAttribute("aria-valuetext", "Ready");
     this.stop();
     this.root.dataset.state = "done";
-    const fade = reducedMotion() ? 0 : 650;
-    await new Promise<void>((resolve) => window.setTimeout(resolve, fade));
+    // Removed at once, not faded: a fade makes the whole screen one more full-screen GPU layer
+    // just as the game starts drawing, which a phone short of GPU memory could not afford.
     this.root.remove();
   }
 
@@ -164,16 +163,9 @@ export class LoadingScreen {
     this.tipIndex = ((index % tips.length) + tips.length) % tips.length;
     const text = tips[this.tipIndex]!;
     const node = this.tipText;
-    if (!node.textContent || reducedMotion()) {
-      node.textContent = text;
-      return;
-    }
-    // Fade out, swap, fade in (CSS transition on opacity).
-    node.classList.add("swap");
-    window.setTimeout(() => {
-      node.textContent = text;
-      node.classList.remove("swap");
-    }, 280);
+    // Swapped at once: a fade would make the tip a layer of its own every few seconds (see
+    // index.html on why nothing animates here).
+    node.textContent = text;
   }
 
   private revealTamil(): void {
@@ -190,7 +182,8 @@ export class LoadingScreen {
     if (!g) return;
     const width = Math.max(1, canvas.clientWidth);
     const height = Math.max(1, canvas.clientHeight);
-    const ratio = Math.min(window.devicePixelRatio || 1, 1.5);
+    // A faint background: drawn at CSS pixels, not the screen's, to keep its texture small.
+    const ratio = 1;
     canvas.width = Math.round(width * ratio);
     canvas.height = Math.round(height * ratio);
     g.setTransform(ratio, 0, 0, ratio, 0, 0);

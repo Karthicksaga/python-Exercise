@@ -795,7 +795,8 @@ waits for any other run on the machine and picks a free port; see AGENTS.md). Kn
 - **Results:** typecheck clean; unit 503/503; full browser suite 104/104 (38.9 min).
 - **23 Nov, after a phone stalled on the loading screen:** the cast's models are no longer inlined
   (script 16 MB → 6.7 MB, TD-3 amended) and the WebView's hardware layer is gone (`GameScreen.tsx`).
-  Needs a check on a real phone.
+  Second try: the loading screen no longer loops or fades anything, and `Game.create` waits a
+  frame between steps (TD-25 "On a phone"). Needs a check on a real phone.
 
 ## 22 Nov 2026: sound design (branch `agent/sound-design`, on top of `agent/loading-screen`): where I left off
 - **Done and tested** (details in `progress.md`, TD-26): engine and horn per vehicle kind,
