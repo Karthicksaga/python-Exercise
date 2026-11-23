@@ -15,3 +15,12 @@ assets (for example the new cast in `assets/people/`) outside the markers.
 | `assets/props/*.glb` | Street props: barrel, crates, clay pots, AC unit, dish antenna, awning, rolling shutter (`ShutterOpen` clip), vegetable handcart (`Roll` clip) | Original, made by `chennai-open-world/tools/blender/street_props.py` in Blender 5.2 LTS | Original work for the project |
 | `assets/fonts/*.woff2`, `assets/fonts/OFL.txt` | Noto Sans Tamil Bold cut to the shop-sign glyphs (`noto-sans-tamil-signs`), Noto Sans Tamil and Devanagari cut to the station names; `OFL.txt` is the licence text | Noto fonts (via `@fontsource`), subset with `pyftsubset` (`chennai-open-world/assets/README.md`) | SIL Open Font Licence 1.1, © The Noto Project Authors (`fonts/OFL.txt`) |
 <!-- sync_from_threejs:end -->
+
+## Sound (decision G-82)
+Every sound file also has a row in `assets/audio/manifest.json` (source URL, author, licence,
+original file name, what was edited). Recordings: CC0, public domain or CC-BY only (never NC, ND,
+Sampling+ or unknown licences); one row per recording below.
+
+| Files | What | Source | Licence |
+|---|---|---|---|
+| `assets/audio/standin/*` | Synthesised stand-ins for every sound still without an acceptable recording: engine loops at four rpm points on and off load per vehicle kind (16-bit WAV), engine start/stop, horns, doors, gear change, crashes, tyre squeal, wind, sirens, footsteps (dry and wet), landing, city hum, rain, sea, crickets, crows, koel, interface cues (OGG Vorbis) | Original, synthesised by `tools/audio/render_standins.gd` from the designs in `src/audio/sound_profiles.gd` and `src/audio/synth.gd` (the Three.js game's TD-26 sound design) | **CC0 1.0**, original work for the project |

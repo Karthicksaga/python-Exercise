@@ -18,6 +18,8 @@ boot_splash/show_image=false
 
 GameLoop="*res://src/game_engine/game_loop.gd"
 WorldOrigin="*res://src/game_engine/world_origin.gd"
+Weather="*res://src/game_engine/environment/weather.gd"
+Sound="*res://src/audio/sound.gd"
 
 [debug]
 
@@ -51,6 +53,17 @@ pointing/emulate_touch_from_mouse=true
 common/physics_ticks_per_second=60
 common/max_physics_steps_per_frame=5
 
+[shader_globals]
+
+city_wetness={
+"type": "float",
+"value": 0.0
+}
+city_night={
+"type": "float",
+"value": 0.0
+}
+
 [rendering]
 
 renderer/rendering_method="mobile"
@@ -58,3 +71,4 @@ renderer/rendering_method.mobile="mobile"
 rendering_device/fallback_to_opengl3=true
 textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/msaa_3d=1
+lights_and_shadows/directional_shadow/size.mobile=2048
