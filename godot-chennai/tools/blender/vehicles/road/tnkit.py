@@ -174,7 +174,8 @@ def project_livery(obj, mat_name, y0, y1, half_w, height):
             elif ay > ax and ay >= az:
                 xx = min(max((v.x / (2 * half_w)) + 0.5, 0.002), 0.998)
                 zz = min(max(v.z / height, 0.002), 0.998)
-                uu = (0.0 if n.y > 0 else 0.5) + 0.5 * (xx if n.y > 0 else 1 - xx)
+                # Seen from outside: on the front the viewer's right is -x, on the rear +x.
+                uu = 0.5 * (1 - xx) if n.y > 0 else 0.5 + 0.5 * xx
                 vv = 0.375 * zz
             else:
                 uu = (v.y - y0) / L

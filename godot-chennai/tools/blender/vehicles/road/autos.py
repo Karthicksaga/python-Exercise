@@ -242,8 +242,8 @@ def auto_manifest(d, results):
         grips=[dict(node="grip_l", hand="left"), dict(node="grip_r", hand="right"),
                dict(node="grip_seatback", hand="either", what="passengers' bar on the back of the driver's seat"),
                dict(node="grip_side_r", hand="right", what="safety bar across the right-hand opening")],
-        anchors=[dict(node="foot_l", what="driver's left foot"), dict(node="foot_r", what="driver's right foot"),
-                 dict(node="exit_driver", what="where the driver steps out (left)")],
+        anchors=[dict(node="foot_l", what="driver's left foot"), dict(node="foot_r", what="driver's right foot")],
+        exits=[dict(node="exit_driver", what="where the driver steps out (left)")],
         cargo=[dict(node="cargo_bench", what="passengers' bench"), dict(node="cargo_rear_shelf", what="luggage shelf behind the bench")],
         pose=dict(lean=0.45, hand=[0.335, 0.25, -0.38], foot=[0.16, -0.37, -0.24]),
         entry=dict(side=-1, point=K.g((-0.95, 0.40, 0)), door="none", style="step"),
@@ -251,6 +251,7 @@ def auto_manifest(d, results):
                    dict(shape="box", centre=K.g((0, -0.1, 1.3)), half_extents=[0.66, 0.42, 1.05])],
         paints=[dict(name=n, srgb=[round(K._srgb(c), 4) for c in rgb]) for n, rgb in d["paints"]],
         paint_surface="material named `paint`: set albedo_color = Color(srgb) (Godot colours are sRGB); hood, skirt and trim are atlas cells",
+        paint_family="yellow",
         livery_family="Chennai autos: yellow body, black canvas hood (the gas autos green and yellow); plates yellow (commercial), blank",
         physics=T.physics_block(d["mass"], d["ride"], wheels, d["physics"]),
         open_seat=True,
@@ -309,7 +310,7 @@ def share_build(d, lod):
         g.data.polygons[0].flip()
     parts.append(g)
     for sx in (1, -1):
-        parts.append(K.box("a_pillar", (0.06, 0.07, 0.74), (sx * (hw - 0.12), 1.36, 1.45), paint, rot=(-0.38, 0, 0)))
+        parts.append(K.box("a_pillar", (0.06, 0.07, 0.76), (sx * (hw - 0.12), 1.36, 1.45), paint, rot=(0.38, 0, 0)))
         parts.append(K.box("b_pillar", (0.05, 0.06, 0.82), (sx * (hw - 0.05), 0.40, 1.43), paint))
     parts.append(K.box("cab_roof", (2 * hw - 0.02, 1.0, 0.07), (0, 0.85, d["roof"] - 0.08), paint, bevel=0.03))
     parts.append(K.box("visor", (2 * hw - 0.1, 0.18, 0.03), (0, 1.36, 1.84), paint, rot=(0.25, 0, 0)))
@@ -415,13 +416,14 @@ def share_manifest(d, results):
         grips=[dict(node="grip_l", hand="left"), dict(node="grip_r", hand="right"),
                dict(node="grip_roof_l", hand="either", what="roof rail"), dict(node="grip_roof_r", hand="either", what="roof rail"),
                dict(node="grip_rear_l", hand="left", what="handle at the rear step"), dict(node="grip_rear_r", hand="right", what="handle at the rear step")],
-        anchors=[dict(node="exit_driver", what="driver steps out (left)"), dict(node="exit_rear", what="passengers get on and off at the back")],
+        exits=[dict(node="exit_driver", what="driver steps out (left)"), dict(node="exit_rear", what="passengers get on and off at the back")],
         cargo=[dict(node="cargo_floor", what="floor between the benches")],
         pose=dict(lean=0.4, hand=[0.34, 0.28, -0.3], foot=[0.16, -0.42, -0.2]),
         entry=dict(side=-1, point=K.g((-1.1, 0.72, 0)), door="none", style="step"),
         collision=[dict(shape="box", centre=K.g((0, 0.02, 0.98)), half_extents=[0.72, 0.66, 1.6])],
         paints=[dict(name=n, srgb=[round(K._srgb(c), 4) for c in rgb]) for n, rgb in d["paints"]],
         paint_surface="material named `paint`: set albedo_color = Color(srgb)",
+        paint_family="yellow",
         livery_family="Chennai share autos: yellow (most), green or blue cabs, black or dark canvas; plates yellow, blank",
         physics=T.physics_block(d["mass"], d["ride"], wheels, d["physics"]),
         open_seat=True,
@@ -568,13 +570,14 @@ def goods_manifest(d, results):
                dict(node="seat_passenger", hip=K.g((-0.38, 0.85, 1.02)), role="passenger", door="door_l")],
         grips=[dict(node="grip_steer_l", hand="left"), dict(node="grip_steer_r", hand="right")],
         cargo=[dict(node="cargo_deck", what="open deck with drop sides", size_m=[round(2 * d["hw"] - 0.08, 2), d["side_h"], round(d1 - d0 - 0.06, 2)])],
-        anchors=[dict(node="exit_driver", what="driver steps out (right)")],
+        exits=[dict(node="exit_driver", what="driver steps out (right)")],
         pose=dict(lean=-0.05, hand=[0.17, 0.3, -0.42], foot=[0.12, -0.42, -0.6]),
         entry=dict(side=1, point=K.g((d["hw"] + 0.45, 0.95, 0)), door="hinged", style="door"),
         collision=[dict(shape="box", centre=K.g((0, (d["cab"][0] + d["cab"][1]) / 2, 1.13)), half_extents=[d["hw"], 0.72, round((d["cab"][1] - d["cab"][0]) / 2, 3)]),
                    dict(shape="box", centre=K.g((0, (d0 + d1) / 2, 0.72)), half_extents=[d["hw"], 0.36, round((d1 - d0) / 2, 3)])],
         paints=[dict(name=n, srgb=[round(K._srgb(c), 4) for c in rgb]) for n, rgb in d["paints"]],
         paint_surface="material named `paint`: set albedo_color = Color(srgb)",
+        paint_family="white",
         physics=T.physics_block(d["mass"], d["ride"], wheels, d["physics"]),
         notes="New vehicle (no Three.js counterpart): handling estimated between the auto and the hatchback; starting values.",
     )

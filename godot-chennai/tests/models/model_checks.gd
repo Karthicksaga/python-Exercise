@@ -24,9 +24,9 @@ const BUDGETS: Dictionary = {
 	"car": [12000, 3000, 800],
 	"race_car": [12000, 3000, 800],
 	"bike": [12000, 3000, 800],
-	"ambulance": [15000, 4000, 1000],  # legacy: the Three.js game's van (14.6k / 3.9k), kept as is
-	"bus": [13000, 5500, 1000],  # legacy: 12.4k / 5.3k
-	"auto": [16500, 12500, 1000],  # legacy: 16.4k / 12.3k, over the car budget (docs/vehicles.md)
+	"ambulance": [12000, 3000, 800],  # the van ambulance, as a car (G-92); legacy counts below
+	"bus": [15000, 3500, 600],  # brief: buses 15k / 3.5k / 600 (G-92)
+	"auto": [12000, 3000, 800],  # autos as cars (G-92); the legacy auto keeps its counts below
 	"helicopter": [10000, 2500, 400],
 	"light_aircraft": [10000, 2500, 400],
 	"airliner": [15000, 3500, 600],
@@ -34,10 +34,26 @@ const BUDGETS: Dictionary = {
 	"train_cab": [6800, 1000, 150],  # 6,000 cab/loco/nose + bogies at LOD0
 }
 ## Legacy (Three.js) models keep their measured counts; the hatchback's traffic model is 3,050.
-const LEGACY_BUDGETS: Dictionary = {"hatchback": [10500, 3100], "motorbike": [7700, 2300]}
+const LEGACY_BUDGETS: Dictionary = {"hatchback": [10500, 3100], "motorbike": [7700, 2300], "ambulance": [15000, 4000],
+	"bus": [13000, 5500], "auto_rickshaw": [16500, 12500]}
 const BODY_BUDGET: Dictionary = {"train_coach": 3000, "train_cab": 6000}
 ## Per two-axle bogie with its wheelsets (research note); a three-axle bogie gets half as much again.
 const BOGIE_BUDGET := 400
+
+## Colour families for liveries and paints (G-93): hue range in degrees (wrapping when min > max),
+## minimum saturation, value range; checked on `texture_samples[].family` and `paint_family`.
+const FAMILIES: Dictionary = {
+	"yellow": [38.0, 62.0, 0.6, 0.55, 1.0],
+	"cream": [30.0, 60.0, 0.15, 0.6, 1.0],
+	"maroon": [340.0, 20.0, 0.5, 0.15, 0.55],
+	"red": [345.0, 25.0, 0.6, 0.35, 1.0],
+	"green": [80.0, 160.0, 0.5, 0.2, 1.0],
+	"white": [0.0, 360.0, 0.0, 0.8, 1.0],
+	"brown": [10.0, 40.0, 0.5, 0.1, 0.45],
+	"orange": [10.0, 38.0, 0.7, 0.5, 1.0],
+	"magenta": [290.0, 345.0, 0.6, 0.3, 1.0],
+	"black": [0.0, 360.0, 0.0, 0.0, 0.25],
+}
 
 var labels: PackedStringArray = PackedStringArray()
 var oks: Array[bool] = []
@@ -136,6 +152,14 @@ func _check_model(dir: String, file: String) -> void:
 		return
 	var first: Dictionary = lods[0]
 	_check_textures(dir.path_join(_str(first, "file")), m, name)
+	var paint_family := _str(m, "paint_family")
+	if paint_family != "":
+		var paints := _arr(m, "paints")
+		if _ok(not paints.is_empty(), "%s: has paints" % name):
+			var p0: Dictionary = paints[0]
+			var srgb := _arr(p0, "srgb")
+			var col := Color(float(srgb[0]), float(srgb[1]), float(srgb[2]))
+			_ok(in_family(col, paint_family), "%s: first paint %s is in the %s colour family" % [name, p0.get("name"), paint_family])
 	_check_frame(lod0, m, name)
 	_check_nodes(lod0, m, name, kind)
 	lod0.free()
@@ -329,6 +353,15 @@ func _check_nodes(scene: Node3D, m: Dictionary, name: String, kind: String) -> v
 			var n := _find(scene, anchor)
 			if _ok(n != null, "%s: %s node %s" % [name, group, anchor]):
 				_ok(bounds.has_point(_xf(n).origin), "%s: %s inside the model's bounds" % [name, anchor])
+	# Exit and kerb points (where a rider steps out or a passenger waits): beside the vehicle, on
+	# the ground, within two metres of its bounds.
+	var near := _bounds(scene).grow(2.0)
+	for e: Dictionary in _arr(m, "exits"):
+		var exit_name := _str(e, "node")
+		var n := _find(scene, exit_name)
+		if _ok(n != null, "%s: exit node %s" % [name, exit_name]):
+			var o := _xf(n).origin
+			_ok(absf(o.y) < 0.05 and near.has_point(o), "%s: %s on the ground beside the vehicle (%s)" % [name, exit_name, o])
 	for p: Dictionary in _arr(m, "pivots"):
 		var pivot_name := _str(p, "node")
 		var n := _find(scene, pivot_name)
@@ -410,3 +443,20 @@ func _check_textures(path: String, m: Dictionary, name: String) -> void:
 			continue
 		var c := _texel(sample, _arr(smp, "uv"))
 		_ok(_close(c, _arr(smp, "srgb")), "%s: %s texel is %s (got %d,%d,%d)" % [name, smp.get("what"), smp.get("srgb"), c.r8, c.g8, c.b8])
+		var family := _str(smp, "family")
+		if family != "":
+			_ok(in_family(c, family), "%s: %s is in the %s colour family (h %.0f s %.2f v %.2f)" % [name, smp.get("what"), family, c.h * 360.0, c.s, c.v])
+
+
+## True when the colour (sRGB) belongs to a named family of FAMILIES.
+static func in_family(c: Color, family: String) -> bool:
+	if not FAMILIES.has(family):
+		return false
+	var f: Array = FAMILIES[family]
+	var h := c.h * 360.0
+	var lo := float(f[0])
+	var hi := float(f[1])
+	var hue_ok := (h >= lo and h <= hi) if lo <= hi else (h >= lo or h <= hi)
+	if c.s < 0.08:
+		hue_ok = lo == 0.0 and hi == 360.0  # greys: only the hue-free families (white, black)
+	return hue_ok and c.s >= float(f[2]) and c.v >= float(f[3]) and c.v <= float(f[4])

@@ -107,20 +107,20 @@ def fittings(d, shell):
     commercial = d.get("taxi", False)
     # Headlamps: swept-back clusters on the front corners (a reflector bowl and an amber
     # indicator strip in a dark housing), placed by rays on the shell.
-    lamp_z = sec[-2][3] - 0.08
+    lamp_z = sec[-2][3] - 0.1
     for sx in (1, -1):
         hit = K.surface((sx * (wl - 0.22), front + 2, lamp_z), (0, -1, 0), only=shell)
         if not hit:
             continue
         p, nrm = hit
-        h = K.box("lamp_house", (0.36, 0.05, 0.14), p + nrm * 0.006, role("dark_grey"), bevel=0.02)
-        h.rotation_euler = (0, 0, sx * 0.35)
+        h = K.box("lamp_house", (0.44, 0.06, 0.17), p + nrm * 0.006, role("dark_grey"), bevel=0.02)
+        h.rotation_euler = (0, 0, sx * 0.25)
         parts.append(h)
-        b = K.box("headlamp", (0.2, 0.05, 0.1), p + nrm * 0.022 + Vector((-sx * 0.04, 0, 0.005)), role("headlamp"), bevel=0.015)
-        b.rotation_euler = (0, 0, sx * 0.35)
+        b = K.box("headlamp", (0.26, 0.06, 0.12), p + nrm * 0.026 + Vector((-sx * 0.05, 0, 0.005)), role("headlamp"), bevel=0.015)
+        b.rotation_euler = (0, 0, sx * 0.25)
         parts.append(b)
-        i = K.box("indicator", (0.08, 0.05, 0.05), p + nrm * 0.018 + Vector((sx * 0.11, -0.04, -0.02)), role("indicator"))
-        i.rotation_euler = (0, 0, sx * 0.35)
+        i = K.box("indicator", (0.1, 0.06, 0.06), p + nrm * 0.02 + Vector((sx * 0.14, -0.04, -0.02)), role("indicator"))
+        i.rotation_euler = (0, 0, sx * 0.25)
         parts.append(i)
     # Grille: a slim slot between the lamps with one body-colour bar, and a wider black intake in
     # the bumper below (no make's shape); fog lamp recesses on the sedan.
@@ -251,6 +251,7 @@ def manifest(d, results):
     m.update(
         steering=r0["steer"], doors=r0["doors"], seats=seats,
         grips=[dict(node="grip_steer_l", hand="left"), dict(node="grip_steer_r", hand="right")],
+        exits=[dict(node="exit_driver", what="driver steps out (right)")],
         cargo=[dict(node="cargo_boot", what="boot floor" if d["boot"] else "luggage space behind the rear seat")],
         pose=dict(lean=-0.1, hand=[0.17, 0.3, -0.42], foot=[0.12, -0.15, -0.78]),
         entry=dict(side=1, point=K.g((d["arch_x"] + 0.45, d["seats"][0][2] + 0.1, 0)), door="hinged", style="door"),
@@ -261,6 +262,7 @@ def manifest(d, results):
                  half_extents=[round(sec[6][5], 3), round((d["roof_z"] - belt) / 2, 3), round((d["a_line"][0][0] - d["c_line"][1][0]) / 2, 3)])],
         paints=[dict(name=n, srgb=[round(K._srgb(c), 4) for c in rgb]) for n, rgb in d["paints"]],
         paint_surface="material named `paint`: set albedo_color = Color(srgb) (Godot colours are sRGB)",
+        paint_family="white",
         physics=T.physics_block(d["mass"], d["ride"], wheels, d["physics"]),
         notes=("Handling as the Three.js game's hatchback (specs.ts `car`); " if d["name"] == "hatchback" else
                "Handling estimated from the Three.js hatchback (heavier, a little faster); ") + "starting values for Phase 2 tuning.",
@@ -417,13 +419,16 @@ def amb_manifest(d, results):
         grips=[dict(node="grip_steer_l", hand="left"), dict(node="grip_steer_r", hand="right")],
         cargo=[dict(node="cargo_stretcher", what="stretcher (patient)")],
         cargo_clear=dict(min=K.g((-0.68, -2.45, 0.52)), max=K.g((0.0, 0.1, 2.2))),
-        anchors=[dict(node="exit_driver", what="driver steps out (right)"), dict(node="exit_rear", what="stretcher in and out at the back")],
+        exits=[dict(node="exit_driver", what="driver steps out (right)"), dict(node="exit_rear", what="stretcher in and out at the back")],
         pose=dict(lean=-0.05, hand=[0.17, 0.3, -0.42], foot=[0.12, -0.38, -0.7]),
         entry=dict(side=1, point=K.g((d["hw"] + 0.5, 0.7, 0)), door="hinged", style="door"),
         collision=[dict(shape="box", centre=K.g((0, -0.1, 1.38)), half_extents=[d["hw"], 1.0, 2.5])],
         livery_family="plain white with a red waist band, red and white beacons, amber rear warning lamps; no service name, "
                       "number, cross or star emblem (both are protected or registered marks)",
         siren=True,
+        paints=[dict(name="ambulance white", srgb=[round(K._srgb(c), 4) for c in (0.8, 0.8, 0.78)])],
+        paint_surface="material named `paint` (white; not meant to be recoloured)",
+        paint_family="white",
         physics=T.physics_block(d["mass"], d["ride"], wheels, d["physics"]),
         notes="Wheel positions, mass and handling as the Three.js game's ambulance (specs.ts); starting values.",
     )
