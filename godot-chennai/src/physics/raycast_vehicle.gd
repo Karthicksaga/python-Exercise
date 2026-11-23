@@ -86,12 +86,20 @@ var _ray := PhysicsRayQueryParameters3D.new()
 func setup(vehicle_spec: VehicleSpec) -> void:
 	spec = vehicle_spec
 	mass = spec.mass
-	var box := BoxShape3D.new()
-	box.size = spec.half_extents * 2.0
-	var shape := CollisionShape3D.new()
-	shape.name = "Chassis"
-	shape.shape = box
-	add_child(shape)
+	var boxes := spec.boxes
+	if boxes.is_empty():
+		boxes = [{"centre": Vector3.ZERO, "half": spec.half_extents}]
+	for i in boxes.size():
+		var box := BoxShape3D.new()
+		box.size = (boxes[i]["half"] as Vector3) * 2.0
+		var shape := CollisionShape3D.new()
+		shape.name = "Chassis" if i == 0 else "Chassis%d" % i
+		shape.shape = box
+		shape.position = boxes[i]["centre"]
+		add_child(shape)
+	# The centre of mass stays at the chassis centre (as in the Three.js game).
+	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
+	center_of_mass = Vector3.ZERO
 	var w := spec.half_extents.x * 2.0
 	var h := spec.half_extents.y * 2.0
 	var l := spec.half_extents.z * 2.0

@@ -15,8 +15,11 @@ class WheelSpec:
 	var driven: bool = false
 
 
-## Half-sizes of the chassis collision box.
+## Half-sizes of the chassis collision box (also gives the inertia).
 var half_extents: Vector3 = Vector3(0.8, 0.4, 2.0)
+## Collision boxes from a model manifest, [{centre: Vector3, half: Vector3}] in the chassis frame;
+## empty: one box of `half_extents` at the centre.
+var boxes: Array[Dictionary] = []
 var mass: float = 1000.0
 var wheels: Array[WheelSpec] = []
 ## Total driving force at full throttle, newtons.

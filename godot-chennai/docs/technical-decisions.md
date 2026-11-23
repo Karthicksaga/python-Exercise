@@ -250,13 +250,15 @@ entry, passenger doors, gears, camera distance and crash rule, and the variants 
 Three.js numbers exactly; the premium saloon, SUV, coupé and the race car (MIGRATION_PROMPT §11)
 are invented profiles with a `grip` multiplier (friction limit and side stiffness).
 
-## G-73: One manifest per vehicle model
-`assets/vehicles/<model>.vehicle.json` names the GLB, its LOD1, the wheel nodes in physics-wheel
-order, the door nodes with hinge leaf and opening angle, paint and beacon materials (format in
-`docs/vehicles.md`). The kind names its `model` and a `fallback_model`; the premium and race
-cars use stretched stand-ins until the Models agent's GLBs and manifests land, with no code
-change. Wheels are drawn at the physics wheels, scaled to the physics radius; the model's ground
-sits at the settled ride height. LOD1 beyond 28 m (`visibility_range`).
+## G-73: Vehicles load through the Models agent's manifest
+`assets/vehicles/<model>.json` (the Models agent's schema, shared with the Tamil Nadu vehicles
+agent) names the LOD files and distances, wheel and door nodes, collision boxes, seats, pose,
+entry and paint. `VehicleManifest` reads it: a kind whose own model is present takes its geometry
+(wheels, chassis boxes, ride height, driver's seat, entry, aisle) from the manifest; the handling
+scalars stay in `vehicle_types.json` (G-71, G-72). Wheels are matched to the physics wheels by
+position and drawn at the physics hub. Kinds whose GLB is not on the branch yet use a stretched
+`fallback_model`. So a redesigned auto, hatchback or bus, or the new premium cars, drop in as a
+GLB plus manifest. The ported vehicles' manifests are the Models agent's files, unchanged.
 
 ## G-74: Gearbox P/R/D and the HUD gear rule (Three.js `Gearbox.ts`)
 GAS and BRAKE are pedals; the selector is P, R, D. A change needs the vehicle below 1 m/s; asked

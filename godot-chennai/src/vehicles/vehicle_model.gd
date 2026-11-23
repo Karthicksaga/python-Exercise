@@ -35,12 +35,13 @@ static func build(t: VehicleType, variant: VehicleCatalog.VariantInfo) -> Vehicl
 	m.name = "Model"
 	m.position = Vector3(0, settled_ground(t.spec), 0)
 	var manifest := VehicleCatalog.manifest_for(t)
-	if manifest.is_empty():
+	var roof := -m.position.y + t.spec.half_extents.y
+	if manifest == null:
 		m.stand_in = true
 		m._build_box(t, variant)
 	else:
 		m._build_glb(t, variant, manifest)
-	var roof := float(manifest.get("roof", -m.position.y + t.spec.half_extents.y))
+		roof = manifest.roof()
 	m._build_extras(variant, roof)
 	return m
 
@@ -54,40 +55,59 @@ static func settled_ground(s: VehicleSpec) -> float:
 	return sum / maxi(1, s.wheels.size())
 
 
-func _build_glb(t: VehicleType, variant: VehicleCatalog.VariantInfo, manifest: Dictionary) -> void:
+func _build_glb(t: VehicleType, variant: VehicleCatalog.VariantInfo, manifest: VehicleManifest) -> void:
 	var dir := VehicleCatalog.MODELS_DIR
-	var scene := load(dir.path_join(String(manifest["glb"]))) as PackedScene
-	var body := scene.instantiate() as Node3D
-	body.name = "Lod0"
-	var model_half: Array = manifest.get("half_extents", [])
-	if t.model != _model_id(manifest) and model_half.size() == 3:
-		# A stand-in: stretch the fallback to the type's footprint.
+	var lods := manifest.lods()
+	if manifest.id != t.model:
+		# A stand-in: stretch the fallback model to the type's footprint.
 		stand_in = true
-		_stretch = Vector3(t.spec.half_extents.x / float(model_half[0]), 1.0, t.spec.half_extents.z / float(model_half[2]))
-	body.scale = _stretch
-	add_child(body)
-	var paint_names: Array = manifest.get("paint", [])
-	var beacons: Dictionary = manifest.get("beacons", {})
-	_style_meshes(body, paint_names, beacons, variant.paint, false)
-	var wheel_names: Array = manifest.get("wheels", [])
+		var model_half := manifest.half_extents()
+		_stretch = Vector3(t.spec.half_extents.x / model_half.x, 1.0, t.spec.half_extents.z / model_half.z)
+	var paint_names := manifest.paint_materials()
+	var body: Node3D = null
+	for i in lods.size():
+		var path := dir.path_join(String(lods[i]["file"]))
+		if not ResourceLoader.exists(path):
+			continue
+		var node := (load(path) as PackedScene).instantiate() as Node3D
+		node.name = "Lod%d" % i
+		node.scale = _stretch
+		add_child(node)
+		# LOD0 animates (wheels, doors); the others swap in by distance (visibility ranges).
+		var begin := 0.0 if i == 0 else float(lods[i]["min"])
+		var end := float(lods[i]["max"]) if i < lods.size() - 1 else 0.0
+		if i > 0 and begin <= 0.0:
+			begin = float(lods[i - 1]["max"])
+		_style_meshes(node, paint_names, manifest.beacons() if i == 0 else {}, variant.paint, begin, end)
+		if i == 0:
+			body = node
+	if body == null:
+		return
+	var wheels := manifest.wheels()
 	for i in t.spec.wheels.size():
-		var node: Node3D = null
-		if i < wheel_names.size():
-			node = body.find_child(String(wheel_names[i]), true, false) as Node3D
-		if node == null:
+		var at := t.spec.wheels[i].at
+		var best: Dictionary = {}
+		var best_d := INF
+		for w in wheels:
+			var c: Vector3 = w["centre"]
+			var d := Vector2(c.x * _stretch.x, c.z * _stretch.z).distance_to(Vector2(at.x, at.z))
+			if d < best_d:
+				best_d = d
+				best = w
+		var node: Node3D = body.find_child(String(best.get("node", "")), true, false) as Node3D if not best.is_empty() else null
+		if node == null or best_d > 0.6:
 			_wheels.append(null)
 			_wheel_scale.append(1.0)
 			_wheel_xz.append(Vector2.ZERO)
 			continue
-		var visual_radius := maxf(0.05, node.position.y)
+		wheels.erase(best)
 		node.get_parent().remove_child(node)
 		node.owner = null
 		add_child(node)
 		_wheels.append(node)
-		_wheel_scale.append(t.spec.wheels[i].radius / visual_radius)
-		_wheel_xz.append(Vector2(t.spec.wheels[i].at.x, t.spec.wheels[i].at.z))
-	var doors: Array = manifest.get("doors", [])
-	for d: Dictionary in doors:
+		_wheel_scale.append(t.spec.wheels[i].radius / maxf(0.05, float(best["radius"])))
+		_wheel_xz.append(Vector2(at.x, at.z))
+	for d in manifest.doors():
 		var door := body.find_child(String(d["node"]), true, false) as Node3D
 		if door == null:
 			continue
@@ -95,32 +115,14 @@ func _build_glb(t: VehicleType, variant: VehicleCatalog.VariantInfo, manifest: D
 		_door_leaf.append(int(d["leaf"]))
 		_door_open.append(float(d["open"]))
 		_door_rest.append(door.basis)
-	if manifest.has("lod1") and ResourceLoader.exists(dir.path_join(String(manifest["lod1"]))):
-		var far := (load(dir.path_join(String(manifest["lod1"]))) as PackedScene).instantiate() as Node3D
-		far.name = "Lod1"
-		far.scale = _stretch
-		add_child(far)
-		_style_meshes(far, paint_names, {}, variant.paint, true)
-		for n in body.find_children("*", "GeometryInstance3D", true, false):
-			(n as GeometryInstance3D).visibility_range_end = LOD_DISTANCE
-		for i in _wheels.size():
-			if _wheels[i] != null:
-				for n in _wheels[i].find_children("*", "GeometryInstance3D", true, true):
-					(n as GeometryInstance3D).visibility_range_end = LOD_DISTANCE
-				if _wheels[i] is GeometryInstance3D:
-					(_wheels[i] as GeometryInstance3D).visibility_range_end = LOD_DISTANCE
 
 
-static func _model_id(manifest: Dictionary) -> String:
-	return String(manifest["glb"]).get_basename()
-
-
-## Paint, beacons and (for the far model) the visibility range on every mesh under `root`.
-func _style_meshes(root: Node, paint_names: Array, beacons: Dictionary, paint: Color, far: bool) -> void:
+## Paint, beacons and the visibility range (`begin`/`end` metres, 0: none) on every mesh under `root`.
+func _style_meshes(root: Node, paint_names: Array[String], beacons: Dictionary, paint: Color, begin: float, end: float) -> void:
 	for n in root.find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D
-		if far:
-			mi.visibility_range_begin = LOD_DISTANCE
+		mi.visibility_range_begin = begin
+		mi.visibility_range_end = end
 		if mi.mesh == null:
 			continue
 		for s in mi.mesh.get_surface_count():

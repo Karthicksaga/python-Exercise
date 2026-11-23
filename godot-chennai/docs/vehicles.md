@@ -29,31 +29,29 @@ G-70…G-79 in `technical-decisions.md`. Code: `src/physics/` (the vehicle body)
 | motorbike | bike | `motorbike.glb` | leans into corners (drawn only), topples when the rider is thrown |
 | ambulance | ambulance | `ambulance.glb` | siren (red/blue beacons), rear doors for patients |
 | bus | bus | `bus.glb` | folding front door on the kerb side, aisle to the driver's seat |
-| saloon, suv, coupe, race_car | saloon, suv, coupe, race | **stand-ins** until the Models agent's GLBs land: `hatchback.glb` (saloon, coupé, race car) and `ambulance.glb` (SUV) stretched to the car's size | handling profiles are invented (MIGRATION_PROMPT §11): faster, grippier (`grip`), quieter engines are the Sound agent's |
+| saloon, suv, coupe, race_car | saloon, suv, coupe, race (model `formula`) | **stand-ins** until the Models agent's GLBs land on this branch: `hatchback.glb` (saloon, coupé, race car) and `ambulance.glb` (SUV) stretched to the car's size | handling profiles are invented (MIGRATION_PROMPT §11): faster, grippier (`grip`), quieter engines are the Sound agent's |
 
-## Model manifest (`assets/vehicles/<model>.vehicle.json`, G-73)
-One per GLB, next to it. The game looks for the kind's `model` first, then its `fallback_model`.
-```json
-{
- "glb": "hatchback.glb",            // the model: ground at y = 0, front facing -Z, metres
- "lod1": "hatchback_lod1.glb",      // optional: shown beyond 28 m instead
- "body": "car_body",                // the body node (informative)
- "half_extents": [0.82, 0.42, 1.95],// the body the GLB was made for; a stand-in is stretched by type/this
- "wheels": ["wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"], // in the order of the kind's physics wheels;
-                                    // each node's origin on its axle, its y = its radius
- "doors": [{"node": "door_fr", "leaf": 0, "open": 1.13}],  // origin on the hinge; swings about Y by
-                                    // `open` radians when fully open; leaf 0 is the driver's door,
-                                    // leaves 1.. are the passenger doors of `vehicle_types.json`
- "paint": ["v_paint_body"],         // material names that take the variant's paint colour
- "beacons": {"red": ["v_beaconred"], "blue": ["v_beaconblue"]}, // flash with the siren
- "roof": 1.5                        // optional: roof height for the light bar / roof sign
-}
-```
-For the Models agent: put the new premium and race car GLBs at `assets/vehicles/saloon.glb`,
-`suv.glb`, `coupe.glb`, `race_car.glb` with a manifest each; the wheel nodes must sit where the
-physics wheels are (`vehicle_types.json`, chassis frame: ground = the settled ride height below
-the chassis centre, computed by `VehicleModel.settled_ground`), or change both together. Nothing
-else in code changes.
+## Model manifest (`assets/vehicles/<model>.json`, G-73)
+The schema is the Models agent's (their `docs/vehicles.md`, "The manifest"); the Tamil Nadu
+vehicles agent uses it too. `VehicleManifest` (`src/vehicles/vehicle_manifest.gd`) reads it:
+
+| Manifest field | Used for |
+|---|---|
+| `lods[]` (`file`, `min_distance_m`, `max_distance_m`) | LOD0 animated (wheels, doors), the others swapped in by `visibility_range` |
+| `wheels[]` (`node`, `centre`, `radius`) | wheel nodes matched to the physics wheels by position, drawn at the physics hub, scaled to the physics radius |
+| `doors[]` (`node`, `hinge`, `open_deg`, `notes`) | doors swing about Y by `open_deg`; leaf 0 is the first (the driver's); a pair on one hinge line at the front or back (the ambulance's rear doors) and `folding leaf`s (the bus) swing together |
+| `physics.wheels`, `physics.halfExtents` (else the first `collision` box), `physics.rideHeight`, `collision[]` boxes, `seats[]` (driver `hip`), `pose`, `entry` | the kind's geometry, when the kind's own model is present (chassis frame: model y minus `chassis_to_model_y`, else `rideHeight`) |
+| `paint_surface`/`paints` | material `paint` takes the variant's colour (ported GLBs: `v_paint_body`, `auto_paint`) |
+| `siren` | the ported ambulance's beacon materials flash |
+| `body_size_m`/`size_m` height | roof height for the police light bar and taxi roof sign |
+
+The handling scalars (mass, engine, top speed, steering, brakes, drift, grip) stay in
+`src/vehicles/data/vehicle_types.json`: the five Three.js kinds are held to the Three.js numbers
+by the tests (G-71); the manifests' `physics` values for new cars are the Models agent's
+"proposed starting values" and are not used for handling. A kind names its `model` and a
+`fallback_model`: until `saloon`, `suv`, `coupe` and `formula` GLBs are on the branch, those
+kinds draw a stretched stand-in (hatchback or ambulance) and keep their data geometry; when the
+GLB and manifest arrive, the model and its geometry are used with no code change.
 
 ## Handling against the Three.js game (G-71)
 `tools/reference/threejs_handling.mts` drives the Three.js vehicles (Rapier) on a flat plane and

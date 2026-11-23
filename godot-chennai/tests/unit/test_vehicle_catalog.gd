@@ -48,18 +48,37 @@ func test_premium_and_race_profiles() -> bool:
 func test_manifests_name_real_nodes() -> bool:
 	for model: String in ["hatchback", "motorbike", "auto_rickshaw", "bus", "ambulance"]:
 		var m := VehicleCatalog.manifest(model)
-		check(not m.is_empty(), "%s manifest" % model)
-		var path := VehicleCatalog.MODELS_DIR.path_join(String(m["glb"]))
+		if not check(m != null, "%s manifest" % model):
+			continue
+		var lods := m.lods()
+		check(lods.size() >= 2 and float(lods[0]["max"]) > 0.0, "%s has LODs with distances" % model)
+		var path := VehicleCatalog.MODELS_DIR.path_join(String(lods[0]["file"]))
 		if not check(ResourceLoader.exists(path), "%s exists" % path):
 			continue
 		var scene := (load(path) as PackedScene).instantiate()
-		var names: Array = (m["wheels"] as Array).duplicate()
-		for d: Dictionary in m["doors"]:
-			names.append(d["node"])
-		for n: String in names:
+		var names: Array[String] = []
+		for w in m.wheels():
+			names.append(String(w["node"]))
+		for d in m.doors():
+			names.append(String(d["node"]))
+		for n in names:
 			check(scene.find_child(n, true, false) != null, "%s has node %s" % [model, n])
 		scene.free()
+	# Door leaves: the driver's door is 0; the ambulance's rear pair and the bus's folding leaves
+	# swing together.
+	var amb := VehicleCatalog.manifest("ambulance").doors()
+	assert_eq([int(amb[0]["leaf"]), int(amb[1]["leaf"]), int(amb[2]["leaf"])], [0, 1, 1], "ambulance cab door, rear pair")
+	var bus := VehicleCatalog.manifest("bus").doors()
+	assert_eq([int(bus[0]["leaf"]), int(bus[1]["leaf"])], [0, 0], "bus folding leaves are one door")
+	var car := VehicleCatalog.manifest("hatchback").doors()
+	assert_eq([int(car[0]["leaf"]), int(car[1]["leaf"]), int(car[2]["leaf"])], [0, 1, 2], "hatchback driver and two rear doors")
+	# The manifest geometry of the ported vehicles is the Three.js data (the handling tests rely on it).
+	var t := VehicleCatalog.type(&"car")
+	assert_vec_near(Vector2(t.driver.x, t.driver.y), Vector2(0.36, -0.03), 0.001, "driver hip in the chassis frame")
+	assert_vec_near(t.entry.point, Vector2(1.25, 0.35), 0.001, "entry point")
+	assert_eq(VehicleCatalog.type(&"bus").entry.aisle.size(), 2, "bus aisle from the manifest")
+	assert_near(VehicleCatalog.type(&"bus").entry.aisle[0].y, -0.35, 0.001, "aisle in the chassis frame")
 	# Kinds with no GLB yet fall back to a stand-in model.
 	for k: StringName in [&"saloon", &"suv", &"coupe", &"race"]:
-		check(not VehicleCatalog.manifest_for(VehicleCatalog.type(k)).is_empty(), "%s has a model to show" % k)
+		check(VehicleCatalog.manifest_for(VehicleCatalog.type(k)) != null, "%s has a model to show" % k)
 	return true

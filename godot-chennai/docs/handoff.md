@@ -113,9 +113,12 @@ or wheel, feet on the pegs or pedals, hips at the origin), `set_figure_visible`,
 **For the World agent.** Spawn with `Vehicle.create(variant)` + `place()`, add a `Driving` with
 the rider, and `DrivingWiring.wire(driving, controls, camera)` in `Main`; put vehicles in
 `WorldOrigin.GROUP` when they join the streamed city.
-**For the Models agent.** Drop `saloon.glb`, `suv.glb`, `coupe.glb`, `race_car.glb` with a
-`.vehicle.json` each in `assets/vehicles/` (format in `docs/vehicles.md`); wheels at the physics
-wheel positions of `vehicle_types.json`.
+**For the Models and Tamil Nadu vehicles agents.** Vehicles load through your manifest schema
+(`assets/vehicles/<model>.json`, G-73): a new GLB with its manifest replaces a model and its
+geometry; the kinds `saloon`, `suv`, `coupe`, `race` look for the models `saloon`, `suv`, `coupe`,
+`formula`. Handling scalars stay in `vehicle_types.json`. Note: `tools/sync_from_threejs.py
+--check` (CI) flags any `assets/vehicles/*.glb` that is not in the Three.js game as stale; the new
+GLBs need that set narrowed (or a separate folder) when they merge.
 **For the Sound agent.** Signals: `Driving.horn`, `boarding_event` (door_opening, shut…),
 `crashed`; `Gearbox.shifted_up` for gear changes; `Vehicle.siren()`.
 

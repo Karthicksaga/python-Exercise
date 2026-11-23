@@ -64,7 +64,7 @@ class CrashRule:
 ## "car", "auto", "bike", "ambulance", "bus", "saloon", "suv", "coupe", "race".
 var kind: StringName = &""
 var label: String = ""
-## Model id in `assets/vehicles/<model>.vehicle.json`; `fallback_model` until it exists.
+## Model id in `assets/vehicles/<model>.json`; `fallback_model` until it exists.
 var model: String = ""
 var fallback_model: String = ""
 var spec: VehicleSpec

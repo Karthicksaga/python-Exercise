@@ -18,4 +18,4 @@ assets (for example the new cast in `assets/people/`) outside the markers.
 
 | Files | What | Source | Licence |
 |---|---|---|---|
-| `assets/vehicles/*.vehicle.json` | Vehicle model manifests: wheel and door node names, hinge angles, paint and beacon materials (`docs/vehicles.md`) | Written for this project (vehicles agent) | Original work for the project |
+| `assets/vehicles/{hatchback,motorbike,auto_rickshaw,ambulance,bus}.json` | Model manifests of the ported vehicles (LODs, wheels, doors, seats, collision, physics), the Models agent's schema | Written for this project (Models agent, `tools/blender/vehicles/port_road_vehicles.py` on `agent/godot-models`) | Original work for the project |

@@ -1,7 +1,8 @@
 class_name VehicleCatalog
 extends RefCounted
 ## The vehicle kinds and variants (decision G-72), read once from `data/vehicle_types.json`,
-## and the per-model manifests in `res://assets/vehicles/<model>.vehicle.json` (decision G-73).
+## and the per-model manifests `res://assets/vehicles/<model>.json` (decision G-73,
+## `VehicleManifest`): a kind whose own model is there takes its geometry from the manifest.
 ##
 ## A *kind* is a handling profile (car, auto, bike, ambulance, bus, saloon, suv, coupe, race); a
 ## *variant* is what spawns (taxi, police, gang are the car kind with their own paint and extras).
@@ -33,7 +34,11 @@ static func _load() -> void:
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(TYPES_PATH))
 	var kinds: Dictionary = data["kinds"]
 	for k: String in kinds:
-		_types[StringName(k)] = VehicleType.from_dict(StringName(k), kinds[k])
+		var t := VehicleType.from_dict(StringName(k), kinds[k])
+		var own := manifest(t.model)
+		if own != null and _has_glb(own):
+			own.apply_geometry(t)
+		_types[StringName(k)] = t
 	var variants: Dictionary = data["variants"]
 	for id: String in variants:
 		var d: Dictionary = variants[id]
@@ -75,25 +80,23 @@ static func variant(id: StringName) -> VariantInfo:
 
 
 ## The model manifest for a type: its own model's when the GLB exists, else the fallback's
-## (premium and race cars until the Models agent's GLBs land). Empty when neither exists.
-static func manifest_for(t: VehicleType) -> Dictionary:
+## (premium and race cars until the Models agent's GLBs land). Null when neither exists.
+static func manifest_for(t: VehicleType) -> VehicleManifest:
 	for id: String in [t.model, t.fallback_model]:
 		if id == "":
 			continue
 		var m := manifest(id)
-		if not m.is_empty() and ResourceLoader.exists(MODELS_DIR.path_join(String(m["glb"]))):
+		if m != null and _has_glb(m):
 			return m
-	return {}
+	return null
 
 
-static func manifest(model_id: String) -> Dictionary:
-	if _manifests.has(model_id):
-		return _manifests[model_id]
-	var path := MODELS_DIR.path_join(model_id + ".vehicle.json")
-	var m: Dictionary = {}
-	if FileAccess.file_exists(path):
-		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-		if parsed is Dictionary:
-			m = parsed
-	_manifests[model_id] = m
-	return m
+static func _has_glb(m: VehicleManifest) -> bool:
+	var lods := m.lods()
+	return not lods.is_empty() and ResourceLoader.exists(MODELS_DIR.path_join(String(lods[0]["file"])))
+
+
+static func manifest(model_id: String) -> VehicleManifest:
+	if not _manifests.has(model_id):
+		_manifests[model_id] = VehicleManifest.read(MODELS_DIR.path_join(model_id + ".json"))
+	return _manifests[model_id]
