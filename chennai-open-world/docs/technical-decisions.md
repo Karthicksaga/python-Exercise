@@ -456,6 +456,15 @@ once instead of fading over the game's first frames (a full-screen layer at the 
 `Game.create` also waits one frame after each step, so the screen is drawn between long
 stretches of work. The title menu's entrance and the game itself are unchanged.
 
+Still frozen on the third try: the map (a canvas, drawn on its own) appeared, but the page around
+it stopped updating at the first step. That cannot be told apart from here (a stuck script or a
+failed drawing), so the game now reports to the shell (`loadReport.ts`): the device (GPU name,
+memory class, cores, screen), each step with its time, a heartbeat every 2 s until loading ends,
+script errors and a lost WebGL context. The shell draws a native panel over the WebView when
+loading passes 20 s or something went wrong: the step and how long it has taken, whether the page
+still answers, those errors and the device, with TRY AGAIN and CLOSE. Native, so it shows even
+when the page is not being drawn. The frame wait between steps is now up to 1 s.
+
 **Revisit when** the menu should show more of the city (a few fixed camera shots across
 districts would need their chunks loaded), or a settings page grows options that need a reload
 (graphics quality).

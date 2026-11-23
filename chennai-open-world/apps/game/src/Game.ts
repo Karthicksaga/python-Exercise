@@ -263,7 +263,9 @@ function shown(): Promise<void> {
       // After the frame is drawn, not before it: a task queued from the frame callback.
       window.setTimeout(resolve, 0);
     };
-    const timer = window.setTimeout(resolve, 100);
+    // A slow phone can take far longer than 100 ms to draw a frame; a second is still cheap
+    // next to the steps themselves, and the screen must show which step is running.
+    const timer = window.setTimeout(resolve, 1000);
     requestAnimationFrame(done);
   });
 }
