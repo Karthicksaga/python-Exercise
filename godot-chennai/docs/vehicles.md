@@ -1,7 +1,7 @@
 # Vehicles, aircraft and trains: models, data model, budgets
 
 Every model here is the output of a Blender script in `tools/blender/vehicles/` (Blender 5.2 LTS,
-headless). The scripts are the source, and running them again rebuilds the same files. All designs
+headless). The scripts are the source, and running them again rebuilds the same models (nodes, triangle counts and manifests are identical; a few GLBs differ by a few bytes between runs). All designs
 are original. There are no real makes, badges, grilles, airline names, railway or metro logos,
 lettering or real numbers (TD-18 of the Three.js game; brief §11). Decisions G-30 to G-39 are in
 `technical-decisions.md`.
