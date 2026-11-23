@@ -574,7 +574,7 @@ def emu_spec(kind, ac):
         roof_vents=[] if ac else [y for y in (8.5, 5.0, 2.5, -2.5, -5.0, -8.5)],
         roof_units=[(2.2, 3.0, 0.42, 5.0), (2.2, 3.0, 0.42, -5.0)] if ac else [],
         pantographs=[("pantograph", -3.6)] if kind == "motor" else [],
-        motor=kind == "motor", metal=0.35 if not ac else 0.1, rough=0.38,
+        motor=kind == "motor", metal=0.3 if not ac else 0.1, rough=0.5,
         lod2_budget=150 if kind == "cab" else 120,
         anchors={"seat_driver": (0.6, L / 2 - 1.2, 2.25), "grip_master_controller": (0.45, L / 2 - 0.75, 2.2)} if kind == "cab" else
                 {"standing_area": (0, 0.0, 1.2)},
