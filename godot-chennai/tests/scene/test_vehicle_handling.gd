@@ -42,7 +42,7 @@ func test_speed_curves_match_threejs() -> bool:
 		for t: String in ["2", "3", "4", "6", "8", "10"]:
 			_within(float(gs[t]), float(rs[t]), TOLERANCE, "%s speed at %s s" % [kind, t])
 		# The first second: the Rapier reference vehicles wake from sleep with a suspension bounce
-		# (largest on the light motorbike), so this point gets 15 % (docs/vehicles.md).
+		# (largest on the light motorbike), so this point gets 15 % (docs/driving.md).
 		_within(float(gs["1"]), float(rs["1"]), 0.15, "%s speed at 1 s" % kind)
 		_within(float(g["t50"]), float(r["t50"]), TOLERANCE, "%s time to half top speed" % kind)
 		_within(float(g["t90"]), float(r["t90"]), TOLERANCE, "%s time to 90 %% of top speed" % kind)
@@ -71,7 +71,7 @@ func test_braking_coasting_reversing_match_threejs() -> bool:
 func test_cornering_from_rest() -> bool:
 	var ref := _reference()
 	# Four-wheelers match closely; the single-front-wheel bike and auto turn about 15 % less here
-	# (docs/vehicles.md, "Known differences"), so they get 20 %.
+	# (docs/driving.md, "Known differences"), so they get 20 %.
 	for kind in LEGACY:
 		var share := 0.2 if kind in [&"bike", &"auto"] else TOLERANCE
 		_within(float((_measured[kind]["turn"] as Dictionary)["yaw"]), float((ref[String(kind)]["turn"] as Dictionary)["yaw"]), share, "%s heading after 2.5 s full right" % kind)

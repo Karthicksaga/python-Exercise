@@ -66,7 +66,7 @@ func _run() -> void:
 			var cam := Camera3D.new()
 			yard.add_child(cam)
 			var at := yard.rider.global_position
-			cam.look_at_from_position(at + Vector3(9, 2.5, 5), at + Vector3(0, 0.5, 0))
+			cam.look_at_from_position(at + Vector3(5.0, 1.4, 3.2), at + Vector3(0, 0.3, 0))
 			cam.current = true
 		"door":
 			var v := yard.spawn(StringName(variant), Vector3(0, 0, 40), 0.0, &"ride")

@@ -11,7 +11,8 @@ between the sync markers in godot-chennai/assets/LICENSES.md (rows outside the m
 the new cast's, are left alone).
 
 Only the files listed in SETS are managed. Files that Godot writes next to them (*.import) and
-files other agents add (assets/people/ outside legacy/) are never touched.
+files other agents add (assets/people/ and assets/vehicles/ outside legacy/, and the manifests
+in assets/vehicles/legacy/) are never touched.
 """
 from __future__ import annotations
 
@@ -78,8 +79,8 @@ SETS: tuple[Set, ...] = (
     Set(
         "assets/models/vehicles",
         ("*.glb",),
-        "assets/vehicles",
-        "Auto-rickshaw, hatchback, motorbike, ambulance, bus, each with `_lod1`; wheels and doors as separate nodes (`chennai-open-world/docs/vehicles.md`)",
+        "assets/vehicles/legacy",
+        "The Three.js game's road vehicles: auto-rickshaw, hatchback, motorbike, ambulance, bus, each with `_lod1`; wheels and doors as separate nodes (`chennai-open-world/docs/vehicles.md`). Their manifests (`<name>.json`, riding data from `specs.ts`) are written beside them by `tools/blender/vehicles/port_road_vehicles.py` (G-36); the new models are in `assets/vehicles/`, `assets/aircraft/`, `assets/trains/`",
         "Original, made by `chennai-open-world/tools/blender/vehicles.py` and `auto_rickshaw.py` in Blender 5.2 LTS",
         "Original work for the project: no maker's badges, logos, grilles or liveries; number plates are not real registrations",
     ),

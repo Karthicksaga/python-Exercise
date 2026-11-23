@@ -1,106 +1,174 @@
-# Vehicles (Godot)
+# Vehicles, aircraft and trains: models, data model, budgets
 
-Phase 2 of the migration: drivable vehicles, matched to the Three.js game's handling. Decisions
-G-70…G-79 in `technical-decisions.md`. Code: `src/physics/` (the vehicle body), `src/vehicles/`
-(types, models, gearbox, boarding, crashes, driving), `src/game_engine/chase_camera.gd`,
-`src/ui/driving_controls/`, `src/app/driving_wiring.gd` and the test ground
-`src/app/vehicle_yard/`.
+Every model here is the output of a Blender script in `tools/blender/vehicles/` (Blender 5.2 LTS,
+headless). The scripts are the source, and running them again rebuilds the same models (nodes, triangle counts and manifests are identical; a few GLBs differ by a few bytes between runs). All designs
+are original. There are no real makes, badges, grilles, airline names, railway or metro logos,
+lettering or real numbers (TD-18 of the Three.js game; brief §11). Decisions G-30 to G-39 are in
+`technical-decisions.md`.
 
-## What is where
-| Piece | File | Port of (Three.js) |
-|---|---|---|
-| Ray-cast vehicle body (suspension, tyres, engine, brakes, arcade drift, hold-the-line) | `src/physics/raycast_vehicle.gd` | `packages/physics/src/VehicleBody.ts` on Rapier's `DynamicRayCastVehicleController` |
-| Handling numbers | `src/physics/vehicle_spec.gd` | `VehicleSpec` |
-| Kinds, variants, seats, poses, doors, passengers, crash rules | `src/vehicles/data/vehicle_types.json`, `vehicle_type.gd`, `vehicle_catalog.gd` | `packages/vehicles/src/specs.ts`, TD-29 `crash.ts` |
-| Drivable vehicle (model, wheels, doors, siren, lean, topple, crash detection) | `src/vehicles/vehicle.gd`, `vehicle_model.gd` | `Vehicle.ts`, `glbModels.ts` |
-| Gear selector P/R/D, HUD gear | `src/vehicles/gearbox.gd` | `Gearbox.ts`, `gearFor`, `shiftedUp` |
-| Getting in and out (walk, door, pull, climb, sit, close) | `src/vehicles/boarding.gd` | `Boarding.ts` (with the TD-30 `pull` phase) |
-| Crash rules and the thrown body | `src/vehicles/crash_rules.gd`, `crash_flight.gd` | `crash.ts`, `Crashes.ts`, `PlayerController.throwOff` (TD-29) |
-| Driving session (input → gearbox → vehicle, boarding, crashes) | `src/vehicles/driving.gd`, `drive_input.gd` | parts of `Game.ts`, `Boarder.ts` |
-| The person in the seat | `src/vehicles/vehicle_rider.gd` | interface for the Player agent; a capsule stand-in until then |
-| Chase camera | `src/game_engine/chase_camera.gd` | `FollowCamera` driving mode, `chennai-game-design` §5 |
-| Touch controls | `src/ui/driving_controls/` | the driving HUD of `Controls` |
+## What there is
 
-## Kinds and variants
-| Variant | Kind (handling) | Model | Notes |
-|---|---|---|---|
-| hatchback, taxi, police, gang | car | `hatchback.glb` | taxi: amber roof sign; police: light bar and siren; gang: dark paint. Paint colours are invented, no insignia |
-| auto | auto | `auto_rickshaw.glb` | open sides, step in from the kerb |
-| motorbike | bike | `motorbike.glb` | leans into corners (drawn only), topples when the rider is thrown |
-| ambulance | ambulance | `ambulance.glb` | siren (red/blue beacons), rear doors for patients |
-| bus | bus | `bus.glb` | folding front door on the kerb side, aisle to the driver's seat |
-| saloon, suv, coupe, race_car | saloon, suv, coupe, race (model `formula`) | **stand-ins** until the Models agent's GLBs land on this branch: `hatchback.glb` (saloon, coupé, race car) and `ambulance.glb` (SUV) stretched to the car's size | handling profiles are invented (MIGRATION_PROMPT §11): faster, grippier (`grip`), quieter engines are the Sound agent's |
+| Model (`assets/…`) | What | Size L × W × H (m) | Triangles LOD0 / LOD1 / LOD2 | Files |
+|---|---|---|---|---|
+| `vehicles/saloon` | original luxury saloon, 4 doors, 6 paints | 5.13 × 1.99 × 1.47 | 9,894 / 2,088 | 451 KB |
+| `vehicles/suv` | original large SUV (7 seats): high ride, 0.80 m wheels, flat high bonnet, upright screen and tailgate, flared arch cladding, short overhangs | 4.6 × 2.1 × 1.9 | 9,958 / 2,096 | ~470 KB |
+| `vehicles/coupe` | original sports coupé, 2 doors, 6 paints | 4.58 × 1.93 × 1.25 | 9,018 / 2,090 | 410 KB |
+| `vehicles/formula` | original open-wheel race car, 4 invented team-less liveries | 5.60 × 2.36 × 1.19 | 6,834 / 1,638 | 353 KB |
+| `vehicles/legacy/hatchback`, `motorbike`, `auto_rickshaw`, `ambulance`, `bus` | the Three.js game's, synced byte for byte by `tools/sync_from_threejs.py` (G-36); manifests by `port_road_vehicles.py` | as before | 10,460 / 3,050 · 7,616 / 2,262 · 16,382 / 12,306 · 14,576 / 3,900 · 12,370 / 5,328 | 3.3 MB |
+| `aircraft/helicopter` | light utility helicopter: 3-blade main rotor, tail rotor, skids, 5 seats | 12.8 (rotor) × 9.4 × 2.9 | 5,580 / 2,162 / 322 | 392 KB |
+| `aircraft/airliner` | small narrow-body twin, about 150 seats, invented airline colours | 37.4 × 34.6 × 11.8 | 7,704 / 2,664 / 556 | 595 KB |
+| `aircraft/light_aircraft` | high-wing four-seat single-engine | 8.5 × 11.1 × 2.8 | 6,470 / 1,886 / 340 | 394 KB |
+| `trains/emu_cab`, `emu_motor`, `emu_trailer` | ICF-style suburban EMU (12-car rake), stainless with a green and cream colour family | 21.9 × 3.27 × 4.1 (4.8 with pantograph) | cab 3,578 / 392 / 40; motor 3,266 / 376 / 40; trailer 3,022 / 296 / 40 | ~0.7 MB |
+| `trains/emu_ac_*` | the AC EMU variant: white, blue window band, sealed windows, roof AC units with grilles | as the EMU | cab 3,234 / 480 / 40; motor 2,874 / 464 / 40; trailer 2,630 / 384 / 40 | ~0.7 MB |
+| `trains/wap7` | WAP-7-style twin-cab Co-Co electric locomotive, red and cream colour family: projecting lower cab noses, louvres, roof bars, breakers, insulators, two pantographs | 21.8 × 3.15 × 4.8 | 5,782 / 628 / 40 | ~0.3 MB |
+| `trains/lhb_coach` | LHB-style express coach | 24.6 × 3.27 × 4.3 | 2,638 / 416 / 40 | ~0.2 MB |
+| `trains/vb_cab`, `vb_coach` | Vande-Bharat-style set, saffron and grey colour family, rounded aerodynamic nose with a wrap-round glass windscreen | 25.6 × 3.28 × 4.0 | nose car 3,393 / 364 / 56; coach 2,370 / 248 / 40 | ~0.4 MB |
 
-## Model manifest (`assets/vehicles/<model>.json`, G-73)
-The schema is the Models agent's (their `docs/vehicles.md`, "The manifest"); the Tamil Nadu
-vehicles agent uses it too. `VehicleManifest` (`src/vehicles/vehicle_manifest.gd`) reads it:
+The figures come from the manifests, which the tests check against the files. The models together
+come to **6.1 MB** of GLB and JSON, plus 3.3 MB of synced legacy vehicles. Train and aircraft dimensions are estimates from published
+figures (broad gauge 1,676 mm), and each manifest says so.
 
-| Manifest field | Used for |
-|---|---|
-| `lods[]` (`file`, `min_distance_m`, `max_distance_m`) | LOD0 animated (wheels, doors), the others swapped in by `visibility_range` |
-| `wheels[]` (`node`, `centre`, `radius`) | wheel nodes matched to the physics wheels by position, drawn at the physics hub, scaled to the physics radius |
-| `doors[]` (`node`, `hinge`, `open_deg`, `notes`) | doors swing about Y by `open_deg`; leaf 0 is the first (the driver's); a pair on one hinge line at the front or back (the ambulance's rear doors) and `folding leaf`s (the bus) swing together |
-| `physics.wheels`, `physics.halfExtents` (else the first `collision` box), `physics.rideHeight`, `collision[]` boxes, `seats[]` (driver `hip`), `pose`, `entry` | the kind's geometry, when the kind's own model is present (chassis frame: model y minus `chassis_to_model_y`, else `rideHeight`) |
-| `paint_surface`/`paints` | material `paint` takes the variant's colour (ported GLBs: `v_paint_body`, `auto_paint`) |
-| `siren` | the ported ambulance's beacon materials flash |
-| `body_size_m`/`size_m` height | roof height for the police light bar and taxi roof sign |
+## Budgets (held by `tests/models/model_checks.gd`, run in `./run_tests.sh`)
 
-The handling scalars (mass, engine, top speed, steering, brakes, drift, grip) stay in
-`src/vehicles/data/vehicle_types.json`: the five Three.js kinds are held to the Three.js numbers
-by the tests (G-71); the manifests' `physics` values for new cars are the Models agent's
-"proposed starting values" and are not used for handling. A kind names its `model` and a
-`fallback_model`: until `saloon`, `suv`, `coupe` and `formula` GLBs are on the branch, those
-kinds draw a stretched stand-in (hatchback or ambulance) and keep their data geometry; when the
-GLB and manifest arrive, the model and its geometry are used with no code change.
+| Kind | LOD0 | LOD1 | LOD2 | Source |
+|---|---|---|---|---|
+| car, race car | ≤ 12,000 | ≤ 3,000 | (none) | brief, `chennai-game-design` §6 |
+| helicopter | ≤ 10,000 | ≤ 2,500 | ≤ 400 | brief |
+| airliner | ≤ 15,000 | ≤ 3,500 | ≤ 600 | brief ("strong LODs") |
+| light aircraft | ≤ 10,000 | ≤ 2,500 | ≤ 400 | as the helicopter |
+| train coach | body ≤ 3,000 + bogies ≤ 400 each (with their wheelsets) | ≤ 600 | ≤ 120 | research note (trains) |
+| cab, loco, VB nose car | body ≤ 6,000 + bogies ≤ 400 each (600 for a three-axle Co-Co bogie) | ≤ 1,000 | ≤ 150 | research note |
+| ported road vehicles | the old game's measured counts (the auto is 16.4k / 12.3k, over the car budget) | | | `chennai-open-world/docs/vehicles.md` |
 
-## Handling against the Three.js game (G-71)
-`tools/reference/threejs_handling.mts` drives the Three.js vehicles (Rapier) on a flat plane and
-writes `tests/data/threejs_handling.json`; `tests/support/handling_measure.gd` drives the Godot
-vehicles the same way and `tests/scene/test_vehicle_handling.gd` compares them. Measured
-23 Nov 2026 (Godot / Three.js):
+Textures are 512 px, or 1,024 px for the airliner's livery. Vehicle LODs switch at 28 m. The
+helicopter and light aircraft switch at 40, 250 and 2,000 m, the airliner at 90, 600 and 4,000 m,
+and trains at 60, 300 and 900 m (research note). The game should drive these with
+`GeometryInstance3D.visibility_range_begin/end`.
 
-| | Hatchback | Auto | Motorbike | Ambulance | Bus |
-|---|---|---|---|---|---|
-| Speed after 2 s, m/s | 10.90 / 10.69 | 8.37 / 8.14 | 14.60 / 13.80 | 10.05 / 9.87 | 6.99 / 6.88 |
-| Top speed, m/s (spec) | 21.84 / 21.82 (23) | 13.09 / 13.08 (14) | 25.02 / 24.99 (26) | 23.64 / 23.61 (25) | 15.69 / 15.67 (17) |
-| Time to 90 % of spec top, s | 4.32 / 4.37 | 3.95 / 4.03 | 3.45 / 3.58 | 5.20 / 5.27 | 5.90 / 5.98 |
-| Braking from 80 %, m | 24.5 / 24.3 | 8.2 / 8.1 | 22.0 / 21.7 | 28.6 / 28.3 | 13.8 / 13.7 |
-| Coast 3 s from 80 %, m/s | 13.55 / 13.54 | 7.67 / 7.69 | 14.99 / 14.98 | 14.80 / 14.78 | 9.74 / 9.74 |
-| Reverse after 5 s, m/s | -7.72 / -7.71 | -4.71 / -4.66 | -8.72 / -8.72 | -8.35 / -8.32 | -5.67 / -5.67 |
-| Heading after 2.5 s full right from rest, rad | -1.87 / -1.85 | -2.01 / -2.31 | -2.85 / -3.36 | -1.30 / -1.28 | -0.50 / -0.52 |
-| Fast full lock (90 %): peak slide, rad | 0.43 / 0.44 | 0.29 / 0.17 | 0.12 / 0.06 | 0.29 / 0.26 | 0.13 / 0.07 |
+## Train detail (LOD0)
 
-**Known differences.** Speed, braking, coasting and reversing match within a few per cent. The
-first second of the motorbike's run is 13 % faster here: the Rapier reference vehicles had gone
-to sleep while settling and woke with a suspension bounce (measured: the motorbike's chassis
-rose 11 cm), which costs grip. The two vehicles with a single front wheel (motorbike, auto)
-turn about 15 % less from rest, and the rear-driven ones (auto, motorbike, bus) slide a little
-more at full lock near top speed (still within the "never drifts" and "no drift when slow"
-rules the tests check). The algorithm is Rapier's (`ray_cast_vehicle_controller.rs` 0.21 was
-read line by line); the remaining gap was not found.
+`train_detail.py` builds the LOD0 bodies from pieces that meet exactly:
+- the belly and the roof are lofted strips. The roof is rounded (one Chaikin pass), with gutters
+  along the cant rail and torpedo ventilators (ICF EMU) or AC units with grilles. It is drawn in
+  the atlas `roof_grey` (rough, dark), not the livery, so it doesn't wash out under the sky.
+- the side walls are panels with real openings. ICF windows are set in 7 cm, with aluminium frames
+  and three horizontal bars. Sealed windows (AC EMU, LHB, Vande Bharat) are dark glass in black
+  frames. Doorways are set in 55 cm as vestibules with a floor, a lintel, the sliding leaf, grab
+  rails each side and a step. The WAP-7's machine-room louvres have slats.
+- the ends are a gangway end (bellows, a face plate, coupler, buffers on the LHB) or a cab front.
+  The cab front has two recessed windscreens with wipers, a blank LED route board between twin
+  head lamps, lower head and marker lamps, a horn, grab rails, footsteps, a buffer beam, pilot and
+  coupler. The WAP-7 adds its projecting lower nose with lamps, and on the roof its bars,
+  breakers, insulators and walkway. The Vande Bharat nose is 14 rings rounding to the snout, with
+  the windscreen as real glass faces.
+- underneath are solebars, equipment cases, tanks and brake cylinders. Bogies have side frames,
+  axle boxes, coil springs and a bolster, with the wheelsets as children.
 
-Premium and race cars (no Three.js reference; invented): saloon 34.9 m/s top (126 km/h),
-SUV 31.8 (115), coupé 43.0 (155), race car 61.2 (220).
+LOD1 and LOD2 keep the light wrapped shell with the windows painted in the livery, in the same
+places as the LOD0 openings: both read one window list, so they line up.
 
-## Crash ejection (TD-29, G-75)
-| Vehicle | Shaken from | Thrown from | Style |
-|---|---|---|---|
-| Motorbike | 18 km/h | 35 km/h | off the seat; the bike topples |
-| Auto | 18 | 30 | off the seat |
-| Hatchback (taxi, police, gang) | 25 | 70 | through the windscreen |
-| Ambulance | 25 | 75 | windscreen |
-| Bus | 30 | never | – |
-| Saloon / SUV / coupé | 30 | 95 / 90 / 110 | windscreen (invented: above each car's reach on the flat only in a head-on) |
-| Race car | 40 | never (harness) | – |
+## Frames and nodes
 
-The impact is the vehicle's change of velocity in one step; into a wall it comes out about 5 %
-above the approach speed (restitution 0.1, as in Rapier). The thrown body moves with the
-rider's own `CharacterBody3D.move_and_slide`, so walls stop it (swept, no tunnelling); it passes
-through its own vehicle until it is up.
+- Metres. **+Y up, the front towards -Z, +X to the right** (TD-2, the same as the Three.js game).
+  Ground, or the rail top for trains, is at y = 0.
+- Origins: cars are centred between the axles. The helicopter's origin is on the ground below the
+  rotor mast. The aeroplanes' origin is on the ground below the main gear axle. Train cars have
+  theirs at mid-car on the rail top.
+- `body`: everything that doesn't move.
+- `wheel_*`: origin on the axle; the wheel spins about X. The lowest point is on the ground. On
+  aircraft the wheels are children of the gear legs. Train wheelsets are `wheelset_f1…`, children
+  of `bogie_front`/`bogie_rear`, and their flanges reach 28 mm below the rail top.
+- `steering`: origin on the hub. The `steering.axis` in the manifest is the column, and
+  `grip_steer_l`/`grip_steer_r` are the hand points on the rim.
+- `door_*`: origin on the hinge line. Car doors swing about Y by `open_deg` (+ is the right side,
+  opening outwards). Sliding leaves (trains, the helicopter's rear doors) have `slide` and `slide_m`.
+- `pivots` (manifest): every other moving part, with its `pivot`, unit `axis` (Godot frame) and
+  `range_deg` or `rpm`. These are `rotor_main`, `rotor_tail`, `propeller`, `fan_l/r`,
+  `aileron_*`, `flap_*`, `elevator*`, `rudder`, `gear_nose`, `gear_main_*` (retract pivots),
+  `bogie_*` and `pantograph*`.
+- Anchors (empty nodes): `seat_*` (hip points), `grip_*` (hands: steering rim, cyclic,
+  collective, yokes, master controller), `cargo_*` (load surfaces), `exit_driver`,
+  `standing_area`, and `marker_front` (the leading face; the tests use it to check orientation).
 
-## Gaps
-- Seated poses are the stand-in capsule folded to sitting height; the Player agent's
-  `VehicleRider` subclass draws the real figure (hands on grips, feet on pegs: `VehicleType.pose`).
-- No engine or horn sound (Sound agent: listen to `Driving.horn`, `boarding_event`, `crashed`).
-- Not wired into `Main` yet (the streamed city is the World agent's); the yard is the test ground.
-- Premium and race cars use stretched stand-in models.
+## The manifest (`<name>.json` beside the GLBs)
+
+It keeps the Three.js game's vehicle data model (`packages/vehicles/src/specs.ts`, its
+`docs/vehicles.md`), in the GLB frame:
+
+- `size_m`, `mass_kg`, `lods[]` (file, triangles, distance range), `wheels[]` (node, centre,
+  radius, steers, driven), `steering`, `doors[]`, `seats[]`, `grips[]`, `cargo[]`, `pivots[]`.
+- `collision[]`: simple proxies (boxes, and a capsule or cylinder for aircraft and the rotor disc),
+  to be built as `BoxShape3D` and similar. No collision meshes are in the GLBs.
+- Cars: `physics` is shaped like `VehicleSpec`: halfExtents, mass, wheels in the chassis frame
+  with `wheel.y = radius + 0.3 - rideHeight` so that `groundBelow` works unchanged, plus
+  engineForce, maxSpeed, maxSteer, brakeForce, drift, gears and rideHeight. They also carry
+  `pose`, `entry` and `paints[]` (sRGB; set `albedo_color` of the surface whose material is named
+  `paint`).
+- Ported vehicles: the data of `specs.ts` and `DOOR_SWING`, converted with
+  `y_model = y_chassis - groundBelow(kind)` (`chassis_to_model_y`). Their seats, grips and cargo
+  are positions, not nodes, because the old GLBs have no anchor nodes.
+- Aircraft: `flight` (starting values) and `landing_contacts` (helicopter skids).
+- Trains: `bogies`, `formation` (12-car EMU, 12-car AC EMU, WAP-7 with LHB coaches, an 8-car VB set;
+  `@reversed` means the car is turned round) and `coupler_faces_z` for spacing cars in a rake.
+- All handling and flight numbers are **proposed starting values (estimated)**, for Phase 2 and 6b
+  to tune.
+
+## Materials
+
+- `atlas`: every fixed colour is one 64 px cell of a shared 512 px palette (`shared/vehicle_palette_{albedo,mr,emit}.png`:
+  albedo, metallic-roughness and emission for the lamps). A face's UVs sit at its cell centre. The
+  roles are listed in `vkit.py` `ROLES`, and the cells must stay where they are because the UVs
+  point at them.
+- `paint`: plain body colour. The game sets the colour per car from the manifest.
+- `livery_<type>`: trains and the airliner use a painted texture with real UVs. The u axis runs
+  along the car and v runs round the half section, with both sides sharing the texture. Windows,
+  doors and bands are painted in, not modelled. Ends and the cab front are planar-mapped into the
+  bottom strip.
+- `assets/vehicles/shared/palette.json` lists every role's cell, UV and colours. New roles are only
+  ever appended, so existing UVs stay valid. The tests check each GLB's embedded atlas against it
+  cell by cell, and read back each manifest's `texture_samples` (livery texels: body colour,
+  bands, cab front) from the embedded images, so a wrong or stale texture fails.
+- No vertex colours anywhere. Glass is opaque and dark: no transparency, to spare fill rate on the
+  Adreno 613.
+
+## Using them in Godot (Phase 2, 6, 6b)
+
+- Import the GLBs as scenes. Read the manifest beside each one (a small `VehicleManifest`
+  resource loader is the natural place). Add LOD0 and LOD1 (and LOD2) as children with
+  visibility ranges. Traffic can load LOD1 only.
+- Spin wheels about their local X, steer the front wheel nodes about Y, swing doors about Y at
+  their origin and slide leaves along `slide`. Turn `pivots` about their `axis` within their range.
+- Trains: draw one `MultiMeshInstance3D` per car type per LOD, so a 12-car rake costs a few draw
+  calls (research note: at most about 6 for all trains). Animate bogies only at LOD0.
+
+## Rebuilding
+
+```bash
+godot-chennai/tools/blender/vehicles/build_all.sh         # everything, then the checks
+blender -b --factory-startup --python godot-chennai/tools/blender/vehicles/cars.py -- --only saloon,suv
+python3 godot-chennai/tools/sync_from_threejs.py                      # the legacy GLBs (assets/vehicles/legacy/)
+python3 godot-chennai/tools/blender/vehicles/port_road_vehicles.py   # their manifests
+godot-chennai/run_tests.sh --filter=vehicle_models                   # the model checks
+```
+
+Review screenshots (Compatibility renderer, not committed) come from
+`tools/models/model_shot.gd`. It loads any GLBs at run time; the command is in the script header. `OPEN_DOORS=1` swings the doors
+open.
+
+## Not done, or weak
+
+- The premium cars are clean but simple (the SUV was reworked to read as an SUV): their front and rear faces are lamp boxes on a soft
+  shell, and the side glass ends on face edges, so window outlines are a little stepped up close.
+  None has been seen on a phone.
+- Trains: the door leaves start closed (Chennai EMUs often run with them open; the game decides).
+  The Vande Bharat windscreen edge is stepped where it crosses the nose's rings. Bogies are still
+  simple boxes (frames, axle boxes and springs, no brake rigging). There are no seats inside the
+  cars.
+- The helicopter and aeroplane cabins are only seats and a panel. There are no gauges, and the
+  rotor has no blurred-disc mesh.
+- The ported auto-rickshaw is over the car budget (16k / 12k). A lighter LOD1 is a follow-up.
+- Steering wheels exist as nodes on the new cars only. The old models' steering wheels are part
+  of the body, as they were in the Three.js game.
+- Each GLB carries its own copy of the 11 KB palette. To share one texture in memory, set the
+  importer's external-material option for `atlas` once the project exists. The palette PNGs are in
+  `assets/vehicles/shared/` for that.
