@@ -3,6 +3,7 @@
 The planned Godot 4 version of the Chennai open-world game. **Not started yet:** this folder holds
 the plan and references only.
 
+- `MASTER_PROMPT.md`: the prompt to paste into a coordinating session that runs a team of agents.
 - `MIGRATION_PROMPT.md`: the full brief for the agent that starts the migration (decision, what to
   reuse from `chennai-open-world/`, phases, lessons, rules).
 - `docs/concept/characters/`: the owner's character concept boards (phases 1-4 of the cast).

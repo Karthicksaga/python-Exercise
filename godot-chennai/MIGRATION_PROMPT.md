@@ -137,6 +137,7 @@ unchanged.
 - **Tests on slow CI runners:** wait in game time, never wall-clock time; a 40 s wall-clock wait
   failed when the runner played slower than real time. Don't aim at a stale position, and switch
   to a gun with ammo in scripted fights. Split slow suites into CI shards.
+- **Main-thread loading stalls:** in CI the Three.js game advanced one frame in 10 s of real time while the player ran (chunk, model and texture decoding on the main thread); the owner felt the same lag on a phone. Load and decode in the background from the start (threaded `ResourceLoader`, `WorkerThreadPool`), build meshes and colliders in time-sliced steps, and test streaming under CPU throttle.
 - **Performance:** the phone budget was about 230-300 draw calls and 300k triangles in dense
   streets; LOD switches for figures (30 m) and vehicles (28 m); first-use shader compiles and
   main-thread decoding cause hitches: warm shaders at load, stream and decode off the hot path.
