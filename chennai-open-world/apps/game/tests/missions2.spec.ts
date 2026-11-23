@@ -3,7 +3,7 @@
  * the long drives across town, as `combat.spec.ts` does for stages 7 and 8).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { GAME_WAIT, board, holdButton, probe, ready, snapshot, teleport, waitGameTime } from "./support";
+import { GAME_WAIT, board, holdButton, probe, ready, snapshot, tapButton, teleport, waitGameTime } from "./support";
 
 const FIRST_TEN = ["morning-walk", "borrowed-wheels", "auto-shift", "parcel-run", "cross-town", "bike-courier", "park-trouble", "bike-thieves", "godown-raid", "roundtana-showdown"];
 const LATER = ["courier-chase", "tea-shop", "drive-by", "snake-pit", "turf-war"];
@@ -19,6 +19,7 @@ interface State {
   target: { x: number; z: number } | null;
   quarry: { x: number; z: number } | null;
   weapons: string[];
+  weapon: string;
   weaponAmmo: Record<string, number>;
   enemies: Array<{ x: number; z: number; health: number; group: string; weapon: string }>;
 }
@@ -47,8 +48,10 @@ async function goToTarget(page: Page): Promise<void> {
 
 /** Beat the stage's group: stand 6 m from each enemy in turn, facing it, and hold FIRE. */
 async function shootItOut(page: Page, objective: string, group: string, restart: string): Promise<void> {
-  // Rounds spent on each enemy without hurting them, by where they stand (see below).
-  const tries = new Map<string, { health: number; attempt: number }>();
+  // When the enemy we shot at last round still has the same health, come at them from another
+  // side next time (a CI run once spent 75 rounds firing from one spot without a hit).
+  let last: { x: number; z: number; health: number } | null = null;
+  let turn = 0;
   for (let round = 0; round < 80; round++) {
     const s = await state(page);
     if (s.objective === restart) {
@@ -58,49 +61,43 @@ async function shootItOut(page: Page, objective: string, group: string, restart:
     }
     if (s.objective !== objective) break;
     await heal(page);
-    // The first standing enemy, unless six rounds at them have hurt nobody: then the next one a
-    // round can reach (an enemy who wandered somewhere unreachable used to hold the test for
-    // the rest of its rounds while the others stood untouched, stage 15 in CI). They are
-    // tried again once the others are down.
-    const crew = s.enemies.filter((e) => e.group === group && e.health > 0);
-    const stuck = (e: (typeof crew)[number]) => (tries.get(`${e.weapon}@${Math.round(e.x)},${Math.round(e.z)}`)?.attempt ?? 0) >= 6;
-    const enemy = crew.find((e) => !stuck(e)) ?? crew[0];
+    // A teleport can land on a weapon lying in the street (stage 14's hideout has a shotgun with
+    // eight shells on its street), and a new gun goes straight into the hand: once it is empty,
+    // switch to a gun that still has rounds, as a player would (CI once fired an empty gun for 65 rounds).
+    for (let k = 0; k < 6 && !((await state(page)).weaponAmmo[(await state(page)).weapon]! > 0); k++) await tapButton(page, "Switch weapon");
+    const enemy = s.enemies.filter((e) => e.group === group && e.health > 0)[0];
     if (!enemy) {
       await waitGameTime(page, 0.3);
       continue;
     }
-    // Stand 6 m off where a shot can reach the enemy. Spots checked both ways come first: clear
-    // outward from just past the enemy's own collision box (0.28 m half-width, 0.4 m to a
-    // corner), and from the spot inward the first thing met is a person. Then spots clear outward
-    // from 0.7 m (the old check, which misses a pole or wall right at the enemy's shoulder).
-    // If a round from one spot did not hurt this enemy, the next round tries the next spot: the
-    // helper used to return to the same useless spot for 70+ rounds (stages 12 and 14 in CI).
-    const key = `${enemy.weapon}@${Math.round(enemy.x)},${Math.round(enemy.z)}`;
-    const before = tries.get(key);
-    const attempt = before && before.health <= enemy.health ? before.attempt + 1 : 0;
-    tries.set(key, { health: enemy.health, attempt });
-    const standing = s.enemies.filter((e) => e.health > 0);
-    const meetsSomeone = (x: number, z: number) => standing.some((e) => Math.hypot(e.x - x, e.z - z) <= 0.45);
+    // Stand 6 m off in a direction with nothing solid between (the ray starts clear of the
+    // enemy's own collision box), trying the side the player is on first.
+    if (last && Math.hypot(last.x - enemy.x, last.z - enemy.z) < 1.5 && last.health === enemy.health) turn++;
+    last = { x: enemy.x, z: enemy.z, health: enemy.health };
     const toward = Math.atan2(s.x - enemy.x, s.z - enemy.z);
-    const verified: Array<{ x: number; z: number }> = [];
-    const open: Array<{ x: number; z: number }> = [];
-    for (let k = 0; k < 16; k++) {
-      const a = toward + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 8);
+    let from = { x: enemy.x + Math.sin(toward) * 6, z: enemy.z + Math.cos(toward) * 6 };
+    for (let j = 0; j < 8; j++) {
+      const k = (j + turn) % 8;
+      const a = toward + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 4);
       const dx = Math.sin(a);
       const dz = Math.cos(a);
-      const spot = { x: enemy.x + dx * 6, z: enemy.z + dz * 6 };
-      const out = await probe(page, enemy.x + dx * 0.45, enemy.z + dz * 0.45, dx, dz, 5.55);
-      const outClear = out === null || meetsSomeone(enemy.x + dx * (0.45 + out), enemy.z + dz * (0.45 + out));
-      const back = outClear ? await probe(page, spot.x, spot.z, -dx, -dz, 6) : null;
-      if (outClear && back !== null && meetsSomeone(enemy.x + dx * (6 - back), enemy.z + dz * (6 - back))) verified.push(spot);
-      else if ((await probe(page, enemy.x + dx * 0.7, enemy.z + dz * 0.7, dx, dz, 6)) === null) open.push(spot);
+      if ((await probe(page, enemy.x + dx * 0.7, enemy.z + dz * 0.7, dx, dz, 6)) === null) {
+        from = { x: enemy.x + dx * 6, z: enemy.z + dz * 6 };
+        break;
+      }
     }
-    const spots = [...verified, ...open];
-    const from = spots.length > 0 ? spots[attempt % spots.length]! : { x: enemy.x + Math.sin(toward) * 6, z: enemy.z + Math.cos(toward) * 6 };
     await teleport(page, from.x, from.z, Math.atan2(-(enemy.x - from.x), -(enemy.z - from.z)));
     await heal(page);
+    // Aim again at where the target is now: on a slow runner an enemy charging in can move off
+    // the line while the teleport completes, and every shot then goes where it was (seen in CI
+    // on stage 14: 65 rounds without a hit on a fists enemy).
+    const now = (await state(page)).enemies.filter((e) => e.group === group && e.health > 0).sort((a, b) => Math.hypot(a.x - enemy.x, a.z - enemy.z) - Math.hypot(b.x - enemy.x, b.z - enemy.z))[0];
+    if (now) await teleport(page, from.x, from.z, Math.atan2(-(now.x - from.x), -(now.z - from.z)));
     // A line per few rounds, so a failure shows how the fight went.
-    if (round % 5 === 0) console.log(`${group} round ${round}: health ${Math.round(s.health)}, standing ${s.enemies.filter((e) => e.group === group && e.health > 0).map((e) => `${e.weapon}:${e.health}`).join(" ")}`);
+    if (round % 5 === 0) {
+      const at = (p: { x: number; z: number }) => `${p.x.toFixed(1)},${p.z.toFixed(1)}`;
+      console.log(`${group} round ${round}: health ${Math.round(s.health)}, standing ${s.enemies.filter((e) => e.group === group && e.health > 0).map((e) => `${e.weapon}:${e.health}`).join(" ")}; target ${enemy.weapon} at ${at(enemy)}, shooting from ${at(from)} (side ${turn % 8})`);
+    }
     await holdButton(page, "Fire", 500);
   }
 }

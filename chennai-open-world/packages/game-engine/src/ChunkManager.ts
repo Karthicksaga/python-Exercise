@@ -139,6 +139,11 @@ export class ChunkManager {
     if (!built || all) this.settle();
   }
 
+  /** Whether every chunk in range of a point has its meshes (and so its walls) right now. */
+  isLoaded(x: number, z: number): boolean {
+    return this.wanted(x, z).every((ref) => this.slots.get(ref.key)?.state === "shown");
+  }
+
   /** Resolves once every chunk in range of a point has its meshes (start-up, teleport). */
   whenLoaded(x: number, z: number): Promise<void> {
     return new Promise((done) => {

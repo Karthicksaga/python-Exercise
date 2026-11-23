@@ -44,6 +44,8 @@ declare global {
       giveAmmo(rounds: number): void;
       /** Tests only: give a weapon with rounds and take it in hand (skips finding a pickup). */
       giveWeapon(id: WeaponId, ammo: number): void;
+      /** Tests only: who plays the pedestrians, drivers and enemies, and how their feet meet the ground. */
+      people(): unknown;
     };
   }
 }
@@ -75,6 +77,7 @@ async function boot(): Promise<void> {
       giveAmmo: (rounds) => game.debugGiveAmmo(rounds),
       // For tests only: the later stages need guns the player would have found by then.
       giveWeapon: (id, ammo) => game.debugGiveWeapon(id, ammo),
+      people: () => game.debugPeople(),
     };
     if (startAtOnce()) {
       game.start();

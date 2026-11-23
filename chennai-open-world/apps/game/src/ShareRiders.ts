@@ -9,7 +9,7 @@ import type { HumanAssets, HumanFigure } from "@cow/player";
 
 /** Waiting people farther than this from the player are not drawn (metres). */
 const SHOW_RADIUS = 160;
-/** Clothing tints for passengers (multiplied with the model's own colours). */
+/** Clothing tints for passengers drawn with the player's model (no people manifest); manifest people wear their own clothes. */
 const CLOTHES = [0xe0c29f, 0x9fb8e0, 0xd9a0a0, 0xa9d6a9, 0xe6dd9a, 0xb7a3d6];
 /**
  * Where people sit in the auto, relative to its chassis centre (feet, like `VehicleType.driver`):
@@ -71,7 +71,9 @@ export class ShareRiders {
   private figure(i: number): HumanFigure {
     let figure = this.standing[i];
     if (!figure) {
-      figure = this.humans.create(CLOTHES[i % CLOTHES.length]!, true);
+      // Each waits alone at their spot: adults only (`people.ts`).
+      const look = this.humans.look("passenger", i);
+      figure = this.humans.create(look.person ? look.tint : CLOTHES[i % CLOTHES.length]!, true, look.person);
       this.scene.add(figure.object);
       this.standing.push(figure);
     }
@@ -90,7 +92,9 @@ export class ShareRiders {
     while (this.seated.length < Math.min(count, SEATS.length)) {
       const seat = SEATS[this.seated.length]!;
       // Copies share the baked geometry per tint, so a passenger costs a few draw calls and no skeleton.
-      const person = this.humans.seatedStatic(CLOTHES[(this.seated.length + 3) % CLOTHES.length]!, PASSENGER);
+      // A child may ride along once an adult is aboard.
+      const look = this.humans.look("passenger", this.seated.length + 3, { withAdult: this.seated.length > 0 });
+      const person = this.humans.seatedStatic(look.person ? look.tint : CLOTHES[(this.seated.length + 3) % CLOTHES.length]!, PASSENGER, look.person);
       person.position.set(seat.x, seat.y, seat.z);
       auto.add(person);
       this.seated.push(person);

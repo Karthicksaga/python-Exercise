@@ -11,7 +11,7 @@
  */
 import * as THREE from "three";
 import { FARES, type FarePerson, type FareStop } from "@cow/missions";
-import { sitWeight, type HumanAssets, type HumanFigure } from "@cow/player";
+import { sitWeight, type HumanAssets, type HumanFigure, type PersonLook } from "@cow/player";
 import type { PassengerDoor, Vehicle, VehicleKind } from "@cow/vehicles";
 import { PASSENGER, SEATS } from "./ShareRiders";
 
@@ -25,14 +25,19 @@ const SPACING = 0.85;
 const LINGER = 3;
 /** Doors swing at this share a second. */
 const DOOR_RATE = 2.5;
-/** Clothes for passengers (bright enough to stand out at the kerb), and a patient's pale gown. */
+/**
+ * Clothes for passengers drawn with the player's model (no people manifest), bright enough to
+ * stand out at the kerb, and a patient's pale gown. Manifest people wear their own clothes.
+ */
 const CLOTHES = [0xe8b04a, 0x5f9fe0, 0xd9605f, 0x6fc27a, 0xd88fd0, 0xf0e07a];
 const GOWN = 0xcfe3ef;
 /** The auto's rear bench (the front seat beside the driver is the share auto's, not a fare's). */
 const BENCH = [0, 1, 2] as const;
 
 interface Rider {
-  tint: number;
+  tint: number | undefined;
+  /** Who (a manifest id; null: the player's model). */
+  person: string | null;
   seat: number;
   object: THREE.Object3D | null;
 }
@@ -133,7 +138,7 @@ export class FareFigures {
             continue;
           }
           if (!near) continue;
-          const figure = this.figure(used++, this.tintFor(scene, person));
+          const figure = this.figure(used++, this.lookFor(scene, person));
           if (person.stage === "waiting") {
             waiting++;
             figure.object.position.set(spot.x, 0, spot.z);
@@ -162,7 +167,7 @@ export class FareFigures {
           if (person.stage === "riding") continue;
           if (person.stage === "exiting") {
             const rider = this.unseat(key, door);
-            const figure = this.figure(used++, rider.tint);
+            const figure = this.figure(used++, rider);
             figure.setWaving(false);
             walking++;
             this.inOut(figure, car, door, rider.seat, 1 - person.share, dt);
@@ -175,8 +180,9 @@ export class FareFigures {
             const from = new THREE.Vector3(doorAt.x, 0, doorAt.z);
             const away = new THREE.Vector3(-toRoad.x, 0, -toRoad.y);
             const kerbAt = new THREE.Vector3(spot.x, 0, spot.z).addScaledVector(away, FARES.walkOff);
-            const figure = this.spare.pop() ?? this.humans.create(0xffffff, true);
-            figure.setClothes(rider.tint);
+            const same = this.spare.findIndex((f) => f.person === rider.person);
+            const figure = same >= 0 ? this.spare.splice(same, 1)[0]! : this.humans.create(0xffffff, true, rider.person);
+            figure.setClothes(rider.tint ?? 0xffffff);
             figure.setWaving(false);
             figure.object.visible = true;
             this.scene.add(figure.object);
@@ -204,19 +210,34 @@ export class FareFigures {
     return id;
   }
 
-  private tintFor(scene: FareScene, person: FarePerson): number {
-    if (scene.stop.fare.patient) return GOWN;
-    return CLOTHES[(this.idOf(scene.stop) * 3 + person.index) % CLOTHES.length]!;
+  /**
+   * Who a person at a stop is: the wedding party in their silks (stage 16), an elderly patient,
+   * or any passenger; a child only beside an adult (not the first of a party).
+   */
+  private lookFor(scene: FareScene, person: FarePerson): PersonLook {
+    const fare = scene.stop.fare;
+    const index = this.idOf(scene.stop) * 3 + person.index;
+    const look = this.humans.look(fare.patient ? "patient" : fare.party === "wedding" ? "wedding" : "passenger", index, { withAdult: person.index > 0 });
+    return look.person ? { person: look.person, tint: look.tint } : { person: null, tint: fare.patient ? GOWN : CLOTHES[index % CLOTHES.length]! };
   }
 
-  private figure(i: number, tint: number): HumanFigure {
+  private figure(i: number, look: PersonLook): HumanFigure {
     let figure = this.pool[i];
-    if (!figure) {
-      figure = this.humans.create(0xffffff, true);
-      this.scene.add(figure.object);
-      this.pool.push(figure);
+    if (!figure || figure.person !== look.person) {
+      // The pool is shared by everyone at the stop: take this person's figure from further along, or make one.
+      const j = this.pool.findIndex((f, k) => k > i && f.person === look.person);
+      const other = this.pool[i];
+      if (j >= 0) {
+        figure = this.pool[j]!;
+        this.pool[j] = other!;
+      } else {
+        figure = this.humans.create(0xffffff, true, look.person);
+        this.scene.add(figure.object);
+        if (other) this.pool.push(other);
+      }
+      this.pool[i] = figure;
     }
-    figure.setClothes(tint);
+    figure.setClothes(look.tint ?? 0xffffff);
     figure.object.visible = true;
     figure.object.quaternion.identity();
     // Standing again if it sat down last frame (the pool is shared by everyone at the stop).
@@ -281,7 +302,7 @@ export class FareFigures {
     const side = Math.sign(door.point.x) || -1;
     const free = BENCH.filter((s) => !taken.has(s)).sort((a, b) => (SEATS[a]!.x - SEATS[b]!.x) * -side);
     const seat = free[0] ?? 0;
-    this.seen.set(`${key}:seat`, { tint: 0, seat, object: null });
+    this.seen.set(`${key}:seat`, { tint: 0, person: null, seat, object: null });
     return seat;
   }
 
@@ -289,7 +310,8 @@ export class FareFigures {
   private settle(key: string, scene: FareScene, car: Vehicle, door: PassengerDoor, person: FarePerson): void {
     if (this.seen.has(`${key}:in`)) return;
     const seat = this.seatFor(key, door);
-    const rider: Rider = { tint: this.tintFor(scene, person), seat, object: null };
+    const look = this.lookFor(scene, person);
+    const rider: Rider = { tint: look.tint, person: look.person, seat, object: null };
     this.seen.set(`${key}:in`, rider);
     this.seen.delete(`${key}:seat`);
     this.riders.push(rider);
@@ -302,7 +324,7 @@ export class FareFigures {
     if (known) return known;
     const side = Math.sign(door.point.x) || -1;
     this.riders.sort((a, b) => ((SEATS[a.seat]?.x ?? 0) - (SEATS[b.seat]?.x ?? 0)) * side);
-    const rider = this.riders.pop() ?? { tint: CLOTHES[0]!, seat: 0, object: null };
+    const rider = this.riders.pop() ?? this.newRider(0, 0);
     rider.object?.removeFromParent();
     rider.object = null;
     this.seen.set(`${key}:out`, rider);
@@ -312,7 +334,7 @@ export class FareFigures {
   private draw(rider: Rider, car: Vehicle): void {
     if (!car.type.openSeat || rider.object) return;
     const seat = SEATS[rider.seat] ?? SEATS[0]!;
-    const person = this.humans.seatedStatic(rider.tint, PASSENGER);
+    const person = this.humans.seatedStatic(rider.tint, PASSENGER, rider.person);
     person.position.set(seat.x, seat.y, seat.z);
     car.object.add(person);
     rider.object = person;
@@ -324,11 +346,17 @@ export class FareFigures {
     while (this.riders.length > want) this.riders.pop()!.object?.removeFromParent();
     while (car && this.riders.length < Math.min(want, BENCH.length)) {
       const taken = new Set(this.riders.map((r) => r.seat));
-      const rider: Rider = { tint: CLOTHES[this.riders.length % CLOTHES.length]!, seat: BENCH.find((s) => !taken.has(s)) ?? 0, object: null };
+      const rider = this.newRider(this.riders.length, BENCH.find((s) => !taken.has(s)) ?? 0);
       this.riders.push(rider);
       this.draw(rider, car);
     }
     if (!scene && this.riders.length === 0) this.seen.clear();
+  }
+
+  /** Someone already aboard when the game starts drawing them (a reload, a reset): the `n`-th passenger. */
+  private newRider(n: number, seat: number): Rider {
+    const look = this.humans.look("passenger", n, { withAdult: n > 0 });
+    return { tint: look.person ? look.tint : CLOTHES[n % CLOTHES.length]!, person: look.person, seat, object: null };
   }
 
   private changeVehicle(vehicle: Vehicle): void {
