@@ -6,7 +6,7 @@ time, the player's state and answers about the world, and acts on the events the
 
 Run the tests: `tools/rules/run_tests.sh` (headless; exit 0 = all passed). It uses
 `project.godot` when Foundation's project is present, otherwise a throwaway copy, so nothing is
-written into the repo. 251 cases, about 1 500 checks, about 3 s.
+written into the repo. 251 cases, about 1 500 checks, about 12 s including the import.
 
 ## Layout (owner's decision §9: the same modules as the existing game)
 
