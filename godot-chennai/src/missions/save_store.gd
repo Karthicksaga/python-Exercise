@@ -4,7 +4,7 @@
 ##   "cow-jobs-v1"      {reputation, done, failed, best}               (JobRunner.record())
 ##   "cow-weapons-v1"   {owned, ammo, gun}                             (Arsenal.save())
 ##   "cow-districts-v1" [names]                                        (VisitedDistricts)
-##   "cow-hour-v1"      game hour (number)                             (DayClock)
+##   "cow-hour-v1"      game hour (number)                             (GameClock)
 ##   "cow-weather-v1"   "clear" | "rain"
 ## Writes go to a temporary file first and are then renamed, so a crash mid-write keeps the old
 ## save. A missing or damaged file loads as a new game. The path is injected (tests use their own).
@@ -59,12 +59,17 @@ func set_section(key: String, value: Variant) -> void:
 ## The stage progress {completed, money} as MissionRunner takes it, or {} for a new game
 ## (the TS `loadProgress`: both fields must be there and of the right type).
 func progress() -> Dictionary:
-	var p: Variant = data.get(PROGRESS)
-	if p is Dictionary and p.get("completed") is Array and (p.get("money") is float or p.get("money") is int):
+	var value: Variant = data.get(PROGRESS)
+	if not (value is Dictionary):
+		return {}
+	var p: Dictionary = value
+	var completed: Variant = p.get("completed")
+	var money: Variant = p.get("money")
+	if completed is Array and (money is float or money is int):
 		var ids: Array = []
-		for id: Variant in p["completed"]:
+		for id: Variant in completed:
 			ids.append(str(id))
-		return {"completed": ids, "money": p["money"]}
+		return {"completed": ids, "money": money}
 	return {}
 
 

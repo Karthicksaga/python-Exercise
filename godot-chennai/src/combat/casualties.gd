@@ -24,7 +24,8 @@ func can_hit(id: int) -> bool:
 
 
 func is_down(id: int) -> bool:
-	var state: String = _by_id.get(id, {}).get("state", "")
+	var c: Dictionary = _by_id.get(id, {})
+	var state: String = c.get("state", "")
 	return state == "down" or state == "dead"
 
 

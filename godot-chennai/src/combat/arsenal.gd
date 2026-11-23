@@ -112,19 +112,21 @@ func load_save(data: Variant) -> void:
 	reset()
 	if not (data is Dictionary):
 		return
-	var owned: Variant = data.get("owned")
+	var d: Dictionary = data
+	var owned: Variant = d.get("owned")
 	if owned is Array:
 		for id: Variant in owned:
 			if Weapons.is_weapon(id) and not _owned.has(str(id)):
 				_owned.append(str(id))
-	var ammo: Variant = data.get("ammo")
-	if ammo is Dictionary:
+	var ammo_value: Variant = d.get("ammo")
+	if ammo_value is Dictionary:
+		var ammo: Dictionary = ammo_value
 		for id: Variant in ammo:
 			var rounds: Variant = ammo[id]
 			if Weapons.is_weapon(id) and (rounds is int or rounds is float):
 				set_ammo(str(id), rounds)
-	if Weapons.is_weapon(data.get("gun")):
-		select(str(data["gun"]))
+	if Weapons.is_weapon(d.get("gun")):
+		select(str(d["gun"]))
 
 
 func reset() -> void:

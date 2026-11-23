@@ -4,9 +4,9 @@ The pure game rules and content tables of the Three.js game, ported to typed GDS
 their unit tests. No scenes, no rendering, no physics: the game (later phases) feeds them game
 time, the player's state and answers about the world, and acts on the events they return.
 
-Run the tests: `tools/rules/run_tests.sh` (headless; exit 0 = all passed). It uses
-`project.godot` when Foundation's project is present, otherwise a throwaway copy, so nothing is
-written into the repo. 251 cases, about 1 500 checks, about 12 s including the import.
+The tests run with everything else in Foundation's runner: `./run_tests.sh` (all tests) or
+`./run_tests.sh --filter=unit/rules/` (only these). 251 cases, about 1 500 assertions; the
+project's typed-GDScript warnings-as-errors apply to all of it.
 
 ## Layout (owner's decision §9: the same modules as the existing game)
 
@@ -32,12 +32,13 @@ written into the repo. 251 cases, about 1 500 checks, about 12 s including the i
 | `combat/src/Wanted.ts` (agent/police-tuning + agent/carjacking) | `src/combat/wanted.gd` (`Wanted`) |
 | crew rules inside `apps/game/src/Police.ts` (agent/police-tuning, TD-28) | `src/combat/police_fleet.gd` (`PoliceFleet`, new: finished as pure rules) |
 | `packages/ai/src/Carjack.ts` (agent/carjacking, TD-30) | `src/ai/carjack.gd` (`Carjack`) |
-| `packages/game-world/src/clock.ts` | `src/game_world/day_clock.gd` (`DayClock`) |
+| `packages/game-world/src/clock.ts` | Foundation's `src/game_world/game_clock.gd` (`GameClock`); one clock for the game |
 | `game-world/src/districts.ts` | `src/game_world/district_index.gd`, `visited_districts.gd` |
 | (helpers) `Math.round`, mulberry32 `seededRandom` | `src/game_world/rules_math.gd` (`RulesMath`), `src/game_world/seeded_random.gd` (`SeededRandom`) |
 
-Tests: `tests/rules/test_*.gd` (one GDScript method per TS `it(...)`, same names in words, same
-numbers), runner `tests/rules/run_rules_tests.gd`, helpers `rules_test.gd`, `combat_helpers.gd`.
+Tests: `tests/unit/rules/test_*.gd` (one GDScript method per TS `it(...)`, same names in words,
+same numbers), run by Foundation's `tests/test_runner.gd`; `rules_test.gd` extends `TestCase`
+with the deep-equality and `toBeCloseTo` helpers, `combat_helpers.gd` adds the combat fixtures.
 
 ## Which branch each part comes from
 - **Missions and jobs:** `feat/godot-chennai` (newest: it has `goods.ts`, the goods handed over at
@@ -107,7 +108,7 @@ the unseen one makes way, deploy conditions, witnessed rule, the heat numbers TD
 ## Wiring into the game (for later phases)
 - Fixed step: `mission_runner.update(dt, status)`, `job_runner.update(dt, x, z, mode, speed)`,
   `combat.update(dt, player_state)`, `wanted.update(dt, seen, held, responding)`, with `dt` in game
-  seconds; `DayClock.advance(dt)` gives `hour` for `JobRunner.available/accept` and `Life`.
+  seconds; `GameClock.advance(dt)` (GameLoop's clock) gives `hour` for `JobRunner.available/accept` and `Life`.
 - `CombatWorld.make(los, wall, solid)`: Callables over Jolt raycasts (`godot-physics`).
 - Content: `GameContent.load_file()`; enemy groups: `combat.spawn_group(name, content.enemies[name])`.
 - Save: `SaveStore.new().read()`, sections by the TS keys; `write()` after a stage, a job, sleep.

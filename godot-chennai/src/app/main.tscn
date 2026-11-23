@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/app/main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://src/ui/loading_screen/loading_screen.tscn" id="2_loading"]
+[ext_resource type="PackedScene" path="res://src/ui/title_menu/title_menu.tscn" id="3_title"]
+[ext_resource type="PackedScene" path="res://src/ui/debug_hud/debug_hud.tscn" id="4_hud"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
+
+[node name="LoadingScreen" parent="." instance=ExtResource("2_loading")]
+
+[node name="TitleMenu" parent="." instance=ExtResource("3_title")]
+
+[node name="DebugHud" parent="." instance=ExtResource("4_hud")]
