@@ -880,5 +880,8 @@ Difficulty has not been play-tested by a person.
 - **The phone:** POCO M6 Pro 5G, 6 GB, Snapdragon 4 Gen 2 with an Adreno 613 GPU. The screen
   flickered. The street sketch (every street, five long round-joined paths) is now drawn on the
   CPU (`willReadFrequently`): 124 ms with the CPU slowed 6×, one upload to the GPU.
+- **Known good:** the player says the game ran at about 50 fps on this phone before the loading
+  screen and title menu. `androidLayerType="hardware"` (removed on a guess in the first try) is
+  restored to match that build.
 - **Not yet:** checked on the phone that showed it.
 
