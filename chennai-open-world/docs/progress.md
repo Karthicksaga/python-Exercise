@@ -901,5 +901,11 @@ Difficulty has not been play-tested by a person.
   sweep, no tip fade, no fade-out over the game; running animations mid-load 2 → 0), its map
   sketch is drawn at CSS pixels, and `Game.create` waits a frame after each step so the screen is
   drawn between long stretches of work.
+- **Phone, third try:** the progress panel now drew, but the page stopped updating at the first
+  step while the map canvas showed. Added loading reports to the shell (`loadReport.ts`: device,
+  steps, 2 s heartbeat, errors, WebGL context lost) and a native status panel in `GameScreen.tsx`
+  after 20 s or on a problem (step and time, page answering or not, device; TRY AGAIN, CLOSE).
+  New browser test with the stand-in shell: device, the six steps in order, heartbeats that stop
+  when loading ends, no problems. Title spec 9/9.
 - **Not yet:** checked on the phone that showed it.
 
