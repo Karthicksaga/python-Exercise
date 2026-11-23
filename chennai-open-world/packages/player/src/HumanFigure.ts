@@ -12,6 +12,7 @@ import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { castPool, fitHeight, pickPerson, strideScale, uniformFor, type Cast, type CastOptions, type PeopleManifest, type Person } from "./people";
 import { PLAYER_HEIGHT } from "./PlayerController";
+import { settleArms } from "./armSettle";
 import { normalizeBoneNames, retargetClips } from "./retarget";
 import { captureRig, solveRidingPose, type Rig, type RidingPose, type SolvedPose } from "./ridingPose";
 import { simplifiedIndex } from "./simplify";
@@ -1096,6 +1097,7 @@ export class HumanFigure {
     }
     const duration = this.actions[gait].getClip().duration;
     this.mixer.setTime(Math.max(0, Math.min(0.999, phase)) * duration);
+    settleArms(this.model, { idle: gait === "idle" ? 1 : 0, walk: gait === "walk" ? 1 : 0, run: 0 });
     return duration;
   }
 
@@ -1217,6 +1219,8 @@ export class HumanFigure {
     this.actions.walk.timeScale = Math.max(0.6, speed / (WALK_CLIP_SPEED * this.stride)) * air;
     this.actions.run.timeScale = Math.max(0.7, speed / (RUN_CLIP_SPEED * this.stride)) * air;
     this.mixer.update(dt);
+    // Arms close to the body (`armSettle.ts`); the poses laid on later replace the arms they use.
+    settleArms(this.model, { idle: this.actions.idle.getEffectiveWeight(), walk: this.actions.walk.getEffectiveWeight(), run: this.actions.run.getEffectiveWeight() });
 
     // Each clip is planted at load; a blend of two is not (a sole sank up to 8 cm). The player is
     // always planted; everyone else only during a blend, which is brief.
