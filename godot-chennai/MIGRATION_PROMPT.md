@@ -46,9 +46,15 @@ steady frame rate.
 | Android APK export, CI export | `godot-export` |
 
 ## 3. Toolchain and environment (verified in this cloud container, 23 Nov 2026)
-- **Godot version:** the skills are written for 4.7. Use the latest stable 4.x (check
-  `https://github.com/godotengine/godot/releases`), pin it in `project.godot`, CI and the docs.
-  4.5 stable was verified to run here; Jolt is the default 3D physics from 4.6.
+- **Godot version: 4.7.2 stable** (latest stable on 23 Nov 2026; `4.7.2.stable.official.ed1daf0bf`).
+  Pin it in `project.godot`, CI and the docs. Verified here on 23 Nov: headless run, and a
+  Compatibility-renderer screenshot under xvfb (Mesa llvmpipe, OpenGL 4.5). Jolt is the default
+  3D physics from 4.6. Download: `https://downloads.godotengine.org/?version=4.7.2&flavor=stable&slug=linux.x86_64.zip&platform=linux.64`
+  (export templates: `slug=export_templates.tpz&platform=templates`); in the cloud container it
+  is installed at `/opt/tools/godot` with `godot` on the PATH (not committed). The environment's
+  network allows `downloads.godotengine.org` and its storage host.
+- **Blender 5.2.4 LTS** verified headless here on 23 Nov (`/opt/tools/blender`, `blender` on the
+  PATH; not committed).
 - **Headless works** (`godot --headless --path .`): scripts, imports, tests, exports. Always run
   with `timeout`: a GDScript parse error leaves the scene without its script, nothing calls
   `quit()`, and the run hangs. Add `--audio-driver Dummy` (there is no sound card).
@@ -153,3 +159,35 @@ unchanged.
 - Look at your screenshots critically before reporting; say plainly what is weak or not done.
 - Every phase's report: what works (checklist), CI status and APK artifact, test counts,
   screenshot paths, decisions taken (TD entries), what's not done.
+
+## 9. World reconstruction: the owner's decision of 23 Nov 2026
+The owner decided that the Chennai reconstruction plan applies to **this Godot version**, not
+to the Three.js game: `suggestions/2026-11-23-chennai-city-reconstruction-blueprint.md` (audit,
+datasets, licences, building/road/street/AI/Blender architecture, roadmap, open decisions) and
+`suggestions/2026-11-23-chennai-real-trains-and-buildings.md` (Google 3D Tiles ruled out; open
+height data; Tamil Nadu trains built in Blender by script). Both were written against the
+Three.js code; take their data, licence and asset findings as they are and translate the runtime
+parts as below. The blueprint's §21 decisions are still the owner's to make; ask before Phase 1
+of the reconstruction work, and build the migration phases (§5) without waiting for them.
+
+| Blueprint (Three.js) | In Godot |
+|---|---|
+| Keep compact per-chunk data and build meshes on the device; no GLB per building | Same rule. Port the chunk decoder (`codec.ts`) or convert to a Godot-friendly binary; build chunk meshes with `SurfaceTool`/`ArrayMesh` off the main thread (`WorkerThreadPool`), add to the scene when complete (§7 streaming lesson) |
+| Codec v2 with a version number, archetype, height source, roof, provenance index | Add the version field in the first Godot reader too; the converter in `godot-chennai/tools/` writes v2 once the fusion step (below) exists |
+| Data fusion in `tools/geo/` (Python: GDAL, GeoPandas, Shapely, DuckDB Spatial, PyProj), canonical GeoParquet with provenance | Unchanged: build-time Python, shared by both games while the Three.js one lives; output goes through the **same** `GeoProjection` (TD-2 coordinates) |
+| Building archetypes as parameter sets + Blender kit pieces in one atlas, merged per chunk | Kit pieces as GLB scenes → meshes merged per chunk (or `MultiMeshInstance3D` for repeated pieces: tanks, windows, railings); one `StandardMaterial3D` per atlas |
+| LOD0/1/2 as separate merged meshes per chunk | `GeometryInstance3D.visibility_range_begin/end` per LOD mesh (+ fade), Godot's automatic mesh LOD for kit pieces |
+| Landmarks as single GLBs (5k–15k triangles) | Same GLBs, imported scenes with a `StaticBody3D` + simplified collision |
+| Junction polygons, zebra/speed breakers from OSM, surface profiles, decals | Junction meshes via `SurfaceTool`; markings and potholes as `Decal` nodes only near the player (decals cost on Mobile) or baked into the road texture; condition as a vertex attribute read by a road shader |
+| Decks and ramps for flyovers, physics trimesh | `ConcavePolygonShape3D` per deck (Jolt), road heights for traffic and pedestrians from day one (the Three.js AI assumed y = 0) |
+| KTX2/Basis textures | Godot's VRAM compression (ETC2/ASTC for Android) on import; no extra runtime |
+| Per-layer chunk distances (ground, buildings, kerbs, props, parked vehicles, traffic) | Child nodes per layer with their own `visibility_range_end`; props and furniture only near the player |
+| Photo-assisted reconstruction (SAM 2, PaddleOCR, COLMAP) | Unchanged: build-time only, own imagery, human review; nothing at run time |
+| Trains: ICF EMU, AC EMU, WAP-7 + LHB, Vande Bharat by Blender script, budgets per LOD | Same models (Phase 6), imported GLBs with LODs via visibility ranges |
+| Tests: fusion (pytest), codec round trip, archetype determinism, triangle budgets, reference screenshots | GUT/headless GDScript tests for the reader and builders; Compatibility screenshots at the same reference places; pytest stays for `tools/geo` |
+
+Ordering: the migration phases in §5 come first (the game must run in Godot), and the
+reconstruction work joins at Phase 1 (world) as data and tools, then Phase 7 (visual upgrade) for
+kits, archetypes, roads and landmarks. The chunk reader is written once, versioned, so the richer
+data drops in without a rewrite.
+

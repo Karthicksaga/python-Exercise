@@ -13,6 +13,8 @@ Proposals, reviews and recommendations for Hop. These are things suggested, not 
 
 | Date | Suggestion | Status |
 |---|---|---|
+| 2026-11-23 | [Chennai: real-world city reconstruction, audit and blueprint](2026-11-23-chennai-city-reconstruction-blueprint.md) | Accepted for the Godot version (owner, 23 Nov); written against the Three.js code, mapped to Godot in `godot-chennai/MIGRATION_PROMPT.md` §9 |
+| 2026-11-23 | [Chennai: real Tamil Nadu trains and buildings (Google 3D Tiles ruled out)](2026-11-23-chennai-real-trains-and-buildings.md) | Accepted for the Godot version (owner, 23 Nov), via `MIGRATION_PROMPT.md` §9 |
 | 2026-11-05 | [Intercity carpool app next to Hop](2026-11-05-intercity-carpool-app.md) | Proposed |
 | 2026-11-05 | [Brand name conflict: "Hop"](2026-11-05-brand-name-conflict.md) | Deferred, keeping Hop for now |
 | 2026-11-05 | [UI review follow-ups](2026-11-05-ui-review-follow-ups.md) | Proposed |
