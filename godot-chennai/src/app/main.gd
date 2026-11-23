@@ -22,6 +22,9 @@ const GROUND_WAIT_FRAMES := 120
 var state: StringName = &"loading"
 var source: FileWorldSource = FileWorldSource.new()
 var world: TestWorld = null
+## Watches for a stalled main loop while loading (see `_watch_frames`).
+var _watchdog: Thread = null
+var _watching: bool = false
 
 @onready var loading: LoadingScreen = $LoadingScreen
 @onready var title: TitleMenu = $TitleMenu
@@ -50,6 +53,7 @@ func _load() -> void:
 	loading.visible = true
 	loading.set_steps(STEPS)
 	var started := Time.get_ticks_msec()
+	_start_watchdog()
 	for i in STEPS.size():
 		loading.begin_step(i)
 		await get_tree().process_frame  # let the screen show the step before the work
@@ -57,11 +61,13 @@ func _load() -> void:
 		if error != "":
 			printerr("[boot] step %d failed: %s" % [i + 1, error])
 			loading.fail(i, error)
+			_stop_watchdog()
 			_set_state(&"failed")
 			return
 		loading.finish_step(i)
 		print("[boot] step %d/%d done: %s (%d ms since start)" % [i + 1, STEPS.size(), STEPS[i], Time.get_ticks_msec() - started])
 		await get_tree().process_frame
+	_stop_watchdog()
 	loading.visible = false
 	var roads := source.loaded_roads()
 	hud.set_world_text("%s roads · %s chunks" % [_thousands(roads.size()), _thousands(source.index.chunk_sizes.size())])
@@ -121,6 +127,40 @@ func _add_test_world() -> String:
 			return ""
 		await GameLoop.wait_physics_frames(1)
 	return "The ground's collider did not appear in %d physics frames." % GROUND_WAIT_FRAMES
+
+
+## A thread that reports when no frame has been drawn for 5 s while loading: on a device whose
+## GPU stalls, the log then says the main loop stopped rather than going silent (TD-25 lesson).
+func _start_watchdog() -> void:
+	_stop_watchdog()
+	_watching = true
+	_watchdog = Thread.new()
+	_watchdog.start(_watch_frames)
+
+
+func _stop_watchdog() -> void:
+	_watching = false
+	if _watchdog != null:
+		_watchdog.wait_to_finish()
+		_watchdog = null
+
+
+func _watch_frames() -> void:
+	var last_frame := Engine.get_process_frames()
+	var since := Time.get_ticks_msec()
+	while _watching:
+		OS.delay_msec(250)
+		var frame := Engine.get_process_frames()
+		if frame != last_frame:
+			last_frame = frame
+			since = Time.get_ticks_msec()
+		elif Time.get_ticks_msec() - since >= 5000:
+			print("[boot] no frame for %d s (frame %d): the main loop is stalled" % [roundi((Time.get_ticks_msec() - since) / 1000.0), frame])
+			since = Time.get_ticks_msec()
+
+
+func _exit_tree() -> void:
+	_stop_watchdog()
 
 
 func show_title() -> void:
