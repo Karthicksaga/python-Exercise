@@ -34,6 +34,10 @@ func places(m: MissionData.Mission) -> Array:
 	return out
 
 
+func mission(id: String) -> MissionData.Mission:
+	return c.any_mission(id)
+
+
 func stage(n: int) -> MissionData.Mission:
 	for m in c.missions:
 		if m.stage == n:
@@ -52,7 +56,7 @@ func test_keeps_the_original_jobs_and_stages_and_adds_the_city_jobs() -> bool:
 	eq(c.missions.slice(0, 10).map(func(m: MissionData.Mission) -> int: return m.stage), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 	eq(c.missions.slice(0, 10).map(func(m: MissionData.Mission) -> String: return m.id), ["morning-walk", "borrowed-wheels", "auto-shift", "parcel-run", "cross-town", "bike-courier", "park-trouble", "bike-thieves", "godown-raid", "roundtana-showdown"])
 	eq(c.missions.size(), 21)
-	eq(c.missions.slice(15).map(func(m: MissionData.Mission) -> String: return m.id), ["wedding-party", "planted-chain", "mumbai-mail", "harmonium-thief", "stadium-biryani", "beach-road-brawl"])
+	eq(c.missions.slice(15).map(func(m: MissionData.Mission) -> String: return m.id), ["stadium-biryani", "wedding-party", "planted-chain", "mumbai-mail", "beach-road-brawl", "harmonium-thief"])
 	var ids := {}
 	for j in c.jobs:
 		ids[j.id] = true
@@ -336,16 +340,13 @@ func test_stages_16_to_21_follow_with_brief_money_and_reputation() -> bool:
 	return true
 
 
-## laterStages.test.ts: "start near where the stage before ended: no long empty drives" (full;
-## the station point is the TS `STATIONS.egmore` constant).
-func test_later_stages_start_near_where_the_one_before_ended() -> bool:
-	lt(dist(c.parked("auto-royapettah"), places(stage(15)).back()), 120)
-	for n in range(16, 22):
-		var before: Dictionary = places(stage(n - 1)).back()
-		var here := places(stage(n))
-		var first: Dictionary = here[0] if here.size() > 0 else before
-		lt(dist(before, first), 1500, "stage %d" % n)
-	lt(dist(c.parked("car-mylapore"), places(stage(18))[0]), 400)
+## laterStages.test.ts: "start near where the stage before ended: no long empty drives". CHANGED
+## (G-280, owner report from the phone): the next mission is now 2 to 8 km from the last end
+## (`test_stage_spread.gd` checks that for all 26), so what stays is that each vehicle waits
+## where its stage starts (the station point is the TS `STATIONS.egmore` constant).
+func test_later_stages_have_their_vehicles_at_their_start() -> bool:
+	lt(dist(c.parked("auto-royapettah"), places(mission("wedding-party"))[0]), 400)
+	lt(dist(c.parked("car-mylapore"), places(mission("mumbai-mail"))[0]), 400)
 	lt(dist(c.parked("bike-egmore"), {"x": 5541.0, "z": 806.0}), 400)
 	return true
 
@@ -364,7 +365,7 @@ func test_later_stages_use_the_new_kinds_of_objective() -> bool:
 	gt(first_chase.path.size(), 2)
 	ge(all.filter(func(o: MissionData.Objective) -> bool: return o.type == "reach" and o.time_limit > 0).size(), 3)
 	ok(all.any(func(o: MissionData.Objective) -> bool: return o.type == "defeat" and o.group == "brawl"))
-	eq(stage(16).objectives[1].fare.board, 3)
+	eq(mission("wedding-party").objectives[1].fare.board, 3)
 	return true
 
 
@@ -372,7 +373,7 @@ func test_later_stages_use_the_new_kinds_of_objective() -> bool:
 ## (partial: the outside-buildings check needs the chunk reader).
 func test_stage_19_chase_and_an_unarmed_brawl_gang() -> bool:
 	var chase: MissionData.Objective = null
-	for o in stage(19).objectives:
+	for o in mission("harmonium-thief").objectives:
 		if o.type == "chase":
 			chase = o
 	gt(Chase.path_length(chase.path), 500)
@@ -391,7 +392,7 @@ func test_fares_and_goods_are_given_where_the_stages_and_jobs_need_them() -> boo
 				count += 1
 		return count
 	eq(stage_fares.call(3), 2)
-	eq(stage_fares.call(16) + stage_fares.call(18), 4)
+	eq(stage_fares.call(17) + stage_fares.call(19), 4)
 	for id: String in ["ambulance-run", "cab-ride", "bus-route", "hospital-transfer", "tower-park-visit", "evening-bus", "marina-evening", "egmore-transfer", "mount-road-bus"]:
 		ok(c.job(id).stops.all(func(s: JobData.Stop) -> bool: return s.fare != null), id)
 	no(c.job("courier").stops.any(func(s: JobData.Stop) -> bool: return s.fare != null))
@@ -401,7 +402,7 @@ func test_fares_and_goods_are_given_where_the_stages_and_jobs_need_them() -> boo
 	for m in c.missions:
 		if m.objectives.any(func(o: MissionData.Objective) -> bool: return o.type == "reach" and o.goods != null):
 			goods_stages.append(m.stage)
-	eq(goods_stages, [4, 6, 11, 19, 20])
+	eq(goods_stages, [4, 6, 11, 16, 21])
 	return true
 
 
