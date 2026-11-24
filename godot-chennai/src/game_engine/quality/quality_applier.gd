@@ -29,6 +29,14 @@ static func apply_engine(v: Dictionary) -> void:
 	Engine.max_fps = int(v["max_fps"])
 	Engine.max_physics_steps_per_frame = int(v["physics_steps"])
 	RenderingServer.directional_shadow_atlas_set_size(int(v["shadow_size"]), true)
+	# Hard shadows on Low and Medium: one shadow-map tap a pixel instead of a dozen (G-342).
+	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_LOW if bool(v["soft_shadows"]) else RenderingServer.SHADOW_QUALITY_HARD)
+
+
+## The city's shared materials: per-vertex lighting on Low (G-342).
+static func apply_materials(m: CityMaterials, v: Dictionary) -> void:
+	if m != null:
+		m.set_flat(bool(v["vertex_lighting"]))
 
 
 static func apply_sun(sun: DirectionalLight3D, v: Dictionary, switched_on: bool = true) -> void:

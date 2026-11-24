@@ -904,6 +904,26 @@ presets). Tests: `tests/unit/test_quality_settings.gd`, `tests/scene/test_perf_w
 - The feature-switch cost measurement is in real time (an overlay, not a test).
 - Figures beyond the animate reach slide in a held pose (by design, the coordinator's rule).
 
+**Second round (G-340…G-345), after the owner's phone data (POCO M6 Pro, Adreno 613, build afed12f:
+High, 16-19 fps, GPU-bound at 56 ms GPU, 2460x1080 with MSAA 2x).**
+- Why High: not the detection table (it gives Low for "Adreno (TM) 613", now tested with that string
+  and in a booted game); the level was saved by an earlier build whose row cycled Low → Medium → High
+  with no Auto. The save section is now v2: old saves keep their switches, never their level.
+- Low now cuts pixels: 65 % bilinear, no MSAA, 18 m hard shadow, per-vertex lighting on the city's
+  shared materials and a vertex-lit copy of the ground and water shaders. Numbers in
+  `docs/performance.md` (lavapipe, Mobile renderer, Vulkan).
+- City materials have no specular term at any level (suspected cause of the white dots on glass and
+  walls; not reproduced here, needs the phone).
+- The overlay sits under the title and pause menus (layer 4) and hides while paused.
+- Hitch breakdown (`FrameTimeline`, `ThreadClock`): every hitch line now says which part of the frame
+  took the time, what was created, freed or uploaded, and whether the main thread was working or
+  waiting for a core. The overlay and the log tally the causes.
+- `AiPopulation.adopt` moved off the main thread (it was the 70-340 ms traffic hitch every 500 m and
+  at every jump).
+- **For agent/godot-roads:** `CityWorld.road_extras` is not on this branch yet; `PerfWiring` sets it
+  from the preset when the property exists (see the code in `apply`), so the wiring takes effect when
+  both branches are merged.
+
 
 ## Crashes: bands, effects, shake (agent/godot-crash, G-270…G-275), 24 Nov 2026
 **Done (yard and unit tests, desktop headless; not on a phone).** The owner's bug (hitting

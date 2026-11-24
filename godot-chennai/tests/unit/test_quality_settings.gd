@@ -21,7 +21,11 @@ func test_every_preset_has_every_value_and_low_is_lightest() -> bool:
 	var low := QualitySettings.values(QualitySettings.LOW)
 	var mid := QualitySettings.values(QualitySettings.MEDIUM)
 	var high := QualitySettings.values(QualitySettings.HIGH)
-	assert_true(float(low["scale"]) >= 0.7 and float(low["scale"]) <= 0.8, "Low renders 3D at 75 % (coordinator: 0.75-0.85 for the Adreno 613)")
+	# The owner's Adreno 613 was GPU-bound at 56 ms a frame at 2460x1080 (G-342): Low cuts pixels hard.
+	assert_true(float(low["scale"]) >= 0.6 and float(low["scale"]) <= 0.7, "Low renders 3D at 65 % (owner: 0.6-0.75 for the Adreno 613)")
+	assert_eq(int(low["scale_mode"]), QualitySettings.BILINEAR, "with the cheapest upscale")
+	assert_true(bool(low["vertex_lighting"]) and not bool(mid["vertex_lighting"]) and not bool(high["vertex_lighting"]), "only Low lights per vertex")
+	assert_false(bool(low["soft_shadows"]) or bool(mid["soft_shadows"]), "hard shadows below High")
 	assert_eq(float(mid["scale"]), 0.8, "Medium at 80 %")
 	assert_eq(float(high["scale"]), 1.0, "High at full resolution")
 	assert_eq(int(mid["scale_mode"]), QualitySettings.FSR1, "Medium upscales with FSR 1")
@@ -75,6 +79,10 @@ func test_auto_detect_table() -> bool:
 	# "8 GB" phones report about 7.3 GiB.
 	assert_eq(int(QualitySettings.detect("Adreno (TM) 740", int(7.3 * GB), px)[0]), QualitySettings.HIGH, "an 8 GB phone counts as 8 GB")
 	assert_eq(int(QualitySettings.detect("", 0, px, true)[0]), QualitySettings.HIGH, "headless runs measure the full game")
+	# The owner's phone (POCO M6 Pro), as its overlay names the GPU: "mobile vulkan · Adreno (TM) 613".
+	var poco := QualitySettings.detect("Adreno (TM) 613", int(7.3 * GB), 2460 * 1080)
+	assert_eq(int(poco[0]), QualitySettings.LOW, "the owner's Adreno 613 starts at Low")
+	assert_eq(String(poco[1]), "Adreno (TM) 613: Adreno 613 (6xx low tier) → Low", "and says why")
 	assert_true(QualitySettings.is_software("llvmpipe (LLVM 15)") and QualitySettings.is_software("SwiftShader Device") and not QualitySettings.is_software("Adreno (TM) 613"), "software renderers are recognised")
 	return true
 
@@ -164,4 +172,38 @@ func test_frame_stats_and_verdict() -> bool:
 	assert_eq(FrameStats.verdict(16.7, 5.0, 6.0), "fine", "a fast frame is fine")
 	assert_contains(FrameStats.verdict(200.0, 20.0, 0.0), "not measured", "no GPU timer says so")
 	assert_contains(FrameStats.verdict(200.0, 20.0, 30.0), "waiting", "neither side busy")
+	return true
+
+
+## The owner's phone ran a High saved by an earlier build (G-341): a v1 save keeps its feature
+## switches but never its level, and a fresh install detects Low from the GPU name.
+func test_a_fresh_install_and_an_old_save_start_at_low_on_an_adreno_613() -> bool:
+	_clean()
+	var fresh := QualitySettings.new()
+	fresh.path = PATH
+	fresh.gpu_name = "Adreno (TM) 613"
+	fresh.headless_is_high = false
+	fresh.load_saved()
+	assert_true(fresh.auto and fresh.preset == QualitySettings.LOW, "fresh install: Auto at Low (%s)" % fresh.reason)
+	assert_eq(fresh.overlay_label(), "Low (auto)", "the overlay says so")
+	assert_eq(fresh.row_label(), "Graphics: Auto (Low)", "and the Settings row")
+	var store := SaveStore.new(PATH).read()
+	store.set_section(QualitySettings.OLD_SECTION, {"version": 1, "preset": 2, "auto": false, "overlay": false, "off": ["rain"]})
+	store.write()
+	var old := QualitySettings.new()
+	old.path = PATH
+	old.gpu_name = "Adreno (TM) 613"
+	old.headless_is_high = false
+	old.load_saved()
+	assert_true(old.auto and old.preset == QualitySettings.LOW, "an old saved High is not trusted: Auto at Low")
+	assert_false(old.is_on("rain"), "its switches are kept")
+	old.set_preset(QualitySettings.HIGH)
+	var back := QualitySettings.new()
+	back.path = PATH
+	back.gpu_name = "Adreno (TM) 613"
+	back.headless_is_high = false
+	back.load_saved()
+	assert_true(not back.auto and back.preset == QualitySettings.HIGH, "a level chosen in this version is kept")
+	assert_eq(back.overlay_label(), "High (chosen)", "and the overlay says it was chosen")
+	_clean()
 	return true

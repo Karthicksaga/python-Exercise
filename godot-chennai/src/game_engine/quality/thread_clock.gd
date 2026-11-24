@@ -1,7 +1,7 @@
 class_name ThreadClock
 extends RefCounted
 ## The calling thread's own time on a core and its time waiting for one, from the kernel
-## (Linux and Android: `/proc/<pid>/task/<tid>/schedstat`, nanoseconds), decision G-318. With it a
+## (Linux and Android: `/proc/<pid>/task/<tid>/schedstat`, nanoseconds), decision G-340. With it a
 ## slow frame is told apart: work on a core, waiting for a core (other threads of the game or
 ## other apps had them all), or neither (blocked on a lock, on I/O or asleep: the frame cap).
 ## Made on the main thread, it reads the main thread (its task id is the process id). Reading is

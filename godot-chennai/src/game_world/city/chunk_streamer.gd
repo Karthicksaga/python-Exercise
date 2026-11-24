@@ -332,7 +332,7 @@ func _note(kind: StringName, since: int) -> void:
 	var spent := Time.get_ticks_usec() - since
 	var key := "max_%s_usec" % kind
 	stats[key] = maxi(int(stats.get(key, 0)), spent)
-	# This frame's count and time per kind, for the perf overlay's hitch line (G-318).
+	# This frame's count and time per kind, for the perf overlay's hitch line (G-340).
 	stats["last_%s_n" % kind] = int(stats.get("last_%s_n" % kind, 0)) + 1
 	stats["last_%s_usec" % kind] = int(stats.get("last_%s_usec" % kind, 0)) + spent
 

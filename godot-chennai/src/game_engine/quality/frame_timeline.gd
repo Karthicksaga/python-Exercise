@@ -1,6 +1,6 @@
 class_name FrameTimeline
 extends RefCounted
-## Where one frame's main-thread time went (decision G-318), for the hitch line of the overlay
+## Where one frame's main-thread time went (decision G-340), for the hitch line of the overlay
 ## and the perf log. Pure: the caller marks the frame's boundaries with timestamps (µs) as they
 ## happen and reads the last complete frame.
 ##

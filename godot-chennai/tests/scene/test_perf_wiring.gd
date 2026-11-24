@@ -45,13 +45,15 @@ func test_presets_apply_live() -> bool:
 	assert_eq(vp.positional_shadow_atlas_size, 0, "no positional shadow atlas (no light casts one)")
 	var env := main.play_wiring.environment.environment
 	s.set_preset(QualitySettings.LOW)
-	assert_near(vp.scaling_3d_scale, 0.75, 0.001, "Low: 3D at 75 %")
+	assert_near(vp.scaling_3d_scale, 0.65, 0.001, "Low: 3D at 65 %")
+	assert_true(main.world.materials.flat and main.world.materials.walls.shading_mode == BaseMaterial3D.SHADING_MODE_PER_VERTEX, "Low lights the city per vertex")
+	assert_true(main.world.materials.ground.shader != CityMaterials.GROUND_SHADER and main.world.materials.ground.shader.code.contains("vertex_lighting"), "the ground too")
 	assert_eq(vp.scaling_3d_mode, Viewport.SCALING_3D_MODE_BILINEAR, "bilinear on Low")
 	assert_eq(vp.msaa_3d, Viewport.MSAA_DISABLED, "no MSAA")
 	assert_eq(vp.anisotropic_filtering_level, Viewport.ANISOTROPY_DISABLED, "no anisotropic filtering")
 	assert_eq(Engine.max_fps, 30, "a 30 fps cap")
 	assert_eq(Engine.max_physics_steps_per_frame, 2, "at most two catch-up physics steps")
-	assert_true(env.sun.shadow_enabled and env.sun.directional_shadow_max_distance == 20.0, "short sun shadows")
+	assert_true(env.sun.shadow_enabled and env.sun.directional_shadow_max_distance == 18.0, "short sun shadows")
 	assert_eq(PersonView.shadow_near, 0.0, "walkers cast no shadow")
 	assert_eq(PersonView.animate_reach, 25.0, "figures animate only near")
 	assert_eq(main.play_wiring.parked.spawn_reach, 100.0, "parked vehicles only near")
@@ -65,6 +67,12 @@ func test_presets_apply_live() -> bool:
 	assert_eq(env.street_lights.pool, 0, "no real street lights on Low (the lamp heads still glow)")
 	assert_eq(main.life.figure_cap, 12, "fewer figures drawn")
 	assert_eq(main.life.ai_patience, 6, "the AI step may lag")
+	# Road detail by preset (agent/godot-roads, G-317): checked once that branch is merged.
+	if &"road_extras" in main.world:
+		assert_eq(int(main.world.get(&"road_extras")), QualitySettings.LOW, "Low road detail on the city")
+		assert_eq(int(main.world.streamer.kit.get(&"road_extras")), QualitySettings.LOW, "and on the chunks built from now on")
+	else:
+		print("    road_extras not on this build (agent/godot-roads not merged): not checked")
 	assert_false(bool(main.world.materials.ground.get_shader_parameter(&"detail")), "light ground shader")
 	assert_eq(main.rig.camera.camera.far, 330.0, "camera far plane follows the view")
 	s.set_preset(QualitySettings.MEDIUM)
@@ -72,6 +80,7 @@ func test_presets_apply_live() -> bool:
 	assert_true(env.sun.shadow_enabled and env.sun.directional_shadow_max_distance == 28.0, "Medium: short shadows")
 	s.set_preset(QualitySettings.HIGH)
 	assert_true(vp.scaling_3d_scale == 1.0 and vp.msaa_3d == Viewport.MSAA_2X and env.sun.shadow_enabled, "back to High")
+	assert_true(not main.world.materials.flat and main.world.materials.ground.shader == CityMaterials.GROUND_SHADER, "lit per pixel again")
 	assert_eq(main.world.streamer.load_distance, 260.0, "with the full view")
 	assert_eq(PersonView.shadow_near, PersonView.SHADOW_NEAR, "and near walkers' shadows")
 	assert_eq(env.rain.drawn(), CityEnvironment.RAIN_DROPS, "and all the rain")
@@ -161,6 +170,11 @@ func test_overlay_switches_and_log() -> bool:
 		assert_contains(log, part, "the log has %s" % part)
 	assert_true(main.pause_menu.setting_button(&"PerfSummary") != null, "the pause menu has the summary row")
 	assert_contains(perf.summary, "fps", "the summary reads the frame rate")
+	main.pause()
+	assert_false(perf.overlay.visible, "paused: the overlay steps aside for the menu")
+	assert_true(perf.overlay.layer < main.pause_menu.layer and perf.overlay.layer < main.title.layer, "and sits under both menus")
+	main.resume()
+	assert_true(perf.overlay.visible, "back in play it shows again")
 	DebugSettings.shared().set_perf_overlay(false)
 	assert_false(perf.overlay.visible, "the Settings row hides it again")
 	# Auto: a warm-up, then ten seconds under 24 fps drop one level, with a toast.
@@ -195,5 +209,30 @@ func test_both_menus_carry_the_graphics_and_overlay_rows() -> bool:
 	assert_eq(main.title.setting_button(&"PerfOverlay").text, "Performance overlay: On", "and the title row follows")
 	DebugSettings.shared().set_perf_overlay(false)
 	DebugSettings.reset_shared()
+	_restore()
+	return true
+
+
+## The owner's phone (G-341): an Adreno 613 starts the real game at Low, and the overlay says it
+## in its own format ("Low (auto) · 3D …").
+func test_an_adreno_613_boots_at_low() -> bool:
+	_clean()
+	var s := QualitySettings.new()
+	s.path = PATH
+	s.gpu_name = "Adreno (TM) 613"
+	s.headless_is_high = false
+	s.load_saved()
+	QualitySettings.use_shared(s)
+	var main: Main = MAIN.instantiate()
+	root.add_child(main)
+	await wait_until(func() -> bool: return main.state != &"loading", LOAD_FRAMES)
+	main.play()
+	await wait_frames(3)
+	assert_true(main.perf.settings.auto and main.perf.settings.preset == QualitySettings.LOW, "Auto at Low (%s)" % main.perf.settings.reason)
+	assert_near(main.get_viewport().scaling_3d_scale, 0.65, 0.001, "at 65 % resolution")
+	assert_eq(main.get_viewport().msaa_3d, Viewport.MSAA_DISABLED, "without MSAA")
+	var text := main.perf.overlay_text()
+	assert_true(RegEx.create_from_string("\\nLow \\(auto\\) · 3D \\d+x\\d+ \\(65% bilinear\\) · MSAA off · shadows 18 m · max fps 30\\n").search(text) != null, "the overlay's level line: %s" % text)
+	assert_eq(main.pause_menu.setting_button(&"Quality").text.get_slice("\n", 0), "Graphics: Auto (Low)", "and the Settings row")
 	_restore()
 	return true

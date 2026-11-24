@@ -47,7 +47,7 @@ var last_hitch: String = ""
 var scripts_ms: float = 0.0
 var _probe_first: _Probe = null
 var _probe_last: _Probe = null
-## Where each frame's time went (G-318): physics engine, scripts, deferred calls and frees,
+## Where each frame's time went (G-340): physics engine, scripts, deferred calls and frees,
 ## render, the time between frames; and what changed in it (nodes, bodies, uploads, pipelines).
 var timeline := FrameTimeline.new()
 ## Counters at the last frame edge and their change over the last complete frame.
@@ -137,12 +137,21 @@ func _ready() -> void:
 	settings.changed.connect(_on_settings)
 	# The one on/off switch of the overlay is `DebugSettings` (G-291): pause row, five corner taps.
 	DebugSettings.shared().changed.connect(_on_settings)
-	main.state_changed.connect(func(_s: StringName) -> void: apply())
+	# The city reads its road detail level when it is set up, before any state change: set it the
+	# moment the city node joins Main.
+	main.child_entered_tree.connect(func(n: Node) -> void:
+		if n is CityWorld:
+			set_road_extras(n as CityWorld, settings.preset))
+	main.state_changed.connect(func(_s: StringName) -> void:
+		apply()
+		_show_overlay(DebugSettings.shared().perf_overlay))
 	_add_rows()
 	_set_viewport_measure(true)
 	_add_probes()
 	apply()
 	_show_overlay(DebugSettings.shared().perf_overlay)
+	if settings.auto:
+		settings.refresh_auto()
 	print("[perf] %s" % _device_line())
 	print("[perf] quality %s (%s)" % [settings.preset_name(), settings.reason if settings.auto else "chosen in Settings"])
 
@@ -178,10 +187,12 @@ func apply() -> void:
 	QualityApplier.apply_engine(v)
 	var world := main.world
 	if world != null:
+		set_road_extras(world, settings.preset)
 		QualityApplier.apply_streamer(world.streamer, v)
 		if world.materials != null:
 			world.materials.ground.set_shader_parameter(&"detail", bool(v["ground_detail"]) and settings.is_on("ground_detail"))
 			world.materials.water.set_shader_parameter(&"animated", bool(v["water_detail"]) and settings.is_on("water_detail"))
+			QualityApplier.apply_materials(world.materials, v)
 		_scale_landmarks(world, float(v["landmark_range"]))
 		if _world_hooked != world and world.streamer != null:
 			_world_hooked = world
@@ -217,6 +228,17 @@ func apply() -> void:
 		if tw.camera != null:
 			tw.camera.far = minf(900.0, float(v["camera_far"]) * 1.5)
 	switches.apply_all()
+
+
+## Optional road detail follows the preset (G-317 on agent/godot-roads: 0 Low, 1 Medium, 2 High,
+## the same numbers as the presets): on the city before it sets up, and on the streamer's chunk kit
+## for chunks built from now on (chunks already built keep theirs). Set by name so this branch
+## builds before and after that one is merged; does nothing where the property does not exist.
+static func set_road_extras(world: CityWorld, level: int) -> void:
+	if &"road_extras" in world:
+		world.set(&"road_extras", level)
+	if world.streamer != null and world.streamer.kit != null and &"road_extras" in world.streamer.kit:
+		world.streamer.kit.set(&"road_extras", level)
 
 
 ## Trees, palms and street objects cast shadows only on High (G-258): each is one mesh or
@@ -256,7 +278,9 @@ static func _scale_landmarks(world: CityWorld, k: float) -> void:
 		g.visibility_range_begin = begin * k
 
 
+## Shown when switched on, except while paused: the pause menu is read then (owner, G-341).
 func _show_overlay(on: bool) -> void:
+	on = on and main.state != &"paused"
 	overlay.visible = on
 	if on:
 		_refresh_switches()
@@ -364,8 +388,12 @@ func _process(_delta: float) -> void:
 
 
 ## Auto (G-251): after a short warm-up in play, if the frame rate stays under
-## `QualitySettings.AUTO_MIN_FPS` for `AUTO_WINDOW` seconds, one level down, with a toast.
+## `QualitySettings.AUTO_MIN_FPS` for `AUTO_WINDOW` seconds, one level down, with a toast. The
+## first window after the warm-up is shorter (`AUTO_FIRST_WINDOW`): a quick frame-time check that
+## a level the GPU table guessed wrong is left within seconds of play starting (G-341).
 const AUTO_WARMUP := 5.0
+const AUTO_FIRST_WINDOW := 4.0
+var _auto_first: bool = true
 var _auto_clock: float = 0.0
 var _auto_sum: float = 0.0
 var _auto_n: int = 0
@@ -378,6 +406,7 @@ func _watch_auto(dt: float, ms: float) -> void:
 		_auto_clock = 0.0
 		_auto_sum = 0.0
 		_auto_n = 0
+		_auto_first = true
 		return
 	_auto_play += dt
 	if _auto_play < AUTO_WARMUP:
@@ -385,14 +414,16 @@ func _watch_auto(dt: float, ms: float) -> void:
 	_auto_clock += dt
 	_auto_sum += ms
 	_auto_n += 1
-	if _auto_clock < QualitySettings.AUTO_WINDOW:
+	if _auto_clock < (AUTO_FIRST_WINDOW if _auto_first else QualitySettings.AUTO_WINDOW):
 		return
+	_auto_first = false
 	var fps := 1000.0 * _auto_n / maxf(_auto_sum, 0.001)
 	_auto_clock = 0.0
 	_auto_sum = 0.0
 	_auto_n = 0
 	if fps < QualitySettings.AUTO_MIN_FPS and settings.drop_auto():
 		_auto_play = 0.0
+		_auto_first = true
 		_toast("Graphics lowered to %s" % settings.preset_name(), "It ran at %d fps. Change it in Settings → Graphics." % roundi(fps))
 
 
@@ -415,7 +446,7 @@ func _note_hitch() -> void:
 		hitch_lines.remove_at(0)
 
 
-## What a slow frame was made of (G-318): the timeline's parts, largest first, the streamer's and
+## What a slow frame was made of (G-340): the timeline's parts, largest first, the streamer's and
 ## the traffic's share of the scripts, what changed in the frame (nodes and objects made or
 ## freed, pipelines compiled, mesh and texture memory uploaded), the bodies in the physics
 ## space and the renderer's own CPU and GPU time.
@@ -571,7 +602,7 @@ func overlay_text() -> String:
 	lines.append("AI step %.1f ms (wait %.1f, late %d) · traffic %s · walkers %s · crowd %s · figures %s" % [c.get("ai_ms", 0.0), c.get("ai_wait_ms", 0.0), c.get("ai_late", 0), c.get("vehicles", "-"), c.get("walkers", "-"), c.get("crowd", "-"), c.get("figures", "-")])
 	lines.append("chunks: building %s · to add %s · jobs %s · main %.1f ms · slowest build %.0f ms · built %s · tasks %d" % [c.get("chunks_building", "-"), c.get("chunks_adding", "-"), c.get("worker_jobs", "-"), c.get("chunk_main_ms", 0.0), c.get("chunk_build_ms", 0.0), c.get("chunks_built", "-"), BackgroundTask.running])
 	var sz := _scaled_size()
-	lines.append("%s · 3D %dx%d (%.0f%% %s) · MSAA %s · shadows %s · max fps %s" % [settings.preset_name(), sz.x, sz.y, float(v["scale"]) * 100.0, "FSR" if get_viewport().scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR else "bilinear", "2x" if int(v["msaa"]) > 0 else "off", "%d m" % int(v["shadow_distance"]) if bool(v["shadows"]) and settings.is_on("shadows") else "off", str(v["max_fps"]) if int(v["max_fps"]) > 0 else "vsync"])
+	lines.append("%s · 3D %dx%d (%.0f%% %s) · MSAA %s · shadows %s · max fps %s" % [settings.overlay_label(), sz.x, sz.y, float(v["scale"]) * 100.0, "FSR" if get_viewport().scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR else "bilinear", "2x" if int(v["msaa"]) > 0 else "off", "%d m" % int(v["shadow_distance"]) if bool(v["shadows"]) and settings.is_on("shadows") else "off", str(v["max_fps"]) if int(v["max_fps"]) > 0 else "vsync"])
 	lines.append("%s %s · %s" % [RenderingServer.get_current_rendering_method(), RenderingServer.get_current_rendering_driver_name(), RenderingServer.get_video_adapter_name()])
 	var off := PackedStringArray()
 	for id in FeatureSwitches.ids():

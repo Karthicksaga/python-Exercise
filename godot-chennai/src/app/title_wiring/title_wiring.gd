@@ -250,8 +250,7 @@ func _place_camera() -> void:
 
 func _rain(dt: float) -> void:
 	var level := Weather.rain_level()
-	var night_value: Variant = RenderingServer.global_shader_parameter_get(WeatherService.NIGHT_PARAM)
-	var night: float = night_value if night_value is float else 0.0
+	var night := CityEnvironment.night_level
 	var lift := lerpf(1.0, NIGHT_LIFT, night)
 	if absf(lift - _exposure.exposure_multiplier) > 0.005:
 		_exposure.exposure_multiplier = lift
