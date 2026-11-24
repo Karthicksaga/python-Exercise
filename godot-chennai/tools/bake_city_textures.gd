@@ -10,7 +10,7 @@ extends SceneTree
 ## tests never paint at run time. Deterministic: the noise is the same LCG as the TS painters.
 
 const OUT := "res://assets/city/textures"
-const TAMIL_FONT := "res://assets/fonts/noto-sans-tamil-signs.woff2"
+const TAMIL_FONT := "res://assets/city/noto-sans-tamil-categories.woff2"
 
 var _state: int = 0
 var _tamil: Font
@@ -33,7 +33,7 @@ func _run() -> void:
 	await _bake("facade_glow.png", Vector2i(CityAtlas.FACADE_TILE_PX * CityAtlas.FACADE_TILES, 256), _facade_glow, false)
 	await _bake("roof_tiles.png", Vector2i(128, 128), _roof, false)
 	await _bake("ground.png", Vector2i(CityAtlas.GROUND_TILE_PX * CityAtlas.GROUND_TILES, 256), _ground, false)
-	var kit := await _bake("kit.png", Vector2i(1024, 1024), _kit, true)
+	var kit := await _bake("kit.png", Vector2i(CityAtlas.KIT_PX, CityAtlas.KIT_H), _kit, true)
 	var glow := _kit_glow(kit)
 	glow.save_png(OUT.path_join("kit_glow.png"))
 	print("baked kit_glow.png")
@@ -294,8 +294,9 @@ func _ground(c: Node2D) -> void:
 
 func _kit(c: Node2D) -> void:
 	_rect(c, 0, 0, 1024, CityAtlas.CELL_Y, _css("#bdb8ae"))
-	for i in ShopSigns.SIGNS.size():
-		_sign(c, CityAtlas.sign_rect(i), ShopSigns.SIGNS[i])
+	var table := SignCategories.load_file()
+	for item in table.items:
+		_sign(c, CityAtlas.sign_rect(int(item["id"])), item)
 	_shutter(c, CityAtlas.KIT_SHUTTER)
 	_interior(c, CityAtlas.KIT_LIT, 7)
 	_interior(c, CityAtlas.KIT_DARK, 19)
@@ -322,17 +323,17 @@ func _sign(c: Node2D, r: Rect2i, sign: Dictionary) -> void:
 	var h := float(r.size.y)
 	var trim := _css(sign["trim"])
 	_rect(c, x, y, w, h, _css(sign["board"]))
-	_rect(c, x, y, w, 7, trim)
-	_rect(c, x, y + h - 7, w, 7, trim)
-	c.draw_rect(Rect2(x + 10, y + 12, w - 20, h - 24), trim, false, 3.0)
+	_rect(c, x, y, w, 5, trim)
+	_rect(c, x, y + h - 5, w, 5, trim)
+	c.draw_rect(Rect2(x + 8, y + 9, w - 16, h - 18), trim, false, 2.0)
 	_vgrad(c, x, y, w, h, Color(1, 1, 1, 0.12), Color(0, 0, 0, 0.08))
 	var ink := _css(sign["ink"])
 	var cx := x + w / 2.0
 	if _tamil != null:
-		_fit(c, _tamil, sign["tamil"], 40, cx, y + 58, w - 44, ink)
-		_fit(c, _latin, sign["english"], 21, cx, y + 93, w - 60, ink)
+		_fit(c, _tamil, sign["tamil"], 34, cx, y + 41, w - 44, ink)
+		_fit(c, _latin, sign["english"], 19, cx, y + 73, w - 60, ink)
 	else:
-		_fit(c, _latin, sign["english"], 50, cx, y + 74, w - 44, ink)
+		_fit(c, _latin, sign["english"], 40, cx, y + 58, w - 44, ink)
 
 
 func _shutter(c: Node2D, r: Rect2i) -> void:
@@ -395,10 +396,10 @@ func _railing(c: Node2D, r: Rect2i) -> void:
 
 ## Glow partner of the kit: the lit shop interior strong, the signboards faint.
 func _kit_glow(kit: Image) -> Image:
-	var out := Image.create(1024, 1024, false, Image.FORMAT_RGB8)
+	var out := Image.create(CityAtlas.KIT_PX, CityAtlas.KIT_H, false, Image.FORMAT_RGB8)
 	out.fill(Color.BLACK)
 	var lit := CityAtlas.KIT_LIT
-	for y in 1024:
+	for y in CityAtlas.KIT_H:
 		var in_signs := y < CityAtlas.CELL_Y
 		for x in 1024:
 			var strength := 0.0

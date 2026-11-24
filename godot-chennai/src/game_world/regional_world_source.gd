@@ -39,6 +39,9 @@ var _roads: Dictionary[Vector2i, RoadNetwork] = {}
 var minor: int = 0
 var infra_file: String = ""
 var _infra: Dictionary[Vector2i, InfraTile] = {}
+## Format 2.2 (`minor` >= 2): the per-tile `detail.bin` (G-190), "" when the world has none.
+var detail_file: String = ""
+var _detail: Dictionary[Vector2i, DetailTile] = {}
 var _mutex := Mutex.new()
 var error: String = ""
 
@@ -77,6 +80,9 @@ func open_index() -> String:
 	var infra: Variant = d.get("infra")
 	if minor >= 1 and infra is Dictionary:
 		infra_file = str((infra as Dictionary).get("file", "infra.bin"))
+	var detail: Variant = d.get("detail")
+	if minor >= 2 and detail is Dictionary:
+		detail_file = str((detail as Dictionary).get("file", "detail.bin"))
 	var origin: Dictionary = d.get("origin", {})
 	latitude = float(origin.get("lat", 0.0))
 	longitude = float(origin.get("lng", 0.0))
@@ -320,6 +326,38 @@ func tile_infra(tile: Vector2i) -> InfraTile:
 	if not _infra.has(tile):
 		_infra[tile] = t
 	t = _infra[tile]
+	_mutex.unlock()
+	return t
+
+
+func detail_for(cell: Vector2i) -> DetailTile:
+	var t := tile_detail(tile_of(cell))
+	return t if t != null and t.ok() else null
+
+
+## One tile's `detail.bin` (thread-safe, cached), or null when the world has none or outside it.
+func tile_detail(tile: Vector2i) -> DetailTile:
+	if detail_file == "" or not tiles.has(tile):
+		return null
+	_mutex.lock()
+	var done: DetailTile = _detail.get(tile)
+	_mutex.unlock()
+	if done != null:
+		return done
+	var path := dir.path_join("tiles/%d_%d/%s" % [tile.x, tile.y, detail_file])
+	var bytes := FileAccess.get_file_as_bytes(path)
+	var t: DetailTile
+	if bytes.is_empty():
+		t = DetailTile.new()
+		t.error = "%s not found or empty." % path
+	else:
+		t = DetailTile.decode(bytes, grid_origin, chunk_size)
+	if not t.ok():
+		push_warning(t.error)
+	_mutex.lock()
+	if not _detail.has(tile):
+		_detail[tile] = t
+	t = _detail[tile]
 	_mutex.unlock()
 	return t
 

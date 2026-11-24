@@ -8,6 +8,7 @@ render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 
 uniform vec4 open_water : source_color = vec4(0.20, 0.33, 0.33, 1.0);
 uniform vec4 shore_water : source_color = vec4(0.40, 0.42, 0.33, 1.0);
+uniform vec4 pool_water : source_color = vec4(0.18, 0.58, 0.70, 1.0);
 uniform float ripple = 0.10;
 // Wet look in the rain: rain rings are not drawn, the surface just darkens a little.
 uniform float wet : hint_range(0.0, 1.0) = 0.0;
@@ -22,6 +23,8 @@ void fragment() {
 	float n = a + b;
 	float shore = clamp(COLOR.a, 0.0, 1.0);
 	vec3 rgb = mix(open_water.rgb, shore_water.rgb, shore * shore);
+	// Swimming pools (G-191) carry vertex red 0: clear aqua instead of the river colours.
+	rgb = mix(pool_water.rgb, rgb, step(0.5, COLOR.r));
 	ALBEDO = rgb * (1.0 + n * 0.035) * (1.0 - 0.12 * wet);
 	vec3 bend = vec3(cos(p.x * W * 5.0 + t * 0.9), 0.0, cos(p.y * W * 4.0 - t * 0.7)) * ripple;
 	NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(bend, 0.0)).xyz);

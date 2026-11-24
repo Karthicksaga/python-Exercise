@@ -1,42 +1,34 @@
 class_name ShopSigns
 extends RefCounted
-## Painted shop signboards (`shopSigns.ts`). Everything is invented: the Tamil lines are ordinary
-## words for kinds of shops; the two that read like names ("புது ஸ்டோர்ஸ்" = "New Stores",
-## "நிலா டிபன் சென்டர்" = "Moon tiffin centre") are generic made-up patterns, not real
-## businesses. No brand or chain names (TD-18). Board colours follow Chennai's painted signs.
+## Painted shop signboards by category (G-192, replaces the ten invented signs of `shopSigns.ts`).
+## A sign is a plain board with the category word in Tamil (top) and English (below), from
+## `SignCategories`; nothing a shop is called is ever drawn (TD-18). Board colours follow
+## Chennai's painted signs. Which category a shop front gets: the mapped one when OSM maps a
+## shop, amenity or office at the building (`detail.bin`), else an everyday street shop picked by
+## a stable hash and counted as estimated.
 
-const SIGNS: Array[Dictionary] = [
-	{"tamil": "மளிகைக் கடை", "english": "GROCERY & PROVISIONS", "board": "#f6c923", "ink": "#b3161b", "trim": "#1d5fa8", "wide": true},
-	{"tamil": "சைவ உணவகம்", "english": "VEG MEALS · TIFFIN", "board": "#1f7a3a", "ink": "#fff7d6", "trim": "#f2c230", "wide": true},
-	{"tamil": "துணிக்கடை", "english": "TEXTILES & READYMADES", "board": "#1d4fa0", "ink": "#ffffff", "trim": "#e83f6f", "wide": true},
-	{"tamil": "நிலா டிபன் சென்டர்", "english": "NILA TIFFIN CENTRE", "board": "#c8302c", "ink": "#fff2a8", "trim": "#ffffff", "wide": true},
-	{"tamil": "மருந்தகம்", "english": "MEDICALS", "board": "#ffffff", "ink": "#0f7a3c", "trim": "#0f7a3c", "wide": false},
-	{"tamil": "தேநீர் கடை", "english": "TEA · COFFEE", "board": "#e8742a", "ink": "#ffffff", "trim": "#5a2a12", "wide": false},
-	{"tamil": "புது ஸ்டோர்ஸ்", "english": "NEW STORES", "board": "#7a2f8f", "ink": "#ffe36b", "trim": "#ffe36b", "wide": false},
-	{"tamil": "பூக்கடை", "english": "FLOWERS", "board": "#f4e6c8", "ink": "#c2185b", "trim": "#2e7d32", "wide": false},
-	{"tamil": "காலணிகள்", "english": "FOOTWEAR", "board": "#1b1b1b", "ink": "#ffd54a", "trim": "#ffd54a", "wide": false},
-	{"tamil": "கைபேசி சேவை", "english": "MOBILE SERVICE", "board": "#18a0c8", "ink": "#ffffff", "trim": "#0b3d5c", "wide": false},
-]
+## The only English words a sign may say; a test checks the category table against it so no brand
+## or business name slips in (TD-18).
+const SIGN_WORDS: PackedStringArray = ["ATM", "BAKERY", "BANK", "BOOKS", "BUS", "CHURCH", "CINEMA", "CLINIC", "COFFEE", "COLLEGE", "DENTAL", "ELECTRONICS", "FISH", "FLOWERS", "FOOTWEAR", "FURNITURE", "GROCERY", "HALL", "HARDWARE", "HOSPITAL", "JEWELLERY", "LAUNDRY", "LIBRARY", "LODGE", "MARRIAGE", "MEAT", "MOBILE", "MOSQUE", "OFFICE", "PETROL", "PHARMACY", "POLICE", "POST", "RAILWAY", "REPAIR", "RESTAURANT", "SALON", "SCHOOL", "SHOP", "SNACKS", "STAND", "STATION", "STATIONERY", "SUPERMARKET", "SWEETS", "TAILOR", "TEA", "TEMPLE", "TEXTILES", "VEGETABLES", "VEHICLE"]
 
-## Generic English shop words the signs may use; a test checks every sign against it so no
-## brand slips in.
-const SIGN_WORDS: PackedStringArray = [
-	"GROCERY", "PROVISIONS", "VEG", "MEALS", "TIFFIN", "TEXTILES", "READYMADES", "NILA", "CENTRE",
-	"MEDICALS", "TEA", "COFFEE", "NEW", "STORES", "FLOWERS", "FOOTWEAR", "MOBILE", "SERVICE",
-]
+## Category id for the shop at `point` on `building`: the mapped category of the building, else
+## the nearest mapped sign within `REACH` metres, else an estimated street shop.
+const REACH := 14.0
 
 
-static func wide() -> Array[int]:
-	var out: Array[int] = []
-	for i in SIGNS.size():
-		if SIGNS[i]["wide"]:
-			out.append(i)
-	return out
-
-
-static func narrow() -> Array[int]:
-	var out: Array[int] = []
-	for i in SIGNS.size():
-		if not SIGNS[i]["wide"]:
-			out.append(i)
-	return out
+static func pick(b: Building, wall: int, bay: int, point: Vector2, signs: Array[DetailTile.SignSpot], table: SignCategories) -> int:
+	if b.detail_category > 0 and not table.is_public(b.detail_category):
+		return b.detail_category
+	var best := REACH * REACH
+	var found := 0
+	for s in signs:
+		if table.is_public(s.category):
+			continue
+		var d2 := s.position.distance_squared_to(point)
+		if d2 < best:
+			best = d2
+			found = s.category
+	if found > 0:
+		return found
+	var ids := table.street_ids()
+	return ids[floori(CityHash.unit(b.id, 331 + wall * 89 + bay) * ids.size())]

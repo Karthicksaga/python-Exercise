@@ -226,6 +226,19 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Zebras (mapped and at signal junctions), speed breakers with colliders, `RoadBumps`, medians (G-153) | Done | `test_infra.gd` (profile, crossing query on a mapped hump), screenshots |
 | Lowered roads and underpasses below ground, Kathipara hero model | Not done (see the handoff) | |
 
+## OSM detail (branch `agent/godot-osmdetail`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Format 2.2 `detail.bin`; 2.0 and 2.1 files byte for byte (G-190) | Done | `tools/geo/tests/test_detail.py` (tags to categories, colours, parts and hosts, objects, lines, zones, signs, codec round trip, committed world); `diff -r` of a rebuild |
+| Building colour, material, roof kinds (flat, gabled, hipped, pyramidal, skillion, dome), parts, `min_height` (G-191) | Done; most of Chennai's buildings map none of it, so estimated | `tests/unit/test_osm_detail.gd`; screenshots |
+| Signs by category, Tamil above English, one atlas, never a name (G-192) | Done (words only; no name plates) | table, font coverage and baked ink tests; screenshot of a shopping street (T. Nagar area) |
+| Street objects, mapped lamps, bus-stop poles, barriers, tree rows, platforms, pitches, playgrounds, tracks, pools (G-193) | Done | `test_osm_detail.gd` (real chunks), screenshots (bus stop, station platform, football pitches, walls and fences) |
+| Area palette loader and stub file (G-194) | Done; waiting for the godot-areas data | `test_osm_detail.gd` |
+| Coverage report | Done: `world/DETAIL.md`, `docs/osm-detail.md` | generated with the world |
+| Measured cost (G-195): no new draw calls, +0.6 to 1.0 % primitives, worst build +10 to 16 % | Done | `tests/tools/city_shot.gd` before and after |
+| Name plates for public places; steps onto platforms; swimming; fence and wall textures | Not done | |
+
+
 ## Controls redesign (G-170…G-179, branch `agent/godot-controls`, 24 Nov 2026)
 Built from the owner-approved proposal `suggestions/2026-11-24-godot-controls-redesign.md` and its
 interactive prototype (the Proposed on-foot layout and scheme A "wheel").

@@ -1,0 +1,34 @@
+{
+ "_note": "STUB of the shape godot-areas delivers (data/areas/palettes.json). Keys are area ids (district slugs: lower case, a-z0-9 and _) plus 'default', used when no area matches. walls/roofs: sRGB hex lists the renderer picks from by a stable hash (estimated, marked so); roof_types: weights of roof shapes for buildings whose OSM roof:shape is not mapped; storeys: weights of storey counts for houses whose height is not mapped (null keeps the data's value). A mapped tag always wins over this file. Loader: src/game_world/city/area_palettes.gd (the only reader).",
+ "default": {
+  "walls": [
+   "#F2E3C6",
+   "#E8C9A0",
+   "#CFE3D4",
+   "#F4D6CF",
+   "#D9E2F0",
+   "#F7EDB5",
+   "#E3D5EE",
+   "#FBF3E4",
+   "#C9DCCB",
+   "#EAD9C4",
+   "#DFE7D2",
+   "#F1DDB8"
+  ],
+  "roofs": [
+   "#9A9690",
+   "#A8A39B",
+   "#8C8883",
+   "#B0553A",
+   "#C4704A"
+  ],
+  "roof_types": {
+   "flat": 0.66,
+   "hipped": 0.3,
+   "gabled": 0.03,
+   "pyramidal": 0.01,
+   "dome": 0.0
+  },
+  "storeys": null
+ }
+}
