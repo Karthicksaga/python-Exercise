@@ -141,15 +141,15 @@ func fares() -> Array[Dictionary]:
 			if o.type != "reach":
 				continue
 			if o.fare != null:
-				out.append({"where": "stage %d: %s" % [m.stage, o.label], "stop": Vector2(o.x, o.z), "radius": o.radius, "kerb": Vector2(o.fare.kerb_x, o.fare.kerb_z)})
+				out.append({"where": "stage %d: %s" % [m.stage, o.label], "stop": Vector2(o.x, o.z), "radius": o.radius, "kerb": Vector2(o.fare.kerb_x, o.fare.kerb_z), "side": o.fare.kerb_side, "shift": o.fare.kerb_shift})
 			if o.goods != null:
-				out.append({"where": "stage %d: %s (goods)" % [m.stage, o.label], "stop": Vector2(o.x, o.z), "radius": o.radius, "kerb": Vector2(o.goods.kerb_x, o.goods.kerb_z)})
+				out.append({"where": "stage %d: %s (goods)" % [m.stage, o.label], "stop": Vector2(o.x, o.z), "radius": o.radius, "kerb": Vector2(o.goods.kerb_x, o.goods.kerb_z), "side": o.goods.kerb_side, "shift": o.goods.kerb_shift})
 	for j in c.jobs:
 		for s in j.stops:
 			if s.fare != null:
-				out.append({"where": "%s: %s" % [j.id, s.label], "stop": Vector2(s.x, s.z), "radius": s.radius, "kerb": Vector2(s.fare.kerb_x, s.fare.kerb_z)})
+				out.append({"where": "%s: %s" % [j.id, s.label], "stop": Vector2(s.x, s.z), "radius": s.radius, "kerb": Vector2(s.fare.kerb_x, s.fare.kerb_z), "side": s.fare.kerb_side, "shift": s.fare.kerb_shift})
 			if s.goods != null:
-				out.append({"where": "%s: %s (goods)" % [j.id, s.label], "stop": Vector2(s.x, s.z), "radius": s.radius, "kerb": Vector2(s.goods.kerb_x, s.goods.kerb_z)})
+				out.append({"where": "%s: %s (goods)" % [j.id, s.label], "stop": Vector2(s.x, s.z), "radius": s.radius, "kerb": Vector2(s.goods.kerb_x, s.goods.kerb_z), "side": s.goods.kerb_side, "shift": s.goods.kerb_shift})
 	return out
 
 
@@ -221,18 +221,20 @@ func test_the_waiting_spot_is_on_the_side_the_real_place_is_on() -> bool:
 	return true
 
 
-## New (Godot): the port of `kerbSpot` reproduces the kerbs baked from the TypeScript for the
-## stops that name no side (the bulk of them), within the 0.1 m the content rounds to.
-func test_kerb_spot_reproduces_a_baked_kerb_when_no_side_is_given() -> bool:
-	var agree := 0
+## New (Godot, G-141 / W6): the port of `kerbSpot` reproduces EVERY baked kerb to the 0.1 m the
+## content rounds to, given the hint each was baked with (the side the real place is on, and the
+## shift along the road). The first port reproduced 34 of 49: the other 15 were not a divergence of
+## the algorithm but stops baked with a side point (the real hospital, a bus stop's side) the table
+## did not keep; the hint is now in the data (`kerbSide`, `kerbShift`).
+func test_kerb_spot_reproduces_every_baked_kerb() -> bool:
 	var tried := 0
+	var hinted := 0
 	for f in fares():
 		var stop: Vector2 = f["stop"]
-		var kerb := FareSpots.kerb_spot(layout(), stop)
+		var kerb := FareSpots.kerb_spot_hinted(layout(), stop, int(f["side"]), float(f["shift"]))
 		tried += 1
-		if kerb.distance_to(f["kerb"]) < 0.15:
-			agree += 1
-	# Stops that name a side (a real hospital, a bus stop) or shift along the road are baked
-	# with that extra input, which the table does not keep: those differ (34 of 49 agree today).
-	gt(float(agree) / float(tried), 0.6, "most baked kerbs reproduced (%d of %d)" % [agree, tried])
+		hinted += 1 if int(f["side"]) != 0 else 0
+		lt(kerb.distance_to(f["kerb"]), 0.15, "%s: baked kerb reproduced" % f["where"])
+	eq(tried, 49)
+	eq(hinted, 15, "the hints carry the 15 stops that named a side")
 	return true

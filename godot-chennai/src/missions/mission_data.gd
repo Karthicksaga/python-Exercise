@@ -26,6 +26,10 @@ class Fare:
 	## Where they wait (or walk to after getting out), on the pavement beside the marker.
 	var kerb_x := 0.0
 	var kerb_z := 0.0
+	## The hint the kerb was baked with (`FareSpots.kerb_spot`): the side of the road the real place
+	## is on (+1 right of the road's drawn direction, -1 left, 0 none) and metres along the road.
+	var kerb_side := 0
+	var kerb_shift := 0.0
 	## A patient (the ambulance): slower in and out.
 	var patient := false
 	## For drawing only ("wedding"): no effect on the rules.
@@ -44,6 +48,8 @@ class Fare:
 		var kerb: Dictionary = d.get("kerb", {})
 		var f := make(int(MissionData._f(d, "board")), int(MissionData._f(d, "alight")), MissionData._f(kerb, "x"), MissionData._f(kerb, "z"), bool(d.get("patient", false)))
 		f.party = MissionData._s(d, "party")
+		f.kerb_side = int(MissionData._f(d, "kerbSide"))
+		f.kerb_shift = MissionData._f(d, "kerbShift")
 		return f
 
 	func to_dict() -> Dictionary:
@@ -66,6 +72,9 @@ class Goods:
 	var items: Array[String] = []
 	var kerb_x := 0.0
 	var kerb_z := 0.0
+	## The kerb's baked hint (see `Fare`).
+	var kerb_side := 0
+	var kerb_shift := 0.0
 	## "sender", "recipient", "shopkeeper": for drawing only.
 	var who := ""
 	## For a drop not loaded earlier: "start" aboard from the stage start, "here" only at this stop.
@@ -85,6 +94,8 @@ class Goods:
 		var kerb: Dictionary = d.get("kerb", {})
 		var g := make(MissionData._s(d, "action", "load"), d.get("items", []), MissionData._f(kerb, "x"), MissionData._f(kerb, "z"), MissionData._s(d, "aboard"))
 		g.who = MissionData._s(d, "who")
+		g.kerb_side = int(MissionData._f(d, "kerbSide"))
+		g.kerb_shift = MissionData._f(d, "kerbShift")
 		return g
 
 

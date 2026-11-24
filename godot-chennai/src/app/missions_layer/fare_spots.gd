@@ -76,3 +76,16 @@ static func nearest_in(roads: Array[Road], p: Vector2) -> Dictionary:
 
 static func round_tenth(p: Vector2) -> Vector2:
 	return Vector2(RulesMath.js_round(p.x * 10.0) / 10.0, RulesMath.js_round(p.y * 10.0) / 10.0)
+
+
+## `kerb_spot` with the baked hint: `side` +1 / -1 is the right / left of the road's drawn
+## direction at the stop (0: none), `shift` metres along the road.
+static func kerb_spot_hinted(layout: CityLayout, stop: Vector2, side: int, shift: float) -> Vector2:
+	if side == 0:
+		return kerb_spot(layout, stop, Vector2.INF, shift)
+	var hit := layout.nearest_road_point(stop)
+	if hit.is_empty():
+		return stop
+	var at: Vector2 = hit["point"]
+	var heading: float = hit["heading"]
+	return kerb_spot(layout, stop, at + Vector2(cos(heading), -sin(heading)) * 30.0 * float(side), shift)
