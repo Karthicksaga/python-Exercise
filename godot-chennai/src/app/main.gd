@@ -43,6 +43,8 @@ var title_tour: bool = DisplayServer.get_name() != "headless"
 ## The launch's seed for the spot (`-1`: the clock), and a spot forced by a tool or test.
 var title_seed: int = -1
 var title_spot: StringName = &""
+## Quality, overlay, perf log, feature switches (`PerfWiring`).
+var perf: PerfWiring = null
 ## Watches for a stalled main loop while loading (see `_watch_frames`).
 var _watchdog: Thread = null
 var _watching: bool = false
@@ -56,6 +58,11 @@ func _ready() -> void:
 	# The menus and Back keep working while the world is paused; the world itself pauses.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_add_pause_menu()
+	# Quality presets, the performance overlay, the perf log and the feature switches (G-250…).
+	perf = PerfWiring.attach(self)
+	add_child(perf)
+	if not PerfWiring.title_tour_allowed():
+		title_tour = false
 	title.visible = false
 	hud.visible = false
 	loading.retry_requested.connect(_load)

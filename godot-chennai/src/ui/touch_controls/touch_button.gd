@@ -23,8 +23,16 @@ var glyph: String = "":
 		queue_redraw()
 var accent: Color = UiTheme.AMBER
 var font_size: int = UiTheme.BUTTON_SIZE
-## The ACTION button is the primary control on foot: a filled amber ring.
+## The ACTION button is the primary control on foot: the only one with an accent outline.
 var primary: bool = false
+## A `UiIcons` kind drawn instead of the text (JUMP); the text stays as its name for tests and
+## screen readers.
+var icon: StringName = &"":
+	set(value):
+		icon = value
+		queue_redraw()
+## The drawn glass circle's share of the node: the rest is padding that still takes a touch.
+const VISUAL := 0.8
 
 
 func _init(label: String = "", diameter: float = 76.0) -> void:
@@ -51,23 +59,27 @@ func hit(at: Vector2, slop: float = 6.0) -> bool:
 
 func _draw() -> void:
 	var c := size * 0.5
-	var r := minf(size.x, size.y) * 0.5
-	var fill := Color(accent, 0.85) if lit else Color(0.08, 0.09, 0.13, 0.62)
-	draw_circle(c, r, fill)
-	var ring := Color(accent, 0.95) if primary else Color(1, 1, 1, 0.75)
-	draw_arc(c, r - 1.5, 0.0, TAU, 48, ring, 3.0 if primary else 2.0, true)
+	var r := minf(size.x, size.y) * 0.5 * VISUAL
+	# Translucent dark glass with a thin light outline; pressed is the accent, also translucent.
+	draw_circle(c, r, Color(UiTheme.GLASS_PRESSED, 0.6) if lit else UiTheme.GLASS_FILL)
+	var ring := Color(accent, 0.95) if (primary and not dim) else UiTheme.GLASS_OUTLINE
+	draw_arc(c, r - 0.5, 0.0, TAU, 48, ring, 2.0 if primary else 1.5, true)
 	var font := get_theme_default_font()
-	var fs := font_size
-	var lines := text.split("\n")
-	var colour := Color(0.1, 0.1, 0.1) if lit else UiTheme.TEXT
-	var y := c.y + fs * 0.35 - (lines.size() - 1) * fs * 0.55
-	for line in lines:
-		var w := font.get_string_size(line, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
-		draw_string(font, Vector2(c.x - w * 0.5, y), line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, colour)
-		y += fs * 1.1
+	if icon != &"":
+		UiIcons.draw(self, icon, c, r)
+	else:
+		var fs := font_size
+		var lines := text.split("\n")
+		var y := c.y + fs * 0.35 - (lines.size() - 1) * fs * 0.55
+		for line in lines:
+			var w := font.get_string_size(line, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
+			var at := Vector2(c.x - w * 0.5, y)
+			draw_string_outline(font, at, line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 3, Color(0, 0, 0, 0.5))
+			draw_string(font, at, line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UiTheme.TEXT)
+			y += fs * 1.1
 	if glyph != "":
 		var gs := 12
 		var gw := font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, gs).x
-		var badge := Rect2(c.x - gw * 0.5 - 6.0, -2.0, gw + 12.0, 18.0)
-		draw_rect(badge, Color(0, 0, 0, 0.7), true)
-		draw_string(font, Vector2(badge.position.x + 6.0, 11.0), glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, gs, UiTheme.AMBER)
+		var badge := Rect2(c.x - gw * 0.5 - 6.0, 0.0, gw + 12.0, 18.0)
+		draw_rect(badge, Color(0, 0, 0, 0.6), true)
+		draw_string(font, Vector2(badge.position.x + 6.0, 11.0), glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, gs, UiTheme.TEXT)

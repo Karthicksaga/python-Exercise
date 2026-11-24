@@ -15,6 +15,10 @@ var _callable: Callable
 var _result: Variant = null
 var _id: int = -1
 var _joined: bool = false
+## Tasks started and not finished yet, and the worker time they took in all (µs), for the
+## performance overlay's worker line (G-253). Updated from the worker threads: approximate.
+static var running: int = 0
+static var busy_usec: int = 0
 
 
 static func start(work: Callable) -> BackgroundTask:
@@ -25,7 +29,11 @@ static func start(work: Callable) -> BackgroundTask:
 
 
 func _run() -> void:
+	running += 1
+	var t := Time.get_ticks_usec()
 	_result = _callable.call()
+	busy_usec += Time.get_ticks_usec() - t
+	running -= 1
 
 
 func is_done() -> bool:

@@ -28,6 +28,11 @@ const HOUR_STEP := 1.0 / 120.0
 var camera: Camera3D = null
 ## 1 inland; above 1 thickens the haze (sea haze near the coast).
 var place_haze: float = 1.0
+## Where the haze reaches about 89 % (metres); quality presets pull it in with the view distance (G-252).
+var fog_far: float = FOG_FAR:
+	set(value):
+		fog_far = clampf(value, 60.0, 2000.0)
+		_applied_haze = -1.0
 
 var look: Lighting.Look = Lighting.at(Lighting.DEFAULT_HOUR)
 var sun: DirectionalLight3D
@@ -128,7 +133,7 @@ func _apply(force: bool) -> void:
 	var haze := look.haze * place_haze
 	# Exponential haze (depth fog draws nothing on the Compatibility renderer): about 89 % at the
 	# far edge, so the streaming edge melts into the horizon; thicker at golden hour and in rain.
-	environment.fog_density = FOG_EDGE / (FOG_FAR / (1.0 + (haze - 1.0) * 0.6))
+	environment.fog_density = FOG_EDGE / (fog_far / (1.0 + (haze - 1.0) * 0.6))
 	_sky_material.set_shader_parameter(&"zenith", look.zenith)
 	_sky_material.set_shader_parameter(&"horizon", look.horizon)
 	_sky_material.set_shader_parameter(&"ground", look.hemi_ground)

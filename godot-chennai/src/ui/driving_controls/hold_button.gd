@@ -72,6 +72,6 @@ func _draw_hint() -> void:
 		return
 	var font := get_theme_default_font()
 	var w := font.get_string_size(hint, HORIZONTAL_ALIGNMENT_CENTER, -1, 12).x
-	var badge := Rect2(size.x - w - 16.0, 2.0, w + 12.0, 18.0)
-	draw_rect(badge, Color(0, 0, 0, 0.7), true)
-	draw_string(font, Vector2(badge.position.x + 6.0, 15.0), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UiTheme.AMBER)
+	var badge := Rect2((size.x - w) * 0.5 - 6.0, -2.0, w + 12.0, 18.0)
+	draw_rect(badge, Color(0, 0, 0, 0.6), true)
+	draw_string(font, Vector2(badge.position.x + 6.0, 11.0), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UiTheme.TEXT)
