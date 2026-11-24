@@ -101,6 +101,8 @@ func nearest_vehicle() -> Vehicle:
 func enter(v: Vehicle, pull: bool = false) -> bool:
 	if v == null or _mode != &"foot" or v.is_driven() or boarding != null:
 		return false
+	# A traffic vehicle with its driver still at the wheel (carjacking, TD-30): pull them out.
+	pull = pull or bool(v.get_meta(&"driver_aboard", false))
 	var local := v.global_transform.affine_inverse() * rider.position()
 	var h := v.type.spec.half_extents
 	_path = Boarding.approach_path(Vector2(local.x, local.z), v.type.entry, Vector2(h.x, h.z))

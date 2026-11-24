@@ -46,6 +46,8 @@ const FAMILY_SHARE := 0.18
 
 class Spot:
 	extends RefCounted
+	## Stable number of the spot (its square and place in it): who it is, frame to frame.
+	var key: int = 0
 	var pos: Vector2
 	var yaw: float = 0.0
 	var pose: int = STAND
@@ -64,6 +66,7 @@ class Spot:
 ## Someone to draw this frame.
 class Person:
 	extends RefCounted
+	var key: int = 0
 	var pos: Vector2
 	var yaw: float = 0.0
 	var pose: int = STAND
@@ -107,6 +110,9 @@ func spots(c: Vector2i) -> Array:
 	if not _cells.has(c):
 		var list: Array = _pavement_spots(c)
 		list.append_array(_sand_spots(c))
+		var base := (((c.x & 0xfffff) << 20) | (c.y & 0xfffff)) << 10
+		for i in list.size():
+			(list[i] as Spot).key = base | (i & 0x3ff)
 		_cells[c] = list
 	return _cells[c]
 
@@ -304,6 +310,7 @@ func people_near(focus: Vector2, hour: float, time: float, avoid: PackedVector3A
 
 func _person_at(s: Spot, time: float, avoid: PackedVector3Array) -> Person:
 	var p := Person.new()
+	p.key = s.key
 	p.pos = s.pos
 	p.yaw = s.yaw
 	p.pose = s.pose

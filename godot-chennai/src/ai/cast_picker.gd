@@ -126,3 +126,36 @@ func crowd_person(look: int, child: bool, play: bool) -> String:
 	if child:
 		return children[posmod(look, children.size())] if not children.is_empty() else ""
 	return crowd[posmod(look, crowd.size())] if not crowd.is_empty() else ""
+
+
+## Keep only the first `walker_n` walkers, the crowd people among them plus `crowd_n` others, `child_n` children and three drivers of each kind: the variety the game
+## keeps loaded (`CityLife`).
+func limit(walker_n: int, crowd_n: int, child_n: int) -> void:
+	walkers = walkers.slice(0, walker_n)
+	# Walkers who also stand in crowds cost nothing more; then up to `crowd_n` others.
+	var kept := PackedStringArray()
+	var others := 0
+	for id in crowd:
+		if walkers.has(id):
+			kept.append(id)
+		elif others < crowd_n:
+			kept.append(id)
+			others += 1
+	crowd = kept
+	children = children.slice(0, child_n)
+	for kind: StringName in _drivers:
+		_drivers[kind] = _drivers[kind].slice(0, 3)
+
+
+## Every person any pick can return (the models to load).
+func used_ids() -> PackedStringArray:
+	var out := PackedStringArray()
+	for list: PackedStringArray in [walkers, crowd, children, players]:
+		for id in list:
+			if not out.has(id):
+				out.append(id)
+	for kind: StringName in _drivers:
+		for id in _drivers[kind]:
+			if not out.has(id):
+				out.append(id)
+	return out

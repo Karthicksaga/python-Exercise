@@ -26,6 +26,8 @@ var source: WorldSource = _default_source()
 var world: CityWorld = null
 ## The player on foot, placed on loaded ground at the start (Player's G-67).
 var rig: PlayerRig = null
+## Traffic, walkers and crowds round the player (G-120…G-128).
+var life: CityLife = null
 ## Watches for a stalled main loop while loading (see `_watch_frames`).
 var _watchdog: Thread = null
 var _watching: bool = false
@@ -140,7 +142,8 @@ func _add_city() -> String:
 		return "The streets round the start did not load."
 	for f in GROUND_WAIT_FRAMES:
 		if world.ground_ready():
-			return await _add_player()
+			var failed := await _add_player()
+			return failed if failed != "" else await _add_life()
 		await GameLoop.wait_physics_frames(1)
 	return "The ground's collider did not appear in %d physics frames." % GROUND_WAIT_FRAMES
 
@@ -165,6 +168,15 @@ func _add_player() -> String:
 	world.manage_origin = true
 	WorldOrigin.shifted.connect(func(_offset: Vector3) -> void: rig.camera.snap())
 	return ""
+
+
+## The streets' traffic, walkers and crowds round the start, made during loading.
+func _add_life() -> String:
+	if life != null:
+		return ""
+	life = CityLife.make(world, rig.body)
+	world.add_child(life)
+	return await life.prepare(world.spawn["point"])
 
 
 func _start_watchdog() -> void:
