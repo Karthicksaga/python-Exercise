@@ -3,12 +3,12 @@
  "kit": "lighthouse",
  "script": "tools/blender/landmarks/lighthouse.py",
  "blender": "5.2.4 LTS",
- "spec_sha256": "550f4b1bb9ba7f3d7d0d71e85413eeace4841d8af4ec1eeb4a82e7af9d6e500c",
- "glb_sha256": "7b2464c50ccdcdc79ede639b314ec95ea274a16a3539b3e11c6616f2e1ff6a3c",
+ "spec_sha256": "5b928e5e4a857d57933cd42af473a4ead5b460d3b8434fb6bc9f0ad37336dad3",
+ "glb_sha256": "7103a200ac04b985459f3937e55d2423010f2a629a80cf9d911e9fb2c8f8b892",
  "triangles": {
-  "lod0": 5048,
-  "lod1": 1418,
-  "lod2": 286
+  "lod0": 5369,
+  "lod1": 1739,
+  "lod2": 411
  },
- "collision_boxes": 2
+ "collision_boxes": 4
 }

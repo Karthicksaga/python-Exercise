@@ -13,7 +13,7 @@
   "value": 45.72,
   "osm_tag": 45.72,
   "of": "the tower",
-  "source": "https://www.openstreetmap.org/way/211436935",
+  "source": "https://www.openstreetmap.org/way/1552618806",
   "alternatives": [
    {
     "value": 46.0,
@@ -29,11 +29,180 @@
   "chosen_because": "OSM's height tag (45.72 m, 150 ft) agrees with the Directorate of Lighthouses and Lightships; 57 m is the light's focal height."
  },
  "osm": {
-  "main": "tower",
+  "main": "building",
   "exclude": [
-   "tower"
+   "building"
   ],
   "parts": {
+   "building": {
+    "osm": "way/1552618806",
+    "role": "area",
+    "tags": {
+     "name": "Chennai Lighthouse",
+     "name:en": "Chennai Lighthouse",
+     "alt_name": "Madras Lighthouse",
+     "building": "lighthouse",
+     "height": "45.72"
+    },
+    "footprint": [
+     [
+      7497.83,
+      5038.06
+     ],
+     [
+      7497.96,
+      5036.63
+     ],
+     [
+      7498.37,
+      5035.25
+     ],
+     [
+      7499.04,
+      5033.97
+     ],
+     [
+      7499.95,
+      5032.86
+     ],
+     [
+      7501.05,
+      5031.93
+     ],
+     [
+      7502.31,
+      5031.24
+     ],
+     [
+      7503.68,
+      5030.82
+     ],
+     [
+      7505.11,
+      5030.67
+     ],
+     [
+      7506.42,
+      5030.79
+     ],
+     [
+      7507.1,
+      5027.87
+     ],
+     [
+      7509.34,
+      5028.39
+     ],
+     [
+      7509.83,
+      5026.12
+     ],
+     [
+      7518.62,
+      5034.41
+     ],
+     [
+      7512.28,
+      5036.27
+     ],
+     [
+      7512.36,
+      5036.51
+     ],
+     [
+      7516.93,
+      5036.26
+     ],
+     [
+      7516.8,
+      5038.87
+     ],
+     [
+      7516.21,
+      5041.42
+     ],
+     [
+      7514.88,
+      5044.43
+     ],
+     [
+      7512.92,
+      5047.1
+     ],
+     [
+      7509.3,
+      5044.06
+     ],
+     [
+      7508.04,
+      5044.75
+     ],
+     [
+      7506.66,
+      5045.19
+     ],
+     [
+      7505.23,
+      5045.34
+     ],
+     [
+      7503.8,
+      5045.21
+     ],
+     [
+      7502.43,
+      5044.81
+     ],
+     [
+      7501.15,
+      5044.14
+     ],
+     [
+      7500.03,
+      5043.23
+     ],
+     [
+      7499.1,
+      5042.13
+     ],
+     [
+      7498.42,
+      5040.86
+     ],
+     [
+      7497.98,
+      5039.49
+     ]
+    ],
+    "centroid": [
+     7507.96,
+     5037.3
+    ],
+    "area": 263.9,
+    "rect": {
+     "yaw_deg": 136.67,
+     "long": 19.21,
+     "short": 19.18,
+     "corners": [
+      [
+       7508.78,
+       5051.49
+      ],
+      [
+       7494.81,
+       5038.31
+      ],
+      [
+       7507.97,
+       5024.36
+      ],
+      [
+       7521.94,
+       5037.54
+      ]
+     ]
+    }
+   },
    "tower": {
     "osm": "way/211436935",
     "role": "model",
@@ -115,6 +284,256 @@
       ]
      ]
     }
+   },
+   "base": {
+    "osm": "way/1552618808",
+    "role": "model",
+    "tags": {
+     "building:part": "yes",
+     "height": "15"
+    },
+    "footprint": [
+     [
+      7498.42,
+      5040.86
+     ],
+     [
+      7497.98,
+      5039.49
+     ],
+     [
+      7497.83,
+      5038.06
+     ],
+     [
+      7497.96,
+      5036.63
+     ],
+     [
+      7498.37,
+      5035.25
+     ],
+     [
+      7499.04,
+      5033.97
+     ],
+     [
+      7499.95,
+      5032.86
+     ],
+     [
+      7501.05,
+      5031.93
+     ],
+     [
+      7502.31,
+      5031.24
+     ],
+     [
+      7503.68,
+      5030.82
+     ],
+     [
+      7505.11,
+      5030.67
+     ],
+     [
+      7506.42,
+      5030.79
+     ],
+     [
+      7505.44,
+      5034.99
+     ],
+     [
+      7507.78,
+      5035.54
+     ],
+     [
+      7507.3,
+      5037.73
+     ],
+     [
+      7512.28,
+      5036.27
+     ],
+     [
+      7512.36,
+      5036.51
+     ],
+     [
+      7512.51,
+      5037.93
+     ],
+     [
+      7512.38,
+      5039.38
+     ],
+     [
+      7511.98,
+      5040.74
+     ],
+     [
+      7511.31,
+      5042.03
+     ],
+     [
+      7510.52,
+      5043.03
+     ],
+     [
+      7509.3,
+      5044.06
+     ],
+     [
+      7508.04,
+      5044.75
+     ],
+     [
+      7506.66,
+      5045.19
+     ],
+     [
+      7505.23,
+      5045.34
+     ],
+     [
+      7503.8,
+      5045.21
+     ],
+     [
+      7502.43,
+      5044.81
+     ],
+     [
+      7501.15,
+      5044.14
+     ],
+     [
+      7500.03,
+      5043.23
+     ],
+     [
+      7499.1,
+      5042.13
+     ]
+    ],
+    "centroid": [
+     7504.51,
+     5038.71
+    ],
+    "area": 141.1,
+    "rect": {
+     "yaw_deg": 136.93,
+     "long": 14.67,
+     "short": 13.45,
+     "corners": [
+      [
+       7505.53,
+       5048.37
+      ],
+      [
+       7494.81,
+       5038.35
+      ],
+      [
+       7504.0,
+       5028.53
+      ],
+      [
+       7514.71,
+       5038.55
+      ]
+     ]
+    }
+   },
+   "museum": {
+    "osm": "way/1552618807",
+    "role": "model",
+    "tags": {
+     "name": "Chennai Lighthouse Museum",
+     "building:part": "yes",
+     "height": "5",
+     "tourism": "museum"
+    },
+    "footprint": [
+     [
+      7510.52,
+      5043.03
+     ],
+     [
+      7511.31,
+      5042.03
+     ],
+     [
+      7511.98,
+      5040.74
+     ],
+     [
+      7512.38,
+      5039.38
+     ],
+     [
+      7512.51,
+      5037.93
+     ],
+     [
+      7512.36,
+      5036.51
+     ],
+     [
+      7516.93,
+      5036.26
+     ],
+     [
+      7516.8,
+      5038.87
+     ],
+     [
+      7516.21,
+      5041.42
+     ],
+     [
+      7514.88,
+      5044.43
+     ],
+     [
+      7512.92,
+      5047.1
+     ],
+     [
+      7509.3,
+      5044.06
+     ]
+    ],
+    "centroid": [
+     7513.67,
+     5041.3
+    ],
+    "area": 44.2,
+    "rect": {
+     "yaw_deg": 67.92,
+     "long": 11.55,
+     "short": 5.41,
+     "corners": [
+      [
+       7518.11,
+       5036.74
+      ],
+      [
+       7513.77,
+       5047.44
+      ],
+      [
+       7508.75,
+       5045.41
+      ],
+      [
+       7513.09,
+       5034.7
+      ]
+     ]
+    }
    }
   },
   "wikidata": "Q6546309",
@@ -130,7 +549,11 @@
    "gallery_height": 38.0,
    "lantern_height": 4.0,
    "lantern_radius": 2.0,
-   "base_height": 4.0
+   "base_height": 4.0,
+   "base_parts": [
+    "base",
+    "museum"
+   ]
   }
  },
  "colours": {
@@ -165,6 +588,10 @@
   {
    "en": "Reopened to visitors in 2013 after 22 years, with a lift and a museum of lighthouse equipment.",
    "source": "https://www.deccanchronicle.com/131115/news-current-affairs/article/madras-lighthouse-reopens-attracts-5000-spectators"
+  },
+  {
+   "en": "OpenStreetMap maps the lighthouse as a building (way 1552618806, 45.72 m) with parts: the triangular tower, a 15 m base block and the 5 m museum.",
+   "source": "https://www.openstreetmap.org/way/1552618806"
   }
  ],
  "references": [
@@ -188,17 +615,17 @@
   "lod2_end": 6000.0
  },
  "collision": {
-  "plan": "Jolt boxes: the base and the tower.",
+  "plan": "Jolt boxes: the base blocks (OSM building parts, heights from their tags) and the tower.",
   "min_boxes": 2
  },
  "estimated": [
   "band count and spacing",
   "gallery and lantern sizes",
-  "the base building (OSM maps the tower only)"
+  "colours of the base blocks"
  ],
  "origin": [
-  7510.93,
-  5032.53
+  7507.96,
+  5037.3
  ],
  "yaw_deg": 136.67
 }

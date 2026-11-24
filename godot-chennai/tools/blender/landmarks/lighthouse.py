@@ -101,6 +101,25 @@ def build(spec, acc, col, lod):
     acc.dome((c[0], c[1], z), lr + 0.1, dome_h, cols["dome"], sides=sides, rings=4 if lod == 0 else 2)
     acc.lathe((c[0], c[1], z + dome_h - 0.05), [(0.0, 0.0), (0.3, 0.05), (0.32, 0.3), (0.0, 0.4)], cols["rail"], sides=8 if lod < 2 else 4)
     acc.cylinder((c[0], c[1], z + dome_h + 0.35), 0.04, 0.02, H - (z + dome_h + 0.35), cols["rail"], sides=4)
+    # Base blocks: OSM building parts at their tagged heights, white with window bands.
+    for name in p.get("base_parts", []):
+        br = lkit.part_ring(spec, name)
+        bh2 = float(spec["osm"]["parts"][name]["tags"].get("height", 5))
+        acc.prism(br, 0.0, bh2, cols["white"], top_colour=cols["base"])
+        if lod < 2:
+            acc.band(br, bh2 - 0.3, bh2 + 0.1, 0.2, cols["base"])
+            z = 1.0
+            while z + 1.6 < bh2:
+                for a, b, L, u, n in lkit.edges(br):
+                    if L > 3:
+                        k2 = max(1, int(L / 2.6))
+                        for i in range(k2):
+                            lkit.vface(acc, a + u * (L * (i + 0.25) / k2), u, z, L / k2 * 0.5, 1.3, 0.03, cols["opening"])
+                z += 3.2
+        bc = lkit.part_centre(spec, name)
+        by = lkit.part_yaw(spec, name)
+        bl, bs = lkit.part_rect(spec, name)
+        col.append(((bc[0], bc[1], bh2 / 2), (bl * 0.9, bs * 0.9, bh2), by))
     # Collision: the tower's minimum rectangle as a box, the gallery as a thinner one.
     yaw = lkit.part_yaw(spec, p["part"])
     L, S = lkit.part_rect(spec, p["part"])

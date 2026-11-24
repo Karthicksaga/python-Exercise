@@ -131,7 +131,7 @@ static func _signs(spec: LandmarkSpec, holder: Node3D) -> void:
 	var font: Font = load(SIGN_FONT) as Font if ResourceLoader.exists(SIGN_FONT) else null
 	var params: Dictionary = (spec.data.get("recipe", {}) as Dictionary).get("params", {})
 	var part: String = str(params.get("part", ""))
-	var ring: PackedVector2Array = spec.footprints.get(part, PackedVector2Array())
+	var ring: PackedVector2Array = spec.outline(part)
 	if ring.is_empty():
 		return
 	var yaw := deg_to_rad(spec.yaw_deg)
@@ -141,17 +141,17 @@ static func _signs(spec: LandmarkSpec, holder: Node3D) -> void:
 	var lo := INF
 	var hi := -INF
 	var depth := 0.0
-	var c := Vector2.ZERO
-	for p in ring:
-		c += p
-	c /= ring.size()
+	# The kit measures from the part's area centroid (OSM), so the letters land on its board.
+	var centroid: Array = (((spec.data["osm"] as Dictionary)["parts"] as Dictionary)[part] as Dictionary).get("centroid", [spec.origin.x, spec.origin.y])
+	var c := Vector2(float(centroid[0]), float(centroid[1]))
 	for p in ring:
 		lo = minf(lo, (p - c).dot(u))
 		hi = maxf(hi, (p - c).dot(u))
 		depth = maxf(depth, (p - c).dot(v * front))
 	var storeys := float(params.get("storeys", 2)) * float(params.get("storey_height", 6.0))
 	for sign: Dictionary in spec.signs:
-		var at := c + u * ((lo + hi) / 2.0 + (hi - lo) / 2.0 * float(sign.get("at", 0.0))) + v * front * (depth - 2.0)
+		# On the board's front face: the kit stands the board 2 m inside the front wall, 0.25 m thick.
+		var at := c + u * ((lo + hi) / 2.0 + (hi - lo) / 2.0 * float(sign.get("at", 0.0))) + v * front * (depth - 2.0 + 0.2)
 		var h := float(sign.get("height", 1.5))
 		var i := 0
 		for line: String in [str(sign.get("ta", "")), str(sign.get("en", ""))]:
