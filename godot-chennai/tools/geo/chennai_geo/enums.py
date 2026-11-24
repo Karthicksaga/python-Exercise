@@ -10,7 +10,7 @@ V1_AREA_KINDS = ["park", "water", "beach"]
 
 ROAD_KINDS = V1_ROAD_KINDS + ["motorway", "track", "raceway"]
 BUILDING_KINDS = V1_BUILDING_KINDS
-HEIGHT_FROM = V1_HEIGHT_FROM + ["overture", "openbuildings", "min-height"]
+HEIGHT_FROM = V1_HEIGHT_FROM + ["overture", "openbuildings", "min-height", "microsoft"]
 AREA_KINDS = V1_AREA_KINDS + [
     "reservoir", "wetland", "farmland", "orchard", "meadow", "scrub", "forest", "residential",
     "commercial", "industrial", "military", "cemetery", "bare", "saltpan", "aerodrome", "apron",

@@ -9,11 +9,14 @@
     python -m chennai_geo.cli compare                # ring-0 counts vs today's committed world
     python -m chennai_geo.cli landmarks-rank         # -> data/landmarks/candidates.json + COVERAGE.md
     python -m chennai_geo.cli landmark-osm ID        # OSM footprints into assets/landmarks/ID/spec.json
+    python -m chennai_geo.cli fetch-buildings        # Overture, Google, Microsoft extracts -> cache (G-220)
+    python -m chennai_geo.cli fuse                   # -> world/tiles/*/fusion.bin + FUSION.md (after build)
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -37,6 +40,8 @@ BOUNDARY = DATA / "boundary" / "world-boundary.geojson"
 MANIFEST = DATA / "MANIFEST.json"
 WORLD = GODOT / "world"
 TODAY = REPO / "chennai-open-world" / "apps" / "game" / "public" / "world"
+# Building extracts (hundreds of MB) live outside the repository; never committed.
+FUSION_CACHE = Path(os.environ.get("CHENNAI_FUSION_CACHE", str(Path.home() / "geo-cache" / "fusion")))
 
 
 def _manifest() -> dict:
@@ -80,6 +85,14 @@ def main(argv: list[str] | None = None) -> int:
     lo = sub.add_parser("landmark-osm")
     lo.add_argument("ids", nargs="*", help="landmark ids (default: every spec)")
     lo.add_argument("--osm", type=Path, default=RAW / "world.osm.pbf")
+    fb = sub.add_parser("fetch-buildings")
+    fb.add_argument("--cache", type=Path, default=FUSION_CACHE)
+    fb.add_argument("--duckdb-ext", type=Path, default=Path.home() / "geo-cache" / "duckdb-ext",
+                    help="folder with httpfs/spatial .duckdb_extension files (from https://extensions.duckdb.org)")
+    fb.add_argument("--only", choices=["overture", "google", "microsoft"], action="append")
+    fu = sub.add_parser("fuse")
+    fu.add_argument("--cache", type=Path, default=FUSION_CACHE)
+    fu.add_argument("--world", type=Path, default=WORLD)
     a = ap.parse_args(argv)
 
     if a.cmd == "fetch":
@@ -141,6 +154,33 @@ def main(argv: list[str] | None = None) -> int:
         for path in sorted(SPECS.glob("*/spec.json")):
             if not a.ids or path.parent.name in a.ids:
                 print(fill_from_osm(path, a.osm))
+    elif a.cmd == "fetch-buildings":
+        from . import fusion_fetch as ff  # noqa: PLC0415
+
+        box = ff.world_box(json.loads((WORLD / "world.json").read_text()))
+        m = _manifest()
+        got = {d["id"]: d for d in m.get("buildings", [])}
+        for which in a.only or ["overture", "google", "microsoft"]:
+            if which == "overture":
+                e = ff.fetch_overture(a.cache, box, a.duckdb_ext)
+            elif which == "google":
+                e = ff.fetch_openbuildings(a.cache, box)
+            else:
+                e = ff.fetch_microsoft(a.cache, box)
+            got[e["id"]] = e
+            print(json.dumps({k: v for k, v in e.items() if k not in ("cells", "files")}, indent=1))
+        m["buildings"] = [got[k] for k in ("overture-buildings", "google-openbuildings-v3", "microsoft-ml-buildings") if k in got]
+        write_manifest(MANIFEST, m.get("datasets", []), {k: v for k, v in m.items() if k not in ("datasets", "format")})
+    elif a.cmd == "fuse":
+        from . import fusion_world  # noqa: PLC0415
+        from .landmark_spec import exclude_outlines  # noqa: PLC0415
+
+        if not any((a.cache / n).exists() for n in ("overture-buildings.parquet", "openbuildings-v3.csv.gz", "microsoft-ml.geojsonl.gz")):
+            print(f"No building extracts in {a.cache}: run fetch-buildings, or pass --cache / CHENNAI_FUSION_CACHE", file=sys.stderr)
+            return 1
+        t = time.time()
+        res = fusion_world.run(a.world, a.cache, _manifest().get("buildings", []), load_boundary(BOUNDARY), exclude_outlines())
+        print(json.dumps(res, indent=1), f"{time.time() - t:.0f} s")
     elif a.cmd == "convert-v1":
         w = v1_to_world(a.src)
         print(write_world_v2(w, a.out, {"convertedFrom": str(a.src)}))

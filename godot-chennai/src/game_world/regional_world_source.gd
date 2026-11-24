@@ -39,6 +39,12 @@ var _roads: Dictionary[Vector2i, RoadNetwork] = {}
 var minor: int = 0
 var infra_file: String = ""
 var _infra: Dictionary[Vector2i, InfraTile] = {}
+## Format 2.3 (`minor` >= 3, G-221): the per-tile `fusion.bin` (buildings from Overture, Google
+## Open Buildings and Microsoft where OSM has none), "" when the world has none; the credit line
+## of every dataset present.
+var fusion_file: String = ""
+var fusion_credits: PackedStringArray = PackedStringArray()
+var _fusion: Dictionary[Vector2i, FusionTile] = {}
 var _mutex := Mutex.new()
 var error: String = ""
 
@@ -77,6 +83,12 @@ func open_index() -> String:
 	var infra: Variant = d.get("infra")
 	if minor >= 1 and infra is Dictionary:
 		infra_file = str((infra as Dictionary).get("file", "infra.bin"))
+	var fusion: Variant = d.get("fusion")
+	if minor >= 3 and fusion is Dictionary:
+		var fd: Dictionary = fusion
+		fusion_file = str(fd.get("file", "fusion.bin"))
+		for c: Variant in fd.get("credits", []):
+			fusion_credits.append(str(c))
 	var origin: Dictionary = d.get("origin", {})
 	latitude = float(origin.get("lat", 0.0))
 	longitude = float(origin.get("lng", 0.0))
@@ -104,6 +116,12 @@ func open_index() -> String:
 		if e != "":
 			error = e
 			return error
+	# Squares that hold only added buildings: streamed like road-only squares (no chunk record).
+	if fusion_file != "":
+		for c: Array in (fusion as Dictionary).get("cells", []):
+			var cell := Vector2i(int(c[0]), int(c[1]))
+			if not cells.has(cell):
+				cells[cell] = Vector3i(0, 0, int(c[2]))
 	return ""
 
 
@@ -322,6 +340,44 @@ func tile_infra(tile: Vector2i) -> InfraTile:
 	t = _infra[tile]
 	_mutex.unlock()
 	return t
+
+
+## One tile's `fusion.bin` (thread-safe, cached), or null when the world has none or outside it.
+func tile_fusion(tile: Vector2i) -> FusionTile:
+	if fusion_file == "" or not tiles.has(tile):
+		return null
+	_mutex.lock()
+	var done: FusionTile = _fusion.get(tile)
+	_mutex.unlock()
+	if done != null:
+		return done
+	var path := dir.path_join("tiles/%d_%d/%s" % [tile.x, tile.y, fusion_file])
+	var bytes := FileAccess.get_file_as_bytes(path)
+	var t: FusionTile
+	if bytes.is_empty():
+		t = FusionTile.new()
+		t.error = "%s not found or empty." % path
+	else:
+		t = FusionTile.decode(bytes, grid_origin, chunk_size)
+	if not t.ok():
+		push_warning(t.error)
+	_mutex.lock()
+	if not _fusion.has(tile):
+		_fusion[tile] = t
+	t = _fusion[tile]
+	_mutex.unlock()
+	return t
+
+
+func apply_fusion(chunk: ChunkData) -> void:
+	var cell := Vector2i(chunk.col, chunk.row)
+	var t := tile_fusion(tile_of(cell))
+	if t != null and t.ok():
+		t.apply(chunk, cell)
+
+
+func get_data_credits() -> PackedStringArray:
+	return fusion_credits if not fusion_credits.is_empty() else PackedStringArray([attribution])
 
 
 func roads_near(point: Vector2, radius: float) -> Array[Road]:

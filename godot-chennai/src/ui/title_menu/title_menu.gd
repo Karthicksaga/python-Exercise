@@ -384,11 +384,19 @@ func _build_foot() -> void:
 # --- Data ------------------------------------------------------------------------------------
 
 ## The map credit: the index's attribution and its OSM data date, bottom left and on ABOUT.
-func set_credits(attribution: String, data_date: String) -> void:
+## `others`: the credit line of every other dataset in the world files (building footprints
+## added where OSM has none, G-226), shown on ABOUT.
+func set_credits(attribution: String, data_date: String, others: PackedStringArray = PackedStringArray()) -> void:
 	var credit := attribution if attribution != "" else "© OpenStreetMap contributors"
 	var day := data_date.substr(0, 10)
 	_credit.text = "Map data %s%s" % [credit, " · %s" % day if day != "" else ""]
-	_about_text.text = "An original game set in real Chennai.\nMap: %s%s, ODbL 1.0. Building heights, colours and road widths are estimated where OpenStreetMap has none.\nFonts: Barlow Condensed and Noto Sans Tamil, SIL Open Font Licence 1.1." % [credit, " (map data %s)" % day if day != "" else ""]
+	var more := ""
+	for c in others:
+		if not c.contains("OpenStreetMap"):
+			more += ("; " if more != "" else "") + c
+	if more != "":
+		more = "\nBuildings where OpenStreetMap has none: %s." % more
+	_about_text.text = "An original game set in real Chennai.\nMap: %s%s, ODbL 1.0.%s Building heights, colours and road widths are estimated where OpenStreetMap has none.\nFonts: Barlow Condensed and Noto Sans Tamil, SIL Open Font Licence 1.1." % [credit, " (map data %s)" % day if day != "" else "", more]
 
 
 ## What the save says, from the composition root: {has_save, continue_line, new_game_line}. The

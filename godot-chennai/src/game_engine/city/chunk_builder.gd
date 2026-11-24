@@ -107,6 +107,8 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	if not chunk.ok():
 		out.error = chunk.error
 		return out
+	# Buildings other datasets add where OSM has none (G-221): the same building path below.
+	kit.source.apply_fusion(chunk)
 	if not kit.landmarks.is_empty():
 		chunk.buildings = without_landmark_buildings(chunk.buildings, kit.landmarks)
 	var layout := kit.layouts.layout_for(cell)

@@ -1,0 +1,34 @@
+{
+ "_note": "Hand-made footprints in local metres (x east, z south) for tests/test_fusion_multi.py. Each external footprint names the rule it exercises; 'expect' is the outcome the rules must give.",
+ "osm": [
+  {"name": "osm-a", "outline": [[0, 0], [20, 0], [20, 20], [0, 20]], "heightFrom": "estimated", "height": 7.1},
+  {"name": "osm-b", "outline": [[100, 0], [120, 0], [120, 20], [100, 20]], "heightFrom": "height", "height": 30.0},
+  {"name": "osm-c", "outline": [[200, 0], [220, 0], [220, 20], [200, 20]], "heightFrom": "levels", "height": 13.3},
+  {"name": "osm-d", "outline": [[300, 0], [320, 0], [320, 20], [300, 20]], "heightFrom": "estimated", "height": 7.1}
+ ],
+ "masks": {"water": [[[1000, 0], [1100, 0], [1100, 100], [1000, 100]]], "roads": [{"line": [[0, 500], [400, 500]], "width": 10}], "landmarks": [[[2000, 0], [2060, 0], [2060, 60], [2000, 60]]], "world": [[-50, -50], [2950, -50], [2950, 950], [-50, 950]]},
+ "external": [
+  {"name": "same-as-osm-a", "source": "google", "confidence": 0.9, "outline": [[1, 0], [21, 0], [21, 20], [1, 20]], "expect": "same building as an OSM one"},
+  {"name": "overture-height-on-osm-d", "source": "overture", "origin": "microsoft", "height": 15.0, "outline": [[300.5, 0], [320.5, 0], [320.5, 20], [300.5, 20]], "expect": "same building as an OSM one"},
+  {"name": "overture-height-on-osm-b", "source": "overture", "origin": "microsoft", "height": 25.0, "outline": [[100, 0], [120, 0], [120, 20], [100, 20]], "expect": "same building as an OSM one"},
+  {"name": "partial-30pc-on-osm-a", "source": "microsoft", "outline": [[14, 0], [34, 0], [34, 20], [14, 20]], "expect": "overlaps an OSM building"},
+  {"name": "touch-14pc-of-osm-a", "source": "microsoft", "outline": [[17.2, 0], [37.2, 0], [37.2, 20], [17.2, 20]], "expect": "added"},
+  {"name": "touch-16pc-of-osm-a", "source": "microsoft", "outline": [[-16.8, 0], [3.1999999999999993, 0], [3.1999999999999993, 20], [-16.8, 20]], "expect": "overlaps an OSM building"},
+  {"name": "village-house-google", "source": "google", "confidence": 0.8, "outline": [[500, 100], [508, 100], [508, 108], [500, 108]], "expect": "added"},
+  {"name": "same-house-microsoft", "source": "microsoft", "outline": [[500.5, 100.5], [508.5, 100.5], [508.5, 108.5], [500.5, 108.5]], "expect": "same building in another source"},
+  {"name": "low-confidence-google", "source": "google", "confidence": 0.74, "outline": [[600, 100], [608, 100], [608, 108], [600, 108]], "expect": "Google confidence below 0.75"},
+  {"name": "threshold-confidence-google", "source": "google", "confidence": 0.75, "outline": [[620, 100], [628, 100], [628, 108], [620, 108]], "expect": "added"},
+  {"name": "low-confidence-google-via-overture", "source": "overture", "origin": "google", "confidence": 0.7, "outline": [[640, 100], [648, 100], [648, 108], [640, 108]], "expect": "Google confidence below 0.75"},
+  {"name": "tiny-shed", "source": "microsoft", "outline": [[700, 100], [703.4, 100], [703.4, 103.4], [700, 103.4]], "expect": "smaller than 12 m\u00b2"},
+  {"name": "in-the-lake", "source": "microsoft", "outline": [[1040, 40], [1048, 40], [1048, 48], [1040, 48]], "expect": "in water"},
+  {"name": "on-the-road", "source": "google", "confidence": 0.9, "outline": [[196, 496], [204, 496], [204, 504], [196, 504]], "expect": "on a carriageway"},
+  {"name": "under-landmark", "source": "overture", "origin": "google", "confidence": 0.9, "outline": [[2010, 10], [2040, 10], [2040, 40], [2010, 40]], "expect": "under a modelled landmark"},
+  {"name": "outside-world", "source": "microsoft", "outline": [[5000, 5000], [5010, 5000], [5010, 5010], [5000, 5010]], "expect": "outside the built world"},
+  {"name": "plain-google", "source": "google", "confidence": 0.8, "outline": [[800, 100], [810, 100], [810, 110], [800, 110]], "expect": "same building in another source"},
+  {"name": "overture-with-height-same-place", "source": "overture", "origin": "microsoft", "height": 9.0, "outline": [[800.3, 100.3], [810.3, 100.3], [810.3, 110.3], [800.3, 110.3]], "expect": "added"},
+  {"name": "ms-with-height", "source": "microsoft", "height": 6.0, "outline": [[900, 100], [910, 100], [910, 110], [900, 110]], "expect": "added"},
+  {"name": "neighbour-touching-ms", "source": "microsoft", "outline": [[909, 100], [919, 100], [919, 110], [909, 110]], "expect": "added"},
+  {"name": "neighbour-25pc-a", "source": "microsoft", "outline": [[1200, 100], [1210, 100], [1210, 110], [1200, 110]], "expect": "added"},
+  {"name": "neighbour-25pc-b", "source": "microsoft", "outline": [[1207.5, 100], [1217.5, 100], [1217.5, 110], [1207.5, 110]], "expect": "added"}
+ ]
+}
