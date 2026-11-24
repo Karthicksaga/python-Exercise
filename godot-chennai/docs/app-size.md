@@ -12,10 +12,11 @@ Decisions G-240 to G-243 (`technical-decisions.md`). Numbers are bytes stored in
   phone APK and `--export-debug` for the emulator smoke APK). The container has no Android SDK, so
   the export ran with `package/signed=false` and stub `apksigner`/`zipalign`/`adb` files in a fake
   SDK folder; the committed preset keeps `signed=true`. A signature adds a few KB.
-- **Local and CI differ by about 3 %.** On the commit before this work the CI artifact
-  (`godot-chennai-apk`, run 45374097425) was **157.88 MB**; the same export here, unsigned, was
-  **162.68 MB** (+4.8 MB). Both are given below; use the CI figure for decisions, and the local
-  numbers for differences between two local exports (those are exact).
+- **Local and CI agree.** The final commit's CI artifact (signed, `chennai-open-world.apk`) is
+  115.13 MB; the same export here, unsigned, is 115.00 MB (+0.1 %, the signature and zip
+  alignment). The "157.88 MB" figure from run 45374097425 is from branch `agent/godot-osmdetail`
+  (head b079901), not from this branch's base (4341474); the base was measured here, locally, at
+  **162.68 MB** with the same method. Use local numbers for differences between two exports.
 - **Breakdown.** An APK is a zip: `unzip -lv` gives stored and unpacked bytes per entry. Imported
   assets are stored as `assets/.godot/imported/<name>-<hash>.<ext>`; each was mapped back to its
   source file through the `path=` lines of the `.import` files. `tools/apk_size_report.sh [apk]
@@ -81,7 +82,7 @@ and clips in every file)**, index buffers 0.08, two WebP textures 0.03.
 | (e) World tiles | measured, not changed (see below) | | 0 | |
 | **Total** | **162.68** | **115.00** | **47.68 (29 %)** | |
 
-CI figures (before 157.88 MB) are filled in section 8 once the run on this branch has finished.
+CI after the diet: 115.13 MB (section 8).
 
 The legacy folders stay in the repository byte for byte (`sync_from_threejs.py --check` is green:
 1,978 files match). Only `export_presets.cfg` (`exclude_filter`, both presets) leaves them out of
@@ -205,7 +206,7 @@ an unreviewed legacy file) because they run on every push.
 
 ## 5. Forecast
 
-Base: the CI size after the diet (about 110 MB; section 8 has the measured value). Additions are
+Base: the CI size after the diet, 115 MB (section 8). Additions are
 the stored size in the APK; low and high are explicit about what they assume.
 
 | Addition | Assumption (low / high) | Low MB | High MB |
@@ -219,9 +220,9 @@ the stored size in the APK; low and high are explicit about what they assume.
 | Trains and stations | 2 / 8 more models (today 1.34 MB for 6) | 2 | 8 |
 | UI, fonts (Tamil), misc textures, new tiles for ring growth | | 2 | 10 |
 | **Total added** | | **58** | **256** |
-| **APK, phone (arm64)** | base 110 + added | **~168** | **~366** |
+| **APK, phone (arm64)** | base 115 + added | **~173** | **~371** |
 
-Reading it: the low case fits Play's 200 MB base; the high case is 1.4 times the 260 MB budget and
+Reading it: the low case fits Play's 200 MB base; the high case is 1.43 times the 260 MB budget and
 blows past 200 MB. **The cast is the biggest uncertain line (up to 82 MB), then landmarks and fused
 data.** Cheap measures that move the high case: the shared animation library (-6.5 MB now,
 -10 MB at 100 more people), generated LODs off (-4 to -8 MB), a stripped Godot template (-4 to -8 MB),
@@ -272,4 +273,15 @@ cast, not the code, decides when this is needed.
 
 ## 8. CI numbers
 
-Filled in after the run on `agent/godot-sizediet` (see the report in `handoff.md`).
+Run 45381255694 on `agent/godot-sizediet` (head 7751608), jobs test, android and android-smoke
+green; the smoke APK still boots on the emulator.
+
+| APK | MB |
+|---|---|
+| `chennai-open-world.apk`, arm64-v8a, release export, signed (the phone APK, budgeted) | **115.13** |
+| `chennai-open-world-smoke.apk`, x86_64, debug export (emulator only) | 119.73 |
+| Budget (`APK_BUDGET_MB`) | 260 |
+| Before this work, same base, built locally | 162.68 |
+
+The size step printed "APK size: 115.13 MB (budget 260 MB)" and wrote the table and the biggest items
+to the job summary.

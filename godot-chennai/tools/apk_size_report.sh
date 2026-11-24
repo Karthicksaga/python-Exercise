@@ -25,4 +25,4 @@ echo "$LIST" | awk '{
 } END { for (k in s) printf "%9.2f %9.2f %6d  %s\n", s[k] / 1e6, u[k] / 1e6, c[k], k }' | sort -rn
 echo
 echo "== $TOP biggest entries (stored MB, unpacked MB)"
-{ echo "$LIST" | sort -k2,2 -rn | head -n "$TOP" || true; } | awk '{ printf "%9.2f %9.2f  %s\n", $2 / 1e6, $1 / 1e6, $3 }'
+{ echo "$LIST" | sort -k2,2 -rn 2>/dev/null | head -n "$TOP" || true; } | awk '{ printf "%9.2f %9.2f  %s\n", $2 / 1e6, $1 / 1e6, $3 }'

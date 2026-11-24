@@ -672,6 +672,5 @@ repository, the sync check is green). CI budget step (`APK_BUDGET_MB: 260`) and
 - Non-resource data (`.bin`, `.json`) only ships if `include_filter` lists it: a new data folder
   needs a pattern in both presets.
 
-**Weak or not done.** Local and CI sizes differ by about 3 %; the CI figures are in
-`docs/app-size.md` section 8 (once the run finished). No `.aab`, no asset packs, no custom
+**Weak or not done.** CI: phone APK 115.13 MB, smoke APK 119.73 MB (run 45381255694, all green). No `.aab`, no asset packs, no custom
 template. Generated LODs, tangents and the world tile format were measured, not changed.
