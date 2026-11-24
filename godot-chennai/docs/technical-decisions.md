@@ -1710,12 +1710,3 @@ and no Commons reference is listed (their titles name the business). Heights are
 `tests/tools/city_shot.gd --no-landmarks` builds the same city without landmark models (OSM
 buildings in place); `--frames=N` prints average and worst frame time over N rendered frames.
 Numbers in `handoff.md`.
-
-### G-205: Malls are generic entries with a research-only name field (TD-18)
-`landmarks_shortlist.json` holds 16 shopping complexes (kind `mall`, tier B), found by scanning the
-extract for `shop=mall` and for `building=retail|commercial` of 8,000 m2 or more or five levels or
-more. `names.en` is "Shopping complex, <area>", the sign is `sign` = `வணிக வளாகம் / SHOPPING COMPLEX`,
-`osm.osm_name` is null, and the OSM name sits only in `research_name` (marked research only; a test
-keeps it out of every other field). Also added: Sowcarpet and Flower Bazaar, Marina Beach Market.
-
-
