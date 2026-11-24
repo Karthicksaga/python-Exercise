@@ -653,7 +653,7 @@ The Three.js version used separate `_lod1.glb` files; the manifest records mesh 
 ### G-11: Clips are baked per person in Blender, not retargeted at run time
 idle, walk and run came from the Three.js game's `locomotion.glb` (Mixamo, T-pose rest); since
 G-100 they come from a CC0 library (Rigify rest, any rest works: the source's own rest rotation
-is divided out). They are retargeted onto each person's own MPFB A-pose skeleton in
+is divided out; G-104 for how they are eased). They are retargeted onto each person's own MPFB A-pose skeleton in
 `tools/blender/cast_animation.py`, then exported with the person. Method: spine, neck, head and
 legs take the source's world-space rotation away from its rest onto the target's own rest (both
 rest upright); shoulders, arms, hands and fingers are first aligned with a **full frame** (bone
@@ -733,29 +733,82 @@ glTF +Z. Clips from elsewhere must be retargeted to this rest (or baked by the B
 ### G-100: idle, walk and run are CC0 (Quaternius' Universal Animation Library), not Mixamo
 **Owner, 24 Nov 2026: the whole game must be open.** The Mixamo clips (Adobe's terms) are
 replaced everywhere by three clips of Quaternius' **Universal Animation Library, Standard**,
-CC0 1.0 (the pack's `License.txt`; OpenGameArt lists it as CC0, uploaded by its author):
-`Idle_Loop` → idle, `Walk_Loop` → walk, `Jog_Fwd_Loop` → run. sit and talk stay our own (CC0).
+CC0 1.0 (the pack's `License.txt`; OpenGameArt lists it as CC0, author quaternius):
+`Idle_Loop` → idle, `Walk_Formal_Loop` → walk, `Jog_Fwd_Loop` → run. sit and talk stay our own
+(CC0). Only this one clip set is used; its licence evidence is in `assets/LICENSES.md`.
 - **The cast:** `cast_animation.py` reads the library's Godot GLB (Rigify `DEF-*` bones renamed
   to our `mixamo` names, `UAL_BONES`), divides out its rest rotations, and keeps every earlier fix
-  (full hand frames, arms in, upright spine and level head, relaxed fingers, foot-only sole
-  planting, loops). Two new eases for this library: the idle's bent-knee "ready" stance is taken
-  75% back towards the rest pose (legs), and the idle's ~17° wrist flex half way back.
+  (full hand frames and each finger joint, arms in, upright spine and level head, relaxed
+  fingers, foot-only sole planting, loops). Changes for this library are G-104.
 - **The player:** `assets/animations/locomotion.glb` is no longer copied from the Three.js game
   (removed from `sync_from_threejs.py`); `tools/blender/characters.py --locomotion` writes it: a
-  skin-less MPFB `mixamo` skeleton (an average adult man of the cast) carrying the same baked
-  clips under the same names, without the cast's arm turn-in (the player module settles arms
-  itself). `LocomotionClips`/`Retarget` read it unchanged.
+  skin-less MPFB `mixamo` skeleton (`it-professional-m`, an average adult man of the cast)
+  carrying the same baked clips under the same names, without the cast's fixed arm turn-in (the
+  player module settles arms itself). `LocomotionClips`/`Retarget` read it unchanged.
 - **Not committed:** the library itself; rebuilding needs `universal_animation_librarystandard.zip`
   from opengameart.org (hash in `assets/LICENSES.md`), its Godot GLB at `$UAL_GLB` or
   `/opt/tools/ual/AnimationLibrary_Godot_Standard.glb`.
-- **Test:** `tests/unit/test_asset_licences.gd` fails if any licence row, manifest, text file or
-  glTF under `assets/` names Mixamo.
 - **Clip speed fixed on the way:** the Blender scene ran at its default 24 fps while keys were
-  placed one per 1/30 s, so every baked clip (before this change too) played 25% slow; the
-  scene is now set to 30 fps before baking.
-- **Quality:** the library is game mocap-style animation of good quality but a different style:
-  a jog rather than a run (deeper knee bend, the body lower), a livelier walk. See the report in
-  `docs/handoff.md` (Cast) for the comparison.
+  placed one per 1/30 s, so every baked clip (before this change too) played 25% slow; the scene
+  now runs at the bake rate (G-103).
+
+### G-101: The licence test recognises Mixamo motion, not only the word
+`tests/unit/test_asset_licences.gd` fails if any licence row, manifest, text file or glTF JSON
+under `assets/` names Mixamo, **and** if any idle, walk or run in any GLB under `assets/` moves
+like the Mixamo clips. `tests/support/gait_fingerprint.gd` reduces a clip to joint angles on joint
+positions only (knee flexion and thigh pitch per leg, elbow flexion per arm, 24 phases of the
+loop), so rest poses, bone names and renaming do not matter, and compares at the best phase shift
+and either foot first. The reference is the old `locomotion.glb`'s idle, walk and run as
+fingerprints (numbers, not the clips). Measured: the Mixamo-era cast, retargeted, eased and
+re-baked, sat 2.1-5.9° from the reference; the CC0 clips sit 10° and more away (the report in
+`docs/handoff.md` has today's closest value); the limit is 7°. `tests/tools/gait_fingerprints.gd`
+prints fingerprints and distances for any GLB files (how the limit was chosen).
+
+### G-102: Planting on what the game skins
+Two faults kept soles off the ground, found with the jog (its flight phase and landings):
+- **Loose vertices.** Deleting the skin hidden under clothes leaves vertices with no face;
+  Blender's sole sampler planted on them, the glTF exporter drops them, so in the run the real
+  sandal hung 3.6 cm up for 0.1 s twice a loop. The sampler now takes only vertices of faces,
+  with the four largest weights normalised as the exporter writes them.
+- **Run-time candidates.** `sole_plant.gd` took only vertices with one foot bone at ≥ 0.5 weight,
+  missing the ball of the foot (shared half and half by the foot and toe bones, the lowest point
+  at toe-off), and subsampled the rest-lowest vertices. It now counts foot and toe weights
+  together and starts from each foot part's support points (extreme vertex in 25 directions
+  round straight down), then fills the 96 points with the rest-lowest. Worst blend error over the
+  cast: 0.014 → 0.004 m (the Mixamo-era cast: 0.010 m).
+
+### G-103: Clips keyed from 0 s, the run at 60 fps, imported at 60 fps
+- Keys now start at scene frame 0: from frame 1 every glTF clip started at 1/30 s and Godot held
+  its first pose an extra frame each loop (a small hitch; loop lengths were 1/30 s long).
+- The run's landings drop the hips ~6 cm in 1/30 s, so linear keys at 30 fps sank a sole 2.5 cm
+  between two planted frames: the run is baked at 60 fps (`CLIP_FPS`), the scene runs at 60 fps
+  with linear keys (the optimiser's resample drops the redundant samples of the 30 fps clips).
+- Godot re-bakes glTF animation at the import option `animation/fps` (30 by default), which
+  undid the 60 fps keys; `tools/blender/people_import.py` sets 60 for every person and for
+  `locomotion.glb`. Cost: the imported scene of a person grows ~3% (750 → 774 KB, Godot's
+  optimiser removes linear keys); the GLBs did not grow.
+
+### G-104: Making the CC0 clips read as Chennai pedestrians
+Review renders showed the library's style does not fit as it is; each change keeps the tests:
+- **idle:** its bent-knee "ready" stance is taken 75% back towards rest (legs), its ~17° wrist
+  flex half way back, thighs 4° in.
+- **walk:** `Walk_Formal_Loop`, not `Walk_Loop`: the plain walk holds both hands bent up in front
+  of the belly (it read as holding the stomach, also with the elbows eased 60% straighter).
+- **run:** the jog crouches into a long lunge that stretched sarees, veshtis and lungis into
+  sheets: 35% of its leg motion is taken back towards rest, the arms are turned 12° in and an
+  upper arm stands at most 22° out (`ARM_OUT_MAX`; for the player's rig too).
+- **sit:** built from the rest legs, not the idle's stance, so it is the same seat whatever idle
+  is used (seat heights within 2.2 cm of the Mixamo era), and a seated wrist bends at most 36°
+  (the hand is turned towards the forearm's line past that); before, 46-51° failed the test.
+
+### G-105: Gait clip speeds in the manifest; the player's walk retuned
+`people.json` gains `clipSpeedsMps` per person: the speed the body must move at playback rate 1
+for the planted feet not to slide (two steps per loop cover twice each foot's range relative to
+the hips), measured on the baked clip. Spawners should play `walk`/`run` at `speed /
+clipSpeedsMps`. The player's `HumanFigure.WALK_CLIP_SPEED` goes from 1.5 (Mixamo) to 1.1 m/s
+(the CC0 walk at the player's 1.75 m); `RUN_CLIP_SPEED` stays 4.6 for a believable cadence at
+6.2 m/s (the run's natural speed would need a frantic rate), so the run's feet slide a little,
+as before.
 
 ## G-70: A custom ray-cast vehicle on a Jolt `RigidBody3D`, not `VehicleBody3D`
 **Decision (23 Nov 2026, vehicles).** `RaycastVehicle` (`src/physics/raycast_vehicle.gd`) is a

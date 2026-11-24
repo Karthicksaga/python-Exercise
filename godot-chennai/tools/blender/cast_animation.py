@@ -32,10 +32,20 @@ import numpy as np
 from mathutils import Matrix, Quaternion, Vector
 
 FPS = 30
+# Keys per second by clip. The run lands from its flight phase with the hips dropping ~6 cm in
+# 1/30 s, so linear keys at 30 fps sank a sole 2.5 cm between two planted frames: it is keyed
+# at 60 fps. The scene runs at SCENE_FPS and the exporter samples every scene frame; the 30 fps
+# clips are keyed every second frame with linear interpolation, and the optimiser's resample
+# drops the in-between samples again.
+CLIP_FPS = {"run": 60}
+SCENE_FPS = 60
 CLIPS = ("idle", "walk", "run", "sit", "talk")
 ARM_IN_DEG = 9.0
 # The 9 degrees of the lesson, a little more while standing (the idle's arms hung wide).
-ARM_IN_BY_CLIP = {"idle": 11.0, "talk": 11.0, "walk": 7.0, "run": 5.0}
+ARM_IN_BY_CLIP = {"idle": 11.0, "talk": 11.0, "walk": 7.0, "run": 12.0}
+# The jog swings the upper arms out to ~38° at each step (elbows winged): at most this far out
+# from straight down in the body's front plane, degrees (G-104).
+ARM_OUT_MAX = {"run": 22.0}
 # How much of the clips' forward lean of the upper body to take out, and of the head's pitch.
 SPINE_UPRIGHT = {"idle": 0.8, "talk": 0.8, "walk": 0.7, "run": 0.35}
 NECK_LEVEL = 0.7
@@ -94,7 +104,9 @@ for _s, _x in (("Left", "L"), ("Right", "R")):
             UAL_BONES[f"DEF-f_{_g}.0{_k}.{_x}"] = f"{_s}Hand{_f}{_k}"
     for _k in (1, 2, 3):
         UAL_BONES[f"DEF-thumb.0{_k}.{_x}"] = f"{_s}HandThumb{_k}"
-UAL_CLIPS = {"idle": "Idle_Loop", "walk": "Walk_Loop", "run": "Jog_Fwd_Loop"}
+# The walk is the library's "formal" walk: its plain Walk_Loop holds both hands bent up in front
+# of the belly, which read as holding the stomach (review renders, 24 Nov 2026; G-104).
+UAL_CLIPS = {"idle": "Idle_Loop", "walk": "Walk_Formal_Loop", "run": "Jog_Fwd_Loop"}
 
 
 class SourceClips:
@@ -251,6 +263,10 @@ class TargetRig:
                 return self.tail[cand]
         return self.tail.get(base)
 
+    def direction_local(self, name):
+        """The bone's joint-to-child direction in its own rest frame."""
+        return (self.rest_rot[name].transposed() @ self.direction(name)).normalized()
+
     def direction(self, name):
         child = DIRECTION_CHILD.get(name)
         if child:
@@ -353,13 +369,23 @@ class SoleSampler:
         world = body.matrix_world
         names = {g.index: g.name.replace(P, "") for g in body.vertex_groups}
         pts = []
+        # Only vertices of faces: deleting the skin hidden under clothes leaves loose vertices,
+        # which the glTF exporter drops; planting on one held the real sole 3-4 cm up (24 Nov 2026).
+        used = {i for poly in body.data.polygons for i in poly.vertices}
         for v in body.data.vertices:
+            if v.index not in used:
+                continue
             p = world @ v.co
             if p.z > 0.06:
                 continue
             ws = [(names[g.group], g.weight) for g in v.groups if g.weight > 1e-4 and names.get(g.group) in tgt.rest]
             if not ws:
                 continue
+            # As the exporter writes them (and the game skins them): the four largest weights,
+            # normalised (Blender's own groups need not sum to 1).
+            ws = sorted(ws, key=lambda nw: -nw[1])[:4]
+            total = sum(w for _, w in ws)
+            ws = [(nm, w / total) for nm, w in ws]
             # Soles and shoes only: a hem or trouser cuff near the floor must not lift the feet.
             if sum(w for nm, w in ws if nm.endswith("Foot") or nm.endswith("ToeBase")) < 0.5:
                 continue
@@ -398,7 +424,9 @@ def solve_frame(tgt, sampler, local, extra_hips=Vector((0, 0, 0))):
 LEGS_IN_DEG = {"idle": 4.0}
 # The CC0 idle stands in a game "ready" stance (knees bent 21-27°, thighs 23° off vertical): most
 # of the legs' motion is taken back towards the rest pose so people stand upright.
-LEGS_TO_REST = {"idle": 0.75}
+# The jog crouches into a long lunge (knee lifted high, the body low), which stretched sarees,
+# veshtis and lungis into sheets: a third of its leg motion is taken back too (G-104).
+LEGS_TO_REST = {"idle": 0.75, "run": 0.35}
 LEG_BONES = {f"{s}{b}" for s in ("Left", "Right") for b in ("UpLeg", "Leg", "Foot", "ToeBase")}
 # Seated hands: the wrist's bend between the forearm and the hand, at most (degrees).
 SIT_WRIST_MAX_DEG = 36.0
@@ -424,6 +452,12 @@ def retarget_pose(src, tgt, align, clip, t):
     for side, sign in (("Left", 1), ("Right", -1)):
         turn_subtree(tgt, local, world, side + "Arm", Vector((0, 1, 0)), sign * arm_in)
         world = world_from_locals(tgt, local)
+    if ARM_OUT_MAX.get(clip) is not None:
+        for side, sign in (("Left", 1), ("Right", -1)):
+            out = arm_out(tgt, world, side, sign)
+            if out > ARM_OUT_MAX[clip]:
+                turn_subtree(tgt, local, world, side + "Arm", Vector((0, 1, 0)), sign * (out - ARM_OUT_MAX[clip]))
+                world = world_from_locals(tgt, local)
     if WRIST_TO_REST.get(clip):
         for side in ("Left", "Right"):
             nm = side + "Hand"
@@ -438,6 +472,13 @@ def retarget_pose(src, tgt, align, clip, t):
             world = world_from_locals(tgt, local)
             turn_subtree(tgt, local, world, side + "Foot", Vector((0, 1, 0)), -sign * legs_in)
     return local
+
+
+def arm_out(tgt, world, side, sign):
+    """Degrees an upper arm stands out from straight down, in the body's front plane (the
+    model's left is +X in Blender)."""
+    d = world[side + "Arm"] @ tgt.direction_local(side + "Arm")
+    return math.degrees(math.atan2(d.x * sign, -d.z))
 
 
 def pitch_forward(direction):
@@ -550,8 +591,8 @@ def hand_on_thigh(tgt, local, side, sign):
     aim_bone(tgt, local, side + "Hand", side + "HandMiddle1", wrist + want)
 
 
-def frames_for(duration):
-    return max(2, int(round(duration * FPS)))
+def frames_for(duration, fps=FPS):
+    return max(2, int(round(duration * fps)))
 
 
 def make_clips(src, tgt, body):
@@ -562,13 +603,14 @@ def make_clips(src, tgt, body):
     clips = {}
     for clip in ("idle", "walk", "run"):
         dur = src.duration(clip)
-        n = frames_for(dur)
+        fps = CLIP_FPS.get(clip, FPS)
+        n = frames_for(dur, fps)
         frames = []
         for k in range(n + 1):
             t = dur * k / n
             local = retarget_pose(src, tgt, align, clip, min(t, dur) if k < n else 0.0)
             mats, off = solve_frame(tgt, sampler, local)
-            frames.append((k / FPS, mats, off))
+            frames.append((k / fps, mats, off))
         clips[clip] = frames
 
     # ---- talk: the idle twice over (5 s), gestures and nods laid over it.
@@ -671,7 +713,7 @@ def bake_to_rig(rig, tgt, clips):
     import bpy
     # Keys are one per 1/FPS s: the scene must run at FPS too (Blender's default is 24 fps, which
     # had stretched every clip by a quarter until 24 Nov 2026).
-    bpy.context.scene.render.fps = FPS
+    bpy.context.scene.render.fps = SCENE_FPS
     bpy.context.scene.render.fps_base = 1.0
     rig.animation_data_create()
     for pb in rig.pose.bones:
@@ -680,23 +722,46 @@ def bake_to_rig(rig, tgt, clips):
         frames = clips[clip]
         action = bpy.data.actions.new(clip)
         rig.animation_data.action = action
-        for k, (_, mats, _) in enumerate(frames):
+        # Keys from scene frame 0, so each glTF clip starts at 0 s (keys from frame 1 made the
+        # clips start at 1/30 s, and Godot held the first pose one frame longer every loop).
+        prev = None
+        for t, mats, _ in frames:
+            frame = int(round(t * SCENE_FPS))
             basis = basis_matrices(tgt, mats)
             for nm in tgt.order:
                 pb = rig.pose.bones[P + nm]
                 loc, rot, _ = basis[nm].decompose()
+                if prev is not None and prev[nm][1].dot(rot) < 0:
+                    rot.negate()  # same hemisphere as the last key, so linear keys never flip
+                basis[nm] = (loc, rot)
                 pb.rotation_quaternion = rot
-                pb.keyframe_insert("rotation_quaternion", frame=k + 1, group=nm)
+                pb.keyframe_insert("rotation_quaternion", frame=frame, group=nm)
                 if tgt.parent[nm] is None:
                     pb.location = loc
-                    pb.keyframe_insert("location", frame=k + 1, group=nm)
+                    pb.keyframe_insert("location", frame=frame, group=nm)
+            prev = basis
+        for fc in action_fcurves(action):
+            for kp in fc.keyframe_points:
+                kp.interpolation = "LINEAR"
         track = rig.animation_data.nla_tracks.new()
         track.name = clip
-        strip = track.strips.new(clip, 1, action)
+        strip = track.strips.new(clip, 0, action)
         strip.name = clip
         rig.animation_data.action = None
     for pb in rig.pose.bones:
         pb.matrix_basis = Matrix.Identity(4)
+
+
+def action_fcurves(action):
+    """F-curves of an action: Blender 5 keeps them in layered channelbags, older ones on the action."""
+    if hasattr(action, "fcurves"):
+        return list(action.fcurves)
+    out = []
+    for layer in action.layers:
+        for strip in layer.strips:
+            for bag in strip.channelbags:
+                out.extend(bag.fcurves)
+    return out
 
 
 def seat_height(tgt, clips):

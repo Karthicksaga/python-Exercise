@@ -44,13 +44,14 @@ Clips (30 fps, all loops, the last frame equals the first):
 | Clip | Length | Source |
 |---|---|---|
 | `idle` | 2.5 s | `Idle_Loop` of Quaternius' Universal Animation Library (CC0), retargeted; legs and wrists eased towards rest (its stance is a bent-knee "ready" pose) |
-| `walk` | 1.33 s | `Walk_Loop` of the same library (CC0), retargeted (in place) |
-| `run` | 0.93 s | `Jog_Fwd_Loop` of the same library (CC0), retargeted (in place; soles planted, so no flight phase) |
+| `walk` | 1.33 s | `Walk_Formal_Loop` of the same library (CC0), retargeted (in place; arms hang at the sides) |
+| `run` | 0.93 s | `Jog_Fwd_Loop` of the same library (CC0), retargeted (in place; soles planted, so no flight phase; a third of its leg motion and its widest arm swing taken back, G-104; keyed at 60 fps) |
 | `sit` | 4 s | authored: seated on a seat at knee height, hands towards the thighs, breathing |
 | `talk` | 5 s | authored: idle with right-hand beats, left hand, nods and a head turn |
 
-The walk and run are in place: the game moves the body and should scale the playback speed with
-the person's leg length (`heightM`), as the Three.js game did.
+The walk and run are in place: the game moves the body and plays `walk`/`run` at
+`speed / clipSpeedsMps[clip]` (manifest), the speed at which that person's planted feet do not
+slide (G-105). All five clips import at 60 fps (`animation/fps` in the `.import` files, G-103).
 
 ## Manifest (`assets/people/people.json`)
 
@@ -61,7 +62,7 @@ the person's leg length (`heightM`), as the Three.js game did.
     "outfit": "white short-sleeved tunic and white trousers (no badge), …",
     "board": "docs/concept/characters/phase1-20-characters.webp", "figure": 16, "figureLabel": "Nurse",
     "alsoFigures": [{ "board": "…phase2-60-characters.webp", "figure": "healthcare-2", "figureLabel": "Nurse" }],
-    "note": "", "heightM": 1.6, "seatHeightM": 0.4,
+    "note": "", "heightM": 1.6, "seatHeightM": 0.4, "clipSpeedsMps": {"walk": 0.93, "run": 2.0},
     "lods": [{ "mesh": "Body", "triangles": 9697, "until": 30.0 }, { "mesh": "Body_LOD1", "triangles": 3389, "from": 30.0 }],
     "texture": 512, "animations": ["idle", "walk", "run", "sit", "talk"],
     "licence": "…", "assets": ["skins/young_african_female", "…"] } ] }
@@ -81,6 +82,7 @@ the person's leg length (`heightM`), as the Three.js game did.
   number printed on the board; phase 2: `<group>-<position>` in reading order). `alsoFigures`:
   other figures the person also plays. `note`: what differs from the board on purpose.
 - `heightM`: top of the head above the soles. `seatHeightM`: seat height for the `sit` clip.
+  `clipSpeedsMps`: ground speed of `walk` and `run` at playback rate 1 (feet planted, no slide).
 - `assets`: the MakeHuman assets the person is made from (licences in `assets/LICENSES.md`).
 
 ## The cast
@@ -259,5 +261,7 @@ To change a person, edit `cast_people.py`; new garments go in the GARMENT BUILDE
   cricket bat, tiffin carrier). No glasses (MakeHuman has none under CC0 in these packs).
 - Sleeve hems are the cut edge of the MakeHuman shirt (slightly ragged up close).
 - The run is planted, so it has no flight phase.
-- The run is the library's jog: knees bend deeper and the body sits lower than the Mixamo run
-  the cast used before (G-100). Everything in the game is now CC0 or our own.
+- The run is the library's jog, eased (G-104): from a three-quarter view the bent elbows still
+  read wide, and wrapped cloth (saree, veshti, lungi) still flares forward at full stride.
+- The walk is the library's formal walk: a small arm swing with the hands near the hips.
+- Everything in the game is now CC0 or our own (G-100, tested by G-101).

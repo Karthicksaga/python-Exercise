@@ -59,6 +59,12 @@ func test_manifest() -> bool:
 			for role: Variant in entry.get("roles", []) as Array:
 				check(SAFE_CHILD_ROLES.has(String(role)), "%s (child) has only safe roles, not %s" % [id, role])
 		check((entry.get("animations", []) as Array) == Array(CLIPS), "%s lists the five clips" % id)
+		# Ground speeds of the gait clips (G-105): a walk of a person's own size, a faster run.
+		var speeds: Dictionary = entry.get("clipSpeedsMps", {})
+		var walk_speed := float(speeds.get("walk", 0.0))
+		var run_speed := float(speeds.get("run", 0.0))
+		check(walk_speed > 0.4 and walk_speed < 1.8 and run_speed > walk_speed * 1.3 and run_speed < 5.0,
+			"%s clip speeds walk %.2f, run %.2f m/s" % [id, walk_speed, run_speed])
 		var board := String(entry.get("board", ""))
 		if not per_board.has(board):
 			per_board[board] = {"male": 0, "female": 0}
