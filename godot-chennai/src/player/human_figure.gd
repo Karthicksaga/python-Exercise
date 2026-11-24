@@ -1,6 +1,6 @@
 class_name HumanFigure
 extends Node3D
-## A walking, running person drawn from a MakeHuman (MPFB) model with the retargeted Mixamo
+## A walking, running person drawn from a MakeHuman (MPFB) model with the retargeted CC0
 ## locomotion clips; port of the Three.js `HumanFigure` for the player (decisions G-61, G-62).
 ## The node sits at the figure's feet, facing -Z like every Node3D (the model is turned round).
 ##
@@ -16,8 +16,13 @@ extends Node3D
 
 signal model_loaded
 
-## Gait clip speeds at a playback rate of 1 (m/s), and where the run takes over (Three.js values).
-const WALK_CLIP_SPEED := 1.5
+## Gait clip speeds at a playback rate of 1 (m/s), and where the run takes over. The CC0 walk
+## (G-100) covers about 1.09 m/s at the player's size with planted feet (`clipSpeedsMps` in
+## people.json, scaled to 1.75 m): 1.1 keeps the feet from sliding and gives ~131 steps a minute
+## at 1.6 m/s (the Mixamo walk was 1.5). The run keeps the Three.js value: its natural ~1.95 m/s
+## would need a frantic rate at 6.2 m/s, so it plays for a believable cadence (~174 steps a
+## minute) and the feet slide, as before (decision G-105).
+const WALK_CLIP_SPEED := 1.1
 const RUN_CLIP_SPEED := 4.6
 const RUN_FROM := 3.2
 const IDLE_BELOW := 0.25

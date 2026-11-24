@@ -360,6 +360,29 @@ Decisions G-50…G-59. Tests: `tests/unit/test_city_meshes.gd`, `test_city_layou
 - Physics interpolation off (G-59). Kerbs are not solid, so the player's step-up is not
   exercised by the city.
 
+### 24 Nov 2026, cast agent: CC0 locomotion (branch `agent/godot-cc0-anim`)
+**Done.** idle/walk/run come from Quaternius' Universal Animation Library (Standard, CC0 1.0):
+`Idle_Loop`, `Walk_Formal_Loop`, `Jog_Fwd_Loop`; all 70 people and the player's clip rig
+`assets/animations/locomotion.glb` (written by `tools/blender/characters.py --locomotion`, same
+clip names) rebuilt; `sync_from_threejs.py` no longer copies the old Mixamo file. Decisions
+G-100…G-105 (G-106…G-109 free).
+- Download: `https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip`
+  (opengameart.org is reachable from the cloud container; quaternius.com and itch.io are not).
+  Licence evidence in `assets/LICENSES.md` (hash, page, `License.txt`).
+- `tests/unit/test_asset_licences.gd`: no asset names Mixamo, and no gait clip moves like the
+  Mixamo clips (fingerprints, G-101; closest today 14.0°, limit 7°).
+- Measured on the imported cast (Mixamo era in brackets): worst sole in any clip 0.002 m (0.024),
+  wrist 36.0° (43.6), finger joint 33.5° (33.5), gait blends 0.003 m with planting (0.010) and
+  0.094 m without (0.077); the player: soles within 0.0005 m, joint directions within 0.58° of
+  the clips. Budgets unchanged (LOD0 7,200–9,971, LOD1 3,340–3,391), 55.5 MB of GLB (57.7).
+- For Traffic: play `walk`/`run` at `speed / clipSpeedsMps[clip]` from `people.json` (G-105).
+  Scene paths and clip names are unchanged. Clips now import at 60 fps (G-103).
+- Weak: the run is a softened jog; from a three-quarter view the bent elbows read wide and
+  sarees, veshtis and lungis still flare forward at full stride. The walk's arm swing is small.
+  The run's feet slide at the player's 6.2 m/s (as before). Only seen on llvmpipe
+  (Compatibility), not on a phone. `test_city_streaming.gd::test_main_thread_budget_under_cpu_load`
+  fails in full runs here on `feat/godot-chennai` too (load-sensitive; passes alone).
+
 ## Missions (G-130 to G-139, agent/godot-missions), 24 Nov 2026
 - **Playable:** `MissionsLayer` (`src/app/missions_layer/`, added to `Main` after the player) steps
   `MissionSession` (`src/missions/mission_session.gd`, node-free: stages, jobs, stories, life places,

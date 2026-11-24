@@ -60,9 +60,17 @@ ONLY = set(argv[argv.index("--only") + 1].split(",")) if "--only" in argv else N
 SET = argv[argv.index("--set") + 1] if "--set" in argv else None  # phase1 | phase2 (default: all)
 PREVIEW = argv[argv.index("--preview") + 1] if "--preview" in argv else None
 NO_ANIM = "--no-anim" in argv
+# `--locomotion <file.glb>`: instead of the cast, write the clip rig the player module retargets
+# at run time (assets/animations/locomotion.glb): a skin-less MPFB `mixamo` skeleton with the
+# baked idle, walk and run (and sit, talk), all CC0 (decision G-100).
+LOCOMOTION_OUT = os.path.abspath(argv[argv.index("--locomotion") + 1]) if "--locomotion" in argv else None
+LOCOMOTION_RIG = "it-professional-m"  # an average adult man; any cast member's rig would do
 # Blender's own export (PNG textures) goes here; tools/blender/optimize_people.py writes the game files.
 RAW = os.path.abspath(argv[argv.index("--raw") + 1]) if "--raw" in argv else os.path.join(tempfile.gettempdir(), "chennai-people-raw")
-LOCOMOTION = os.path.abspath(os.path.join(HERE, "..", "..", "..", "chennai-open-world", "assets", "animations", "locomotion.glb"))
+# idle/walk/run source: Quaternius' Universal Animation Library, Standard (CC0 1.0), the Godot
+# GLB from universal_animation_librarystandard.zip (opengameart.org; see assets/LICENSES.md).
+# Not committed: set UAL_GLB or unpack it to /opt/tools/ual.
+LOCOMOTION = os.environ.get("UAL_GLB", "/opt/tools/ual/AnimationLibrary_Godot_Standard.glb")
 
 MPFB = "bl_ext.user_default.mpfb"
 LUMA = np.array([0.2126, 0.7152, 0.0722], np.float32)
@@ -2065,6 +2073,7 @@ def manifest_entry(spec, stats):
         "note": spec["note"],
         "heightM": stats["heightM"],
         "seatHeightM": stats.get("seatHeightM"),
+        "clipSpeedsMps": stats.get("clipSpeedsMps"),
         "lods": [
             {"mesh": "Body", "triangles": stats["triangles"], "until": 30.0},
             {"mesh": "Body_LOD1", "triangles": stats["lod1Triangles"], "from": 30.0},
@@ -2076,8 +2085,8 @@ def manifest_entry(spec, stats):
     }
 
 
-LICENCE_NOTE = ("Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; "
-                "see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)")
+LICENCE_NOTE = ("Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run "
+                "retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md")
 
 
 def used_assets(spec):
@@ -2107,8 +2116,11 @@ def main():
     if os.path.exists(manifest_path):
         with open(manifest_path) as f:
             entries = {e["id"]: e for e in json.load(f)["people"]}
-    src = cast_animation.SourceClips(LOCOMOTION)
+    src = cast_animation.SourceClips(LOCOMOTION, cast_animation.UAL_BONES, cast_animation.UAL_CLIPS)
     raw_dir = RAW
+    if LOCOMOTION_OUT:
+        export_locomotion(human_service, src)
+        return
     with tempfile.TemporaryDirectory() as workdir:
         for spec in selected_cast():
             rig, body, lod1, stats = build(spec, human_service, workdir)
@@ -2117,6 +2129,7 @@ def main():
                 clips = cast_animation.make_clips(src, tgt, body)
                 cast_animation.bake_to_rig(rig, tgt, clips)
                 stats["seatHeightM"] = round(cast_animation.seat_height(tgt, clips) - 0.1, 3)
+                stats["clipSpeedsMps"] = {c: round(cast_animation.ground_speed(clips, c), 3) for c in ("walk", "run")}
             stats["assets"] = used_assets(spec)
             export(rig, [body, lod1], os.path.join(raw_dir, spec["file"]))
             entries[spec["id"]] = manifest_entry(spec, stats)
@@ -2124,6 +2137,27 @@ def main():
             if PREVIEW:
                 os.makedirs(PREVIEW, exist_ok=True)
                 preview(rig, body, os.path.join(PREVIEW, spec["id"]), [lod1])
+
+
+def export_locomotion(human_service, src):
+    spec = next(s for s in CAST if s["id"] == LOCOMOTION_RIG)
+    with tempfile.TemporaryDirectory() as workdir:
+        rig, body, lod1, _ = build(spec, human_service, workdir)
+        tgt = cast_animation.TargetRig(rig)
+        cast_animation.ARM_IN_SCALE = 0.0  # the player module settles the arms itself
+        cast_animation.bake_to_rig(rig, tgt, cast_animation.make_clips(src, tgt, body))
+        for obj in (body, lod1):
+            bpy.data.objects.remove(obj, do_unlink=True)
+        os.makedirs(os.path.dirname(LOCOMOTION_OUT), exist_ok=True)
+        bpy.ops.object.select_all(action="DESELECT")
+        rig.select_set(True)
+        bpy.context.view_layer.objects.active = rig
+        bpy.ops.export_scene.gltf(filepath=LOCOMOTION_OUT, export_format="GLB", use_selection=True, export_yup=True,
+                                  export_skins=False, export_morph=False, export_animations=True,
+                                  export_animation_mode="NLA_TRACKS", export_force_sampling=True,
+                                  export_optimize_animation_size=True, export_frame_range=False,
+                                  export_materials="NONE", export_extras=False)
+    print("wrote", LOCOMOTION_OUT)
 
 
 def write_manifest(path, entries):

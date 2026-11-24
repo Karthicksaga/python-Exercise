@@ -1,6 +1,6 @@
 class_name Retarget
 extends RefCounted
-## Retargets clips recorded on one skeleton (the T-pose Mixamo rig of `locomotion.glb`) onto
+## Retargets clips recorded on one skeleton (the clip rig of `locomotion.glb`; any rest pose) onto
 ## another with the same bone names but different rest orientations (the A-pose MPFB rig of
 ## every MakeHuman character). Port of the Three.js `retarget.ts` + `plantSoles` (decision G-61).
 ##

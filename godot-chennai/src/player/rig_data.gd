@@ -2,7 +2,7 @@ class_name RigData
 extends RefCounted
 ## A skeleton as plain data (decision G-61): bone names, parents and rest transforms, read once
 ## on the main thread from a Skeleton3D (a character) or from a hierarchy of Node3D joints (the
-## Mixamo clip rig in `locomotion.glb`, which has no skin), so retargeting can run on a worker
+## clip rig in `locomotion.glb`, which has no skin), so retargeting can run on a worker
 ## thread without touching nodes.
 ##
 ## Bones are in parent-before-child order. "Model space" is the space of the imported scene's

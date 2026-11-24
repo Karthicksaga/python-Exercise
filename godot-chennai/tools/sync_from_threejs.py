@@ -68,14 +68,9 @@ SETS: tuple[Set, ...] = (
         "Original, made by `chennai-open-world/tools/blender/characters.py` with MPFB from MakeHuman assets",
         "CC0 MakeHuman assets; garment recolouring, painted moustache and sandals are original work",
     ),
-    Set(
-        "assets/animations",
-        ("locomotion.glb",),
-        "assets/animations",
-        "Idle, walk and run clips (Mixamo rig, T-pose)",
-        "Extracted from the three.js example `Xbot.glb` (Mixamo animations) with `chennai-open-world/scripts/extract-animations.py`",
-        "Mixamo animations may be used in games royalty-free under Adobe's terms; check them before a commercial release",
-    ),
+    # assets/animations/locomotion.glb is no longer copied from the Three.js game: the owner wants
+    # every asset open (24 Nov 2026), so the Godot version writes its own CC0 clip rig with
+    # tools/blender/characters.py --locomotion (decision G-100).
     Set(
         "assets/models/vehicles",
         ("*.glb",),
