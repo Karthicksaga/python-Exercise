@@ -70,6 +70,13 @@ class OsmFeatures:
     waterways: list[OsmLine] = field(default_factory=list)
     railways: list[OsmLine] = field(default_factory=list)
     spots: list[OsmPoint] = field(default_factory=list)
+    # Format 2.2 (`detail.bin`, G-190): street objects and signs (nodes), barriers, tree rows and
+    # platforms (lines), pitches, pools and platforms (polygons), `building:part` polygons. Kept
+    # apart so the 2.0 and 2.1 files stay byte for byte the same.
+    detail_points: list[OsmPoint] = field(default_factory=list)
+    detail_lines: list[OsmLine] = field(default_factory=list)
+    detail_polys: list[OsmPolygon] = field(default_factory=list)
+    parts: list[OsmPolygon] = field(default_factory=list)
 
 
 @dataclass
@@ -117,6 +124,8 @@ class Building:
     source: Ref = field(default_factory=lambda: Ref(DS_OSM_WAY, 0))
     merged: list[Ref] = field(default_factory=list)
     repaired: bool = False
+    # The OSM tags `detail.py` reads (colour, material, roof, amenity, names); not in 2.0 files.
+    tags: Tags = field(default_factory=dict)
 
 
 @dataclass
