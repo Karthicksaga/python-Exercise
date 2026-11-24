@@ -288,3 +288,14 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Blender kits: gopuram complex, colonial clock tower, station, tower, lighthouse; deterministic GLBs (G-183, G-184) | Done (mall kit not built) | `build_all.sh` builds twice and compares bytes; `test_models_built_from_the_current_spec` |
 | Kapaleeshwarar Temple, Ripon Building, Chennai Central, Chennai Egmore, Anna Nagar Tower, Chennai Lighthouse in the city (G-185) | Done (Compatibility screenshots, not on a phone) | `test_landmarks.gd`: outline within 2 m of OSM, height within 10 %, budgets, LODs, collision ray, placement and floating origin, worker loading, buildings left out, names |
 | Old `LandmarkMeshes`/`LandmarkProfiles` retired | Done | tower ported to the `tower` kit; full suite |
+
+## Building fusion: OSM + Overture + Google Open Buildings + Microsoft (branch `agent/godot-fusion`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Downloads for the world box (G-220) | Done: Overture 192 MB extract, Google 647 MB streamed (258 MB kept), Microsoft 73 MB | run by hand; pure helpers in pytest |
+| Fusion rules, measured thresholds 15 %/30 %, masks (G-222) | Done | `tools/geo/tests/test_fusion_multi.py` (fixture `fusion_small.json`) |
+| Height priority and validation (G-223) | Done; no independent heights in this box | `test_fusion_multi.py` |
+| `fusion.bin` format 2.3, provenance per building (G-221) | Done: 1,389,771 added, 23.4 MB | round trip and committed-world tests (`test_fusion_world.py`), `tests/unit/test_fusion.gd` |
+| Game: added buildings through the normal building path | Done (headless) | `test_fusion.gd` (no new draw calls, budgets, streaming of fusion-only squares) |
+| Credits on About, ATTRIBUTION.md, LICENSES.md (G-226) | Done | pytest + GDScript credit tests |
+| Screenshots before/after, main-thread measurement, APK size | Not done | — |
