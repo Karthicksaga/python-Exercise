@@ -100,6 +100,10 @@ func test_overlay_switches_and_log() -> bool:
 		perf.overlay._input(t)
 	assert_true(perf.overlay.visible and perf.settings.overlay, "a three-finger tap shows it")
 	await wait_frames(30)
+	var sw_button := perf.overlay.get_node(^"Root/Safe").find_child("Switches", true, false) as Button
+	var sw_rect := sw_button.get_global_rect()
+	assert_true(sw_rect.end.y <= 120.0, "SWITCHES sits in the top strip, away from the stick and buttons (%s)" % sw_rect)
+	assert_false(sw_rect.intersects(main.pause_menu.pause_button.get_global_rect()), "and clear of PAUSE")
 	var text := perf.overlay_text()
 	for part: String in ["FPS", "verdict", "draws", "AI step", "chunks", "High"]:
 		assert_contains(text, part, "overlay shows %s" % part)

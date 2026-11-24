@@ -297,3 +297,13 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Texture, audio and GLB size guards (G-241) | Done (nothing needed converting: already VRAM compressed and Ogg) | `test_asset_budget.gd` (3 tests) |
 | `tools/apk_size_report.sh` and the CI budget step (G-243) | Done | run on local APKs; CI job summary |
 | Forecast and the Play asset-pack plan | Written, not built | |
+
+## Performance on phones (G-250 to G-259, branch `agent/godot-perf`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Quality presets Low/Medium/High, auto-detect from GPU, memory, screen; saved; live (G-250…G-252) | Done (desktop) | `test_quality_settings.gd` (table, auto-detect rows, saving), `test_perf_wiring.gd::test_presets_apply_live` |
+| Performance overlay, verdict, perf log, pause-menu summary, three-finger tap (G-253) | Done (desktop) | `test_perf_wiring.gd::test_overlay_switches_and_log`, screenshots |
+| Feature switches, safe mode, measured cost per press (G-254) | Done (desktop) | `test_overlay_switches_and_log` |
+| Compatibility-renderer A/B APK (G-255) | In CI | workflow artifact `godot-chennai-apk-compat` |
+| Traffic/figure/vehicle/street-light cost fixes (G-256…G-259) | Done; measured on llvmpipe | `docs/performance.md` before/after tables |
+| Seen on the owner's phone | Not done | — |

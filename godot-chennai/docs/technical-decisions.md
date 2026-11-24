@@ -1757,3 +1757,89 @@ of sight once the player is seated, and the player's `Vehicle` is a plain node t
 never owns (freed only when parked more than `Carjacking.FORGET` m away). `Wanted` has no
 instance in the game yet, so `Carjacking.wanted` stays null and only `carjacked` is signalled;
 the fall clips come with the animation work (staggering is the fallback).
+
+## Performance on phones (G-250…G-259, branch `agent/godot-perf`, 24 Nov 2026)
+Measurements and the owner's instructions are in `docs/performance.md`.
+
+### G-250: One `QualitySettings` with three presets, High is the game as it was
+`src/game_engine/quality/quality_settings.gd`: Low / Medium / High as one table of values, saved
+in its own save-file section `chennai-quality-v1` (versioned, additive, like G-170), applied
+live. High keeps every value the game had before presets (resolution, MSAA 2x, 2048 shadows at
+40 m, 260 m streaming, 34/34 pools, six street lights, five physics catch-up steps), so tests
+and tools measure the same game; headless runs always start at High.
+
+### G-251: The default comes from the GPU name, the memory and the screen
+`QualitySettings.detect(gpu, memory, pixels)` is a pure table with a unit test: unknown and
+software GPUs, Adreno 610-639 (the Snapdragon 4/6 class, the owner's Adreno 613), Mali below
+G68 and PowerVR start at Low; Adreno 640s/700-729 and Mali-G68+ at Medium (Low on screens over
+3 Mpx); flagships at High; anything under 7 GiB of physical memory at Low (phones sold as 8 GB
+report about 7.3 GiB). A preset the player picks is kept and never re-detected.
+
+### G-252: `QualityApplier` applies the engine part; the composition root the rest
+3D resolution scale (FSR 1 on Medium under Vulkan, bilinear otherwise: Compatibility has no
+FSR), MSAA, anisotropy, mesh LOD threshold, no positional shadow atlas (no light casts one), the
+shadow atlas size and the sun's reach, the frame cap and physics catch-up steps, streaming
+distances and builds at once, haze distance and far plane, rain density, real street lights.
+`PerfWiring` (app) adds the traffic caps, figure rules, parked-vehicle reach, title rain layers,
+landmark LOD ranges and the light ground/water shaders. The HUD and touch controls stay at the
+screen's resolution (only the 3D buffer scales). The coordinator set Low at 75 % with short
+1024 shadows for the Adreno 613 (the first brief said 60-70 %).
+
+### G-253: The performance overlay and the perf log
+`PerfOverlay` (ui) shows the numbers `PerfWiring` composes: frame average and worst of 120
+frames, the scripts' main-thread time (two probe nodes that run first and last in each frame's
+process and physics callbacks), the renderer's CPU and GPU time
+(`viewport_set_measure_render_time`), physics catch-up steps, `Performance` maxima of the last
+second (they are maxima, not averages: Godot resets them once a second), draw calls, primitives,
+objects, video and texture memory, AI step and wait, traffic counts, chunk queues and worker
+tasks, preset, 3D size, renderer, driver and GPU, a software-renderer or Vulkan-fallback warning,
+hitches over 50 ms with what the last one was made of, and a verdict (`FrameStats.verdict`: a side
+is busy at 75 % of the frame). Off by default; a three-finger tap or the Settings row toggles it.
+Hidden, it builds no text and reads no monitors; the frame sampler, probes and GPU timer stay on
+(a few µs) because the log needs them. `user://perf.log` is rewritten every 10 s (header with the
+device, then one line per 10 s, the last 15 minutes, a first-against-last-minute drift line in
+place of a thermal state Godot does not expose), and printed as `[perf]` lines (logcat). The pause
+menu's summary row copies the log. When agent/godot-ui's DebugSettings key lands, the overlay's
+on/off moves to it (one line in `PerfWiring`).
+
+### G-254: Live feature switches and a safe mode
+`FeatureSwitches` (app): twenty switches (traffic, crowds, parked vehicles, missions layer,
+landmarks, decks, street objects, facade kit, trees, far buildings, water, prop colliders, ground
+cover detail, water ripples, rain, shadows, street lights, sky, haze, the title's live city). Each
+only hides, pauses or simplifies, never frees, so it is instant both ways; chunk layers are
+applied to chunks shown later too. SAFE MODE turns all off, ALL ON back on. After each press the
+frame time 1 s later is averaged over 3 s and compared with the average before the press; the
+overlay ranks the measured costs. Switched-off features are saved (the owner can restart and
+keep a configuration).
+
+### G-255: The A/B APK on the Compatibility renderer is derived, not committed
+`tools/compat_preset.py` copies the "Android" preset in CI to "Android Compatibility": the same
+filters (the size work owns them), package name `…godot.compat`, label "Chennai Open World (GL)",
+launch arguments `--rendering-method gl_compatibility --rendering-driver opengl3` (as the smoke
+APK proves they work). The workflow exports it after the two others and restores
+`export_presets.cfg`. Artifact `godot-chennai-apk-compat`.
+
+### G-256: The AI step may lag on slow cores; physics catch-up is capped per preset
+`CityLife.ai_patience`: the main thread waits for a running AI step only when it is that many
+physics frames late (2, the old behaviour, on High; 6 on Low), moving the views on by
+extrapolation meanwhile. `Engine.max_physics_steps_per_frame` 2 on Low with a 30 fps cap: when a
+frame is slow the game slows down instead of running ever more physics steps per frame.
+
+### G-257: Cheap, certain fixes
+Street lights pick the nearest lamps with one scan instead of sorting every lamp four times a
+second; mission entrance rings share one torus and material and are not drawn beyond 120 m.
+
+### G-258: Figures and vehicles cost only where they show
+`PersonView.animate_reach` (25 / 35 / 45 m) and the camera's frustum: a figure further or out of
+view holds its pose (no clip, skeleton or skin update). `PersonView.shadow_near` 0 on Low and
+Medium. Vehicle models cast shadows only from LOD 0 (within 28 m). Parked vehicles appear within
+100 / 150 / 200 m. Trees, palms and street objects cast shadows only on High (each is one mesh
+or MultiMesh per chunk, so any part inside the shadow's reach drew the whole chunk into it).
+
+### G-259: Street lights never light the merged chunk meshes
+Chunk meshes are on render layer 2 (`ChunkBuilder.RENDER_LAYER`) and the street lights' cull mask
+leaves it out: a chunk mesh spans 250 m, so every lamp touched it and the Mobile renderer
+evaluated it for every pixel of the chunk's ground and walls. The ground under a lamp gets an
+additive glow pool instead (one MultiMesh, one draw call at night). Real lights still light
+vehicles, people and loose props. T. Nagar at 18:40 under llvmpipe: 1378 ms a frame before, 662
+ms after on High, about the 08:30 cost (654 ms).

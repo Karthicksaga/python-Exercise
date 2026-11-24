@@ -424,7 +424,18 @@ static func solid_box(faces: PackedVector3Array, centre: Vector3, half: Vector3,
 		faces.append_array([c[q[0]], c[q[1]], c[q[2]], c[q[0]], c[q[2]], c[q[3]]])
 
 
+## Most triangles in one collider body (G-257): Jolt builds a mesh shape when its body enters the
+## world, on the main thread, and one chunk's boxes for trees, poles and props (or its barriers)
+## in a single trimesh took up to 33 ms to add. A multiple of 12 (a box) and of 2 (a wall quad).
+const MAX_BODY_TRIANGLES := 1200
+
+
 static func _body(out: Build, label: String, faces: PackedVector3Array) -> void:
+	var limit := MAX_BODY_TRIANGLES * 3
+	if faces.size() > limit:
+		for start in range(0, faces.size(), limit):
+			_body(out, label, faces.slice(start, mini(start + limit, faces.size())))
+		return
 	var shape := ConcavePolygonShape3D.new()
 	shape.backface_collision = true
 	shape.set_faces(faces)

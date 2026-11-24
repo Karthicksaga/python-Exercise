@@ -70,9 +70,14 @@ func _init() -> void:
 	_switches_button.name = "Switches"
 	_switches_button.focus_mode = Control.FOCUS_NONE
 	_switches_button.custom_minimum_size = Vector2(120, UiTheme.MIN_TARGET)
-	_switches_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	# Top centre, between the FPS line and PAUSE: away from the stick and the action buttons.
+	_switches_button.anchor_left = 0.5
+	_switches_button.anchor_right = 0.5
+	_switches_button.offset_left = -60
+	_switches_button.offset_right = 60
+	_switches_button.offset_bottom = UiTheme.MIN_TARGET
 	_switches_button.pressed.connect(func() -> void: _panel.visible = not _panel.visible)
-	column.add_child(_switches_button)
+	area.add_child(_switches_button)
 
 	_panel = PanelContainer.new()
 	_panel.name = "Panel"

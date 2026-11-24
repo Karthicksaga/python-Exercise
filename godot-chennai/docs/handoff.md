@@ -766,3 +766,37 @@ and freeing a vehicle left far behind), `scene/test_game_vehicles.gd` (end to en
 - The pulled driver's fall is a lean while staggering (no fall clip); the moving vehicle stops
   dead at the press instead of braking.
 - Seen headless only; not on a phone, no screenshots (nothing new is drawn).
+
+## Performance (G-250…G-259, branch `agent/godot-perf`), 24 Nov 2026
+**Where things are.** `src/game_engine/quality/` (`QualitySettings` presets, auto-detect, save
+section; `QualityApplier`; `FrameStats` and the verdict), `src/app/perf/` (`PerfWiring`: applies
+presets to the game, frame stats, probes, perf log, pause-menu summary; `FeatureSwitches`),
+`src/ui/debug_hud/perf_overlay.gd` (overlay and switch panel), `tools/compat_preset.py` (the
+Compatibility APK's preset, made in CI), `docs/performance.md` (owner instructions, bisect, costs,
+presets). Tests: `tests/unit/test_quality_settings.gd`, `tests/scene/test_perf_wiring.gd`.
+
+**How other agents use it.**
+- A new optional system: add a row to `FeatureSwitches.ALL` and a branch in `apply(id)` that
+  hides or pauses it (never frees); it then appears in the panel and in safe mode.
+- A new quality knob: a key in all three rows of `QualitySettings.TABLE` (the unit test checks
+  every row has every key and that numbers rise Low → High), applied in `PerfWiring.apply()`.
+- Merged chunk meshes are on render layer 2 (`ChunkBuilder.RENDER_LAYER`); any light that should
+  not light the whole city leaves that bit out of its cull mask.
+- agent/godot-ui's DebugSettings: when it lands, read the overlay's on/off from it in
+  `PerfWiring._ready`/`_on_settings` instead of `QualitySettings.overlay` (one line).
+- Measuring: the scratch harnesses (boot `Main`, teleport, warm up, measure) are described in
+  `docs/performance.md`; they are not committed.
+
+**Weak or not done.**
+- Nothing here ran on a phone. GPU costs are estimates from llvmpipe; the overlay and log are how
+  the owner's phone will tell us. Whether the Vulkan or the GL APK is faster on the Adreno 613 is
+  unknown until the owner tries both.
+- Draw calls were not halved (about 110 → 90-120 at T. Nagar): Low's gain is per pixel. Halving
+  them needs fewer chunk layers or merging materials (not done).
+- Streaming stalls: every main-thread streaming step stays under a millisecond here; the 30-230 ms
+  stalls measured on the loaded build machine fell in the bookkeeping part together with OS
+  pre-emption of a control loop, so their cause on the phone is not proven. The hitch counter and
+  its breakdown line in the overlay and log will say what a slow frame was made of on the phone.
+- Godot's thread priorities do not reach Android's scheduler; Low builds one chunk at a time.
+- The feature-switch cost measurement is in real time (an overlay, not a test).
+- Figures beyond the animate reach slide in a held pose (by design, the coordinator's rule).
