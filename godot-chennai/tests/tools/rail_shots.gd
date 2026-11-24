@@ -87,6 +87,15 @@ func _teleport(p: Vector2, y: float, yaw: float) -> void:
 	rig.call("place", feet, yaw)
 	var world: Object = main.get("world")
 	await world.call("wait_ready_around", p, -1.0, 60 * 60)
+	# The platforms build on worker threads too: wait for them, then stand on the deck again.
+	var stations: Object = _railway().get("stations_view")
+	for i in 60 * 30:
+		if int(stations.call("shown")) > 0:
+			break
+		await physics_frame
+	for i in 10:
+		await physics_frame
+	rig.call("place", origin.call("to_scene", p, y), yaw)
 	for i in 30:
 		await physics_frame
 
