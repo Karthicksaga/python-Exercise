@@ -42,6 +42,14 @@ class RidePose:
 	var foot: Vector3 = Vector3.ZERO
 	## Knee splay, 0 straight to 1 about 45°.
 	var knees: float = 0.0
+	## The steering's pivot relative to the hip joints (like `hand`), the axis it turns about
+	## (chassis frame) and how far it turns per radian of front-wheel angle: 1 for handlebars, more
+	## for a wheel. The palms follow it (G-261); the model's `steering` node turns with it.
+	var hub: Vector3 = Vector3(0, 0.25, -0.42)
+	var steer_axis: Vector3 = Vector3.UP
+	var steer_ratio: float = 1.0
+	## True once a model has measured hand, foot and hub from its own nodes (`VehicleModel`).
+	var measured: bool = false
 
 
 ## What a hard impact does to the driver (TD-29).
@@ -51,6 +59,11 @@ class CrashRule:
 	var hurt_from: float = 25.0
 	## Health lost per km/h above `hurt_from` while seated.
 	var seated_damage: float = 0.35
+	## Severity (km/h) from which an open-seat rider falls off (slides off sideways, low and
+	## slow; G-270); negative: never (closed bodies).
+	var fall_from: float = -1.0
+	## Health lost by a fall at `fall_from` (plus `seated_damage` per km/h above `hurt_from`).
+	var fall_base: float = 0.0
 	## Impact (km/h) from which the driver is thrown; negative: never.
 	var throw_from: float = -1.0
 	var throw_base: float = 0.0
@@ -83,6 +96,8 @@ var siren: bool = false
 var premium: bool = false
 var entry: Entry = Entry.new()
 var passengers: Array[PassengerDoor] = []
+## Every passenger seat's hip joints (chassis frame), in the model's order: where fares sit.
+var seats: Array[Vector3] = []
 var crash: CrashRule = CrashRule.new()
 
 
@@ -122,6 +137,8 @@ static func from_dict(id: StringName, d: Dictionary) -> VehicleType:
 	var c: Dictionary = d["crash"]
 	t.crash.hurt_from = float(c["hurt_from"])
 	t.crash.seated_damage = float(c["seated_damage"])
+	t.crash.fall_from = float(c.get("fall_from", -1.0))
+	t.crash.fall_base = float(c.get("fall_base", 0.0))
 	t.crash.throw_from = float(c["throw_from"])
 	t.crash.throw_base = float(c["throw_base"])
 	t.crash.throw_per_kmh = float(c["throw_per_kmh"])

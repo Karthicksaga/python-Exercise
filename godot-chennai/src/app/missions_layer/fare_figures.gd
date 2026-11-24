@@ -5,9 +5,10 @@ extends Node3D
 ## `GoodsStop.person()`) say what stage each person is at; this places them in the city.
 ##
 ## A boarder waits on the pavement at the stop's kerb spot, walks to the vehicle's passenger
-## door on the kerb side (the vehicle's `passengers` anchors), the door leaf swings, they step to
-## their seat anchor and are hidden inside (no seated pose yet: the Cast/Player phase). A leaver
-## comes out of the same door and walks off along the pavement. A patient lies on a stretcher
+## door on the kerb side (the vehicle's `passengers` anchors), the door leaf swings, they step in
+## and sit down on their own seat (the vehicle's passenger seats in order, `VehicleType.seats`),
+## and ride there seated and visible (G-266, `SeatPose`). A leaver stands up, comes out of the
+## same door and walks off along the pavement. A patient lies on a stretcher
 ## wheeled by a paramedic; someone handing goods over carries a box that goes into the vehicle
 ## halfway through. The figures are cast people (`assets/people/people.json`, adults only),
 ## loaded in the background; until one has loaded its place is still computed (`people`).
@@ -19,6 +20,8 @@ const SENDERS: PackedStringArray = ["shopkeeper-m", "tea-vendor", "shopkeeper-f"
 const PARAMEDIC := "health-worker"
 ## People waiting at one kerb spot stand this far apart.
 const SPREAD := 0.8
+## Hip joints above the figure's origin when seated (the seat pose's frame).
+const SEAT_HIP := 0.92
 
 ## What the rules and the world say this frame; set by `MissionsLayer`.
 var vehicle: Vehicle = null
@@ -30,6 +33,8 @@ var _stretcher: Node3D = null
 var _box: MeshInstance3D = null
 var _manifest: PeopleManifest = null
 var _last: Dictionary[int, Vector3] = {}
+## One seat pose per vehicle type and seat (the floor height differs).
+var _seat_poses: Dictionary[String, SeatPose] = {}
 ## False skips loading cast models (unit-speed tests that only read `people`).
 var load_models := true
 
@@ -133,14 +138,18 @@ func _person(p: Dictionary, i: int, kerb: Vector3, _kx: float, _kz: float, v: Ve
 	var stage: String = p["stage"]
 	var share: float = p["share"]
 	var spot := kerb + Vector3(([0, 1, -1][i % 3] as int) * SPREAD, 0, (i / 3) * SPREAD)
-	var out := {"stage": stage, "action": p["action"], "position": spot, "visible": true, "kind": "rider", "speed": 0.0, "face": Vector3.ZERO}
+	var out := {"stage": stage, "action": p["action"], "position": spot, "visible": true, "kind": "rider", "speed": 0.0, "face": Vector3.ZERO, "sit": 0.0}
 	if v == null:
 		out["visible"] = stage in ["waiting", "leaving", "gone"] and stage != "gone"
 		return out
 	var d := kerb_door(v, kerb)
 	var door := v.ground_point(d.point) if d != null else v.ground_point(Vector2(-(v.type.spec.half_extents.x + 0.6), 0.0))
 	door.y = ground_y
-	var seat := v.global_transform * (d.inside if d != null else v.type.driver)
+	var slot := seat_slot(v, i, d)
+	var seat_xf := seat_transform(v, slot)
+	var seat := seat_xf.origin - seat_xf.basis.y * SEAT_HIP
+	out["slot"] = slot
+	out["seat_basis"] = seat_xf.basis
 	var walk_seconds: float = maxf(0.1, float(p["walk_seconds"]))
 	match stage:
 		"waiting":
@@ -153,14 +162,16 @@ func _person(p: Dictionary, i: int, kerb: Vector3, _kx: float, _kz: float, v: Ve
 		"entering":
 			out["position"] = door.lerp(seat, share)
 			out["face"] = seat
+			out["sit"] = smoothstep(0.35, 1.0, share)
 			_door(v, d, sin(share * PI))
 		"inside", "riding":
 			out["position"] = seat
-			out["visible"] = false
+			out["sit"] = 1.0
 			_door(v, d, 0.0)
 		"exiting":
 			out["position"] = seat.lerp(door, share)
 			out["face"] = door
+			out["sit"] = 1.0 - smoothstep(0.0, 0.65, share)
 			_door(v, d, sin(share * PI))
 		"leaving":
 			var away := kerb + (kerb - door).normalized() * 0.0 + (kerb - door).cross(Vector3.UP).normalized() * float(FareStop.FARES["walk_off"])
@@ -194,6 +205,32 @@ func _goods_person(g: GoodsStop, kerb: Vector3, v: Vehicle) -> Dictionary:
 			out["position"] = door
 			out["face"] = v.global_position
 	return out
+
+
+## Passenger `i`'s seat (hip joints, chassis frame): the vehicle's passenger seats in order, else
+## the door's own anchor, else just behind the driver (a pillion).
+static func seat_slot(v: Vehicle, i: int, d: VehicleType.PassengerDoor) -> Vector3:
+	if not v.type.seats.is_empty():
+		return v.type.seats[i % v.type.seats.size()]
+	if d != null:
+		return d.inside
+	return v.type.driver + Vector3(0, 0.04, 0.5)
+
+
+## A seat's hip joints and facing in the scene (follows the vehicle's lean, like the driver's).
+static func seat_transform(v: Vehicle, slot: Vector3) -> Transform3D:
+	var t := v.model.global_transform * Transform3D(Basis.IDENTITY, slot - v.model.position)
+	return Transform3D(t.basis.orthonormalized(), t.origin)
+
+
+## The seated pose for a seat of `v` at `slot`: feet on a floor about 0.3 m above the road (a
+## bus's own floor: the hips are high above the road there, so the drop is capped).
+func seat_pose(v: Vehicle, slot: Vector3) -> SeatPose:
+	var key := "%s:%.2f,%.2f,%.2f" % [v.type.kind, slot.x, slot.y, slot.z]
+	if not _seat_poses.has(key):
+		var above_road := slot.y - v.model.position.y
+		_seat_poses[key] = SeatPose.passenger(SEAT_HIP, clampf(above_road - 0.32, 0.3, 0.5))
+	return _seat_poses[key]
 
 
 static func _door(v: Vehicle, d: VehicleType.PassengerDoor, amount: float) -> void:
@@ -232,8 +269,16 @@ func _draw(dt: float, patient: bool) -> void:
 			continue
 		fig.visible = bool(p["visible"])
 		fig.global_position = at
-		_face(fig, at, p["face"])
-		fig.advance(dt, float(p["speed"]), true)
+		var sit := float(p.get("sit", 0.0))
+		if sit > 0.0 and vehicle != null and p.has("slot"):
+			var seat_basis: Basis = p["seat_basis"]
+			var slot: Vector3 = p["slot"]
+			fig.global_basis = seat_basis
+			fig.set_seat(seat_pose(vehicle, slot), sit)
+		else:
+			fig.set_seat(null)
+			_face(fig, at, p["face"])
+		fig.advance(dt, float(p["speed"]) if sit <= 0.0 else 0.0, true)
 	for k in range(used, _figures.size()):
 		if _figures[k] != null:
 			_figures[k].visible = false

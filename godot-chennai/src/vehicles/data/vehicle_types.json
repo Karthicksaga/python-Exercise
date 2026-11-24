@@ -1,5 +1,5 @@
 {
- "comment": "Vehicle types (decision G-72). The first five kinds are the Three.js game's VEHICLE_TYPES (packages/vehicles/src/specs.ts) with the same numbers; crash rules are TD-29 (agent/crash-ejection crash.ts). The premium cars and the race car are new (MIGRATION_PROMPT §11): invented, original, tuned by test, not measured. Chassis frame: metres, +X right, +Y up, -Z forwards, from the chassis centre. Variants reuse a kind's handling with another paint and extras.",
+ "comment": "Vehicle types (decision G-72). The first five kinds are the Three.js game's VEHICLE_TYPES (packages/vehicles/src/specs.ts) with the same numbers; crash rules are TD-29 (agent/crash-ejection crash.ts) with the fall band of G-270 (fall_from, fall_base: open seats slide off between shaken and thrown; the auto is thrown from 38 km/h, not 30). The premium cars and the race car are new (MIGRATION_PROMPT §11): invented, original, tuned by test, not measured. Chassis frame: metres, +X right, +Y up, -Z forwards, from the chassis centre. Variants reuse a kind's handling with another paint and extras.",
  "kinds": {
   "car": {
    "label": "Hatchback", "model": "hatchback", "ride_height": 0.72, "camera_distance": 8.5, "gears": 5,
@@ -31,7 +31,7 @@
     {"point": [-0.95, 0.8], "inside": [-0.36, 0.17, 0.8]},
     {"point": [0.95, 0.8], "inside": [0.36, 0.17, 0.8]}
    ],
-   "crash": {"hurt_from": 18, "seated_damage": 0.4, "throw_from": 30, "throw_base": 12, "throw_per_kmh": 0.9, "style": "off", "topples": false},
+   "crash": {"hurt_from": 18, "seated_damage": 0.4, "fall_from": 24, "fall_base": 6, "throw_from": 38, "throw_base": 12, "throw_per_kmh": 0.9, "style": "off", "topples": false},
    "physics": {
     "half_extents": [0.66, 0.45, 1.3], "mass": 420,
     "wheels": [
@@ -48,7 +48,7 @@
    "pose": {"lean": 0.5, "hand": [0.33, 0.175, -0.62], "foot": [0.23, -0.5, -0.03], "knees": 1},
    "entry": {"side": -1, "point": [-0.7, 0.2], "door": "none", "style": "swing"},
    "passengers": [],
-   "crash": {"hurt_from": 18, "seated_damage": 0.4, "throw_from": 35, "throw_base": 12, "throw_per_kmh": 0.9, "style": "off", "topples": true},
+   "crash": {"hurt_from": 18, "seated_damage": 0.4, "fall_from": 27, "fall_base": 6, "throw_from": 35, "throw_base": 12, "throw_per_kmh": 0.9, "style": "off", "topples": true},
    "physics": {
     "half_extents": [0.32, 0.36, 1.0], "mass": 190,
     "wheels": [

@@ -730,6 +730,136 @@ stayed at 0.2 ms (models load on the worker).
 C 10). Game code must read `sign` and `names`, never `research_name`. Storeys come from OSM levels
 where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.
 
+
+
+## Poses: seated, passengers, falls, arm swing (agent/godot-anim, G-260…G-269), 24 Nov 2026
+**Knockdown API (for `agent/godot-crash`; stable, committed first).** Both figures of a person
+have the same four methods and one signal: `HumanFigure` (the player, fare passengers) and
+`PersonView` (walkers, crowds, drivers from `PeoplePool`). The figure animates on its own node
+only (procedural tumble, crumple, lying and get-up poses on the skeleton, no physics bodies);
+whoever moves the body (`CrashFlight` through `RiderLink`, or the AI for a walker) keeps
+moving the node as before, and the figure never moves its own origin.
+
+```gdscript
+## Knocked off the feet with `velocity` (m/s, scene space: the launch or the hit's push). Tumbles
+## while airborne; lands by itself after the ballistic time of velocity.y (at least 0.35 s)
+## unless play_landed() comes first. Calling it again while down restarts the fall.
+func play_fall(velocity: Vector3) -> void
+## The body touched the ground (optional; CrashFlight's landing): crumple, then lie still.
+func play_landed() -> void
+## Stand up from lying (or from wherever the fall is: it lands first). Takes GETUP_TIME seconds
+## of game time, then emits got_up and the normal clips (gait, seated) take over again.
+func play_getup() -> void
+## &"" upright (normal clips), &"falling", &"down" (crumpling or lying), &"rising".
+func knockdown_state() -> StringName
+signal got_up
+const GETUP_TIME := 1.2   # CrashFlight.RISE_TIME is 1.2 too (was 0.75; changed on this branch)
+```
+
+`PlayerRiderLink` already calls them from `CrashFlight`'s phases (flying → `play_fall(launch)`,
+sliding → `play_landed()`, rising → `play_getup()`), so a bike throw through `Driving` needs
+nothing more. The figure lies on its back, head away from the way it flew, soles and head
+above the ground. The figures advance in the physics step (`HumanFigure.advance`,
+`PersonView.advance`): a figure that is not advanced does not animate its fall either.
+
+**Done (owner's phone report, 24 Nov).** All poses are procedural on the skeleton after the clip
+(`src/player/poses/`: `PoseRig`, `SeatPose`, `Knockdown` + `KnockdownPoses`, `GaitSwing`),
+shared by `HumanFigure` and `PersonView`. Decisions G-260…G-267.
+- **Drivers seated** in car, auto, bike, bus (and every other vehicle): hip joints on the seat,
+  palms on the grips (fingers closed), ankles on the footrests or pedals, torso leaning as the
+  ride pose says, head turning into the steering; hands follow the turning handlebar or wheel
+  (the model's `steering` node now turns). The ride pose's hand, foot and hub are measured from
+  the model's own `grip_r`/`foot_r`/`steering`/`seat_driver` nodes (`VehicleModel.
+  measure_ride_pose`); the driver is drawn in closed vehicles too. Traffic drivers take the same
+  seat (`CityLife.driver_seat`, `RidePoses`).
+- **Seat anchors** (driver, aisle, passenger doors and seats) are measured from the model's drawn
+  ground (`VehicleManifest.apply_geometry`): from `chassis_to_model_y` every rider sank 7–10 cm
+  into the seat (G-267). Collision boxes are unchanged.
+- **Passengers seated and visible** in their own seat slots (`VehicleType.seats`, the model's
+  passenger seats in order) in auto, car and bus; they sit down while entering and stand up
+  while getting out (`FareFigures`).
+- **Falls**: dive and roll three quarters of a turn, land on the back (or a push falls
+  backwards), crumple, lie with one knee up and the head turned; get up through sitting, a
+  crouch and one knee into the clip (1.2 s; `CrashFlight.RISE_TIME` raised from 0.75 to match).
+- **Walk**: arms swing with the opposite leg (hands 0.47 m fore and aft, was 0.07), shoulders
+  turn against the hips, small head nod, for the player and every street walker. **Run**: 15°
+  lean, elbows ~90°, cadence 4.6 → 4.2 m/s per clip speed (~186 steps/min at 6.2 m/s), and walk
+  blends into run by speed (2.6–4.0 m/s) on one normalised stride cycle.
+- Tests: `tests/scene/test_poses.gd` (drivers, steering, passengers, swing, run, blend),
+  `tests/scene/test_knockdown.gd` (API on both figures, a real bike crash). Screenshots:
+  `tests/tools/pose_shots.gd` (into a scratch folder).
+
+**Weak or not done.**
+- Share-auto passengers face forwards (their seats face inwards; `facing` is not read yet).
+- No prone pose: every fall ends on the back; a hit from behind dives and rolls to get there.
+- The get-up's feet move fast in the crouch (about 0.1 m per frame at 60 fps); 1.2 s is short.
+- The palms' facing on a steering wheel is not controlled (only position and finger curl).
+- Seen only under the Compatibility renderer on llvmpipe, not on a phone.
+
+## APK size diet (branch `agent/godot-sizediet`), 24 Nov 2026
+**Done.** `docs/app-size.md` has the method, the breakdown, the diet with before and after, the
+budget, the forecast and the Play plan. APK (release, arm64, local unsigned) 162.68 to 115.00 MB:
+legacy cast and vehicles, `docs/` and the v1 chunks are no longer exported (the files stay in the
+repository, the sync check is green). CI budget step (`APK_BUDGET_MB: 260`) and
+`tools/apk_size_report.sh <apk>`. Size guards in `tests/unit/test_export_size.gd` and
+`test_asset_budget.gd`.
+
+**For other agents.**
+- A new file under `assets/people/legacy` or `assets/vehicles/legacy` (sync tool) fails
+  `test_export_size.gd` until it is added to `exclude_filter` in both presets.
+- New textures of 256 x 256 or more must stay VRAM compressed; a WAV over 200 KB must be Ogg.
+- The cast is the biggest line of the forecast (0.82 MB per person, 0.1 MB of it the five
+  animations every GLB repeats): a shared animation library is the next real saving (cast agent).
+- Non-resource data (`.bin`, `.json`) only ships if `include_filter` lists it: a new data folder
+  needs a pattern in both presets.
+
+**Weak or not done.** CI: phone APK 115.13 MB, smoke APK 119.73 MB (run 45381255694, all green). No `.aab`, no asset packs, no custom
+template. Generated LODs, tangents and the world tile format were measured, not changed.
+
+
+## Take over (branch `agent/godot-take`, 24 Nov 2026)
+**Done.** The carjacking was never added to the game; now `Main` wires `Carjacking` to the life
+layer and the ACTION button (G-300). TAKE OVER is offered beside a moving or stopped car, auto or
+bike; pressed, the driver is pulled out through the boarding's pull phase, the player gets in on
+the right and drives, the driver staggers and runs off. Tests: `scene/test_city_life.gd`
+(moving car, moving bike, bus refused, refused while boarding, adults-only drivers, bookkeeping
+and freeing a vehicle left far behind), `scene/test_game_vehicles.gd` (end to end in `Main`),
+`unit/rules/test_carjack.gd`.
+
+**Weak or not done.**
+- No `Wanted` instance exists in the game, so there is no heat yet: hook `Carjacking.wanted`.
+- The pulled driver's fall is a lean while staggering (no fall clip); the moving vehicle stops
+  dead at the press instead of braking.
+- Seen headless only; not on a phone, no screenshots (nothing new is drawn).
+
+
+## Crashes: bands, effects, shake (agent/godot-crash, G-270…G-275), 24 Nov 2026
+**Done (yard and unit tests, desktop headless; not on a phone).** The owner's bug (hitting
+another bike threw the rider far) was AI traffic being kinematic: Jolt stopped the player dead as
+at a wall and the old rule judged that full change. `CrashRules` now judges a severity (the
+measured change, shared by mass against traffic) in bands bump / shaken / fall / thrown, with the
+contact angle (side hits topple bikes sooner, rear hits never throw); per-kind `fall_from` and
+`fall_base` in `vehicle_types.json`. Hits leave a wobble and body damage (darker paint, sag,
+smoke when wrecked); `DrivingWiring` adds sparks and glass (`src/vehicles/crash_effects/`),
+camera trauma (`FollowCamera.add_trauma`, off with reduced motion), haptics for bumps and falls,
+and a honk from a hit traffic vehicle (`DrivingWiring.reaction` → `VehicleSounds.on_reaction`).
+Numbers in G-270 and G-273.
+
+**For other agents.**
+- Listen to `Driving.bumped` for small hits (not a crash: missions ignore it); `crashed` now also
+  carries `&"fall"`. `Driving.last_hit` is the last judged hit including bumps.
+- `CrashRules.Outcome.hit` has the contact point, normal and the other body.
+- **agent/godot-anim:** this branch leaves `PlayerRiderLink` as on feat/godot-chennai, so your
+  `_show_knockdown` calls to `play_fall`/`play_landed`/`play_getup` merge as they are (trial
+  merge of both branches: no conflicts, crash tests run on it). `RISE_TIME` is 1.2 s on both.
+  `RiderLink` also fires `_show_fall`/`_show_landed`/`_show_getup` hooks for other links.
+
+**Weak.** Traffic does not react physically to being hit (no shove, its rider never falls; only
+the honk hook); people get no reaction hook (CityLife has none). Smoke is grey alpha spheres
+(cheap, reads as smoke at a distance, blobby up close). No dent geometry: damage is paint, sag and
+smoke. Effect cost measured on the desktop only (G-273). The player still stops dead against a
+light traffic vehicle (the solver's wall); only the judgement is shared by mass.
+
 ## Transit (G-210…G-219), branch `agent/godot-transit`, 24 Nov 2026
 **Done.** Data: `tools/geo/chennai_geo/transit.py` (`cli transit`) → `world/transit/` and
 `world/TRANSIT.md` (OSM only). Runtime: `src/transit/` (`TransitNetwork`, `TransitTimetable`,

@@ -43,6 +43,7 @@ static func make(city: CityWorld, player: PlayerRig, content: GameContent) -> Pl
 	p.add_child(p.wiring)
 	p.vehicle_sounds = VehicleSounds.wire(p.driving)
 	p.add_child(p.vehicle_sounds)
+	p.wiring.reaction.connect(p.vehicle_sounds.on_reaction)
 	p.player_sounds = PlayerSounds.new()
 	p.player_sounds.name = "PlayerSounds"
 	p.player_sounds.follow(player.body)
