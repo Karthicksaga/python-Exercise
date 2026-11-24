@@ -63,6 +63,8 @@ var _was_grounded: bool = true
 ## Jump buffer and coyote time (G-173).
 var _jump := JumpState.new()
 var _knock: Vector3 = Vector3.ZERO
+## Off a vehicle: collisions come back after this physics frame (G-341), else -1.
+var _solid_after: int = -1
 
 
 ## A jump press from outside `step` (the rig, between steps); same as `PlayerInput.jump`.
@@ -130,6 +132,13 @@ func _physics_process(dt: float) -> void:
 		if figure != null:
 			figure.advance(dt, 0.0, true)
 		return
+	if _solid_after >= 0:
+		if Engine.get_physics_frames() <= _solid_after:
+			# The step that carries the body from the seat to its feet: no movement of its own.
+			if figure != null:
+				figure.advance(dt, 0.0, true)
+			return
+		_make_solid()
 	step(input if controls_enabled else PlayerInput.new(), dt)
 	if figure != null:
 		figure.rotation.y = yaw - rotation.y
@@ -231,6 +240,7 @@ func enter_vehicle(ride: Node3D, at: Node3D) -> void:
 		return
 	vehicle = ride
 	seat = at
+	_solid_after = -1
 	velocity = Vector3.ZERO
 	speed = 0.0
 	collision_layer = 0
@@ -239,14 +249,34 @@ func enter_vehicle(ride: Node3D, at: Node3D) -> void:
 
 
 ## Back on foot at `feet`, facing `facing_yaw`.
-func exit_vehicle(feet: Vector3, facing_yaw: float) -> void:
+##
+## The body is kinematic, and Jolt moves a kinematic body to a transform set from code by sweeping
+## there within one step (`MoveKinematic`): solid at once, it would travel from the seat, inside
+## the vehicle's box, to the feet at tens of m/s and shove the vehicle (a car got 82 m/s, G-341).
+## So the body becomes solid one physics step after it is put on its feet; `solid_now` (a crash
+## throw, which passes through its own vehicle by a collision exception) skips the wait.
+func exit_vehicle(feet: Vector3, facing_yaw: float, solid_now: bool = false) -> void:
 	if vehicle == null:
 		return
 	var ride := vehicle
 	vehicle = null
 	seat = null
 	global_basis = Basis.IDENTITY
+	respawn(feet, facing_yaw)
+	if solid_now:
+		_make_solid()
+	else:
+		_solid_after = Engine.get_physics_frames()
+	exited_vehicle.emit(ride)
+
+
+## Collides with the world, people and vehicles again.
+func _make_solid() -> void:
+	_solid_after = -1
 	collision_layer = LAYER_PLAYER
 	collision_mask = LAYER_WORLD | LAYER_PEOPLE | LAYER_VEHICLES
-	respawn(feet, facing_yaw)
-	exited_vehicle.emit(ride)
+
+
+## Collides now, or waits for the step after leaving a vehicle (G-341).
+func is_solid() -> bool:
+	return collision_layer != 0

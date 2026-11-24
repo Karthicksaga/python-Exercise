@@ -198,8 +198,8 @@ func prepare(start: Vector2) -> String:
 	for a in population.traffic.agents:
 		var v := TrafficVehicleView.make(population.traffic.kinds[a.kind].name, a.variation)
 		v.agent_id = a.id
-		v.visible = false
 		add_child(v)
+		v.set_shown(false)
 		views.append(v)
 		# A frame between views keeps the loading screen alive (each is a model instance).
 		if a.id % 6 == 5:
@@ -520,8 +520,7 @@ func refresh_caps() -> void:
 func _show_vehicle(v: TrafficVehicleView, on: bool) -> void:
 	if v.visible == on:
 		return
-	v.visible = on
-	(v.get_child(0) as CollisionShape3D).disabled = not on
+	v.set_shown(on)
 
 
 ## The engine sound of a look (`SoundProfiles.sound_kind` names).
