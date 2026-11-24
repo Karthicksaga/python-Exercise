@@ -29,6 +29,7 @@ func _run() -> void:
 	await process_frame
 	var yard := VehicleYard.new()
 	root.add_child(yard)
+	await yard.load_player()
 	await physics_frame
 	match shot:
 		"lineup":
@@ -39,6 +40,7 @@ func _run() -> void:
 			cam.fov = 45
 			cam.look_at_from_position(Vector3(-40, 2.6, 10), Vector3(-8, 0.7, -1))
 			cam.current = true
+			yard.rig.controls.visible = false
 			yard.controls.visible = false
 		"drive":
 			var v := yard.spawn(StringName(variant), Vector3(0, 0, 40), 0.0, &"ride")
@@ -63,9 +65,10 @@ func _run() -> void:
 			yard.driving.gas = true
 			await _until(func() -> bool: return yard.driving.mode() == &"thrown", 60 * 40)
 			await _until(func() -> bool: return yard.rider.flight.peak_height > 0.6 or yard.rider.knockdown() != &"flying", 120)
+			yard.rig.camera.camera.current = false
 			var cam := Camera3D.new()
 			yard.add_child(cam)
-			var at := yard.rider.global_position
+			var at := yard.rider.position()
 			cam.look_at_from_position(at + Vector3(5.0, 1.4, 3.2), at + Vector3(0, 0.3, 0))
 			cam.current = true
 		"door":
@@ -78,6 +81,7 @@ func _run() -> void:
 			yard.add_child(cam)
 			cam.look_at_from_position(v.global_transform * Vector3(5.5, 2.2, 4.5), v.global_position)
 			cam.current = true
+			yard.rig.controls.visible = false
 			yard.controls.visible = false
 	await _frames(3)
 	var image := root.get_texture().get_image()

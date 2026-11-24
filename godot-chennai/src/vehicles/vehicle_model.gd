@@ -56,7 +56,6 @@ static func settled_ground(s: VehicleSpec) -> float:
 
 
 func _build_glb(t: VehicleType, variant: VehicleCatalog.VariantInfo, manifest: VehicleManifest) -> void:
-	var dir := VehicleCatalog.MODELS_DIR
 	var lods := manifest.lods()
 	if manifest.id != t.model:
 		# A stand-in: stretch the fallback model to the type's footprint.
@@ -66,7 +65,7 @@ func _build_glb(t: VehicleType, variant: VehicleCatalog.VariantInfo, manifest: V
 	var paint_names := manifest.paint_materials()
 	var body: Node3D = null
 	for i in lods.size():
-		var path := dir.path_join(String(lods[i]["file"]))
+		var path := String(lods[i]["file"])
 		if not ResourceLoader.exists(path):
 			continue
 		var node := (load(path) as PackedScene).instantiate() as Node3D

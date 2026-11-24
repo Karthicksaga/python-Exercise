@@ -2,11 +2,11 @@ class_name Driving
 extends Node
 ## Driving, getting in and out, and crashes (decisions G-74, G-75, G-77): turns what the player
 ## presses into a vehicle's controls through the `Gearbox`, runs the `Boarding` sequences that
-## move the `VehicleRider` to and from the seat, judges crashes (`CrashRules`) and throws the
+## move the rider (a `RiderLink`) to and from the seat, judges crashes (`CrashRules`) and throws the
 ## rider off. A port of the vehicle parts of the Three.js `Game.ts`, `Boarder.ts` and
 ## `Crashes.ts`; it holds no world or mission logic.
 ##
-## Wire it with a `rider`; the composition root connects the camera and the touch controls
+## Wire it with a `rider` (`PlayerRiderLink` for the real player); the composition root connects the camera and the touch controls
 ## (`DrivingWiring` in `src/app/`), so this module uses no UI or camera code (AGENTS.md module
 ## boundaries). Input: the keyboard and pad actions of `DriveInput` plus the touch state the
 ## wiring copies into `touch_gas`, `touch_brake`, `touch_steer`; tests set `gas`, `brake`,
@@ -33,7 +33,7 @@ signal horn(vehicle: Vehicle)
 ## A boarding event: &"door_opening", &"seated", &"shut", &"free", &"done".
 signal boarding_event(vehicle: Vehicle, event: StringName)
 
-@export var rider: VehicleRider
+var rider: RiderLink
 
 ## Touch controls held (copied in by the composition root each step).
 var touch_gas := false
@@ -88,7 +88,7 @@ func nearest_vehicle() -> Vehicle:
 		var v := node as Vehicle
 		if v == null or v.is_driven():
 			continue
-		var local := v.global_transform.affine_inverse() * rider.global_position
+		var local := v.global_transform.affine_inverse() * rider.position()
 		var h := v.type.spec.half_extents
 		var gap := Vector2(maxf(0.0, absf(local.x) - h.x), maxf(0.0, absf(local.z) - h.z)).length()
 		if gap < best_gap:
@@ -101,13 +101,13 @@ func nearest_vehicle() -> Vehicle:
 func enter(v: Vehicle, pull: bool = false) -> bool:
 	if v == null or _mode != &"foot" or v.is_driven() or boarding != null:
 		return false
-	var local := v.global_transform.affine_inverse() * rider.global_position
+	var local := v.global_transform.affine_inverse() * rider.position()
 	var h := v.type.spec.half_extents
 	_path = Boarding.approach_path(Vector2(local.x, local.z), v.type.entry, Vector2(h.x, h.z))
 	boarding = Boarding.new("in", v.type.entry, Boarding.path_length(_path), _aisle_length(v.type), pull)
 	boarding_vehicle = v
 	v.upright()
-	rider.set_walking(false)
+	rider.begin_ride(v)
 	_set_mode(&"boarding")
 	return true
 
@@ -172,6 +172,7 @@ func _physics_process(delta: float) -> void:
 	if rider == null:
 		return
 	_input.read(self)
+	rider.physics_step(delta)
 	if boarding != null:
 		_boarding_step(delta)
 	match _mode:
@@ -187,7 +188,7 @@ func camera_target() -> Node3D:
 		return vehicle
 	if boarding_vehicle != null and _mode == &"boarding":
 		return boarding_vehicle
-	return rider
+	return rider.body
 
 
 func _drive_step() -> void:
@@ -208,7 +209,7 @@ func _drive_step() -> void:
 	last_crash = outcome
 	crashed.emit(v, outcome)
 	if outcome.type == &"shaken":
-		rider.health = maxf(0.0, rider.health - outcome.damage)
+		rider.hurt(outcome.damage)
 		return
 	_throw(v, outcome)
 
@@ -220,9 +221,7 @@ func _throw(v: Vehicle, outcome: CrashRules.Outcome) -> void:
 	var seat := v.global_transform * v.type.driver
 	var start := Vector3(seat.x, v.global_position.y + v.model.position.y + START_LIFT, seat.z)
 	start = _keep_clear(start, v)
-	rider.place(start, atan2(-outcome.launch.x, -outcome.launch.z))
-	rider.set_figure_visible(true)
-	rider.throw_off(outcome.launch, outcome.lie_for, v)
+	rider.throw_off(start, outcome.launch, outcome.lie_for, v)
 	if outcome.topples:
 		# The body goes one way, the bike falls the other.
 		var toward := outcome.launch.dot(v.global_basis.x)
@@ -234,11 +233,10 @@ func _throw(v: Vehicle, outcome: CrashRules.Outcome) -> void:
 
 func _thrown_step() -> void:
 	if rider.consume_landing():
-		rider.health = maxf(0.0, rider.health - _pending_damage)
+		rider.hurt(_pending_damage)
 		_pending_damage = 0.0
 	if rider.knockdown() == &"":
 		_thrown_from = null
-		rider.set_walking(true)
 		_set_mode(&"foot")
 
 
@@ -316,7 +314,6 @@ func _aisle_length(t: VehicleType) -> float:
 func _seat(v: Vehicle) -> void:
 	vehicle = v
 	v.take_controls()
-	rider.set_walking(false)
 	rider.set_seated(v.type, 1.0)
 	rider.set_figure_visible(v.type.open_seat)
 	gearbox.reset("D")
@@ -326,15 +323,14 @@ func _seat(v: Vehicle) -> void:
 
 func _hold_seat(v: Vehicle) -> void:
 	var t := v.rider_transform()
-	rider.global_transform = Transform3D(t.basis.orthonormalized(), t.origin)
+	rider.hold(Transform3D(t.basis.orthonormalized(), t.origin))
 
 
 ## On foot beside the door (or wherever there is room), in control.
 func _stand_beside(v: Vehicle) -> void:
-	rider.set_seated(null)
+	rider.set_seated(null, 0.0)
 	rider.set_figure_visible(true)
-	rider.place(_exit_point(v), v.yaw())
-	rider.set_walking(true)
+	rider.end_ride(_exit_point(v), v.yaw())
 	_set_mode(&"foot")
 
 
@@ -366,10 +362,9 @@ func _leave_at_once(v: Vehicle) -> void:
 	vehicle = null
 	var out := centre + dirs[pick] * reach[pick]
 	out.y = v.global_position.y + v.model.position.y + 0.05
-	rider.set_seated(null)
+	rider.set_seated(null, 0.0)
 	rider.set_figure_visible(true)
-	rider.place(out, v.yaw())
-	rider.set_walking(true)
+	rider.end_ride(out, v.yaw())
 	_set_mode(&"foot")
 
 
@@ -378,7 +373,7 @@ func _ray(from: Vector3, to: Vector3, skip: CollisionObject3D) -> float:
 	var q := PhysicsRayQueryParameters3D.create(from, to, PhysicsLayers.WORLD | PhysicsLayers.VEHICLES)
 	if skip != null:
 		q.exclude = [skip.get_rid()]
-	var hit := rider.get_world_3d().direct_space_state.intersect_ray(q)
+	var hit := rider.world().direct_space_state.intersect_ray(q)
 	return -1.0 if hit.is_empty() else from.distance_to(hit["position"] as Vector3)
 
 

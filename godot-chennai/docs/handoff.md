@@ -185,29 +185,26 @@ shown for a seated pose (none yet). Layers: G-64.
 ## Vehicles (phase 2), branch `agent/godot-vehicles`, 23 Nov 2026
 **Done.** A ray-cast vehicle body that reproduces the Three.js handling (measured against the
 Rapier vehicles: `tools/reference/threejs_handling.mts`, `tests/data/threejs_handling.json`),
-all five Three.js vehicles plus taxi/police/gang variants, premium and race profiles, the
-gearbox, boarding with doors, crash ejection, the chase camera and the touch driving controls,
-tested in `src/app/vehicle_yard/` (a test ground). Decisions G-70…G-79; details in
-`docs/driving.md`.
+the five Three.js vehicles plus taxi/police/gang variants, the premium saloon/SUV/coupé and race
+car on the Models agent's GLBs, the gearbox, boarding with doors, crash ejection, the touch
+driving controls; wired to the Player (`PlayerRiderLink`: `enter_vehicle`/`exit_vehicle`,
+`controls_enabled`; `FollowCamera.chase` while driving) in `src/app/vehicle_yard/`. Vehicles load
+through the per-vehicle manifests (`assets/vehicles/*.json`, `legacy/`). Decisions G-70…G-79;
+details in `docs/driving.md`.
 
-**For the Player agent.** Extend `VehicleRider` (or give your player its methods): `Driving`
-calls `set_walking`, `place`, `set_seated(type, amount)` (draw `type.pose`: hands on the grips
-or wheel, feet on the pegs or pedals, hips at the origin), `set_figure_visible`, `throw_off`,
-`knockdown`, `consume_landing`. `CrashFlight` moves any `CharacterBody3D` through a throw.
-**For the World agent.** Spawn with `Vehicle.create(variant)` + `place()`, add a `Driving` with
-the rider, and `DrivingWiring.wire(driving, controls, camera)` in `Main`; put vehicles in
-`WorldOrigin.GROUP` when they join the streamed city.
-**For the Models and Tamil Nadu vehicles agents.** Vehicles load through your manifest schema
-(`assets/vehicles/<model>.json`, G-73): a new GLB with its manifest replaces a model and its
-geometry; the kinds `saloon`, `suv`, `coupe`, `race` look for the models `saloon`, `suv`, `coupe`,
-`formula`. Handling scalars stay in `vehicle_types.json`. Note: `tools/sync_from_threejs.py
---check` (CI) flags any `assets/vehicles/*.glb` that is not in the Three.js game as stale; the new
-GLBs need that set narrowed (or a separate folder) when they merge.
+**For the World agent.** In `Main`: spawn with `Vehicle.create(variant)` + `place()`, add a
+`Driving` with `rider = PlayerRiderLink.make(rig.body)`, a `DrivingControls` on a CanvasLayer and
+`DrivingWiring.wire(driving, controls, rig)` (as `VehicleYard` does); put vehicles in
+`WorldOrigin.GROUP`.
+**For the Tamil Nadu vehicles and Models agents.** A GLB + `<model>.json` in `assets/vehicles/`
+replaces the `legacy/` one of the same name with its geometry (wheels, collision, seat, entry);
+handling stays in `src/vehicles/data/vehicle_types.json`. Wheels are matched to physics wheels by
+position. New kinds: add a kind and a variant to `vehicle_types.json`.
+**For the Player agent.** A seated pose would make bikes and autos right: `RiderLink.set_seated
+(type, amount)` gets `type.pose` (hands, feet, lean) and is the place to drive it.
 **For the Sound agent.** Signals: `Driving.horn`, `boarding_event` (door_opening, shut…),
 `crashed`; `Gearbox.shifted_up` for gear changes; `Vehicle.siren()`.
 
-**Weak.** The single-front-wheel vehicles turn ~15 % less from rest than in the Three.js game and
-the rear-driven ones slide a little more at full lock (cause not found; `docs/driving.md`).
-Seated riders are a capsule; premium cars are stretched stand-ins; the yard's lighting is a test
-ground, not the city. No physics interpolation: if the phone shows judder at 90+ Hz, revisit
-with G-2.
+**Weak.** Single-front-wheel vehicles turn ~15 % less from rest than in the Three.js game and the
+rear-driven ones slide a little more at full lock (cause not found; `docs/driving.md`). No seated
+pose. The yard's lighting is a test ground, not the city. No physics interpolation.

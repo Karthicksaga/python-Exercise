@@ -1,4 +1,4 @@
-class_name TouchButton
+class_name HoldButton
 extends Button
 ## A button that knows when it is held, by any finger (multi-touch: GAS stays held while another
 ## finger steers or taps a gear) or the mouse. `pressed_down` fires on touch, not on release, so

@@ -2,9 +2,9 @@
 
 Phase 2 of the migration: drivable vehicles, matched to the Three.js game's handling. Decisions
 G-70…G-79 in `technical-decisions.md`. Code: `src/physics/` (the vehicle body), `src/vehicles/`
-(types, models, gearbox, boarding, crashes, driving), `src/game_engine/chase_camera.gd`,
-`src/ui/driving_controls/`, `src/app/driving_wiring.gd` and the test ground
-`src/app/vehicle_yard/`.
+(types, manifests, models, gearbox, boarding, crashes, driving), `src/ui/driving_controls/`,
+`src/app/driving_wiring.gd`, `src/app/player_rider_link.gd` and the test ground
+`src/app/vehicle_yard/` (with the real `PlayerRig`).
 
 ## What is where
 | Piece | File | Port of (Three.js) |
@@ -17,8 +17,8 @@ G-70…G-79 in `technical-decisions.md`. Code: `src/physics/` (the vehicle body)
 | Getting in and out (walk, door, pull, climb, sit, close) | `src/vehicles/boarding.gd` | `Boarding.ts` (with the TD-30 `pull` phase) |
 | Crash rules and the thrown body | `src/vehicles/crash_rules.gd`, `crash_flight.gd` | `crash.ts`, `Crashes.ts`, `PlayerController.throwOff` (TD-29) |
 | Driving session (input → gearbox → vehicle, boarding, crashes) | `src/vehicles/driving.gd`, `drive_input.gd` | parts of `Game.ts`, `Boarder.ts` |
-| The person in the seat | `src/vehicles/vehicle_rider.gd` | interface for the Player agent; a capsule stand-in until then |
-| Chase camera | `src/game_engine/chase_camera.gd` | `FollowCamera` driving mode, `chennai-game-design` §5 |
+| The person in the seat | `src/vehicles/rider_link.gd`, `src/app/player_rider_link.gd` | the Player's `enter_vehicle`/`exit_vehicle` hooks |
+| Driving camera | the Player's `FollowCamera.chase`, wired in `src/app/driving_wiring.gd` | `FollowCamera` driving mode, `chennai-game-design` §5 |
 | Touch controls | `src/ui/driving_controls/` | the driving HUD of `Controls` |
 
 ## Kinds and variants
@@ -29,7 +29,7 @@ G-70…G-79 in `technical-decisions.md`. Code: `src/physics/` (the vehicle body)
 | motorbike | bike | `motorbike.glb` | leans into corners (drawn only), topples when the rider is thrown |
 | ambulance | ambulance | `ambulance.glb` | siren (red/blue beacons), rear doors for patients |
 | bus | bus | `bus.glb` | folding front door on the kerb side, aisle to the driver's seat |
-| saloon, suv, coupe, race_car | saloon, suv, coupe, race (model `formula`) | **stand-ins** until the Models agent's GLBs land on this branch: `hatchback.glb` (saloon, coupé, race car) and `ambulance.glb` (SUV) stretched to the car's size | handling profiles are invented (MIGRATION_PROMPT §11): faster, grippier (`grip`), quieter engines are the Sound agent's |
+| saloon, suv, coupe, race_car | saloon, suv, coupe, race | the Models agent's `saloon`, `suv`, `coupe`, `formula` GLBs and their geometry; a stretched `fallback_model` only if a GLB is missing | handling profiles are invented (MIGRATION_PROMPT §11): faster, grippier (`grip`), quieter engines are the Sound agent's |
 
 ## Model manifest (`assets/vehicles/<model>.json`, G-73)
 The schema is the Models agent's (`docs/vehicles.md`, "The manifest"); the Tamil Nadu
@@ -99,8 +99,7 @@ rider's own `CharacterBody3D.move_and_slide`, so walls stop it (swept, no tunnel
 through its own vehicle until it is up.
 
 ## Gaps
-- Seated poses are the stand-in capsule folded to sitting height; the Player agent's
-  `VehicleRider` subclass draws the real figure (hands on grips, feet on pegs: `VehicleType.pose`).
+- No seated pose: the Player's figure has none yet; open-seat riders are drawn standing with
+  the hips on the seat (`VehicleType.pose` has the hand and foot points for when it exists).
 - No engine or horn sound (Sound agent: listen to `Driving.horn`, `boarding_event`, `crashed`).
 - Not wired into `Main` yet (the streamed city is the World agent's); the yard is the test ground.
-- Premium and race cars use stretched stand-in models.

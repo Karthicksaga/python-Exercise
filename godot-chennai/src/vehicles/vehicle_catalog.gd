@@ -1,7 +1,8 @@
 class_name VehicleCatalog
 extends RefCounted
 ## The vehicle kinds and variants (decision G-72), read once from `data/vehicle_types.json`,
-## and the per-model manifests `res://assets/vehicles/<model>.json` (decision G-73,
+## and the per-model manifests `res://assets/vehicles/<model>.json`, else `legacy/<model>.json`
+## (decision G-73,
 ## `VehicleManifest`): a kind whose own model is there takes its geometry from the manifest.
 ##
 ## A *kind* is a handling profile (car, auto, bike, ambulance, bus, saloon, suv, coupe, race); a
@@ -93,10 +94,14 @@ static func manifest_for(t: VehicleType) -> VehicleManifest:
 
 static func _has_glb(m: VehicleManifest) -> bool:
 	var lods := m.lods()
-	return not lods.is_empty() and ResourceLoader.exists(MODELS_DIR.path_join(String(lods[0]["file"])))
+	return not lods.is_empty() and ResourceLoader.exists(String(lods[0]["file"]))
 
 
 static func manifest(model_id: String) -> VehicleManifest:
 	if not _manifests.has(model_id):
-		_manifests[model_id] = VehicleManifest.read(MODELS_DIR.path_join(model_id + ".json"))
+		# A model of its own (Models, Tamil Nadu vehicles) wins over the ported one in `legacy/`.
+		var m := VehicleManifest.read(MODELS_DIR.path_join(model_id + ".json"))
+		if m == null:
+			m = VehicleManifest.read(MODELS_DIR.path_join("legacy").path_join(model_id + ".json"))
+		_manifests[model_id] = m
 	return _manifests[model_id]

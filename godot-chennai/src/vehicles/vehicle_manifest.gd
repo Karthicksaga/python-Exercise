@@ -15,6 +15,8 @@ const LEGACY_PAINT: Array[String] = ["v_paint_body", "auto_paint"]
 const LEGACY_BEACONS := {"red": ["v_beaconred"], "blue": ["v_beaconblue"]}
 
 var id: String = ""
+## The folder of the manifest: LOD files are relative to it.
+var dir: String = ""
 var data: Dictionary = {}
 
 
@@ -26,15 +28,16 @@ static func read(path: String) -> VehicleManifest:
 		return null
 	var m := VehicleManifest.new()
 	m.id = path.get_file().get_basename()
+	m.dir = path.get_base_dir()
 	m.data = parsed
 	return m
 
 
-## The LOD files, nearest first: [{file, min, max}] (metres; max -1 for no limit).
+## The LOD files, nearest first: [{file (res:// path), min, max}] (metres; max -1 for no limit).
 func lods() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for l: Dictionary in data.get("lods", []):
-		out.append({"file": String(l["file"]), "min": float(l.get("min_distance_m", 0.0)), "max": float(l.get("max_distance_m", -1.0))})
+		out.append({"file": dir.path_join(String(l["file"])), "min": float(l.get("min_distance_m", 0.0)), "max": float(l.get("max_distance_m", -1.0))})
 	return out
 
 

@@ -28,11 +28,11 @@ const EXIT_SIZE := Vector2(100, 52)
 const STEER_SIZE := Vector2(250, 128)
 
 var steer_pad: SteerPad
-var gas: TouchButton
-var brake: TouchButton
-var horn: TouchButton
-var exit_button: TouchButton
-var get_in: TouchButton
+var gas: HoldButton
+var brake: HoldButton
+var horn: HoldButton
+var exit_button: HoldButton
+var get_in: HoldButton
 var gears: Dictionary = {}
 var readout: Label
 var toast_label: Label
@@ -117,8 +117,8 @@ func _init() -> void:
 	set_mode(&"foot")
 
 
-func _button(text: String, node_name: String, font: int) -> TouchButton:
-	var b := TouchButton.new()
+func _button(text: String, node_name: String, font: int) -> HoldButton:
+	var b := HoldButton.new()
 	b.text = text
 	b.name = node_name
 	b.add_theme_font_size_override("font_size", font)
@@ -192,7 +192,7 @@ func set_readout(text: String) -> void:
 func set_gears(engaged: String, pending: String) -> void:
 	_pending = pending
 	for g: String in gears:
-		(gears[g] as TouchButton).set_pressed_no_signal(engaged == g and pending == "")
+		(gears[g] as HoldButton).set_pressed_no_signal(engaged == g and pending == "")
 
 
 ## The siren button lit while the siren is on.
@@ -213,5 +213,5 @@ func _process(delta: float) -> void:
 			toast_label.visible = false
 	_blink += delta
 	for g: String in gears:
-		var b: TouchButton = gears[g]
+		var b: HoldButton = gears[g]
 		b.modulate = Color(1, 1, 1, 0.45 if _pending == g and int(_blink * 4.0) % 2 == 0 else 1.0)

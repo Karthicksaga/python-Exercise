@@ -67,11 +67,11 @@ func test_drive_brake_exit_refused_while_moving_then_beside_the_car() -> bool:
 	assert_true(max_door > 0.8, "the door opened to get out")
 	assert_true(free_while_closing, "control back while the door swings shut")
 	assert_eq(car.door(), 0.0, "door shut")
-	var d := yard.rider.global_position - car.global_position
+	var d := yard.rider.position() - car.global_position
 	var right := d.x * cos(heading) - d.z * sin(heading)
 	assert_true(right > 1.0 and right < 2.0, "standing beside the driver's (right) door: %.2f m right" % right)
 	assert_true(Vector2(d.x, d.z).length() < 2.5, "close to the car")
-	assert_near(yard.rider.global_position.y, ground_y, 0.3, "feet on the ground")
+	assert_near(yard.rider.position().y, ground_y, 0.3, "feet on the ground")
 	assert_false(yard.controls.gas.is_visible_in_tree(), "driving controls hidden on foot")
 	return true
 
@@ -157,7 +157,7 @@ func test_bike_and_auto_ridden_no_door() -> bool:
 		check(yard.driving.mode() == &"driving", "%s: riding" % variant)
 		check(phases.has(&"sit") and not phases.has(&"open"), "%s: straight onto the seat (%s)" % [variant, phases])
 		check(not door_moved, "%s: no door" % variant)
-		check(yard.rider.visible, "%s: the rider can be seen" % variant)
+		check(yard.rig.body.figure.visible, "%s: the rider can be seen" % variant)
 		await hold_gas(2.0)
 		check(v.forward_speed() > 3.0, "%s moves (%.1f m/s)" % [variant, v.forward_speed()])
 		yard.driving.brake = true
@@ -208,18 +208,39 @@ func test_ambulance_siren_and_controls() -> bool:
 func test_chase_camera_settles_behind_and_never_jumps() -> bool:
 	var car := await spawn(&"hatchback", Vector3(0, 0, 30))
 	await board(car)
-	assert_true(yard.camera.target == car, "the chase camera follows the car")
+	var cam := yard.camera()
+	await wait_physics_frames(2)
+	assert_true(cam.target == car, "the follow camera chases the car")
+	assert_eq(cam.reach, car.type.camera_distance, "at the hatchback's driving distance")
 	await wait_physics_frames(30)
-	yard.camera.reset_jump()
-	await hold_gas(3.5)
-	assert_true(car.forward_speed() > 8.0, "moving at speed")
-	var to_car := car.global_position - yard.camera.global_position
-	var camera_yaw := atan2(-to_car.x, -to_car.z)
-	assert_true(absf(wrapf(camera_yaw - car.yaw(), -PI, PI)) < 0.2, "the camera settled behind the direction of travel")
 	# Down the street between the houses, then a hard turn towards them: the view gets pulled in
-	# by walls, but eased, never a jump (chennai-game-design §5).
-	await hold_gas(1.5, 0.6)
-	assert_true(yard.camera.max_jump < 0.6, "largest frame-to-frame camera jump %.2f m" % yard.camera.max_jump)
-	var back := Vector2(yard.camera.global_position.x - car.global_position.x, yard.camera.global_position.z - car.global_position.z).length()
-	assert_true(back > 1.5 and back < car.type.camera_distance + 4.0, "at a driving distance (%.1f m)" % back)
+	# by walls, but never jumps (chennai-game-design §5). Frame-to-frame camera moves beyond the
+	# car's own are measured every step.
+	var max_jump := 0.0
+	var last := cam.camera.global_position
+	yard.driving.gas = true
+	for i in 60 * 5:
+		if i == 60 * 3 + 30:
+			to_settle(cam, car)
+			yard.driving.steer = 0.6
+		await wait_physics_frames(1)
+		var now := cam.camera.global_position
+		max_jump = maxf(max_jump, now.distance_to(last) - car.linear_velocity.length() / 60.0)
+		last = now
+	yard.driving.gas = false
+	yard.driving.steer = 0.0
+	assert_true(max_jump < 0.6, "largest frame-to-frame camera jump beyond the car's motion %.2f m" % max_jump)
+	assert_true(_settled, "the camera settled behind the direction of travel after 3.5 s (off by %.2f rad)" % _off)
 	return true
+
+
+var _settled := false
+var _off := 0.0
+
+
+func to_settle(cam: FollowCamera, car: Vehicle) -> void:
+	var to_car := car.global_position - cam.camera.global_position
+	var camera_yaw := atan2(-to_car.x, -to_car.z)
+	var travel := atan2(-car.linear_velocity.x, -car.linear_velocity.z)
+	_off = absf(wrapf(camera_yaw - travel, -PI, PI))
+	_settled = car.forward_speed() > 8.0 and _off < 0.2

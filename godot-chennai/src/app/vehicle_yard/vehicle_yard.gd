@@ -1,8 +1,8 @@
 class_name VehicleYard
 extends Node3D
 ## A test ground for the vehicles (no city): a big flat lot with a road, a wall to crash into,
-## golden-hour light and haze, every variant parked in a row, the rider, a `Driving` session,
-## the chase camera and the touch controls. Used by the scene tests and the screenshots; the
+## golden-hour light and haze, every variant parked in a row, the player, a `Driving` session,
+## the follow camera and the touch controls. Used by the scene tests and the screenshots; the
 ## real game wires the same pieces into the streamed city (`Main` composition root) with
 ## `DrivingWiring`.
 
@@ -13,8 +13,9 @@ const WALL_Z := -160.0
 const WALL_THICKNESS := 0.3
 
 var driving: Driving
-var rider: VehicleRider
-var camera: ChaseCamera
+## The player (`PlayerRig`: body, figure, follow camera, walking controls) and `Driving`'s link to it.
+var rig: PlayerRig
+var rider: PlayerRiderLink
 var controls: DrivingControls
 var vehicles: Dictionary = {}
 var wall: StaticBody3D
@@ -22,16 +23,11 @@ var wall: StaticBody3D
 
 func _ready() -> void:
 	_build_world()
-	rider = VehicleRider.new()
-	rider.name = "Rider"
-	add_child(rider)
-	rider.place(Vector3(0, 0.05, 12), 0)
-	camera = ChaseCamera.new()
-	camera.name = "ChaseCamera"
-	camera.fov = 62
-	camera.far = 900
-	add_child(camera)
-	camera.current = true
+	rig = PlayerRig.new()
+	rig.name = "PlayerRig"
+	add_child(rig)
+	rig.place(Vector3(0, 0.05, 12), 0)
+	rider = PlayerRiderLink.make(rig.body)
 	var ui := CanvasLayer.new()
 	ui.name = "Ui"
 	add_child(ui)
@@ -41,8 +37,17 @@ func _ready() -> void:
 	driving.name = "Driving"
 	driving.rider = rider
 	add_child(driving)
-	add_child(DrivingWiring.wire(driving, controls, camera))
-	camera.follow(rider, DrivingWiring.FOOT_DISTANCE, DrivingWiring.FOOT_PIVOT)
+	add_child(DrivingWiring.wire(driving, controls, rig))
+
+
+## The player's camera (the rig's `FollowCamera`).
+func camera() -> FollowCamera:
+	return rig.camera
+
+
+## Loads the player's model (screenshots; tests run with the bare body).
+func load_player() -> void:
+	await rig.load_figure()
 
 
 ## Every variant parked in a row along x, noses north (-Z).

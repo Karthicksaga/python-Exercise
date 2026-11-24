@@ -530,30 +530,37 @@ it cannot cross a wall), slides it to a stop at 9 m/s², lies, gets up; damage o
 motorbike topples (drawn) and scrapes to a stop. No ragdoll (same trade-off as TD-29).
 
 ## G-76: Collision layers
-1 world, 2 player (and a thrown rider), 3 vehicles, 4 people (`src/physics/physics_layers.gd`).
-Wheel rays see world and vehicles; the chase camera is pulled in by world and vehicles. Player
-and Foundation may name them in `project.godot` `[layer_names]` with these bits.
+The vehicles use the Player agent's bits (G-64): 1 world, 2 player (and a thrown rider), 4
+people, 8 vehicles (`src/physics/physics_layers.gd`, the same values as `PlayerController`).
+Wheel rays see world and vehicles; a vehicle collides with world, vehicles, player and people.
 
-## G-77: Boarding is a timed sequence; the rider is an interface
+## G-77: Boarding is a timed sequence; the player is moved through a `RiderLink`
 `Boarding` (port of `Boarding.ts`, with TD-30's `pull` phase for carjacking) times walk, door,
 pull, aisle, sit, close; `Driving` turns it into the rider's place and pose and the door angle.
-The rider is a `VehicleRider` (`CharacterBody3D`: `set_walking`, `place`, `set_seated`,
-`throw_off`, `knockdown`, `consume_landing`, health); its default draws a capsule stand-in, and
-the Player agent's character extends it (or implements the same methods) to draw the real seated
-pose (`VehicleType.pose`).
+`Driving` talks to a `RiderLink` (vehicles may not use the player module); `PlayerRiderLink`
+(`src/app/`) maps it onto the Player's hooks: `PlayerController.enter_vehicle(vehicle, anchor)`
+when getting in starts (the anchor walks the path to the door, then sits on the driver's hip
+point and rides with the vehicle), `exit_vehicle(feet, yaw)` when the rider is out. A crash throw
+pauses the player's own step (`controls_enabled` off and its physics process) while
+`CrashFlight` moves the same body; `knock()` is not used for it because the walking step blends
+a push away within a fraction of a second (TD-29 wants a flight of about a second). The player has
+no seated pose yet: an open-seat rider is drawn standing with the hips on the seat; closed
+vehicles hide the driver.
 
 ## G-78: Touch driving controls and input
 Layout (chennai-game-design §3): steering pad bottom-left (a thumb slides left/right, deadzone
 8 %), GAS (largest) in the bottom-right corner, BRAKE beside it, P/R/D above GAS, HORN/SIREN above
 BRAKE, EXIT top-right, speed and gear bottom-centre; GET IN only on foot next to a vehicle; nothing
-while boarding or thrown. Buttons are multi-touch (`TouchButton` tracks every finger). Keyboard
+while boarding or thrown. Buttons are multi-touch (`HoldButton` tracks every finger). Keyboard
 and pad actions (`drive_*`, `gear_*`) are registered at run time by `DriveInput`, so
 `project.godot` is untouched. Module boundaries: `ui` and `vehicles` do not know each other;
 `src/app/driving_wiring.gd` connects them and the camera.
 
-## G-79: Chase camera
-`ChaseCamera` (`src/game_engine/`) follows any node: behind the direction of travel above 3 m/s,
-further back with speed (0.08 m per m/s), looking a quarter-second ahead, pulled in by walls at
-6/s and out at 1.6/s (eased, never snapped), updated in the physics step. A test drives past the
-houses and into a turn and checks the camera never jumps more than 0.6 m in a frame beyond the
-car's own motion. Physics interpolation is off (G-2); revisit together if the phone shows judder.
+## G-79: The driving camera is the Player's `FollowCamera`
+`DrivingWiring` (`src/app/`) points the player's `FollowCamera` at the vehicle (`follow`, `reach`
+= the type's camera distance) and calls `chase(velocity, heading, forward_speed, top_speed, dt)`
+every step while driving (G-65: behind the travel, pulled back and widened with speed, eased
+round thin obstacles); on foot and while thrown it follows the player. A test drives past the
+houses and into a turn and checks the camera never jumps more than 0.6 m in a step beyond the
+car's own motion and settles behind the direction of travel. (The vehicles agent's own chase
+camera was removed for it.)

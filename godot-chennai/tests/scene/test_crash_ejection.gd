@@ -36,7 +36,7 @@ func test_motorbike_thrown_above_35_kmh() -> bool:
 	var landed := false
 	var max_y := -INF
 	for i in 60 * 8:
-		var p := yard.rider.global_position
+		var p := yard.rider.position()
 		min_z = minf(min_z, p.z)
 		max_y = maxf(max_y, p.y)
 		if yard.rider.knockdown() in [&"sliding", &"lying"]:
@@ -48,7 +48,7 @@ func test_motorbike_thrown_above_35_kmh() -> bool:
 	assert_true(landed, "it landed and lay down")
 	assert_true(min_z > _wall_face(), "never through the wall (closest z %.2f, wall face %.2f)" % [min_z, _wall_face()])
 	assert_eq(yard.driving.mode(), &"foot", "up again and on foot")
-	assert_near(yard.rider.global_position.y, 0.0, 0.3, "standing on the ground")
+	assert_near(yard.rider.position().y, 0.0, 0.3, "standing on the ground")
 	assert_near(yard.rider.health, health_before - crash.damage, 0.01, "damage taken on landing")
 	assert_true(bike.toppled(), "the motorbike fell over")
 	return true
@@ -76,14 +76,14 @@ func test_car_driver_through_the_windscreen_only_near_top_speed() -> bool:
 	assert_eq(crash.style, "windscreen", "through the windscreen")
 	var min_z := INF
 	for i in 60 * 8:
-		min_z = minf(min_z, yard.rider.global_position.z)
+		min_z = minf(min_z, yard.rider.position().z)
 		if yard.driving.mode() == &"foot":
 			break
 		await wait_physics_frames(1)
 	assert_true(min_z > _wall_face(), "never through the wall (closest z %.2f)" % min_z)
 	assert_true(car.global_position.z > _wall_face(), "the car stopped at the wall")
 	assert_eq(yard.driving.mode(), &"foot", "up again")
-	assert_near(yard.rider.global_position.y, 0.0, 0.3, "on the ground")
+	assert_near(yard.rider.position().y, 0.0, 0.3, "on the ground")
 	return true
 
 

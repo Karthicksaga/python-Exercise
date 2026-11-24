@@ -1,18 +1,18 @@
 class_name PhysicsLayers
 extends RefCounted
-## Collision layer bits (decision G-76; physics-tuning "layer matrix as data"). Foundation and
-## Player may rename them; the values are what the vehicle code uses.
+## Collision layer bits, as decided by the Player agent (G-64; the constants also live on
+## `PlayerController`). The vehicle code uses these (G-76).
 ##
-## | Layer | Bit | Scans |
+## | Layer | Bit value | Scans |
 ## |---|---|---|
-## | world (ground, buildings, kerbs) | 1 | nothing (static) |
-## | player (the walking capsule, a thrown rider) | 2 | world, vehicles |
-## | vehicles (chassis boxes) | 3 | world, vehicles, player, people |
+## | world (ground, buildings, kerbs, poles) | 1 | nothing (static) |
+## | player (the walking body, a thrown rider) | 2 | world, people, vehicles |
 ## | people (pedestrians) | 4 | world, vehicles |
+## | vehicles (chassis boxes) | 8 | world, vehicles, player, people |
 
-const WORLD := 1 << 0
-const PLAYER := 1 << 1
-const VEHICLES := 1 << 2
-const PEOPLE := 1 << 3
+const WORLD := 1
+const PLAYER := 2
+const PEOPLE := 4
+const VEHICLES := 8
 ## What a wheel's ray can stand on: the ground and other vehicles' roofs.
 const WHEEL_RAY := WORLD | VEHICLES

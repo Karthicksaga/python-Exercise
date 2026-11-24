@@ -52,7 +52,7 @@ func test_manifests_name_real_nodes() -> bool:
 			continue
 		var lods := m.lods()
 		check(lods.size() >= 2 and float(lods[0]["max"]) > 0.0, "%s has LODs with distances" % model)
-		var path := VehicleCatalog.MODELS_DIR.path_join(String(lods[0]["file"]))
+		var path := String(lods[0]["file"])
 		if not check(ResourceLoader.exists(path), "%s exists" % path):
 			continue
 		var scene := (load(path) as PackedScene).instantiate()
@@ -78,7 +78,9 @@ func test_manifests_name_real_nodes() -> bool:
 	assert_vec_near(t.entry.point, Vector2(1.25, 0.35), 0.001, "entry point")
 	assert_eq(VehicleCatalog.type(&"bus").entry.aisle.size(), 2, "bus aisle from the manifest")
 	assert_near(VehicleCatalog.type(&"bus").entry.aisle[0].y, -0.35, 0.001, "aisle in the chassis frame")
-	# Kinds with no GLB yet fall back to a stand-in model.
+	# The Models agent's premium cars are found and used (not the stand-ins).
 	for k: StringName in [&"saloon", &"suv", &"coupe", &"race"]:
-		check(VehicleCatalog.manifest_for(VehicleCatalog.type(k)) != null, "%s has a model to show" % k)
+		var m := VehicleCatalog.manifest_for(VehicleCatalog.type(k))
+		if check(m != null, "%s has a model to show" % k):
+			check(m.id == VehicleCatalog.type(k).model, "%s uses its own model (%s)" % [k, m.id])
 	return true
