@@ -146,3 +146,35 @@ func test_changing_a_setting_relays_the_controls_out_live() -> bool:
 	vp.queue_free()
 	vp2.queue_free()
 	return true
+
+
+func test_the_pause_menu_rows_edit_the_settings_and_show_their_values() -> bool:
+	var s := _settings(false, ControlSettings.SIZE_MEDIUM)
+	var menu := PauseMenu.new()
+	root.add_child(menu)
+	ControlSettingsRows.add_to(menu, s)
+	await wait_frames(2)
+	for id: StringName in [&"LeftHanded", &"LookSpeed", &"InvertY", &"ButtonSize", &"ButtonOpacity", &"Haptics", &"RunMode"]:
+		check(menu.setting_button(id) != null, "%s row exists" % id)
+	assert_eq(menu.setting_button(&"LeftHanded").text, "Left-handed: Off", "starts off")
+	menu.setting_button(&"LeftHanded").pressed.emit()
+	assert_true(s.left_handed, "pressing turned it on")
+	assert_eq(menu.setting_button(&"LeftHanded").text, "Left-handed: On", "and relabelled")
+	menu.setting_button(&"LookSpeed").pressed.emit()
+	assert_eq(menu.setting_button(&"LookSpeed").text, "Look speed: 1.5x", "1.0x to 1.5x")
+	menu.setting_button(&"ButtonSize").pressed.emit()
+	assert_eq(menu.setting_button(&"ButtonSize").text, "Buttons: Large", "medium to large")
+	menu.setting_button(&"RunMode").pressed.emit()
+	assert_true(s.run_toggle, "toggle run on")
+	menu.setting_button(&"Haptics").pressed.emit()
+	assert_false(s.haptics, "vibration off")
+	menu.setting_button(&"InvertY").pressed.emit()
+	assert_true(s.invert_y, "invert on")
+	menu.setting_button(&"ButtonOpacity").pressed.emit()
+	assert_eq(menu.setting_button(&"ButtonOpacity").text, "Button opacity: 100%", "85 to 100")
+	var saved := ControlSettings.new()
+	saved.path = SETTINGS_PATH
+	saved.load_saved()
+	assert_true(saved.left_handed and saved.run_toggle and saved.invert_y and not saved.haptics, "every press was saved")
+	menu.queue_free()
+	return true

@@ -16,7 +16,7 @@ var lit: bool = false:
 var dim: bool = false:
 	set(value):
 		dim = value
-		modulate.a = 0.4 if value else 1.0
+		modulate.a = 0.5 if value else 1.0
 var glyph: String = "":
 	set(value):
 		glyph = value
