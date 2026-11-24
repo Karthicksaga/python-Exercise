@@ -361,12 +361,50 @@ Decisions G-50…G-59. Tests: `tests/unit/test_city_meshes.gd`, `test_city_layou
   exercised by the city.
 
 ### 24 Nov 2026, cast agent: CC0 locomotion (branch `agent/godot-cc0-anim`)
-- idle/walk/run now come from Quaternius' Universal Animation Library (Standard, CC0 1.0), not
-  Mixamo: all 70 people rebuilt, and `assets/animations/locomotion.glb` is written by
-  `tools/blender/characters.py --locomotion` (same clip names, MPFB skeleton) for the player's
-  run-time retarget. `sync_from_threejs.py` no longer copies the old file. G-100.
-- Download used: `https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip`
+**Done.** idle/walk/run come from Quaternius' Universal Animation Library (Standard, CC0 1.0):
+`Idle_Loop`, `Walk_Formal_Loop`, `Jog_Fwd_Loop`; all 70 people and the player's clip rig
+`assets/animations/locomotion.glb` (written by `tools/blender/characters.py --locomotion`, same
+clip names) rebuilt; `sync_from_threejs.py` no longer copies the old Mixamo file. Decisions
+G-100…G-105 (G-106…G-109 free).
+- Download: `https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip`
   (opengameart.org is reachable from the cloud container; quaternius.com and itch.io are not).
-- New test `tests/unit/test_asset_licences.gd`: nothing under `assets/` may name Mixamo.
-- The run is a jog in the library's style (lower, deeper knees); compare renders in the report.
+  Licence evidence in `assets/LICENSES.md` (hash, page, `License.txt`).
+- `tests/unit/test_asset_licences.gd`: no asset names Mixamo, and no gait clip moves like the
+  Mixamo clips (fingerprints, G-101; closest today 14.0°, limit 7°).
+- Measured on the imported cast (Mixamo era in brackets): worst sole in any clip 0.002 m (0.024),
+  wrist 36.0° (43.6), finger joint 33.5° (33.5), gait blends 0.003 m with planting (0.010) and
+  0.094 m without (0.077); the player: soles within 0.0005 m, joint directions within 0.58° of
+  the clips. Budgets unchanged (LOD0 7,200–9,971, LOD1 3,340–3,391), 55.5 MB of GLB (57.7).
+- For Traffic: play `walk`/`run` at `speed / clipSpeedsMps[clip]` from `people.json` (G-105).
+  Scene paths and clip names are unchanged. Clips now import at 60 fps (G-103).
+- Weak: the run is a softened jog; from a three-quarter view the bent elbows read wide and
+  sarees, veshtis and lungis still flare forward at full stride. The walk's arm swing is small.
+  The run's feet slide at the player's 6.2 m/s (as before). Only seen on llvmpipe
+  (Compatibility), not on a phone. `test_city_streaming.gd::test_main_thread_budget_under_cpu_load`
+  fails in full runs here on `feat/godot-chennai` too (load-sensitive; passes alone).
 
+## Missions (G-130 to G-139, agent/godot-missions), 24 Nov 2026
+- **Playable:** `MissionsLayer` (`src/app/missions_layer/`, added to `Main` after the player) steps
+  `MissionSession` (`src/missions/mission_session.gd`, node-free: stages, jobs, stories, life places,
+  one purse and one save) from the player's real state; draws the marker (`MissionBeacon`), the HUD
+  (`MissionHud`: money, stages, reputation, objective with distance/countdown/arrow, JOBS, toasts,
+  job board, results, GO INSIDE, gym needle), parks the content's vehicles near the player, shows
+  passengers boarding/alighting, goods handed over and the ambulance stretcher (`FareFigures`,
+  cast adults only), and saves after each stage/job. NEW GAME on the title menu clears progress.
+- **Tests:** `tests/scene/test_missions_layer.gd` (stages 1 and 2, restart, NEW GAME, board, a fare),
+  `test_missions_jobs.gd` (courier goods, ambulance stretcher, pay, bumps, adults only),
+  `tests/unit/rules/test_content_on_map.gd` (the 5 map-dependent content checks, G-137, plus a port
+  of `kerbSpot`: `FareSpots`). Screenshots: `tests/tools/missions_shots.gd` (xvfb, Compatibility).
+- **Not done / weak:** passengers are hidden when seated (no seated pose until the cast pose work);
+  sound cues are only mapped to `Sound.chime` if it exists; the pause menu, parked-vehicle ownership
+  and boarding belong to Integration: `MissionsLayer` spawns the content's parked vehicles itself
+  (`spawn_parking`) and must be switched off if Integration parks them. Train stages (18-19) need
+  the rail/train rider (not in this phase): see `by_train`.
+
+## Integration (agent/godot-integration), 24 Nov 2026
+Parked vehicles (`src/app/parked_vehicles/`), `PlayWiring` (driving, sounds, environment, parking),
+`EnvironmentWiring` (clock and weather into the lights and materials), the pause menu
+(`src/ui/pause_menu/`) and Back routing in `Main`. Decisions G-110…G-115. Tests: `test_game_vehicles`
+(board, drive 20 m, exit, bike ejection, day/night/rain, pause, chunk ring and origin shift).
+Open: the debug FPS badge sits under the pause panel's corner at 915x412; vehicles' headlamps do not
+light the road at night; screenshots are software-GL only (no phone run).

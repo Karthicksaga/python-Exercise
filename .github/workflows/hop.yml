@@ -20,6 +20,9 @@ permissions:
   contents: read
 jobs:
   api:
+    # Idle on the Godot migration branches: only the Godot Chennai workflow runs there.
+    # (A PR's path filter compares against its base branch, so paths alone don't keep these out.)
+    if: ${{ github.event_name == 'workflow_dispatch' || !(startsWith(github.head_ref || github.ref_name, 'feat/godot-chennai') || startsWith(github.head_ref || github.ref_name, 'agent/godot-')) }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -89,6 +92,9 @@ jobs:
   #         retention-days: 14
   #     - run: npm audit --omit=dev --audit-level=high
   android:
+    # Idle on the Godot migration branches: only the Godot Chennai workflow runs there.
+    # (A PR's path filter compares against its base branch, so paths alone don't keep these out.)
+    if: ${{ github.event_name == 'workflow_dispatch' || !(startsWith(github.head_ref || github.ref_name, 'feat/godot-chennai') || startsWith(github.head_ref || github.ref_name, 'agent/godot-')) }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -173,6 +179,9 @@ jobs:
           path: ${{ runner.temp }}/artifacts/*.apk
           if-no-files-found: error
   deployment-config:
+    # Idle on the Godot migration branches: only the Godot Chennai workflow runs there.
+    # (A PR's path filter compares against its base branch, so paths alone don't keep these out.)
+    if: ${{ github.event_name == 'workflow_dispatch' || !(startsWith(github.head_ref || github.ref_name, 'feat/godot-chennai') || startsWith(github.head_ref || github.ref_name, 'agent/godot-')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -1008,3 +1008,39 @@ floating origin on it (`manage_origin`; the rig is in `WorldOrigin.GROUP`, its c
 phase 1: the camera follows in the physics step (G-65), smooth at 60 fps; turning it on for
 90/120 Hz screens needs the camera to read the interpolated transform in `_process`, a Player
 change, so it is listed as open rather than half done.
+
+
+## Missions in the game (G-130 to G-139, agent/godot-missions)
+
+### G-130: One `MissionSession` (no nodes) and one `MissionsLayer` (glue)
+The Three.js `Game`/`JobDesk`/`PlaceDesk` rules half is `MissionSession`; `MissionsLayer` reads the
+player/vehicle state in the fixed step (priority 10, after `Driving`) and draws. No rules in the layer.
+
+### G-131: Life places and short stories are part of the session and the one save file
+### G-132: Goods and fares follow the rules' stages; figures only draw them (adult cast only)
+### G-133: Job results hold the game (`paused`) until CONTINUE; the board is the same dialog
+### G-134: A toast behind a full-screen dialog is hidden; toasts size to their wrapped text after one frame
+### G-137: Map checks use the format-1 world files and a port of `kerbSpot` (`FareSpots`); 34 of 49 baked kerbs reproduce without the side hint (the rest were baked with it)
+
+## Integration: parked vehicles, driving, day/night, pause (G-110…G-119)
+
+- **G-110 Parked vehicles.** `src/app/parked_vehicles/`: the Three.js game's parking (read from
+  the baked mission content) plus `parking_spots.json` for what it did not park (taxis at
+  stations and in T. Nagar, premium cars in Nungambakkam, Poes Garden, Boat Club Road and
+  Besant Nagar, the race car at Irungattukottai). A spot is a world point; it resolves to the
+  nearest road kerb on a worker thread within 560 m, a vehicle is built on a worker and joins
+  the scene within 200 m once its chunk is ready (`world_ready_around`) and nothing stands on
+  the spot; freed beyond 310 m or with its chunk. Vehicles are in `WorldOrigin.GROUP`.
+- **G-111 Driving glue.** `PlayWiring` (one node under the city) holds `Driving`, the touch
+  `DrivingControls`, `ParkedVehicles`, sounds and the environment, so `Main` only runs the flow.
+- **G-112 Crash ejection** uses the ported `CrashRules` (bike and auto riders thrown on hard
+  impacts, car drivers through the windscreen at speed; damage by impact speed, TD-29).
+- **G-113 Day/night and weather in the game.** `EnvironmentWiring` replaces the stand-in sun
+  and sky with `CityEnvironment` driven by `GameLoop.clock` and the `Weather` autoload; lit
+  windows, street lamps and wet streets follow. Emission colour of the facade and kit materials
+  is black: Godot adds the colour to the emission texture, so white lit every wall at night.
+- **G-114 Pause menu** (`src/ui/pause_menu/`): the tree pauses (game time, physics, clock);
+  RESUME, Time, Weather, Sound, QUIT TO TITLE; Back in play pauses, in the menu resumes,
+  at the title goes up one level then quits. Fits 915x412 and 640x320 (`test_ui_layout`).
+- **G-115 Tests share autoloads.** Tests that change the clock, weather or floating origin
+  restore them (an origin left shifted put the next test's ground out of reach).

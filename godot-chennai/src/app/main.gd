@@ -14,11 +14,11 @@ extends Node
 signal state_changed(state: StringName)
 
 const CITY := "res://src/game_world/city/city_world.tscn"
-const STEPS: PackedStringArray = ["Reading the map of Chennai", "Reading the streets", "Building the streets around you"]
+const STEPS: PackedStringArray = ["Reading the map of Chennai", "Reading the streets", "Building the streets around you", "Parking the vehicles"]
 ## Longest wait for the ground's collider, in physics frames (game time, not wall clock).
 const GROUND_WAIT_FRAMES := 120
 
-## &"loading", &"failed", &"title" or &"play".
+## &"loading", &"failed", &"title", &"play" or &"paused".
 var state: StringName = &"loading"
 ## The regional world (format 2, `world/`) when it is installed, else today's files (format 1);
 ## `--world=v1` after `--` forces format 1 for comparison (G-56).
@@ -26,6 +26,10 @@ var source: WorldSource = _default_source()
 var world: CityWorld = null
 ## The player on foot, placed on loaded ground at the start (Player's G-67).
 var rig: PlayerRig = null
+## Driving, parked vehicles, sounds, day and night round the player (`PlayWiring`).
+var play_wiring: PlayWiring = null
+## The pause menu and the PAUSE button (built here, shown in play).
+var pause_menu: PauseMenu = null
 ## Watches for a stalled main loop while loading (see `_watch_frames`).
 var _watchdog: Thread = null
 var _watching: bool = false
@@ -36,6 +40,9 @@ var _watching: bool = false
 
 
 func _ready() -> void:
+	# The menus and Back keep working while the world is paused; the world itself pauses.
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_add_pause_menu()
 	title.visible = false
 	hud.visible = false
 	loading.retry_requested.connect(_load)
@@ -98,6 +105,8 @@ func _run_step(i: int) -> String:
 			return await _background(i, Callable(source, &"open_roads"))
 		2:
 			return await _add_city()
+		3:
+			return await _add_play()
 	return "Unknown step %d." % i
 
 
@@ -129,6 +138,7 @@ func _add_city() -> String:
 	if scene == null:
 		return "Could not load %s." % CITY
 	world = scene.instantiate() as CityWorld
+	world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(world)
 	move_child(world, 0)
 	var error := await world.setup(source)
@@ -164,7 +174,34 @@ func _add_player() -> String:
 	world.focus_node = rig.body
 	world.manage_origin = true
 	WorldOrigin.shifted.connect(func(_offset: Vector3) -> void: rig.camera.snap())
+	# The missions, jobs, fares and their HUD (G-130): they follow `state_changed` and NEW GAME.
+	add_child(MissionsLayer.for_main(self))
 	return ""
+
+
+## Driving, parked vehicles, sounds and the environment (`PlayWiring`), the vehicles round the
+## start parked before play.
+func _add_play() -> String:
+	if play_wiring != null:
+		return ""
+	var content := GameContent.load_file()
+	if content.error != "":
+		push_warning("[boot] content: %s (only the extra parking spots)" % content.error)
+	play_wiring = PlayWiring.make(world, rig, content)
+	world.add_child(play_wiring)
+	return await play_wiring.prepare(world.spawn["point"])
+
+
+## The pause menu's real settings: time of day, weather, sound (G-115).
+func _add_pause_menu() -> void:
+	pause_menu = PauseMenu.new()
+	add_child(pause_menu)
+	pause_menu.add_setting(&"Time", func() -> String: return "Time: %s (%s)" % [GameLoop.clock.label(), GameLoop.clock.text()], func() -> void: GameLoop.clock.next())
+	pause_menu.add_setting(&"Weather", Weather.label, Weather.toggle)
+	pause_menu.add_setting(&"Sound", Sound.label, Sound.toggle)
+	pause_menu.pause_requested.connect(pause)
+	pause_menu.resume_requested.connect(resume)
+	pause_menu.title_requested.connect(show_title)
 
 
 func _start_watchdog() -> void:
@@ -197,9 +234,12 @@ func _watch_frames() -> void:
 
 func _exit_tree() -> void:
 	_stop_watchdog()
+	if get_tree() != null:
+		get_tree().paused = false
 
 
 func show_title() -> void:
+	_unpause()
 	hud.visible = false
 	_set_controls(false)
 	title.visible = true
@@ -209,6 +249,7 @@ func show_title() -> void:
 
 
 func play() -> void:
+	_unpause()
 	title.visible = false
 	hud.visible = true
 	Sound.active = true
@@ -216,10 +257,38 @@ func play() -> void:
 	_set_state(&"play")
 
 
+## Pauses play: game time, physics and the world stop (the tree pauses), sound goes quiet.
+func pause() -> void:
+	if state != &"play":
+		return
+	get_tree().paused = true
+	_set_controls(false)
+	Sound.suspend()
+	pause_menu.open()
+	_set_state(&"paused")
+
+
+func resume() -> void:
+	if state != &"paused":
+		return
+	_unpause()
+	Sound.active = true
+	_set_controls(true)
+	_set_state(&"play")
+
+
+func _unpause() -> void:
+	pause_menu.close()
+	get_tree().paused = false
+
+
 func _set_controls(on: bool) -> void:
-	if rig != null:
+	if play_wiring != null:
+		play_wiring.set_active(on)
+	elif rig != null:
 		rig.controls.visible = on
 		rig.reads_devices = on
+	pause_menu.show_pause_button(on)
 
 
 func quit() -> void:
@@ -227,10 +296,13 @@ func quit() -> void:
 	get_tree().quit()
 
 
-## Android Back and Escape: one level up (play → title, ABOUT → menu), then quit.
+## Android Back and Escape: one level up (chennai-game-design §3): play → pause menu → title,
+## ABOUT → menu, then quit.
 func go_back() -> void:
 	match state:
 		&"play":
+			pause()
+		&"paused":
 			show_title()
 		&"title":
 			if not title.go_back():

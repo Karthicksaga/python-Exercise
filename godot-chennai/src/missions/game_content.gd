@@ -19,6 +19,10 @@ var jobs: Array[JobData.Job] = []
 var gangs: Array[Dictionary] = []
 var crews: Array[Dictionary] = []
 var pickups: Array[Dictionary] = []
+## The life places {id, kind, name, x, z, radius} (home, hospital, gym, mall, cinema) and the
+## short stories offered at them (`places.ts`, baked with the rest; G-131).
+var places: Array[Dictionary] = []
+var stories: Array[StoryRunner.Story] = []
 ## Why loading failed, or "".
 var error := ""
 
@@ -60,6 +64,24 @@ func _fill(d: Dictionary) -> void:
 		crews.append(c)
 	for p: Dictionary in d.get("pickups", []):
 		pickups.append(p)
+	for p: Dictionary in d.get("places", []):
+		places.append(p)
+	for s: Dictionary in d.get("stories", []):
+		stories.append(_story(s))
+
+
+static func _story(d: Dictionary) -> StoryRunner.Story:
+	var steps: Array = []
+	for st: Dictionary in d.get("steps", []):
+		if str(st.get("type", "")) == "activity":
+			steps.append(StoryRunner.Step.make_activity(str(st.get("label", "")), str(st.get("place", "")), str(st.get("activity", "")), float(st.get("x", 0.0)), float(st.get("z", 0.0)), float(st.get("radius", 0.0))))
+		else:
+			steps.append(MissionData.Objective.from_dict(st))
+	var story := StoryRunner.Story.make(str(d.get("id", "")), int(d.get("reward", 0)), str(d.get("offeredAt", "")), steps)
+	story.title = str(d.get("title", ""))
+	story.brief = str(d.get("brief", ""))
+	story.ending = str(d.get("ending", ""))
+	return story
 
 
 func ok() -> bool:
@@ -78,6 +100,13 @@ func job(id: String) -> JobData.Job:
 		if j.id == id:
 			return j
 	return null
+
+
+func place(id: String) -> Dictionary:
+	for p in places:
+		if p["id"] == id:
+			return p
+	return {}
 
 
 func parked(id: String) -> Dictionary:

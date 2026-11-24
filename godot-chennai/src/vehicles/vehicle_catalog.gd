@@ -90,6 +90,19 @@ static func variant(id: StringName) -> VariantInfo:
 	return _variants[id]
 
 
+## A copy of a variant with another paint (one vehicle's colour; the catalog's stays).
+static func repainted(v: VariantInfo, paint: Color) -> VariantInfo:
+	var c := VariantInfo.new()
+	c.id = v.id
+	c.type = v.type
+	c.label = v.label
+	c.paint = paint
+	c.siren = v.siren
+	c.light_bar = v.light_bar
+	c.roof_sign = v.roof_sign
+	return c
+
+
 ## The model manifest for a type: its own model's when the GLB exists, else the fallback's
 ## (premium and race cars until the Models agent's GLBs land). Null when neither exists.
 static func manifest_for(t: VehicleType) -> VehicleManifest:
