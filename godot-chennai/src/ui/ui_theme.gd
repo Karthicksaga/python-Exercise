@@ -142,7 +142,31 @@ static func _build() -> Theme:
 	# Focus is drawn on top of the normal box: an amber outline, distinct from hover.
 	var focus := _box(Color.TRANSPARENT, AMBER)
 	t.set_stylebox("focus", "Button", focus)
+	# A scrollbar a thumb can see and grab: a 10-wide light bar on a faint track (G-293).
+	for bar: String in ["VScrollBar", "HScrollBar"]:
+		var track := glass_box(Color(1, 1, 1, 0.08), Color.TRANSPARENT, 5)
+		track.content_margin_left = 10
+		track.content_margin_right = 10
+		track.content_margin_top = 10
+		track.content_margin_bottom = 10
+		t.set_stylebox("scroll", bar, track)
+		for grabber: String in ["grabber", "grabber_highlight", "grabber_pressed"]:
+			var g := glass_box(Color(1, 1, 1, 0.55 if grabber == "grabber" else 0.8), Color.TRANSPARENT, 5)
+			g.content_margin_left = 10
+			g.content_margin_right = 10
+			g.content_margin_top = 10
+			g.content_margin_bottom = 10
+			t.set_stylebox(grabber, bar, g)
 	return t
+
+
+## A scroll container that works under a thumb: dragging over its buttons scrolls it (after
+## `DEADZONE` units, so a tap still presses), and focus scrolls into view (G-293).
+const DEADZONE := 12
+static func touch_scroll(sc: ScrollContainer) -> void:
+	sc.scroll_deadzone = DEADZONE
+	sc.follow_focus = true
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 
 
 ## A button sized for a thumb.

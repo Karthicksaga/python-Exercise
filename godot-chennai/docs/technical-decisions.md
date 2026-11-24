@@ -1731,7 +1731,11 @@ holds `perf_overlay`; `DebugHud` shows its panel (now top-centre, not top-left) 
 Switches: the pause menu row "Performance overlay: On/Off" and a hidden gesture, five taps within
 0.8 s of each other on the top-left 64x64 (`CornerTaps`, pure, tested in game time).
 `TouchControls` leaves touches in that corner unhandled so they reach the HUD. The perf agent's
-richer overlay should read `DebugSettings.shared().perf_overlay` and listen to `changed`; no second switch.
+overlay (`PerfOverlay`, `PerfWiring`) now reads `DebugSettings.shared().perf_overlay` and listens to
+its `changed`; its Settings row and three-finger tap call `DebugSettings.toggle`. `QualitySettings.overlay`
+is no longer read (the field stays, saved, so old saves load). One switch, one row id (`PerfOverlay`),
+added by `PerfWiring` to both the pause menu and the title. The overlay's numbers and SWITCHES button
+moved to top-centre under the FPS line (they sat top-left over the mission column).
 
 ### G-292: The top-right row no longer stacks JOBS under PAUSE
 `MissionHud`'s JOBS button and the PAUSE button had the same rectangle (JOBS was hidden under
@@ -1870,3 +1874,12 @@ evaluated it for every pixel of the chunk's ground and walls. The ground under a
 additive glow pool instead (one MultiMesh, one draw call at night). Real lights still light
 vehicles, people and loose props. T. Nagar at 18:40 under llvmpipe: 1378 ms a frame before, 662
 ms after on High, about the 08:30 cost (654 ms).
+
+### G-293: Settings lists scroll under a thumb, with a visible bar
+Both settings lists (pause menu, title SETTINGS) are `ScrollContainer`s set up by
+`UiTheme.touch_scroll`: `scroll_deadzone` 12 so a drag that starts on a row scrolls instead of
+pressing it, `follow_focus`, and a 10-wide light scrollbar from the theme (the default was a
+hairline). `test_settings_scroll.gd` scrolls to the last row in both at 915x412 and 915x458 and checks
+it is inside the list and the screen. Every top-right button takes a real click at its centre and in
+its padding (`test_hud_glass.gd`). Rows now in both menus: Time, Weather, Sound, (pause: the controls
+rows), Graphics (`PerfWiring`, QualitySettings Low/Medium/High, "(auto)" when detected), Performance overlay.

@@ -250,7 +250,6 @@ func _add_pause_menu() -> void:
 		host.call(&"add_setting", &"Weather", Weather.label, Weather.toggle)
 		host.call(&"add_setting", &"Sound", Sound.label, Sound.toggle)
 	ControlSettingsRows.add_to(pause_menu, ControlSettings.shared())
-	pause_menu.add_setting(&"PerfOverlay", DebugSettings.label, DebugSettings.toggle)
 	pause_menu.pause_requested.connect(pause)
 	pause_menu.resume_requested.connect(resume)
 	pause_menu.title_requested.connect(show_title)

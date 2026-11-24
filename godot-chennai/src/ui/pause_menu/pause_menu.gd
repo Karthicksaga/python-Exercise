@@ -89,7 +89,7 @@ func _init() -> void:
 	column.add_child(UiTheme.label("PAUSED", UiTheme.BUTTON_SIZE + 6, UiTheme.AMBER))
 	_scroll = ScrollContainer.new()
 	_scroll.name = "Scroll"
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	UiTheme.touch_scroll(_scroll)
 	column.add_child(_scroll)
 	_list = VBoxContainer.new()
 	_list.name = "List"

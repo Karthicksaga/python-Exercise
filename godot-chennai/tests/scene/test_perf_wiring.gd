@@ -82,6 +82,7 @@ func test_presets_apply_live() -> bool:
 
 
 func test_overlay_switches_and_log() -> bool:
+	DebugSettings.reset_shared()
 	var main := await _boot()
 	var perf := main.perf
 	assert_false(perf.overlay.visible, "overlay off by default")
@@ -98,7 +99,7 @@ func test_overlay_switches_and_log() -> bool:
 		t.pressed = false
 		t.position = Vector2(300 + i * 60, 200)
 		perf.overlay._input(t)
-	assert_true(perf.overlay.visible and perf.settings.overlay, "a three-finger tap shows it")
+	assert_true(perf.overlay.visible and DebugSettings.shared().perf_overlay, "a three-finger tap shows it (the one switch, DebugSettings)")
 	await wait_frames(30)
 	var sw_button := perf.overlay.get_node(^"Root/Safe").find_child("Switches", true, false) as Button
 	var sw_rect := sw_button.get_global_rect()
@@ -160,7 +161,25 @@ func test_overlay_switches_and_log() -> bool:
 		assert_contains(log, part, "the log has %s" % part)
 	assert_true(main.pause_menu.setting_button(&"PerfSummary") != null, "the pause menu has the summary row")
 	assert_contains(perf.summary, "fps", "the summary reads the frame rate")
-	perf.settings.set_overlay(false)
+	DebugSettings.shared().set_perf_overlay(false)
 	assert_false(perf.overlay.visible, "the Settings row hides it again")
+	DebugSettings.reset_shared()
+	_restore()
+	return true
+
+
+func test_both_menus_carry_the_graphics_and_overlay_rows() -> bool:
+	DebugSettings.reset_shared()
+	var main := await _boot()
+	for host: Object in [main.pause_menu, main.title]:
+		var q: Button = host.call(&"setting_button", &"Quality")
+		var o: Button = host.call(&"setting_button", &"PerfOverlay")
+		assert_true(q != null and q.text.begins_with("Graphics: "), "%s has the graphics row" % host)
+		assert_true(o != null and o.text == "Performance overlay: Off", "%s has the overlay row, off by default" % host)
+	main.pause_menu.setting_button(&"PerfOverlay").pressed.emit()
+	assert_true(main.perf.overlay.visible and DebugSettings.shared().perf_overlay, "the row turns the one switch on")
+	assert_eq(main.title.setting_button(&"PerfOverlay").text, "Performance overlay: On", "and the title row follows")
+	DebugSettings.shared().set_perf_overlay(false)
+	DebugSettings.reset_shared()
 	_restore()
 	return true

@@ -296,7 +296,7 @@ func _build_settings_page() -> void:
 	scroll.name = "Scroll"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.follow_focus = true
+	UiTheme.touch_scroll(scroll)
 	box.add_child(scroll)
 	_settings_list = VBoxContainer.new()
 	_settings_list.name = "List"

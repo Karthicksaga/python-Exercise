@@ -1,6 +1,6 @@
 class_name PerfOverlay
 extends CanvasLayer
-## The performance overlay (decisions G-253, G-254): a block of numbers top-left under the FPS
+## The performance overlay (decisions G-253, G-254): a block of numbers top-centre under the FPS
 ## line (frame time, CPU and GPU, draw calls, workers, the verdict) and a SWITCHES button that
 ## opens the feature switches, a list of ON/OFF buttons with the frame-time change each one made
 ## when it was last pressed. Off by default; a three-finger tap or the Settings row shows it.
@@ -49,7 +49,12 @@ func _init() -> void:
 	var column := VBoxContainer.new()
 	column.name = "Column"
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.position = Vector2(0, 30)
+	# Top centre under the FPS line of `DebugHud`, clear of the mission column (left) and the
+	# JOBS / PAUSE / EXIT row (right); the SWITCHES button is the column's last child.
+	column.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	column.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	column.offset_top = 40.0
+	column.alignment = BoxContainer.ALIGNMENT_BEGIN
 	area.add_child(column)
 	var plate := PanelContainer.new()
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -70,14 +75,10 @@ func _init() -> void:
 	_switches_button.name = "Switches"
 	_switches_button.focus_mode = Control.FOCUS_NONE
 	_switches_button.custom_minimum_size = Vector2(120, UiTheme.MIN_TARGET)
-	# Top centre, between the FPS line and PAUSE: away from the stick and the action buttons.
-	_switches_button.anchor_left = 0.5
-	_switches_button.anchor_right = 0.5
-	_switches_button.offset_left = -60
-	_switches_button.offset_right = 60
-	_switches_button.offset_bottom = UiTheme.MIN_TARGET
+	_switches_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_switches_button.pressed.connect(func() -> void: _panel.visible = not _panel.visible)
-	area.add_child(_switches_button)
+	column.add_child(_switches_button)
+	column.move_child(_switches_button, 0)
 
 	_panel = PanelContainer.new()
 	_panel.name = "Panel"

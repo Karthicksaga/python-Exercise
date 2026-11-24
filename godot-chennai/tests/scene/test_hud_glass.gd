@@ -244,3 +244,49 @@ func test_corner_taps_pure() -> bool:
 	assert_false(t.tap(Vector2(5, 5), 3.0), "and start over")
 	assert_false(CornerTaps.in_corner(Vector2(CornerTaps.CORNER + 1.0, 5.0)), "outside the corner")
 	return true
+
+
+func _click(vp: SubViewport, at: Vector2) -> void:
+	for pressed: bool in [true, false]:
+		var e := InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = pressed
+		e.position = at
+		e.global_position = at
+		e.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+		vp.push_input(e)
+		await wait_frames(1)
+
+
+## The owner's bug: PAUSE and JOBS sat on the same rectangle and one did not work. Every button in
+## the top-right row takes a real tap at its centre and reaches its own handler, on every screen.
+func test_every_top_right_button_takes_its_tap() -> bool:
+	for screen in SCREENS:
+		var ui := _ui_size(screen)
+		var st := await _stage(ui, true, true)
+		var vp := st["vp"] as SubViewport
+		vp.gui_disable_input = false
+		var pause := st["pause"] as PauseMenu
+		var missions := st["missions"] as MissionHud
+		var d := st["driving"] as DrivingControls
+		var got: Array[String] = []
+		pause.pause_requested.connect(func() -> void: got.append("pause"))
+		missions.jobs_pressed.connect(func() -> void: got.append("jobs"))
+		d.exit_pressed.connect(func() -> void: got.append("exit"))
+		var what := "%dx%d (UI %dx%d)" % [screen.x, screen.y, ui.x, ui.y]
+		var rects := {"pause": pause.pause_button.get_global_rect(), "jobs": missions.jobs_button.get_global_rect(), "exit": d.exit_button.get_global_rect()}
+		var keys := rects.keys()
+		for i in keys.size():
+			for j in range(i + 1, keys.size()):
+				check(not (rects[keys[i]] as Rect2).intersects(rects[keys[j]] as Rect2), "%s: %s and %s do not intersect" % [what, keys[i], keys[j]])
+		for key: String in keys:
+			got.clear()
+			await _click(vp, (rects[key] as Rect2).get_center())
+			check(got == [key], "%s: a tap on %s reaches only its handler (got %s)" % [what, key, got])
+			# Near the edge of the 48 hit area, outside the drawn circle, still counts.
+			got.clear()
+			await _click(vp, (rects[key] as Rect2).get_center() + Vector2(21.0, 0.0))
+			check(got == [key], "%s: a tap in the padding of %s works (got %s)" % [what, key, got])
+		vp.queue_free()
+		await wait_frames(1)
+	return true

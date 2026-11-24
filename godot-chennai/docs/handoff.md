@@ -738,8 +738,8 @@ where tagged (seven of sixteen); architecture notes are sourced for three only, 
 default. Single switch: `DebugSettings` (`src/ui/debug_hud/debug_settings.gd`, saved in
 `chennai-debug-v1`); `DebugHud` shows its overlay panel only while `perf_overlay` is true. Turn it
 on from the pause menu row "Performance overlay" or by five quick taps (0.8 s apart at most) on the
-top-left corner (`CornerTaps`). **The perf agent's richer overlay must use that same flag**
-(`DebugSettings.shared().perf_overlay`, signal `changed`). (2) Buttons are round or pill glass with
+top-left corner (`CornerTaps`). **The perf agent's overlay uses that same flag** (merged: `PerfWiring` reads
+`DebugSettings.shared().perf_overlay`, G-291). (2) Buttons are round or pill glass with
 a thin outline and white icons or text, the accent only on the primary action and on a pressed
 button; PAUSE is an icon. All styling comes from `UiTheme` (`glass_box`, `glass_plate`,
 `style_glass`, `icon_button`) and `UiIcons`; add a new button through those, not a new StyleBox.
@@ -831,3 +831,10 @@ presets). Tests: `tests/unit/test_quality_settings.gd`, `tests/scene/test_perf_w
 - Godot's thread priorities do not reach Android's scheduler; Low builds one chunk at a time.
 - The feature-switch cost measurement is in real time (an overlay, not a test).
 - Figures beyond the animate reach slide in a held pose (by design, the coordinator's rule).
+
+**Update (settings and the top-right row, G-293).** Merged `agent/godot-perf`; the pause menu and the
+title both carry Graphics and Performance overlay rows (`PerfWiring._add_rows`) and both lists scroll
+(`UiTheme.touch_scroll`). The top-right row is EXIT (driving), PAUSE, JOBS: rects never intersect and a
+tap on each reaches its handler (`test_every_top_right_button_takes_its_tap`). Not tested: a real finger
+drag on a phone (a synthetic touch drag does not reach `ScrollContainer` in a headless SubViewport, so
+the test checks the deadzone setting and that the end of the list scrolls into view).
