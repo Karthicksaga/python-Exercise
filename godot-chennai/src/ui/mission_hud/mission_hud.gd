@@ -330,9 +330,7 @@ func _build_dialog() -> void:
 	medals_box.add_child(medal_goals)
 	medals_box.visible = false
 	v.add_child(medals_box)
-	var scroll := ScrollContainer.new()
-	scroll.name = "Scroll"
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var scroll := UiTheme.touch_scroll()
 	scroll.custom_minimum_size = Vector2(600, 0)
 	v.add_child(scroll)
 	dialog_rows = VBoxContainer.new()

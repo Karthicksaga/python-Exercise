@@ -111,8 +111,7 @@ func _init() -> void:
 	_ranked.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_ranked.custom_minimum_size = Vector2(320, 0)
 	inner.add_child(_ranked)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var scroll := UiTheme.touch_scroll()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inner.add_child(scroll)
 	_list = VBoxContainer.new()

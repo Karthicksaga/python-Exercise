@@ -278,10 +278,21 @@ static func _scale_landmarks(world: CityWorld, k: float) -> void:
 		g.visibility_range_begin = begin * k
 
 
-## Shown when switched on, except while paused: the pause menu is read then (owner, G-341).
+var _overlay_wanted: bool = false
+
+
+## The overlay is a debug tool: it stays out from under a menu or the Jobs list (G-350). The pause
+## and title menus also draw above it (CanvasLayer 8 over 7); the Jobs dialog is on a lower layer.
+func _modal_open() -> bool:
+	if main.pause_menu != null and main.pause_menu.is_open():
+		return true
+	var ml := main.find_child("MissionsLayer", false, false) as MissionsLayer
+	return ml != null and ml.hud != null and ml.hud.dialog_open()
+
+
 func _show_overlay(on: bool) -> void:
-	on = on and main.state != &"paused"
-	overlay.visible = on
+	_overlay_wanted = on
+	overlay.visible = on and not _modal_open()
 	if on:
 		_refresh_switches()
 		_overlay_clock = OVERLAY_EVERY
@@ -378,6 +389,8 @@ func _process(_delta: float) -> void:
 	if _log_clock >= LOG_EVERY:
 		_log_clock = 0.0
 		write_log()
+	if _overlay_wanted:
+		overlay.visible = not _modal_open()
 	if overlay.visible:
 		_overlay_clock += dt
 		if _overlay_clock >= OVERLAY_EVERY:

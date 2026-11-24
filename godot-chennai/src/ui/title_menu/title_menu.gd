@@ -49,7 +49,7 @@ var _tamil: Label
 var _name: Label
 var _sub: Label
 var _rows_box: VBoxContainer
-var _scroll: ScrollContainer
+var _scroll: TouchScroll
 var _rows: Array[TitleRow] = []
 var _about_text: Label
 var _about_back: Button
@@ -70,7 +70,7 @@ var _shade: TextureRect
 
 
 func _ready() -> void:
-	layer = 5
+	layer = 8  # above the performance overlay (7), G-350
 	_root.theme = UiTheme.get_theme()
 	_shade = TextureRect.new()
 	_shade.name = "Shade"
@@ -235,11 +235,8 @@ func _build_menu_page() -> void:
 	_sub = UiTheme.label("OPEN WORLD", 14, AMBER)
 	_sub.name = "OpenWorld"
 	_slots[_sub] = _slot(_sub)
-	_scroll = ScrollContainer.new()
-	_scroll.name = "Scroll"
+	_scroll = UiTheme.touch_scroll()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_scroll.follow_focus = true
 	page_box.add_child(_scroll)
 	_rows_box = VBoxContainer.new()
 	_rows_box.name = "Rows"
@@ -292,11 +289,8 @@ func _build_settings_page() -> void:
 	var box := VBoxContainer.new()
 	_page(PAGE_SETTINGS, box)
 	_settings_back = _page_head(box, "SETTINGS")
-	var scroll := ScrollContainer.new()
-	scroll.name = "Scroll"
+	var scroll := UiTheme.touch_scroll()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	UiTheme.touch_scroll(scroll)
 	box.add_child(scroll)
 	_settings_list = VBoxContainer.new()
 	_settings_list.name = "List"
@@ -314,9 +308,7 @@ func _build_controls_page() -> void:
 	plate.name = "Plate"
 	plate.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(plate)
-	var scroll := ScrollContainer.new()
-	scroll.name = "Scroll"
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var scroll := UiTheme.touch_scroll()
 	plate.add_child(scroll)
 	var columns := HBoxContainer.new()
 	columns.name = "Columns"
