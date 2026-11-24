@@ -43,6 +43,29 @@ const PLAYER_RADIUS := 0.45
 ## Vehicles (the player's, parked ones) within this distance are obstacles to the AI.
 const VEHICLE_REACH := 80.0
 
+## Live limits (quality presets, G-252; feature switches, G-254). `figure_cap`, the reaches and
+## the caps take effect within a step; `traffic_on` false hides every vehicle, walker, driver and
+## crowd person and stops the AI; `crowds_on` false leaves the crowds out.
+var figure_cap: int = FIGURE_CAP
+var driver_reach: float = DRIVER_REACH
+var rider_reach: float = RIDER_REACH
+var traffic_cap: int = -1
+var walker_cap: int = -1
+var traffic_on: bool = true:
+	set(value):
+		if value == traffic_on:
+			return
+		traffic_on = value
+		if _prepared:
+			if value:
+				heads.visible = true
+			else:
+				_hide_all()
+var crowds_on: bool = true
+## Physics frames the main thread lets a running AI step lag before it waits for it (G-256).
+## 2 is a step every second frame, waited for when late (as before); more lets a slow phone
+## core finish the step while the frame goes on, the views moving on by extrapolation.
+var ai_patience: int = 2
 ## Pool sizes (the most out at the busiest place and hour); set before `prepare`.
 var traffic_pool: int = TRAFFIC_POOL
 var walker_pool: int = WALKER_POOL
@@ -79,6 +102,7 @@ var _cells_changed := true
 var _source: WorldSource
 var _prepared := false
 var _frame: int = 0
+var _step_frame: int = 0
 ## Game seconds since the last finished step (views move on by this much) and the step's dt.
 var _since: float = 0.0
 var _step_dt: float = 0.0
@@ -225,13 +249,20 @@ func _ground_ready(p: Vector2) -> bool:
 func _physics_process(delta: float) -> void:
 	if not _prepared:
 		return
+	if not traffic_on:
+		return
 	var t0 := Time.get_ticks_usec()
 	_frame += 1
 	_since += delta
 	var stepping := not _busy or _frame % STEP_EVERY == 0
 	var focus := focus_world()
-	if stepping:
-		if _busy:
+	if stepping and _busy:
+		if _done.try_wait():
+			_busy = false
+		elif _frame - _step_frame < ai_patience:
+			stepping = false
+			stats["late"] = int(stats.get("late", 0)) + 1
+		else:
 			_done.wait()
 			_busy = false
 	var t1 := Time.get_ticks_usec()
@@ -254,7 +285,11 @@ func _physics_process(delta: float) -> void:
 			var siren: Variant = _siren()
 			var h := hour()
 			_step_dt = _since if _since > 0.0 else delta
+			population.traffic_cap = traffic_cap
+			population.walker_cap = walker_cap
+			population.crowds_on = crowds_on
 			_work = population.step.bind(_step_dt, focus, h, obstacles, siren)
+			_step_frame = _frame
 			_busy = true
 			_go.post()
 		_since = 0.0
@@ -292,9 +327,9 @@ func _snapshot() -> void:
 	for p in _people:
 		d.append(p.pos.distance_to(cam))
 	_people_reach = PEOPLE_REACH
-	if d.size() > FIGURE_CAP:
+	if d.size() > figure_cap:
 		d.sort()
-		_people_reach = minf(PEOPLE_REACH, d[FIGURE_CAP - 1] + 0.01)
+		_people_reach = minf(PEOPLE_REACH, d[figure_cap - 1] + 0.01) if figure_cap > 0 else -1.0
 
 
 ## Per agent: (x, z, heading, speed), with w = -1 for an agent put away; y in a second array.
@@ -386,7 +421,7 @@ func _sync(dt: float, focus: Vector2) -> void:
 		var d := at.distance_to(cam)
 		v.set_pose(at, st.z, st.w, dt, d)
 		var k := traffic.kinds[traffic.agents[i].kind]
-		if d < (RIDER_REACH if v.open_seat else DRIVER_REACH):
+		if d < (rider_reach if v.open_seat else driver_reach):
 			var who := cast.driver(k.group, i)
 			var fig := pool.take(-1 - i, who) if who != "" else null
 			if fig != null:
@@ -450,6 +485,30 @@ func _sync(dt: float, focus: Vector2) -> void:
 	if Sound.active:
 		Sound.set_traffic(sounds, dt, hour())
 	_parts += Vector4i(tv - _sync_start, tw - tv, tc - tw, Time.get_ticks_usec() - tc)
+
+
+## Everyone out of sight at once (traffic switched off); the AI's step is collected first.
+func _hide_all() -> void:
+	if _busy:
+		_done.wait()
+		_busy = false
+	for v in views:
+		if not taken.has(v.agent_id):
+			_show_vehicle(v, false)
+	pool.begin_frame()
+	pool.end_frame()
+	heads.visible = false
+	if Sound.active:
+		Sound.set_traffic([] as Array[Dictionary], 0.0, hour())
+
+
+## Settings changed: re-read the place so new caps apply at the next step.
+func refresh_caps() -> void:
+	if population != null:
+		population.traffic_cap = traffic_cap
+		population.walker_cap = walker_cap
+		population.crowds_on = crowds_on
+		population.refresh_levels()
 
 
 func _show_vehicle(v: TrafficVehicleView, on: bool) -> void:

@@ -17,6 +17,11 @@ var lamps: PackedVector3Array = PackedVector3Array()
 var head_height: float = HEAD_HEIGHT
 var night: float = 0.0
 var lights: Array[OmniLight3D] = []
+## Real lights in use, at most POOL (quality presets lower it, G-252).
+var pool: int = POOL:
+	set(value):
+		pool = clampi(value, 0, POOL)
+		_pick_timer = 0.0
 
 var _heads: MultiMeshInstance3D
 var _poles: MultiMeshInstance3D = null
@@ -92,21 +97,33 @@ func step(dt: float, camera_position: Vector3, night_amount: float) -> void:
 	if _pick_timer <= 0.0:
 		_pick_timer = 0.25
 		_pick(camera_position)
-	for light in lights:
-		light.visible = glow > 0.01 and light.has_meta(&"lamp")
+	for k in lights.size():
+		var light := lights[k]
+		light.visible = glow > 0.01 and light.has_meta(&"lamp") and k < pool
 		light.light_energy = 3.2 * glow
 
 
 func _pick(from: Vector3) -> void:
-	var order: Array[int] = []
+	# The nearest few by one scan (no sort of every lamp; G-257): lights.size() is at most POOL.
+	var best: Array[int] = []
+	var best_d := PackedFloat32Array()
 	for i in lamps.size():
-		order.append(i)
-	order.sort_custom(func(a: int, b: int) -> bool: return lamps[a].distance_squared_to(from) < lamps[b].distance_squared_to(from))
+		var d := lamps[i].distance_squared_to(from)
+		if best.size() == lights.size() and d >= best_d[best.size() - 1]:
+			continue
+		var at := best.size()
+		while at > 0 and best_d[at - 1] > d:
+			at -= 1
+		best.insert(at, i)
+		best_d.insert(at, d)
+		if best.size() > lights.size():
+			best.resize(lights.size())
+			best_d.resize(lights.size())
 	for k in lights.size():
 		var light := lights[k]
-		if k < order.size():
-			light.position = lamps[order[k]] + Vector3(0, head_height - 0.3, 0)
-			light.set_meta(&"lamp", order[k])
+		if k < best.size():
+			light.position = lamps[best[k]] + Vector3(0, head_height - 0.3, 0)
+			light.set_meta(&"lamp", best[k])
 		elif light.has_meta(&"lamp"):
 			light.remove_meta(&"lamp")
 
