@@ -924,3 +924,16 @@ floating origin on it (`manage_origin`; the rig is in `WorldOrigin.GROUP`, its c
 phase 1: the camera follows in the physics step (G-65), smooth at 60 fps; turning it on for
 90/120 Hz screens needs the camera to read the interpolated transform in `_process`, a Player
 change, so it is listed as open rather than half done.
+
+
+## Missions in the game (G-130 to G-139, agent/godot-missions)
+
+### G-130: One `MissionSession` (no nodes) and one `MissionsLayer` (glue)
+The Three.js `Game`/`JobDesk`/`PlaceDesk` rules half is `MissionSession`; `MissionsLayer` reads the
+player/vehicle state in the fixed step (priority 10, after `Driving`) and draws. No rules in the layer.
+
+### G-131: Life places and short stories are part of the session and the one save file
+### G-132: Goods and fares follow the rules' stages; figures only draw them (adult cast only)
+### G-133: Job results hold the game (`paused`) until CONTINUE; the board is the same dialog
+### G-134: A toast behind a full-screen dialog is hidden; toasts size to their wrapped text after one frame
+### G-137: Map checks use the format-1 world files and a port of `kerbSpot` (`FareSpots`); 34 of 49 baked kerbs reproduce without the side hint (the rest were baked with it)

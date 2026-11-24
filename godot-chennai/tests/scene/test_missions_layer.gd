@@ -214,3 +214,14 @@ func test_a_fares_passenger_boards_and_alights() -> bool:
 	assert_true(await wait_until(func() -> bool: return _money() == 500, 60 * 20), "paid ₹300 at the drop")
 	assert_eq(s.runner.mission().id, "parcel-run", "stage 4 next")
 	return true
+
+
+func test_a_toast_shown_at_once_is_not_taller_than_its_text() -> bool:
+	# Regression: a toast shown before the first layout kept the tall size of text wrapped one
+	# letter per line (screenshot review, G-130).
+	g.layer.hud.toast("Stage 1: Morning walk", "Stretch your legs. Walk down the street to the marker.", 4.0)
+	await wait_frames(3)
+	var panel := g.layer.hud.toast_panel
+	assert_true(panel.size.y < 120.0, "the toast is %.0f px tall" % panel.size.y)
+	assert_true(panel.size.y >= panel.get_combined_minimum_size().y - 0.5, "and holds its text")
+	return true

@@ -359,3 +359,21 @@ Decisions G-50…G-59. Tests: `tests/unit/test_city_meshes.gd`, `test_city_layou
 - Seen only under the Compatibility renderer on llvmpipe; not on a phone or the Mobile renderer.
 - Physics interpolation off (G-59). Kerbs are not solid, so the player's step-up is not
   exercised by the city.
+
+## Missions (G-130 to G-139, agent/godot-missions), 24 Nov 2026
+- **Playable:** `MissionsLayer` (`src/app/missions_layer/`, added to `Main` after the player) steps
+  `MissionSession` (`src/missions/mission_session.gd`, node-free: stages, jobs, stories, life places,
+  one purse and one save) from the player's real state; draws the marker (`MissionBeacon`), the HUD
+  (`MissionHud`: money, stages, reputation, objective with distance/countdown/arrow, JOBS, toasts,
+  job board, results, GO INSIDE, gym needle), parks the content's vehicles near the player, shows
+  passengers boarding/alighting, goods handed over and the ambulance stretcher (`FareFigures`,
+  cast adults only), and saves after each stage/job. NEW GAME on the title menu clears progress.
+- **Tests:** `tests/scene/test_missions_layer.gd` (stages 1 and 2, restart, NEW GAME, board, a fare),
+  `test_missions_jobs.gd` (courier goods, ambulance stretcher, pay, bumps, adults only),
+  `tests/unit/rules/test_content_on_map.gd` (the 5 map-dependent content checks, G-137, plus a port
+  of `kerbSpot`: `FareSpots`). Screenshots: `tests/tools/missions_shots.gd` (xvfb, Compatibility).
+- **Not done / weak:** passengers are hidden when seated (no seated pose until the cast pose work);
+  sound cues are only mapped to `Sound.chime` if it exists; the pause menu, parked-vehicle ownership
+  and boarding belong to Integration: `MissionsLayer` spawns the content's parked vehicles itself
+  (`spawn_parking`) and must be switched off if Integration parks them. Train stages (18-19) need
+  the rail/train rider (not in this phase): see `by_train`.
