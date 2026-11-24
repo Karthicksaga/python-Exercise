@@ -535,3 +535,51 @@ G-58). A frame is the 2.5 ms budget plus at most one step by design (G-50). Full
 - Rule speed breakers (9,867) are invented and dense; tune `RULE_BUMP_SHARE` if play says so.
 - Kathipara hero model (Blender) not started (a later task, as asked).
 - Seen only on llvmpipe (Compatibility); not on a phone or the Mobile renderer.
+
+## Landmarks (agent/godot-landmarks), 24 Nov 2026
+Decisions G-180…G-188; how-to and every reference with its licence in `docs/landmarks.md`.
+
+**Done.** Ranking (`cli landmarks-rank` → `data/landmarks/candidates.json`, `COVERAGE.md`: 2,341
+candidates in the world, 396 with Wikidata, 401 with Wikipedia, 1,392 with a footprint). Specs
+in `assets/landmarks/<id>/spec.json` (OSM part filled by `cli landmark-osm`), Blender kits in
+`tools/blender/landmarks/` (`build_all.sh` builds twice, checks the bytes, runs the tests), game
+side `LandmarkSpec` + `LandmarkModels` (worker loading, OSM origin, LOD ranges, Jolt boxes,
+real-name signs) and the building filter in `ChunkBuilder`. Six landmarks: Kapaleeshwarar
+Temple (east and west gopurams, striped compound wall, shrines, mandapams on the OSM buildings,
+flagstaff, tank steps and mandapam), Ripon Building, Chennai Central (with the Tamil/English
+roof sign), Chennai Egmore (with the train shed), Anna Nagar Tower (ported), Chennai Lighthouse.
+
+| Landmark | LOD0 / LOD1 / LOD2 triangles | Boxes | Height model / spec |
+|---|---|---|---|
+| Kapaleeshwarar Temple | 14,561 / 5,998 / 1,696 | 73 | 37 m (east gopuram) |
+| Ripon Building | 6,463 / 793 / 405 | 14 | 43 m |
+| Chennai Central | 5,411 / 659 / 263 | 7 | 41.5 m |
+| Chennai Egmore | 8,792 / 1,942 / 374 | 84 | 24 m (estimated) |
+| Anna Nagar Tower | 5,459 / 1,535 / 543 | 6 | 41 m |
+| Chennai Lighthouse | 5,369 / 1,739 / 411 | 4 | 45.72 m (OSM tag) |
+
+**Measured** (this shared 4-core box, xvfb + llvmpipe, Compatibility, 915x412, `city_shot.gd
+--frames=180`, two runs each; `--no-landmarks` leaves the OSM buildings in place). Temple from
+above (NE, 85 m back, 22 m up): with landmarks 52 draw calls, 148.0k primitives, frame 130.5 /
+132.4 ms average; without 50 draw calls, 125.3k primitives, 117.0 / 119.5 ms. Sannadhi Street at
+eye level: with 46 draw calls, 131.3k primitives, 124.4 / 111.7 ms; without 44, 108.6k, 125.2 /
+106.9 ms. Software rendering, so the milliseconds only compare runs; the cost is one draw call
+per visible landmark and about 23k primitives at the temple. Main-thread maximum while filling
+stayed at 0.2 ms (models load on the worker).
+
+**Weak or not done.**
+- Few reference photos were actually seen: Commons thumbnails were rate-limited (shared with the
+  coordinator). Central follows a real photo; the gopuram, Ripon and Egmore follow published
+  descriptions and general knowledge of the styles; tier counts, colours and many heights are
+  estimated (each spec's `estimated`). Facts were checked through search summaries; Wikipedia and
+  Wikidata cannot be fetched from this container.
+- Chennai Central's heritage building is not mapped in OSM; the model stands on the frontage
+  way's rectangle. Ripon's OSM outline (68 x 20 m) is smaller than the published 85 x 32 m.
+- The committed world was not rebuilt with the landmark outlines (the game filters at run time).
+- Kapaleeshwarar's tank steps sit inside the water polygon above the 0.75 m sunk water; the bund
+  and barrier still close the tank (no walking the steps yet, culture note §3 visit not built).
+- Mall kit not built; no interiors; no night lighting on landmarks; GLBs carry float vertex
+  colours (0.2–1.5 MB each, 4.6 MB in all).
+- `scene/test_city_streaming.gd::test_main_thread_budget_under_cpu_load` failed once in the full
+  local run (wall-clock, load-sensitive on this shared machine; not touched).
+- Seen only under the Compatibility renderer on llvmpipe; not on a phone.

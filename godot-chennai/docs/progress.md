@@ -225,3 +225,13 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Ground covers: lawn, meadow, scrub, forest, wetland/mangrove, farmland, pitch, cemetery, bare; kerbed parks (G-154) | Done | screenshots; `test_city_meshes.gd` unchanged and passing |
 | Zebras (mapped and at signal junctions), speed breakers with colliders, `RoadBumps`, medians (G-153) | Done | `test_infra.gd` (profile, crossing query on a mapped hump), screenshots |
 | Lowered roads and underpasses below ground, Kathipara hero model | Not done (see the handoff) | |
+
+## Landmarks: ranking, specs, Blender kits, placement (branch `agent/godot-landmarks`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Candidate ranking from the OSM PBF, coverage report (G-180) | Done: 2,341 candidates, 396 with Wikidata | `tools/geo/tests/test_landmarks.py` (fixture: kinds, exclusions, point-into-polygon merge, ranking, coverage, inside filter) |
+| Spec per landmark, OSM part filled by `landmark-osm` (G-181) | Done for 6 | `LandmarkSpec.validate()` in `test_landmarks.gd`; pytest fill tests |
+| Commons reference listing with rate limiting (G-182) | Done; few photos actually seen (host rate-limited) | pytest: 429 + Retry-After + cache, host rewrite, licence rule |
+| Blender kits: gopuram complex, colonial clock tower, station, tower, lighthouse; deterministic GLBs (G-183, G-184) | Done (mall kit not built) | `build_all.sh` builds twice and compares bytes; `test_models_built_from_the_current_spec` |
+| Kapaleeshwarar Temple, Ripon Building, Chennai Central, Chennai Egmore, Anna Nagar Tower, Chennai Lighthouse in the city (G-185) | Done (Compatibility screenshots, not on a phone) | `test_landmarks.gd`: outline within 2 m of OSM, height within 10 %, budgets, LODs, collision ray, placement and floating origin, worker loading, buildings left out, names |
+| Old `LandmarkMeshes`/`LandmarkProfiles` retired | Done | tower ported to the `tower` kit; full suite |
