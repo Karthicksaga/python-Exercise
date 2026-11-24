@@ -1952,3 +1952,18 @@ Noto Sans Tamil SemiBold (15 KB, `assets/transit/`) is the fallback of the defau
 hint and the bus signs (`TransitFonts`). The hint sits top centre between the mission column and
 the JOBS button (at least 240 px there, else top left), FAST TRAVEL 160 × 48 px; nothing in the
 bottom thumb zones. Tamil written by us is marked "needs native review".
+
+## G-220: Getting on a bus is walked, from the bus's own manifest
+Owner's request (25 Nov): BOARD no longer puts the player straight inside. `BusBoarding` (pure,
+`src/transit`) plans it in the bus's frame from `VehicleType` (the manifest): walk to the kerb-side
+front door (`entry.point`) at 1.25 m/s, up the step onto the floor (`entry.aisle`, 0.7 s), down
+the aisle to the conductor (`seat_conductor` in the manifest, moved to the drawn ground like the
+seats, G-267) who sells the ticket (1.4 s, the ticket toast), then to a free passenger seat
+behind them (`VehicleType.seats`, nearest the conductor, aisle side first) and sit down with the
+passenger `SeatPose` (0.8 s), or stand behind the conductor when the bus is full (08:00–10:30 and
+17:30–20:30, an estimate). Getting off reverses it: stand up, aisle, step down, onto the pavement
+by the stop's pole. The player's anchor follows the plan; the walk clip plays at the walking pace;
+the interior camera takes over once inside. The bus holds its doors until the player is on board
+(and while they get off). The driver is CityLife's seated driver (G-265); the conductor and four
+seated passengers are cast adults with the passenger seat pose (G-266). The fare is still paid on
+BOARD (refusals are checked there); the toast comes from the conductor.

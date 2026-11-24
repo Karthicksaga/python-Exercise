@@ -884,3 +884,18 @@ Tests: `tools/geo/tests/test_transit.py`, `tests/unit/test_transit.gd`,
   to `session.content.jobs` (`TransitLayer._adapt_jobs`); `content.json` is unchanged.
 **Weak.** See `docs/transit.md` §5: OSM has only 77 bus relations here; most stops have no route;
 interior seen only on llvmpipe; no grip pose for the player; bicycles not built.
+
+### Transit, 25 Nov: getting on a bus on foot (G-220); for agent/godot-railway
+- BOARD now walks the player in through the front door, up the step, past the seated conductor
+  (ticket) to a free seat or standing place (`src/transit/bus_boarding.gd`, `TransitLayer`);
+  ALIGHT walks them out to the pavement. Tests: `test_transit.gd`
+  (`test_bus_boarding_walks_in_…`), `test_transit_ride.gd` (the real game).
+- **Railway (agent/godot-railway), station boards.** Transit does not build trains. What exists
+  for you: `world/transit/transit.json` stations (OSM position, `name`/`nameTa`, system, lines,
+  platforms with refs and positions, entrances) and lines (stations in order, estimated headways),
+  read by `TransitNetwork`; `StationPlace` (entry area, platform list); `TrainService` (the
+  interface: `departures(station, hour)` works from `TransitTimetable`; `has_trains`, `train_at`,
+  `board` are the stub). Extend `TrainService` for real trains and give it to
+  `TransitLayer.trains`; the station hint then stops saying "no trains yet" by itself
+  (`has_trains`). A station departure board can read `trains.departures(...)`. If you change the
+  station or line data, keep `transit.json`'s keys or bump its `transit` version.

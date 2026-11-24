@@ -94,6 +94,12 @@ them).
 - **`TransitLayer`** (`src/app/transit_layer/`, added by `Main` after `PlayWiring`): see its class
   comment. The HUD hint (`src/ui/transit_hint/`) sits top centre between the mission column and
   the JOBS button; FAST TRAVEL is 160 × 48 px.
+- **Getting on and off (G-220).** BOARD starts a walk planned from the bus's manifest
+  (`BusBoarding`): to the kerb-side front door, up the step, down the aisle to the conductor
+  (ticket toast), to a free seat behind them and sit down (passenger seat pose), or stand behind
+  the conductor at the rush (08:00–10:30, 17:30–20:30). ALIGHT walks back the same way and down
+  onto the pavement by the stop's pole. The bus keeps its doors open meanwhile. The driver is
+  drawn seated at the wheel (CityLife, G-265); the conductor sits on the manifest's conductor seat.
 - **Passenger.** Walk to a served stop: the hint shows its names and the next bus; within 22 m a
   bus of the soonest route is sent and comes in from upstream. When it stands with its doors open,
   ACTION reads BOARD (within 9 m of the front door). The ticket is paid from the missions' purse
