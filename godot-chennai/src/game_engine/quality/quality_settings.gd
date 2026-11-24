@@ -34,7 +34,7 @@ const TABLE: Array[Dictionary] = [
 		"rain": 0.4, "title_rain_layers": 0, "water_detail": false, "ground_detail": false,
 		"lod_threshold": 4.0, "landmark_range": 0.6, "aniso": 0,
 		"max_fps": 30, "physics_steps": 2, "workers": 1, "street_lights": 0, "ai_patience": 6,
-		"animate_reach": 25.0, "npc_shadow": 0.0, "parked_reach": 100.0,
+		"animate_reach": 25.0, "npc_shadow": 0.0, "parked_reach": 100.0, "prop_shadows": false,
 	},
 	{
 		"scale": 0.8, "scale_mode": FSR1, "msaa": 0,
@@ -45,7 +45,7 @@ const TABLE: Array[Dictionary] = [
 		"rain": 0.7, "title_rain_layers": 1, "water_detail": true, "ground_detail": true,
 		"lod_threshold": 2.0, "landmark_range": 0.8, "aniso": 1,
 		"max_fps": 60, "physics_steps": 3, "workers": 2, "street_lights": 2, "ai_patience": 4,
-		"animate_reach": 35.0, "npc_shadow": 0.0, "parked_reach": 150.0,
+		"animate_reach": 35.0, "npc_shadow": 0.0, "parked_reach": 150.0, "prop_shadows": false,
 	},
 	{
 		"scale": 1.0, "scale_mode": BILINEAR, "msaa": 1,
@@ -56,7 +56,7 @@ const TABLE: Array[Dictionary] = [
 		"rain": 1.0, "title_rain_layers": 2, "water_detail": true, "ground_detail": true,
 		"lod_threshold": 1.0, "landmark_range": 1.0, "aniso": 2,
 		"max_fps": 0, "physics_steps": 5, "workers": 3, "street_lights": 6, "ai_patience": 2,
-		"animate_reach": 45.0, "npc_shadow": 18.0, "parked_reach": 200.0,
+		"animate_reach": 45.0, "npc_shadow": 18.0, "parked_reach": 200.0, "prop_shadows": true,
 	},
 ]
 

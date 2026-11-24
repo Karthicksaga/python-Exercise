@@ -15,6 +15,10 @@ extends RefCounted
 ## trimesh of closed boxes for trees, poles, shelters and props.
 
 const PALMS := 0.4
+## Render layer of every merged chunk mesh (bit 2, value 2). Street lights leave it out of
+## their cull mask (G-259): a merged chunk mesh spans 250 m, so on the Mobile renderer each lamp
+## near it was evaluated for every pixel of the chunk's ground and walls.
+const RENDER_LAYER := 2
 const PIECE_BUILDINGS := 48
 const AC_UNITS := 0.3
 const DISHES := 0.2
@@ -247,6 +251,7 @@ static func _add_mesh(out: Build, parent: Node3D, layer: String, builder: MeshBu
 	var mi := MeshInstance3D.new()
 	mi.name = layer.capitalize()
 	mi.mesh = mesh
+	mi.layers = RENDER_LAYER
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
 	out.triangles[layer] = builder.triangle_count()
@@ -358,6 +363,7 @@ static func _add_trees(kit: Kit, out: Build, standing: Array[WorldTree]) -> void
 		var node := MultiMeshInstance3D.new()
 		node.name = "Palms" if kind == 0 else "Trees"
 		node.multimesh = mm
+		node.layers = RENDER_LAYER
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if kit.shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		out.view.add_child(node)
 		var per := kit.palm_triangles if kind == 0 else kit.tree_triangles

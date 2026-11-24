@@ -92,6 +92,8 @@ func _init(with_poles: bool = false) -> void:
 		light.omni_range = RANGE
 		light.omni_attenuation = 1.2
 		light.shadow_enabled = false
+		# Not the merged chunk meshes (their glow is the ground pools); vehicles, people, props.
+		light.light_cull_mask = 0xFFFFF & ~ChunkBuilder.RENDER_LAYER
 		light.light_energy = 0.0
 		light.visible = false
 		add_child(light)

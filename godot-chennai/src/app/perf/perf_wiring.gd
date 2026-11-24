@@ -148,6 +148,9 @@ func apply() -> void:
 		if _world_hooked != world and world.streamer != null:
 			_world_hooked = world
 			world.streamer.chunk_shown.connect(switches.on_chunk_shown)
+			world.streamer.chunk_shown.connect(_on_chunk_shown)
+		for cell in world.streamer.shown_cells():
+			_on_chunk_shown(cell)
 	PersonView.animate_reach = float(v["animate_reach"])
 	PersonView.shadow_near = float(v["npc_shadow"])
 	var pw := main.play_wiring
@@ -176,6 +179,27 @@ func apply() -> void:
 		if tw.camera != null:
 			tw.camera.far = minf(900.0, float(v["camera_far"]) * 1.5)
 	switches.apply_all()
+
+
+## Trees, palms and street objects cast shadows only on High (G-258): each is one mesh or
+## MultiMesh per chunk, so any of it inside the shadow's reach drew the whole chunk's worth into
+## the shadow map.
+const PROP_LAYERS: PackedStringArray = ["Trees", "Palms", "Objects"]
+
+
+func _on_chunk_shown(cell: Vector2i) -> void:
+	var b := main.world.streamer.build_of(cell)
+	if b == null or b.view == null:
+		return
+	var on := bool(settings.current()["prop_shadows"])
+	var mode := GeometryInstance3D.SHADOW_CASTING_SETTING_ON if on else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for holder: Node in [b.view, b.view.get_node_or_null(^"Near")]:
+		if holder == null:
+			continue
+		for n in PROP_LAYERS:
+			var g := holder.get_node_or_null(NodePath(n)) as GeometryInstance3D
+			if g != null:
+				g.cast_shadow = mode
 
 
 ## Landmark LOD ranges scaled from their built values (kept in metadata the first time).

@@ -55,6 +55,9 @@ func test_presets_apply_live() -> bool:
 	assert_eq(PersonView.shadow_near, 0.0, "walkers cast no shadow")
 	assert_eq(PersonView.animate_reach, 25.0, "figures animate only near")
 	assert_eq(main.play_wiring.parked.spawn_reach, 100.0, "parked vehicles only near")
+	var cell: Vector2i = main.world.streamer.shown_cells()[0]
+	var trees := main.world.streamer.build_of(cell).view.get_node_or_null(^"Trees") as GeometryInstance3D
+	assert_true(trees == null or trees.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "trees cast no shadow on Low")
 	assert_eq(main.world.streamer.load_distance, 200.0, "a shorter view")
 	assert_eq(main.world.streamer.in_flight, 1, "one chunk build at a time")
 	assert_eq(env.fog_far, 240.0, "the haze pulled in with it")
