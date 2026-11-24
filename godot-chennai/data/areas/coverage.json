@@ -1,0 +1,1316 @@
+{
+ "format": 1,
+ "world_data_date": "2026-11-23T00:28:57Z",
+ "licence": "ODbL 1.0, © OpenStreetMap contributors",
+ "note": "world = buildings kept in the built world (slivers dropped, multipolygons split); pbf = every building tagged way/relation in the extract. Colour and material tags exist only in the extract.",
+ "areas": {
+  "george-town": {
+   "world": {
+    "buildings": 6408,
+    "levels_mapped": 3185,
+    "height_tagged": 1,
+    "roof_shape_tagged": 2,
+    "use_known": 109,
+    "floors_hist": {
+     "1": 249,
+     "2": 3910,
+     "3": 1000,
+     "4-5": 1126,
+     "6-9": 121,
+     "10+": 2
+    }
+   },
+   "pbf": {
+    "buildings": 6447,
+    "building:levels": 3207,
+    "height": 1,
+    "roof:shape": 2,
+    "building:colour": 0,
+    "building:material": 2,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 282,
+    "start_date": 3,
+    "building_values": {
+     "yes": 6334,
+     "school": 41,
+     "apartments": 33,
+     "construction": 10,
+     "house": 7,
+     "shed": 4
+    },
+    "colour_values": {},
+    "material_values": {
+     "brick": 2
+    },
+    "roof_material_values": {}
+   }
+  },
+  "parrys-corner": {
+   "world": {
+    "buildings": 548,
+    "levels_mapped": 478,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 23,
+    "floors_hist": {
+     "1": 20,
+     "2": 147,
+     "3": 165,
+     "4-5": 189,
+     "6-9": 27,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 548,
+    "building:levels": 478,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 95,
+    "start_date": 1,
+    "building_values": {
+     "yes": 525,
+     "school": 10,
+     "office": 5,
+     "construction": 2,
+     "college": 2,
+     "roof": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "fort-st-george-island-grounds": {
+   "world": {
+    "buildings": 192,
+    "levels_mapped": 27,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 6,
+    "floors_hist": {
+     "1": 5,
+     "2": 180,
+     "3": 5,
+     "4-5": 1,
+     "6-9": 0,
+     "10+": 1
+    }
+   },
+   "pbf": {
+    "buildings": 192,
+    "building:levels": 27,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 32,
+    "start_date": 0,
+    "building_values": {
+     "yes": 186,
+     "ruins": 5,
+     "roof": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "park-town-chennai-central": {
+   "world": {
+    "buildings": 580,
+    "levels_mapped": 83,
+    "height_tagged": 0,
+    "roof_shape_tagged": 1,
+    "use_known": 20,
+    "floors_hist": {
+     "1": 7,
+     "2": 514,
+     "3": 32,
+     "4-5": 22,
+     "6-9": 5,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 597,
+    "building:levels": 83,
+    "height": 0,
+    "roof:shape": 1,
+    "building:colour": 1,
+    "building:material": 2,
+    "roof:colour": 1,
+    "roof:material": 0,
+    "name": 28,
+    "start_date": 2,
+    "building_values": {
+     "yes": 560,
+     "roof": 29,
+     "train_station": 5,
+     "stadium": 1,
+     "commercial": 1,
+     "dormitory": 1
+    },
+    "colour_values": {
+     "white": 1
+    },
+    "material_values": {
+     "brick": 2
+    },
+    "roof_material_values": {}
+   }
+  },
+  "egmore": {
+   "world": {
+    "buildings": 1068,
+    "levels_mapped": 39,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 20,
+    "floors_hist": {
+     "1": 4,
+     "2": 1033,
+     "3": 8,
+     "4-5": 8,
+     "6-9": 5,
+     "10+": 10
+    }
+   },
+   "pbf": {
+    "buildings": 1068,
+    "building:levels": 39,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 36,
+    "start_date": 0,
+    "building_values": {
+     "yes": 1048,
+     "apartments": 12,
+     "roof": 2,
+     "pavilion": 2,
+     "stadium": 1,
+     "train_station": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "triplicane": {
+   "world": {
+    "buildings": 840,
+    "levels_mapped": 2,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 6,
+    "floors_hist": {
+     "1": 0,
+     "2": 837,
+     "3": 1,
+     "4-5": 2,
+     "6-9": 0,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 840,
+    "building:levels": 2,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 6,
+    "start_date": 0,
+    "building_values": {
+     "yes": 834,
+     "mosque": 2,
+     "college": 1,
+     "apartments": 1,
+     "commercial": 1,
+     "residential": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "marina-santhome": {
+   "world": {
+    "buildings": 3460,
+    "levels_mapped": 93,
+    "height_tagged": 3,
+    "roof_shape_tagged": 0,
+    "use_known": 135,
+    "floors_hist": {
+     "1": 17,
+     "2": 3319,
+     "3": 29,
+     "4-5": 73,
+     "6-9": 6,
+     "10+": 16
+    }
+   },
+   "pbf": {
+    "buildings": 3526,
+    "building:levels": 94,
+    "height": 3,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 90,
+    "start_date": 0,
+    "building_values": {
+     "yes": 3391,
+     "apartments": 69,
+     "residential": 33,
+     "college": 8,
+     "house": 6,
+     "train_station": 3
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "mylapore": {
+   "world": {
+    "buildings": 606,
+    "levels_mapped": 1,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 8,
+    "floors_hist": {
+     "1": 0,
+     "2": 600,
+     "3": 2,
+     "4-5": 4,
+     "6-9": 0,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 607,
+    "building:levels": 1,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 4,
+    "start_date": 0,
+    "building_values": {
+     "yes": 599,
+     "retail": 4,
+     "apartments": 2,
+     "train_station": 1,
+     "shrine": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "mandaveli": {
+   "world": {
+    "buildings": 495,
+    "levels_mapped": 1,
+    "height_tagged": 0,
+    "roof_shape_tagged": 2,
+    "use_known": 6,
+    "floors_hist": {
+     "1": 0,
+     "2": 492,
+     "3": 3,
+     "4-5": 0,
+     "6-9": 0,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 495,
+    "building:levels": 1,
+    "height": 0,
+    "roof:shape": 2,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 10,
+    "start_date": 0,
+    "building_values": {
+     "yes": 489,
+     "apartments": 2,
+     "train_station": 1,
+     "residential": 1,
+     "roof": 1,
+     "house": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "royapettah": {
+   "world": {
+    "buildings": 891,
+    "levels_mapped": 26,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 38,
+    "floors_hist": {
+     "1": 1,
+     "2": 860,
+     "3": 7,
+     "4-5": 11,
+     "6-9": 4,
+     "10+": 8
+    }
+   },
+   "pbf": {
+    "buildings": 891,
+    "building:levels": 26,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 16,
+    "start_date": 1,
+    "building_values": {
+     "yes": 853,
+     "commercial": 12,
+     "apartments": 8,
+     "hospital": 7,
+     "church": 4,
+     "office": 3
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "t-nagar": {
+   "world": {
+    "buildings": 4769,
+    "levels_mapped": 77,
+    "height_tagged": 0,
+    "roof_shape_tagged": 5,
+    "use_known": 48,
+    "floors_hist": {
+     "1": 10,
+     "2": 4699,
+     "3": 21,
+     "4-5": 26,
+     "6-9": 12,
+     "10+": 1
+    }
+   },
+   "pbf": {
+    "buildings": 4768,
+    "building:levels": 77,
+    "height": 0,
+    "roof:shape": 5,
+    "building:colour": 0,
+    "building:material": 1,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 84,
+    "start_date": 0,
+    "building_values": {
+     "yes": 4720,
+     "apartments": 17,
+     "school": 7,
+     "retail": 7,
+     "college": 3,
+     "commercial": 3
+    },
+    "colour_values": {},
+    "material_values": {
+     "glass": 1
+    },
+    "roof_material_values": {}
+   }
+  },
+  "nungambakkam": {
+   "world": {
+    "buildings": 653,
+    "levels_mapped": 0,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 8,
+    "floors_hist": {
+     "1": 0,
+     "2": 649,
+     "3": 2,
+     "4-5": 2,
+     "6-9": 0,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 653,
+    "building:levels": 0,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 7,
+    "start_date": 0,
+    "building_values": {
+     "yes": 645,
+     "apartments": 2,
+     "office": 2,
+     "commercial": 1,
+     "hotel": 1,
+     "house": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "kodambakkam-vadapalani": {
+   "world": {
+    "buildings": 7649,
+    "levels_mapped": 35,
+    "height_tagged": 1,
+    "roof_shape_tagged": 0,
+    "use_known": 47,
+    "floors_hist": {
+     "1": 4,
+     "2": 7616,
+     "3": 12,
+     "4-5": 17,
+     "6-9": 0,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 7653,
+    "building:levels": 37,
+    "height": 1,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 43,
+    "start_date": 0,
+    "building_values": {
+     "yes": 7606,
+     "apartments": 17,
+     "school": 7,
+     "house": 6,
+     "roof": 4,
+     "commercial": 4
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "anna-nagar": {
+   "world": {
+    "buildings": 12782,
+    "levels_mapped": 22,
+    "height_tagged": 1,
+    "roof_shape_tagged": 1,
+    "use_known": 87,
+    "floors_hist": {
+     "1": 2,
+     "2": 12734,
+     "3": 13,
+     "4-5": 30,
+     "6-9": 3,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 12787,
+    "building:levels": 22,
+    "height": 1,
+    "roof:shape": 1,
+    "building:colour": 1,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 64,
+    "start_date": 1,
+    "building_values": {
+     "yes": 12699,
+     "apartments": 38,
+     "train_station": 13,
+     "school": 9,
+     "industrial": 7,
+     "commercial": 6
+    },
+    "colour_values": {
+     "white": 1
+    },
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "kilpauk": {
+   "world": {
+    "buildings": 1606,
+    "levels_mapped": 11,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 25,
+    "floors_hist": {
+     "1": 0,
+     "2": 1595,
+     "3": 5,
+     "4-5": 5,
+     "6-9": 0,
+     "10+": 1
+    }
+   },
+   "pbf": {
+    "buildings": 1605,
+    "building:levels": 11,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 21,
+    "start_date": 0,
+    "building_values": {
+     "yes": 1580,
+     "house": 8,
+     "apartments": 5,
+     "school": 4,
+     "hospital": 2,
+     "commercial": 2
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "purasawalkam": {
+   "world": {
+    "buildings": 2147,
+    "levels_mapped": 33,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 12,
+    "floors_hist": {
+     "1": 0,
+     "2": 2119,
+     "3": 23,
+     "4-5": 0,
+     "6-9": 2,
+     "10+": 3
+    }
+   },
+   "pbf": {
+    "buildings": 2147,
+    "building:levels": 33,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 5,
+    "start_date": 0,
+    "building_values": {
+     "yes": 2135,
+     "apartments": 4,
+     "house": 3,
+     "office": 2,
+     "temple": 1,
+     "school": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "perambur": {
+   "world": {
+    "buildings": 7154,
+    "levels_mapped": 9,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 25,
+    "floors_hist": {
+     "1": 6,
+     "2": 7142,
+     "3": 2,
+     "4-5": 4,
+     "6-9": 0,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 7153,
+    "building:levels": 9,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 3,
+    "building:material": 0,
+    "roof:colour": 12,
+    "roof:material": 0,
+    "name": 8,
+    "start_date": 0,
+    "building_values": {
+     "yes": 7128,
+     "roof": 10,
+     "house": 8,
+     "apartments": 3,
+     "commercial": 3,
+     "residential": 1
+    },
+    "colour_values": {
+     "yellow": 3
+    },
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "adyar": {
+   "world": {
+    "buildings": 1169,
+    "levels_mapped": 17,
+    "height_tagged": 2,
+    "roof_shape_tagged": 0,
+    "use_known": 17,
+    "floors_hist": {
+     "1": 2,
+     "2": 1149,
+     "3": 4,
+     "4-5": 8,
+     "6-9": 1,
+     "10+": 5
+    }
+   },
+   "pbf": {
+    "buildings": 1169,
+    "building:levels": 19,
+    "height": 2,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 12,
+    "start_date": 0,
+    "building_values": {
+     "yes": 1152,
+     "apartments": 5,
+     "hospital": 4,
+     "retail": 3,
+     "school": 3,
+     "residential": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "besant-nagar-elliots-beach": {
+   "world": {
+    "buildings": 1100,
+    "levels_mapped": 63,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 46,
+    "floors_hist": {
+     "1": 7,
+     "2": 1049,
+     "3": 24,
+     "4-5": 19,
+     "6-9": 1,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 1100,
+    "building:levels": 63,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 28,
+    "start_date": 0,
+    "building_values": {
+     "yes": 1054,
+     "apartments": 32,
+     "house": 5,
+     "garage": 3,
+     "semidetached_house": 3,
+     "roof": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "guindy": {
+   "world": {
+    "buildings": 505,
+    "levels_mapped": 32,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 35,
+    "floors_hist": {
+     "1": 0,
+     "2": 493,
+     "3": 3,
+     "4-5": 4,
+     "6-9": 2,
+     "10+": 3
+    }
+   },
+   "pbf": {
+    "buildings": 504,
+    "building:levels": 32,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 18,
+    "start_date": 0,
+    "building_values": {
+     "yes": 470,
+     "apartments": 22,
+     "office": 3,
+     "hotel": 2,
+     "commercial": 2,
+     "government": 2
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "saidapet": {
+   "world": {
+    "buildings": 2122,
+    "levels_mapped": 30,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 106,
+    "floors_hist": {
+     "1": 12,
+     "2": 2035,
+     "3": 24,
+     "4-5": 46,
+     "6-9": 1,
+     "10+": 4
+    }
+   },
+   "pbf": {
+    "buildings": 2123,
+    "building:levels": 30,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 80,
+    "start_date": 0,
+    "building_values": {
+     "yes": 2016,
+     "apartments": 60,
+     "commercial": 18,
+     "house": 13,
+     "temple": 6,
+     "office": 2
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "velachery": {
+   "world": {
+    "buildings": 9300,
+    "levels_mapped": 49,
+    "height_tagged": 11,
+    "roof_shape_tagged": 6,
+    "use_known": 127,
+    "floors_hist": {
+     "1": 10,
+     "2": 9205,
+     "3": 33,
+     "4-5": 37,
+     "6-9": 8,
+     "10+": 7
+    }
+   },
+   "pbf": {
+    "buildings": 9302,
+    "building:levels": 61,
+    "height": 11,
+    "roof:shape": 6,
+    "building:colour": 5,
+    "building:material": 6,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 108,
+    "start_date": 0,
+    "building_values": {
+     "yes": 9176,
+     "apartments": 57,
+     "house": 25,
+     "commercial": 15,
+     "university": 12,
+     "residential": 4
+    },
+    "colour_values": {
+     "#eecfaf": 2,
+     "white": 1,
+     "blue": 1,
+     "tan": 1
+    },
+    "material_values": {
+     "brick": 4,
+     "traditional": 1,
+     "glass": 1
+    },
+    "roof_material_values": {}
+   }
+  },
+  "tambaram": {
+   "world": {
+    "buildings": 10614,
+    "levels_mapped": 30,
+    "height_tagged": 1,
+    "roof_shape_tagged": 0,
+    "use_known": 173,
+    "floors_hist": {
+     "1": 4,
+     "2": 10579,
+     "3": 20,
+     "4-5": 11,
+     "6-9": 0,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 10614,
+    "building:levels": 32,
+    "height": 1,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 134,
+    "start_date": 0,
+    "building_values": {
+     "yes": 10450,
+     "house": 69,
+     "apartments": 20,
+     "dormitory": 18,
+     "commercial": 14,
+     "college": 14
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "pallavaram-meenambakkam-airport": {
+   "world": {
+    "buildings": 12846,
+    "levels_mapped": 26,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 128,
+    "floors_hist": {
+     "1": 3,
+     "2": 12778,
+     "3": 27,
+     "4-5": 34,
+     "6-9": 4,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 12846,
+    "building:levels": 26,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 111,
+    "start_date": 0,
+    "building_values": {
+     "yes": 12738,
+     "apartments": 45,
+     "commercial": 14,
+     "retail": 11,
+     "roof": 8,
+     "industrial": 8
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "omr-sholinganallur": {
+   "world": {
+    "buildings": 17711,
+    "levels_mapped": 111,
+    "height_tagged": 11,
+    "roof_shape_tagged": 0,
+    "use_known": 290,
+    "floors_hist": {
+     "1": 13,
+     "2": 17546,
+     "3": 55,
+     "4-5": 63,
+     "6-9": 4,
+     "10+": 30
+    }
+   },
+   "pbf": {
+    "buildings": 17711,
+    "building:levels": 126,
+    "height": 12,
+    "roof:shape": 0,
+    "building:colour": 5,
+    "building:material": 0,
+    "roof:colour": 2,
+    "roof:material": 0,
+    "name": 182,
+    "start_date": 0,
+    "building_values": {
+     "yes": 17421,
+     "university": 112,
+     "apartments": 65,
+     "commercial": 23,
+     "house": 20,
+     "school": 19
+    },
+    "colour_values": {
+     "lightyellow": 2,
+     "grey": 2,
+     "brown": 1
+    },
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "ennore-north-chennai-port": {
+   "world": {
+    "buildings": 2295,
+    "levels_mapped": 4,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 33,
+    "floors_hist": {
+     "1": 4,
+     "2": 2291,
+     "3": 0,
+     "4-5": 0,
+     "6-9": 0,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 2324,
+    "building:levels": 5,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 7,
+    "start_date": 0,
+    "building_values": {
+     "yes": 2291,
+     "industrial": 29,
+     "warehouse": 4
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "ambattur-industrial": {
+   "world": {
+    "buildings": 4071,
+    "levels_mapped": 7,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 47,
+    "floors_hist": {
+     "1": 0,
+     "2": 4036,
+     "3": 14,
+     "4-5": 19,
+     "6-9": 2,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 4071,
+    "building:levels": 7,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 38,
+    "start_date": 0,
+    "building_values": {
+     "yes": 4024,
+     "apartments": 20,
+     "commercial": 12,
+     "retail": 9,
+     "school": 5,
+     "church": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "thiruvanmiyur": {
+   "world": {
+    "buildings": 1074,
+    "levels_mapped": 25,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 91,
+    "floors_hist": {
+     "1": 2,
+     "2": 1001,
+     "3": 20,
+     "4-5": 49,
+     "6-9": 0,
+     "10+": 2
+    }
+   },
+   "pbf": {
+    "buildings": 1074,
+    "building:levels": 26,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 45,
+    "start_date": 0,
+    "building_values": {
+     "yes": 983,
+     "apartments": 52,
+     "residential": 15,
+     "house": 10,
+     "commercial": 7,
+     "school": 2
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "chetpet": {
+   "world": {
+    "buildings": 711,
+    "levels_mapped": 3,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 20,
+    "floors_hist": {
+     "1": 0,
+     "2": 707,
+     "3": 1,
+     "4-5": 0,
+     "6-9": 3,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 711,
+    "building:levels": 3,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 5,
+    "start_date": 0,
+    "building_values": {
+     "yes": 691,
+     "house": 11,
+     "roof": 4,
+     "apartments": 3,
+     "commercial": 1,
+     "shed": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "chengalpattu": {
+   "world": {
+    "buildings": 55,
+    "levels_mapped": 0,
+    "height_tagged": 0,
+    "roof_shape_tagged": 0,
+    "use_known": 5,
+    "floors_hist": {
+     "1": 0,
+     "2": 55,
+     "3": 0,
+     "4-5": 0,
+     "6-9": 0,
+     "10+": 0
+    }
+   },
+   "pbf": {
+    "buildings": 55,
+    "building:levels": 0,
+    "height": 0,
+    "roof:shape": 0,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 13,
+    "start_date": 0,
+    "building_values": {
+     "yes": 50,
+     "school": 2,
+     "train_station": 1,
+     "college": 1,
+     "public": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "pulicat-edge": {
+   "world": {
+    "buildings": 24,
+    "levels_mapped": 0,
+    "height_tagged": 2,
+    "roof_shape_tagged": 1,
+    "use_known": 6,
+    "floors_hist": {
+     "1": 1,
+     "2": 22,
+     "3": 0,
+     "4-5": 0,
+     "6-9": 0,
+     "10+": 1
+    }
+   },
+   "pbf": {
+    "buildings": 24,
+    "building:levels": 0,
+    "height": 2,
+    "roof:shape": 1,
+    "building:colour": 0,
+    "building:material": 0,
+    "roof:colour": 0,
+    "roof:material": 0,
+    "name": 8,
+    "start_date": 0,
+    "building_values": {
+     "yes": 18,
+     "hospital": 5,
+     "roof": 1
+    },
+    "colour_values": {},
+    "material_values": {},
+    "roof_material_values": {}
+   }
+  },
+  "_outside": {
+   "world": {
+    "buildings": 275838,
+    "levels_mapped": 4075,
+    "height_tagged": 70,
+    "roof_shape_tagged": 27,
+    "use_known": 3787,
+    "floors_hist": {
+     "1": 519,
+     "2": 271556,
+     "3": 1283,
+     "4-5": 1795,
+     "6-9": 366,
+     "10+": 319
+    }
+   },
+   "pbf": {
+    "buildings": 276022,
+    "building:levels": 4175,
+    "height": 76,
+    "roof:shape": 27,
+    "building:colour": 138,
+    "building:material": 38,
+    "roof:colour": 156,
+    "roof:material": 2,
+    "name": 2606,
+    "start_date": 4,
+    "building_values": {
+     "yes": 272242,
+     "apartments": 1475,
+     "house": 618,
+     "industrial": 246,
+     "school": 230,
+     "residential": 199
+    },
+    "colour_values": {
+     "white": 46,
+     "yellow": 23,
+     "grey": 12,
+     "blue": 12,
+     "pink": 11,
+     "orange": 9
+    },
+    "material_values": {
+     "brick": 30,
+     "cement_block": 6,
+     "glass": 1,
+     "concrete": 1
+    },
+    "roof_material_values": {
+     "metal": 2
+    }
+   }
+  }
+ }
+}
