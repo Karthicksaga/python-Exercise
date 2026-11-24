@@ -180,6 +180,10 @@ func validate() -> PackedStringArray:
 		var tags: Dictionary = part.get("tags", {})
 		if tags.has("brand") or tags.has("shop"):
 			e.append("part %s: a business (brand/shop) cannot be a landmark part" % name)
+		if kind == &"mall":
+			for k: String in tags:
+				if k.begins_with("name") or k.contains("_name") or k.begins_with("wiki") or k == "brand":
+					e.append("part %s: a mall's name and links are withheld (TD-18): %s" % [name, k])
 	if footprints.is_empty() or exclude.is_empty():
 		e.append("osm: at least one footprint and one exclude part")
 	var h: Dictionary = d.get("height", {})
@@ -197,8 +201,8 @@ func validate() -> PackedStringArray:
 		if str(f.get("en", "")) == "" or not _is_url(f.get("source", "")):
 			e.append("fact without text or source URL: %s" % str(f.get("en", "")).left(40))
 	var refs: Array = d.get("references", [])
-	if refs.is_empty():
-		e.append("references: at least one reference photo")
+	if refs.is_empty() and str(d.get("references_withheld", "")) == "":
+		e.append("references: at least one reference photo (or say why none is listed)")
 	for r: Dictionary in refs:
 		for k: String in ["title", "author", "licence", "url", "use"]:
 			if str(r.get(k, "")) == "":

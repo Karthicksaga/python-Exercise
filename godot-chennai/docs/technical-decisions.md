@@ -1395,6 +1395,7 @@ material and roof tags from the extract (the world format keeps no colour or mat
 areas levels are mapped for 3.9 % of buildings (four fifths of them in George Town and Parry's
 Corner); height, roof shape, colour and material tags are each under 0.2 %.
 
+
 ## G-170: Control settings: one shared object, one save section, live
 `ControlSettings` (`src/ui/touch_controls/`) holds the preferences: driving scheme (only `wheel`
 exists; the tilt and buttons schemes are named in the proposal but not built, by the owner's
@@ -1596,6 +1597,7 @@ Tamil lines (`LoadingScreen.TAMIL`): "சென்னை வரைபடத்�
 சுற்றியுள்ள தெருக்களை உருவாக்குகிறது", "வாகனங்களை நிறுத்துகிறது" were written by the model and **need
 native review** before release; a step without an entry shows English alone.
 
+
 ### G-180: Landmark candidates are ranked from the same OSM extract, not Overpass
 `python -m chennai_geo.cli landmarks-rank` reads the clipped Tamil Nadu PBF (`world.osm.pbf`) with
 pyosmium (nodes and assembled areas, ways and multipolygons) and keeps objects inside the world
@@ -1684,6 +1686,15 @@ frontage outline has a bump.
 No deity figures, images or sanctum; tier stucco is abstract coloured forms; the tank is not
 entered (G-152's bund stays). The spec records the rule and a test checks it is there.
 
+### G-189: Malls are generic, named only by their category
+The `mall` kit (podium on the OSM outline, glass atrium front with mullions and transoms,
+cladding fins, shopfront glazing, entrance canopy, atrium roof light, rooftop parking or plant, a
+plaza strip within the outline's tolerance) builds the shortlist's malls (godot-areas,
+`kind: mall`): the first is OSM way 154030370 in Royapettah. No real name, logo or livery
+anywhere: the spec's names and sign are "வணிக வளாகம் / SHOPPING COMPLEX", `osm.withhold_names`
+keeps the way's name, brand and links out of the spec, the validator rejects them for any mall,
+and no Commons reference is listed (their titles name the business). Heights are estimated.
+
 ### G-188: Measuring landmarks
 `tests/tools/city_shot.gd --no-landmarks` builds the same city without landmark models (OSM
 buildings in place); `--frames=N` prints average and worst frame time over N rendered frames.
@@ -1695,3 +1706,4 @@ extract for `shop=mall` and for `building=retail|commercial` of 8,000 m2 or more
 more. `names.en` is "Shopping complex, <area>", the sign is `sign` = `வணிக வளாகம் / SHOPPING COMPLEX`,
 `osm.osm_name` is null, and the OSM name sits only in `research_name` (marked research only; a test
 keeps it out of every other field). Also added: Sowcarpet and Flower Bazaar, Marina Beach Market.
+

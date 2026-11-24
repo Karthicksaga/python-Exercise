@@ -249,6 +249,7 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | `docs/areas.md` atlas | Done (generated) | read through; numbers from `coverage.json` |
 | Used by the building and landmark code | Not done (other agents) | |
 
+
 ## Controls redesign (G-170…G-179, branch `agent/godot-controls`, 24 Nov 2026)
 Built from the owner-approved proposal `suggestions/2026-11-24-godot-controls-redesign.md` and its
 interactive prototype (the Proposed on-foot layout and scheme A "wheel").
@@ -275,6 +276,7 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Camera drift over a seeded spot of the live city, handing the city back on CONTINUE (G-164) | Done | `test_seed_picks_the_same_spot`, `test_camera_drift_is_slow_and_bounded`, `test_camera_drifts_over_the_player_and_holds_still_with_reduced_motion`, `test_tour_streams_the_spot_and_continue_hands_the_city_back` |
 | Rain layers, lightning in a stormy title (G-165) | Done (rings, mist bands, thunder left out) | `test_rain_layers_one_draw_call_each_and_none_when_dry`, `test_lightning_only_in_a_storm_and_never_with_reduced_motion` |
 | Seen on a phone | Not done | — |
+
 
 ## Landmarks: ranking, specs, Blender kits, placement (branch `agent/godot-landmarks`, 24 Nov 2026)
 | Item | State | How it was tested |
