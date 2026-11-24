@@ -51,6 +51,11 @@ class CrashRule:
 	var hurt_from: float = 25.0
 	## Health lost per km/h above `hurt_from` while seated.
 	var seated_damage: float = 0.35
+	## Severity (km/h) from which an open-seat rider falls off (slides off sideways, low and
+	## slow; G-270); negative: never (closed bodies).
+	var fall_from: float = -1.0
+	## Health lost by a fall at `fall_from` (plus `seated_damage` per km/h above `hurt_from`).
+	var fall_base: float = 0.0
 	## Impact (km/h) from which the driver is thrown; negative: never.
 	var throw_from: float = -1.0
 	var throw_base: float = 0.0
@@ -122,6 +127,8 @@ static func from_dict(id: StringName, d: Dictionary) -> VehicleType:
 	var c: Dictionary = d["crash"]
 	t.crash.hurt_from = float(c["hurt_from"])
 	t.crash.seated_damage = float(c["seated_damage"])
+	t.crash.fall_from = float(c.get("fall_from", -1.0))
+	t.crash.fall_base = float(c.get("fall_base", 0.0))
 	t.crash.throw_from = float(c["throw_from"])
 	t.crash.throw_base = float(c["throw_base"])
 	t.crash.throw_per_kmh = float(c["throw_per_kmh"])
