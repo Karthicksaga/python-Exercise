@@ -14,12 +14,12 @@
  "lods": [
   {
    "file": "auto_rickshaw.glb",
-   "triangles": 5274,
+   "triangles": 5542,
    "max_distance_m": 28
   },
   {
    "file": "auto_rickshaw_lod1.glb",
-   "triangles": 1812,
+   "triangles": 2028,
    "min_distance_m": 28,
    "max_distance_m": 300
   }

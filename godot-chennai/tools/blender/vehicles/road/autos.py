@@ -105,8 +105,12 @@ def auto_build(d, lod):
     paint = K.paint_material(d["paints"][0][1], rough=0.32, metal=0.0)
     n_arc = 3 if lod == 0 else 1
     shell = tub_shell(d, paint, n_arc)
-    # Black lower skirt and the cavity's floor; the underside dark.
+    # Black lower skirt and the cavity's floor; the underside dark; the black waist stripe of
+    # Chennai autos along the tub and round the cowl.
+    K.bisect_planes(shell, zs=(0.62, 0.68))
     K.paint_faces(shell, role("black"), lambda c, n: c.z < 0.33 and n.z < 0.6)
+    K.paint_faces(shell, role("black"), lambda c, n: 0.62 < c.z < 0.68 and abs(n.z) < 0.5 and (abs(n.x) > 0.5 or c.y > 1.2 or c.y < -1.1)
+                  and (abs(c.x) > 0.5 or c.y > 1.2 or c.y < -1.1))
     K.paint_faces(shell, role("underframe"), lambda c, n: n.z < -0.7)
     K.smooth(shell, 40)
     parts = [shell]
