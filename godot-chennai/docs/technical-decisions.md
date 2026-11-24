@@ -2008,7 +2008,7 @@ it is inside the list and the screen. Every top-right button takes a real click 
 its padding (`test_hud_glass.gd`). Rows now in both menus: Time, Weather, Sound, (pause: the controls
 rows), Graphics (`PerfWiring`, QualitySettings Low/Medium/High, "(auto)" when detected), Performance overlay.
 
-## Performance, second round: the owner's phone (G-340…G-345, branch `agent/godot-perf`, 24 Nov 2026)
+## Performance, second round: the owner's phone (G-340…G-346, branch `agent/godot-perf`, 24 Nov 2026)
 
 ### G-340: A frame timeline names what a slow frame was made of
 `FrameTimeline` (`src/game_engine/quality/`) cuts every frame at its edges: two probe nodes run
@@ -2064,6 +2064,21 @@ written by the thread that owns the step.
 `TitleWiring._rain` read `RenderingServer.global_shader_parameter_get` every frame: on Vulkan that
 is an editor-only call that syncs with the render thread (the engine prints an error). It reads
 `CityEnvironment.night_level`, set beside the global parameter, instead.
+
+### G-346: Pipelines compile at load, never on a state change
+Found with the timeline under software Vulkan: the first frame of play took 2.0-2.2 s, all of it
+"render", with 17 draw-time pipeline compiles (32 in the first 1.5 s of play). `PerfWiring.apply`
+runs at every state change (loading, title, play, pause, resume) and set the directional shadow
+atlas size each time; with the soft-shadow filter level it is a renderer-wide setting, and setting
+it again recompiled the scene's pipelines. `QualityApplier.apply_engine` now sets both only when
+they change: the same run's first frame of play is 95 ms and no pipeline compiles in play (0-2 in
+4 s driving). On the phone this would be a freeze at every play start, pause and resume (not yet
+confirmed there). At the end of loading `ShaderWarmup` also draws a walker and one traffic vehicle
+of every kind in front of the camera for three frames (with the play HUD) behind the loading
+screen; measured, it changes little after the fix above (pipelines in the first 4 s of driving:
+2 without, 1 with). It stays for the Compatibility renderer, whose GL shaders compile on first
+draw and are not counted. `CHENNAI_NO_WARMUP=1` skips it for measuring.
+
 ## G-350: TouchScroll, one gesture owner for every scrolling menu
 Owner bug (phone, build afed12f): menu lists moved a little or jumped under a finger. The engine's
 `ScrollContainer` drag depends on which child takes the press and on touch versus emulated mouse
