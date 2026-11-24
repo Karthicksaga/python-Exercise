@@ -1,32 +1,45 @@
 class_name TouchControls
 extends CanvasLayer
-## On-screen controls for a phone in landscape (port of the Three.js `TouchControls`, on-foot
-## part; decision G-66): a floating joystick on the left 45% of the screen, camera drag on the
-## rest, and RUN and JUMP buttons in the right thumb's reach. Several fingers work at once
-## (each touch index is tracked); a mouse works too (`emulate_touch_from_mouse`).
+## On-screen controls for walking, on a phone in landscape (port of the Three.js `TouchControls`
+## on-foot part, G-66; redesigned in G-170…G-179 after the owner approved the proposal in
+## `suggestions/2026-11-24-godot-controls-redesign.md`):
+## - a floating stick on the left 45 % of the screen (right when left-handed);
+## - drag on the rest to look;
+## - one big round ACTION button, the biggest control on foot, whose label is whatever the
+##   `ActionContext` offers (GET IN, TALK, PICK UP, HAND OVER, ENTER), dimmed when nothing is near;
+## - a small JUMP above it. No RUN button: push the stick past 0.85 to run (`MoveState`). Only
+##   with the "toggle run" setting on does a RUN button show.
+## Several fingers work at once (each touch index is tracked); a mouse works too
+## (`emulate_touch_from_mouse`). Every size comes from `ControlsLayout`, so the left-handed
+## layout is its exact mirror.
 ##
 ## The controls only record intent; `PlayerRig` reads them once per physics step:
-## `move` (x right, y forward), `consume_look()` (UI units dragged), `consume_jump()`, `run`.
-## RUN is a switch (a thumb can't hold it and steer the camera): tap it to run, it switches off
-## when the stick is let go. Pushing the stick to its edge runs as well.
+## `move` (the stick's raw travel: x right, y forward, 0..1), `consume_look()` (UI units dragged),
+## `consume_jump()`, `consume_run_press()`.
+
+signal action_pressed
 
 ## How far the knob travels from the stick's centre, UI units.
-const STICK_RADIUS := 56.0
+const STICK_RADIUS := ControlsLayout.STICK_RADIUS
 const KNOB := 52.0
-## Share of the screen's width (from the left) where a touch takes the stick.
-const MOVE_SHARE := 0.45
-## Button sizes, UI units: at least 70 so they stay 48 px or more on a 640x320 screen.
-const JUMP_SIZE := 80.0
-const RUN_SIZE := 70.0
+## Share of the screen's width (from the stick's side) where a touch takes the stick.
+const MOVE_SHARE := ControlsLayout.MOVE_SHARE
 
 var move: Vector2 = Vector2.ZERO
-var run: bool = false:
+## The preferences it follows; may be swapped at any time (tests, a new profile).
+var settings: ControlSettings = ControlSettings.shared():
 	set(value):
-		run = value
-		if _run_button != null:
-			_run_button.lit = value
+		if settings != null and settings.changed.is_connected(_place):
+			settings.changed.disconnect(_place)
+		settings = value
+		if is_node_ready():
+			settings.changed.connect(_place)
+			_place()
+## What the ACTION button offers; systems register sources on it.
+var action_context: ActionContext = ActionContext.new()
 var _look: Vector2 = Vector2.ZERO
 var _jump: bool = false
+var _run_press: bool = false
 var _move_finger: int = -1
 var _look_finger: int = -1
 var _look_last: Vector2 = Vector2.ZERO
@@ -34,8 +47,12 @@ var _base: Vector2 = Vector2.ZERO
 var _root: Control
 var _layer: Control
 var _stick: StickView
+var _action_button: TouchButton
 var _jump_button: TouchButton
 var _run_button: TouchButton
+var _layout: Dictionary = {}
+var _label: String = ""
+var _label_known: bool = false
 
 
 func _ready() -> void:
@@ -58,41 +75,99 @@ func _ready() -> void:
 	_stick.radius = STICK_RADIUS
 	_stick.knob = KNOB
 	_layer.add_child(_stick)
-	_jump_button = TouchButton.new("JUMP", JUMP_SIZE)
+	_action_button = TouchButton.new("ACTION", ControlsLayout.ACTION_SIZE)
+	_action_button.name = "Action"
+	_action_button.primary = true
+	_action_button.font_size = 18
+	_layer.add_child(_action_button)
+	_jump_button = TouchButton.new("JUMP", ControlsLayout.JUMP_SIZE)
 	_jump_button.name = "Jump"
 	_layer.add_child(_jump_button)
-	_run_button = TouchButton.new("RUN", RUN_SIZE)
+	_run_button = TouchButton.new("RUN", ControlsLayout.RUN_SIZE)
 	_run_button.name = "Run"
 	_layer.add_child(_run_button)
 	_layer.resized.connect(_place)
+	visibility_changed.connect(_on_visibility)
+	settings.changed.connect(_place)
+	DeviceTracker.shared().changed.connect(_on_device)
 	_place()
 
 
-## Buttons bottom-right above the map credit, RUN to JUMP's left; the stick at rest bottom-left.
+func _exit_tree() -> void:
+	if settings != null and settings.changed.is_connected(_place):
+		settings.changed.disconnect(_place)
+	var tracker := DeviceTracker.shared()
+	if tracker.changed.is_connected(_on_device):
+		tracker.changed.disconnect(_on_device)
+
+
+## Lays every control out from `ControlsLayout` (also when the settings change).
 func _place() -> void:
-	var s := _layer.size
-	# JUMP in the corner, lifted clear of the OSM credit line (HUD, bottom-right).
-	_jump_button.position = Vector2(s.x - JUMP_SIZE - 16.0, s.y - JUMP_SIZE - 32.0)
-	# RUN to its left and a little higher, along the thumb's arc, 16 apart.
-	_run_button.position = Vector2(_jump_button.position.x - RUN_SIZE - 16.0, _jump_button.position.y - 34.0)
+	if _layer == null:
+		return
+	_layout = ControlsLayout.foot(_layer.size, settings)
+	_put(_action_button, &"action")
+	_put(_jump_button, &"jump")
+	_put(_run_button, &"run")
+	_run_button.visible = settings.run_toggle
+	_layer.modulate.a = settings.opacity
 	if _move_finger < 0:
 		_base = _rest()
 		_stick.show_at(_base, Vector2.ZERO, false)
+	_on_device(DeviceTracker.shared().current)
+
+
+func _put(button: TouchButton, key: StringName) -> void:
+	var r: Rect2 = _layout[key]
+	button.place(r.position, r.size.x)
+
+
+func _on_device(device: DeviceTracker.Device) -> void:
+	if _action_button == null:
+		return
+	_action_button.glyph = DeviceTracker.glyph(&"action", device)
+	_jump_button.glyph = DeviceTracker.glyph(&"jump", device)
+	_run_button.glyph = DeviceTracker.glyph(&"run", device)
+
+
+func _process(_delta: float) -> void:
+	if _action_button == null or not visible:
+		return
+	var text := action_context.label()
+	if text != _label or not _label_known:
+		_label_known = true
+		_label = text
+		_action_button.text = text if text != "" else "ACTION"
+		_action_button.font_size = 18 if text.length() <= 6 else 15
+		_action_button.dim = text == ""
 
 
 func _rest() -> Vector2:
-	var s := _layer.size
-	return _layer.global_position + Vector2(STICK_RADIUS + 28.0, s.y - STICK_RADIUS - 28.0)
+	var r: Rect2 = _layout[&"stick"]
+	return _layer.global_position + r.get_center()
 
 
-## The buttons, for layout tests and the screenshot review.
+## The buttons, for layout tests and the screenshot review (RUN only while it shows).
 func buttons() -> Array[TouchButton]:
-	return [_jump_button, _run_button]
+	var out: Array[TouchButton] = [_action_button, _jump_button]
+	if _run_button.visible:
+		out.append(_run_button)
+	return out
+
+
+func action_button() -> TouchButton:
+	return _action_button
 
 
 ## The stick's area at rest (its ring), in canvas units.
 func stick_rect() -> Rect2:
-	return _stick.get_global_rect()
+	return Rect2(_layer.global_position + (_layout[&"stick"] as Rect2).position, (_layout[&"stick"] as Rect2).size)
+
+
+## The areas that take a touch for the stick and for looking, in canvas units.
+func zone(key: StringName) -> Rect2:
+	var r: Rect2 = _layout[key]
+	return Rect2(_layer.global_position + r.position, r.size)
 
 
 func consume_look() -> Vector2:
@@ -107,17 +182,38 @@ func consume_jump() -> bool:
 	return out
 
 
+func consume_run_press() -> bool:
+	var out := _run_press
+	_run_press = false
+	return out
+
+
+## The ACTION button as a finger would press it: runs what the context offers.
+func press_action() -> bool:
+	var done := action_context.trigger()
+	if done:
+		action_pressed.emit()
+		HapticsPlan.play(HapticsPlan.tick(), settings, DeviceTracker.shared().current)
+	return done
+
+
 ## Drops every finger (pause, entering a vehicle).
 func release_all() -> void:
 	_move_finger = -1
 	_look_finger = -1
 	move = Vector2.ZERO
-	run = false
-	_base = _rest()
-	_stick.show_at(_base, Vector2.ZERO, false)
+	if _layout.has(&"stick") and _layer != null:
+		_base = _rest()
+		_stick.show_at(_base, Vector2.ZERO, false)
+
+
+func _on_visibility() -> void:
+	if not visible:
+		release_all()
 
 
 func _input(event: InputEvent) -> void:
+	DeviceTracker.shared().observe(event)
 	if not visible:
 		return
 	var touch := event as InputEventScreenTouch
@@ -139,15 +235,19 @@ func _input(event: InputEvent) -> void:
 
 
 func _press(index: int, at: Vector2) -> void:
+	if _action_button.hit(at):
+		press_action()
+		_action_button.lit = true
+		return
 	if _jump_button.hit(at):
 		_jump = true
 		_jump_button.lit = true
 		return
 	if _run_button.hit(at):
-		run = not run
+		_run_press = true
+		_run_button.lit = true
 		return
-	var screen := _root.get_global_rect()
-	if at.x < screen.position.x + screen.size.x * MOVE_SHARE:
+	if zone(&"move_zone").has_point(at):
 		if _move_finger >= 0:
 			return
 		_move_finger = index
@@ -165,12 +265,13 @@ func _release(index: int) -> void:
 	if index == _move_finger:
 		_move_finger = -1
 		move = Vector2.ZERO
-		run = false
 		_base = _rest()
 		_stick.show_at(_base, Vector2.ZERO, false)
 	elif index == _look_finger:
 		_look_finger = -1
 	_jump_button.lit = false
+	_action_button.lit = false
+	_run_button.lit = false
 
 
 func _steer(at: Vector2) -> void:

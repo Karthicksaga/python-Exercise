@@ -31,6 +31,7 @@ static func make(city: CityWorld, player: PlayerRig, content: GameContent) -> Pl
 	p.driving = Driving.new()
 	p.driving.name = "Driving"
 	p.driving.rider = PlayerRiderLink.make(player.body)
+	p.driving.reverse_on_hold = true
 	p.add_child(p.driving)
 	p.ui = CanvasLayer.new()
 	p.ui.name = "DrivingUi"

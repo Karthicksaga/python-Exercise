@@ -564,3 +564,36 @@ measurements.
 - Eighteen landmarks have no matching Commons file by search; the world keeps only 55 buildings in
   Chengalpattu and 24 at Pulicat.
 - Nothing reads the data in the game yet.
+
+## Controls redesign (G-170…G-179), branch `agent/godot-controls`, 24 Nov 2026
+**Done** (spec: `suggestions/2026-11-24-godot-controls-redesign.md`; decisions in
+`technical-decisions.md`). Everything pure and shared is in `src/ui/touch_controls/`:
+`ControlSettings`, `MoveState`, `LookState`, `JumpState`, `SteerState`, `ReverseHold`,
+`ActionContext` / `ActionCandidate`, `ControlsLayout`, `ControlActions` (the InputMap names),
+`DeviceTracker`, `HapticsPlan`, `ControlsGuide`. Nodes: `TouchControls` (walking),
+`DrivingControls` and `SteerZone` (`src/ui/driving_controls/`), `ControlSettingsRows` (pause menu).
+**How it connects.**
+- `PlayerRig._physics_process` turns touch, pad and keys into one `PlayerInput` through
+  `MoveState`, `LookState` and `body.press_jump()`; `PlayerController` keeps the `JumpState`.
+- `DriveInput.read` merges keys, triggers and the stick into `Driving` (`gas`, `brake`,
+  `gas_amount`, `brake_amount`, `steer`); `Driving.reverse_on_hold` (on in `PlayWiring`) runs
+  `ReverseHold` and sets the gearbox with `Gearbox.set_now`.
+- **Anything that wants the ACTION button** registers a source on
+  `rig.controls.action_context` (see the class comment of `ActionContext`): TALK, PICK UP, HAND
+  OVER and ENTER have no interaction in the game yet, so only `DrivingWiring`'s GET IN is
+  registered. Use `ActionContext.P_*` priorities.
+- **Title agent**: read `ControlsGuide.rows(ControlsGuide.ON_FOOT or DRIVING, device, settings)`.
+- **A new scheme or button**: a key in `ControlsLayout`, a button in the controls that reads it, a
+  row in `ControlsGuide`; `ControlSettings.SCHEMES` lists the schemes.
+**Changed on purpose** (existing tests): `test_touch_layout.gd` prints ACTION and JUMP (no RUN);
+`test_driving_controls_layout.gd` is rewritten for the zone, no chips and no GET IN;
+`test_game_vehicles.gd` boards with the ACTION button instead of the GET IN control. Removed:
+`SteerPad`, the `gear_*` actions, `DrivingControls.gears/get_in/set_gears/set_get_in`,
+`TouchControls.run`.
+**Not done / weak.** Tilt and buttons schemes; combat buttons; kerb haptics. Only a phone can say
+whether 70 units is the right slide, whether the 0.65 top-speed factor is right, how the glide
+and the ACTION button size feel, and how the buttons sit under real thumbs. A real gamepad was not
+available: pad support is tested with synthetic events. The 640x320 worst case holds medium
+buttons at 48 px; small is under that there.
+Screenshots: `tests/tools/controls_shots.gd` (shots foot, near, driving, reverse, lefty,
+lefty_drive, pad, settings) into a scratch folder.

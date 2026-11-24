@@ -204,6 +204,7 @@ func _add_pause_menu() -> void:
 	pause_menu.add_setting(&"Time", func() -> String: return "Time: %s (%s)" % [GameLoop.clock.label(), GameLoop.clock.text()], func() -> void: GameLoop.clock.next())
 	pause_menu.add_setting(&"Weather", Weather.label, Weather.toggle)
 	pause_menu.add_setting(&"Sound", Sound.label, Sound.toggle)
+	ControlSettingsRows.add_to(pause_menu, ControlSettings.shared())
 	pause_menu.pause_requested.connect(pause)
 	pause_menu.resume_requested.connect(resume)
 	pause_menu.title_requested.connect(show_title)
@@ -331,6 +332,14 @@ func _notification(what: int) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# The gamepad's Start pauses and resumes (G-178).
+	if InputMap.has_action(&"pad_pause") and event.is_action_pressed(&"pad_pause"):
+		get_viewport().set_input_as_handled()
+		if state == &"play":
+			pause()
+		elif state == &"paused":
+			resume()
+		return
 	if event.is_action_pressed(&"ui_cancel"):
 		get_viewport().set_input_as_handled()
 		go_back()

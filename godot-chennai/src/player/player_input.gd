@@ -5,9 +5,10 @@ extends RefCounted
 
 ## Stick: x right, y forward, each in [-1, 1].
 var move: Vector2 = Vector2.ZERO
-## True on the step the jump button was pressed.
+## True on the step the jump button was pressed (the body buffers it 100 ms and allows it 80 ms
+## after leaving the ground: `JumpState`).
 var jump: bool = false
-## Run while moving, whatever the stick's travel (the RUN button, Shift).
+## Run while moving, whatever the stick's travel (past 0.85 of it, Shift, toggle run).
 var run: bool = false
 ## Camera heading in radians (0 looks towards -Z, north); movement is relative to it.
 var camera_yaw: float = 0.0

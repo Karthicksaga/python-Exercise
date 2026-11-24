@@ -78,8 +78,8 @@ func test_parked_car_board_drive_get_out_and_crash_ejection() -> bool:
 	# ENTER (GET IN) appears beside the car, and getting in walks, opens, sits, shuts.
 	d.rider.place(car.ground_point(car.type.entry.point + Vector2(float(car.type.entry.side) * 0.6, 0.0)), car.yaw())
 	await wait_frames(3)
-	assert_true(p.controls.get_in.is_visible_in_tree(), "GET IN shows beside the car")
-	p.controls.get_in.pressed_down.emit()
+	assert_eq(main.rig.controls.action_context.label(), "GET IN", "the ACTION button offers GET IN beside the car")
+	assert_true(main.rig.controls.press_action(), "ACTION gets in")
 	var seated := await wait_until(func() -> bool: return d.mode() == &"driving", 60 * 8)
 	assert_true(seated, "boarded and driving")
 	assert_true(p.controls.gas.is_visible_in_tree() and not main.rig.controls.visible, "the driving controls replace the walking ones")
