@@ -371,3 +371,193 @@ Foundation's `GameLoop` owns game time and the time of day (`GameClock`: `hour`,
 `next()`, `text()`); the environment, the ambience, honking by hour and the missions all read it.
 This branch adds no clock. HUD and pause hooks: `GameLoop.clock.text()/next()`,
 `Weather.label()/toggle()`, `Sound.label()/toggle()`.
+
+## Models (G-30 to G-39)
+
+### G-30 Vehicles, aircraft and trains are Blender scripts; the scripts are the source
+`tools/blender/vehicles/` holds `vkit.py` (shared kit), `cars.py`, `aircraft.py`, `trains.py`,
+`port_road_vehicles.py`, the copied Three.js sources in `road/`, and `build_all.sh`. The GLBs and
+manifests in `assets/{vehicles,aircraft,trains}/` are committed outputs. Running the scripts again
+rebuilds the same models: nodes, counts and manifests are identical, although a few files differ
+by a few bytes from run to run. Every design is original: no real makes, badges, grilles, airline names or
+liveries, railway or metro logos, lettering or real numbers (TD-18, brief §11). This follows the
+Three.js pipeline (`vehicles.py`, `auto_rickshaw.py`), with its lofted-shell method kept.
+
+### G-31 One frame for every model (TD-2)
+Metres, +Y up, front towards -Z, +X right, ground or rail top at y = 0. Cars have their origin
+between the axles, aircraft on the ground below the main gear or rotor mast, train cars at
+mid-car on the rail top. Moving parts are separate nodes with their origin on the axle, hinge or
+pivot. The manifest gives each one's axis and range in the Godot frame. Anchors (seats, grips,
+cargo, front marker) are empty nodes.
+
+### G-32 Materials: one palette atlas, a paint material, one livery per type; no vertex colours
+Fixed colours are cells of a shared 512 px palette (albedo, metallic-roughness, emission),
+mapped by UV, so a mesh node costs one draw call for the atlas, plus one for `paint` and one for
+its livery where it has them. The body colour is the `paint` material, recoloured at run time from
+the manifest's `paints`. Trains get one 512 px livery each and the airliner one 1,024 px livery,
+with windows and doors painted in (research note). There are no vertex colours (the MPFB lesson,
+§7) and no transparent glass (fill rate on the Adreno 613).
+
+Train LOD0 bodies (G-32 addendum) are built from panels with real openings (recessed windows,
+frames and bars, doorway vestibules, louvres) and roofs drawn with the atlas `roof_grey` role.
+LOD1 and LOD2 keep painted windows from the same window lists, so the LODs line up.
+
+### G-33 LODs as separate GLBs with distances in the manifest
+`<name>.glb`, `<name>_lod1.glb` and `<name>_lod2.glb`, as in the Three.js layout (`_lod1`). The game
+can load only LOD1 for traffic and switch the rest with visibility ranges. Cars switch at 28 m,
+trains at 60, 300 and 900 m, the light aircraft and helicopter at 40, 250 and 2,000 m, the
+airliner at 90, 600 and 4,000 m. LOD2 drops wheels and bogies.
+
+### G-34 A JSON manifest per model keeps the old game's vehicle data model
+It records size, mass, LODs, wheels, steering, doors (hinge, axis, open angle or slide), seats,
+grips, cargo, pivots, collision proxies, paints, handling (`VehicleSpec`-shaped, chassis frame with
+`groundBelow` unchanged), flight values, train formations and licence. Collision lives in the
+manifest as simple boxes, capsules and cylinders, not as meshes in the GLB, so vehicle bodies get
+shapes without an importer's static bodies.
+
+### G-35 No glTF Transform or meshopt step for Godot
+The Three.js game compressed with meshopt and WebP because its GLBs were embedded in the APK.
+Godot imports a GLB into its own mesh and texture resources and compresses textures for the GPU
+(ETC2/ASTC) on import. The export ships those resources, not the GLB, and a meshopt-compressed
+GLB would need the extension on import. So the GLBs stay as Blender writes them. The repository
+holds 8.5 MB of them in all, and size on the phone is decided by import settings.
+
+### G-36 The Three.js road vehicles come from the sync, into `assets/vehicles/legacy/`
+One source of truth: `tools/sync_from_threejs.py` copies the five vehicles' GLBs and LOD1s byte
+for byte into `assets/vehicles/legacy/` (as it does for `assets/people/legacy/`), and its
+`--check` covers them. `assets/vehicles/` itself holds only the new models, which the sync never
+touches. `port_road_vehicles.py` no longer copies anything. It checks that the synced GLBs are
+there and writes a manifest beside each, holding the data the old game keeps in code: wheels,
+handling, hip points, poses, grips, door hinges, passenger doors, cargo anchors and the
+ambulance's clear box. Each manifest records the overall measured size and the documented body
+size. The model agent's earlier copies were byte-identical and were dropped. The old source
+scripts stay in `tools/blender/vehicles/road/` for reference. These vehicles are interim: a Tamil
+Nadu road-vehicle redesign replaces them.
+
+### G-37 Model tests read the files with GLTFDocument, in the project's runner
+`tests/models/model_checks.gd` (`ModelChecks`, typed under the project's strict warnings) is run by
+`tests/unit/test_vehicle_models.gd` in `./run_tests.sh` and CI, one assertion per check. It reads the
+GLBs with GLTFDocument as they are, with no dependence on import settings, and handles both
+`MeshInstance3D` (in the project) and `ImporterMeshInstance3D` (outside one). It checks every
+manifest against its GLBs: triangle budgets per kind and LOD, manifest counts equal to the
+measured ones, node names, the frame (size, ground, front marker or steered wheels at -Z),
+wheels on the ground or rail at their axles, hinges and pivots at their origins, no vertex
+colours, texture sizes, and the texture contents: each embedded palette is checked against
+`palette.json` cell by cell, and each manifest's `texture_samples` texel is read back from the
+images in the GLB. This was added after a line-up render was taken while a diagnostic livery
+build (with a bright green roof) was on disk; the committed files were right, but nothing would
+have caught a wrong texture.
+
+### G-38 Liveries: invented colours; real colour families for trains only, without marks
+The cars, race car and aircraft use invented colours. The airline has white, deep teal, coral and
+a disc emblem, with no name or registration. The race car has no team, sponsor or number (the
+game draws a number on the roundel). Trains use the real colour families the research note
+proposes (Chennai EMU green and cream, AC EMU white and blue, WAP-7 red and cream, Vande Bharat
+saffron and grey) with no logos, lettering or numbers. Closer liveries are the owner's decision.
+
+### G-39 Handling and flight numbers are starting values
+The premium cars are faster and grippier than the hatchback (saloon 40 m/s, SUV 35, coupé 48, race
+car 70). The aircraft have speeds and masses close to real types of their class. All of them are
+estimates for Phase 2 and Phase 6b tuning, not measurements, and the manifests say so.
+
+## Player: on foot, figure, camera, touch controls (G-60 to G-69)
+
+## G-60: The player on foot is a kinematic cylinder at the fixed step (TD-6)
+`PlayerController` (`src/player/player_controller.gd`) is a `CharacterBody3D` moved with
+`move_and_slide` in `_physics_process` at 60 Hz (G-2). The movement rules are the Three.js
+`PlayerController`'s, unchanged: walk 2.4 m/s, run 6.2 m/s (× `run_scale`), the stick runs past
+82% of its travel, speed eases towards the stick at 10/s (35% of that in the air), gravity
+24 m/s², jump 7.2 m/s (apex 1.08 m), fall capped at 40 m/s, turning 12 rad/s towards the travel,
+movement relative to the camera's yaw. The Rapier character settings carry over: steps and kerbs
+up to 0.35 m are climbed (`_step_up`: up, across, down onto a walkable top), floor snap 0.3 m,
+slopes up to 50°. The body is an upright **cylinder** 1.75 m × 0.32 m, not a capsule: its flat
+base can stand on a kerb's edge once lifted over it, while a capsule's round base slid back off
+a 15 cm kerb in Jolt. It reads a `PlayerInput` (stick, jump, run, camera yaw) and knows no
+device, so tests, touch, keys and later AI or cutscenes drive it the same way.
+
+**Hooks.** Vehicles: `enter_vehicle(vehicle, seat)` turns collision off and makes the body
+follow the seat node each step; `exit_vehicle(feet, yaw)` puts the player back on foot; signals
+`entered_vehicle`, `exited_vehicle`. Combat: `knock(push)`, `facing()`, `figure`,
+`controls_enabled`; signals `jumped`, `landed`.
+
+## G-61: Locomotion retargeted in Godot at load, on plain data
+The Mixamo clips (T-pose, `locomotion.glb`, only rotation tracks on a hierarchy of joint nodes)
+are retargeted to each MPFB character (A-pose Skeleton3D) by `Retarget.run`, a port of the
+Three.js `retarget.ts`: each bone's model-space rotation away from rest on the source, applied to
+the target's rest; limbs first turned to point the way the source's do; **hands aligned by their
+whole frame** (along the middle finger and across the knuckles) and each finger joint after the
+joint above, so no wrist bends in (§7). Bones are matched by plain name (`BoneNames.plain`:
+`mixamorig:X`, `mixamorig_X` (Godot's import), `mixamorigX` → `X`); the skeleton keeps its own
+names in the track paths. It works on plain data (`RigData` read from the Skeleton3D or the
+joint nodes on the main thread), so it runs on a worker thread (`BackgroundTask`): about 0.25 s
+for the player on a desktop. Results are cached per skeleton (`LocomotionClips`), as the Three.js
+`clipCache`. Not baked to files: new cast members need no extra step, and the cost is once per
+skeleton in a loading screen. Clips play in an `AnimationTree` (blend tree: three clips, a
+`TimeScale` each, two `Blend2`) advanced manually in the physics step, so the post-steps below
+see the pose of this step and tests are deterministic.
+
+## G-62: Soles planted per clip and every step, measured on the mesh
+At retargeting, each frame's hips are raised or lowered so the lowest **sole vertex** stays at
+its rest height (`SoleSet`: vertices bound mostly to a foot bone, the lower 45% of the feet, CPU
+skinned with their bind poses: all 3,002 of the player's sole vertices, not a sample, the
+Three.js lesson of a 7 cm sink). At run time (`HumanFigure`, the player: `plants_feet`; everyone
+else only during a gait blend) the hips are moved every step so the lowest sole is exactly on
+the ground, both ways, which also holds through the 0.22 s blends (8.5 cm sink in Three.js).
+Only candidates are skinned per step: the 4 lowest of each baked frame plus the support points
+of each foot part in 200 directions (a foot part turns almost rigidly, so its lowest point is
+one of them); tests measure every foot vertex. After the clips, each upper arm is turned in
+(9° idle, 8° walk, 10° run by gait weight, never below 4° out), as `armSettle.ts`. MPFB's
+black vertex-colour channel is never used as albedo.
+
+## G-63: The player's model comes from a people manifest
+`PeopleManifest` reads the `people.json` schema (`{"people": [{"id", "file", "heightM", ...}]}`)
+shared by the legacy cast and the new cast; files resolve beside the manifest (the legacy
+`people/x.glb` resolves to `x.glb`). `PlayerRig.load_figure(manifest, id)` draws any person as
+the player (any rig whose bones have the Mixamo names); with none, the default is the Three.js
+`player.glb`, scaled to 1.75 m. The figure faces -Z (the model is turned round; glTF faces +Z).
+
+## G-64: Physics layers
+Layer 1 world (ground, buildings, kerbs, poles), 2 player, 3 people, 4 vehicles (bits 1, 2, 4,
+8; constants on `PlayerController`). The player scans world, people and vehicles; the camera's
+view is blocked by world, people and vehicles, never the player. Systems added later take
+these bits; when a shared `src/physics/` module exists the constants move there.
+
+## G-65: Orbit and chase camera that eases round thin obstacles
+`FollowCamera` (port of `FollowCamera.ts` plus `chennai-game-design` §5): drag turns yaw and
+pitch (0.0055 rad per UI unit, pitch −0.2…1.15); follows the feet + 1.5 m with
+`1 − exp(−14·dt)` smoothing (softer height in a vehicle), snapping on the first step and after
+8 m jumps; looks ahead along the velocity (0.15 s of travel on foot, 0.3 s in a vehicle, at most
+7 m, eased at 2.5/s, held off for 1.5 s after a drag); `chase()` trails the travel direction and
+adds up to 1.4 m and 7° at top speed. Collision: a 0.22 m sphere swept from the focus. If the
+obstacle is **thin** (the wanted camera place is free and a sweep back from it meets the obstacle
+within 0.8 m, as a pole or a person) the camera eases in at 2.5/s instead of snapping and eases
+out at 4/s when the view clears; a **wall** (anything thicker, or the wanted place inside
+geometry) pulls it in at once. Whatever the easing, a final check never leaves the camera inside
+a collider. It runs in the physics step after the player moves (priorities: rig −10, body 0,
+camera 100), so following the 60 Hz body cannot jitter at 60 fps. If Foundation later turns on
+physics interpolation, the camera should follow `get_global_transform_interpolated()` in
+`_process` instead.
+
+## G-66: Touch controls track every finger themselves
+`TouchControls` (`src/ui/touch_controls/`, a `CanvasLayer`) handles `InputEventScreenTouch` and
+`ScreenDrag` in `_input` by touch index, so the stick, the look drag and a button work at the
+same time (Godot's GUI focus is single-pointer). Layout (UI units, 915×412 base): floating stick
+(56 radius) where the thumb lands on the left 45%, resting bottom-left; JUMP (80) in the
+bottom-right corner lifted clear of the HUD's OSM credit; RUN (70) to its left along the
+thumb's arc, 16 apart; the rest of the screen is the look zone. Buttons of 70 or more stay at
+least 48 px on a 640×320 screen (scale 0.7). RUN is a switch (a thumb cannot hold it and steer
+the camera): tap to run, off when the stick is let go; a full stick runs too. Inside a
+`SafeAreaMargin`. The mouse drives the same code through `emulate_touch_from_mouse`.
+
+## G-67: `PlayerRig` is the on-foot unit the composition root adds
+`PlayerRig` (Node3D) owns the body, the camera and the touch controls and, each physics step
+before the body moves, turns touch and keys into a `PlayerInput`. Keyboard for desktop testing:
+WASD/arrows (walk pace), Shift run, Space jump; the actions (`player_*`) are added to the
+InputMap at run time when missing, so `project.godot` needs no edit. `reads_devices = false`
+hands control to code (tests, cutscenes).
+
+## G-68: The player's test ground until the city lands
+`PlayerTestGround` (`src/player/player_test_ground.gd`) adds to Foundation's test world a long
+wall and a corner, a 15 cm kerb, a 30 cm step, a 60 cm ledge, two 18 cm street-light poles and
+a person-sized post, and a `PlayerRig`. Tests and `tests/tools/player_screenshot.gd` use it;
+the World agent's streamed city replaces it in the game.

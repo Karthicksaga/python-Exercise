@@ -1,0 +1,191 @@
+{
+ "name": "motorbike",
+ "label": "Motorbike",
+ "kind": "bike",
+ "licence": "Original work for the Three.js game, made by `chennai-open-world/tools/blender/{vehicles,auto_rickshaw}.py` in Blender 5.2 LTS; copied unchanged. No maker's badges, logos, grilles or liveries copied; plates are not real registrations (chennai-open-world/assets/README.md).",
+ "source": "chennai-open-world/tools/blender/vehicles.py (copied to tools/blender/vehicles/road/)",
+ "frame": "metres; +Y up, front faces -Z, +X right; ground at y = 0; origin centred between the axles",
+ "size_m": {
+  "width": 0.802,
+  "height": 1.395,
+  "length": 2.085
+ },
+ "body_size_m": {
+  "width": 0.75,
+  "height": 1.15,
+  "length": 2.0
+ },
+ "size_note": "size_m is the measured overall size (mirrors, beacons, handlebars); body_size_m is docs/vehicles.md",
+ "mass_kg": 190,
+ "ported": true,
+ "lods": [
+  {
+   "file": "motorbike.glb",
+   "triangles": 7616,
+   "max_distance_m": 28
+  },
+  {
+   "file": "motorbike_lod1.glb",
+   "triangles": 2262,
+   "min_distance_m": 34,
+   "max_distance_m": 300
+  }
+ ],
+ "wheels": [
+  {
+   "node": "wheel_front",
+   "centre": [
+    0,
+    0.3,
+    -0.72
+   ],
+   "radius": 0.3,
+   "steers": true,
+   "driven": false
+  },
+  {
+   "node": "wheel_rear",
+   "centre": [
+    0,
+    0.3,
+    0.68
+   ],
+   "radius": 0.3,
+   "steers": false,
+   "driven": true
+  }
+ ],
+ "steering": null,
+ "doors": [],
+ "seats": [
+  {
+   "node": null,
+   "name": "seat_driver",
+   "hip": [
+    0,
+    0.965,
+    0.2
+   ],
+   "role": "driver"
+  }
+ ],
+ "grips": [
+  {
+   "node": null,
+   "name": "grip_l",
+   "position": [
+    -0.33,
+    1.14,
+    -0.42
+   ]
+  },
+  {
+   "node": null,
+   "name": "grip_r",
+   "position": [
+    0.33,
+    1.14,
+    -0.42
+   ]
+  }
+ ],
+ "pose": {
+  "lean": 0.5,
+  "hand": [
+   0.33,
+   0.175,
+   -0.62
+  ],
+  "foot": [
+   0.23,
+   -0.5,
+   -0.03
+  ],
+  "knees": 1
+ },
+ "entry": {
+  "side": -1,
+  "point": [
+   -0.7,
+   0,
+   0.2
+  ],
+  "door": "none",
+  "style": "swing",
+  "aisle": []
+ },
+ "cargo": [
+  {
+   "node": null,
+   "what": "rear carrier",
+   "position": [
+    0,
+    0.89,
+    0.85
+   ]
+  }
+ ],
+ "collision": [
+  {
+   "shape": "box",
+   "centre": [
+    0,
+    0.62,
+    0
+   ],
+   "half_extents": [
+    0.32,
+    0.36,
+    1.0
+   ]
+  }
+ ],
+ "physics": {
+  "mass": 190,
+  "rideHeight": 0.62,
+  "wheels": [
+   {
+    "x": 0,
+    "y": -0.02,
+    "z": -0.72,
+    "radius": 0.3,
+    "steers": true,
+    "driven": false
+   },
+   {
+    "x": 0,
+    "y": -0.02,
+    "z": 0.68,
+    "radius": 0.3,
+    "steers": false,
+    "driven": true
+   }
+  ],
+  "halfExtents": [
+   0.32,
+   0.36,
+   1.0
+  ],
+  "engineForce": 1500,
+  "maxSpeed": 26,
+  "maxSteer": 0.55,
+  "brakeForce": 28,
+  "gears": 5
+ },
+ "chassis_to_model_y": 0.62,
+ "notes": "Ported unchanged; riding data from specs.ts (measured off the models by the old game's tests).",
+ "footpegs": [
+  [
+   -0.24,
+   0.355,
+   0.12
+  ],
+  [
+   0.24,
+   0.355,
+   0.12
+  ]
+ ],
+ "leans": true,
+ "open_seat": true
+}
