@@ -86,17 +86,19 @@ func set_steer(angle: float) -> void:
 ## Puts the seated pose on `r` (call after the clip). Returns the worst miss, metres.
 func apply(r: PoseRig) -> float:
 	r.reset_to_rest()
-	# Pelvis upright on the seat, rolled back a touch as people sit.
-	r.bend(PoseRig.HIPS, Vector3.RIGHT, 0.08)
 	r.place_hips(hip)
-	# Lean: most of it low in the spine. A driver who cannot reach the grips leans further.
+	# Lean: a driver who cannot reach the grips leans further. Riders lean from the hips (the
+	# pelvis tips forwards with the torso); someone sitting upright rolls the pelvis back a touch.
 	var extra := 0.0
 	if hands_on_grips:
 		extra = _reach_lean(r)
 	var l := lean + extra
-	r.bend(PoseRig.SPINE, Vector3.RIGHT, -l * 0.45)
-	r.bend(PoseRig.SPINE1, Vector3.RIGHT, -l * 0.3)
-	r.bend(PoseRig.SPINE2, Vector3.RIGHT, -l * 0.25)
+	var upright := 1.0 - clampf(l / 0.2, 0.0, 1.0)
+	r.bend(PoseRig.HIPS, Vector3.RIGHT, -l * 0.4 + 0.08 * upright)
+	r.place_hips(hip)
+	r.bend(PoseRig.SPINE, Vector3.RIGHT, -l * 0.3)
+	r.bend(PoseRig.SPINE1, Vector3.RIGHT, -l * 0.2)
+	r.bend(PoseRig.SPINE2, Vector3.RIGHT, -l * 0.1)
 	# Eyes on the road: the neck takes back most of the lean, the head turns with the steering.
 	r.bend(PoseRig.NECK, Vector3.RIGHT, l * 0.45)
 	r.bend(PoseRig.HEAD, Vector3.RIGHT, l * 0.35)

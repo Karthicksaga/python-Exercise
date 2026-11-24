@@ -220,6 +220,7 @@ func _process(delta: float) -> void:
 	if _topple_amount > 0.0:
 		roll = lerpf(roll, -float(_toppled) * 1.45, Boarding.ease_in_out(_topple_amount))
 	model.set_roll(roll)
+	model.set_steering(steering() * type.pose.steer_ratio)
 	var r0 := spec.wheels[0].radius if not spec.wheels.is_empty() else 0.3
 	_roll += forward_speed() / r0 * delta
 	for i in spec.wheels.size():

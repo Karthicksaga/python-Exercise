@@ -162,7 +162,6 @@ func _driver_door(listed: Array[Dictionary]) -> int:
 ## handling scalars are left as they are.
 func apply_geometry(t: VehicleType) -> void:
 	var p: Dictionary = data.get("physics", {})
-	var y0 := chassis_height()
 	if p.has("wheels"):
 		var wheels: Array[VehicleSpec.WheelSpec] = []
 		for w: Dictionary in p["wheels"]:
@@ -177,15 +176,20 @@ func apply_geometry(t: VehicleType) -> void:
 	t.spec.boxes = _clear_of_road(boxes(), VehicleModel.settled_ground(t.spec))
 	if p.has("rideHeight"):
 		t.ride_height = float(p["rideHeight"])
+	# Seats, the aisle and passenger anchors are where the model is drawn: its ground sits at the
+	# settled ride height below the chassis centre (`VehicleModel`), which is lower than `y0` by
+	# the springs' sag; measured from `y0` a rider sank 7–10 cm into the seat (G-267).
+	var drawn := -VehicleModel.settled_ground(t.spec)
 	for s: Dictionary in data.get("seats", []):
 		if String(s.get("role", "")) == "driver":
-			t.driver = _v3(s["hip"]) - Vector3(0, y0, 0)
+			t.driver = _v3(s["hip"]) - Vector3(0, drawn, 0)
 	if data.has("pose"):
 		var pose: Dictionary = data["pose"]
 		t.pose.lean = float(pose["lean"])
 		t.pose.hand = _v3(pose["hand"])
 		t.pose.foot = _v3(pose["foot"])
 		t.pose.knees = float(pose["knees"]) if pose.get("knees") != null else 0.0
+	apply_steering(t)
 	if data.has("entry"):
 		var e: Dictionary = data["entry"]
 		var point: Array = e["point"]
@@ -195,12 +199,17 @@ func apply_geometry(t: VehicleType) -> void:
 		t.entry.style = String(e["style"])
 		var aisle: Array[Vector3] = []
 		for a: Array in e.get("aisle", []):
-			aisle.append(_v3(a) - Vector3(0, y0, 0))
+			aisle.append(_v3(a) - Vector3(0, drawn, 0))
 		t.entry.aisle = aisle
 	var leaf_of := {}
 	for d in doors():
 		leaf_of[d["node"]] = int(d["leaf"])
 	var passengers: Array[VehicleType.PassengerDoor] = []
+	var seats: Array[Vector3] = []
+	for seat: Dictionary in data.get("seats", []):
+		if String(seat.get("role", "")) == "passenger" and seat.get("hip") != null:
+			seats.append(_v3(seat["hip"]) - Vector3(0, drawn, 0))
+	t.seats = seats
 	for seat: Dictionary in data.get("seats", []):
 		if String(seat.get("role", "")) != "passenger":
 			continue
@@ -209,7 +218,7 @@ func apply_geometry(t: VehicleType) -> void:
 		if door_node == null and stand == null:
 			continue
 		var pd := VehicleType.PassengerDoor.new()
-		pd.inside = _v3(seat["hip"]) - Vector3(0, y0, 0)
+		pd.inside = _v3(seat["hip"]) - Vector3(0, drawn, 0)
 		pd.leaf = int(leaf_of.get(String(door_node), -1)) if door_node != null else -1
 		if stand != null:
 			var sp := _v3(stand)
@@ -219,6 +228,31 @@ func apply_geometry(t: VehicleType) -> void:
 		passengers.append(pd)
 	if not passengers.is_empty():
 		t.passengers = passengers
+
+
+## The steering's pivot, axis and ratio into `t.pose` (G-261): from the manifest's `steering`
+## (hub and axis in the model frame, `kind` "handlebar" or a wheel), relative to the driver's hip
+## joints; a manifest without them keeps the pivot between the grips and an upright axis.
+func apply_steering(t: VehicleType) -> void:
+	var hip := Vector3.ZERO
+	var have_hip := false
+	for s: Dictionary in data.get("seats", []):
+		if String(s.get("role", "")) == "driver" and s.get("hip") != null:
+			hip = _v3(s["hip"])
+			have_hip = true
+	var st: Variant = data.get("steering")
+	var bar := t.kind in [&"bike", &"auto"]
+	t.pose.hub = Vector3(0.0, t.pose.hand.y, t.pose.hand.z)
+	t.pose.steer_axis = Vector3.UP
+	if st is Dictionary:
+		var d: Dictionary = st
+		if have_hip and d.get("hub") != null:
+			t.pose.hub = _v3(d["hub"]) - hip
+		if d.get("axis") != null:
+			t.pose.steer_axis = _v3(d["axis"]).normalized()
+		if d.has("kind"):
+			bar = String(d["kind"]) == "handlebar"
+	t.pose.steer_ratio = 1.0 if bar else 2.5
 
 
 ## Collision boxes trimmed from below so the chassis rides at least 6 cm clear of the road

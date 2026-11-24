@@ -43,6 +43,11 @@ func set_seated(_type: VehicleType, _amount: float) -> void:
 	pass
 
 
+## The front wheels' steering angle while seated (radians, + left): hands and head follow it.
+func steer(_angle: float) -> void:
+	pass
+
+
 ## Shown or hidden (closed vehicles hide their driver).
 func set_figure_visible(_on: bool) -> void:
 	pass

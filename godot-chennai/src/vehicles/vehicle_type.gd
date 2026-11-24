@@ -42,6 +42,14 @@ class RidePose:
 	var foot: Vector3 = Vector3.ZERO
 	## Knee splay, 0 straight to 1 about 45°.
 	var knees: float = 0.0
+	## The steering's pivot relative to the hip joints (like `hand`), the axis it turns about
+	## (chassis frame) and how far it turns per radian of front-wheel angle: 1 for handlebars, more
+	## for a wheel. The palms follow it (G-261); the model's `steering` node turns with it.
+	var hub: Vector3 = Vector3(0, 0.25, -0.42)
+	var steer_axis: Vector3 = Vector3.UP
+	var steer_ratio: float = 1.0
+	## True once a model has measured hand, foot and hub from its own nodes (`VehicleModel`).
+	var measured: bool = false
 
 
 ## What a hard impact does to the driver (TD-29).
@@ -83,6 +91,8 @@ var siren: bool = false
 var premium: bool = false
 var entry: Entry = Entry.new()
 var passengers: Array[PassengerDoor] = []
+## Every passenger seat's hip joints (chassis frame), in the model's order: where fares sit.
+var seats: Array[Vector3] = []
 var crash: CrashRule = CrashRule.new()
 
 
