@@ -8,12 +8,17 @@ const BOX := Vector3(36.0, 22.0, 36.0)
 const FALL := 14.0
 
 var drops: int = 0
+## The box of rain round the centre; the title screen's far layers use bigger ones (G-165).
+var box: Vector3 = BOX
 var _material: ShaderMaterial
 var _time: float = 0.0
 
 
-func _init(count: int = 1100) -> void:
+## `extent`, `streak` (streak length in seconds of fall) and `width` shape a layer: the default is
+## the close rain round the camera; bigger boxes with longer, wider streaks read at a distance.
+func _init(count: int = 1100, extent: Vector3 = BOX, streak: float = 0.04, width: float = 0.012) -> void:
 	drops = count
+	box = extent
 	name = "Rain"
 	var verts := PackedVector3Array()
 	var uvs := PackedVector2Array()
@@ -21,7 +26,7 @@ func _init(count: int = 1100) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 12345
 	for i in count:
-		var p := Vector3(rng.randf() * BOX.x, rng.randf() * BOX.y, rng.randf() * BOX.z)
+		var p := Vector3(rng.randf() * box.x, rng.randf() * box.y, rng.randf() * box.z)
 		var base := verts.size()
 		for corner: Vector2 in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
 			verts.append(p)
@@ -37,8 +42,10 @@ func _init(count: int = 1100) -> void:
 	mesh = m
 	_material = ShaderMaterial.new()
 	_material.shader = SHADER
-	_material.set_shader_parameter(&"box", BOX)
+	_material.set_shader_parameter(&"box", box)
 	_material.set_shader_parameter(&"fall", FALL)
+	_material.set_shader_parameter(&"streak", streak)
+	_material.set_shader_parameter(&"width", width)
 	material_override = _material
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# The streaks move in the shader; never cull the mesh by its resting bounds.
@@ -51,7 +58,7 @@ func step(dt: float, camera_position: Vector3, level: float, night: float) -> vo
 	visible = level > 0.01
 	if not visible:
 		return
-	_time = fmod(_time + dt, BOX.y / FALL)
+	_time = fmod(_time + dt, box.y / FALL)
 	_material.set_shader_parameter(&"time", _time)
 	_material.set_shader_parameter(&"origin", camera_position)
 	_material.set_shader_parameter(&"tint", Color(0.25 + 0.53 * (1.0 - night), 0.28 + 0.52 * (1.0 - night), 0.33 + 0.51 * (1.0 - night)))

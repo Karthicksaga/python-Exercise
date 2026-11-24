@@ -568,3 +568,41 @@ available: pad support is tested with synthetic events. The 640x320 worst case h
 buttons at 48 px; small is under that there.
 Screenshots: `tests/tools/controls_shots.gd` (shots foot, near, driving, reverse, lefty,
 lefty_drive, pad, settings) into a scratch folder.
+
+## Title screen (G-160 to G-165, agent/godot-title), 24 Nov 2026
+**Where things are.** `src/ui/title_menu/` (`TitleMenu` the page and rows, `TitleRow`, `TitleFonts`,
+`ControlsGuide`), `src/app/title_wiring/` (`TitleWiring` camera, chip, rain layers, lightning;
+`TitleSpots` the three places; `TitlePlace` real names), fonts in `assets/fonts/title/`,
+`tests/scene/test_title_screen.gd`, `test_title_wiring.gd`, `tests/unit/test_title_places.gd`,
+the screenshot tool `tests/tools/title_shots.gd`. `Main` gained `title_summary()`, `title_wiring`,
+`title_tour`, `title_seed`, `title_spot`.
+
+**How other agents call it.**
+- Another controls scheme: change `ControlsGuide.groups()` only; the CONTROLS page and its test follow.
+- A new setting: add it in `Main._add_pause_menu` (one loop feeds the pause menu and SETTINGS).
+- Tests that boot `Main` and press play are unaffected: headless runs keep `title_tour` off, so
+  streaming stays on the player. A test of the tour sets `main.title_tour = true` (and
+  `title_spot`) before adding `Main` to the tree (see `test_title_wiring.gd`).
+- Screenshots: `HOME=<scratch> xvfb-run ... --script res://tests/tools/title_shots.gd -- --spot=central --hour=21.5 --rain=1 --storm=1 --save=1 --page=controls --out=...`
+  (HOME keeps the save file out of the real one; `--custom=x,z,heading,distance,height` tries a spot).
+
+**Measured (container, Godot 4.7.2, Compatibility under xvfb, software GL: only counts and script
+time mean anything).** The title's own script work per frame: about 150 µs on average, 230 µs at most
+(`TitleWiring.stats`). Draw calls at T. Nagar and Central with the title over them: about 170 dry; the two
+extra rain layers add 2 while it rains and 5k triangles (the camera's own rain adds one more); see
+G-165. Boot to title now also waits for the spot's streets (about 4 s longer in the test run).
+
+**Weak or not done.** Not seen on a phone. Morning and noon are blown out by the existing lighting
+(white walls and sand at Marina), night is nearly black (`Lighting`; the title adds no light of
+its own). No splash rings or ripples, no mist bands, no radial vignette, no thunder or rain sound
+(sound is suspended on the title). "Central" resolves to the district name "Evening Bazaar"
+(the data has no Chennai Central landmark). CONTINUE and NEW GAME wait for the player's streets
+to load after a tour (a loading screen of one step); NEW GAME has no confirmation (as before).
+Screenshots of the title at the three spots show the existing renderer's look, not a design pass
+on the world.
+
+**Loading screen (G-166).** Restyled with the title: `src/ui/loading_screen/loading_screen.gd`, tests
+`tests/scene/test_loading_screen.gd` and the loading cases in `test_ui_layout.gd`, screenshots with
+`tests/tools/loading_shots.gd -- --state=mid|failed|slow`. Tamil step lines need native review
+(listed in `LoadingScreen.TAMIL`). Not seen on a phone; it adds no animation, so the Adreno 613
+failure of the old animated screen should not return, but that is untested there.

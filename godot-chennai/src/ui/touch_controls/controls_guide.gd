@@ -60,3 +60,22 @@ static func rows(mode: StringName, device: DeviceTracker.Device = DeviceTracker.
 				out.append(PackedStringArray(["HORN", "Horn (SIREN on an ambulance or police car)"]))
 				out.append(PackedStringArray(["EXIT", "Get out when stopped"]))
 	return out
+
+## Groups for the title's CONTROLS page (G-163): `{"title": String, "rows": Array of [control, what it does]}`
+## for ON FOOT, DRIVING and what applies anywhere, for `device` (touch by default).
+static func groups(device: DeviceTracker.Device = DeviceTracker.Device.TOUCH, settings: ControlSettings = null) -> Array[Dictionary]:
+	var foot: Array = []
+	for r: PackedStringArray in rows(ON_FOOT, device, settings):
+		foot.append([r[0], r[1]])
+	var drive: Array = []
+	for r: PackedStringArray in rows(DRIVING, device, settings):
+		drive.append([r[0], r[1]])
+	var anywhere: Array = [
+		["PAUSE", "Pause: resume, change the time, weather, sound or the controls, or go to the title"],
+		["JOBS", "The job board and your stages"],
+	]
+	return [
+		{"title": "ON FOOT", "rows": foot},
+		{"title": "DRIVING", "rows": drive},
+		{"title": "ANYWHERE", "rows": anywhere},
+	]
