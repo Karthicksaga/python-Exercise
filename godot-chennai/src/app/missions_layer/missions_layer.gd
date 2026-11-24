@@ -14,6 +14,8 @@ const VARIANTS := {"car": &"hatchback", "auto": &"auto", "bike": &"motorbike", "
 ## Parked vehicles appear within this distance of the player and are put away beyond the next.
 const PARK_NEAR := 320.0
 const PARK_FAR := 520.0
+## Places you can enter show their label and ring within this many metres.
+const PLACE_SHOW := 90.0
 
 var session: MissionSession
 var world: CityWorld = null
@@ -93,6 +95,7 @@ func _ready() -> void:
 	figures = FareFigures.new()
 	hud.jobs_pressed.connect(open_board)
 	hud.inside_pressed.connect(_go_inside)
+	hud.map_pressed.connect(open_map)
 	hud.row_chosen.connect(_on_row)
 	hud.action_chosen.connect(_on_action)
 	hud.lift_pressed.connect(_on_lift)
@@ -339,6 +342,7 @@ func _process(dt: float) -> void:
 	if _needle_on:
 		_needle_t += dt
 		hud.show_needle(true, Life.needle_at(_needle_t), Vector2(Life.WORKOUT_ZONE[0], Life.WORKOUT_ZONE[1]))
+	_poll_map()
 	if not active:
 		return
 	var st := status()
@@ -351,21 +355,26 @@ func _process(dt: float) -> void:
 		distance = t.distance_to(at)
 		var spot := WorldOrigin.to_scene(t, _ground_y())
 		if distance > float(target["radius"]):
-			beacon.place_at(spot, float(target["radius"]))
+			var kind := StringName(str(target.get("kind", MarkerKind.MISSION)))
+			beacon.place_at(spot, float(target["radius"]), kind, MarkerKind.colour_of(kind), MarkerKind.label_of(kind), distance)
 		else:
 			beacon.clear()
 		bearing = _bearing(spot)
 	else:
 		beacon.clear()
+	# Places you can go inside: a label and a small ring, only within a short walk (no circles from afar).
 	var entrances: Array[Dictionary] = []
 	for p in session.content.places:
-		entrances.append({"position": WorldOrigin.to_scene_xz(float(p["x"]), float(p["z"]), _ground_y()), "radius": float(p["radius"])})
+		var where := Vector2(float(p["x"]), float(p["z"]))
+		if where.distance_to(at) <= PLACE_SHOW:
+			entrances.append({"position": WorldOrigin.to_scene_xz(where.x, where.y, _ground_y()), "radius": float(p["radius"]), "name": str(p["name"])})
 	beacon.set_entrances(entrances)
 	hud.set_stats(MissionSession.rupees(session.runner.balance()), session.runner.stages_done(), session.runner.stage_count(), session.jobs.reputation())
 	hud.set_mission(session.view(st.mode, distance), bearing)
 	var place := session.place_near(at, st.mode)
 	hud.set_place_prompt(str(place.get("name", "")) if not held else "")
-	figures.show_scene(dt, session.fare_scene(), session.goods_scene(), driven(), _ground_y())
+	figures.watch = (driven().global_position if driven() != null else rig.body.global_position)
+	figures.show_scene(dt, session.fare_scene(), session.goods_scene(), driven(), _ground_y(), session.upcoming_fare())
 	_update_minimap(dt, at, st)
 
 
@@ -619,13 +628,21 @@ func _on_event_ended(_e: Dictionary) -> void:
 	pass
 
 
-## The mission minimap: hazards (flood, procession, strike), the tail's target and the marker,
-## with the roads round the player when the city is loaded (G-144).
-var _roads_at := Vector2.INF
-var _roads := PackedVector2Array()
+## The corner minimap (G-281): the streets round the player, the marker with its kind, the places
+## in reach and the hazards (flood, procession, strike), refreshed at 10 Hz at most (game time).
+const MAP_STEP := 0.1
+var _map_clock := 0.0
+var _mini_roads: MapRoads = MapRoads.new()
+var _map_feed := MapRoadFeed.new()
+var full_map: FullMap
+var _map_held := false
 
 
-func _update_minimap(_dt: float, at: Vector2, st: MissionData.PlayerStatus) -> void:
+func _update_minimap(dt: float, at: Vector2, st: MissionData.PlayerStatus) -> void:
+	_map_clock += dt
+	if _map_clock < MAP_STEP:
+		return
+	_map_clock = 0.0
 	var zones: Array[Dictionary] = []
 	for h in session.hazard_zones():
 		var z: HazardZone = h["zone"]
@@ -639,28 +656,77 @@ func _update_minimap(_dt: float, at: Vector2, st: MissionData.PlayerStatus) -> v
 	var q: Variant = session.runner.tail_target() if session.jobs.job() == null else null
 	if q is Dictionary:
 		followed = Vector2(float(q["x"]), float(q["z"]))
-	var marker := Vector2.INF
-	if not target.is_empty():
-		marker = Vector2(float(target["x"]), float(target["z"]))
-	if (not zones.is_empty() or followed != Vector2.INF) and (_roads_at == Vector2.INF or _roads_at.distance_to(at) > 60.0):
-		_roads_at = at
-		_roads = _nearby_roads(at)
+	if not _mini_roads.covers(at, Minimap.RANGE):
+		_map_feed.world = world
+		_mini_roads = _map_feed.nearby(at, Minimap.RANGE + 140.0)
 	var yaw := rig.body.global_rotation.y if driven() == null else driven().global_rotation.y
-	hud.minimap.set_view(at, yaw, zones, _roads, marker, followed)
+	hud.minimap.set_view(at, yaw, zones, _mini_roads, map_markers(at, Minimap.RANGE), followed)
 
 
-func _nearby_roads(at: Vector2) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	if world == null or world.layouts == null:
-		return out
-	var layout := world.layouts.layout_for(world.source.cell_at(at))
-	layout.segments_near(at, MissionMinimap.RANGE, func(ri: int, i: int) -> bool:
-		var road := layout.roads[ri]
-		if road.kind != &"footway" and out.size() < 4000:
-			out.append(road.points[i])
-			out.append(road.points[i + 1])
-		return false)
+## The markers the maps draw: the mission's first (kind, label, radius from the session), then
+## the places within `reach` metres (everywhere when `reach` is INF), as PLACE markers.
+func map_markers(at: Vector2, reach: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if not target.is_empty():
+		var kind := StringName(str(target.get("kind", MarkerKind.MISSION)))
+		out.append({"x": float(target["x"]), "z": float(target["z"]), "radius": float(target["radius"]), "kind": kind, "label": MarkerKind.label_of(kind), "primary": true})
+	for p in session.content.places:
+		var where := Vector2(float(p["x"]), float(p["z"]))
+		if reach == INF or where.distance_to(at) <= reach:
+			out.append({"x": where.x, "z": where.y, "radius": 0.0, "kind": MarkerKind.PLACE, "label": str(p["name"]), "primary": false})
 	return out
+
+
+## The full-screen map (from the pause menu, or by tapping the minimap). Holds the game while open
+## unless the game is already paused (the pause menu).
+func open_map() -> void:
+	if rig == null or hud == null:
+		return
+	if full_map == null:
+		full_map = FullMap.new()
+		full_map.credit = "%s, estimated heights and widths" % (world.source.get_attribution() if world != null and world.source != null else "© OpenStreetMap contributors")
+		full_map.closed.connect(_on_map_closed)
+		add_child(full_map)
+	var at := Vector2(status().x, status().z)
+	var yaw := rig.body.global_rotation.y if driven() == null else driven().global_rotation.y
+	if not get_tree().paused:
+		_hold()
+		_map_held = true
+	_map_feed.world = world
+	_map_feed.wide_task(at)
+	var near := _mini_roads
+	full_map.loading = true
+	full_map.open(at, yaw, near, null, map_markers(at, INF))
+	full_map.set_zoom(1)
+
+
+func close_map() -> bool:
+	if full_map != null and full_map.is_open():
+		full_map.close()
+		return true
+	return false
+
+
+func _exit_tree() -> void:
+	# A road read on a worker must end before the game does.
+	_map_feed.wait()
+
+
+func _on_map_closed() -> void:
+	if _map_held:
+		_map_held = false
+		_release()
+
+
+## While the full map is open: take the wide road sets in as soon as the worker has them.
+func _poll_map() -> void:
+	if full_map == null or not full_map.is_open() or _map_feed.result.is_empty() or not _map_feed.finished():
+		return
+	_map_feed.wait()
+	var got: Dictionary = _map_feed.result
+	_map_feed.result = {}
+	full_map.loading = false
+	full_map.set_roads(got["near"], got["wide"])
 
 
 ## NEW GAME: forget the progress, park everything back and put the player at the start.

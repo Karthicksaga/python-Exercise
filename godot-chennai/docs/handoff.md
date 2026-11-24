@@ -731,3 +731,26 @@ C 10). Game code must read `sign` and `names`, never `research_name`. Storeys co
 where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.
 
 
+
+
+## Navigation and spread (G-280 to G-283, agent/godot-nav), 24 Nov 2026
+
+Owner report from the phone: missions all close together, no map, unexplained circles, passengers
+not visible. Decisions in `technical-decisions.md` G-280..G-283.
+
+- **Done and tested:** the 26 stages spread over the city (`test_stage_spread.gd`: 2 to 8.2 km
+  between consecutive stages, 15+ districts, everything on streets, outside buildings, on decoded
+  chunks); minimap (round, roads, player arrow, marker glyph by kind, rim arrow with distance, turns
+  or north-up, 10 Hz) and full map (pause menu MAP or tap; pan, zoom, legend, scale, OSM credit);
+  labelled beacon (beam, icon, label, ring only near); passengers waiting visibly, waving and on
+  board. Tests: `test_map_projection.gd` (unit), `test_maps.gd` and `test_fare_figures.gd` (scene).
+- **Screenshots** (scratch folder, not committed; `tests/tools/map_shots.gd`): minimap near and far,
+  north-up, full map at two zooms, the passenger waving at the Perambur pick-up.
+- **Weak:** the 13 city jobs, the life places and the three stories are still in Anna Nagar (stops
+  within 1 km of the start); jobs offered from the board far away mean a long drive to the first
+  stop. The corner minimap is hidden at 640x320 (no free place). The wave is procedural; seated
+  passengers stand lowered into the seat until the seat pose of agent/godot-anim is merged (call
+  `HumanFigure.set_seat` for people with `seated`). The beacon label size on screen was judged on
+  llvmpipe screenshots, not on the phone. The full map's wide set is read on a worker thread the
+  first time (a few seconds on a phone is not measured; "Drawing the map..." shows meanwhile).
+- **JOBS button:** was exactly under PAUSE since the pause menu landed; moved left of it.
