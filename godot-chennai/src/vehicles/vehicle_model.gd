@@ -154,6 +154,10 @@ func _style_meshes(root: Node, paint_names: Array[String], beacons: Dictionary, 
 		var mi := n as MeshInstance3D
 		mi.visibility_range_begin = begin
 		mi.visibility_range_end = end
+		# Only the near model casts a shadow (G-258): beyond LOD 0 a vehicle's shadow is a few
+		# pixels inside the shadow map's short reach.
+		if begin > 0.0:
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		if mi.mesh == null:
 			continue
 		for s in mi.mesh.get_surface_count():

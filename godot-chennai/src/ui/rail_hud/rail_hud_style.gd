@@ -1,8 +1,7 @@
 class_name RailHudStyle
 extends RefCounted
-## The railway HUD's look: the glass style of `agent/godot-ui` (G-29x: translucent dark fill, thin
-## white outline, round corners, amber accent), copied here until that branch's `UiTheme.glass_box`
-## is merged; then these wrap it. Colours from `UiTheme`.
+## The railway HUD's look: `UiTheme`'s glass (G-290: translucent dark fill, thin white outline,
+## round corners, amber accent) with the margins the railway's panels and buttons use.
 
 const AMBER := Color("#ffb703")
 const TEXT := Color("#f4f1ea")
@@ -17,16 +16,11 @@ const MIN_TARGET := 48.0
 
 
 static func glass(fill: Color = GLASS_FILL, radius: int = 16) -> StyleBoxFlat:
-	var b := StyleBoxFlat.new()
-	b.bg_color = fill
-	b.border_color = GLASS_OUTLINE
-	b.set_border_width_all(1)
-	b.set_corner_radius_all(radius)
+	var b := UiTheme.glass_box(fill, UiTheme.GLASS_OUTLINE, radius)
 	b.content_margin_left = 10
 	b.content_margin_right = 10
 	b.content_margin_top = 6
 	b.content_margin_bottom = 6
-	b.anti_aliasing = true
 	return b
 
 

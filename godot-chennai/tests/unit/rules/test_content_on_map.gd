@@ -22,6 +22,26 @@ func layout() -> CityLayout:
 	return _layout
 
 
+## G-280: stages moved over the whole city lie outside the v1 box; their stops are checked on the
+## regional world (tile layouts, chunks) exactly as the others are on v1.
+var _regional: RegionalWorldSource = null
+var _regional_layouts: CityLayouts = null
+
+
+func in_v1(p: Vector2) -> bool:
+	return _source.get_bounds().grow(-40.0).has_point(p)
+
+
+func layout_at(p: Vector2) -> CityLayout:
+	if in_v1(p):
+		return layout()
+	if _regional == null:
+		_regional = RegionalWorldSource.new()
+		_regional.open_index()
+		_regional_layouts = CityLayouts.create(_regional)
+	return _regional_layouts.layout_for(_regional.cell_at(p))
+
+
 func districts() -> DistrictIndex:
 	var list: Array = []
 	for p: Place in _source.index_at(Vector2.ZERO).districts:
@@ -90,27 +110,29 @@ func test_street_war_stages_are_played_in_the_districts_the_briefs_name() -> boo
 	var first := func(id: String) -> String:
 		return district_name_at(place_of(mission(id).objectives[0]))
 	eq(first.call("courier-chase"), "Royapettah")
-	eq(first.call("tea-shop"), "Triplicane")
+	# G-280: the tea shop is a Flower Bazaar one now, so the Neela Nandu's money is not next door.
+	eq(first.call("tea-shop"), "Flower Bazaar")
 	eq(first.call("drive-by"), "Triplicane")
 	eq(first.call("snake-pit"), "Egmore")
-	eq(first.call("turf-war"), "Royapettah")
+	eq(first.call("turf-war"), "Thiyagaraya Nagar")
 	return true
 
 
 ## laterStages.test.ts: "are set where the briefs say".
 func test_later_stages_are_set_where_the_briefs_say() -> bool:
-	eq(district_name_at(places(stage(16))[0]), "Royapettah")
+	eq(district_name_at(places(mission("wedding-party"))[0]), "Royapettah")
 	var temple := landmark("kapaleeshwarar-temple")
 	ok(temple != null, "the temple is a landmark")
 	if temple != null:
-		lt(places(stage(16))[1].distance_to(temple.position), 300.0, "stage 16 drop-off near the temple")
-	eq(road_name_at(places(stage(17))[0]), "East Tank Square Street")
-	eq(road_name_at(places(stage(18))[1]), "EVR Periyar Salai")
-	lt(places(stage(18))[1].distance_to(Vector2(STATIONS["park"]["x"], STATIONS["park"]["z"])), 400.0, "stage 18 near Park station")
+		lt(places(mission("wedding-party"))[1].distance_to(temple.position), 300.0, "stage 16 drop-off near the temple")
+	# G-280: Lakshmi's stall is by the temple at Elliot's Beach now (a city's worth from Mylapore).
+	eq(road_name_at(places(mission("planted-chain"))[0]), "Besant Nagar 2nd Avenue")
+	eq(road_name_at(places(mission("mumbai-mail"))[1]), "EVR Periyar Salai")
+	lt(places(mission("mumbai-mail"))[1].distance_to(Vector2(STATIONS["park"]["x"], STATIONS["park"]["z"])), 400.0, "stage 18 near Park station")
 	var chepauk := district_named("Chepauk")
 	ok(not chepauk.is_empty(), "Chepauk is a district")
-	lt(places(stage(20))[2].distance_to(Vector2(float(chepauk["x"]), float(chepauk["z"]))), 700.0, "the stadium")
-	eq(road_name_at(places(stage(21))[0]), "Kamarajar Salai")
+	lt(places(mission("stadium-biryani"))[2].distance_to(Vector2(float(chepauk["x"]), float(chepauk["z"]))), 700.0, "the stadium")
+	eq(road_name_at(places(mission("beach-road-brawl"))[0]), "Kamarajar Salai")
 	return true
 
 
@@ -153,8 +175,13 @@ func fares() -> Array[Dictionary]:
 	return out
 
 
+func _regional_chunk(p: Vector2) -> ChunkData:
+	layout_at(p)
+	return _regional.read_chunk(_regional.cell_at(p))
+
+
 func inside_a_building(p: Vector2) -> bool:
-	var chunk := _source.read_chunk(_source.cell_at(p))
+	var chunk := _source.read_chunk(_source.cell_at(p)) if in_v1(p) else _regional_chunk(p)
 	for b in chunk.buildings:
 		if StreetFurniture.point_in_polygon(p, b.outline):
 			return true
@@ -170,20 +197,20 @@ func test_waiting_spots_stand_on_the_pavement_beside_the_marker() -> bool:
 		var where: String = f["where"]
 		var kerb: Vector2 = f["kerb"]
 		var stop: Vector2 = f["stop"]
-		var own_hit := layout().nearest_road_point(stop)
+		var own_hit := layout_at(stop).nearest_road_point(stop)
 		ok(not own_hit.is_empty(), "%s: a road" % where)
 		if own_hit.is_empty():
 			continue
-		var own: Road = layout().roads[int(own_hit["road_index"])]
+		var own: Road = layout_at(stop).roads[int(own_hit["road_index"])]
 		# Beside the stop's own road, and on no road's carriageway.
 		var same: Array[Road] = []
-		for r in layout().roads:
+		for r in layout_at(stop).roads:
 			if r == own or (own.name != "" and r.name == own.name):
 				same.append(r)
 		var road := FareSpots.nearest_in(same, kerb)
 		var distance: float = road["distance"]
 		gt(distance, own.width / 2.0 + 0.3, "%s: off the carriageway" % where)
-		no(layout().on_other_road(kerb, own.id, 0.3), "%s: on another road" % where)
+		no(layout_at(stop).on_other_road(kerb, own.id, 0.3), "%s: on another road" % where)
 		lt(absf(distance - (own.width / 2.0 + FareSpots.KERB_STEP)), 1.5, "%s: beside it" % where)
 		# A short walk from where the vehicle stops (it can be anywhere in the marker).
 		lt(kerb.distance_to(stop), float(f["radius"]) + 22.0, "%s: a short walk" % where)
@@ -231,7 +258,7 @@ func test_kerb_spot_reproduces_every_baked_kerb() -> bool:
 	var hinted := 0
 	for f in fares():
 		var stop: Vector2 = f["stop"]
-		var kerb := FareSpots.kerb_spot_hinted(layout(), stop, int(f["side"]), float(f["shift"]))
+		var kerb := FareSpots.kerb_spot_hinted(layout_at(stop), stop, int(f["side"]), float(f["shift"]))
 		tried += 1
 		hinted += 1 if int(f["side"]) != 0 else 0
 		lt(kerb.distance_to(f["kerb"]), 0.15, "%s: baked kerb reproduced" % f["where"])

@@ -28,6 +28,12 @@ const FAR_EVERY := 3
 ## Only figures this close cast a shadow (each shadow is two more draw calls).
 const SHADOW_NEAR := 18.0
 
+## Figures further than this, or outside the camera's view, hold their pose (no clip update,
+## so no skeleton or skin update either); quality presets set it (G-258).
+static var animate_reach: float = 45.0
+## Figures nearer than this cast a shadow; 0: none do (Low and Medium, G-258).
+static var shadow_near: float = SHADOW_NEAR
+
 var person_id: String = ""
 var player: AnimationPlayer = null
 ## The clip playing: &"idle", &"walk", &"run", &"sit", &"talk".
@@ -102,15 +108,19 @@ func play(next: StringName, speed: float = 0.0, phase: float = 0.0) -> void:
 
 ## Advance the clip by `dt` (called every frame by the owner); `distance` to the camera decides
 ## whether this frame's update can be skipped.
-func advance(dt: float, distance: float) -> void:
+func advance(dt: float, distance: float, in_view: bool = true) -> void:
 	if player == null:
 		return
 	_far = distance > LOD_DISTANCE
-	var shadow := distance < SHADOW_NEAR
+	var shadow := distance < shadow_near and in_view
 	if shadow != _shadow and _body_mesh != null:
 		_shadow = shadow
 		_body_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadow else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_pending += dt
+	if not in_view or distance > animate_reach:
+		# Hold the pose; the clip resumes where the time says when it is seen again close up.
+		_pending = fmod(_pending, 4.0)
+		return
 	if _far:
 		_skip += 1
 		if _skip < FAR_EVERY:

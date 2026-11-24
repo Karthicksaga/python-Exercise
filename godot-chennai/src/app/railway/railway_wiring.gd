@@ -32,6 +32,10 @@ static func wire(main: Main, railway: Railway) -> void:
 	if main.life != null:
 		main.life.extra_obstacles = railway.crossing_obstacles
 		main.life.extra_people = railway.crowd_people
+	# The graphics level (G-334): trains drawn, the overhead line, crowd figures.
+	var quality := QualitySettings.shared()
+	railway.apply_quality(quality.preset)
+	quality.changed.connect(func() -> void: railway.apply_quality(quality.preset))
 	railway.state_changed.connect(func(_s: StringName) -> void: set_active(railway, rig, main.state == &"play"))
 	set_active(railway, rig, main.state == &"play")
 

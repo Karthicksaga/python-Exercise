@@ -39,6 +39,11 @@ var levels: Dictionary = {"people": 0.0, "traffic": 0.0, "place": &""}
 var people: Array[CrowdField.Person] = []
 ## Step cost on the thread that ran it (microseconds): traffic, walkers, crowd.
 var cost_usec: Vector3i = Vector3i.ZERO
+## Caps on how many are out, below the pools (quality presets, G-252); -1 is the pool.
+var traffic_cap: int = -1
+var walker_cap: int = -1
+## False: no crowds are worked out or drawn (feature switch, G-254).
+var crowds_on: bool = true
 var _until_levels: float = 0.0
 var _seed: int = 1
 
@@ -48,6 +53,11 @@ func _init(world_bounds: Rect2, traffic_pool: int, walker_pool: int, mix: Array[
 	traffic_settings = AgentPresets.traffic(traffic_pool, mix)
 	walker_settings = AgentPresets.pedestrians(walker_pool)
 	_seed = seed_value
+
+
+## Re-reads the place and applies the caps at the next step (after a cap changed).
+func refresh_levels() -> void:
+	_until_levels = 0.0
 
 
 ## A fresh area is needed (none yet, or the focus moved REBUILD metres from its centre).
@@ -96,8 +106,8 @@ func _read_levels(focus: Vector2, hour: float) -> void:
 
 func _apply_levels(hour: float, immediately: bool = false) -> void:
 	var counts := PlaceMap.area_counts(levels, walker_settings.count, traffic_settings.count, TrafficDensity.traffic(hour))
-	walkers.set_active_count(counts.x, immediately)
-	traffic.set_active_count(counts.y, immediately)
+	walkers.set_active_count(counts.x if walker_cap < 0 else mini(counts.x, walker_cap), immediately)
+	traffic.set_active_count(counts.y if traffic_cap < 0 else mini(counts.y, traffic_cap), immediately)
 
 
 ## One step of everything. `obstacles`: Vector3(x, z, radius) of the player and anything else
@@ -126,7 +136,7 @@ func step(dt: float, focus: Vector2, hour: float, obstacles: PackedVector3Array,
 	var t2 := Time.get_ticks_usec()
 	var avoid := obstacles.duplicate()
 	avoid.append_array(vehicles)
-	people = crowd.people_near(focus, hour, time, avoid)
+	people = crowd.people_near(focus, hour, time, avoid) if crowds_on else ([] as Array[CrowdField.Person])
 	cost_usec = Vector3i(t1 - t0, t2 - t1, Time.get_ticks_usec() - t2)
 
 

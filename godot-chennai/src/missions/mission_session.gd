@@ -492,12 +492,13 @@ func target(at: Vector2, mode: String, vehicles: Array) -> Dictionary:
 func _objective_target(o: MissionData.Objective, at: Vector2, vehicles: Array) -> Dictionary:
 	if o == null:
 		return {}
+	var kind := MarkerKind.of_objective(o)
 	match o.type:
 		"reach", "defeat", "activity", "fragile", "hazard_zone":
-			return {"x": o.x, "z": o.z, "radius": o.radius}
+			return {"x": o.x, "z": o.z, "radius": o.radius, "kind": kind}
 		"tail":
 			var t: Variant = runner.tail_target()
-			return {"x": float(t["x"]), "z": float(t["z"]), "radius": o.near} if t is Dictionary else {}
+			return {"x": float(t["x"]), "z": float(t["z"]), "radius": o.near, "kind": kind} if t is Dictionary else {}
 		"choice":
 			return {}
 		"evade":
@@ -506,7 +507,7 @@ func _objective_target(o: MissionData.Objective, at: Vector2, vehicles: Array) -
 		"chase":
 			var q: Variant = runner.quarry()
 			if q is Dictionary:
-				return {"x": float(q["x"]), "z": float(q["z"]), "radius": o.radius}
+				return {"x": float(q["x"]), "z": float(q["z"]), "radius": o.radius, "kind": kind}
 			return {}
 	return _nearest_vehicle(o.vehicle, at, vehicles)
 
@@ -520,7 +521,7 @@ func _nearest_vehicle(kind: String, at: Vector2, vehicles: Array) -> Dictionary:
 		var d := Vector2(float(v["x"]), float(v["z"])).distance_to(at)
 		if d < best_d:
 			best_d = d
-			best = {"x": float(v["x"]), "z": float(v["z"]), "radius": VEHICLE_RADIUS}
+			best = {"x": float(v["x"]), "z": float(v["z"]), "radius": VEHICLE_RADIUS, "kind": MarkerKind.VEHICLE}
 	if best.is_empty():
 		# None in the city yet (they appear as the player nears): lead to the nearest parking spot.
 		for spot in content.parking:
@@ -529,7 +530,7 @@ func _nearest_vehicle(kind: String, at: Vector2, vehicles: Array) -> Dictionary:
 			var d := Vector2(float(spot["x"]), float(spot["z"])).distance_to(at)
 			if d < best_d:
 				best_d = d
-				best = {"x": float(spot["x"]), "z": float(spot["z"]), "radius": VEHICLE_RADIUS}
+				best = {"x": float(spot["x"]), "z": float(spot["z"]), "radius": VEHICLE_RADIUS, "kind": MarkerKind.VEHICLE}
 	return best
 
 
@@ -539,11 +540,12 @@ func job_stop_target() -> Dictionary:
 	if shift != null:
 		if not jobs.started():
 			var first: Dictionary = shift.route.points[0]
-			return {"x": float(first["x"]), "z": float(first["z"]), "radius": 8.0}
+			return {"x": float(first["x"]), "z": float(first["z"]), "radius": 8.0, "kind": MarkerKind.MISSION}
 		var next := next_share_stop(shift)
-		return {"x": next["x"], "z": next["z"], "radius": next["radius"]}
+		var share_kind := MarkerKind.PICKUP if next["kind"] == "pickup" else (MarkerKind.DROPOFF if next["kind"] == "drop" else MarkerKind.MISSION)
+		return {"x": next["x"], "z": next["z"], "radius": next["radius"], "kind": share_kind}
 	var s := jobs.stop()
-	return {"x": s.x, "z": s.z, "radius": s.radius} if s != null else {}
+	return {"x": s.x, "z": s.z, "radius": s.radius, "kind": MarkerKind.of_stop(s)} if s != null else {}
 
 
 ## The share auto's next thing to do, whichever comes first along the route: a pick-up, a drop,
@@ -650,6 +652,36 @@ func fare_scene() -> Dictionary:
 	if stories.story() != null or runner.fare() == null or o == null or o.type != "reach":
 		return {}
 	return {"stop": runner.fare(), "aboard": runner.aboard(), "kind": runner.fare().vehicle, "marker": {"x": o.x, "z": o.z}}
+
+
+## The pick-up the player is heading for while the current objective is still getting into the
+## vehicle (G-283): {stop: FareStop, kind, marker} with the people already waiting, so a passenger
+## stands at the pick-up before the player has even found the vehicle; or {}. Never while the
+## pick-up itself is current (`fare_scene` has it then) and never for a story or a job.
+func upcoming_fare() -> Dictionary:
+	if stories.story() != null or jobs.job() != null:
+		return {}
+	var m := runner.mission()
+	if m == null:
+		return {}
+	var i := runner.objective_number()
+	if i >= m.objectives.size() or m.objectives[i].type != "enter":
+		return {}
+	for k in range(i + 1, m.objectives.size()):
+		var o := m.objectives[k]
+		if o.type == "enter":
+			continue
+		if o.type == "reach" and o.fare != null and o.fare.board > 0:
+			if _preview == null or _preview_fare != o.fare:
+				_preview_fare = o.fare
+				_preview = FareStop.new(o.fare, o.mode if o.mode != "" else "car")
+			return {"stop": _preview, "kind": o.mode, "marker": {"x": o.x, "z": o.z}}
+		break
+	return {}
+
+
+var _preview: FareStop = null
+var _preview_fare: MissionData.Fare = null
 
 
 ## Goods changing hands now: {stop: GoodsStop, kind, cargo: Array[String]} or {}.

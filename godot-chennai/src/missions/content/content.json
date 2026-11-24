@@ -19,9 +19,9 @@
   {
    "id": "auto-park",
    "kind": "auto",
-   "x": 318.9106519870578,
-   "z": -180.83759613217947,
-   "yaw": -0.043016793417983444,
+   "x": 3467.10009765625,
+   "z": -3142.30004882812,
+   "yaw": 1.769,
    "color": 16106496
   },
   {
@@ -183,6 +183,30 @@
    "z": 846.5,
    "yaw": -1.2408796584519206,
    "color": 2376796
+  },
+  {
+   "id": "car-chetpet",
+   "kind": "car",
+   "x": 3432.19995117188,
+   "z": 1530.0,
+   "yaw": -2.828,
+   "color": 12597547
+  },
+  {
+   "id": "bike-saidapet",
+   "kind": "bike",
+   "x": 1553.40002441406,
+   "z": 7142.10009765625,
+   "yaw": 0.17,
+   "color": 1920649
+  },
+  {
+   "id": "bike-kodambakkam",
+   "kind": "bike",
+   "x": 212.600006103516,
+   "z": 3610.0,
+   "yaw": -2.76,
+   "color": 1920649
   }
  ],
  "missions": [
@@ -206,7 +230,7 @@
    "id": "borrowed-wheels",
    "stage": 2,
    "title": "Borrowed wheels",
-   "brief": "Your cousin left his hatchback on the street. Take it to Tower Park.",
+   "brief": "Your cousin left his hatchback on the street. Take it across town to Kilpauk Garden Road.",
    "reward": 150,
    "objectives": [
     {
@@ -216,9 +240,9 @@
     },
     {
      "type": "reach",
-     "label": "Drive to Anna Nagar Tower Park",
-     "x": 315.4496656181309,
-     "z": -186.47004840995686,
+     "label": "Drive to Kilpauk Garden Road, Kilpauk",
+     "x": 3023.1,
+     "z": 173.7,
      "radius": 7,
      "mode": "car",
      "stop": true
@@ -229,7 +253,7 @@
    "id": "auto-shift",
    "stage": 3,
    "title": "Auto shift",
-   "brief": "Cover a friend's auto for one fare. Pick the passenger up and drop them before they lose patience.",
+   "brief": "Cover a friend's auto in Perambur for one fare. Pick the passenger up and drop them in Amirthammal Colony before they lose patience.",
    "reward": 300,
    "objectives": [
     {
@@ -240,24 +264,24 @@
     {
      "type": "reach",
      "label": "Pick up the passenger",
-     "x": 319.02279926794586,
-     "z": -269.48249848558703,
+     "x": 3453.3,
+     "z": -3140.2,
      "radius": 6,
      "mode": "auto",
      "stop": true,
      "fare": {
       "board": 1,
       "kerb": {
-       "x": 313.4,
-       "z": -269.7
+       "x": 3453.7,
+       "z": -3134.7
       }
      }
     },
     {
      "type": "reach",
      "label": "Drop the passenger",
-     "x": -325.35010179333506,
-     "z": 300.12380553158744,
+     "x": 2684.2,
+     "z": -2760.1,
      "radius": 6,
      "mode": "auto",
      "stop": true,
@@ -265,8 +289,8 @@
      "fare": {
       "alight": 1,
       "kerb": {
-       "x": -327.9,
-       "z": 299.9
+       "x": 2685.0,
+       "z": -2763.6
       }
      }
     }
@@ -276,7 +300,7 @@
    "id": "parcel-run",
    "stage": 4,
    "title": "Parcel run",
-   "brief": "Three parcels, three addresses, and the clock is running on each one.",
+   "brief": "Three parcels, three addresses between Chetpet and Nungambakkam, and the clock is running on each one.",
    "reward": 500,
    "objectives": [
     {
@@ -286,9 +310,9 @@
     },
     {
      "type": "reach",
-     "label": "Deliver parcel 1 of 3",
-     "x": 377.5190153991412,
-     "z": 297.04517259082616,
+     "label": "Deliver parcel 1 of 3, Mc Nichols Road",
+     "x": 3436.5,
+     "z": 1543.3,
      "radius": 6,
      "mode": "car",
      "stop": true,
@@ -299,16 +323,16 @@
       ],
       "aboard": "start",
       "kerb": {
-       "x": 377.4,
-       "z": 301.3
+       "x": 3444.2,
+       "z": 1540.8
       }
      }
     },
     {
      "type": "reach",
-     "label": "Deliver parcel 2 of 3",
-     "x": -287.4673327253053,
-     "z": -332.8548767661153,
+     "label": "Deliver parcel 2 of 3, Nungambakkam",
+     "x": 3698.1,
+     "z": 2420.1,
      "radius": 6,
      "mode": "car",
      "stop": true,
@@ -320,16 +344,16 @@
       ],
       "aboard": "start",
       "kerb": {
-       "x": -287.7,
-       "z": -328.8
+       "x": 3694.3,
+       "z": 2427.2
       }
      }
     },
     {
      "type": "reach",
-     "label": "Deliver parcel 3 of 3",
-     "x": -42.59299830860568,
-     "z": 397.4586516522312,
+     "label": "Deliver parcel 3 of 3, Spur Tank Road",
+     "x": 3844.2,
+     "z": 1651.5,
      "radius": 6,
      "mode": "car",
      "stop": true,
@@ -341,8 +365,8 @@
       ],
       "aboard": "start",
       "kerb": {
-       "x": -38.5,
-       "z": 397.7
+       "x": 3847.2,
+       "z": 1658.5
       }
      }
     }
@@ -394,9 +418,9 @@
     },
     {
      "type": "reach",
-     "label": "Collect the lunch boxes",
-     "x": 80.87090789715576,
-     "z": -119.18622606823018,
+     "label": "Collect the lunch boxes, Jeenis Road, Saidapet",
+     "x": 1551.1,
+     "z": 7128.3,
      "radius": 5,
      "mode": "bike",
      "stop": true,
@@ -408,16 +432,16 @@
       ],
       "who": "sender",
       "kerb": {
-       "x": 76.8,
-       "z": -119.3
+       "x": 1545.6,
+       "z": 7129.2
       }
      }
     },
     {
      "type": "reach",
-     "label": "First drop",
-     "x": 372.2208885269168,
-     "z": 120.13814394824871,
+     "label": "First drop, Jothiammal Nagar",
+     "x": 1927.7,
+     "z": 7079.5,
      "radius": 5,
      "mode": "bike",
      "stop": true,
@@ -428,16 +452,16 @@
        "tiffin"
       ],
       "kerb": {
-       "x": 376.3,
-       "z": 120.2
+       "x": 1928.2,
+       "z": 7075.4
       }
      }
     },
     {
      "type": "reach",
-     "label": "Second drop",
-     "x": -357.5729375679863,
-     "z": 55.73482198908753,
+     "label": "Second drop, Saidapet",
+     "x": 1361.8,
+     "z": 7561.8,
      "radius": 5,
      "mode": "bike",
      "stop": true,
@@ -448,8 +472,8 @@
        "tiffin"
       ],
       "kerb": {
-       "x": -357.7,
-       "z": 59.8
+       "x": 1365.8,
+       "z": 7562.1
       }
      }
     }
@@ -483,22 +507,22 @@
    "id": "bike-thieves",
    "stage": 8,
    "title": "Bike thieves",
-   "brief": "A stolen motorbike is being stripped on a back street, and two of the gang are armed. You have a pistol now: FIRE shoots where you look.",
+   "brief": "A stolen motorbike is being stripped on a back street off Jawaharlal Nehru Road in Vadapalani, and two of the gang are armed. You have a pistol now: FIRE shoots where you look.",
    "reward": 900,
    "objectives": [
     {
      "type": "reach",
-     "label": "Find the thieves",
-     "x": -240.16738904766328,
-     "z": 379.9209870411104,
+     "label": "Find the thieves, off Jawaharlal Nehru Road",
+     "x": 217.8,
+     "z": 3623.0,
      "radius": 22
     },
     {
      "type": "defeat",
      "label": "Take down the thieves",
      "group": "thieves",
-     "x": -240.16738904766328,
-     "z": 379.9209870411104,
+     "x": 217.8,
+     "z": 3623.0,
      "radius": 12
     },
     {
@@ -508,9 +532,9 @@
     },
     {
      "type": "reach",
-     "label": "Ride it back to its owner",
-     "x": 9.801118721172115,
-     "z": 61.51263084019172,
+     "label": "Ride it back to its owner on Arcot Road",
+     "x": -32.4,
+     "z": 3940.1,
      "radius": 6,
      "mode": "bike",
      "stop": true
@@ -521,22 +545,22 @@
    "id": "godown-raid",
    "stage": 9,
    "title": "Godown raid",
-   "brief": "The gang keeps its takings in a godown across town. Four guards, all armed. Use the corners.",
+   "brief": "The gang keeps its takings in a godown in the Ambattur Industrial Estate, far across town. Four guards, all armed. Use the corners.",
    "reward": 1400,
    "objectives": [
     {
      "type": "reach",
-     "label": "Get to the godown",
-     "x": 323.78800877346345,
-     "z": -380.1384257990686,
+     "label": "Get to the godown, Ambit Park Road, Ambattur",
+     "x": -4229.0,
+     "z": -1082.5,
      "radius": 24
     },
     {
      "type": "defeat",
      "label": "Clear out the guards",
      "group": "godown",
-     "x": 323.78800877346345,
-     "z": -380.1384257990686,
+     "x": -4229.0,
+     "z": -1082.5,
      "radius": 12
     }
    ]
@@ -756,7 +780,7 @@
    "id": "tea-shop",
    "stage": 12,
    "title": "Protection money",
-   "brief": "The tea shop's owner paid the Manjal Puli for years. Now the Neela Nandu (Blue Crabs) want a cut too, and four of them are walking up the street. Stand with him. He keeps an old shotgun under the counter for you.",
+   "brief": "A tea shop owner in the Flower Bazaar paid the Manjal Puli for years. Now the Neela Nandu (Blue Crabs) want a cut too, and four of them are walking up the street. Stand with him. He keeps an old shotgun under the counter for you.",
    "reward": 2500,
    "weapons": [
     {
@@ -767,17 +791,17 @@
    "objectives": [
     {
      "type": "reach",
-     "label": "Wait at the tea shop",
-     "x": 6949.7,
-     "z": 2871,
+     "label": "Wait at the tea shop, Audiappa Naicken Street",
+     "x": 7799.6,
+     "z": -823.8,
      "radius": 10
     },
     {
      "type": "defeat",
      "label": "Send the racket packing",
      "group": "racket",
-     "x": 6944.154241814491,
-     "z": 2848.4280681124933,
+     "x": 7782.4,
+     "z": -824.8,
      "radius": 16
     }
    ]
@@ -853,7 +877,7 @@
    "id": "turf-war",
    "stage": 15,
    "title": "Turf war",
-   "brief": "The Manjal Puli boss has called every crew he has left to the clock tower junction in Royapettah to finish this. So have you.",
+   "brief": "The Manjal Puli boss has called every crew he has left to the bus junction in T. Nagar to finish this. So have you.",
    "reward": 6000,
    "weapons": [
     {
@@ -864,24 +888,102 @@
    "objectives": [
     {
      "type": "reach",
-     "label": "Go to the clock tower, Royapettah",
-     "x": 5955.420036997972,
-     "z": 2992.8578086815414,
+     "label": "Go to the bus junction, T. Nagar",
+     "x": 2626.3,
+     "z": 5095.4,
      "radius": 28
     },
     {
      "type": "defeat",
      "label": "Win the turf war",
      "group": "turf",
-     "x": 5955.420036997972,
-     "z": 2992.8578086815414,
+     "x": 2626.3,
+     "z": 5095.4,
      "radius": 20
     }
    ]
   },
   {
-   "id": "wedding-party",
+   "id": "stadium-biryani",
    "stage": 16,
+   "title": "Biryani for the dressing room",
+   "brief": "Match day at Chepauk. A kitchen near Egmore station has forty parcels of biryani for the dressing room and its delivery rider has flu. The toss is soon: ride, and don't stop for tea.",
+   "reward": 1600,
+   "reputation": 2,
+   "objectives": [
+    {
+     "type": "enter",
+     "label": "Get on a motorbike",
+     "vehicle": "bike"
+    },
+    {
+     "type": "reach",
+     "label": "Collect the biryani near Egmore station",
+     "x": 5574.5,
+     "z": 823.2,
+     "radius": 7,
+     "mode": "bike",
+     "stop": true,
+     "goods": {
+      "action": "load",
+      "items": [
+       "food-bag",
+       "parcel"
+      ],
+      "who": "shopkeeper",
+      "kerb": {
+       "x": 5572.1,
+       "z": 816
+      }
+     }
+    },
+    {
+     "type": "reach",
+     "label": "Deliver it to the stadium gate, Wallajah Road",
+     "x": 7903.3,
+     "z": 2301.8,
+     "radius": 7,
+     "mode": "bike",
+     "stop": true,
+     "timeLimit": 343,
+     "goods": {
+      "action": "unload",
+      "items": [
+       "food-bag"
+      ],
+      "kerb": {
+       "x": 7904.9,
+       "z": 2294.4
+      }
+     }
+    },
+    {
+     "type": "reach",
+     "label": "Last box to the scorers, Victoria Hostel Road",
+     "x": 7638.9,
+     "z": 2294.2,
+     "radius": 7,
+     "mode": "bike",
+     "stop": true,
+     "timeLimit": 69,
+     "goods": {
+      "action": "unload",
+      "items": [
+       "parcel"
+      ],
+      "kerb": {
+       "x": 7643,
+       "z": 2302.2
+      },
+      "kerbSide": 1,
+      "kerbShift": 12
+     }
+    }
+   ]
+  },
+  {
+   "id": "wedding-party",
+   "stage": 17,
    "title": "Muhurtham",
    "brief": "Selvi akka's niece gets married in Mylapore this morning and the hired van never came. Three of the family are waiting on Westcott Road in their silks. Take the auto by the clock tower and get them to the mandapam before the muhurtham.",
    "reward": 1800,
@@ -931,17 +1033,17 @@
   },
   {
    "id": "planted-chain",
-   "stage": 17,
+   "stage": 18,
    "title": "Hot property",
-   "brief": "Lakshmi, who sells jasmine by the temple tank, wants a word. As she talks, someone slips a gold chain into your pocket and a constable starts shouting. Lose the police, then hand the chain in at the temple office.",
+   "brief": "Lakshmi, who sells jasmine by the temple near Elliot's Beach, wants a word. As she talks, someone slips a gold chain into your pocket and a constable starts shouting. Lose the police, then hand the chain in at the temple office.",
    "reward": 2000,
    "reputation": 2,
    "objectives": [
     {
      "type": "reach",
-     "label": "Meet Lakshmi at her flower stall, East Tank Square Street",
-     "x": 6430.7,
-     "z": 5697.4,
+     "label": "Meet Lakshmi at her flower stall, Besant Nagar 2nd Avenue",
+     "x": 6172.0,
+     "z": 9529.3,
      "radius": 10
     },
     {
@@ -951,16 +1053,16 @@
     },
     {
      "type": "reach",
-     "label": "Hand the chain in at the temple office, North Mada Street",
-     "x": 6531,
-     "z": 5658.6,
+     "label": "Hand the chain in at the temple office, Besant Nagar",
+     "x": 6136.9,
+     "z": 9428.9,
      "radius": 8
     }
    ]
   },
   {
    "id": "mumbai-mail",
-   "stage": 18,
+   "stage": 19,
    "title": "The Mumbai Mail",
    "brief": "Padma Raghavan, a Carnatic singer with a concert in Mumbai tomorrow, has missed her ride and her train leaves Central soon. A car is parked on North Mada Street. Pick her up on South Mada Street and get her to Chennai Central.",
    "reward": 2500,
@@ -1008,8 +1110,33 @@
    ]
   },
   {
+   "id": "beach-road-brawl",
+   "stage": 20,
+   "title": "Beach road brawl",
+   "brief": "A gang is robbing delivery riders on the beach road at Santhome. Five of them, bats and fists. Police patrols are thick on the beach road, so leave the guns holstered and settle it by hand.",
+   "reward": 3000,
+   "reputation": 4,
+   "objectives": [
+    {
+     "type": "reach",
+     "label": "Go to Kamarajar Salai, the beach road at Santhome",
+     "x": 7476.5,
+     "z": 4965.3,
+     "radius": 22
+    },
+    {
+     "type": "defeat",
+     "label": "Beat the gang robbing the riders",
+     "group": "brawl",
+     "x": 7476.5,
+     "z": 4965.3,
+     "radius": 16
+    }
+   ]
+  },
+  {
    "id": "harmonium-thief",
-   "stage": 19,
+   "stage": 21,
    "title": "The harmonium thief",
    "brief": "Padma's accompanist sent her harmonium ahead on a suburban train, and a thief has taken it off at Egmore. Walk to Park station, take the train one stop to Egmore, then catch him on the motorbike outside the station.",
    "reward": 2800,
@@ -1151,109 +1278,6 @@
      }
     }
    ]
-  },
-  {
-   "id": "stadium-biryani",
-   "stage": 20,
-   "title": "Biryani for the dressing room",
-   "brief": "Match day at Chepauk. A kitchen near Egmore station has forty parcels of biryani for the dressing room and its delivery rider has flu. The toss is soon: ride, and don't stop for tea.",
-   "reward": 1600,
-   "reputation": 2,
-   "objectives": [
-    {
-     "type": "enter",
-     "label": "Get on a motorbike",
-     "vehicle": "bike"
-    },
-    {
-     "type": "reach",
-     "label": "Collect the biryani near Egmore station",
-     "x": 5574.5,
-     "z": 823.2,
-     "radius": 7,
-     "mode": "bike",
-     "stop": true,
-     "goods": {
-      "action": "load",
-      "items": [
-       "food-bag",
-       "parcel"
-      ],
-      "who": "shopkeeper",
-      "kerb": {
-       "x": 5572.1,
-       "z": 816
-      }
-     }
-    },
-    {
-     "type": "reach",
-     "label": "Deliver it to the stadium gate, Wallajah Road",
-     "x": 7903.3,
-     "z": 2301.8,
-     "radius": 7,
-     "mode": "bike",
-     "stop": true,
-     "timeLimit": 343,
-     "goods": {
-      "action": "unload",
-      "items": [
-       "food-bag"
-      ],
-      "kerb": {
-       "x": 7904.9,
-       "z": 2294.4
-      }
-     }
-    },
-    {
-     "type": "reach",
-     "label": "Last box to the scorers, Victoria Hostel Road",
-     "x": 7638.9,
-     "z": 2294.2,
-     "radius": 7,
-     "mode": "bike",
-     "stop": true,
-     "timeLimit": 69,
-     "goods": {
-      "action": "unload",
-      "items": [
-       "parcel"
-      ],
-      "kerb": {
-       "x": 7643,
-       "z": 2302.2
-      },
-      "kerbSide": 1,
-      "kerbShift": 12
-     }
-    }
-   ]
-  },
-  {
-   "id": "beach-road-brawl",
-   "stage": 21,
-   "title": "Beach road brawl",
-   "brief": "After the match a gang is robbing the delivery riders on the beach road opposite the stadium. Five of them, bats and fists. Police are everywhere on match day, so leave the guns holstered and settle it by hand.",
-   "reward": 3000,
-   "reputation": 4,
-   "objectives": [
-    {
-     "type": "reach",
-     "label": "Go to the beach road opposite the stadium",
-     "x": 7944.4,
-     "z": 2286.3,
-     "radius": 22
-    },
-    {
-     "type": "defeat",
-     "label": "Beat the gang robbing the riders",
-     "group": "brawl",
-     "x": 7944.4,
-     "z": 2286.3,
-     "radius": 16
-    }
-   ]
   }
  ],
  "enemies": {
@@ -1276,40 +1300,40 @@
   ],
   "thieves": [
    {
-    "x": -240.16738904766328,
-    "z": 379.9209870411104,
+    "x": 217.8,
+    "z": 3623.0,
     "armed": true
    },
    {
-    "x": -237.16738904766328,
-    "z": 377.9209870411104,
+    "x": 214.8,
+    "z": 3625.0,
     "armed": true
    },
    {
-    "x": -242.66738904766328,
-    "z": 381.9209870411104,
+    "x": 220.3,
+    "z": 3621.0,
     "armed": false
    }
   ],
   "godown": [
    {
-    "x": 323.78800877346345,
-    "z": -380.1384257990686,
+    "x": -4229.0,
+    "z": -1082.5,
     "armed": true
    },
    {
-    "x": 327.78800877346345,
-    "z": -380.1384257990686,
+    "x": -4225.0,
+    "z": -1082.5,
     "armed": true
    },
    {
-    "x": 319.78800877346345,
-    "z": -379.1384257990686,
+    "x": -4233.0,
+    "z": -1081.5,
     "armed": true
    },
    {
-    "x": 323.78800877346345,
-    "z": -376.1384257990686,
+    "x": -4229.0,
+    "z": -1078.5,
     "armed": true
    }
   ],
@@ -1343,29 +1367,29 @@
   ],
   "racket": [
    {
-    "x": 6951.2,
-    "z": 2852.6,
+    "x": 7787.3,
+    "z": -829.6,
     "armed": false,
     "weapon": "bat",
     "tint": 3835592
    },
    {
-    "x": 6952,
-    "z": 2850.5,
+    "x": 7785.1,
+    "z": -829.6,
     "armed": false,
     "weapon": "bat",
     "tint": 3835592
    },
    {
-    "x": 6951.7,
-    "z": 2848.3,
+    "x": 7783.6,
+    "z": -829.8,
     "armed": false,
     "weapon": "fists",
     "tint": 3835592
    },
    {
-    "x": 6952.5,
-    "z": 2846.1,
+    "x": 7782.3,
+    "z": -830.0,
     "armed": true,
     "weapon": "pistol",
     "tint": 3835592
@@ -1447,58 +1471,58 @@
   ],
   "turf": [
    {
-    "x": 5951,
-    "z": 2999.3,
+    "x": 2621.9,
+    "z": 5101.8,
     "armed": true,
     "weapon": "shotgun",
     "tint": 14725152,
     "health": 320
    },
    {
-    "x": 5952.9,
-    "z": 3000.5,
+    "x": 2623.8,
+    "z": 5103.0,
     "armed": true,
     "weapon": "smg",
     "tint": 14725152
    },
    {
-    "x": 5955.2,
-    "z": 3000.7,
+    "x": 2626.1,
+    "z": 5103.2,
     "armed": false,
     "weapon": "bat",
     "tint": 14725152
    },
    {
-    "x": 5964.5,
-    "z": 2996.7,
+    "x": 2635.4,
+    "z": 5099.2,
     "armed": true,
     "weapon": "pistol",
     "tint": 14725152
    },
    {
-    "x": 5965.2,
-    "z": 2994.5,
+    "x": 2636.1,
+    "z": 5097.0,
     "armed": true,
     "weapon": "pistol",
     "tint": 14725152
    },
    {
-    "x": 5966.8,
-    "z": 2992.9,
+    "x": 2637.7,
+    "z": 5095.4,
     "armed": false,
     "weapon": "fists",
     "tint": 14725152
    },
    {
-    "x": 5941,
-    "z": 2999.4,
+    "x": 2611.9,
+    "z": 5101.9,
     "armed": true,
     "weapon": "smg",
     "tint": 3835592
    },
    {
-    "x": 5943.3,
-    "z": 2999.6,
+    "x": 2614.2,
+    "z": 5102.1,
     "armed": false,
     "weapon": "bat",
     "tint": 3835592
@@ -1506,36 +1530,36 @@
   ],
   "brawl": [
    {
-    "x": 7951.7,
-    "z": 2290.4,
+    "x": 7483.8,
+    "z": 4969.4,
     "armed": false,
     "weapon": "fists",
     "tint": 9067051
    },
    {
-    "x": 7952.7,
-    "z": 2288.2,
+    "x": 7484.8,
+    "z": 4967.2,
     "armed": false,
     "weapon": "bat",
     "tint": 9067051
    },
    {
-    "x": 7952.7,
-    "z": 2285.7,
+    "x": 7484.8,
+    "z": 4964.7,
     "armed": false,
     "weapon": "fists",
     "tint": 9067051
    },
    {
-    "x": 7955,
-    "z": 2275.7,
+    "x": 7487.1,
+    "z": 4954.7,
     "armed": false,
     "weapon": "bat",
     "tint": 9067051
    },
    {
-    "x": 7956.1,
-    "z": 2273.4,
+    "x": 7488.2,
+    "z": 4952.4,
     "armed": false,
     "weapon": "fists",
     "tint": 9067051

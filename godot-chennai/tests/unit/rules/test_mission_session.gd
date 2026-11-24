@@ -62,7 +62,7 @@ func test_stage_2_needs_the_car_and_a_full_stop() -> bool:
 	var marker := s.target(Vector2(0, 0), "foot", vehicles)
 	assert_near(float(marker["x"]), float(car["x"]), 0.01, "the marker points at the hatchback")
 	_step(s, 0.1, float(car["x"]), float(car["z"]), "car")
-	assert_eq(s.objective().label, "Drive to Anna Nagar Tower Park", "getting in moves the objective on")
+	assert_eq(s.objective().label, "Drive to Kilpauk Garden Road, Kilpauk", "getting in moves the objective on")
 	var park := s.target(Vector2.ZERO, "car", vehicles)
 	_step(s, 0.5, float(park["x"]), float(park["z"]), "foot")
 	assert_eq(s.runner.balance(), 50, "on foot does not count")

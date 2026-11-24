@@ -1711,6 +1711,107 @@ and no Commons reference is listed (their titles name the business). Heights are
 buildings in place); `--frames=N` prints average and worst frame time over N rendered frames.
 Numbers in `handoff.md`.
 
+## Navigation and spread (G-280 to G-289, agent/godot-nav), 24 Nov 2026
+
+Owner's phone report: every mission started next to the last one, there was no map, the circles on
+the ground were unexplained, and the people to pick up could not be seen.
+
+### G-280: Stages are spread over the whole city; consecutive ones start 2 to 8 km apart
+Ten of the 21 stages left the Anna Nagar test box for real districts: Kilpauk, Perambur, Chetpet,
+Saidapet, Vadapalani, Ambattur Industrial Estate, Flower Bazaar, T. Nagar, Besant Nagar and
+Santhome. Four stay in Anna Nagar because the fiction is there (the walk from home, the cross-town
+race, Tower Park, the Roundtana). Stages 16 to 21 changed order (stadium biryani, wedding,
+planted chain, Mumbai Mail, beach road brawl, harmonium thief) so the Central and Egmore stages
+are no longer back to back. The rule, tested for all 26 (`test_stage_spread.gd`): the first marker
+of a stage is 2 000 to 8 200 m from the last marker of the one before, the stages use at least 15
+districts and span more than 10 km both ways, and everything a moved stage places (markers,
+kerbs, enemies, the vehicle parked for it) is on a street, outside buildings, on chunks the
+regional world decodes.
+How: `tools/rules/respace_stages.gd` moves each stage as a whole (first marker to the nearest
+main road of the chosen district, the others at their original distances, the bearing searched in
+15 degree steps for the least change, slid along the road until neither the marker, its kerb nor
+the parked vehicle is in a building) and writes `tools/rules/stage_sites.json`;
+`tools/rules/apply_stage_sites.py` folds it into `content.json` with the new texts. Kerbs for the
+moved stops carry no hint (`kerbSide` 0) and are reproduced by `FareSpots` on the regional layout
+(the v1 box does not reach Perambur or Besant Nagar). Parking: `auto-park` moved to the Perambur
+pick-up; `car-chetpet`, `bike-saidapet` and `bike-kodambakkam` are new. Changed expectations in
+the ported tests (stage order, "later stages start near the last end", district names of two
+stages, the label of stage 2) are marked CHANGED with the reason.
+Not moved: the 13 city jobs (their stops are still in Anna Nagar except four), life places and
+the stories; the stage text for 13 stages names real roads and districts from the data.
+
+### G-281: The minimap and the full map draw the world's own road data, at 10 Hz
+`Minimap` (src/ui/minimap): a round translucent plate (`clip_children` on a disc, so no per-segment
+clipping), roads in two weights as one `draw_multiline` each under one canvas transform, an arrow
+for the player, the mission's marker as a glyph (shape per kind, colour per kind, see G-282),
+and, off the plate, an arrow pinned to the rim with the distance in metres (`MapProjection`, pure
+and tested). Turns with the player (what is ahead is up) or north-up: one saved option
+(`MapSettings`), a row on the pause menu and the title's settings. Hazard zones and a followed
+target (G-144) are drawn on it as before. The layer refreshes it at 10 Hz of game time and the
+roads only after 100 m of travel (`MapRoadFeed.nearby`, from the layout's segment grid; no second
+data source). Tapping it opens the full map.
+`FullMap` (CanvasLayer 8): north-up roads of the neighbourhood (every street within 4 km, the main
+roads of 12.5 km, read on a worker thread by `MapRoadFeed.wide_task`), the places with their names,
+the mission's marker pinned to the edge with its distance, a legend of the kinds on the map, a
+scale bar, drag to pan, + and - to zoom (four steps, 450 m to 5.2 km from the centre to the top),
+ME to recentre, CLOSE and Back. It holds the game while open (unless the pause menu already has),
+and carries "© OpenStreetMap contributors". Pause menu: MAP button.
+The corner map sits under the PAUSE row, as large as fits without covering a button of either
+control set (tested at 915x412, 640x320, 1830x824, right- and left-handed); on 640x320 there is no
+such place and it is hidden (MAP in the pause menu still works). JOBS was under PAUSE since G-115
+(same rectangle): it is now left of it.
+
+### G-282: Markers say what they are
+`MarkerKind` (src/missions): PICKUP, DROPOFF, MISSION, FIGHT, VEHICLE, PLACE, TARGET, each with
+words ("Pick up", "Drop off", ...) and a colour (green, blue, amber, red, light blue, teal, white);
+`MissionSession.target()` carries the kind. `MissionBeacon` was redrawn: a tall thin beam of light
+whose width follows the distance (readable from 1 km), fainter near the camera; a floating icon
+whose shape is the kind (arrow down, cube, diamond, cross, sphere, dot); a label that stays one
+size on screen ("Pick up - 420 m"); a thin ring of the target's real size only inside 45 m (gone by
+70 m); no filled discs. A target beyond 1 000 m is drawn at 1 000 m in its direction (the camera's
+far plane is 1 500 m), with the true distance in its label. Places you can enter show their name
+and a small ring only within 90 m (they were five teal rings visible all over the neighbourhood).
+
+### G-283: Passengers are visible at the pick-up and on board
+`MissionSession.upcoming_fare()` shows the people waiting at a stage's pick-up while the player is
+still on the "get in the vehicle" objective (they used to appear only once the pick-up objective
+was current). `FareFigures`: a waiting person faces the player and, within 220 m, waves
+(`FareWave`: right arm raised, forearm swaying, set on the skeleton after each advance; there is
+no wave clip in the cast, so it is procedural, and one call to replace); people inside the vehicle
+are seated with the pose of agent/godot-anim (`SeatPose`, merged: hips on the seat anchor, `sit` 1.0), and
+disappear after they step out at the drop. A patient is still not drawn inside the ambulance.
+
+### G-290: One glass look for every HUD and touch button
+Owner feedback on a phone: buttons boxy, too big, heavy yellow fill, the yellow PAUSE block ugly.
+`UiTheme` is now the one factory (`glass_box`, `glass_plate`, `style_glass`, `icon_button`) and
+`UiIcons` draws the few icons (pause, exit, jump) from lines, so no asset licence. A button is a
+circle or pill of dark translucent glass (alpha 0.42) with a 1 px light outline and white
+text or icon; the accent (amber) is only the thin outline of the primary action (ACTION on foot,
+GO INSIDE, a dialog's main button) and the translucent fill of a pressed or held button. The drawn
+shape is inset inside a larger hit area (`StyleBoxFlat.expand_margin` negative, or `TouchButton.VISUAL`
+= 0.8), so PAUSE is 40 to the eye on a 48 target, ACTION 70 to the eye on 88 (was 104), GAS and
+BRAKE are circles of 92 and 76 (were 100x124 and 100x100 boxes). JUMP and RUN keep a 70 hit
+area because the 640x320 test needs 48 real pixels. EXIT and PAUSE are icon buttons, 48 each.
+Nothing in `test_*_layout.gd` was loosened; `test_hud_glass.gd` adds the same checks (inside the
+screen, 48 target, no overlap) for 915x412, 1830x824 and 2400x1080 on foot and driving.
+
+### G-291: The performance overlay is off by default
+The FPS line was on screen in play. `DebugSettings` (one class, save section `chennai-debug-v1`)
+holds `perf_overlay`; `DebugHud` shows its panel (now top-centre, not top-left) only when it is on.
+Switches: the pause menu row "Performance overlay: On/Off" and a hidden gesture, five taps within
+0.8 s of each other on the top-left 64x64 (`CornerTaps`, pure, tested in game time).
+`TouchControls` leaves touches in that corner unhandled so they reach the HUD. The perf agent's
+overlay (`PerfOverlay`, `PerfWiring`) now reads `DebugSettings.shared().perf_overlay` and listens to
+its `changed`; its Settings row and three-finger tap call `DebugSettings.toggle`. `QualitySettings.overlay`
+is no longer read (the field stays, saved, so old saves load). One switch, one row id (`PerfOverlay`),
+added by `PerfWiring` to both the pause menu and the title. The overlay's numbers and SWITCHES button
+moved to top-centre under the FPS line (they sat top-left over the mission column).
+
+### G-292: The top-right row no longer stacks JOBS under PAUSE
+`MissionHud`'s JOBS button and the PAUSE button had the same rectangle (JOBS was hidden under
+PAUSE and could not be pressed). The row is now, right to left: EXIT (driving), PAUSE, JOBS, with
+8 apart and tests for it. The mission column moved up to the corner now that the FPS line is gone.
+
 ### G-240: The export leaves out what nothing loads
 `export_presets.cfg` `exclude_filter` (both presets) drops `docs/*`, the legacy Three.js cast and
 road vehicles (except `player.glb`, `people.json` and the motorbike) and the v1 world chunks
@@ -1877,6 +1978,101 @@ The driver's seat, aisle, passenger doors and seats were measured from `chassis_
 the model is drawn at the settled ride height (lower by the springs' sag): riders sank 7–10 cm
 into seats. They are now measured from `VehicleModel.settled_ground`. Collision boxes keep their
 frame (physics, not changed here).
+
+## Performance on phones (G-250…G-259, branch `agent/godot-perf`, 24 Nov 2026)
+Measurements and the owner's instructions are in `docs/performance.md`.
+
+### G-250: One `QualitySettings` with three presets, High is the game as it was
+`src/game_engine/quality/quality_settings.gd`: Low / Medium / High as one table of values, saved
+in its own save-file section `chennai-quality-v1` (versioned, additive, like G-170), applied
+live. High keeps every value the game had before presets (resolution, MSAA 2x, 2048 shadows at
+40 m, 260 m streaming, 34/34 pools, six street lights, five physics catch-up steps), so tests
+and tools measure the same game; headless runs always start at High.
+
+### G-251: The default comes from the GPU name, the memory and the screen
+`QualitySettings.detect(gpu, memory, pixels)` is a pure table with a unit test: unknown and
+software GPUs, Adreno 610-639 (the Snapdragon 4/6 class, the owner's Adreno 613), Mali below
+G68 and PowerVR start at Low; Adreno 640s/700-729 and Mali-G68+ at Medium (Low on screens over
+3 Mpx); flagships at High; anything under 7 GiB of physical memory at Low (phones sold as 8 GB
+report about 7.3 GiB). A preset the player picks is kept and never re-detected.
+
+### G-252: `QualityApplier` applies the engine part; the composition root the rest
+3D resolution scale (FSR 1 on Medium under Vulkan, bilinear otherwise: Compatibility has no
+FSR), MSAA, anisotropy, mesh LOD threshold, no positional shadow atlas (no light casts one), the
+shadow atlas size and the sun's reach, the frame cap and physics catch-up steps, streaming
+distances and builds at once, haze distance and far plane, rain density, real street lights.
+`PerfWiring` (app) adds the traffic caps, figure rules, parked-vehicle reach, title rain layers,
+landmark LOD ranges and the light ground/water shaders. The HUD and touch controls stay at the
+screen's resolution (only the 3D buffer scales). The coordinator set Low at 75 % with short
+1024 shadows for the Adreno 613 (the first brief said 60-70 %).
+
+### G-253: The performance overlay and the perf log
+`PerfOverlay` (ui) shows the numbers `PerfWiring` composes: frame average and worst of 120
+frames, the scripts' main-thread time (two probe nodes that run first and last in each frame's
+process and physics callbacks), the renderer's CPU and GPU time
+(`viewport_set_measure_render_time`), physics catch-up steps, `Performance` maxima of the last
+second (they are maxima, not averages: Godot resets them once a second), draw calls, primitives,
+objects, video and texture memory, AI step and wait, traffic counts, chunk queues and worker
+tasks, preset, 3D size, renderer, driver and GPU, a software-renderer or Vulkan-fallback warning,
+hitches over 50 ms with what the last one was made of, and a verdict (`FrameStats.verdict`: a side
+is busy at 75 % of the frame). Off by default; a three-finger tap or the Settings row toggles it.
+Hidden, it builds no text and reads no monitors; the frame sampler, probes and GPU timer stay on
+(a few µs) because the log needs them. `user://perf.log` is rewritten every 10 s (header with the
+device, then one line per 10 s, the last 15 minutes, a first-against-last-minute drift line in
+place of a thermal state Godot does not expose), and printed as `[perf]` lines (logcat). The pause
+menu's summary row copies the log. When agent/godot-ui's DebugSettings key lands, the overlay's
+on/off moves to it (one line in `PerfWiring`).
+
+### G-254: Live feature switches and a safe mode
+`FeatureSwitches` (app): twenty switches (traffic, crowds, parked vehicles, missions layer,
+landmarks, decks, street objects, facade kit, trees, far buildings, water, prop colliders, ground
+cover detail, water ripples, rain, shadows, street lights, sky, haze, the title's live city). Each
+only hides, pauses or simplifies, never frees, so it is instant both ways; chunk layers are
+applied to chunks shown later too. SAFE MODE turns all off, ALL ON back on. After each press the
+frame time 1 s later is averaged over 3 s and compared with the average before the press; the
+overlay ranks the measured costs. Switched-off features are saved (the owner can restart and
+keep a configuration).
+
+### G-255: The A/B APK on the Compatibility renderer is derived, not committed
+`tools/compat_preset.py` copies the "Android" preset in CI to "Android Compatibility": the same
+filters (the size work owns them), package name `…godot.compat`, label "Chennai Open World (GL)",
+launch arguments `--rendering-method gl_compatibility --rendering-driver opengl3` (as the smoke
+APK proves they work). The workflow exports it after the two others and restores
+`export_presets.cfg`. Artifact `godot-chennai-apk-compat`.
+
+### G-256: The AI step may lag on slow cores; physics catch-up is capped per preset
+`CityLife.ai_patience`: the main thread waits for a running AI step only when it is that many
+physics frames late (2, the old behaviour, on High; 6 on Low), moving the views on by
+extrapolation meanwhile. `Engine.max_physics_steps_per_frame` 2 on Low with a 30 fps cap: when a
+frame is slow the game slows down instead of running ever more physics steps per frame.
+
+### G-257: Cheap, certain fixes
+Street lights pick the nearest lamps with one scan instead of sorting every lamp four times a
+second; mission entrance rings share one torus and material and are not drawn beyond 120 m.
+
+### G-258: Figures and vehicles cost only where they show
+`PersonView.animate_reach` (25 / 35 / 45 m) and the camera's frustum: a figure further or out of
+view holds its pose (no clip, skeleton or skin update). `PersonView.shadow_near` 0 on Low and
+Medium. Vehicle models cast shadows only from LOD 0 (within 28 m). Parked vehicles appear within
+100 / 150 / 200 m. Trees, palms and street objects cast shadows only on High (each is one mesh
+or MultiMesh per chunk, so any part inside the shadow's reach drew the whole chunk into it).
+
+### G-259: Street lights never light the merged chunk meshes
+Chunk meshes are on render layer 2 (`ChunkBuilder.RENDER_LAYER`) and the street lights' cull mask
+leaves it out: a chunk mesh spans 250 m, so every lamp touched it and the Mobile renderer
+evaluated it for every pixel of the chunk's ground and walls. The ground under a lamp gets an
+additive glow pool instead (one MultiMesh, one draw call at night). Real lights still light
+vehicles, people and loose props. T. Nagar at 18:40 under llvmpipe: 1378 ms a frame before, 662
+ms after on High, about the 08:30 cost (654 ms).
+
+### G-293: Settings lists scroll under a thumb, with a visible bar
+Both settings lists (pause menu, title SETTINGS) are `ScrollContainer`s set up by
+`UiTheme.touch_scroll`: `scroll_deadzone` 12 so a drag that starts on a row scrolls instead of
+pressing it, `follow_focus`, and a 10-wide light scrollbar from the theme (the default was a
+hairline). `test_settings_scroll.gd` scrolls to the last row in both at 915x412 and 915x458 and checks
+it is inside the list and the screen. Every top-right button takes a real click at its centre and in
+its padding (`test_hud_glass.gd`). Rows now in both menus: Time, Weather, Sound, (pause: the controls
+rows), Graphics (`PerfWiring`, QualitySettings Low/Medium/High, "(auto)" when detected), Performance overlay.
 
 
 ## The railway (G-320 to G-334), branch `agent/godot-railway`

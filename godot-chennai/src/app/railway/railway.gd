@@ -795,8 +795,15 @@ func _place_cameras() -> void:
 	elif _inside_camera.current and rig != null:
 		rig.camera.camera.make_current()
 		_interior.visible = false
-	if rig != null:
-		rig.camera.reach = 15.0 if state == &"ride" or state == &"cab" else FollowCamera.DISTANCE
+	# The chase camera stands back for a train; only the railway's own states touch its reach
+	# (driving a car sets its own, G-115).
+	var on_train := state == &"ride" or state == &"cab"
+	if rig != null and on_train != _reach_set:
+		_reach_set = on_train
+		rig.camera.reach = 15.0 if on_train else FollowCamera.DISTANCE
+
+
+var _reach_set: bool = false
 
 
 func _place_inside() -> void:

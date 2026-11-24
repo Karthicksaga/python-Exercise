@@ -30,12 +30,10 @@ func test_steps_have_a_state_and_the_bar_moves_only_on_real_completion() -> bool
 	l.finish_step(0)
 	assert_eq(l.state_of(0), &"done", "finished")
 	assert_near(l.bar_fraction(), 1.0 / Main.STEPS.size(), 0.0001, "one step, one share of the bar")
-	l.begin_step(1)
-	l.finish_step(1)
-	l.begin_step(2)
-	l.finish_step(2)
-	l.begin_step(3)
-	l.finish_step(3)
+	# Every other step (Main has five since the railway's "Running the trains", G-333).
+	for i in range(1, Main.STEPS.size()):
+		l.begin_step(i)
+		l.finish_step(i)
 	assert_eq(l.bar_fraction(), 1.0, "all steps: a full bar")
 	assert_eq(l.lit_segments(), Main.STEPS.size(), "every step counted")
 	return true

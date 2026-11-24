@@ -134,6 +134,16 @@ jobs:
           godot --headless --audio-driver Dummy --path . --export-debug "Android Smoke" build/android/chennai-open-world-smoke.apk 2>&1 | tee -a export.log
           test -s build/android/chennai-open-world-smoke.apk
           ls -la build/android
+      # The A/B APK for weak phones (G-255): the same game on the Compatibility renderer (OpenGL ES 3),
+      # package name ending in .compat so it installs beside the Mobile (Vulkan) one. Its preset is
+      # derived from "Android" here, so it always carries the same export filters.
+      - name: Export the Compatibility-renderer APK
+        run: |
+          python3 tools/compat_preset.py
+          godot --headless --audio-driver Dummy --path . --export-release "Android Compatibility" build/android/chennai-open-world-compat.apk 2>&1 | tee -a export.log
+          test -s build/android/chennai-open-world-compat.apk
+          git checkout -- export_presets.cfg
+          ls -la build/android
       - name: What the APKs declare (SDK levels, ABIs, orientation)
         run: |
           AAPT=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)aapt
@@ -145,6 +155,11 @@ jobs:
         with:
           name: godot-chennai-apk
           path: godot-chennai/build/android/chennai-open-world.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: godot-chennai-apk-compat
+          path: godot-chennai/build/android/chennai-open-world-compat.apk
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:

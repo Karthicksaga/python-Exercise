@@ -16,10 +16,13 @@ extends CanvasLayer
 signal resume_requested
 signal title_requested
 signal pause_requested
+signal map_requested
 
-const PAUSE_SIZE := Vector2(96, 48)
-## Right of the PAUSE button: the driving EXIT (100 wide) and the gap beside it.
-const PAUSE_RIGHT := 112.0
+## The PAUSE button (G-290): a round glass icon, 40 to the eye, a 48 hit area.
+const PAUSE_VISUAL := 40.0
+const PAUSE_SIZE := Vector2(48, 48)
+## Right of the PAUSE button: the driving EXIT (a 48 round icon) and the gap beside it.
+const PAUSE_RIGHT := 56.0
 const GUTTER := 16
 
 var pause_button: Button
@@ -50,16 +53,14 @@ func _init() -> void:
 	area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_margin.add_child(area)
 
-	pause_button = UiTheme.button("PAUSE")
+	pause_button = UiTheme.icon_button(UiIcons.PAUSE, PAUSE_VISUAL, PAUSE_SIZE.x)
 	pause_button.name = "Pause"
-	pause_button.custom_minimum_size = PAUSE_SIZE
-	pause_button.focus_mode = Control.FOCUS_NONE
+	pause_button.tooltip_text = "Pause"
 	pause_button.anchor_left = 1.0
 	pause_button.anchor_right = 1.0
 	pause_button.offset_left = -PAUSE_RIGHT - PAUSE_SIZE.x
 	pause_button.offset_right = -PAUSE_RIGHT
 	pause_button.offset_bottom = PAUSE_SIZE.y
-	pause_button.add_theme_stylebox_override("normal", _plate())
 	pause_button.pressed.connect(func() -> void: pause_requested.emit())
 	pause_button.visible = false
 	area.add_child(pause_button)
@@ -89,7 +90,7 @@ func _init() -> void:
 	column.add_child(UiTheme.label("PAUSED", UiTheme.BUTTON_SIZE + 6, UiTheme.AMBER))
 	_scroll = ScrollContainer.new()
 	_scroll.name = "Scroll"
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	UiTheme.touch_scroll(_scroll)
 	column.add_child(_scroll)
 	_list = VBoxContainer.new()
 	_list.name = "List"
@@ -98,6 +99,8 @@ func _init() -> void:
 	_scroll.add_child(_list)
 	_resume = _menu_button("RESUME", "Resume")
 	_resume.pressed.connect(func() -> void: resume_requested.emit())
+	var map := _menu_button("MAP", "Map")
+	map.pressed.connect(func() -> void: map_requested.emit())
 	var quit := _menu_button("QUIT TO TITLE", "QuitToTitle")
 	quit.pressed.connect(func() -> void: title_requested.emit())
 	visible = true
@@ -106,15 +109,6 @@ func _init() -> void:
 func _ready() -> void:
 	get_viewport().size_changed.connect(_fit)
 	_list.resized.connect(_fit)
-
-
-static func _plate() -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color(0.06, 0.07, 0.09, 0.62)
-	box.border_color = Color(1, 1, 1, 0.22)
-	box.set_border_width_all(2)
-	box.set_corner_radius_all(12)
-	return box
 
 
 func _menu_button(text: String, node_name: String) -> Button:

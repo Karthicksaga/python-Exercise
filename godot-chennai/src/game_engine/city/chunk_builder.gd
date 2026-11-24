@@ -15,6 +15,10 @@ extends RefCounted
 ## trimesh of closed boxes for trees, poles, shelters and props.
 
 const PALMS := 0.4
+## Render layer of every merged chunk mesh (bit 2, value 2). Street lights leave it out of
+## their cull mask (G-259): a merged chunk mesh spans 250 m, so on the Mobile renderer each lamp
+## near it was evaluated for every pixel of the chunk's ground and walls.
+const RENDER_LAYER := 2
 const PIECE_BUILDINGS := 48
 const AC_UNITS := 0.3
 const DISHES := 0.2
@@ -247,6 +251,7 @@ static func _add_mesh(out: Build, parent: Node3D, layer: String, builder: MeshBu
 	var mi := MeshInstance3D.new()
 	mi.name = layer.capitalize()
 	mi.mesh = mesh
+	mi.layers = RENDER_LAYER
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
 	out.triangles[layer] = builder.triangle_count()
@@ -358,6 +363,7 @@ static func _add_trees(kit: Kit, out: Build, standing: Array[WorldTree]) -> void
 		var node := MultiMeshInstance3D.new()
 		node.name = "Palms" if kind == 0 else "Trees"
 		node.multimesh = mm
+		node.layers = RENDER_LAYER
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if kit.shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		out.view.add_child(node)
 		var per := kit.palm_triangles if kind == 0 else kit.tree_triangles
@@ -418,7 +424,18 @@ static func solid_box(faces: PackedVector3Array, centre: Vector3, half: Vector3,
 		faces.append_array([c[q[0]], c[q[1]], c[q[2]], c[q[0]], c[q[2]], c[q[3]]])
 
 
+## Most triangles in one collider body (G-257): Jolt builds a mesh shape when its body enters the
+## world, on the main thread, and one chunk's boxes for trees, poles and props (or its barriers)
+## in a single trimesh took up to 33 ms to add. A multiple of 12 (a box) and of 2 (a wall quad).
+const MAX_BODY_TRIANGLES := 1200
+
+
 static func _body(out: Build, label: String, faces: PackedVector3Array) -> void:
+	var limit := MAX_BODY_TRIANGLES * 3
+	if faces.size() > limit:
+		for start in range(0, faces.size(), limit):
+			_body(out, label, faces.slice(start, mini(start + limit, faces.size())))
+		return
 	var shape := ConcavePolygonShape3D.new()
 	shape.backface_collision = true
 	shape.set_faces(faces)

@@ -45,6 +45,8 @@ var title_tour: bool = DisplayServer.get_name() != "headless"
 ## The launch's seed for the spot (`-1`: the clock), and a spot forced by a tool or test.
 var title_seed: int = -1
 var title_spot: StringName = &""
+## Quality, overlay, perf log, feature switches (`PerfWiring`).
+var perf: PerfWiring = null
 ## Watches for a stalled main loop while loading (see `_watch_frames`).
 var _watchdog: Thread = null
 var _watching: bool = false
@@ -58,6 +60,11 @@ func _ready() -> void:
 	# The menus and Back keep working while the world is paused; the world itself pauses.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_add_pause_menu()
+	# Quality presets, the performance overlay, the perf log and the feature switches (G-250…).
+	perf = PerfWiring.attach(self)
+	add_child(perf)
+	if not PerfWiring.title_tour_allowed():
+		title_tour = false
 	title.visible = false
 	hud.visible = false
 	loading.retry_requested.connect(_load)
@@ -262,6 +269,11 @@ func _add_pause_menu() -> void:
 	pause_menu.pause_requested.connect(pause)
 	pause_menu.resume_requested.connect(resume)
 	pause_menu.title_requested.connect(show_title)
+	pause_menu.map_requested.connect(_open_map)
+	# The map's one option, on the pause menu and on the title's SETTINGS page like the others (G-281).
+	var map_settings := MapSettings.shared()
+	for host: Object in [pause_menu, title]:
+		host.call(&"add_setting", &"MinimapMode", map_settings.label, func() -> void: map_settings.set_rotating(not map_settings.rotating))
 
 
 ## The streets' traffic, walkers and crowds round the start, made during loading.
@@ -373,6 +385,13 @@ func pause() -> void:
 	_set_state(&"paused")
 
 
+## The full-screen map, from the pause menu (G-281): the missions layer owns its data.
+func _open_map() -> void:
+	var layer := find_child("MissionsLayer", false, false) as MissionsLayer
+	if layer != null:
+		layer.open_map()
+
+
 func resume() -> void:
 	if state != &"paused":
 		return
@@ -406,6 +425,10 @@ func quit() -> void:
 ## Android Back and Escape: one level up (chennai-game-design §3): play → pause menu → title,
 ## ABOUT → menu, then quit.
 func go_back() -> void:
+	# The full map is a level above the pause menu: Back closes it first (G-281).
+	var layer := find_child("MissionsLayer", false, false) as MissionsLayer
+	if layer != null and layer.close_map():
+		return
 	match state:
 		&"play":
 			pause()

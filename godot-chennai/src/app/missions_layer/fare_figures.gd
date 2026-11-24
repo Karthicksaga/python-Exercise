@@ -20,6 +20,8 @@ const SENDERS: PackedStringArray = ["shopkeeper-m", "tea-vendor", "shopkeeper-f"
 const PARAMEDIC := "health-worker"
 ## People waiting at one kerb spot stand this far apart.
 const SPREAD := 0.8
+## How near the player must be for a waiting person to wave (metres).
+const WAVE_NEAR := 220.0
 ## Hip joints above the figure's origin when seated (the seat pose's frame).
 const SEAT_HIP := 0.92
 
@@ -37,6 +39,10 @@ var _last: Dictionary[int, Vector3] = {}
 var _seat_poses: Dictionary[String, SeatPose] = {}
 ## False skips loading cast models (unit-speed tests that only read `people`).
 var load_models := true
+## G-283: where the player is (scene position): people waiting at a pick-up face them and, when
+## they are near, wave. `Vector3.INF`: unknown.
+var watch := Vector3.INF
+var _clock := 0.0
 
 
 func _ready() -> void:
@@ -116,17 +122,20 @@ static func kerb_door(v: Vehicle, kerb: Vector3) -> VehicleType.PassengerDoor:
 
 ## Update for this frame: `fare` ({} none) from `MissionSession.fare_scene()`, `goods` from
 ## `goods_scene()`, the vehicle the player drives (null on foot), `ground_y` the street's height.
-func show_scene(dt: float, fare: Dictionary, goods: Dictionary, v: Vehicle, ground_y: float) -> void:
+func show_scene(dt: float, fare: Dictionary, goods: Dictionary, v: Vehicle, ground_y: float, upcoming: Dictionary = {}) -> void:
 	vehicle = v
+	_clock += dt
 	people.clear()
 	var patient := false
-	if not fare.is_empty():
-		var stop: FareStop = fare["stop"]
+	# The pick-up the player is heading for stands there already, before the objective is current.
+	var shown := fare if not fare.is_empty() else upcoming
+	if not shown.is_empty():
+		var stop: FareStop = shown["stop"]
 		patient = stop.fare.patient
 		var kerb := WorldOrigin.to_scene_xz(stop.fare.kerb_x, stop.fare.kerb_z, ground_y)
 		var list := stop.people()
 		for i in list.size():
-			people.append(_person(list[i], i, kerb, stop.fare.kerb_x, stop.fare.kerb_z, v, ground_y))
+			people.append(_person(list[i], i, kerb, stop.fare.patient, v, ground_y))
 	if not goods.is_empty():
 		var g: GoodsStop = goods["stop"]
 		var kerb_g := WorldOrigin.to_scene_xz(g.goods.kerb_x, g.goods.kerb_z, ground_y)
@@ -134,13 +143,15 @@ func show_scene(dt: float, fare: Dictionary, goods: Dictionary, v: Vehicle, grou
 	_draw(dt, patient)
 
 
-func _person(p: Dictionary, i: int, kerb: Vector3, _kx: float, _kz: float, v: Vehicle, ground_y: float) -> Dictionary:
+func _person(p: Dictionary, i: int, kerb: Vector3, fare_patient: bool, v: Vehicle, ground_y: float) -> Dictionary:
 	var stage: String = p["stage"]
 	var share: float = p["share"]
 	var spot := kerb + Vector3(([0, 1, -1][i % 3] as int) * SPREAD, 0, (i / 3) * SPREAD)
 	var out := {"stage": stage, "action": p["action"], "position": spot, "visible": true, "kind": "rider", "speed": 0.0, "face": Vector3.ZERO, "sit": 0.0}
 	if v == null:
 		out["visible"] = stage in ["waiting", "leaving", "gone"] and stage != "gone"
+		if stage == "waiting":
+			_look_and_wave(out, spot)
 		return out
 	var d := kerb_door(v, kerb)
 	var door := v.ground_point(d.point) if d != null else v.ground_point(Vector2(-(v.type.spec.half_extents.x + 0.6), 0.0))
@@ -154,6 +165,7 @@ func _person(p: Dictionary, i: int, kerb: Vector3, _kx: float, _kz: float, v: Ve
 	match stage:
 		"waiting":
 			out["face"] = door
+			_look_and_wave(out, spot)
 		"walking":
 			out["position"] = spot.lerp(door, share)
 			out["speed"] = spot.distance_to(door) / walk_seconds
@@ -185,6 +197,14 @@ func _person(p: Dictionary, i: int, kerb: Vector3, _kx: float, _kz: float, v: Ve
 		"gone":
 			out["visible"] = false
 	return out
+
+
+## A waiting person turns to the player and, when the player is near, waves.
+func _look_and_wave(out: Dictionary, spot: Vector3) -> void:
+	if watch == Vector3.INF:
+		return
+	out["face"] = watch
+	out["wave"] = Vector2(watch.x - spot.x, watch.z - spot.z).length() <= WAVE_NEAR
 
 
 func _goods_person(g: GoodsStop, kerb: Vector3, v: Vehicle) -> Dictionary:
@@ -279,6 +299,8 @@ func _draw(dt: float, patient: bool) -> void:
 			fig.set_seat(null)
 			_face(fig, at, p["face"])
 		fig.advance(dt, float(p["speed"]) if sit <= 0.0 else 0.0, true)
+		if bool(p.get("wave", false)):
+			FareWave.apply(fig, _clock)
 	for k in range(used, _figures.size()):
 		if _figures[k] != null:
 			_figures[k].visible = false

@@ -11,6 +11,7 @@ extends Control
 ## middle, GO INSIDE bottom-centre between the stick and the buttons. Every target is 48 tall.
 
 signal jobs_pressed
+signal map_pressed
 signal inside_pressed
 ## A dialog row's button (`id` of the row).
 signal row_chosen(id: String)
@@ -20,12 +21,16 @@ signal action_chosen(id: String)
 signal lift_pressed
 
 const COLUMN_WIDTH := 330.0
-## Room left for the debug line above the column.
-const COLUMN_TOP := 52.0
+## The column starts at the corner now that the FPS line is off by default (G-290); the
+## performance overlay sits top-centre instead.
+const COLUMN_TOP := 16.0
 const GUTTER := 16.0
-const JOBS_SIZE := Vector2(96, 48)
-## The driving EXIT button's width and gap (`DrivingControls`): JOBS stays left of it.
-const EXIT_ROOM := 112.0
+const JOBS_SIZE := Vector2(72, 48)
+## Room right of JOBS: the PAUSE button (48, 12 off the edge gutter) and the driving EXIT beside
+## it (`PauseMenu`, `DrivingControls`), plus a gap. JOBS used to sit exactly under PAUSE.
+const EXIT_ROOM := PauseMenu.PAUSE_RIGHT + 48.0 + 10.0
+## The corner map never gets smaller than this (px); under it, it moves left of the buttons.
+const MIN_PLATE := 84.0
 const URGENT := 10.0
 ## A dialog row's height and what the rest of a dialog takes (title, buttons, gaps, margins).
 const ROW_HEIGHT := 56.0
@@ -60,7 +65,7 @@ var stability_label: Label
 var stability_bar: MeterBar
 var suspicion_row: HBoxContainer
 var suspicion_bar: MeterBar
-var minimap: MissionMinimap
+var minimap: Minimap
 var medals_box: HBoxContainer
 var medal_badge: MedalBadge
 var medal_goals: VBoxContainer
@@ -106,7 +111,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_column()
-	jobs_button = _button("JOBS", "Jobs", 16, true)
+	jobs_button = _button("JOBS", "Jobs", 15, false)
 	jobs_button.anchor_left = 1.0
 	jobs_button.anchor_right = 1.0
 	jobs_button.offset_left = -GUTTER - EXIT_ROOM - JOBS_SIZE.x
@@ -115,16 +120,12 @@ func _ready() -> void:
 	jobs_button.offset_bottom = GUTTER + JOBS_SIZE.y
 	jobs_button.pressed.connect(func() -> void: jobs_pressed.emit())
 	add_child(jobs_button)
-	minimap = MissionMinimap.new()
-	minimap.name = "Minimap"
-	minimap.anchor_left = 1.0
-	minimap.anchor_right = 1.0
-	minimap.offset_left = -GUTTER - MissionMinimap.PLATE
-	minimap.offset_right = -GUTTER
-	minimap.offset_top = GUTTER + JOBS_SIZE.y + 8.0
-	minimap.offset_bottom = GUTTER + JOBS_SIZE.y + 8.0 + MissionMinimap.PLATE
-	minimap.visible = false
+	minimap = Minimap.new()
+	minimap.pressed.connect(func() -> void: map_pressed.emit())
 	add_child(minimap)
+	_place_minimap()
+	get_viewport().size_changed.connect(_place_minimap)
+	ControlSettings.shared().changed.connect(_place_minimap)
 	_build_toast()
 	inside_button = _button("GO INSIDE", "Inside", 16, true)
 	inside_button.anchor_left = 0.5
@@ -149,28 +150,22 @@ func _button(text: String, node_name: String, font: int, accent: bool) -> Button
 	b.custom_minimum_size = Vector2(0, UiTheme.MIN_TARGET)
 	b.focus_mode = Control.FOCUS_ALL
 	b.add_theme_font_size_override("font_size", font)
-	if accent:
-		var box := StyleBoxFlat.new()
-		box.bg_color = UiTheme.AMBER
-		box.set_corner_radius_all(12)
-		box.content_margin_left = 14
-		box.content_margin_right = 14
-		b.add_theme_stylebox_override("normal", box)
-		b.add_theme_stylebox_override("hover", box)
-		b.add_theme_color_override("font_color", Color("#1a1a1a"))
-		b.add_theme_color_override("font_hover_color", Color("#1a1a1a"))
-		b.add_theme_color_override("font_focus_color", Color("#1a1a1a"))
+	# Glass pills; only the primary action carries the accent outline (G-290).
+	UiTheme.style_glass(b, accent, 0.0)
+	b.add_theme_stylebox_override("normal", _pill(accent))
+	b.add_theme_stylebox_override("hover", _pill(accent))
 	return b
 
 
-static func _plate(alpha: float = 0.6) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color(0.06, 0.07, 0.12, alpha)
-	box.set_corner_radius_all(10)
-	box.content_margin_left = 12
-	box.content_margin_right = 12
-	box.content_margin_top = 6
-	box.content_margin_bottom = 6
+static func _plate(alpha: float = 0.5) -> StyleBoxFlat:
+	return UiTheme.glass_plate(alpha, 12)
+
+
+## A pill with room for its words.
+static func _pill(accent: bool) -> StyleBoxFlat:
+	var box := UiTheme.glass_box(UiTheme.GLASS_FILL, Color(UiTheme.AMBER, 0.95) if accent else UiTheme.GLASS_OUTLINE)
+	box.content_margin_left = 16
+	box.content_margin_right = 16
 	return box
 
 
@@ -263,9 +258,7 @@ func _build_toast() -> void:
 	toast_panel = PanelContainer.new()
 	toast_panel.name = "Toast"
 	toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var box := _plate(0.85)
-	box.border_color = Color(1.0, 0.82, 0.4, 0.7)
-	box.set_border_width_all(1)
+	var box := _plate(0.7)
 	box.content_margin_left = 20
 	box.content_margin_right = 20
 	box.content_margin_top = 10
@@ -610,3 +603,50 @@ static func _thousands(n: int) -> String:
 		out = "," + s.right(3) + out
 		s = s.left(s.length() - 3)
 	return ("-" if n < 0 else "") + s + out
+
+
+## The corner minimap goes under the PAUSE row on the right, as large as fits without covering any
+## button of either control set (on foot: JUMP, ACTION, RUN; driving: GAS, BRAKE, HORN, EXIT), JOBS
+## or PAUSE (`ControlsLayout`): tried at the right edge first, then left of the button columns. On a
+## screen too short for any spot of at least `MIN_PLATE` it is hidden (the pause menu's MAP opens the
+## big one). Left-handed layouts mirror the buttons, so it stays at the edge (G-281).
+func _place_minimap() -> void:
+	if minimap == null:
+		return
+	var area := get_viewport_rect().size
+	var settings := ControlSettings.shared()
+	var top := GUTTER + JOBS_SIZE.y + 4.0
+	var foot := ControlsLayout.foot(area, settings)
+	var drive := ControlsLayout.driving(area, settings)
+	var blocked: Array[Rect2] = []
+	for layout: Dictionary in [foot, drive]:
+		for key: Variant in ControlsLayout.buttons_of(layout):
+			blocked.append((layout[key] as Rect2).grow(4.0))
+	var edges: Array[float] = [area.x - GUTTER]
+	for key: Variant in [&"action", &"jump", &"brake", &"horn"]:
+		var r: Rect2 = (foot if foot.has(key) else drive)[key]
+		edges.append(r.position.x - 8.0)
+	edges.sort()
+	edges.reverse()
+	for plate: float in [Minimap.PLATE, 112.0, 100.0, 92.0, MIN_PLATE]:
+		for right in edges:
+			var rect := Rect2(right - plate, top, plate, plate)
+			if rect.position.x < COLUMN_WIDTH + GUTTER * 2.0 or rect.end.y > area.y - GUTTER:
+				continue
+			if not blocked.any(func(b: Rect2) -> bool: return b.intersects(rect)):
+				_put_minimap(rect)
+				return
+	minimap.visible = false
+
+
+func _put_minimap(rect: Rect2) -> void:
+	minimap.visible = true
+	minimap.anchor_left = 0.0
+	minimap.anchor_right = 0.0
+	minimap.offset_left = rect.position.x
+	minimap.offset_right = rect.end.x
+	minimap.offset_top = rect.position.y
+	minimap.offset_bottom = rect.end.y
+	minimap.custom_minimum_size = rect.size
+	minimap.size = rect.size
+	minimap.set_plate(rect.size.x)

@@ -90,6 +90,10 @@ func test_screens_fit_every_size() -> bool:
 			_check(vp, str(page), true)
 		title.queue_free()
 		var hud: DebugHud = HUD.instantiate()
+		# Checked with the performance overlay on: that is its widest state (off, it is hidden).
+		hud.settings = DebugSettings.new()
+		hud.settings.path = "user://layout-test-debug.json"
+		hud.settings.perf_overlay = true
 		vp.add_child(hud)
 		hud.set_world_text("20,625 roads · 1,897 chunks")
 		await wait_frames(2)
