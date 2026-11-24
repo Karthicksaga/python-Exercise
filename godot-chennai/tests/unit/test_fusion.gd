@@ -21,21 +21,21 @@ func test_fusion_tile_matches_the_python_reader() -> bool:
 	assert_true(t != null and t.ok(), "tile 1_5's fusion.bin decodes: %s" % (t.error if t != null else "null"))
 	# Values printed by tools/geo (chennai_geo.fusion_codec.decode) for tile 1_5.
 	assert_eq(t.cells.size(), 1417, "squares with added buildings")
-	assert_eq(t.buildings, 107629, "added buildings in the tile")
+	assert_eq(t.buildings, 107624, "added buildings in the tile")
 	assert_eq(t.heights.size(), 0, "no height fixes in this tile")
 	var list: Array = t.cells[VILLAGE]
 	assert_eq(list.size(), 350, "the village square")
 	var b: Building = list[0]
-	assert_eq(b.id, 3221671915, "first id of the square")
+	assert_eq(b.id, 3221671868, "first id of the square")
 	assert_eq(b.fusion_source, &"overture", "taken from Overture")
 	assert_eq(b.fusion_origin, &"microsoft", "Overture had it from Microsoft")
 	assert_eq(b.dataset, 3, "provenance dataset overture:buildings")
 	assert_eq(b.source_id, 73412, "row in the Overture extract")
 	assert_near(b.confidence, -1.0, 1e-6, "no confidence given")
-	assert_near(b.height, 7.1, 1e-4, "two estimated floors")
+	assert_near(b.height, 4.0, 1e-4, "one estimated floor")
 	assert_eq(b.height_from, &"estimated", "labelled estimated")
 	assert_eq(b.kind, &"house", "a house")
-	assert_eq(b.color_hex, 0xfbf3e4, "wall colour")
+	assert_eq(b.color_hex, 0xf7edb5, "wall colour")
 	assert_eq(b.outline.size(), 4, "a box")
 	var want := PackedVector2Array([Vector2(-15618.29, -4741.48), Vector2(-15626.19, -4740.21), Vector2(-15627.41, -4747.82), Vector2(-15619.51, -4749.09)])
 	# The decoder gives the box corners from its centre, sides and angle: the same corners as the

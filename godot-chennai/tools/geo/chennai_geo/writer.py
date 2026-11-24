@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import shutil
 from collections import Counter
 from pathlib import Path
@@ -9,7 +10,7 @@ from typing import Any
 
 from shapely.geometry import Polygon
 
-from . import codec_v1, codec_v2, infra
+from . import codec_v1, codec_v2, detail as detail_mod, infra
 from .codec_v2 import ChunkV2, StringTable
 from .geometry import Bounds, centroid
 from .model import DATASETS, Area
@@ -18,6 +19,7 @@ from .regions import CHUNK_SIZE, RINGS, TILE_CHUNKS, TILE_SIZE, Grid, tile_of
 from .world import World, named_poi
 
 INFRA_FILE = "infra.bin"
+DETAIL_FILE = "detail.bin"
 
 ATTRIBUTION = "© OpenStreetMap contributors"
 
@@ -118,7 +120,56 @@ def write_world_v2(w: World, out: Path, source: dict[str, Any] | None = None, na
     if w.infra:
         for sp in w.infra.spots:
             infra_spots.setdefault(tile_xz(sp.x, sp.z), []).append(sp)
+    # Format 2.2: detail records by tile (positions by tile of the point, lines cut at tile edges).
+    dt: dict[tuple[int, int], dict[str, list[Any]]] = {}
+    detail_stats: dict[tuple[int, int], Counter[str]] = {}
+    if w.detail is not None:
+        dd = w.detail
+
+        def bucket(key: tuple[int, int]) -> dict[str, list[Any]]:
+            if key not in dt:
+                dt[key] = {"buildings": [], "parts": [], "objects": [], "lines": [], "zones": [], "signs": []}
+                detail_stats[key] = Counter()
+            return dt[key]
+
+        for bd in dd.buildings:
+            bucket(tile_xz(*dd.building_points[bd.id]))["buildings"].append(bd)
+        for pt in dd.parts:
+            bucket(tile_xz(*centroid(pt.outline)))["parts"].append(pt)
+        for ob in dd.objects:
+            bucket(tile_xz(ob.x, ob.z))["objects"].append(ob)
+        for zo in dd.zones:
+            bucket(tile_xz(*centroid(zo.outline)))["zones"].append(zo)
+        for sg in dd.signs:
+            bucket(tile_xz(sg.x, sg.z))["signs"].append(sg)
+
+        def tile_rects(b: Bounds) -> list[tuple[tuple[int, int], Bounds]]:
+            out_: list[tuple[tuple[int, int], Bounds]] = []
+            for tcx in range(math.floor((b.min_x - g.min_x) / TILE_SIZE), math.floor((b.max_x - g.min_x) / TILE_SIZE) + 1):
+                for trz in range(math.floor((b.min_z - g.min_z) / TILE_SIZE), math.floor((b.max_z - g.min_z) / TILE_SIZE) + 1):
+                    x0, z0 = g.min_x + tcx * TILE_SIZE, g.min_z + trz * TILE_SIZE
+                    out_.append(((tcx, trz), Bounds(x0, x0 + TILE_SIZE, z0, z0 + TILE_SIZE)))
+            return out_
+
+        for dkey, ls in detail_mod.lines_by_tile(dd.lines, tile_rects).items():
+            bucket(dkey)["lines"].extend(ls)
+        for dkey, rec in dt.items():
+            s = detail_stats[dkey]
+            s["part"] = len(rec["parts"])
+            for ob in rec["objects"]:
+                s[f"object:{ob.kind}"] += 1
+            for li in rec["lines"]:
+                s[f"line:{li.kind}:length-m"] += int(sum(math.dist(a, b2) for a, b2 in zip(li.points, li.points[1:])))
+            for zo in rec["zones"]:
+                s[f"zone:{zo.kind}"] += 1
+            for sg in rec["signs"]:
+                s[f"sign:{sg.category}"] += 1
+        for ckey, ch in w.chunks.items():
+            tkey = tile_of(*ckey)
+            if tkey in detail_stats:
+                detail_stats[tkey]["building"] += len(ch.buildings)
     infra_bytes = 0
+    detail_bytes = 0
     tile_rows = []
     tile_overhead: Counter[int] = Counter()
     for (tc, tr), t in sorted(tiles.items(), key=lambda kv: (kv[0][1], kv[0][0])):
@@ -145,6 +196,11 @@ def write_world_v2(w: World, out: Path, source: dict[str, Any] | None = None, na
             blob = infra.encode_infra((tc, tr), decks, infra_ways.get((tc, tr), []), infra_spots.get((tc, tr), []))
             (d / INFRA_FILE).write_bytes(blob)
             infra_bytes += len(blob)
+        if w.detail is not None:
+            rec = dt.get((tc, tr), {"buildings": [], "parts": [], "objects": [], "lines": [], "zones": [], "signs": []})
+            blob = detail_mod.encode_detail((tc, tr), rec["buildings"], rec["parts"], rec["objects"], rec["lines"], rec["zones"], rec["signs"])
+            (d / DETAIL_FILE).write_bytes(blob)
+            detail_bytes += len(blob)
         min_x = g.min_x + tc * TILE_SIZE
         min_z = g.min_z + tr * TILE_SIZE
         rings_here = sorted({c[4] for c in t["chunks"]}) or [w.max_ring]
@@ -201,14 +257,19 @@ def write_world_v2(w: World, out: Path, source: dict[str, Any] | None = None, na
         "tiles": tile_rows,
         "landmarks": w.landmarks,
         **({"sea": w.sea} if w.sea else {}),
-        **({"minor": infra.MINOR, "infra": {"file": INFRA_FILE, "deckStep": infra.STEP, "note": "format 2.1: road heights (estimated), waterways, street spots; world-format.md 3.7"}} if w.infra else {}),
+        **({"minor": detail_mod.MINOR if w.detail is not None else infra.MINOR, "infra": {"file": INFRA_FILE, "deckStep": infra.STEP, "note": "format 2.1: road heights (estimated), waterways, street spots; world-format.md 3.7"}} if w.infra else {}),
+        **({"detail": {"file": DETAIL_FILE, "categories": "assets/city/sign_categories.json", "note": "format 2.2: building colours, materials and parts, street objects, barriers, zones, sign categories; world-format.md 3.8"}} if w.detail is not None else {}),
     }
     text = json.dumps(index, separators=(",", ":"), ensure_ascii=False)
     (out / "world.json").write_text(text)
     (out / "ATTRIBUTION.md").write_text(_attribution(source or {}, w.data_date))
+    if w.detail is not None:
+        cat_keys = {c.id: c.key for c in detail_mod.load_categories().items}
+        per_tile = {k: Counter({(f"sign:{cat_keys[int(x.split(':')[1])]}" if x.startswith("sign:") and x != "sign:public-name" else x): v for x, v in c.items()}) for k, c in detail_stats.items()}
+        (out / "DETAIL.md").write_text(detail_mod.coverage_markdown(w.detail.stats, per_tile, f"OSM data {w.data_date} (© OpenStreetMap contributors, ODbL 1.0). Generated by `tools/geo` with the world; `docs/osm-detail.md` explains it."))
     total = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
     return {"total": total, "chunk_bytes_by_ring": dict(sorted(ring_bytes.items())), "tile_files_by_first_ring": dict(sorted(tile_overhead.items())),
-            "world_json": len(text.encode()), "tiles": len(tile_rows), "infra_bytes": infra_bytes, "files": sum(1 for f in out.rglob("*") if f.is_file())}
+            "world_json": len(text.encode()), "tiles": len(tile_rows), "infra_bytes": infra_bytes, "detail_bytes": detail_bytes, "files": sum(1 for f in out.rglob("*") if f.is_file())}
 
 
 def write_world_v1(w: World, out: Path) -> dict[str, int]:

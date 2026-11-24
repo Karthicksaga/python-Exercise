@@ -13,7 +13,8 @@ Rules (world-format.md §3.9, technical-decisions G-221…G-223):
    it is a conflicting outline and dropped.
 2. Sanity: area >= 12 m² (the OSM rule), Google confidence >= 0.75 (also for Google footprints
    that reach us through Overture), centre not in water, not on a carriageway, not under a
-   modelled landmark, inside the built world.
+   modelled landmark, inside the built world, not holding a mapped OSM street object (a pole,
+   tower, toilets, post box… from detail.bin: OSM says something else stands there).
 3. Between external sources: footprints overlapping each other by >= `DUP_MIN_OVERLAP` (30 %) of the
    smaller one are the same building; the one kept has a height first, then the higher
    confidence, then the source order Overture, Google, Microsoft, then the lower source index.
@@ -124,6 +125,9 @@ class Masks:
     roads: list[shapely.Geometry] = field(default_factory=list)
     landmarks: list[shapely.Geometry] = field(default_factory=list)
     world: shapely.Geometry | None = None
+    # Mapped OSM street objects (toilets, poles, towers, post boxes…, from detail.bin): OSM says
+    # something else stands there, so a footprint holding one is not added (G-222).
+    objects: list[shapely.Geometry] = field(default_factory=list)
 
 
 @dataclass
@@ -286,6 +290,13 @@ def fuse_footprints(osm: OsmSide, ext: Footprints, masks: Masks, ovt_osm: Footpr
     drop(_inside_any(centres, masks.landmarks), "under a modelled landmark")
     drop(_inside_any(centres, masks.water), "in water")
     drop(_inside_any(centres, masks.roads), "on a carriageway")
+    if masks.objects and alive.any():
+        holds = np.zeros(n, bool)
+        live_idx = np.nonzero(alive)[0]
+        t_obj = shapely.STRtree(geoms[live_idx])
+        pt_i, fp_i = t_obj.query(np.array(masks.objects, dtype=object), predicate="within")
+        holds[live_idx[fp_i]] = True
+        drop(holds, "holds a mapped OSM street object")
 
     # 4. Same building in several external sources: keep one.
     live = np.nonzero(alive)[0]

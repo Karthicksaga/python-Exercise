@@ -37,7 +37,8 @@ def _masks() -> Masks:
     m = FIX["masks"]
     return Masks(water=[shapely.Polygon(p) for p in m["water"]],
                  roads=[shapely.buffer(shapely.LineString(r["line"]), r["width"] / 2, cap_style="flat") for r in m["roads"]],
-                 landmarks=[shapely.Polygon(p) for p in m["landmarks"]], world=shapely.Polygon(m["world"]))
+                 landmarks=[shapely.Polygon(p) for p in m["landmarks"]], world=shapely.Polygon(m["world"]),
+                 objects=[shapely.Point(p) for p in m["objects"]])
 
 
 def test_every_fixture_footprint_gets_the_expected_outcome() -> None:

@@ -57,6 +57,11 @@ const COVER_FARMLAND := 13
 const COVER_SPORT := 14
 const COVER_CEMETERY := 15
 const COVER_BARE := 16
+## Zones from OSM detail (G-191): running track (clay), playground and hard courts (rubber),
+## allotments (tilled soil).
+const COVER_TRACK := 17
+const COVER_PLAYGROUND := 18
+const COVER_ALLOTMENT := 19
 ## The shader's noise repeats every NOISE_PERIOD repeats; UVs count from a multiple of it.
 const NOISE_PERIOD := 16.0
 
@@ -97,6 +102,18 @@ func ribbon(points: PackedVector2Array, width: float, y: float, uv_scale: float,
 			rim.append(_v(p + Vector2(cos(angle), sin(angle)) * half, yk, uv_scale))
 		for s in sides:
 			mesh.triangle(centre, rim[(s + 1) % sides], rim[s])
+
+
+## One painted strip a-b (world metres) as a single quad, flat at y.
+func strip(a: Vector2, b: Vector2, width: float, y: float, layer: int, uv_scale: float = 3.0) -> void:
+	_layer(layer)
+	var length := a.distance_to(b)
+	if length < 0.01:
+		return
+	var o := Vector2(-(b.y - a.y), b.x - a.x) / length * (width / 2.0)
+	var la := a - origin
+	var lb := b - origin
+	mesh.quad(_v(la + o, y, uv_scale), _v(lb + o, y, uv_scale), _v(lb - o, y, uv_scale), _v(la - o, y, uv_scale))
 
 
 func _v(p: Vector2, y: float, uv_scale: float) -> int:

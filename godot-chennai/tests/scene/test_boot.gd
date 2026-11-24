@@ -42,10 +42,10 @@ func test_loads_then_title_then_play() -> bool:
 	await wait_frames(2)
 	assert_contains(main.hud.text(), "FPS", "HUD shows FPS")
 	# The game reads the regional world (format 2, G-56) when it is installed: 41,188 squares in
-	# the tile tables plus 2,699 that hold only buildings added by fusion (format 2.3, G-221),
+	# the tile tables plus 2,697 that hold only buildings added by fusion (format 2.3, G-221),
 	# and the road pieces of the tiles read so far.
 	assert_contains(main.hud.text(), "%s chunks" % Main._thousands(main.source.chunk_count()), "HUD shows what the reader loaded")
-	assert_true(main.source is RegionalWorldSource and main.source.chunk_count() == 41188 + 2699, "streams the regional world")
+	assert_true(main.source is RegionalWorldSource and main.source.chunk_count() == 41188 + 2697, "streams the regional world")
 	assert_true(main.rig != null and main.rig.controls.visible and main.world.focus_node == main.rig.body, "the player is in the city and streaming follows them")
 	var missions := main.find_child("MissionsLayer", false, false) as MissionsLayer
 	assert_true(missions != null and missions.active and missions.hud.visible, "the missions run in play (G-130)")

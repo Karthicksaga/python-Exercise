@@ -22,7 +22,7 @@ func test_world_json_and_grid() -> bool:
 	assert_eq(src.get_grid_origin(), Vector2(-28365, -57341), "grid from world.json")
 	assert_eq(src.tiles.size(), 47, "47 tiles")
 	# Format 2.3 (G-221) adds the squares that hold only buildings from other datasets.
-	assert_eq(src.chunk_count(), 41188 + 2699, "every square in the tile tables plus the fusion-only squares")
+	assert_eq(src.chunk_count(), 41188 + 2697, "every square in the tile tables plus the fusion-only squares")
 	assert_eq(src.legacy, Vector2i(107, 225), "today's chunk numbering offset")
 	assert_eq(src.landmarks.size(), 4, "the four landmarks")
 	assert_true(src.sea != null and src.sea.coast.size() > 10, "the sea")

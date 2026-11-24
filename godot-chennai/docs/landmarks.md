@@ -25,7 +25,7 @@ texture only if it is CC0 or public domain; none is used as a texture today. No 
    reference photos with author and licence, the kit and its parameters, triangle budget, LOD
    distances, collision plan, what is estimated.
 3. **Model** (G-183, G-184): `tools/blender/landmarks/build_all.sh` runs each kit script
-   (`gopuram_complex`, `colonial_clocktower`, `station`, `tower`, `lighthouse`) in Blender 5.2 on every spec
+   (`gopuram_complex`, `colonial_clocktower`, `station`, `tower`, `lighthouse`, `mall`) in Blender 5.2 on every spec
    naming it, writes `<id>.glb` (`LOD0`, `LOD1`, `LOD2` meshes, vertex-coloured, plus `COL_*`
    boxes) and `build.json` (hashes of the spec and the GLB, triangle counts), builds everything
    twice and fails if the bytes differ.
@@ -191,6 +191,13 @@ references.
 | File (Wikimedia Commons) | Author | Licence | Use |
 |---|---|---|---|
 | [Chennai Lighthouse.jpg](https://commons.wikimedia.org/wiki/File:Chennai_Lighthouse.jpg) | see file page | see file page (listed, not downloaded) | modelling reference (not seen: the host rate-limited downloads); proportions from the published description |
+
+### Shopping complex, Royapettah (வணிக வளாகம்), generic
+
+- Spec: `assets/landmarks/generic-mall-royapettah/spec.json`; kit `mall`; OSM way 154030370 (role model), from the godot-areas shortlist (`kind: mall`).
+- Names: the generic category only, "வணிக வளாகம் / SHOPPING COMPLEX" (TD-18). The spec sets `osm.withhold_names`, so the fill tool drops the way's name, brand and Wikidata/Wikipedia tags; the validator rejects them for any mall.
+- Height: 29.6 m, estimated (5 storeys of 5 m from the shortlist's estimate, plus a 4 m atrium roof light); OSM has no height or levels.
+- References: none listed: Commons photos of the building carry its business name in their titles. The kit is generic (podium, glass atrium front with mullions, canopy, rooftop parking, plaza strip).
 
 ## Research sources and their limits
 

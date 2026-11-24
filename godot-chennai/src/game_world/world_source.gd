@@ -87,3 +87,8 @@ func get_landmarks() -> Array[Landmark]:
 func get_sea() -> WorldSea:
 	var index := index_at(get_bounds().get_center())
 	return index.sea if index != null else null
+
+
+## Format 2.2 detail (`detail.bin`, G-190) of the tile holding a cell, or null when the world has none.
+func detail_for(_cell: Vector2i) -> DetailTile:
+	return null

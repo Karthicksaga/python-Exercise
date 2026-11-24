@@ -1,0 +1,711 @@
+{
+ "format": 1,
+ "note": "Sign categories (TD-18: a sign never carries a business name or brand; only these words). Append only: an id never changes meaning. Tamil on top, English below. Read by tools/geo (detail.py) and the game (SignCategories); the sign atlas is baked from it (tools/bake_city_textures.gd). Rules: key=value, key=* matches any value; the first matching rule wins, tags looked at in the order shop, religion (only on a place of worship), amenity, healthcare, office, tourism, railway, public_transport, building.",
+ "categories": [
+  {
+   "id": 1,
+   "key": "grocery",
+   "english": "GROCERY",
+   "tamil": "மளிகை",
+   "board": "#f6c923",
+   "ink": "#b3161b",
+   "trim": "#1d5fa8",
+   "public": false,
+   "tags": [
+    "shop=convenience",
+    "shop=grocery",
+    "shop=general",
+    "shop=kiosk",
+    "shop=variety_store",
+    "shop=deli"
+   ]
+  },
+  {
+   "id": 2,
+   "key": "supermarket",
+   "english": "SUPERMARKET",
+   "tamil": "பல்பொருள் அங்காடி",
+   "board": "#1f7a3a",
+   "ink": "#fff7d6",
+   "trim": "#f2c230",
+   "public": false,
+   "tags": [
+    "shop=supermarket",
+    "shop=department_store",
+    "shop=mall",
+    "shop=wholesale",
+    "building=supermarket"
+   ]
+  },
+  {
+   "id": 3,
+   "key": "bakery",
+   "english": "BAKERY",
+   "tamil": "பேக்கரி",
+   "board": "#c8302c",
+   "ink": "#fff2a8",
+   "trim": "#ffffff",
+   "public": false,
+   "tags": [
+    "shop=bakery",
+    "shop=pastry"
+   ]
+  },
+  {
+   "id": 4,
+   "key": "sweets",
+   "english": "SWEETS",
+   "tamil": "இனிப்பகம்",
+   "board": "#7a2f8f",
+   "ink": "#ffe36b",
+   "trim": "#ffe36b",
+   "public": false,
+   "tags": [
+    "shop=confectionery",
+    "shop=sweets",
+    "shop=chocolate"
+   ]
+  },
+  {
+   "id": 5,
+   "key": "tea",
+   "english": "TEA SHOP",
+   "tamil": "தேநீர் கடை",
+   "board": "#e8742a",
+   "ink": "#ffffff",
+   "trim": "#5a2a12",
+   "public": false,
+   "tags": [
+    "shop=tea"
+   ]
+  },
+  {
+   "id": 6,
+   "key": "coffee",
+   "english": "COFFEE SHOP",
+   "tamil": "காபி கடை",
+   "board": "#5a3a22",
+   "ink": "#ffe9c4",
+   "trim": "#e8742a",
+   "public": false,
+   "tags": [
+    "amenity=cafe",
+    "shop=coffee"
+   ]
+  },
+  {
+   "id": 7,
+   "key": "restaurant",
+   "english": "RESTAURANT",
+   "tamil": "உணவகம்",
+   "board": "#1f7a3a",
+   "ink": "#fff7d6",
+   "trim": "#f2c230",
+   "public": false,
+   "tags": [
+    "amenity=restaurant",
+    "amenity=food_court",
+    "amenity=canteen"
+   ]
+  },
+  {
+   "id": 8,
+   "key": "snacks",
+   "english": "SNACKS",
+   "tamil": "சிற்றுண்டி",
+   "board": "#d9a300",
+   "ink": "#3b1a08",
+   "trim": "#c8302c",
+   "public": false,
+   "tags": [
+    "amenity=fast_food",
+    "amenity=ice_cream",
+    "shop=ice_cream"
+   ]
+  },
+  {
+   "id": 9,
+   "key": "vegetables",
+   "english": "VEGETABLES",
+   "tamil": "காய்கறி",
+   "board": "#2e8b3a",
+   "ink": "#ffffff",
+   "trim": "#f6c923",
+   "public": false,
+   "tags": [
+    "shop=greengrocer",
+    "shop=farm",
+    "shop=fruit",
+    "shop=vegetables"
+   ]
+  },
+  {
+   "id": 10,
+   "key": "meat",
+   "english": "MEAT",
+   "tamil": "இறைச்சி",
+   "board": "#a3211f",
+   "ink": "#ffffff",
+   "trim": "#ffffff",
+   "public": false,
+   "tags": [
+    "shop=butcher"
+   ]
+  },
+  {
+   "id": 11,
+   "key": "fish",
+   "english": "FISH",
+   "tamil": "மீன் கடை",
+   "board": "#18749c",
+   "ink": "#ffffff",
+   "trim": "#0b3d5c",
+   "public": false,
+   "tags": [
+    "shop=seafood",
+    "shop=fishmonger"
+   ]
+  },
+  {
+   "id": 12,
+   "key": "flowers",
+   "english": "FLOWERS",
+   "tamil": "பூக்கடை",
+   "board": "#f4e6c8",
+   "ink": "#c2185b",
+   "trim": "#2e7d32",
+   "public": false,
+   "tags": [
+    "shop=florist"
+   ]
+  },
+  {
+   "id": 13,
+   "key": "pharmacy",
+   "english": "PHARMACY",
+   "tamil": "மருந்தகம்",
+   "board": "#ffffff",
+   "ink": "#0f7a3c",
+   "trim": "#0f7a3c",
+   "public": false,
+   "tags": [
+    "amenity=pharmacy",
+    "shop=chemist",
+    "shop=medical_supply"
+   ]
+  },
+  {
+   "id": 14,
+   "key": "clinic",
+   "english": "CLINIC",
+   "tamil": "மருத்துவ நிலையம்",
+   "board": "#ffffff",
+   "ink": "#0b4c8c",
+   "trim": "#0f7a3c",
+   "public": false,
+   "tags": [
+    "amenity=clinic",
+    "amenity=doctors",
+    "healthcare=clinic",
+    "healthcare=doctor"
+   ]
+  },
+  {
+   "id": 15,
+   "key": "dental",
+   "english": "DENTAL",
+   "tamil": "பல் மருத்துவம்",
+   "board": "#e8f4f8",
+   "ink": "#0b4c8c",
+   "trim": "#18a0c8",
+   "public": false,
+   "tags": [
+    "amenity=dentist",
+    "healthcare=dentist"
+   ]
+  },
+  {
+   "id": 16,
+   "key": "hospital",
+   "english": "HOSPITAL",
+   "tamil": "மருத்துவமனை",
+   "board": "#ffffff",
+   "ink": "#b3161b",
+   "trim": "#b3161b",
+   "public": true,
+   "tags": [
+    "amenity=hospital",
+    "healthcare=hospital",
+    "building=hospital"
+   ]
+  },
+  {
+   "id": 17,
+   "key": "bank",
+   "english": "BANK",
+   "tamil": "வங்கி",
+   "board": "#1d4fa0",
+   "ink": "#ffffff",
+   "trim": "#f2c230",
+   "public": false,
+   "tags": [
+    "amenity=bank",
+    "office=financial",
+    "office=insurance"
+   ]
+  },
+  {
+   "id": 18,
+   "key": "atm",
+   "english": "ATM",
+   "tamil": "ஏடிஎம்",
+   "board": "#0b4c8c",
+   "ink": "#ffffff",
+   "trim": "#18a0c8",
+   "public": false,
+   "tags": [
+    "amenity=atm"
+   ]
+  },
+  {
+   "id": 19,
+   "key": "textiles",
+   "english": "TEXTILES",
+   "tamil": "ஜவுளி",
+   "board": "#1d4fa0",
+   "ink": "#ffffff",
+   "trim": "#e83f6f",
+   "public": false,
+   "tags": [
+    "shop=clothes",
+    "shop=fabric",
+    "shop=boutique",
+    "shop=textile",
+    "shop=fashion",
+    "shop=bag"
+   ]
+  },
+  {
+   "id": 20,
+   "key": "tailor",
+   "english": "TAILOR",
+   "tamil": "தையலகம்",
+   "board": "#f4e6c8",
+   "ink": "#7a2f2f",
+   "trim": "#7a2f2f",
+   "public": false,
+   "tags": [
+    "shop=tailor"
+   ]
+  },
+  {
+   "id": 21,
+   "key": "jewellery",
+   "english": "JEWELLERY",
+   "tamil": "நகைக்கடை",
+   "board": "#7a1f2b",
+   "ink": "#ffd54a",
+   "trim": "#ffd54a",
+   "public": false,
+   "tags": [
+    "shop=jewelry",
+    "shop=jewellery",
+    "shop=watches"
+   ]
+  },
+  {
+   "id": 22,
+   "key": "footwear",
+   "english": "FOOTWEAR",
+   "tamil": "காலணிகள்",
+   "board": "#1b1b1b",
+   "ink": "#ffd54a",
+   "trim": "#ffd54a",
+   "public": false,
+   "tags": [
+    "shop=shoes"
+   ]
+  },
+  {
+   "id": 23,
+   "key": "electronics",
+   "english": "ELECTRONICS",
+   "tamil": "மின்னணுப் பொருட்கள்",
+   "board": "#0b3d5c",
+   "ink": "#ffffff",
+   "trim": "#18a0c8",
+   "public": false,
+   "tags": [
+    "shop=electronics",
+    "shop=appliance",
+    "shop=computer",
+    "shop=hifi",
+    "shop=electrical"
+   ]
+  },
+  {
+   "id": 24,
+   "key": "mobile",
+   "english": "MOBILE",
+   "tamil": "கைபேசி",
+   "board": "#18a0c8",
+   "ink": "#ffffff",
+   "trim": "#0b3d5c",
+   "public": false,
+   "tags": [
+    "shop=mobile_phone",
+    "shop=telecommunication"
+   ]
+  },
+  {
+   "id": 25,
+   "key": "hardware",
+   "english": "HARDWARE",
+   "tamil": "வன்பொருள்",
+   "board": "#c8302c",
+   "ink": "#ffffff",
+   "trim": "#1b1b1b",
+   "public": false,
+   "tags": [
+    "shop=hardware",
+    "shop=doityourself",
+    "shop=paint",
+    "shop=trade",
+    "shop=tiles",
+    "shop=building_materials"
+   ]
+  },
+  {
+   "id": 26,
+   "key": "furniture",
+   "english": "FURNITURE",
+   "tamil": "மரச்சாமான்கள்",
+   "board": "#6b4423",
+   "ink": "#ffe9c4",
+   "trim": "#e8c27a",
+   "public": false,
+   "tags": [
+    "shop=furniture",
+    "shop=interior_decoration",
+    "shop=carpet",
+    "shop=bed",
+    "shop=kitchen"
+   ]
+  },
+  {
+   "id": 27,
+   "key": "stationery",
+   "english": "STATIONERY",
+   "tamil": "எழுதுபொருள்",
+   "board": "#f6c923",
+   "ink": "#1d4fa0",
+   "trim": "#1d4fa0",
+   "public": false,
+   "tags": [
+    "shop=stationery",
+    "shop=copyshop",
+    "shop=gift",
+    "shop=toys",
+    "shop=printing"
+   ]
+  },
+  {
+   "id": 28,
+   "key": "books",
+   "english": "BOOKS",
+   "tamil": "புத்தகங்கள்",
+   "board": "#f4e6c8",
+   "ink": "#7a2f2f",
+   "trim": "#2e7d32",
+   "public": false,
+   "tags": [
+    "shop=books"
+   ]
+  },
+  {
+   "id": 29,
+   "key": "salon",
+   "english": "SALON",
+   "tamil": "அழகு நிலையம்",
+   "board": "#e83f6f",
+   "ink": "#ffffff",
+   "trim": "#ffffff",
+   "public": false,
+   "tags": [
+    "shop=hairdresser",
+    "shop=beauty",
+    "shop=cosmetics",
+    "shop=massage"
+   ]
+  },
+  {
+   "id": 30,
+   "key": "laundry",
+   "english": "LAUNDRY",
+   "tamil": "சலவை",
+   "board": "#18a0c8",
+   "ink": "#ffffff",
+   "trim": "#ffffff",
+   "public": false,
+   "tags": [
+    "shop=laundry",
+    "shop=dry_cleaning"
+   ]
+  },
+  {
+   "id": 31,
+   "key": "petrol",
+   "english": "PETROL",
+   "tamil": "பெட்ரோல் நிலையம்",
+   "board": "#f6c923",
+   "ink": "#b3161b",
+   "trim": "#b3161b",
+   "public": false,
+   "tags": [
+    "amenity=fuel"
+   ]
+  },
+  {
+   "id": 32,
+   "key": "repair",
+   "english": "VEHICLE REPAIR",
+   "tamil": "வாகன பழுது",
+   "board": "#1b1b1b",
+   "ink": "#f6c923",
+   "trim": "#f6c923",
+   "public": false,
+   "tags": [
+    "shop=car_repair",
+    "shop=motorcycle",
+    "shop=tyres",
+    "shop=car",
+    "shop=car_parts",
+    "shop=bicycle",
+    "amenity=car_wash"
+   ]
+  },
+  {
+   "id": 33,
+   "key": "bus_stand",
+   "english": "BUS STAND",
+   "tamil": "பேருந்து நிலையம்",
+   "board": "#1d4fa0",
+   "ink": "#ffffff",
+   "trim": "#f2c230",
+   "public": true,
+   "tags": [
+    "amenity=bus_station"
+   ]
+  },
+  {
+   "id": 34,
+   "key": "railway",
+   "english": "RAILWAY STATION",
+   "tamil": "ரயில் நிலையம்",
+   "board": "#b3161b",
+   "ink": "#ffffff",
+   "trim": "#ffffff",
+   "public": true,
+   "tags": [
+    "railway=station",
+    "public_transport=station",
+    "building=train_station"
+   ]
+  },
+  {
+   "id": 35,
+   "key": "school",
+   "english": "SCHOOL",
+   "tamil": "பள்ளி",
+   "board": "#f6c923",
+   "ink": "#1d4fa0",
+   "trim": "#1d4fa0",
+   "public": true,
+   "tags": [
+    "amenity=school",
+    "amenity=kindergarten",
+    "building=school",
+    "building=kindergarten"
+   ]
+  },
+  {
+   "id": 36,
+   "key": "college",
+   "english": "COLLEGE",
+   "tamil": "கல்லூரி",
+   "board": "#1d4fa0",
+   "ink": "#ffffff",
+   "trim": "#f6c923",
+   "public": true,
+   "tags": [
+    "amenity=college",
+    "amenity=university",
+    "building=college",
+    "building=university"
+   ]
+  },
+  {
+   "id": 37,
+   "key": "temple",
+   "english": "TEMPLE",
+   "tamil": "கோயில்",
+   "board": "#c8571a",
+   "ink": "#fff2c4",
+   "trim": "#f6c923",
+   "public": true,
+   "tags": [
+    "religion=hindu",
+    "religion=jain",
+    "religion=buddhist",
+    "amenity=place_of_worship",
+    "building=temple",
+    "building=hindu_temple"
+   ]
+  },
+  {
+   "id": 38,
+   "key": "church",
+   "english": "CHURCH",
+   "tamil": "தேவாலயம்",
+   "board": "#ffffff",
+   "ink": "#1d4fa0",
+   "trim": "#1d4fa0",
+   "public": true,
+   "tags": [
+    "religion=christian",
+    "building=church",
+    "building=cathedral",
+    "building=chapel"
+   ]
+  },
+  {
+   "id": 39,
+   "key": "mosque",
+   "english": "MOSQUE",
+   "tamil": "பள்ளிவாசல்",
+   "board": "#1f7a3a",
+   "ink": "#ffffff",
+   "trim": "#ffffff",
+   "public": true,
+   "tags": [
+    "religion=muslim",
+    "building=mosque"
+   ]
+  },
+  {
+   "id": 40,
+   "key": "police",
+   "english": "POLICE",
+   "tamil": "காவல் நிலையம்",
+   "board": "#1d4fa0",
+   "ink": "#ffffff",
+   "trim": "#ffffff",
+   "public": true,
+   "tags": [
+    "amenity=police"
+   ]
+  },
+  {
+   "id": 41,
+   "key": "post",
+   "english": "POST OFFICE",
+   "tamil": "அஞ்சல் அலுவலகம்",
+   "board": "#b3161b",
+   "ink": "#fff2a8",
+   "trim": "#fff2a8",
+   "public": true,
+   "tags": [
+    "amenity=post_office"
+   ]
+  },
+  {
+   "id": 42,
+   "key": "library",
+   "english": "LIBRARY",
+   "tamil": "நூலகம்",
+   "board": "#4e342e",
+   "ink": "#ffe9c4",
+   "trim": "#e8c27a",
+   "public": true,
+   "tags": [
+    "amenity=library"
+   ]
+  },
+  {
+   "id": 43,
+   "key": "cinema",
+   "english": "CINEMA",
+   "tamil": "திரையரங்கம்",
+   "board": "#4a148c",
+   "ink": "#ffe36b",
+   "trim": "#ffe36b",
+   "public": false,
+   "tags": [
+    "amenity=cinema",
+    "amenity=theatre"
+   ]
+  },
+  {
+   "id": 44,
+   "key": "lodge",
+   "english": "LODGE",
+   "tamil": "தங்கும் விடுதி",
+   "board": "#0b3d5c",
+   "ink": "#ffffff",
+   "trim": "#f6c923",
+   "public": false,
+   "tags": [
+    "tourism=hotel",
+    "tourism=guest_house",
+    "tourism=hostel",
+    "tourism=motel",
+    "tourism=apartment",
+    "building=hotel"
+   ]
+  },
+  {
+   "id": 45,
+   "key": "hall",
+   "english": "MARRIAGE HALL",
+   "tamil": "திருமண மண்டபம்",
+   "board": "#7a1f2b",
+   "ink": "#ffe9a8",
+   "trim": "#ffd54a",
+   "public": false,
+   "tags": [
+    "amenity=community_centre",
+    "amenity=events_venue",
+    "amenity=social_facility"
+   ]
+  },
+  {
+   "id": 46,
+   "key": "office",
+   "english": "OFFICE",
+   "tamil": "அலுவலகம்",
+   "board": "#37474f",
+   "ink": "#ffffff",
+   "trim": "#b0bec5",
+   "public": false,
+   "tags": [
+    "office=*",
+    "amenity=coworking_space",
+    "amenity=courthouse",
+    "amenity=townhall"
+   ]
+  },
+  {
+   "id": 47,
+   "key": "shop",
+   "english": "SHOP",
+   "tamil": "கடை",
+   "board": "#8d6e63",
+   "ink": "#ffffff",
+   "trim": "#ffffff",
+   "public": false,
+   "tags": [
+    "shop=*"
+   ]
+  }
+ ]
+}

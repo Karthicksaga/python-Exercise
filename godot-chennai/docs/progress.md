@@ -226,6 +226,31 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Zebras (mapped and at signal junctions), speed breakers with colliders, `RoadBumps`, medians (G-153) | Done | `test_infra.gd` (profile, crossing query on a mapped hump), screenshots |
 | Lowered roads and underpasses below ground, Kathipara hero model | Not done (see the handoff) | |
 
+## OSM detail (branch `agent/godot-osmdetail`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Format 2.2 `detail.bin`; 2.0 and 2.1 files byte for byte (G-190) | Done | `tools/geo/tests/test_detail.py` (tags to categories, colours, parts and hosts, objects, lines, zones, signs, codec round trip, committed world); `diff -r` of a rebuild |
+| Building colour, material, roof kinds (flat, gabled, hipped, pyramidal, skillion, dome), parts, `min_height` (G-191) | Done; most of Chennai's buildings map none of it, so estimated | `tests/unit/test_osm_detail.gd`; screenshots |
+| Signs by category, Tamil above English, one atlas, never a name (G-192) | Done (words only; no name plates) | table, font coverage and baked ink tests; screenshot of a shopping street (T. Nagar area) |
+| Street objects, mapped lamps, bus-stop poles, barriers, tree rows, platforms, pitches, playgrounds, tracks, pools (G-193) | Done | `test_osm_detail.gd` (real chunks), screenshots (bus stop, station platform, football pitches, walls and fences) |
+| Area palette loader and stub file (G-194) | Done; waiting for the godot-areas data | `test_osm_detail.gd` |
+| Coverage report | Done: `world/DETAIL.md`, `docs/osm-detail.md` | generated with the world |
+| Measured cost (G-195): no new draw calls, +0.6 to 1.0 % primitives, worst build +10 to 16 % | Done | `tests/tools/city_shot.gd` before and after |
+| Name plates for public places; steps onto platforms; swimming; fence and wall textures | Not done | |
+
+
+## Area atlas (branch `agent/godot-areas`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| `data/areas/areas.json`: 31 areas with character, storeys, roofs, wall palettes, materials, streets, trees, street life, signage; claims with sources or marked (G-200) | Done (estimates marked; Tamil needs native review; no photos viewed) | `tools/geo/tests/test_areas_data.py` (schema, claim rules, weights, Tamil only from OSM, no brands) |
+| `landmarks_shortlist.json`: 100 landmarks, tiers A 18 / B 72 / C 10, incl. 16 generic malls (G-205), all found in the extract by name, Commons titles and licences (G-203) | Done | same tests; `test_area_lookup.py` for the lookup |
+| `palettes.json` derived from areas.json for building detail (G-202) | Done | staleness test |
+| Area boundaries and coverage table (G-201, G-204) | Done | `test_area_coverage.py`; world total equals `world/REPORT.md` |
+| `docs/areas.md` atlas | Done (generated) | read through; numbers from `coverage.json` |
+| Used by the building and landmark code | Not done (other agents) | |
+
+
+
 ## Controls redesign (G-170…G-179, branch `agent/godot-controls`, 24 Nov 2026)
 Built from the owner-approved proposal `suggestions/2026-11-24-godot-controls-redesign.md` and its
 interactive prototype (the Proposed on-foot layout and scheme A "wheel").
@@ -252,6 +277,7 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Camera drift over a seeded spot of the live city, handing the city back on CONTINUE (G-164) | Done | `test_seed_picks_the_same_spot`, `test_camera_drift_is_slow_and_bounded`, `test_camera_drifts_over_the_player_and_holds_still_with_reduced_motion`, `test_tour_streams_the_spot_and_continue_hands_the_city_back` |
 | Rain layers, lightning in a stormy title (G-165) | Done (rings, mist bands, thunder left out) | `test_rain_layers_one_draw_call_each_and_none_when_dry`, `test_lightning_only_in_a_storm_and_never_with_reduced_motion` |
 | Seen on a phone | Not done | — |
+
 
 ## Landmarks: ranking, specs, Blender kits, placement (branch `agent/godot-landmarks`, 24 Nov 2026)
 | Item | State | How it was tested |

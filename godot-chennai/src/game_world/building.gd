@@ -35,3 +35,20 @@ var confidence: float = -1.0
 
 func color() -> Color:
 	return Color.hex((color_hex << 8) | 0xff)
+
+
+## Format 2.2 (`detail.bin`, G-190): what OSM maps beyond the chunk file, filled in by the chunk
+## builder from `DetailTile`. -1 / empty = not mapped (the renderer then estimates).
+var detail_roof: int = -1
+var detail_material: StringName = &""
+var detail_roof_material: StringName = &""
+## Sign category (`SignCategories`) of what the building holds, 0 = none mapped.
+var detail_category: int = 0
+## A `building:part` polygon (drawn from `min_height` up, no ground-floor shops).
+var is_part: bool = false
+## Wall colour was mapped (`building:colour`), else `color_hex` is the estimated palette colour.
+var wall_mapped: bool = false
+## Roof kind chosen by the renderer (`BuildingMeshes.assign_roof`), -1 = not chosen yet.
+var roof_kind: int = -1
+## A shop, amenity or office is mapped here (detail_category is not a public place).
+var detail_shop: bool = false

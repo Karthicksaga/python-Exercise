@@ -6,7 +6,7 @@
   {"name": "osm-c", "outline": [[200, 0], [220, 0], [220, 20], [200, 20]], "heightFrom": "levels", "height": 13.3},
   {"name": "osm-d", "outline": [[300, 0], [320, 0], [320, 20], [300, 20]], "heightFrom": "estimated", "height": 7.1}
  ],
- "masks": {"water": [[[1000, 0], [1100, 0], [1100, 100], [1000, 100]]], "roads": [{"line": [[0, 500], [400, 500]], "width": 10}], "landmarks": [[[2000, 0], [2060, 0], [2060, 60], [2000, 60]]], "world": [[-50, -50], [2950, -50], [2950, 950], [-50, 950]]},
+ "masks": {"water": [[[1000, 0], [1100, 0], [1100, 100], [1000, 100]]], "roads": [{"line": [[0, 500], [400, 500]], "width": 10}], "landmarks": [[[2000, 0], [2060, 0], [2060, 60], [2000, 60]]], "world": [[-50, -50], [2950, -50], [2950, 950], [-50, 950]], "objects": [[1500, 105]]},
  "external": [
   {"name": "same-as-osm-a", "source": "google", "confidence": 0.9, "outline": [[1, 0], [21, 0], [21, 20], [1, 20]], "expect": "same building as an OSM one"},
   {"name": "overture-height-on-osm-d", "source": "overture", "origin": "microsoft", "height": 15.0, "outline": [[300.5, 0], [320.5, 0], [320.5, 20], [300.5, 20]], "expect": "same building as an OSM one"},
@@ -28,6 +28,7 @@
   {"name": "overture-with-height-same-place", "source": "overture", "origin": "microsoft", "height": 9.0, "outline": [[800.3, 100.3], [810.3, 100.3], [810.3, 110.3], [800.3, 110.3]], "expect": "added"},
   {"name": "ms-with-height", "source": "microsoft", "height": 6.0, "outline": [[900, 100], [910, 100], [910, 110], [900, 110]], "expect": "added"},
   {"name": "neighbour-touching-ms", "source": "microsoft", "outline": [[909, 100], [919, 100], [919, 110], [909, 110]], "expect": "added"},
+  {"name": "holds-a-mapped-power-tower", "source": "google", "confidence": 0.9, "outline": [[1495, 100], [1505, 100], [1505, 110], [1495, 110]], "expect": "holds a mapped OSM street object"},
   {"name": "neighbour-25pc-a", "source": "microsoft", "outline": [[1200, 100], [1210, 100], [1210, 110], [1200, 110]], "expect": "added"},
   {"name": "neighbour-25pc-b", "source": "microsoft", "outline": [[1207.5, 100], [1217.5, 100], [1217.5, 110], [1207.5, 110]], "expect": "added"}
  ]

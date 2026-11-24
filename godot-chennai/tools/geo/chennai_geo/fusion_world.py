@@ -35,6 +35,9 @@ from .util import round1
 FUSION_FILE = "fusion.bin"
 DATASET_MICROSOFT = "microsoft:mlbuildings"
 WATER_KINDS = {"water", "reservoir"}
+# Mapped OSM point objects that are not buildings (detail.bin kinds); gates are left out (they sit
+# on compound walls and building fronts).
+STREET_OBJECTS = {"bench", "bollard", "bus_platform", "drinking_water", "post_box", "power_pole", "power_tower", "street_lamp", "toilets", "waste_basket"}
 CARRIAGEWAY_KINDS = {"primary", "secondary", "tertiary", "residential", "service", "motorway", "raceway"}
 
 CREDITS = {
@@ -120,10 +123,20 @@ def load_world(world: Path, landmark_outlines: list[list[tuple[float, float]]] |
             lms.append(shapely.Point(float(lm["x"]), float(lm["z"])).buffer(float(lm["radius"])))
     for ring_pts in landmark_outlines or []:
         lms.append(shapely.Polygon(ring_pts))
+    objects: list[shapely.Geometry] = []
+    if "detail" in wj:
+        from . import detail as detail_mod  # noqa: PLC0415
+
+        for tc, tr in tiles:
+            path = world / "tiles" / f"{tc}_{tr}" / str(wj["detail"].get("file", "detail.bin"))
+            if path.exists():
+                for o in detail_mod.decode_detail(path.read_bytes()).objects:
+                    if o.mapped and o.kind in STREET_OBJECTS:
+                        objects.append(shapely.Point(o.x, o.z))
     boundary = shapely.Polygon([(float(x), float(z)) for x, z in wj["boundary"]])
     if not boundary.is_valid:
         boundary = shapely.make_valid(boundary)
-    masks = Masks(water=water + aprons, roads=roads, landmarks=lms, world=boundary)
+    masks = Masks(water=water + aprons, roads=roads, landmarks=lms, world=boundary, objects=objects)
     osm = OsmSide(np.array(geoms, dtype=object), hf, np.array(hs))
     return WorldInputs(wj, grid, proj, tiles, cell_ring, osm, ids, cells, masks, ring_counts)
 

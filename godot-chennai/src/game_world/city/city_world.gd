@@ -84,6 +84,8 @@ func setup(world: WorldSource) -> String:
 			lo = lo.min(p)
 			hi = hi.max(p)
 		kit.sea_box = Rect2(lo, hi - lo)
+	kit.signs = SignCategories.shared()
+	kit.palettes = AreaPalettes.load_file()
 	if show_landmarks:
 		landmarks = await BackgroundTask.start(func() -> Array[LandmarkSpec]: return LandmarkSpec.load_all()).finish(get_tree())
 	kit.landmarks = landmarks

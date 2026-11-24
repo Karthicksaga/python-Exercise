@@ -42,7 +42,8 @@ the obvious next height source (G-224) and is listed as planned in the manifest.
 2. **Sanity:** area >= 12 m² (the OSM rule); Google confidence >= 0.75, also for Google footprints
    that reach us through Overture; the footprint's centre (point on surface) not in water or a
    reservoir, not on an airport apron, not on a carriageway (road centre line buffered by half its
-   width; footways and tracks excluded), not under a modelled landmark's footprint, inside the
+   width; footways and tracks excluded), not holding a mapped OSM street object (pole, tower,
+   toilets, post box, lamp… from detail.bin: 415 footprints), not under a modelled landmark's footprint, inside the
    world boundary.
 3. **Between external sources:** the same Google record in Overture and in Google's own file
    (same plus code) is taken once, from Overture. Footprints overlapping each other by
@@ -91,22 +92,22 @@ floors by a stable hash of its id; apartments (over 420 m²) three to five. 3.1 
 
 | Ring | OSM | Added: Overture | Google | Microsoft | After | Growth |
 |---|---|---|---|---|---|---|
-| 0 today's box | 107,098 | 34,359 | 47,633 | 4,505 | 193,595 | ×1.81 |
-| 1 the city | 268,840 | 288,867 | 409,338 | 15,662 | 982,707 | ×3.66 |
-| 2 suburbs, corridors | 13,998 | 295,334 | 135,829 | 4,479 | 449,640 | ×32.1 |
-| 3 rural edges | 1,347 | 144,192 | 9,735 | 37 | 155,311 | ×115 |
-| all | 391,283 | 762,752 | 602,535 | 24,683 | 1,781,253 | ×4.55 |
+| 0 today's box | 107,098 | 34,345 | 47,619 | 4,503 | 193,565 | ×1.81 |
+| 1 the city | 268,840 | 288,809 | 409,258 | 15,664 | 982,571 | ×3.65 |
+| 2 suburbs, corridors | 13,998 | 295,312 | 135,822 | 4,479 | 449,611 | ×32.1 |
+| 3 rural edges | 1,347 | 144,188 | 9,735 | 37 | 155,307 | ×115 |
+| all | 391,283 | 762,654 | 602,434 | 24,683 | 1,781,054 | ×4.55 |
 
 Overture footprints carry their origin too (Google or Microsoft). Heights: from OSM (height or
 levels) 8,697 before and after, from a dataset 17, estimated 99.5 % after (97.8 % before; the
-share grows because every added building is estimated). 2,699 squares that had no chunk record
+share grows because every added building is estimated). 2,697 squares that had no chunk record
 now hold only added buildings (listed in `world.json fusion.cells`, streamed like road-only
 squares).
 
 ## 5. Files and size (G-221)
 
 `tiles/<tc>_<tr>/fusion.bin` per tile ("COWF", world-format.md §3.9). A footprint within 10 cm
-of its oriented box (1,181,671 of 1,389,970) is stored as a box (7 bytes of geometry), the rest as
+of its oriented box (about 85 % of the 1,389,771) is stored as a box (7 bytes of geometry), the rest as
 polygons simplified by 10 cm; the extract row is a zigzag varint delta within the chunk. About
 16.8 bytes a building: **23.4 MB** for the 47 tiles (20.4 MB gzipped, which is roughly what it
 adds to the APK, whose files are compressed). The world folder grows from 37.0 MB to 62.3 MB (world.json from 119 KB to 150 KB, the
@@ -167,5 +168,5 @@ keeps its draw calls; one that had none gets the building layers any OSM chunk h
 - **Size:** 23.4 MB more world data. Fine for a sideloaded APK; a Play Store build would need asset
   packs or a ring limit (§5).
 - Overture's own conflation already dropped many Google footprints; we re-add those that pass our
-  rules (602,535 from Google's file), so where Overture chose Microsoft over Google we may choose
+  rules (602,434 from Google's file), so where Overture chose Microsoft over Google we may choose
   Google (higher confidence wins).
