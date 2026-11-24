@@ -174,9 +174,9 @@ def _tile_data(lat: float, lng: float) -> tuple[list[codec_v2.RoadPiece], infra.
     return codec_v2.decode_roads((d / "roads.bin").read_bytes(), tj["roadNames"]), decode_infra((d / "infra.bin").read_bytes()), (x, z)
 
 
-def test_committed_world_declares_minor_1() -> None:
+def test_committed_world_declares_infra() -> None:
     wj = json.loads((WORLD / "world.json").read_text())
-    assert wj["format"] == 2 and wj["minor"] == 1 and wj["infra"]["file"] == "infra.bin"
+    assert wj["format"] == 2 and wj["minor"] >= 1 and wj["infra"]["file"] == "infra.bin"
     for t in wj["tiles"]:
         blob = (WORLD / "tiles" / f"{t[0]}_{t[1]}" / "infra.bin").read_bytes()
         assert decode_infra(blob).tile == (t[0], t[1])

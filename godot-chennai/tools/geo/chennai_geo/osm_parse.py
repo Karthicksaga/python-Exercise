@@ -12,6 +12,7 @@ from pathlib import Path
 
 import osmium
 
+from .detail import category_of, detail_node_selected, line_kind, zone_kind
 from .model import OsmFeatures, OsmLine, OsmPoint, OsmPolygon, Tags
 from .projection import PROJECTION, GeoProjection
 from .util import round2
@@ -79,6 +80,9 @@ class _Handler(osmium.SimpleHandler):
         if spot_selected(tags) and n.location.valid():
             x, z = self._local(n.location.lat, n.location.lon)
             self.f.spots.append(OsmPoint(n.id, tags, x, z))
+        if detail_node_selected(tags) and n.location.valid():
+            x, z = self._local(n.location.lat, n.location.lon)
+            self.f.detail_points.append(OsmPoint(n.id, tags, x, z))
         if node_label(tags) is None or not n.location.valid():
             return
         x, z = self._local(n.location.lat, n.location.lon)
@@ -90,7 +94,8 @@ class _Handler(osmium.SimpleHandler):
             rail = [self._local(nd.location.lat, nd.location.lon) for nd in w.nodes if nd.location.valid()]
             if len(rail) >= 2:
                 self.f.railways.append(OsmLine(w.id, tags, rail))
-        if not way_selected(tags):
+        detail = bool(line_kind(tags) or zone_kind(tags) or "building:part" in tags or ("building" not in tags and category_of(tags)))
+        if not way_selected(tags) and not detail:
             return
         refs = [nd.ref for nd in w.nodes]
         line = []
@@ -99,6 +104,10 @@ class _Handler(osmium.SimpleHandler):
                 line.append(self._local(nd.location.lat, nd.location.lon))
         if len(line) < 2:
             self.count["way:dropped-no-locations"] += 1
+            return
+        if detail:
+            self._detail_way(tags, w.id, refs, line)
+        if not way_selected(tags):
             return
         if "aeroway" in tags and tags["aeroway"] in ("runway", "taxiway", "stopway", "holding_position", "parking_position") and not (len(refs) > 3 and refs[0] == refs[-1] and tags.get("area") == "yes"):
             self.f.aeroway_lines.append(OsmLine(w.id, tags, line))
@@ -122,10 +131,32 @@ class _Handler(osmium.SimpleHandler):
         elif is_area_tags(tags):
             self.f.areas.append(OsmPolygon(w.id, tags, outline))
 
+    def _detail_way(self, tags: Tags, wid: int, refs: list[int], line: list[tuple[float, float]]) -> None:
+        """Format 2.2 (`detail.py`): parts, barriers, tree rows, platforms, pitches, pools; kept
+        in their own lists so the 2.0 files do not change."""
+        closed = len(refs) > 3 and refs[0] == refs[-1] and len(line) == len(refs)
+        if "building:part" in tags and closed and len(line) > 3:
+            self.f.parts.append(OsmPolygon(wid, tags, line[:-1]))
+        lk = line_kind(tags)
+        zk = zone_kind(tags)
+        if closed and len(line) > 3 and (zk or ("building" not in tags and category_of(tags))) and "building:part" not in tags:
+            self.f.detail_polys.append(OsmPolygon(wid, tags, line[:-1]))
+        elif lk and not (closed and lk in ("platform", "bus_platform")):
+            self.f.detail_lines.append(OsmLine(wid, tags, line))
+
     def area(self, a: osmium.osm.Area) -> None:
         if a.from_way():
             return  # closed ways are handled in `way`, exactly like the v1 pipeline
         tags = {t.k: t.v for t in a.tags}
+        if "building:part" in tags and "building" not in tags:
+            part = 0
+            for outer in a.outer_rings():
+                ring = [self._local(n.lat, n.lon) for n in outer][:-1]
+                holes = [[self._local(n.lat, n.lon) for n in inner][:-1] for inner in a.inner_rings(outer)]
+                if len(ring) >= 3:
+                    self.f.parts.append(OsmPolygon(a.orig_id(), tags, ring, [h for h in holes if len(h) >= 3], source="relation", part=part))
+                    part += 1
+            return
         is_building = "building" in tags
         if not is_building and not is_area_tags(tags):
             return

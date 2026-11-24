@@ -15,6 +15,7 @@ from shapely.validation import make_valid
 
 from .coast import build_sea
 from .enums import AEROWAY_KINDS
+from .detail import Detail, build_detail
 from .infra import Infra, build_spots, solve_heights, waterway_from_line
 from .geometry import Bounds, Point, SpatialGrid, bounds_of, centroid, clip_line, clip_polygon, point_in_polygon, signed_area
 from .landmarks import find_landmarks, inside_landmark
@@ -61,6 +62,8 @@ class World:
     road_chunk_rings: dict[tuple[int, int], int] = field(default_factory=dict)
     # Format 2.1 (`infra.bin`, G-150): road heights, waterways, street spots. None for v1 builds.
     infra: Infra | None = None
+    # Format 2.2 (`detail.bin`, G-190): building detail and parts, street objects, barriers, zones, signs.
+    detail: Detail | None = None
 
 
 def building_game_id(poly: OsmPolygon) -> int:
@@ -321,8 +324,9 @@ def build_world(f: OsmFeatures, grid: Grid, playables: list[Playable], max_ring:
     stats["roads"] = len(roads)
     stats["buildings"] = len(buildings)
     infra = build_infra(f, roads, signals, playable, stats) if v2 else None
+    detail = build_detail(f, buildings, playable, lambda p: inside_landmark(p, landmarks)) if v2 else None
     return World(grid, max_ring, playable, f.timestamp, roads, areas, chunks, pois, bus_stops, signals, districts, settlements,
-                 landmarks, _aeroways(f, playable) if v2 else [], sea, stats, road_keys, road_rings, infra)
+                 landmarks, _aeroways(f, playable) if v2 else [], sea, stats, road_keys, road_rings, infra, detail)
 
 
 def build_infra(f: OsmFeatures, roads: list[Road], signals: list[dict[str, Any]], playable: Playable, stats: Counter[str]) -> Infra:

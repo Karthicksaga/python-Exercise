@@ -55,6 +55,8 @@ static func regional_kit() -> ChunkBuilder.Kit:
 	k.palm_mesh = base.palm_mesh
 	k.tree_triangles = base.tree_triangles
 	k.palm_triangles = base.palm_triangles
+	k.signs = SignCategories.shared()
+	k.palettes = AreaPalettes.load_file()
 	_regional_kit = k
 	return k
 

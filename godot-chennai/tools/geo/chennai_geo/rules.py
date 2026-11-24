@@ -198,6 +198,7 @@ def to_building(poly: OsmPolygon, building_id: int | None = None) -> Building | 
         min_height=round1(min_h) if 0 < min_h < 200 else 0.0,
         levels_mapped=levels_mapped,
         source=poly.ref,
+        tags=tags,
     )
 
 

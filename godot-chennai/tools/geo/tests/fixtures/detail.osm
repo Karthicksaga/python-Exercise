@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-made test extract for format 2.2 (detail.bin) near the Anna Nagar origin. Not real data.
+     The names are made up to prove they never reach a sign. -->
+<osm version="0.6" generator="hand-made">
+  <!-- a 20 m x 15 m shop building with colours, a material and a roof -->
+  <node id="1" lat="13.0850000" lon="80.2101000"/>
+  <node id="2" lat="13.0850000" lon="80.2102846"/>
+  <node id="3" lat="13.0851349" lon="80.2102846"/>
+  <node id="4" lat="13.0851349" lon="80.2101000"/>
+  <way id="100"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/>
+    <tag k="building" v="retail"/><tag k="shop" v="bakery"/><tag k="name" v="Moon Sweets and Bakery"/>
+    <tag k="building:colour" v="#cc8844"/><tag k="roof:colour" v="red"/><tag k="building:material" v="brick"/>
+    <tag k="roof:shape" v="gabled"/><tag k="roof:material" v="roof_tiles"/><tag k="building:levels" v="2"/></way>
+  <!-- a 30 m x 30 m building that is only the outline of two parts -->
+  <node id="11" lat="13.0860000" lon="80.2110000"/>
+  <node id="12" lat="13.0860000" lon="80.2112770"/>
+  <node id="13" lat="13.0862697" lon="80.2112770"/>
+  <node id="14" lat="13.0862697" lon="80.2110000"/>
+  <node id="15" lat="13.0860000" lon="80.2111385"/>
+  <node id="16" lat="13.0862697" lon="80.2111385"/>
+  <way id="200"><nd ref="11"/><nd ref="12"/><nd ref="13"/><nd ref="14"/><nd ref="11"/><tag k="building" v="yes"/></way>
+  <way id="201"><nd ref="11"/><nd ref="15"/><nd ref="16"/><nd ref="14"/><nd ref="11"/><tag k="building:part" v="yes"/><tag k="height" v="24"/><tag k="roof:shape" v="dome"/></way>
+  <way id="202"><nd ref="15"/><nd ref="12"/><nd ref="13"/><nd ref="16"/><nd ref="15"/><tag k="building:part" v="yes"/><tag k="building:levels" v="3"/><tag k="min_height" v="4"/></way>
+  <!-- a temple building (public: the name:ta may be kept) -->
+  <node id="21" lat="13.0870000" lon="80.2100000"/>
+  <node id="22" lat="13.0870000" lon="80.2101000"/>
+  <node id="23" lat="13.0870900" lon="80.2101000"/>
+  <node id="24" lat="13.0870900" lon="80.2100000"/>
+  <way id="300"><nd ref="21"/><nd ref="22"/><nd ref="23"/><nd ref="24"/><nd ref="21"/>
+    <tag k="building" v="temple"/><tag k="amenity" v="place_of_worship"/><tag k="religion" v="hindu"/>
+    <tag k="name" v="Sri Test Amman Temple"/><tag k="name:ta" v="ஸ்ரீ டெஸ்ட் அம்மன் கோயில்"/><tag k="name:en" v="Test Amman Temple"/></way>
+  <!-- street objects: nodes -->
+  <node id="31" lat="13.0840000" lon="80.2100000"><tag k="amenity" v="bench"/></node>
+  <node id="32" lat="13.0840100" lon="80.2100100"><tag k="public_transport" v="platform"/><tag k="bus" v="yes"/></node>
+  <node id="33" lat="13.0840200" lon="80.2100200"><tag k="highway" v="street_lamp"/></node>
+  <node id="34" lat="13.0840300" lon="80.2100300"><tag k="power" v="pole"/></node>
+  <node id="35" lat="13.0840400" lon="80.2100400"><tag k="barrier" v="bollard"/></node>
+  <node id="36" lat="13.0840500" lon="80.2100500"><tag k="shop" v="chemist"/><tag k="name" v="Test Chemist Brand"/></node>
+  <node id="37" lat="13.0840600" lon="80.2100600"><tag k="amenity" v="waste_basket"/></node>
+  <!-- a wall, a hedge and a tree row (lines) -->
+  <node id="41" lat="13.0830000" lon="80.2100000"/>
+  <node id="42" lat="13.0830000" lon="80.2105000"/>
+  <node id="43" lat="13.0830000" lon="80.2110000"/>
+  <way id="400"><nd ref="41"/><nd ref="42"/><nd ref="43"/><tag k="barrier" v="wall"/><tag k="height" v="2.4"/></way>
+  <way id="401"><nd ref="41"/><nd ref="43"/><tag k="barrier" v="hedge"/></way>
+  <way id="402"><nd ref="42"/><nd ref="43"/><tag k="natural" v="tree_row"/></way>
+  <!-- a cricket pitch, a swimming pool, a station platform polygon -->
+  <node id="51" lat="13.0820000" lon="80.2100000"/>
+  <node id="52" lat="13.0820000" lon="80.2102000"/>
+  <node id="53" lat="13.0821000" lon="80.2102000"/>
+  <node id="54" lat="13.0821000" lon="80.2100000"/>
+  <way id="500"><nd ref="51"/><nd ref="52"/><nd ref="53"/><nd ref="54"/><nd ref="51"/><tag k="leisure" v="pitch"/><tag k="sport" v="cricket"/></way>
+  <node id="61" lat="13.0810000" lon="80.2100000"/>
+  <node id="62" lat="13.0810000" lon="80.2101000"/>
+  <node id="63" lat="13.0810500" lon="80.2101000"/>
+  <node id="64" lat="13.0810500" lon="80.2100000"/>
+  <way id="600"><nd ref="61"/><nd ref="62"/><nd ref="63"/><nd ref="64"/><nd ref="61"/><tag k="leisure" v="swimming_pool"/></way>
+  <node id="71" lat="13.0800000" lon="80.2100000"/>
+  <node id="72" lat="13.0800000" lon="80.2105000"/>
+  <node id="73" lat="13.0800300" lon="80.2105000"/>
+  <node id="74" lat="13.0800300" lon="80.2100000"/>
+  <way id="700"><nd ref="71"/><nd ref="72"/><nd ref="73"/><nd ref="74"/><nd ref="71"/><tag k="railway" v="platform"/></way>
+  <way id="701"><nd ref="71"/><nd ref="72"/><tag k="railway" v="platform"/></way>
+</osm>

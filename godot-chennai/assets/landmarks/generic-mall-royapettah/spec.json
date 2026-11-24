@@ -1,0 +1,263 @@
+{
+ "format": 1,
+ "id": "generic-mall-royapettah",
+ "kind": "mall",
+ "names": {
+  "en": "Shopping complex",
+  "ta": "வணிக வளாகம்",
+  "en_source": "generic category (TD-18: the real name is withheld)",
+  "ta_source": "generic category word, as the shop signs use; needs review by a native Tamil speaker"
+ },
+ "style": "Modern multi-storey shopping complex: concrete podium, glass atrium front with mullions, entrance canopy, rooftop parking",
+ "height": {
+  "value": 29.6,
+  "osm_tag": null,
+  "of": "the top of the atrium roof light",
+  "source": "estimated: 5 storeys (godot-areas shortlist, estimated) of 5 m and a 4 m roof light; OSM has no height or levels",
+  "alternatives": [],
+  "chosen_because": "No published figure is used, because the published ones name the business; estimated and marked as such."
+ },
+ "osm": {
+  "main": "building",
+  "exclude": [
+   "building"
+  ],
+  "withhold_names": true,
+  "parts": {
+   "building": {
+    "osm": "way/154030370",
+    "role": "model",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      5750.19,
+      2919.73
+     ],
+     [
+      5781.35,
+      2917.17
+     ],
+     [
+      5779.53,
+      2894.82
+     ],
+     [
+      5965.43,
+      2879.66
+     ],
+     [
+      5967.64,
+      2906.8
+     ],
+     [
+      5963.39,
+      2911.52
+     ],
+     [
+      5963.26,
+      2912.34
+     ],
+     [
+      5965.42,
+      2914.25
+     ],
+     [
+      5965.87,
+      2916.1
+     ],
+     [
+      5966.25,
+      2917.85
+     ],
+     [
+      5966.51,
+      2919.4
+     ],
+     [
+      5966.73,
+      2921.18
+     ],
+     [
+      5966.88,
+      2923.03
+     ],
+     [
+      5966.97,
+      2925.25
+     ],
+     [
+      5967.0,
+      2927.57
+     ],
+     [
+      5965.68,
+      2929.76
+     ],
+     [
+      5964.25,
+      2931.1
+     ],
+     [
+      5962.09,
+      2931.68
+     ],
+     [
+      5960.12,
+      2932.16
+     ],
+     [
+      5956.6,
+      2932.93
+     ],
+     [
+      5954.62,
+      2933.29
+     ],
+     [
+      5951.81,
+      2933.76
+     ],
+     [
+      5950.02,
+      2933.25
+     ],
+     [
+      5952.79,
+      2965.01
+     ],
+     [
+      5777.35,
+      2980.31
+     ],
+     [
+      5777.14,
+      2977.84
+     ],
+     [
+      5755.1,
+      2979.66
+     ]
+    ],
+    "centroid": [
+     5860.16,
+     2930.86
+    ],
+    "area": 16959.9,
+    "rect": {
+     "yaw_deg": 4.69,
+     "long": 217.8,
+     "short": 85.02,
+     "corners": [
+      [
+       5965.42,
+       2879.59
+      ],
+      [
+       5972.37,
+       2964.33
+      ],
+      [
+       5755.3,
+       2982.12
+      ],
+      [
+       5748.36,
+       2897.37
+      ]
+     ]
+    }
+   }
+  },
+  "wikidata": null,
+  "wikipedia": null,
+  "data_date": "2026-11-23T00:28:57Z",
+  "licence": "ODbL 1.0, © OpenStreetMap contributors"
+ },
+ "recipe": {
+  "kit": "mall",
+  "params": {
+   "part": "building",
+   "front": "south",
+   "storeys": 5,
+   "storey_height": 5.0,
+   "parapet": 1.1,
+   "atrium_share": 0.4,
+   "mullion": 2.0,
+   "roof_light": 4.0,
+   "rooftop": "parking",
+   "fin": 3.0
+  }
+ },
+ "colours": {
+  "concrete": "#cfcbc2",
+  "concrete_dark": "#9fa3a8",
+  "roof": "#8f9295",
+  "window": "#2c3a46",
+  "glass": "#5f8fb0",
+  "mullion": "#c3c7cb",
+  "canopy": "#e4e2dc",
+  "paving": "#bdb8ac",
+  "deck": "#5d5f61",
+  "line": "#f2f0e8",
+  "plant": "#8a8f93",
+  "sign": "#f2efe6"
+ },
+ "materials": [
+  {
+   "name": "concrete and cladding",
+   "where": "podium"
+  },
+  {
+   "name": "glass curtain wall",
+   "where": "atrium front and roof light"
+  },
+  {
+   "name": "steel",
+   "where": "mullions, canopy columns"
+  }
+ ],
+ "facts": [
+  {
+   "en": "A large multi-storey shopping complex (about 1.7 ha on OpenStreetMap) on the north side of Whites Road, Royapettah; shown with a generic sign, not its name.",
+   "source": "https://www.openstreetmap.org/way/154030370"
+  }
+ ],
+ "references": [],
+ "references_withheld": "Commons photos of this building carry its business name in their titles; none is listed (TD-18). The kit is generic.",
+ "signs": [
+  {
+   "ta": "வணிக வளாகம்",
+   "en": "SHOPPING COMPLEX",
+   "at": 0.0,
+   "height": 1.4
+  }
+ ],
+ "budget": {
+  "lod0_min": 5000,
+  "lod0_max": 15000,
+  "lod1_max": 6000,
+  "lod2_max": 2000
+ },
+ "lod": {
+  "lod0_end": 220.0,
+  "lod1_end": 700.0,
+  "lod2_end": 4000.0
+ },
+ "collision": {
+  "plan": "Jolt boxes: the outline's walls and the entrance canopy.",
+  "min_boxes": 4
+ },
+ "estimated": [
+  "storeys and every height",
+  "the front (the south side, facing Whites Road)",
+  "atrium width and rooftop use",
+  "colours"
+ ],
+ "origin": [
+  5860.16,
+  2930.86
+ ],
+ "yaw_deg": 4.69
+}

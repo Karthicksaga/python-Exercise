@@ -1260,6 +1260,145 @@ primitives, objects; triangles per layer of the chunks in reach), then moves the
 through it at 20 m/s in game frames (headless: the streamer's main-thread maxima). Baseline is the
 same tool on the code before these changes with the same world files. Numbers in `handoff.md`.
 
+## OSM detail (agent/godot-osmdetail, 24 Nov 2026)
+
+### G-190: Format 2.2 adds `detail.bin`; every 2.0 and 2.1 file stays byte for byte
+Same recipe as G-150: one `detail.bin` per tile ("COWD", sections `BLDG PART OBJ_ LINE ZONE SIGN`),
+`world.json` `minor` 2 and a `detail` key; nothing in the 2.0 chunk, road, area or `infra.bin`
+files changes, so a 2.0 or 2.1 reader still works (`diff -r` of a rebuild: only `detail.bin`,
+`DETAIL.md` and the `world.json` keys are new). It is a new file rather than new sections of
+`infra.bin` so the infrastructure and detail work version separately. The parser keeps the new
+OSM objects in their own lists (`OsmFeatures.detail_*`, `parts`) so the 2.0 selection is untouched.
+Positions in 5 cm steps, lines cut at tile edges, everything else by the tile of its centroid.
+Layout: `docs/world-format.md` §3.8. What OSM maps in Chennai is sparse (`docs/osm-detail.md`):
+`building:colour` on 0.04 % of buildings, `roof:shape` on 0.01 %, 65 `building:part`s; benches
+85, waste baskets 62, mapped street lamps 1,745, power towers 7,544, walls 620 ways. The renderer
+estimates the rest and the coverage report counts both.
+
+### G-191: Building tags in the mesh: mapped wins, estimated is marked, the legacy rule stays the default
+- Wall colour: `building:colour` exactly; else the colour of `building:material` (brick, concrete,
+  stone, glass, metal, wood; estimated); else the data's hash colour (today's 12 plasters) or, where
+  an area palette exists (G-194), a hash into that palette.
+- Roof kind (`BuildingMeshes.assign_roof`): `roof:shape` flat, gabled (+ gambrel, mansard,
+  saltbox), hipped (+ half-hipped), pyramidal (+ cone), skillion, dome (+ round, onion), when the
+  footprint can carry it (a gable and a skillion need a four-corner convex footprint, a hip or a
+  pyramid a convex one, a dome a convex one; else a flat terrace); not mapped: today's rule (a third
+  of low convex houses get the clay-tile hip roof) with the default palette, or the area's
+  `roof_types` weights for houses of at most three storeys. Flat roofs keep the parapet and the
+  black water tank; a dome sits on a flat roof; pitched roofs have no parapet. `roof:colour` exactly,
+  else `roof:material` (tiles, metal, concrete, glass, thatch), else the roof kind's own colour.
+- Parts: `building:part` polygons are drawn as buildings from `min_height` up (walls from there, no
+  shops, no wall fixtures, the collider from there so a car passes under an overhang). A building
+  whose parts cover 60 % of it is not drawn (the parts are its 3D form, as OSM's rule says); a part
+  without height takes the host's. A building at a landmark footprint is left out of the world
+  already (G-27) and so are its parts and signs.
+- Triangle budget (measured, G-195): +0.6…0.8 % primitives, no new draw calls. A gable and a skillion are 6
+  triangles, a dome 96, a pyramid or hip as before.
+
+### G-192: Signs say the category, never the name (TD-18), one atlas, Tamil on top
+`assets/city/sign_categories.json` is the one table (47 categories: grocery, supermarket, bakery,
+sweets, tea shop, coffee shop, restaurant, snacks, vegetables, meat, fish, flowers, pharmacy,
+clinic, dental, hospital, bank, ATM, textiles, tailor, jewellery, footwear, electronics, mobile,
+hardware, furniture, stationery, books, salon, laundry, petrol, vehicle repair, bus stand, railway
+station, school, college, temple, church, mosque, police, post office, library, cinema, lodge,
+marriage hall, office, shop). The world build maps OSM tags to a category id (the `name` tag is
+never read), the game bakes the kit atlas from it (`tools/bake_city_textures.gd`: 2 columns x 24
+rows of 512 x 88 px signs, then the shutter, interior and railing cells; the atlas grew from
+1024 x 1024 to 1024 x 2368: about 26 MB with its glow partner and mipmaps if left uncompressed,
+to be compressed for the phone later). Text is drawn once at build time with Noto Sans Tamil Bold (the full Tamil
+range, `assets/city/noto-sans-tamil-categories.woff2`: the two older subsets lacked ய ர ற ங ஜ ே ொ,
+which fell back to a thin font), Tamil 34 px above English 19 px, squeezed to fit.
+A shop front gets the category of the building when OSM maps a shop, amenity, office or tourism tag
+on it, else of the nearest mapped shop node within 14 m of the shop, else an everyday street shop
+chosen by hash (estimated, counted). A building mapped as a shop gets fronts even with one
+storey. A two-bay shop shows the same board twice. Public places keep `name:ta` and `name:en` in
+`detail.bin` (786 in the world) for a later name plate; no sign draws them yet. 39 mapped places
+are themselves named with a category word ("Temple", "Tea Shop"): their sign says the same word
+because the table does. The ten invented signs of `shopSigns.ts` ("NILA TIFFIN CENTRE", "NEW STORES")
+are gone; `ShopSigns.SIGN_WORDS` guards the English words in a test.
+
+### G-193: Street objects, barriers, zones and platforms: near only, no new draw calls, blocked only where it should be
+Drawn into the chunk's existing surfaces (objects, ground, water), so the draw-call count does not
+change; the objects and barriers sit under `Near` (shown by the streamer's distance switch, G-53),
+the zone paint in the ground surface. Benches, waste baskets, drinking water, post boxes, toilets,
+power poles and towers, bollards, gates are small procedural models (`DetailModels`: 24 to 96 triangles, the lattice tower 504). Mapped street lamps replace generated poles within 14 m. A shelter is added for a
+`public_transport=platform` node with none within 20 m, and every shelter gets a bus-stop pole.
+Walls (with a pilaster every 4 m), retaining walls, hedges, fences (posts and two rails), kerbs,
+jersey barriers and guard rails are thin merged boxes; a segment is cut where it would stand in a
+carriageway and drawn only by the chunk holding its middle. Walls, fences, hedges, jersey barriers
+and guard rails block walking (closed boxes); kerbs do not. Heights: the mapped `height`, else wall
+1.9, fence 1.5, hedge 1.2, retaining wall 1.6, kerb 0.15, jersey 0.8 m (estimated). Tree rows are
+trees every 7 m. Platforms: a railway platform is a 0.9 m slab with a yellow edge line and a shelter
+every 40 m, a bus platform 0.18 m; both have colliders. Pitches are marked ground (grass, or rubber
+for courts, clay for kabaddi) with the lines of the mapped sport (football and hockey with boxes
+and circle, cricket the pitch strip and creases, basketball, tennis, volleyball and badminton,
+kabaddi; a plain marked field when no sport is mapped); playgrounds, running tracks and allotments
+are covers of the ground shader (`COVER_TRACK`, `COVER_PLAYGROUND`, `COVER_ALLOTMENT`); a swimming
+pool is flat water on the ground with the water shader (clear aqua, `pool_water`, vertex red 0) and
+a paving rim. Nobody swims yet (the culture note's swimming is a later task).
+
+### G-194: Area character comes from `data/areas/palettes.json`, one loader, by boundary
+`AreaPalettes` (`src/game_world/city/area_palettes.gd`) is the only reader of the godot-areas file
+(format 1, derived from `areas.json`, never hand-edited): `default` and `areas.<id>` with `walls`,
+`roofs`, `roof_types` (shape: weight), `storeys` (bins "1", "2", "3", "4-5", "6-9", "10+": weight)
+and a `boundary` (circle: centre, radius; corridor: spine, half width; world metres). The area of a
+building is the one whose boundary contains its footprint centre with the smallest distance over
+radius (or half width); none: `default`. A storey count is the bin by weight, then a count inside the
+bin (10+ is 10 to 12). The palette is applied only to what OSM does not map: houses with an
+estimated height (storeys), buildings without `roof:shape` (roof types, houses up to three
+storeys), without `building:colour` or `roof:colour` (walls, roofs); mapped tags always win. The
+`default` entry changes nothing: outside every area the 12 plasters, the legacy roof rule and the
+data's storeys apply as before G-190.
+
+### G-195: Measuring the detail
+`tests/tools/city_shot.gd` (draw calls, primitives, objects, worst build and main-thread ms) at
+T. Nagar, Mylapore and the Marina, the same tool and world on `ab3acba` and on this branch; numbers
+in `handoff.md`. The machine was loaded by other agents (load average 8 to 9), so the milliseconds
+are worse than a quiet run; the counts are exact.
+
+
+### G-200: The area atlas is researched data in `data/areas/`, one claim at a time
+`areas.json` (31 areas), `landmarks_shortlist.json` (83 landmarks), `palettes.json` and
+`coverage.json`, with JSON schemas and `tools/geo/tests/test_areas_data.py`. Every statement that
+looks like a fact is a claim `{text, status, source}`: `sourced` (a URL says it), `osm` (read from
+the extract or the built world), `estimated` (with a `basis`) or `unverified` (no source, never to
+be shown as fact). Wall colours, roof weights, storey weights and street widths are always
+`estimated`. Tamil names are only OSM's `name:ta` (or the Tamil `name`) and every one says "needs
+native review". No business or brand names: malls and IT parks are generic entries that keep only
+their OSM id. `docs/areas.md` is generated from this data.
+
+### G-201: Area boundaries are circles and corridors from the district data
+Centres are the world's own district and settlement points (or OSM place nodes and polygon
+centroids); a circle's radius is half the distance to the nearest other centre, clamped 450 to
+2200 m, or set from an OSM polygon; linear areas (Marina, OMR, Ennore port, airport axis, Anna
+Nagar, Kodambakkam to Vadapalani) are corridors round a spine of those points. A building belongs
+to the containing area with the smallest distance / radius. Not administrative borders; they exist
+to pick a palette.
+
+### G-202: `palettes.json` schema
+`{format, roof_shapes, storey_bins, default, areas: {id: {type, walls[hex], roofs[hex],
+roof_types{shape: weight}, storeys{bin: weight}, boundary}}}`. Roof shape keys are
+`enums.ROOF_SHAPES`; storey bins are `1, 2, 3, 4-5, 6-9, 10+`; weights sum to 1. Derived from
+`areas.json` by `python -m chennai_geo.area_palettes` (a test fails if it is stale), never edited
+by hand.
+
+### G-203: Landmarks are found by name in the PBF, not by hand-copied coordinates
+`tools/geo/chennai_geo/area_lookup.py` (pyosmium, one pass, no Overpass) returns candidates with
+centre, footprint, area and key tags; the shortlist keeps the checked best candidate per
+landmark with its OSM type and id, footprint, levels and height tags, Wikidata id from OSM and
+Commons file titles with licences (titles only, no images). Tiers: A hand-made hero, B parametric
+kit (parameters in `tier.params`), C recoloured standard building. Not found by name (Pulicat Lake
+as a polygon, the Egmore station building, the Mylapore tank water) is listed in
+`not_found_in_osm`.
+
+### G-204: Coverage numbers come from two places
+`area_coverage.py` counts levels, height, roof shape and use from the built world, and colour,
+material and roof tags from the extract (the world format keeps no colour or material). In the 31
+areas levels are mapped for 3.9 % of buildings (four fifths of them in George Town and Parry's
+Corner); height, roof shape, colour and material tags are each under 0.2 %.
+
+
+
 ## G-170: Control settings: one shared object, one save section, live
 `ControlSettings` (`src/ui/touch_controls/`) holds the preferences: driving scheme (only `wheel`
 exists; the tilt and buttons schemes are named in the proposal but not built, by the owner's
@@ -1366,6 +1505,14 @@ driving on touch, pad or keyboard, following left-handed and toggle-run. The pau
 title's CONTROLS page can both read it (the title agent may stub the same name; reconcile at
 merge: this one is `src/ui/touch_controls/controls_guide.gd`).
 
+
+### G-205: Malls are generic entries with a research-only name field (TD-18)
+`landmarks_shortlist.json` holds 16 shopping complexes (kind `mall`, tier B), found by scanning the
+extract for `shop=mall` and for `building=retail|commercial` of 8,000 m2 or more or five levels or
+more. `names.en` is "Shopping complex, <area>", the sign is `sign` = `வணிக வளாகம் / SHOPPING COMPLEX`,
+`osm.osm_name` is null, and the OSM name sits only in `research_name` (marked research only; a test
+keeps it out of every other field). Also added: Sowcarpet and Flower Bazaar, Marina Beach Market.
+
 ## G-160: Title fonts: Barlow Condensed and Noto Sans Tamil (SIL OFL)
 The title uses Barlow Condensed Bold (menu rows, page names, the chip, spaced OPEN WORLD) and
 ExtraBold (the big CHENNAI), and Noto Sans Tamil Bold for சென்னை, as the landing-page design
@@ -1461,6 +1608,7 @@ Tamil lines (`LoadingScreen.TAMIL`): "சென்னை வரைபடத்�
 சுற்றியுள்ள தெருக்களை உருவாக்குகிறது", "வாகனங்களை நிறுத்துகிறது" were written by the model and **need
 native review** before release; a step without an entry shows English alone.
 
+
 ### G-180: Landmark candidates are ranked from the same OSM extract, not Overpass
 `python -m chennai_geo.cli landmarks-rank` reads the clipped Tamil Nadu PBF (`world.osm.pbf`) with
 pyosmium (nodes and assembled areas, ways and multipolygons) and keeps objects inside the world
@@ -1548,6 +1696,15 @@ frontage outline has a bump.
 ### G-187: Temples are architecture only
 No deity figures, images or sanctum; tier stucco is abstract coloured forms; the tank is not
 entered (G-152's bund stays). The spec records the rule and a test checks it is there.
+
+### G-189: Malls are generic, named only by their category
+The `mall` kit (podium on the OSM outline, glass atrium front with mullions and transoms,
+cladding fins, shopfront glazing, entrance canopy, atrium roof light, rooftop parking or plant, a
+plaza strip within the outline's tolerance) builds the shortlist's malls (godot-areas,
+`kind: mall`): the first is OSM way 154030370 in Royapettah. No real name, logo or livery
+anywhere: the spec's names and sign are "வணிக வளாகம் / SHOPPING COMPLEX", `osm.withhold_names`
+keeps the way's name, brand and links out of the spec, the validator rejects them for any mall,
+and no Commons reference is listed (their titles name the business). Heights are estimated.
 
 ### G-188: Measuring landmarks
 `tests/tools/city_shot.gd --no-landmarks` builds the same city without landmark models (OSM

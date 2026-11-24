@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="hand">
+  <node id="1" version="1" lat="13.0000" lon="80.2000"/>
+  <node id="2" version="1" lat="13.0000" lon="80.2010"/>
+  <node id="3" version="1" lat="13.0010" lon="80.2010"/>
+  <node id="4" version="1" lat="13.0010" lon="80.2000"/>
+  <node id="5" version="1" lat="13.0500" lon="80.2500"/>
+  <node id="6" version="1" lat="13.0500" lon="80.2600"/>
+  <node id="7" version="1" lat="13.0300" lon="80.2300">
+    <tag k="name" v="Test Market Gate"/><tag k="tourism" v="attraction"/>
+  </node>
+  <node id="10" version="1" lat="13.1000" lon="80.1000"/>
+  <node id="11" version="1" lat="13.1010" lon="80.1000"/>
+  <node id="12" version="1" lat="13.1010" lon="80.1010"/>
+  <node id="13" version="1" lat="13.1000" lon="80.1010"/>
+  <node id="14" version="1" lat="13.1003" lon="80.1003"/>
+  <node id="15" version="1" lat="13.1007" lon="80.1003"/>
+  <node id="16" version="1" lat="13.1007" lon="80.1007"/>
+  <node id="17" version="1" lat="13.1003" lon="80.1007"/>
+  <way id="100" version="1">
+    <nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/>
+    <tag k="name" v="Sample Temple"/><tag k="name:ta" v="மாதிரி"/><tag k="amenity" v="place_of_worship"/>
+    <tag k="building" v="temple"/><tag k="building:levels" v="3"/><tag k="wikidata" v="Q42"/>
+  </way>
+  <way id="101" version="1">
+    <nd ref="5"/><nd ref="6"/>
+    <tag k="name" v="Sample Flyover"/><tag k="highway" v="primary"/><tag k="bridge" v="yes"/>
+  </way>
+  <way id="102" version="1">
+    <nd ref="10"/><nd ref="11"/><nd ref="12"/><nd ref="13"/><nd ref="10"/>
+  </way>
+  <way id="103" version="1">
+    <nd ref="14"/><nd ref="15"/><nd ref="16"/><nd ref="17"/><nd ref="14"/>
+  </way>
+  <relation id="200" version="1">
+    <member type="way" ref="102" role="outer"/>
+    <member type="way" ref="103" role="inner"/>
+    <tag k="type" v="multipolygon"/><tag k="name" v="Sample Park"/><tag k="leisure" v="park"/>
+  </relation>
+</osm>
