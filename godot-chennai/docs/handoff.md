@@ -748,9 +748,7 @@ not visible. Decisions in `technical-decisions.md` G-280..G-283.
   north-up, full map at two zooms, the passenger waving at the Perambur pick-up.
 - **Weak:** the 13 city jobs, the life places and the three stories are still in Anna Nagar (stops
   within 1 km of the start); jobs offered from the board far away mean a long drive to the first
-  stop. The corner minimap is hidden at 640x320 (no free place). The wave is procedural; seated
-  passengers stand lowered into the seat until the seat pose of agent/godot-anim is merged (call
-  `HumanFigure.set_seat` for people with `seated`). The beacon label size on screen was judged on
+  stop. The corner minimap is hidden at 640x320 (no free place). The wave is procedural. The beacon label size on screen was judged on
   llvmpipe screenshots, not on the phone. The full map's wide set is read on a worker thread the
   first time (a few seconds on a phone is not measured; "Drawing the map..." shows meanwhile).
 - **JOBS button:** was exactly under PAUSE since the pause menu landed; moved left of it.

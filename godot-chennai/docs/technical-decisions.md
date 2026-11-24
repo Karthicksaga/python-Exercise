@@ -1778,8 +1778,7 @@ still on the "get in the vehicle" objective (they used to appear only once the p
 was current). `FareFigures`: a waiting person faces the player and, within 220 m, waves
 (`FareWave`: right arm raised, forearm swaying, set on the skeleton after each advance; there is
 no wave clip in the cast, so it is procedural, and one call to replace); people inside the vehicle
-are drawn at the seat, hips lowered 0.42 m, facing the way the vehicle goes (`seated` is in the
-person's data for the seat pose of agent/godot-anim, `HumanFigure.set_seat`, once merged), and
+are seated with the pose of agent/godot-anim (`SeatPose`, merged: hips on the seat anchor, `sit` 1.0), and
 disappear after they step out at the drop. A patient is still not drawn inside the ambulance.
 
 ### G-240: The export leaves out what nothing loads

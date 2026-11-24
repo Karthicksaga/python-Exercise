@@ -77,7 +77,7 @@ func test_the_passenger_is_on_board_and_visible_after_the_pickup_and_gone_after_
 	assert_true(await wait_until(func() -> bool: return s.objective().label == "Drop the passenger", 60 * 20), "picked up")
 	await wait_frames(2)
 	var riding := g.layer.figures.people[0]
-	assert_true(bool(riding["visible"]) and bool(riding.get("seated", false)), "shown on board, seated")
+	assert_true(bool(riding["visible"]) and float(riding.get("sit", 0.0)) >= 1.0, "shown on board, seated")
 	var seat: Vector3 = riding["position"]
 	assert_true(seat.distance_to(auto.global_position) < 2.5, "inside the vehicle (%.2f m from its centre)" % seat.distance_to(auto.global_position))
 	var drop := s.objective()
