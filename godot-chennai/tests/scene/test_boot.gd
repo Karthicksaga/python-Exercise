@@ -25,7 +25,7 @@ func test_loads_then_title_then_play() -> bool:
 	assert_true(main.title.visible and not main.hud.visible, "title shown, HUD hidden")
 	assert_eq(main.get_viewport().gui_get_focus_owner(), main.title.find_child("Play", true, false), "PLAY has the focus")
 	main.title.show_about()
-	assert_contains((main.title.find_child("AboutPage", true, false) as Control).get_child(1).get("text"), "2026-11-15", "ABOUT shows the extract date")
+	assert_contains((main.title.find_child("AboutPage", true, false) as Control).get_child(1).get("text"), main.source.get_data_date().left(10), "ABOUT shows the extract date")
 	main.go_back()
 	assert_eq(main.get_viewport().gui_get_focus_owner(), main.title.find_child("Play", true, false), "Back from ABOUT returns to the menu")
 	(main.title.find_child("Play", true, false) as Button).pressed.emit()
@@ -33,7 +33,11 @@ func test_loads_then_title_then_play() -> bool:
 	assert_true(main.hud.visible and not main.title.visible, "HUD shown")
 	await wait_frames(2)
 	assert_contains(main.hud.text(), "FPS", "HUD shows FPS")
-	assert_contains(main.hud.text(), "20,625 roads", "HUD shows what the reader loaded")
+	# The game reads the regional world (format 2, G-56) when it is installed: 41,188 squares,
+	# and the road pieces of the tiles read so far.
+	assert_contains(main.hud.text(), "%s chunks" % Main._thousands(main.source.chunk_count()), "HUD shows what the reader loaded")
+	assert_true(main.source is RegionalWorldSource and main.source.chunk_count() == 41188, "streams the regional world")
+	assert_true(main.rig != null and main.rig.controls.visible and main.world.focus_node == main.rig.body, "the player is in the city and streaming follows them")
 	main.go_back()
 	assert_eq(main.state, &"title", "Back during play returns to the title")
 	return true

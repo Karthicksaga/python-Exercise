@@ -814,3 +814,104 @@ round thin obstacles); on foot and while thrown it follows the player. A test dr
 houses and into a turn and checks the camera never jumps more than 0.6 m in a step beyond the
 car's own motion and settles behind the direction of travel. (The vehicles agent's own chase
 camera was removed for it.)
+
+## World: the streamed city (G-50 to G-59, agent/godot-world)
+
+## G-50: 250 m chunks streamed round a focus, built off the main thread, added in steps
+`ChunkStreamer` (`src/game_world/city/chunk_streamer.gd`, port of `ChunkManager.ts` with the
+time-sliced build of `agent/gameplay-fixes` `eaf40d0`) keeps every chunk whose nearest edge is
+within 260 m of the focus and frees those beyond 340 m. A chunk is read, decoded and **built
+completely on a worker** (`ChunkBuilder.build`: meshes, MultiMeshes, collider shapes and the
+node trees, none of them in the scene yet), nearest first, `in_flight` at once (cores − 2,
+1…3). The main thread then spends at most `budget_usec` (2.5 ms) a frame, at least one step:
+one step adds one collider body, or the chunk's whole visual node (only once all its colliders
+are in), or frees one root. Each chunk has two roots (`Solids_c_r`, `Chunk_c_r`) at its centre
+in scene space, both in `WorldOrigin.GROUP`; mesh and collider vertices are local to the centre.
+
+## G-51: The streamer's own threads; nothing heavy is freed or asked on the main thread
+- Builds run on `ChunkWorkers` (a queue and `in_flight` threads that live with the streamer),
+  not `WorkerThreadPool`: its `add_task` took 1.5–7 ms on the main thread in the streaming test,
+  and its low-priority tasks were starved by other background work.
+- Never ask a mesh for data on a worker (`get_faces()`, `surface_get_arrays()`): it waits for
+  the render thread while the main thread may be waiting for the worker (a deadlock in
+  `fill_now`). Builders count triangles from their own arrays.
+- A dropped chunk's decoded data (thousands of `Building`, tree and prop objects) is released
+  on a worker (5–14 ms on the main thread otherwise); never-added parts are freed in steps.
+- Materials are created once on the main thread (`CityMaterials`); workers only reference them.
+
+## G-52: Baked texture atlases, one material per atlas, the ground in one surface
+`tools/bake_city_textures.gd` (run under xvfb) paints the facade atlas and its night glow, the
+kit atlas (Tamil-first signboards with HarfBuzz shaping and the embedded Noto Sans Tamil subset,
+shutters, shop interiors, railing) and its glow, clay roof tiles and the ground atlas, as ports
+of the canvas painters of `textures.ts`/`kitAtlas.ts`, into `assets/city/textures/*.png`
+(committed, imported VRAM-compressed with mipmaps). Nothing is painted at run time. A chunk's
+ground (earth, parks, water, sand, verges, tarmac, lane paint, kerbs) is **one surface** drawn by
+`ground.gdshader`: the layer index rides in the texture's u (`layer * 1024 + repeats`, kept
+small by counting repeats from a whole number left of the chunk), the shader repeats inside that
+tile with explicit gradients. Walls, roofs (with water tanks), kit, far look and objects are one
+surface each. A chunk is at most 8 surfaces; measured 19–39 draw calls for the whole view.
+
+## G-53: Near and far looks switched by the streamer, not by visibility ranges
+Each chunk view has `Near` (walls with chajjas and balconies, roofs and tanks, kit, objects:
+poles, shelters, props, AC units, dishes) and `Far` (one quad per wall, flat roofs; about a
+fifth of the triangles). The streamer shows Near when the chunk's nearest edge is within
+`near_distance` (120 m, hysteresis 20 m), else Far; ground and trees always. Per-node
+`visibility_range_end` hid walls 160 m from the camera under the Compatibility renderer, so the
+switch is explicit and covered by `test_city_streaming.gd`. Trees and palms are MultiMeshes
+(one draw each); the depth fog (90–360 m) hides the load edge.
+
+## G-54: `world_ready_around(point)` gates whatever simulates
+True only when every chunk within the radius (default the load distance) is shown with all its
+colliders **and** a physics step has run since the last one was added. `wait_ready_around` awaits
+it in game time. `main.gd` places the player only after it holds for the start; AI and combat
+must check it before stepping (the §7 lesson of the walled-in enemy). Tested with a stand-in
+actor that never steps with a chunk missing.
+
+## G-55: Colliders: wall trimeshes, closed boxes, a moving ground plane
+Walls (from 1 m below ground to the roof, both faces collide) as `ConcavePolygonShape3D` pieces
+of at most 48 buildings, so adding one costs about a millisecond (Jolt builds the tree when the
+body enters the space). Trees (0.28 m × scale), poles, shelter back and posts, and props are
+closed boxes in one more trimesh per chunk: thin, as the follow camera's easing expects (G-65).
+Kerbs are not solid (as in the Three.js game). The ground is one `WorldBoundaryShape3D` that
+follows the focus in 100 m steps (Jolt caps a boundary plane's size); the map edge and the coast
+(6 m past the surf) are invisible walls; the landmarks have their own prisms and boxes. Layer 1
+(world), as G-64 says.
+
+## G-56: The regional world (format 2) behind `WorldSource`; v1 kept for comparison
+`RegionalWorldSource` (`src/game_world/regional_world_source.gd`) with `WorldCodecV2` reads
+`world/`: `world.json` and every tile's table at open (on a worker, about 2 MB of JSON), chunk
+records by seeking into the tile's `chunks.bin`, road pieces per tile on first use (cached,
+thread-safe). It is checked against the Python reference reader (`tests/fixtures/
+world_v2_reference.json`, counts per tile and sample buildings and roads). Road pieces carry
+`offset_along`/`total_length`, so dashes, poles and props stay in step across tile edges.
+`CityLayouts` builds the street layout (spans, junctions, shelters, segment grid) **per tile**,
+with the neighbours' pieces and stops within 300 m, on first use, and starts the tiles within
+1.5 km of the focus ahead of time. Additive interface: `get_grid_origin()`, `chunk_count()`,
+`get_landmarks()`, `get_sea()`. `main.gd` uses the regional world when it is installed;
+`--world=v1` (after `--`) streams today's files. The export presets include `world/`.
+
+## G-57: Renderer-only variety is the Three.js game's, bit for bit
+Which houses get clay roofs, which windows glow, which walls get shops and which sign, which
+trees are palms, where poles and props stand: all from the ported `hash` functions (32-bit
+maths emulated; tested against values printed by node), so a street looks the same in both games
+(sizes, shares and placement rules copied from `ChunkView.ts`, `FacadeKit.ts`, `furniture.ts`,
+`props.ts`). Signboards are invented generic shop words (`ShopSigns.SIGN_WORDS`, tested); heights,
+colours, shops, poles, kerbs and props are estimated or invented, not mapped.
+
+## G-58: Measuring the city
+`tests/tools/city_shot.gd` loads the city at a reference place (spawn, T. Nagar, Marina, Anna
+Salai, or `--at=x,z,heading`), builds it with `fill_now()` and prints draw calls, primitives and
+objects from `RenderingServer.get_rendering_info` (all passes, shadows included) with the
+streamer's timings, then saves a Compatibility screenshot. Main-thread streaming cost is
+tested headless under CPU load (`test_main_thread_budget_under_cpu_load`). Wall-clock numbers on
+a shared machine include pre-emption (a lock-free control loop took 12 ms when four cores were
+oversubscribed), so that test fills the free cores without oversubscribing them.
+
+## G-59: The player in the city; physics interpolation stays off
+`main.gd` adds a `PlayerRig` to the city once the start is ready, places it on the road the
+Three.js game starts on, makes its body the streaming focus and lets the city recentre the
+floating origin on it (`manage_origin`; the rig is in `WorldOrigin.GROUP`, its camera snaps on
+`shifted`). Touch controls and devices are on only in play. Physics interpolation stays off for
+phase 1: the camera follows in the physics step (G-65), smooth at 60 fps; turning it on for
+90/120 Hz screens needs the camera to read the interpolated transform in `_process`, a Player
+change, so it is listed as open rather than half done.

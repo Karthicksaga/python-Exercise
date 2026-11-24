@@ -15,9 +15,20 @@ var lanes: int = -1
 var oneway: bool = false
 ## Centre line (x, z) in metres.
 var points: PackedVector2Array = PackedVector2Array()
+## Format 2 roads come in pieces split at tile edges: piece number, metres along the whole road
+## to this piece's first point, and the whole road's length (-1 when the file has the whole road).
+var piece: int = 0
+var offset_along: float = 0.0
+var total_length: float = -1.0
+## Format 2 extras: OSM highway class, bridge, tunnel, layer, ref ("NH 48").
+var highway: StringName = &""
+var bridge: bool = false
+var tunnel: bool = false
+var layer: int = 0
+var ref: String = ""
 
 ## Arterial roads that get verges, avenue trees and lane markings (`MAIN_ROADS`).
-const MAIN_KINDS: Array[StringName] = [&"primary", &"secondary", &"tertiary"]
+const MAIN_KINDS: Array[StringName] = [&"primary", &"secondary", &"tertiary", &"motorway"]
 
 
 func is_main() -> bool:
