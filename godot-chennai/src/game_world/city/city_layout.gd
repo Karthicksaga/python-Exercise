@@ -141,7 +141,7 @@ func _build_spans() -> void:
 			run += pts[i - 1].distance_to(pts[i])
 			dist[i] = run
 		var total := road.total_length if road.total_length > 0.0 else run
-		if road.is_main():
+		if road.kind != &"footway":
 			along[ri] = dist
 		var run_key := Vector2i(-999999, -999999)
 		var run_start := 0

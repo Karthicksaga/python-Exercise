@@ -29,6 +29,11 @@ func _run() -> void:
 	bold.variation_embolden = 0.9
 	_latin = bold
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
+	var only := _only()
+	if only == "ground":
+		await _bake("ground.png", Vector2i(CityAtlas.GROUND_TILE_PX * CityAtlas.GROUND_TILES, 256), _ground, false)
+		quit(0)
+		return
 	await _bake("facade.png", Vector2i(CityAtlas.FACADE_TILE_PX * CityAtlas.FACADE_TILES, 256), _facade, false)
 	await _bake("facade_glow.png", Vector2i(CityAtlas.FACADE_TILE_PX * CityAtlas.FACADE_TILES, 256), _facade_glow, false)
 	await _bake("roof_tiles.png", Vector2i(128, 128), _roof, false)
@@ -38,6 +43,14 @@ func _run() -> void:
 	glow.save_png(OUT.path_join("kit_glow.png"))
 	print("baked kit_glow.png")
 	quit(0)
+
+
+## `-- --only=ground` bakes just the ground atlas.
+func _only() -> String:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--only="):
+			return arg.trim_prefix("--only=")
+	return ""
 
 
 func _bake(file: String, size: Vector2i, painter: Callable, transparent: bool) -> Image:
@@ -288,6 +301,7 @@ func _ground(c: Node2D) -> void:
 		var dark := _rand() < 0.5
 		_blotch(c, ox + clampf(x, r, S - r), clampf(yy, r, S - r), r, _rgba(120, 100, 70, 0.22) if dark else _rgba(215, 200, 165, 0.22))
 	_grain(c, ox, S, 3500, 0.1, 78)
+	_road_tiles(c, S)
 
 
 # --- kit atlas ---------------------------------------------------------------------------------
@@ -415,3 +429,90 @@ func _kit_glow(kit: Image) -> Image:
 				col += Color(1.0, 0.84, 0.59) * 0.2
 			out.set_pixel(x, y, col)
 	return out
+
+
+# --- road detail tiles (G-310 to G-312) ---------------------------------------------------------
+
+## Tiles 8 to 15: sun-bleached asphalt with patches and cracks, cement concrete with joints,
+## footpath slabs, red laterite dust, the black-and-white kerb, dark iron and tar, yellow paint,
+## faded white paint. Original, painted here (no photo or third-party picture is used).
+func _road_tiles(c: Node2D, s: float) -> void:
+	# Worn asphalt: lighter, rougher, with darker repair patches, crack networks and oil stains.
+	var ox := 8 * s
+	_rect(c, ox, 0, s, s, _css("#57585c"))
+	_grain(c, ox, s, 9000, 0.16, 301)
+	_seed(302)
+	for i in 6:
+		_blotch(c, ox + 30 + _rand() * (s - 60), 30 + _rand() * (s - 60), 18 + _rand() * 26, _rgba(25, 25, 28, 0.20 + _rand() * 0.15))
+	for i in 3:
+		# A repair patch: a darker rectangle with a hairline edge.
+		var w := 40 + _rand() * 50
+		var h := 30 + _rand() * 40
+		var px := ox + 10 + _rand() * (s - w - 20)
+		var py := 10 + _rand() * (s - h - 20)
+		_rect(c, px, py, w, h, _rgba(40, 40, 44, 0.35))
+		c.draw_rect(Rect2(px, py, w, h), _rgba(12, 12, 14, 0.5), false, 1.5)
+	for i in 7:
+		var p := Vector2(_rand() * s, _rand() * s)
+		for k in 9:
+			var q := (p + Vector2((_rand() - 0.3) * 34, (_rand() - 0.5) * 34)).clamp(Vector2.ZERO, Vector2(s, s))
+			c.draw_line(Vector2(ox, 0) + p, Vector2(ox, 0) + q, _rgba(14, 14, 14, 0.55), 1.4)
+			p = q
+	# Concrete lane: panels with tar-filled joints, polished wheel tracks, stains.
+	ox = 9 * s
+	_rect(c, ox, 0, s, s, _css("#a9a79f"))
+	_grain(c, ox, s, 6000, 0.12, 311)
+	_seed(312)
+	for i in 8:
+		_blotch(c, ox + _rand() * s, _rand() * s, 14 + _rand() * 30, _rgba(90, 84, 70, 0.14))
+	c.draw_line(Vector2(ox, s / 2), Vector2(ox + s, s / 2), _rgba(40, 38, 34, 0.75), 3.0)
+	c.draw_line(Vector2(ox + 2, 0), Vector2(ox + 2, s), _rgba(40, 38, 34, 0.6), 3.0)
+	c.draw_line(Vector2(ox + s - 1, 0), Vector2(ox + s - 1, s), _rgba(40, 38, 34, 0.6), 3.0)
+	for i in 3:
+		var p := Vector2(_rand() * s, _rand() * s)
+		for k in 5:
+			var q := (p + Vector2((_rand() - 0.5) * 30, (_rand() - 0.5) * 30)).clamp(Vector2.ZERO, Vector2(s, s))
+			c.draw_line(Vector2(ox, 0) + p, Vector2(ox, 0) + q, _rgba(50, 48, 44, 0.5), 1.2)
+			p = q
+	# Footpath slabs: a 4 x 4 grid of cement slabs (tile = 2.4 m), shade varies per slab, a few
+	# chipped or cracked, one missing (bare dust), the grout dark.
+	ox = 10 * s
+	_rect(c, ox, 0, s, s, _css("#7d7a72"))
+	_seed(321)
+	var cell := s / 4.0
+	for gy in 4:
+		for gx in 4:
+			var shade := 0.88 + _rand() * 0.24
+			var base := Color(0.72 * shade, 0.70 * shade, 0.66 * shade)
+			var missing := (gx * 7 + gy * 3) % 11 == 5
+			if missing:
+				base = Color(0.46, 0.42, 0.38)
+			_rect(c, ox + gx * cell + 2, gy * cell + 2, cell - 4, cell - 4, base)
+			if not missing and _rand() < 0.35:
+				var a := Vector2(ox + gx * cell + 6 + _rand() * (cell - 12), gy * cell + 6)
+				var b := Vector2(ox + gx * cell + 6 + _rand() * (cell - 12), gy * cell + cell - 6)
+				c.draw_line(a, b, _rgba(40, 38, 34, 0.7), 1.5)
+			if not missing and _rand() < 0.2:
+				_blotch(c, ox + gx * cell + _rand() * cell, gy * cell + _rand() * cell, 10, _rgba(60, 50, 40, 0.3))
+	_grain(c, ox, s, 3000, 0.1, 322)
+	# Laterite: red-brown dust with pebbles.
+	ox = 11 * s
+	_rect(c, ox, 0, s, s, _css("#966249"))
+	_seed(331)
+	for i in 50:
+		var r := 10 + _rand() * 34
+		_blotch(c, ox + clampf(_rand() * s, r, s - r), clampf(_rand() * s, r, s - r), r, _rgba(110, 72, 52, 0.25) if _rand() < 0.5 else _rgba(190, 150, 120, 0.22))
+	_grain(c, ox, s, 4000, 0.14, 332)
+	# Kerb stones painted black and white (u = along / 2: one metre each, like the yellow kerb).
+	ox = 12 * s
+	_rect(c, ox, 0, s / 2, s, Color8(216, 214, 204))
+	_rect(c, ox + s / 2, 0, s / 2, s, Color8(34, 34, 36))
+	_grain(c, ox, s, 1500, 0.1, 341)
+	# Dark iron and tar: manhole covers, potholes, drain gratings.
+	ox = 13 * s
+	_rect(c, ox, 0, s, s, _css("#1d1c1e"))
+	_grain(c, ox, s, 1500, 0.1, 351)
+	# Yellow and faded white paint.
+	_rect(c, 14 * s, 0, s, s, _css("#e0b92c"))
+	_rect(c, 15 * s, 0, s, s, _css("#bdbab0"))
+	_grain(c, 15 * s, s, 800, 0.1, 361)

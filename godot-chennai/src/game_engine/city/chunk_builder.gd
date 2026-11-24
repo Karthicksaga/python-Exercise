@@ -34,6 +34,8 @@ class Kit:
 	## render thread).
 	var tree_triangles: int = 0
 	var palm_triangles: int = 0
+	## Road detail (G-310 to G-313): off for a before and after comparison in tests and tools.
+	var road_detail: bool = true
 	## The sea's outline (world metres), cut to each chunk it covers and drawn as ground water;
 	## its bounding box for a quick reject. Empty when the map has no coast.
 	var sea := PackedVector2Array()
@@ -67,6 +69,8 @@ class Build:
 	## roof_estimated, sign_mapped, object:bench, zone:pitch, …
 	var detail: Dictionary[String, int] = {}
 	var surfaces: int = 0
+	## The road detail planned for this chunk (null when switched off).
+	var roads: RoadDetail.Plan
 	var usec: int = 0
 	var error: String = ""
 
@@ -127,6 +131,8 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	use_mapped_lamps(out.furniture, near_objects, layout, square)
 	add_platform_shelters(out.furniture, near_objects, layout, chunk, square)
 	out.props = StreetProps.for_chunk(layout, chunk, cell, out.furniture)
+	if kit.road_detail:
+		out.roads = RoadDetail.for_chunk(layout, chunk, cell, square, out.furniture)
 
 	var view := Node3D.new()
 	view.name = "Chunk_%d_%d" % [cell.x, cell.y]
@@ -137,7 +143,7 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	water.polygons = WaterMeshes.gather(chunk.areas, layout.water_in(cell), square)
 	var ground := GroundMeshes.new()
 	ground.origin = out.centre
-	ground.build(spans, chunk.areas, square, out.furniture.kerbs, water.polygons, out.furniture.medians)
+	ground.build(spans, chunk.areas, square, out.furniture.kerbs, water.polygons, out.furniture.medians, out.roads)
 	# Zebra crossings and speed breakers (G-153), on the road at its height.
 	var bump_faces := PackedVector3Array()
 	for sp: WorldSpot in layout.spots_in(cell):
@@ -211,21 +217,36 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 		var model: MeshBuilder = kit.models.props.get(p.kind)
 		if model != null:
 			CityModels.place(objects, model, _local3(p.position, out.centre), p.yaw)
+	if out.roads != null:
+		var all_poles: Array[StreetFurniture.Pole] = []
+		all_poles.append_array(out.furniture.poles)
+		for pole in out.roads.poles:
+			CityModels.place(objects, kit.models.pole, _local3(pole.position, out.centre), pole.yaw)
+			all_poles.append(pole)
+		out.detail["wires"] = RoadObjects.wires(objects, all_poles, out.centre)
+		out.detail["median_shrubs"] = RoadObjects.shrubs(objects, kit.models, out.furniture.medians, out.centre)
+		out.detail["crossings"] = out.roads.crossings.size()
 	if detail != null:
 		dm.add_objects(detail.objects_in(cell), water.polygons)
 		for s in out.furniture.shelters:
 			var across := Vector2(cos(s.yaw), -sin(s.yaw))
 			CityModels.place(objects, kit.models.detail.models[&"stop_pole"], _local3(s.position + across * (StreetFurniture.SHELTER_WIDTH / 2.0 + 0.7), out.centre), s.yaw)
 			dm.stats["stop_pole"] = dm.stats.get("stop_pole", 0) + 1
+	var all_trees: Array[WorldTree] = chunk.trees.duplicate()
+	all_trees.append_array(line_trees)
+	if out.roads != null:
+		all_trees.append_array(out.roads.trees)
+	var trees := standing_trees(all_trees, water.polygons, layout)
+	if out.roads != null:
+		var caged := RoadDetail.guarded(layout, trees)
+		RoadObjects.guards(objects, kit.models, caged, out.centre)
+		out.detail["tree_guards"] = caged.size()
 	_add_mesh(out, near, "objects", objects, kit.materials.objects, kit.shadows)
 	for k in meshes.stats:
 		out.detail[k] = meshes.stats[k]
 	for k in dm.stats:
 		out.detail[k] = dm.stats[k]
 
-	var all_trees: Array[WorldTree] = chunk.trees.duplicate()
-	all_trees.append_array(line_trees)
-	var trees := standing_trees(all_trees, water.polygons, layout)
 	_add_trees(kit, out, trees)
 	_add_colliders(out, chunk, trees)
 	if not dm.solids.is_empty():
@@ -321,11 +342,19 @@ static func standing_trees(all: Array[WorldTree], water: Array[PackedVector2Arra
 	return out
 
 
+## Four silhouettes from two meshes, so a chunk keeps its two tree draw calls (G-312): the rounded
+## crown mesh is the neem as it is and the rain tree stretched wide and flat; the coconut palm mesh
+## is the coconut as it is and the palmyra stretched tall and slim. Each instance has its own tint.
+const SPECIES_SCALE: Dictionary[StringName, Vector2] = {&"neem": Vector2(1.0, 1.0), &"rain": Vector2(1.55, 0.82), &"coconut": Vector2(1.0, 1.0), &"palmyra": Vector2(0.72, 1.3)}
+const SPECIES_TINT: Dictionary[StringName, Color] = {&"neem": Color(0.92, 1.0, 0.92), &"rain": Color(1.08, 1.06, 0.88), &"coconut": Color(1.0, 1.0, 0.92), &"palmyra": Color(0.92, 0.95, 0.85)}
+
+
 static func _add_trees(kit: Kit, out: Build, standing: Array[WorldTree]) -> void:
 	var palms: Array[WorldTree] = []
 	var trees: Array[WorldTree] = []
 	for t in standing:
-		if CityHash.tree_unit(t.position, 51) < PALMS:
+		var species := RoadStyle.species_of(t)
+		if species == &"coconut" or species == &"palmyra":
 			palms.append(t)
 		else:
 			trees.append(t)
@@ -340,6 +369,7 @@ static func _add_trees(kit: Kit, out: Build, standing: Array[WorldTree]) -> void
 		mm.instance_count = list.size()
 		for i in list.size():
 			var t := list[i]
+			var species := RoadStyle.species_of(t)
 			var angle: float
 			var size: float
 			var tint: Color
@@ -353,7 +383,10 @@ static func _add_trees(kit: Kit, out: Build, standing: Array[WorldTree]) -> void
 				size = t.scale
 				var v := 0.85 + fposmod(t.position.x * 3.1 + t.position.y * 5.7, 1.0) * 0.3
 				tint = Color(v, v, v * 0.9)
-			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, angle).scaled(Vector3(size, size, size)), _local3(t.position, out.centre)))
+			var shape := SPECIES_SCALE[species]
+			var hue := SPECIES_TINT[species]
+			tint = Color(tint.r * hue.r, tint.g * hue.g, tint.b * hue.b)
+			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, angle).scaled(Vector3(size * shape.x, size * shape.y, size * shape.x)), _local3(t.position, out.centre)))
 			mm.set_instance_color(i, tint)
 		var node := MultiMeshInstance3D.new()
 		node.name = "Palms" if kind == 0 else "Trees"
@@ -391,7 +424,10 @@ static func _add_colliders(out: Build, chunk: ChunkData, trees: Array[WorldTree]
 	var solids := PackedVector3Array()
 	for t in trees:
 		solid_box(solids, Vector3(t.position.x - out.centre.x, 1.5, t.position.y - out.centre.y), Vector3(0.28 * t.scale, 1.5, 0.28 * t.scale), 0.0)
-	for p in out.furniture.poles:
+	var all_poles: Array[StreetFurniture.Pole] = out.furniture.poles.duplicate()
+	if out.roads != null:
+		all_poles.append_array(out.roads.poles)
+	for p in all_poles:
 		var h := StreetFurniture.POLE_HEIGHT / 2.0
 		solid_box(solids, _local3(p.position, out.centre, h), Vector3(StreetFurniture.POLE_HALF + 0.02, h, StreetFurniture.POLE_HALF + 0.02), p.yaw)
 	for s in out.furniture.shelters:

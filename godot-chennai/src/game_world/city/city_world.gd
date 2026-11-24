@@ -20,6 +20,8 @@ signal ready_to_stream
 ## Landmark models from their specs (G-183); off leaves the OSM buildings in their place (for
 ## measuring the landmarks' cost).
 @export var show_landmarks: bool = true
+## Class-based road detail (G-310 to G-313); off only to measure before and after.
+@export var road_detail: bool = true
 ## Recentre the floating origin on `focus_node` when it wanders far (G-7).
 @export var manage_origin: bool = false
 ## The Three.js game's spawn: the nearest road to this point (`content.ts`).
@@ -69,6 +71,7 @@ func setup(world: WorldSource) -> String:
 	# under the Compatibility renderer (G-52).
 	materials = CityMaterials.create()
 	var kit := ChunkBuilder.Kit.new()
+	kit.road_detail = road_detail
 	kit.source = world
 	kit.layouts = layouts
 	kit.models = models

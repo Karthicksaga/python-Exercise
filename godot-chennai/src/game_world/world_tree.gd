@@ -8,3 +8,5 @@ var position: Vector2 = Vector2.ZERO
 var scale: float = 1.0
 ## &"osm" trees are mapped; &"generated" ones were added along avenues and in parks for looks.
 var source: StringName = &"generated"
+## Species silhouette: &"neem", &"rain", &"coconut", &"palmyra", or empty to pick by hash (G-312).
+var species: StringName = &""

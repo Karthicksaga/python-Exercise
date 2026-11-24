@@ -92,7 +92,7 @@ static func create() -> CityMaterials:
 
 ## Plain colours per ground layer, used until the atlas is baked.
 static func _fallback_ground() -> ImageTexture:
-	var colours: Array[Color] = [Color.hex(0x4a4c52ff), Color.hex(0xb9b2a6ff), Color.hex(0x5f9a4eff), Color.hex(0xe9d6a6ff), Color.hex(0x3f7fa6ff), Color.hex(0xf0efe6ff), Color.hex(0xdeba34ff), Color.hex(0xb9a37cff)]
+	var colours: Array[Color] = [Color.hex(0x4a4c52ff), Color.hex(0xb9b2a6ff), Color.hex(0x5f9a4eff), Color.hex(0xe9d6a6ff), Color.hex(0x3f7fa6ff), Color.hex(0xf0efe6ff), Color.hex(0xdeba34ff), Color.hex(0xb9a37cff), Color.hex(0x57585cff), Color.hex(0xa9a79fff), Color.hex(0xb4aea3ff), Color.hex(0x966249ff), Color.hex(0xe0ddd2ff), Color.hex(0x1d1c1eff), Color.hex(0xe0b92cff), Color.hex(0xbdbab0ff)]
 	var img := Image.create(CityAtlas.GROUND_TILES * 4, 4, false, Image.FORMAT_RGB8)
 	for i in colours.size():
 		img.fill_rect(Rect2i(i * 4, 0, 4, 4), colours[i])
