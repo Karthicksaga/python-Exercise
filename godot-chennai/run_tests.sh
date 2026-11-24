@@ -8,6 +8,11 @@ set -euo pipefail
 cd "$(dirname "$0")"
 GODOT="${GODOT:-godot}"
 mkdir -p tests/out
+# Each run gets its own user:// folder. Tests write fixed save files there; several runs on one machine
+# (agents, a local run beside CI-style runs) would otherwise delete each other's files and fail at random.
+DATA_HOME="$(mktemp -d)"
+trap 'rm -rf "$DATA_HOME"' EXIT
+export XDG_DATA_HOME="$DATA_HOME"
 # Import first: a fresh checkout has no .godot/, and new class_name scripts only join the
 # global class cache through an import (a few seconds when nothing changed). SKIP_IMPORT=1 skips it.
 if [ "${SKIP_IMPORT:-0}" != "1" ]; then
