@@ -552,7 +552,7 @@ the game.
 signs), `ShopSigns.pick`, `DetailMeshes` + `DetailModels` (objects, barriers, platforms, zones),
 `GroundMeshes` covers 17 to 19, the pool colour in `water.gdshader`, `AreaPalettes`
 (`data/areas/palettes.json`, G-194).
-**For godot-areas.** `AreaPalettes` is the only reader of `data/areas/palettes.json`; is now the areas agent's real file (G-200 and G-202; format 1: `default` plus `areas.<id>` with `walls`, `roofs`,
+**For godot-areas.** `AreaPalettes` is the only reader of `data/areas/palettes.json`, which is now the areas agent's real file (G-200 and G-202; format 1: `default` plus `areas.<id>` with `walls`, `roofs`,
 `roof_types`, `storeys` bins and a `boundary`). `AreaPalettes` (G-194, updated) picks the area of a building by
 boundary containment at its footprint centre (circle: distance over radius; corridor: distance to the spine over
 half width; the smallest wins; none contains it: `default`, which leaves a house exactly as before). The old
