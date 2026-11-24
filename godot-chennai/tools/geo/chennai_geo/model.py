@@ -64,6 +64,12 @@ class OsmFeatures:
     coastlines: list[OsmLine] = field(default_factory=list)
     aeroway_lines: list[OsmLine] = field(default_factory=list)
     stats: dict[str, int] = field(default_factory=dict)
+    # Format 2.1 (`infra.bin`, G-150): waterway centre lines, railway lines (only to find what a
+    # bridge crosses) and street spots (crossings, traffic calming). Kept apart from the lists
+    # above so the 2.0 files stay byte for byte the same.
+    waterways: list[OsmLine] = field(default_factory=list)
+    railways: list[OsmLine] = field(default_factory=list)
+    spots: list[OsmPoint] = field(default_factory=list)
 
 
 @dataclass
