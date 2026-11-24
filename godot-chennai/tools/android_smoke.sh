@@ -42,6 +42,8 @@ diagnose() {
     | grep -vE "am_pss|am_mem_factor|am_freeze|am_unfreeze|am_compact" | tail -120
   echo "---- system and main log, last 200 lines (without package-filter noise) ----"
   adb logcat -d -b main,system 2>/dev/null | grep -vE "AppsFilter|BlockstoreStorage| godot   :" | tail -200
+  echo "---- install and the first seconds after launch (main, system, events) ----"
+  [ -f "$OUT/early.txt" ] && grep -vE "AppsFilter|GLES3|uniforms exceed|_compile_specialization|_display_error_with_code|Method/function failed|^.{31}godot   : *$" "$OUT/early.txt" | tail -300
   echo "---- crash buffer ----"
   adb logcat -d -b crash 2>/dev/null | tail -60
   echo "---- global configuration now ----"
@@ -112,17 +114,25 @@ if [ "$SETTLE" = 1 ]; then
   config_steady
 fi
 
+adb logcat -c -b all
 log "installing $APK"
 adb install -r "$APK" || fail "adb install failed"
 wait_for 60 "package installed" dev pm path "$PACKAGE"
+if [ "$SETTLE" = 1 ]; then
+  # Installing sends broadcasts that other apps answer (launcher, Play services); wait until the
+  # system has delivered them before starting the game.
+  timeout 90 adb shell cmd activity wait-for-broadcast-idle > /dev/null 2>&1 \
+    && log "ready: broadcasts after the install delivered" || log "note: broadcast queue not idle after 90 s"
+  config_steady
+fi
 ACTIVITY=$(dev cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "$PACKAGE" | tail -1)
 case "$ACTIVITY" in */*) ;; *) fail "no launcher activity for $PACKAGE: $ACTIVITY";; esac
-adb logcat -c -b all
 dev am force-stop "$PACKAGE"
 log "configuration at launch: $(config)"
 log "launching $ACTIVITY"
 dev am start -W -n "$ACTIVITY" | grep -E "Status|LaunchState|TotalTime" | sed 's/^/  /'
 start=$(date +%s)
+( sleep 6; adb logcat -d -b main,system,events > "$OUT/early.txt" 2>/dev/null ) &
 pid=""
 pressed=0
 while true; do
