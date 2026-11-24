@@ -3,7 +3,8 @@
 ## renderer under xvfb), e.g.
 ##   tools/run_people_tests.sh --lineup -- --anim walk --time 0.3 --out /tmp/walk.png --size 1830x824
 ## Options: --ids a,b,c (default: everyone in the manifest), --anim, --time (seconds),
-## --lod 0|1, --spacing m, --yaw degrees (turn the people), --out, --size WxH.
+## --lod 0|1, --spacing m, --yaw degrees (turn the people), --orbit degrees (move the camera
+## round them), --out, --size WxH.
 extends SceneTree
 
 const PeopleGltf := preload("res://tests/people/people_gltf.gd")
@@ -16,11 +17,10 @@ func _initialize() -> void:
 	var size := Vector2i(int(size_parts[0]), int(size_parts[1]))
 	root.size = size
 	DisplayServer.window_set_size(size)
-	var manifest := PeopleGltf.read_manifest()
 	var ids: PackedStringArray = String(args.get("ids", "")).split(",", false)
-	var people: Array = []
-	for entry: Dictionary in manifest:
-		if ids.is_empty() or ids.has(entry["id"]):
+	var people: Array[Dictionary] = []
+	for entry in PeopleGltf.read_manifest():
+		if ids.is_empty() or ids.has(String(entry["id"])):
 			people.append(entry)
 	var world := Node3D.new()
 	root.add_child(world)
@@ -32,7 +32,7 @@ func _initialize() -> void:
 	var yaw := deg_to_rad(float(args.get("yaw", "0")))
 	var tallest := 0.0
 	for i in people.size():
-		var entry: Dictionary = people[i]
+		var entry := people[i]
 		var scene := PeopleGltf.load_person(entry)
 		if scene == null:
 			push_error("could not load %s" % entry["id"])
@@ -54,7 +54,8 @@ func _initialize() -> void:
 	var aspect := float(size.x) / size.y
 	var view_h := maxf(tallest * 1.18, width / aspect * 1.05)
 	var dist := view_h / 2.0 / tan(deg_to_rad(cam.fov / 2.0))
-	cam.position = Vector3(0, tallest * 0.55, dist)
+	var side := deg_to_rad(float(args.get("orbit", "0")))
+	cam.position = Vector3(sin(side) * dist, tallest * 0.55, cos(side) * dist)
 	cam.look_at(Vector3(0, tallest * 0.5, 0))
 	cam.current = true
 	for i in 8:
@@ -95,7 +96,7 @@ func _add_lights(world: Node3D) -> void:
 
 
 func _parse(args: PackedStringArray) -> Dictionary:
-	var out := {}
+	var out: Dictionary = {}
 	var i := 0
 	while i < args.size():
 		var a := args[i]

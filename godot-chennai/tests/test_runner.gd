@@ -8,7 +8,7 @@ extends SceneTree
 ##    script errors, so the runner counts failures itself (godot-gdscript-headless-testing).
 
 const SCRIPT_DIRS: PackedStringArray = ["res://src", "res://tests"]
-const TEST_DIRS: PackedStringArray = ["res://tests/unit", "res://tests/scene"]
+const TEST_DIRS: PackedStringArray = ["res://tests/unit", "res://tests/scene", "res://tests/people"]
 
 var _tests := 0
 var _failed := 0

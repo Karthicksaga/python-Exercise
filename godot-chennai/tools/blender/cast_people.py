@@ -16,6 +16,8 @@ ROLES = {
     # new for the Godot cast
     "bus-driver", "bus-conductor", "healthcare", "security", "sanitation", "services", "worker", "family",
     "traditional", "temple", "sport", "tourist", "homemaker", "teacher", "elderly",
+    # children only: may be placed at play in safe places (park, beach), never on a street
+    "play",
 }
 CLOTHING = {"saree", "veshti", "lungi", "salwar", "chudidar", "kurta", "uniform", "office", "casual", "work", "school", "sport", "traditional"}
 BOARDS = {
@@ -127,17 +129,18 @@ def person(pid, sex, years, roles, board, figure, label, clothing, outfit, **kw)
 # ----------------------------------------------------------------------------------------------
 # Garment helpers
 # ----------------------------------------------------------------------------------------------
-def shirt_trousers(shirt, trousers, pattern=None):
-    """Long-sleeved cotton shirt over trousers (MakeHuman male_casualsuit01, recoloured)."""
-    item = {"asset": "male_casualsuit01", "split": "z", "upper": shirt, "lower": trousers, "flatten": True}
+def shirt_trousers(shirt, trousers, pattern=None, sleeves="short"):
+    """Cotton shirt over trousers (MakeHuman male_casualsuit01, recoloured). Half sleeves unless
+    `sleeves="long"` (office shirts)."""
+    item = {"asset": "male_casualsuit01", "split": "z", "upper": shirt, "lower": trousers, "flatten": True, "sleeves": sleeves}
     if pattern:
         item["pattern"] = pattern
     return [item]
 
 
-def shirt_only(shirt, pattern=None):
-    """The same shirt without the trousers (worn over a veshti or lungi)."""
-    item = {"asset": "male_casualsuit01", "split": "z", "upper": shirt, "drop": "lower"}
+def shirt_only(shirt, pattern=None, sleeves="short"):
+    """The same shirt without the trousers (worn over a veshti, lungi or jeans)."""
+    item = {"asset": "male_casualsuit01", "split": "z", "upper": shirt, "drop": "lower", "sleeves": sleeves}
     if pattern:
         item["pattern"] = pattern
     return [item]
@@ -220,6 +223,7 @@ def saree(base, border, motif, blouse):
         {"kind": "region", "region": "blouse", "colour": blouse, "offset": 0.004},
         {"kind": "tube", "texture": ("saree", base, border, motif), "bottom": "floor", "flare": 0.03, "pleats": True, "top": "navel"},
         {"kind": "region", "region": "pallu", "texture": ("pallu", base, border, motif), "offset": 0.014},
+        {"kind": "pallu_tail", "texture": ("pallu", base, border, motif)},
     ]
 
 
@@ -254,8 +258,8 @@ def hivis(colour=c("#e8742a"), band=c("#c9ccc8")):
 def apron(colour, stripe):
     """A shop apron: bib over the chest, skirt in front to below the knee, vertical stripes."""
     return [
-        {"kind": "region", "region": "apron_bib", "texture": ("stripes", colour, stripe), "offset": 0.022},
-        {"kind": "tube", "texture": ("stripes", colour, stripe), "top": "waist", "bottom": "calf", "flare": 0.03, "front": True, "grow": 0.02},
+        {"kind": "region", "region": "apron_bib", "texture": ("stripes", colour, stripe), "offset": 0.035},
+        {"kind": "tube", "texture": ("stripes", colour, stripe), "top": "waist", "bottom": "calf", "flare": 0.03, "front": True, "grow": 0.035},
     ]
 
 
@@ -274,6 +278,15 @@ def idtag(colour=c("#2f5d8a")):
 
 def belt(colour=c("#2a2018")):
     return {"kind": "belt", "colour": colour}
+
+
+def pockets(colour):
+    """Two plain chest pockets with flaps (uniform shirts; no badges)."""
+    return {"kind": "pockets", "colour": colour}
+
+
+def darker(colour, k=0.82):
+    return tuple(x * k for x in colour)
 
 
 def police(sex):
@@ -297,7 +310,7 @@ PHASE1 = [
     person("it-professional-m", "male", 28, ["office", "pedestrian", "passenger"], P1, 2, "IT Professional",
            ["office"], "light blue formal shirt, charcoal trousers, belt, blank ID card on a lanyard, black shoes, short beard",
            tone=0.45, body={"muscle": 0.5, "weight": 0.5, "height": 0.55, "proportions": 0.55},
-           facial=["beard", "moustache"], clothes=shirt_trousers(c("#8badd8"), c("#2f2e31")),
+           facial=["beard", "moustache"], clothes=shirt_trousers(c("#8badd8"), c("#2f2e31"), sleeves="long"),
            garments=[belt(), idtag(c("#2f4f7a"))], shoes="shoes04"),
     person("delivery-rider", "male", 25, ["delivery", "pedestrian"], P1, 3, "Delivery Rider",
            ["casual", "work"], "plain teal riding jacket (board's branded orange replaced, no logo), black cargo trousers, grey trainers, dark backpack",
@@ -307,15 +320,15 @@ PHASE1 = [
     person("auto-driver", "male", 45, ["auto-driver"], P1, 4, "Auto Driver",
            ["uniform"], "khaki shirt and khaki trousers (the auto driver's dress), sandals, moustache",
            tone=0.7, body={"muscle": 0.5, "weight": 0.58, "height": 0.46, "proportions": 0.5}, facial=["moustache"],
-           clothes=shirt_trousers(c("#7f7552"), c("#776d4a"))),
+           clothes=shirt_trousers(c("#7f7552"), c("#776d4a")), garments=[pockets(c("#6f6646"))]),
     person("shopkeeper-m", "male", 48, ["shopkeeper", "vendor", "pedestrian"], P1, 5, "Shopkeeper",
            ["veshti"], "blue-and-red checked shirt, white veshti with a gold border, cream towel on the shoulder, sandals, moustache",
            tone=0.65, body={"muscle": 0.45, "weight": 0.68, "height": 0.46, "proportions": 0.5}, facial=["moustache"],
-           clothes=shirt_only(c("#9aa4d4"), ("check", c("#b04a52"), 64)), garments=[veshti(c("#b38a34")), towel(c("#d9c59a"), c("#b8a070"))]),
+           clothes=shirt_only(c("#dfe2ee"), ("plaid", (c("#4a62b0"), c("#b8383a")), 22)), garments=[veshti(c("#b38a34")), towel(c("#d9c59a"), c("#b8a070"))]),
     person("police-constable", "male", 42, ["police", "traffic-police"], P1, 6, "Police Constable",
            ["uniform"], "generic khaki uniform, dark red-brown belt, khaki peaked cap (no insignia, badges or shoulder marks), brown shoes, moustache",
            tone=0.65, body={"muscle": 0.55, "weight": 0.6, "height": 0.55, "proportions": 0.5}, facial=["moustache"],
-           clothes=police("male"), garments=[belt(c("#5a2a1e")), {"kind": "cap", "style": "peaked", "colour": KHAKI_DARK, "band": c("#3a2a1a")}],
+           clothes=police("male"), garments=[belt(c("#5a2a1e")), pockets(darker(KHAKI)), {"kind": "cap", "style": "peaked", "colour": KHAKI_DARK, "band": c("#3a2a1a")}],
            shoes="shoes04"),
     person("construction-worker", "male", 32, ["construction", "worker"], P1, 7, "Construction Worker",
            ["work"], "purple T-shirt, plain orange hi-visibility vest with reflective bands, grey-olive cargo trousers, work boots, yellow hard hat",
@@ -325,7 +338,7 @@ PHASE1 = [
     person("office-employee-m", "male", 30, ["office", "pedestrian", "passenger"], P1, 8, "Office Employee",
            ["office"], "pale lilac checked shirt, charcoal trousers, brown belt, blank ID card, brown shoes",
            tone=0.5, body={"muscle": 0.5, "weight": 0.48, "height": 0.55, "proportions": 0.55}, facial=["stubble", "moustache"],
-           clothes=shirt_trousers(c("#ddd4e2"), c("#2e2d30"), ("check", c("#a99bb5"), 72)),
+           clothes=shirt_trousers(c("#ddd4e2"), c("#2e2d30"), ("check", c("#a99bb5"), 72), sleeves="long"),
            garments=[belt(c("#4a2e1c")), idtag(c("#3c5f8f"))], shoes="shoes01"),
     person("elderly-man", "male", 70, ["pedestrian", "passenger", "elderly"], P1, 9, "Elderly Man",
            ["veshti", "traditional"], "pale pink shirt, white veshti with a gold border, sandals, white hair, white moustache and short beard",
@@ -334,7 +347,7 @@ PHASE1 = [
     person("tea-vendor", "male", 46, ["tea-worker", "vendor"], P1, 10, "Street Vendor (Tea)",
            ["lungi"], "brown-and-red checked shirt, blue checked lungi to the ankle, red towel on the shoulder, sandals, salt-and-pepper beard",
            tone=0.75, body={"muscle": 0.5, "weight": 0.6, "height": 0.47, "proportions": 0.5}, hair=("short04", DARK_HAIR),
-           facial=["moustache", "beard"], facial_colour=SALT_PEPPER, clothes=shirt_only(c("#b99a8a"), ("check", c("#8a3a30"), 56)),
+           facial=["moustache", "beard"], facial_colour=SALT_PEPPER, clothes=shirt_only(c("#d8c8b4"), ("plaid", (c("#9a3a30"), c("#3a3a5a")), 20)),
            garments=[lungi(c("#2f5d9a"), [c("#8db0d8"), c("#1d2f55")]), towel(c("#b0302a"), c("#e0c060"))]),
     # ---------------------------------------------------------------- women (bottom row)
     person("college-student-f", "female", 20, ["college", "pedestrian", "passenger"], P1, 11, "College Student",
@@ -391,15 +404,14 @@ PHASE1 = [
 # Phase 2: the 60 of board phase2-60-characters.webp. The board shows 74 figures (two couples,
 # more men than women) under the heading "30 Male + 30 Female": the 20 phase-1 people play the
 # matching figures (`also`), 40 new people play the rest, and a few figures are left out or
-# played by someone already cast (docs/characters.md lists them). Not cast yet (10 figures):
-# Tiffin Vendor, Street Shop Owner, Baker, Plumber, Office Assistant, Pharmacist, Young Man,
-# Boy (8-10), Playful Boy (Cricket), Cyclist. Four figures the board draws as men are cast as
-# women to reach the board's 30 + 30 (noted per person).
+# played by someone already cast. The ten figures first left out (Tiffin Vendor, Street Shop
+# Owner, Baker, Plumber, Office Assistant, Pharmacist, Young Man, Boy (8-10), Playful Boy
+# (Cricket), Cyclist) were added at the owner's request, so the cast is 70. Four figures the board draws as men are cast as
+# women to reach the board's 30 + 30 (noted per person); the owner kept them (23 Nov).
 # Figure ids: "<group>-<position>" in the board's reading order; crops are pixel boxes on the
 # 1536 x 1024 board (for the side-by-side review sheets).
 # ----------------------------------------------------------------------------------------------
-NOT_CAST = ["Tiffin Vendor", "Street Shop Owner", "Baker", "Plumber", "Office Assistant", "Pharmacist", "Young Man",
-            "Boy (8-10)", "Playful Boy (Cricket)", "Cyclist"]
+NOT_CAST = []  # the owner asked for the last ten too (23 Nov): every figure is now played
 ROWS = {0: (95, 245), 1: (248, 395), 2: (398, 550), 3: (553, 718), 4: (722, 918)}
 
 
@@ -430,7 +442,7 @@ ALSO = {
 for _spec in PHASE1:
     _spec["also"] = ALSO.get(_spec["id"], [])
 
-SWAPPED = "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split"
+SWAPPED = "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split (kept by the owner, 23 Nov 2026)"
 
 PHASE2 = [
     # ================================================================ men (20)
@@ -449,19 +461,19 @@ PHASE2 = [
     person("manager", "male", 46, ["office", "pedestrian", "passenger"], P2, "office-5", "Manager",
            ["office"], "lavender formal shirt, charcoal trousers, belt, blank ID card, black shoes, moustache",
            crop=fig(0, 1254), tone=0.5, body={"muscle": 0.45, "weight": 0.62, "height": 0.52, "proportions": 0.5}, facial=["moustache", "stubble"],
-           hair=("short04", SALT_PEPPER), clothes=shirt_trousers(c("#bcb6dc"), c("#2c2b30")), garments=[belt(), idtag(c("#4a3f7a"))], shoes="shoes04"),
+           hair=("short04", SALT_PEPPER), clothes=shirt_trousers(c("#bcb6dc"), c("#2c2b30"), sleeves="long"), garments=[belt(), idtag(c("#4a3f7a"))], shoes="shoes04"),
     person("cab-driver", "male", 38, ["cab-driver", "pedestrian"], P2, "transport-2", "Cab Driver",
            ["uniform"], "cream shirt, grey trousers, brown shoes, moustache",
            crop=fig(1, 248), tone=0.6, body={"muscle": 0.5, "weight": 0.55, "height": 0.5, "proportions": 0.5}, facial=["moustache"],
-           clothes=shirt_trousers(c("#ddd5bf"), c("#55565a")), garments=[belt(c("#3a2a1e"))], shoes="shoes01"),
+           clothes=shirt_trousers(c("#ddd5bf"), c("#55565a")), garments=[belt(c("#3a2a1e")), pockets(c("#c4bba3"))], shoes="shoes01"),
     person("bus-driver", "male", 47, ["bus-driver", "pedestrian"], P2, "transport-3", "Bus Driver",
            ["uniform"], "generic light blue uniform shirt, navy trousers, belt, blank ID card, black shoes (no transport-corporation badge)",
            crop=fig(1, 342), tone=0.7, body={"muscle": 0.5, "weight": 0.6, "height": 0.5, "proportions": 0.5}, facial=["moustache"],
-           clothes=shirt_trousers(c("#9db6dd"), c("#1f2a44")), garments=[belt(), idtag(c("#2f4f7a"))], shoes="shoes04"),
+           clothes=shirt_trousers(c("#9db6dd"), c("#1f2a44")), garments=[belt(), pockets(c("#86a0c8")), idtag(c("#2f4f7a"))], shoes="shoes04"),
     person("bus-conductor", "male", 41, ["bus-conductor", "pedestrian"], P2, "transport-4", "Bus Conductor",
            ["uniform"], "generic light blue uniform shirt, navy trousers, belt, blank ID card, sandals, moustache and stubble",
            crop=fig(1, 440), tone=0.65, body={"muscle": 0.45, "weight": 0.5, "height": 0.47, "proportions": 0.5}, facial=["moustache", "stubble"],
-           hair=("short04", BLACK_HAIR), clothes=shirt_trousers(c("#a6bfe2"), c("#22304d")), garments=[belt(), idtag(c("#2f4f7a"))]),
+           hair=("short04", BLACK_HAIR), clothes=shirt_trousers(c("#a6bfe2"), c("#22304d")), garments=[belt(), pockets(c("#8ea8cc")), idtag(c("#2f4f7a"))]),
     person("fruit-vendor", "male", 52, ["vendor", "pedestrian"], P2, "vendors-4", "Fruit Vendor",
            ["lungi"], "khaki-brown shirt, dark green checked lungi to the knee, towel, sandals, short grey hair",
            crop=fig(1, 1118), tone=0.75, body={"muscle": 0.5, "weight": 0.6, "height": 0.45, "proportions": 0.5}, facial=["moustache"],
@@ -473,17 +485,17 @@ PHASE2 = [
     person("security-guard", "male", 49, ["security", "pedestrian"], P2, "workers-6", "Security Guard",
            ["uniform"], "generic light blue shirt, navy trousers, black belt, navy peaked cap (no badge or company name), black shoes",
            crop=fig(2, 523), tone=0.65, body={"muscle": 0.5, "weight": 0.6, "height": 0.5, "proportions": 0.5}, facial=["moustache"],
-           clothes=shirt_trousers(c("#a9c0e0"), c("#1c2640")), garments=[belt(c("#111111")), {"kind": "cap", "style": "peaked", "colour": c("#1c2640"), "band": c("#111111")}],
+           clothes=shirt_trousers(c("#a9c0e0"), c("#1c2640")), garments=[belt(c("#111111")), pockets(c("#91a8c8")), {"kind": "cap", "style": "peaked", "colour": c("#1c2640"), "band": c("#111111")}],
            shoes="shoes04"),
     person("traffic-police", "male", 40, ["traffic-police", "police"], P2, "police-3", "Traffic Police",
            ["uniform"], "generic white shirt, navy trousers, black belt, white peaked cap with a dark band (no insignia), black shoes",
            crop=fig(2, 1009), tone=0.6, body={"muscle": 0.55, "weight": 0.55, "height": 0.55, "proportions": 0.5}, facial=["moustache"],
-           clothes=shirt_trousers(c("#eeeeea"), c("#1f2a44")), garments=[belt(c("#111111")), {"kind": "cap", "style": "peaked", "colour": c("#f0efea"), "band": c("#1f1f1f")}],
+           clothes=shirt_trousers(c("#eeeeea"), c("#1f2a44")), garments=[belt(c("#111111")), pockets(c("#d6d6d0")), {"kind": "cap", "style": "peaked", "colour": c("#f0efea"), "band": c("#1f1f1f")}],
            shoes="shoes04"),
     person("police-inspector", "male", 50, ["police"], P2, "police-1", "Police Inspector",
            ["uniform"], "generic khaki uniform, brown belt, darker khaki peaked cap (no insignia, badges or shoulder marks), black shoes, moustache",
            crop=fig(2, 860), tone=0.55, body={"muscle": 0.55, "weight": 0.66, "height": 0.55, "proportions": 0.5}, facial=["moustache"],
-           clothes=police("male"), garments=[belt(c("#4a2a1a")), {"kind": "cap", "style": "peaked", "colour": c("#7d6a42"), "band": c("#2a1f14")}], shoes="shoes04"),
+           clothes=police("male"), garments=[belt(c("#4a2a1a")), pockets(darker(KHAKI)), {"kind": "cap", "style": "peaked", "colour": c("#7d6a42"), "band": c("#2a1f14")}], shoes="shoes04"),
     person("middle-aged-man", "male", 52, ["pedestrian", "passenger", "family"], P2, "families-3", "Middle-aged Man",
            ["casual"], "cream half-sleeve-look shirt, dark grey trousers, sandals, grey moustache",
            crop=fig(3, 338), tone=0.6, body={"muscle": 0.45, "weight": 0.62, "height": 0.48, "proportions": 0.5}, facial=["moustache", "beard"],
@@ -495,7 +507,7 @@ PHASE2 = [
     person("retired-man", "male", 66, ["pedestrian", "passenger", "elderly"], P2, "elderly-3", "Retired Man",
            ["casual"], "light blue checked shirt, beige trousers, sandals, grey hair and moustache",
            crop=fig(3, 1176), tone=0.55, body={"muscle": 0.4, "weight": 0.55, "height": 0.45, "proportions": 0.45}, facial=["moustache", "stubble"],
-           hair=("short02", GREY_HAIR), facial_colour=GREY_HAIR, clothes=shirt_trousers(c("#c3d3e8"), c("#b9ab8c"), ("check", c("#7c95bd"), 64)),
+           hair=("short02", GREY_HAIR), facial_colour=GREY_HAIR, clothes=shirt_trousers(c("#c3d3e8"), c("#b9ab8c"), ("plaid", (c("#7c95bd"), c("#e8eef6")), 22)),
            also=[("phase2", "elderly-5", "Elderly Couple (man)")]),
     person("elderly-man-lungi", "male", 76, ["pedestrian", "passenger", "elderly"], P2, "elderly-6", "Elderly Man (Walking Stick)",
            ["lungi"], "striped beige shirt, maroon checked lungi to the ankle, towel on the shoulder, sandals, white hair and beard (no stick yet)",
@@ -607,6 +619,53 @@ PHASE2 = [
            ["saree", "traditional"], "mustard-orange saree with a green border, green blouse, plait, bindi, sandals",
            crop=fig(4, 1020), tone=0.65, body={"muscle": 0.4, "weight": 0.6, "height": 0.43, "proportions": 0.5}, bindi=c("#8a1020"),
            garments=saree(c("#d89a2a"), c("#2f6a3a"), c("#e8c860"), c("#2f6a3a"))),
+    # ================================================================ the ten added later (owner, 23 Nov)
+    person("tiffin-vendor", "male", 38, ["vendor", "pedestrian"], P2, "vendors-2", "Tiffin Vendor",
+           ["casual", "work"], "white half-sleeved shirt, grey trousers, belt, sandals, moustache (no tiffin carrier yet)",
+           crop=fig(1, 935), tone=0.65, body={"muscle": 0.5, "weight": 0.5, "height": 0.5, "proportions": 0.5}, facial=["moustache"],
+           clothes=shirt_trousers(c("#ecebe6"), c("#5d5e62")), garments=[belt(c("#2a2018"))]),
+    person("street-shop-owner", "male", 46, ["shopkeeper", "vendor", "pedestrian"], P2, "vendors-6", "Street Shop Owner",
+           ["casual"], "light blue half-sleeved shirt with pockets, beige trousers, sandals, moustache",
+           crop=fig(1, 1314), tone=0.6, body={"muscle": 0.45, "weight": 0.62, "height": 0.48, "proportions": 0.5}, facial=["moustache"],
+           clothes=shirt_trousers(c("#b8cbe6"), c("#b3a07c")), garments=[pockets(c("#a3b8d6"))]),
+    person("baker", "male", 40, ["shopkeeper", "vendor", "worker"], P2, "vendors-8", "Baker",
+           ["work"], "white shirt, brown apron, plain white chef's cap, dark trousers, black shoes, short beard",
+           crop=fig(1, 1495), tone=0.55, body={"muscle": 0.5, "weight": 0.55, "height": 0.5, "proportions": 0.5}, facial=["beard", "moustache"],
+           clothes=shirt_trousers(c("#f2f1ec"), c("#2f2e31")), garments=apron(c("#7a4a30"), c("#6a3e28")) + [{"kind": "cap", "style": "chef", "colour": c("#f4f4f2")}],
+           shoes="shoes04"),
+    person("plumber", "male", 36, ["worker", "services", "pedestrian"], P2, "workers-3", "Plumber",
+           ["work"], "blue denim work shirt with pockets, dark trousers, belt, work boots, moustache",
+           crop=fig(2, 288), tone=0.75, body={"muscle": 0.55, "weight": 0.5, "height": 0.5, "proportions": 0.5}, facial=["moustache", "stubble"],
+           hair=("short04", BLACK_HAIR), clothes=shirt_trousers(c("#6f88b0"), c("#2c2f3a")), garments=[belt(c("#2a2018")), pockets(c("#5f789e"))], shoes="shoes03"),
+    person("office-assistant", "male", 31, ["office", "services", "pedestrian", "passenger"], P2, "workers-7", "Office Assistant",
+           ["uniform", "office"], "pale grey half-sleeved shirt with pockets, charcoal trousers, belt, blank ID card, black shoes",
+           crop=fig(2, 602), tone=0.6, body={"muscle": 0.45, "weight": 0.46, "height": 0.52, "proportions": 0.5}, facial=["moustache"],
+           clothes=shirt_trousers(c("#d6d8dc"), c("#303034")), garments=[belt(), pockets(c("#c2c4c8")), idtag(c("#2f4f7a"))], shoes="shoes04"),
+    person("pharmacist", "male", 32, ["healthcare", "pedestrian", "passenger"], P2, "healthcare-3", "Pharmacist",
+           ["uniform", "office"], "white knee-length coat over navy trousers, blank ID card, black shoes, short beard",
+           crop=fig(2, 1420), tone=0.5, body={"muscle": 0.5, "weight": 0.48, "height": 0.53, "proportions": 0.55}, facial=["beard", "moustache"],
+           clothes=[trousers(c("#26304a"))], garments=[dict(g, grow=0.015) if g["kind"] == "tube" else g for g in kurta(c("#f6f6f4"), "knee", sleeves=1.0)] + [idtag(c("#2f6a8a"))], shoes="shoes04"),
+    person("young-man", "male", 27, ["pedestrian", "passenger", "family"], P2, "families-1", "Young Man",
+           ["casual"], "lilac long-sleeved shirt, blue jeans, belt, brown shoes, short beard",
+           crop=fig(3, 148), tone=0.5, body={"muscle": 0.55, "weight": 0.45, "height": 0.55, "proportions": 0.55}, facial=["beard", "moustache"],
+           hair=("short04", BLACK_HAIR), clothes=shirt_only(c("#b9a8d4"), sleeves="long") + [jeans(DENIM)], garments=[belt(c("#3a2418"))], shoes="shoes01"),
+    person("boy-8-10", "male", 9, ["passenger", "family"], P2, "children-1", "Boy (8-10)",
+           ["casual"], "blue-and-white striped T-shirt, denim shorts, trainers",
+           crop=fig(4, 142), tone=0.55, eyelashes=False, body={"muscle": 0.45, "weight": 0.45, "height": 0.5, "proportions": 0.5}, hair=("short02", BLACK_HAIR),
+           clothes=[{"asset": "elvs_crude_t-shirt_male", "colour": c("#dfe6f0"), "pattern": ("stripe", c("#3c5c96"), 30), "prints": True},
+                    {"asset": "cortu_jeans_shorts", "colour": c("#3d5a86")}], shoes="shoes06",
+           note="a child: only as a passenger with an adult or in a family group, never on a street or anywhere he can be hurt"),
+    person("playful-boy", "male", 10, ["family", "play"], P2, "children-5", "Playful Boy (Cricket)",
+           ["casual", "sport"], "light blue T-shirt, denim shorts, trainers (no bat yet)",
+           crop=fig(4, 460), tone=0.65, eyelashes=False, body={"muscle": 0.45, "weight": 0.5, "height": 0.48, "proportions": 0.5}, hair=("short04", BLACK_HAIR),
+           clothes=[tshirt(c("#a8cfe0")), {"asset": "cortu_jeans_shorts", "colour": c("#45628e")}], shoes="shoes05",
+           note=("a child: role `play` means the game may show him playing cricket only inside a safe play area "
+                 "(a park, a beach, a school ground) with no traffic, vehicles, police or fights; otherwise only with his family")),
+    person("cyclist", "male", 30, ["pedestrian", "sport"], P2, "lifestyle-3", "Cyclist",
+           ["sport"], "blue T-shirt, navy shorts, trainers, small backpack (no bicycle yet)",
+           crop=fig(4, 1398), tone=0.6, body={"muscle": 0.6, "weight": 0.4, "height": 0.53, "proportions": 0.55}, facial=["beard", "moustache"],
+           hair=("short04", BLACK_HAIR), clothes=[tshirt(c("#6d95c8")), {"asset": "cortu_jeans_shorts", "colour": c("#1f2a4a")}],
+           garments=backpack(c("#2e3236")), shoes="shoes05"),
 ]
 
 CAST = PHASE1 + PHASE2

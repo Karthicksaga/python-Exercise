@@ -230,12 +230,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9207,
+          "triangles": 9279,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3387,
+          "triangles": 3389,
           "from": 30.0
         }
       ],
@@ -291,12 +291,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9699,
+          "triangles": 9697,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3388,
+          "triangles": 3387,
           "from": 30.0
         }
       ],
@@ -361,7 +361,7 @@
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3388,
+          "triangles": 3391,
           "from": 30.0
         }
       ],
@@ -839,16 +839,16 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.582,
-      "seatHeightM": 0.364,
+      "seatHeightM": 0.411,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8208,
+          "triangles": 8250,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3386,
+          "triangles": 3387,
           "from": 30.0
         }
       ],
@@ -3463,6 +3463,175 @@
         "eyebrows/eyebrow010",
         "eyes/low-poly",
         "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "baker",
+      "file": "baker.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 40,
+      "child": false,
+      "roles": [
+        "shopkeeper",
+        "vendor",
+        "worker"
+      ],
+      "clothing": [
+        "work"
+      ],
+      "outfit": "white shirt, brown apron, plain white chef's cap, dark trousers, black shoes, short beard",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "vendors-8",
+      "figureLabel": "Baker",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.768,
+      "seatHeightM": 0.444,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9699,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3385,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "pharmacist",
+      "file": "pharmacist.glb",
+      "sex": "male",
+      "age": "young",
+      "years": 32,
+      "child": false,
+      "roles": [
+        "healthcare",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "uniform",
+        "office"
+      ],
+      "outfit": "white knee-length coat over navy trousers, blank ID card, black shoes, short beard",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "healthcare-3",
+      "figureLabel": "Pharmacist",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.795,
+      "seatHeightM": 0.445,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9689,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3383,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/toigo_wool_pants",
+        "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "playful-boy",
+      "file": "playful_boy.glb",
+      "sex": "male",
+      "age": "child",
+      "years": 10,
+      "child": true,
+      "roles": [
+        "family",
+        "play"
+      ],
+      "clothing": [
+        "casual",
+        "sport"
+      ],
+      "outfit": "light blue T-shirt, denim shorts, trainers (no bat yet)",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "children-5",
+      "figureLabel": "Playful Boy (Cricket)",
+      "alsoFigures": [],
+      "note": "a child: role `play` means the game may show him playing cricket only inside a safe play area (a park, a beach, a school ground) with no traffic, vehicles, police or fights; otherwise only with his family",
+      "heightM": 1.306,
+      "seatHeightM": 0.268,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9552,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3389,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short04",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "clothes/elvs_crude_t-shirt_male",
+        "clothes/cortu_jeans_shorts",
+        "clothes/shoes05"
       ]
     }
   ]

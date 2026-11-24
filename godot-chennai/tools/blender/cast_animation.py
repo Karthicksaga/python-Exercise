@@ -33,6 +33,15 @@ from mathutils import Matrix, Quaternion, Vector
 FPS = 30
 CLIPS = ("idle", "walk", "run", "sit", "talk")
 ARM_IN_DEG = 9.0
+# The 9 degrees of the lesson, a little more while standing (the idle's arms hung wide).
+ARM_IN_BY_CLIP = {"idle": 11.0, "talk": 11.0, "walk": 7.0, "run": 5.0}
+# How much of the clips' forward lean of the upper body to take out, and of the head's pitch.
+SPINE_UPRIGHT = {"idle": 0.8, "talk": 0.8, "walk": 0.7, "run": 0.35}
+NECK_LEVEL = 0.7
+# Relaxed fingers: curl per joint (knuckle, middle, tip) in degrees. The Mixamo clips hold the
+# fingers in a tight curl (claws on MakeHuman hands).
+FINGER_CURL = {"idle": (10, 14, 9), "talk": (8, 12, 8), "walk": (12, 16, 10), "run": (22, 34, 22), "sit": (8, 12, 8)}
+FINGERS = ("Index", "Middle", "Ring", "Pinky")
 P = "mixamorig:"
 
 # glTF (x, y, z) -> Blender (x, -z, y)
@@ -368,9 +377,13 @@ def retarget_pose(src, tgt, align, clip, t):
             rel = tgt.rest_rot[p].transposed() @ tgt.rest_rot[nm] if p else tgt.rest_rot[nm]
             world[nm] = (world[p] @ rel) if p else rel
     local = locals_from_world(tgt, world)
+    straighten(tgt, local, SPINE_UPRIGHT.get(clip, 0.7))
     world = world_from_locals(tgt, local)
+    arm_in = ARM_IN_BY_CLIP.get(clip, ARM_IN_DEG)
     for side, sign in (("Left", 1), ("Right", -1)):
-        turn_subtree(tgt, local, world, side + "Arm", Vector((0, 1, 0)), sign * ARM_IN_DEG)
+        turn_subtree(tgt, local, world, side + "Arm", Vector((0, 1, 0)), sign * arm_in)
+        world = world_from_locals(tgt, local)
+    relax_fingers(tgt, local, FINGER_CURL.get(clip, FINGER_CURL["idle"]))
     legs_in = LEGS_IN_DEG.get(clip, 0.0)
     if legs_in:
         for side, sign in (("Left", 1), ("Right", -1)):
@@ -379,6 +392,106 @@ def retarget_pose(src, tgt, align, clip, t):
             world = world_from_locals(tgt, local)
             turn_subtree(tgt, local, world, side + "Foot", Vector((0, 1, 0)), -sign * legs_in)
     return local
+
+
+def pitch_forward(direction):
+    """Forward lean (degrees) of an upward direction: positive when it tips towards -Y."""
+    return math.degrees(math.atan2(-direction.y, max(1e-6, direction.z)))
+
+
+def straighten(tgt, local, amount):
+    """Take `amount` of the upper body's forward lean out (turning the spine's subtree back),
+    then level the head (the clips walk with a stoop and a dropped head)."""
+    world = world_from_locals(tgt, local)
+    # Relative to the rest pose: MakeHuman's spine and head bones are not vertical at rest.
+    lean = pitch_forward(world["Spine2"] @ Vector((0, 1, 0))) - pitch_forward(tgt.rest_rot["Spine2"] @ Vector((0, 1, 0)))
+    if lean > 0:
+        # Rx(+a) tips an upward vector forward, so turn back by -amount * lean.
+        turn_subtree(tgt, local, world, "Spine", Vector((1, 0, 0)), -amount * lean)
+        world = world_from_locals(tgt, local)
+    head = pitch_forward(world["Head"] @ Vector((0, 1, 0))) - pitch_forward(tgt.rest_rot["Head"] @ Vector((0, 1, 0)))
+    if head > 0:
+        turn_subtree(tgt, local, world, "Neck", Vector((1, 0, 0)), -NECK_LEVEL * head)
+
+
+def palm_frames(tgt):
+    """Per hand, the palm's normal and its index-to-pinky axis in the hand bone's own frame."""
+    if hasattr(tgt, "_palm"):
+        return tgt._palm
+    out = {}
+    for side, sign in (("Left", 1), ("Right", -1)):
+        hand = tgt.head[side + "Hand"]
+        d = (tgt.head[side + "HandMiddle1"] - hand).normalized()
+        across = (tgt.head[side + "HandIndex1"] - tgt.head[side + "HandPinky1"]).normalized()
+        n = d.cross(across).normalized()
+        if n.x * sign > 0:  # the palm faces the body at rest (A-pose, arms down)
+            n = -n
+        q = tgt.rest_rot[side + "Hand"]
+        out[side] = (q.transposed() @ n, q.transposed() @ across)
+    tgt._palm = out
+    return out
+
+
+def relax_fingers(tgt, local, curl):
+    """Fingers back to their straight rest, then a gentle curl towards the palm per joint.
+    Thumbs stay at rest (resting along the index finger)."""
+    palms = palm_frames(tgt)
+    for side in ("Left", "Right"):
+        for finger in FINGERS:
+            for k in (1, 2, 3):
+                nm = f"{side}Hand{finger}{k}"
+                p = tgt.parent[nm]
+                local[nm] = tgt.rest_rot[p].transposed() @ tgt.rest_rot[nm]
+        world = world_from_locals(tgt, local)
+        n_local, across_local = palms[side]
+        normal = (world[side + "Hand"] @ n_local).normalized()
+        axis = (world[side + "Hand"] @ across_local).normalized()
+        for finger in FINGERS:
+            for k, deg in zip((1, 2, 3), curl):
+                nm = f"{side}Hand{finger}{k}"
+                d = world[nm] @ Vector((0, 1, 0))
+                sign = 1 if axis.cross(d).dot(normal) > 0 else -1
+                turn_subtree(tgt, local, world, nm, axis, sign * deg)
+                world = world_from_locals(tgt, local)
+
+
+def rotation_between(a, b):
+    return a.normalized().rotation_difference(b.normalized()).to_matrix()
+
+
+def aim_bone(tgt, local, bone, child, target):
+    """Turn `bone` so its joint-to-child line points at `target` (armature space)."""
+    mats = pose_matrices(tgt, local, Vector((0, 0, 0)))
+    head = mats[bone].translation
+    tip = mats[child].translation
+    world = world_from_locals(tgt, local)
+    p = tgt.parent[bone]
+    pr = world[p] if p else Matrix.Identity(3)
+    local[bone] = pr.transposed() @ rotation_between(tip - head, target - head) @ pr @ local[bone]
+
+
+def hand_on_thigh(tgt, local, side, sign):
+    """Two-bone IK: the hand on top of the thigh, a little behind the knee, elbow out and back."""
+    mats = pose_matrices(tgt, local, Vector((0, 0, 0)))
+    hip, knee = mats[side + "UpLeg"].translation, mats[side + "Leg"].translation
+    target = hip * 0.4 + knee * 0.6 + Vector((0, 0, 0.1))
+    s = mats[side + "Arm"].translation
+    l1 = (tgt.head[side + "ForeArm"] - tgt.head[side + "Arm"]).length
+    l2 = (tgt.head[side + "Hand"] - tgt.head[side + "ForeArm"]).length
+    to = target - s
+    d = min(to.length, (l1 + l2) * 0.995)
+    u = to.normalized()
+    a = (l1 * l1 - l2 * l2 + d * d) / (2 * d)
+    h = math.sqrt(max(0.0, l1 * l1 - a * a))
+    pole = Vector((sign * 0.5, 1.0, 0.0))
+    pole = (pole - u * pole.dot(u)).normalized()
+    elbow = s + u * a + pole * h
+    aim_bone(tgt, local, side + "Arm", side + "ForeArm", elbow)
+    aim_bone(tgt, local, side + "ForeArm", side + "Hand", s + u * d)
+    # The hand lies along the thigh, fingers towards the knee.
+    mats = pose_matrices(tgt, local, Vector((0, 0, 0)))
+    wrist = mats[side + "Hand"].translation
+    aim_bone(tgt, local, side + "Hand", side + "HandMiddle1", wrist + (knee - hip).normalized() + Vector((0, 0, -0.25)))
 
 
 def frames_for(duration):
@@ -480,14 +593,11 @@ def apply_sit(tgt, local, phase):
     # Slight forward lean and breathing.
     turn_subtree(tgt, local, world, "Spine", Vector((1, 0, 0)), 4 + 1.2 * math.sin(two_pi * phase))
     world = world_from_locals(tgt, local)
-    # Hands resting on the thighs: upper arms forward, forearms forward.
+    # Hands resting on the thighs (two-bone IK per arm), fingers relaxed.
     for side, sign in (("Left", 1), ("Right", -1)):
-        turn_subtree(tgt, local, world, side + "Arm", Vector((0, 1, 0)), sign * 10)
-        world = world_from_locals(tgt, local)
-        turn_subtree(tgt, local, world, side + "Arm", Vector((1, 0, 0)), -22)
-        world = world_from_locals(tgt, local)
-        turn_subtree(tgt, local, world, side + "ForeArm", elbow_axis(world, tgt, side), 40)
-        world = world_from_locals(tgt, local)
+        hand_on_thigh(tgt, local, side, sign)
+    relax_fingers(tgt, local, FINGER_CURL["sit"])
+    world = world_from_locals(tgt, local)
     turn_subtree(tgt, local, world, "Head", Vector((0, 0, 1)), 5 * math.sin(two_pi * phase))
 
 

@@ -366,6 +366,16 @@ def pattern_layer(size, pattern):
 def apply_pattern(pixels, mask, pattern):
     if not pattern:
         return
+    if pattern[0] == "plaid":
+        # A woven plaid: wide bands of one colour both ways, thin lines of a second.
+        _, (wide, thin), repeat = pattern
+        size = pixels.shape[0]
+        phase = ((np.arange(size) + 0.5) / size * repeat) % 1.0
+        for (lo, hi), colour, strength in (((0.0, 0.3), wide, 0.55), ((0.55, 0.62), thin, 0.8)):
+            band = ((phase > lo) & (phase < hi)).astype(np.float32)
+            w = np.maximum(band[None, :], band[:, None]) * strength * mask
+            pixels[..., :3] = pixels[..., :3] * (1 - w[..., None]) + np.array(colour, np.float32) * w[..., None]
+        return
     colour, weight = pattern_layer(pixels.shape[0], pattern)
     w = (weight * mask)[..., None]
     if pattern[0] == "pleat":
@@ -432,6 +442,12 @@ def fabric(spec_tex, size):
         pixels[(v < 0.11), :3] = np.array(border, np.float32)
         pixels[(v > 0.115) & (v < 0.125), :3] = np.array(motif, np.float32)
         pixels[(v > 0.02) & (v < 0.03), :3] = np.array(motif, np.float32)
+        # Front pleats (u = 0 is the front): folds shaded light and dark below the tuck.
+        u = coords[None, :].repeat(size, 0)
+        front = np.minimum(u, 1 - u)
+        folds = (front < 0.075) & (v < 0.9)
+        shade = 0.82 + 0.3 * np.cos(front * 2 * math.pi / 0.0125) ** 2
+        pixels[..., :3] = np.where(folds[..., None], pixels[..., :3] * shade[..., None].clip(0.75, 1.1), pixels[..., :3])
         return pixels
     if kind == "pallu":
         # The end of the saree that goes over the shoulder: borders along both long edges.
@@ -816,7 +832,7 @@ def make_tube(rig, body, collection, lm, g, name, extra=()):
                 # Front pleats tucked at the navel: a fan of folds just left of centre.
                 front = math.cos(angle + math.pi / 2 - 0.25)
                 if front > 0.55:
-                    radius += 0.03 * t * abs(math.sin(s * math.pi / 2))
+                    radius += 0.045 * t * abs(math.sin(s * math.pi / 2))
             x = cx + a * radius * math.cos(angle)
             y = cy + b * radius * math.sin(angle)
             grow = g.get("grow", 0.0)
@@ -827,7 +843,10 @@ def make_tube(rig, body, collection, lm, g, name, extra=()):
             hip_share = max(0.0, min(1.0, (z - (hips_z - 0.14)) / max(0.02, top - (hips_z - 0.14))))
             side = max(0.0, min(1.0, 0.5 + 0.5 * (x - cx) / (a * 0.35)))
             below = max(0.0, min(1.0, (knee + 0.08 - z) / max(0.05, knee + 0.08 - lm["LeftFoot"].z))) if long else 0.0
-            shin = 0.8 * below ** 0.8
+            # Long hems follow the shins only partly and keep some of the hips' motion, so a
+            # veshti or saree does not swing out like a bell when running.
+            shin = 0.55 * below ** 0.8
+            hip_share = max(hip_share, 0.3 * below)
             leg = 1 - hip_share
             weights.append({"Hips": hip_share, "LeftUpLeg": leg * side * (1 - shin), "RightUpLeg": leg * (1 - side) * (1 - shin),
                             "LeftLeg": leg * side * shin, "RightLeg": leg * (1 - side) * shin})
@@ -1140,6 +1159,63 @@ def make_idtag(rig, body, collection, lm, name):
     return obj
 
 
+def make_pockets(rig, body, collection, lm, name):
+    """Two chest pockets with flaps on a uniform shirt (plain, no badge): quads just outside
+    the shirt, weighted to the chest."""
+    tree = body_bvh(body)
+    z = lm["Spine2"].z - 0.035
+    verts, faces = [], []
+    for x in (-0.075, 0.075):
+        hit = tree.ray_cast(Vector((x, -1.0, z)), Vector((0, 1, 0)))
+        y = (hit[0].y if hit[0] else lm["chest_front"]) - 0.03
+        k = len(verts)
+        verts += [(x - 0.045, y, z - 0.06), (x + 0.045, y, z - 0.06), (x + 0.045, y, z + 0.03), (x - 0.045, y, z + 0.03)]
+        faces.append((k, k + 1, k + 2, k + 3))
+        k = len(verts)
+        verts += [(x - 0.047, y - 0.003, z + 0.005), (x + 0.047, y - 0.003, z + 0.005), (x + 0.047, y - 0.003, z + 0.035), (x - 0.047, y - 0.003, z + 0.035)]
+        faces.append((k, k + 1, k + 2, k + 3))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.uv_layers.new(name="UVMap")
+    obj = new_object(name, mesh, rig, collection)
+    set_weights(obj, [{"Spine2": 1.0}] * len(verts))
+    return obj
+
+
+def make_pallu_tail(rig, body, collection, lm, name):
+    """The end of the saree hanging down the back from the left shoulder to the thighs."""
+    tree = body_bvh(body)
+    x0 = lm["LeftArm"].x * 0.55
+    top = lm["LeftShoulder"].z + 0.03
+    bottom = lm["LeftUpLeg"].z - 0.18
+    rows, cols, width = 8, 4, 0.3
+    verts, uvs, weights = [], [], []
+    for r in range(rows):
+        t = r / (rows - 1)
+        z = top + (bottom - top) * t
+        for cidx in range(cols):
+            u = cidx / (cols - 1)
+            x = x0 - width * u * (0.35 + 0.65 * t)
+            hit = tree.ray_cast(Vector((x, 1.0, z)), Vector((0, -1, 0)))
+            y = (hit[0].y if hit[0] else lm["head_back"]) + 0.03 + 0.03 * t
+            verts.append((x, y, z))
+            uvs.append((u, 1 - t))
+            spine = max(0.0, 1 - t * 1.6)
+            weights.append({"Spine2": spine * 0.7, "LeftShoulder": spine * 0.3, "Spine1": (1 - spine) * 0.5, "Hips": (1 - spine) * 0.5})
+    faces = [(r * cols + cc, r * cols + cc + 1, (r + 1) * cols + cc + 1, (r + 1) * cols + cc) for r in range(rows - 1) for cc in range(cols - 1)]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    uv = mesh.uv_layers.new(name="UVMap")
+    for poly in mesh.polygons:
+        for li in poly.loop_indices:
+            uv.data[li].uv = uvs[mesh.loops[li].vertex_index]
+    obj = new_object(name, mesh, rig, collection)
+    set_weights(obj, weights)
+    for poly in mesh.polygons:
+        poly.use_smooth = True
+    return obj
+
+
 def make_headgear(rig, body, hair, collection, lm, g, name):
     """Caps and hard hats, made round the head (and hair) they sit on."""
     world = body.matrix_world
@@ -1182,6 +1258,14 @@ def make_headgear(rig, body, hair, collection, lm, g, name):
             brim.append(bm.verts.new((cx + (a + 0.012 + peak) * math.cos(th), cy + (b + 0.012 + peak) * math.sin(th), brow - 0.004)))
         for s in range(seg):
             bm.faces.new((brim[s], brim[(s + 1) % seg], layers[0][(s + 1) % seg], layers[0][s]))
+    elif style == "chef":
+        # A plain white chef's cap: a band, then a taller, wider soft crown.
+        rows = [(brow - 0.004, 1.0), (brow + 0.05, 1.02), (brow + 0.09, 1.18), (brow + 0.15, 1.22), (brow + 0.17, 1.05)]
+        layers = [[bm.verts.new((cx + a * k * math.cos(2 * math.pi * s / seg), cy + b * k * math.sin(2 * math.pi * s / seg), zz)) for s in range(seg)] for zz, k in rows]
+        for r in range(len(layers) - 1):
+            for s in range(seg):
+                bm.faces.new((layers[r][s], layers[r][(s + 1) % seg], layers[r + 1][(s + 1) % seg], layers[r + 1][s]))
+        bm.faces.new(list(reversed(layers[-1])))
     elif style == "peaked":
         # A peaked cap: band, a crown wider than the band, a dark visor.
         z0, z1, z2 = brow - 0.005, brow + 0.03, brow + 0.058
@@ -1392,14 +1476,39 @@ def flat_uvs(obj, tile, faces=None):
 # ----------------------------------------------------------------------------------------------
 # Assembly
 # ----------------------------------------------------------------------------------------------
-def keep_skin(body, asset, keep, remember=None):
+def slim_sleeves(obj, rig, amount=0.14):
+    """MakeHuman's shirt sleeves stand well off the arm in the A-pose (bulky shoulders and upper
+    arms): pull the sleeve vertices a little towards the arm bone."""
+    bones = dominant_bones(obj)
+    world = obj.matrix_world
+    inv = world.inverted()
+    segs = {}
+    for side in ("Left", "Right"):
+        segs[side + "Arm"] = (bone_head(rig, side + "Arm"), bone_head(rig, side + "ForeArm"))
+        segs[side + "ForeArm"] = (bone_head(rig, side + "ForeArm"), bone_head(rig, side + "Hand"))
+    for v, b in zip(obj.data.vertices, bones):
+        if b not in segs:
+            continue
+        a, c = segs[b]
+        p = world @ v.co
+        t = max(0.0, min(1.0, (p - a).dot(c - a) / max(1e-6, (c - a).length_squared)))
+        q = a + (c - a) * t
+        d = (p - q).length
+        if d < 1e-6:
+            continue
+        # Only the cloth standing well off the arm moves (never into the skin).
+        new = d - amount * max(0.0, d - 0.045) * 2.5
+        v.co = inv @ (q + (p - q) * (max(new, min(d, 0.045)) / d))
+
+
+def keep_skin(body, asset, keep, remember=None, keep_ids=None):
     """Undo MPFB's skin deletion under part of a garment we cut away (keep(world_pos) true).
     With `remember`, the kept vertices also go into that vertex group (to delete them later)."""
     group = body.vertex_groups.get("Delete." + asset)
     if group is None:
         return
     world = body.matrix_world
-    ids = [v.index for v in body.data.vertices if keep(world @ v.co)]
+    ids = [v.index for v in body.data.vertices if (keep_ids is not None and v.index in keep_ids) or keep(world @ v.co)]
     if remember:
         in_group = {v.index for v in body.data.vertices if any(g.group == group.index for g in v.groups)}
         mark = body.vertex_groups.get(remember) or body.vertex_groups.new(name=remember)
@@ -1559,6 +1668,26 @@ def build(spec, human_service, workdir):
         elif kind == "Eyes":
             kinds["eyes"] = obj
     hips_z = bone_head(rig, "Hips").z
+    sleeve_planes = []
+    for side in ("Left", "Right"):
+        arm, elbow = bone_head(rig, side + "Arm"), bone_head(rig, side + "ForeArm")
+        sleeve_planes.append((arm + (elbow - arm) * 0.62, (elbow - arm).normalized(), 1 if side == "Left" else -1))
+
+    def beyond_sleeve(p, bone, planes=sleeve_planes):
+        """On the forearm or hand, or on the upper arm past the half-sleeve's hem."""
+        if bone in ("LeftForeArm", "RightForeArm", "LeftHand", "RightHand"):
+            return True
+        if bone not in ("LeftArm", "RightArm"):
+            return False
+        return any(p.x * sign > 0 and (p - point).dot(normal) > 0 for point, normal, sign in planes)
+
+    if any(item.get("sleeves") == "short" for item, _ in clothes_objs):
+        body_bones = dominant_bones(body)
+        world = body.matrix_world
+        arm_skin = {v.index for v, b in zip(body.data.vertices, body_bones) if beyond_sleeve(world @ v.co, b)}
+        for item, obj in clothes_objs:
+            if item.get("sleeves") == "short":
+                keep_skin(body, item["asset"], lambda p, ids=arm_skin: False, keep_ids=arm_skin)
     for item, obj in clothes_objs:
         if item.get("drop") == "lower":
             keep_skin(body, item["asset"], lambda p: p.z < hips_z + 0.02)
@@ -1600,6 +1729,12 @@ def build(spec, human_service, workdir):
             obj = make_idtag(rig, body, collection, lm, name)
             made.append((name, obj, ("flat", g["colour"]), ("faces", {1, 2})))
             made.append((name + "_card", obj, ("flat", c("#f2f2ee")), ("faces", {0})))
+        elif g["kind"] == "pockets":
+            obj = make_pockets(rig, body, collection, lm, name)
+            made.append((name, obj, ("flat", g["colour"]), "flat"))
+        elif g["kind"] == "pallu_tail":
+            obj = make_pallu_tail(rig, body, collection, lm, name)
+            made.append((name, obj, ("fabric", g["texture"]), "uv"))
         elif g["kind"] == "backpack":
             obj = make_backpack(rig, body, collection, lm, name)
             made.append((name, obj, ("flat", g["colour"]), "flat"))
@@ -1623,7 +1758,7 @@ def build(spec, human_service, workdir):
     if kept is not None:
         # Skin kept only to cut towels, vests and straps from: delete it again under the shirt.
         marked = {v.index for v in body.data.vertices if any(g.group == kept.index and g.weight > 0.5 for g in v.groups)}
-        hidden.update(p.index for p in body.data.polygons if all(i in marked for i in p.vertices))
+        hidden.update(p.index for p in body.data.polygons if any(i in marked for i in p.vertices))
     delete_faces(body, hidden)
 
     # --- Outfit atlas
@@ -1637,7 +1772,7 @@ def build(spec, human_service, workdir):
     if "shoes" in kinds:
         requests.append(("shoes", 0.25))
     for name, obj, tex, mode in made:
-        if tex[0] == "fabric" and tex[1][0] in ("saree", "check", "veshti", "pallu"):
+        if tex[0] == "fabric" and tex[1][0] in ("saree", "check", "veshti"):
             requests.append((name, 0.5))  # wrapped cloth is large: more pixels (halved if the atlas is full)
         elif tex[0] == "fabric":
             requests.append((name, 0.25))
@@ -1714,6 +1849,12 @@ def build(spec, human_service, workdir):
             cut_faces(obj, lambda cc, uv, f=is_upper: not f(cc, uv))
         elif item.get("drop") == "upper":
             cut_faces(obj, lambda cc, uv, f=is_upper: f(cc, uv))
+        if item.get("sleeves") == "short":
+            # Half sleeves: the shirt ends a little above the elbow (most Chennai shirts and
+            # every uniform shirt on the boards); the forearm skin under it was kept.
+            cut_faces_by_bone(obj, beyond_sleeve)
+        if item.get("slim", item["asset"] == "male_casualsuit01"):
+            slim_sleeves(obj, rig)
         put(f"clothes{idx}", garment)
         place_uvs(obj, tiles[f"clothes{idx}"])
 
@@ -1795,6 +1936,14 @@ def build(spec, human_service, workdir):
         assert triangles(lod1) <= LOD1_BUDGET, f"{spec['id']} LOD1 is over budget: {triangles(lod1)}"
     height = max((body.matrix_world @ v.co).z for v in body.data.vertices)
     return rig, body, lod1, {"triangles": tris, "lod1Triangles": triangles(lod1) if lod1 else None, "heightM": round(lm["top"], 3), "topM": round(height, 3)}
+
+
+def cut_faces_by_bone(obj, drop):
+    """Delete the faces for which drop(world centre, bone moving most of the face) is true."""
+    fb = face_bones(obj, dominant_bones(obj))
+    world = obj.matrix_world
+    doomed = {p.index for p, b in zip(obj.data.polygons, fb) if drop(world @ p.center, b)}
+    delete_faces(obj, doomed)
 
 
 def cut_faces(obj, drop):
