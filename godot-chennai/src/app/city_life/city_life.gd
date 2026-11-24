@@ -63,6 +63,12 @@ var views: Array[TrafficVehicleView] = []
 var taken: Dictionary[int, bool] = {}
 ## The hour of the day for the density curves (the game clock unless a test sets it).
 var hour_override: float = -1.0
+## Other systems' extra stop points for traffic (the railway's closed level crossings):
+## () -> PackedVector3Array of (x, z, radius), world metres.
+var extra_obstacles: Callable = Callable()
+## Other systems' people drawn with this pool (the railway's platform passengers, adults only):
+## (camera: Vector3) -> Array of [key: int, scene position: Vector3, yaw: float, walking speed: float, look: int].
+var extra_people: Callable = Callable()
 ## Main-thread cost of the last physics frame and the worker's step (µs), for the HUD and the
 ## frame-time measurement: {"sync", "wait", "step"} and running maxima.
 var stats: Dictionary = {"sync": 0, "wait": 0, "step": 0, "frames": 0, "sync_total": 0, "wait_total": 0, "step_total": 0, "sync_max": 0, "steps": 0, "traffic_total": 0, "walkers_total": 0, "crowd_total": 0}
@@ -329,6 +335,8 @@ func _obstacles(focus: Vector2) -> PackedVector3Array:
 	var out := PackedVector3Array()
 	if focus_node != null and focus_node.is_visible_in_tree():
 		out.append(Vector3(focus.x, focus.y, PLAYER_RADIUS))
+	if extra_obstacles.is_valid():
+		out.append_array(extra_obstacles.call() as PackedVector3Array)
 	for node in get_tree().get_nodes_in_group(Vehicle.GROUP):
 		var v := node as Vehicle
 		if v == null or not v.is_inside_tree():
@@ -449,6 +457,19 @@ func _sync(dt: float, focus: Vector2) -> void:
 				# Sitting on the sand has no clip (the cast's `sit` is on a seat): they stand.
 				fig.play(&"idle", 0.0, float(p.look) * 0.01)
 		fig.advance(dt, d)
+	if extra_people.is_valid():
+		for e: Array in extra_people.call(cam) as Array:
+			var who := cast.crowd_person(int(e[4]), false, false)
+			if who == "":
+				continue
+			var fig := pool.take(-200000 - absi(int(e[0])) % 100000, who)
+			if fig == null:
+				continue
+			var at := e[1] as Vector3
+			fig.global_transform = Transform3D(Basis(Vector3.UP, float(e[2])), at)
+			var pace := float(e[3])
+			fig.play(&"walk" if pace > 0.05 else &"idle", pace, float(int(e[4])) * 0.01)
+			fig.advance(dt, at.distance_to(cam))
 	var tc := Time.get_ticks_usec()
 	pool.end_frame()
 	heads.refresh(focus)

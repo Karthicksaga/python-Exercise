@@ -14,7 +14,7 @@ extends Node
 signal state_changed(state: StringName)
 
 const CITY := "res://src/game_world/city/city_world.tscn"
-const STEPS: PackedStringArray = ["Reading the map of Chennai", "Reading the streets", "Building the streets around you", "Parking the vehicles"]
+const STEPS: PackedStringArray = ["Reading the map of Chennai", "Reading the streets", "Building the streets around you", "Parking the vehicles", "Running the trains"]
 ## Longest wait for the ground's collider, in physics frames (game time, not wall clock).
 const GROUND_WAIT_FRAMES := 120
 
@@ -34,6 +34,8 @@ var pause_menu: PauseMenu = null
 
 ## Traffic, walkers and crowds round the player (G-120…G-128).
 var life: CityLife = null
+## The suburban railway, the MRTS and the trains at Chennai Central (G-320…G-334).
+var railway: Railway = null
 ## Taking over traffic cars, autos and bikes on foot (G-300); the ACTION button's TAKE OVER.
 var carjacking: Carjacking = null
 ## The live city behind the title: camera drift, chip, lightning (G-164). Made at the end of loading.
@@ -222,6 +224,18 @@ func _add_play() -> String:
 	return error
 
 
+## The railway (G-320…G-334): tracks, stations, trains, riding and driving, its HUD.
+func _add_railway() -> String:
+	if railway != null:
+		return ""
+	railway = Railway.new()
+	world.add_child(railway)
+	var error := await railway.prepare(world, rig)
+	if error == "":
+		RailwayWiring.wire(self, railway)
+	return error
+
+
 ## TAKE OVER on the ACTION button: a traffic car, auto or bike beside the player on foot.
 func _add_carjacking() -> void:
 	if carjacking != null or life == null:
@@ -377,6 +391,8 @@ func _set_controls(on: bool) -> void:
 	elif rig != null:
 		rig.controls.visible = on
 		rig.reads_devices = on
+	if railway != null:
+		RailwayWiring.set_active(railway, rig, on)
 	pause_menu.show_pause_button(on)
 
 
