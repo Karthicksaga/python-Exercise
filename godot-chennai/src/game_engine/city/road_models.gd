@@ -51,3 +51,18 @@ static func guard(b: MeshBuilder) -> void:
 	for sgn: float in [-1.0, 1.0]:
 		CityModels.box(b, Vector3(-W, H - 0.05, sgn * W - 0.02), Vector3(W, H, sgn * W + 0.02), 0x2c3d2e)
 		CityModels.box(b, Vector3(sgn * W - 0.02, H - 0.05, -W), Vector3(sgn * W + 0.02, H, W), 0x2c3d2e)
+
+
+## A chevron board on a post: orange board with a dark chevron, facing -Z (the road), 0.8 m wide.
+static func chevron(b: MeshBuilder) -> void:
+	CityModels.box(b, Vector3(-0.04, 0, -0.04), Vector3(0.04, 1.7, 0.04), 0x6c7074)
+	CityModels.box(b, Vector3(-0.42, 1.1, -0.09), Vector3(0.42, 1.9, -0.04), 0xe2891b)
+	CityModels.box(b, Vector3(-0.16, 1.28, -0.10), Vector3(0.0, 1.72, -0.085), 0x1c1b1d)
+	CityModels.box(b, Vector3(0.0, 1.5, -0.10), Vector3(0.16, 1.72, -0.085), 0x1c1b1d)
+	CityModels.box(b, Vector3(0.0, 1.28, -0.10), Vector3(0.16, 1.5, -0.085), 0x1c1b1d)
+
+
+## A kilometre stone: a 0.7 m white post with a yellow top.
+static func stone(b: MeshBuilder) -> void:
+	CityModels.box(b, Vector3(-0.17, 0, -0.08), Vector3(0.17, 0.55, 0.08), 0xe6e3d8)
+	CityModels.box(b, Vector3(-0.17, 0.55, -0.08), Vector3(0.17, 0.72, 0.08), 0xd9a92a)

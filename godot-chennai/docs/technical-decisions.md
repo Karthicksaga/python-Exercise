@@ -1785,3 +1785,16 @@ get trees from `RoadDetail.trees_on`, kept 1.5 m clear of every carriageway and 
 ### G-313: Wires, shrubs and guards ride in the objects surface
 Overhead wires (two per span, four steps of sag), median shrubs and tree guards are appended to the
 chunk's objects mesh; poles of streets that had none join the colliders. No per-object light.
+
+### G-314: A rural class for open country
+A chunk with fewer than 30 buildings is open country: its arterials lose the kerb and footpath and gain a
+narrow dust shoulder, kerb blocks on the outside of bends, W-beam barriers and chevron boards on sharp bends,
+kilometre stones and palmyra rows (from the owner's photographs, `docs/roads.md`). All geometry merges into the
+chunk's ground and objects surfaces; barriers and chevrons have no colliders.
+
+### G-315: Road condition from class and a seeded area hash
+`RoadStyle.condition` gives good, worn, damaged or unpaved from the class shares, a hash of the way id and a hash
+of the 600 m square the road starts in. Five more ground tiles (stripped tar, mud, muddy water, brick, wet ruts)
+make the atlas 21 tiles; ruts, edge lips, stripped patches, puddles and rubble are flat ground geometry. Puddles
+are a shiny tile, not a reflection. `RoadStyle.feel` is the data the vehicles may read (speed, bump, grip); wiring
+it into `RaycastVehicle` is left to the driving owner.

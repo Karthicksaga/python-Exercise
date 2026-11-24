@@ -403,8 +403,8 @@ func _kerb_face(verts: Array[Vector3], us: Array, k: Array, normal: Vector3, vs:
 
 ## Flat strips (open drains) just above the earth, in one layer.
 func flat_runs(runs: Array[StreetFurniture.KerbRun], layer: int, y: float) -> void:
-	_layer(layer)
 	for run in runs:
+		_layer(run.paint if run.paint >= 0 else layer)
 		for i in run.inner.size() - 1:
 			var a0 := run.inner[i] - origin
 			var a1 := run.inner[i + 1] - origin
@@ -429,7 +429,7 @@ func decal(d: RoadDetail.Mark) -> void:
 	var across := Vector2(-d.dir.y, d.dir.x)
 	var uv := Vector2(_layer_index * LAYER_U + 0.5, 0.5)
 	var y := Y_ROAD + 0.008
-	if d.kind == &"patch":
+	if d.kind == &"patch" or d.kind == &"stripped":
 		var a := d.dir * (d.length / 2.0)
 		var s := across * (d.width / 2.0)
 		var ids := [mesh.vertex(Vector3(c.x - a.x - s.x, y, c.y - a.y - s.y), Vector3.UP, uv), mesh.vertex(Vector3(c.x + a.x - s.x, y, c.y + a.y - s.y), Vector3.UP, uv), mesh.vertex(Vector3(c.x + a.x + s.x, y, c.y + a.y + s.y), Vector3.UP, uv), mesh.vertex(Vector3(c.x - a.x + s.x, y, c.y - a.y + s.y), Vector3.UP, uv)]
@@ -441,12 +441,12 @@ func decal(d: RoadDetail.Mark) -> void:
 		decals += 1
 		return
 	# Manholes are octagons, potholes lopsided hexagons, both fans round the middle.
-	var sides := 8 if d.kind == &"manhole" else 6
+	var sides := 8 if d.kind == &"manhole" else (10 if d.kind == &"puddle" else 6)
 	var centre := mesh.vertex(Vector3(c.x, y, c.y), Vector3.UP, uv)
 	var rim: Array[int] = []
 	for k in sides:
 		var angle := TAU * k / sides
-		var wobble := 1.0 if d.kind == &"manhole" else 0.7 + 0.5 * fposmod(sin(float(k) * 12.9898 + d.position.x), 1.0)
+		var wobble := 1.0 if d.kind == &"manhole" else (0.85 + 0.25 * fposmod(sin(float(k) * 12.9898 + d.position.x), 1.0) if d.kind == &"puddle" else 0.7 + 0.5 * fposmod(sin(float(k) * 12.9898 + d.position.x), 1.0))
 		var q := d.dir * cos(angle) * (d.length / 2.0) * wobble + across * sin(angle) * (d.width / 2.0) * wobble
 		rim.append(mesh.vertex(Vector3(c.x + q.x, y, c.y + q.y), Vector3.UP, uv))
 	for k in sides:
@@ -487,17 +487,22 @@ func build(spans: Array, areas: Array[WorldArea], square: Rect2, kerb_runs: Arra
 		var style := RoadStyle.of(road)
 		if plan != null:
 			# Dust (laterite) beside every street, wider where a footpath will cover most of it.
-			ribbon(pts, road.width + 2.0 * style.verge, Y_VERGE, 4.0, CityAtlas.GROUND_LATERITE)
+			var verge := RoadStyle.rural(road).verge if (plan.rural and style.klass == RoadStyle.ARTERIAL) else style.verge
+			ribbon(pts, road.width + 2.0 * verge, Y_VERGE, 4.0, CityAtlas.GROUND_LATERITE)
 		elif road.is_main():
 			ribbon(pts, road.width + 5.0, Y_VERGE, 3.0, CityAtlas.GROUND_PAVING)
-		var surface := RoadStyle.surface(road) if plan != null else CityAtlas.GROUND_ASPHALT
+		var surface := RoadStyle.surface(road, plan.rural) if plan != null else CityAtlas.GROUND_ASPHALT
 		ribbon(pts, road.width, Y_ROAD, 6.0 if surface == CityAtlas.GROUND_CONCRETE else 9.0, surface)
 		add_stripes(span)
 	kerbs(kerb_runs)
 	kerbs(edges, CityAtlas.GROUND_PAVING, PARK_KERB)
 	if plan != null:
+		kerbs(plan.blocks, CityAtlas.GROUND_KERB_BW, 0.22)
 		kerbs(plan.footpaths, CityAtlas.GROUND_SLAB, FOOT_H, CityAtlas.GROUND_SLAB, SLAB_TILE)
 		flat_runs(plan.drains, CityAtlas.GROUND_DARK, Y_ROAD - 0.01)
+		var wear_layer := CityAtlas.GROUND_RUT
+		flat_runs(plan.lips, CityAtlas.GROUND_MUD, Y_ROAD + 0.004)
+		flat_runs(plan.ruts, wear_layer, Y_ROAD + 0.006)
 		for d in plan.decals:
 			decal(d)
 		for c in plan.crossings:

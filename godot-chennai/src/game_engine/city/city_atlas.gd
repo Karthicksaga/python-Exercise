@@ -60,8 +60,15 @@ const GROUND_KERB_BW := 24
 const GROUND_DARK := 25
 const GROUND_PAINT_YELLOW := 26
 const GROUND_PAINT_FADED := 27
+## Road condition tiles (G-315): stripped tar showing the grey base course, laterite mud,
+## muddy water, brick rubble, dark wet ruts.
+const GROUND_STRIPPED := 28
+const GROUND_MUD := 29
+const GROUND_PUDDLE := 30
+const GROUND_BRICK := 31
+const GROUND_RUT := 32
 const ROAD_LAYER_BASE := 20
-const GROUND_TILES := 16
+const GROUND_TILES := 21
 const GROUND_TILE_PX := 256
 
 

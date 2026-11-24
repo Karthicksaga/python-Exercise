@@ -515,3 +515,40 @@ func _road_tiles(c: Node2D, s: float) -> void:
 	_rect(c, 14 * s, 0, s, s, _css("#e0b92c"))
 	_rect(c, 15 * s, 0, s, s, _css("#bdbab0"))
 	_grain(c, 15 * s, s, 800, 0.1, 361)
+	# Stripped tar (G-315): the grey base course under a milled-off surface, loose chips, scrape marks.
+	ox = 16 * s
+	_rect(c, ox, 0, s, s, _css("#7d7a74"))
+	_grain(c, ox, s, 12000, 0.2, 371)
+	_seed(372)
+	for i in 60:
+		var y := _rand() * s
+		c.draw_line(Vector2(ox + _rand() * s * 0.5, y), Vector2(ox + _rand() * s, y + (_rand() - 0.5) * 6), _rgba(70, 66, 60, 0.35), 1.5)
+	for i in 160:
+		var p := Vector2(ox + _rand() * s, _rand() * s)
+		_rect(c, p.x, p.y, 2 + _rand() * 3, 2 + _rand() * 3, _rgba(45, 43, 42, 0.8) if _rand() < 0.5 else _rgba(170, 164, 154, 0.8))
+	# Mud: red-brown clay, wet dark patches, stones and brick bits.
+	ox = 17 * s
+	_rect(c, ox, 0, s, s, _css("#8a5a3a"))
+	_seed(381)
+	for i in 40:
+		var r := 12 + _rand() * 38
+		_blotch(c, ox + clampf(_rand() * s, r, s - r), clampf(_rand() * s, r, s - r), r, _rgba(70, 45, 30, 0.35) if _rand() < 0.55 else _rgba(170, 120, 85, 0.3))
+	_grain(c, ox, s, 5000, 0.16, 382)
+	for i in 36:
+		var p := Vector2(ox + _rand() * s, _rand() * s)
+		var stone := _rand() < 0.5
+		_rect(c, p.x, p.y, 3 + _rand() * 5, 2 + _rand() * 4, _rgba(120, 118, 112, 0.9) if stone else _rgba(176, 82, 56, 0.9))
+	# Muddy water: brown with a lighter sky streak.
+	ox = 18 * s
+	_rect(c, ox, 0, s, s, _css("#6a5744"))
+	_vgrad(c, ox, 0, s, s, _rgba(150, 135, 118, 0.55), _rgba(60, 48, 38, 0.2))
+	_seed(391)
+	for i in 6:
+		_blotch(c, ox + _rand() * s, _rand() * s, 20 + _rand() * 30, _rgba(185, 175, 160, 0.2))
+	# Brick fragments.
+	ox = 19 * s
+	_rect(c, ox, 0, s, s, _css("#b4553b"))
+	_grain(c, ox, s, 1500, 0.15, 395)
+	# Dark wet ruts.
+	_rect(c, 20 * s, 0, s, s, _css("#4a3a2e"))
+	_grain(c, 20 * s, s, 1200, 0.1, 397)

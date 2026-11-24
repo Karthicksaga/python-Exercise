@@ -89,9 +89,15 @@ void fragment() {
 	if (l < 0.5 || (l > 19.5 && l < 21.5)) {
 		rgb *= 0.88 + 0.24 * vnoise(uv);
 	}
-	float paved = (l < 1.5 || (l > 19.5 && l < 25.5)) ? 1.0 : 0.0;
+	float paved = (l < 1.5 || l > 19.5) ? 1.0 : 0.0;
 	ALBEDO = rgb * (1.0 - 0.35 * wet * paved);
 	// Water is smooth, asphalt and stone rough.
 	ROUGHNESS = (l > 3.5 && l < 4.5) ? 0.2 : mix(0.95, 0.35, wet * paved);
+	// Muddy puddles (road condition, G-315): shiny, shinier still after rain, no reflection pass.
+	if (l > 29.5 && l < 30.5) {
+		ROUGHNESS = mix(0.3, 0.05, wet);
+		rgb *= 1.0 - 0.25 * wet;
+		ALBEDO = rgb;
+	}
 	SPECULAR = 0.3;
 }

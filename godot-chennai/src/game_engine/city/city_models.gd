@@ -27,6 +27,8 @@ var palm := MeshBuilder.new()
 var shrub := MeshBuilder.new()
 var bloom := MeshBuilder.new()
 var guard := MeshBuilder.new()
+var chevron := MeshBuilder.new()
+var stone := MeshBuilder.new()
 ## Prop name -> MeshBuilder (empty when its GLB is missing).
 var props: Dictionary[StringName, MeshBuilder] = {}
 ## Mapped street objects (G-191).
@@ -47,6 +49,8 @@ static func create(with_props: bool = true) -> CityModels:
 	RoadModels.shrub(m.shrub, 0x3d7d3a)
 	RoadModels.shrub(m.bloom, 0xc2557f)
 	RoadModels.guard(m.guard)
+	RoadModels.chevron(m.chevron)
+	RoadModels.stone(m.stone)
 	m.detail = DetailModels.create()
 	if with_props:
 		for name in PROP_FILES:

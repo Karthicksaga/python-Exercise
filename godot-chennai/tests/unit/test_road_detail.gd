@@ -168,3 +168,91 @@ func test_chunk_cost_budget() -> bool:
 		CityTestKit.free_build(after)
 	kit.road_detail = true
 	return true
+
+
+func test_road_conditions_by_class() -> bool:
+	var counts := {}
+	var lane_counts := {}
+	for id in range(1, 400):
+		var arterial := _road(&"primary", 14.0, -1, false)
+		arterial.id = id * 10
+		var lane := _road(&"service", 4.0, -1, false)
+		lane.id = id * 10
+		var c := RoadStyle.condition(arterial)
+		counts[c] = counts.get(c, 0) + 1
+		var l := RoadStyle.condition(lane)
+		lane_counts[l] = lane_counts.get(l, 0) + 1
+		assert_eq(RoadStyle.condition(arterial), c, "a way keeps its condition")
+	assert_false(counts.has(RoadStyle.UNPAVED), "arterials are never unpaved")
+	assert_true(counts.get(RoadStyle.GOOD, 0) > counts.get(RoadStyle.DAMAGED, 0), "most arterials are good: %s" % counts)
+	assert_true(lane_counts.get(RoadStyle.UNPAVED, 0) > 40, "a fifth or more of the lanes are unpaved: %s" % lane_counts)
+	assert_true(lane_counts.get(RoadStyle.DAMAGED, 0) > 40, "many lanes are damaged: %s" % lane_counts)
+	var mud := _road(&"service", 4.0, -1, false)
+	for id in range(1, 400):
+		mud.id = id * 10
+		if RoadStyle.condition(mud) == RoadStyle.UNPAVED:
+			assert_eq(RoadStyle.surface(mud), CityAtlas.GROUND_MUD, "unpaved roads are mud")
+			break
+	var flyover := _road(&"primary", 14.0, -1, false)
+	flyover.heights = PackedFloat32Array([0.0, 6.0, 6.0])
+	assert_eq(RoadStyle.condition(flyover), RoadStyle.GOOD, "flyovers are kept")
+	# What the vehicles may read: worse surfaces are slower, bumpier and slipperier.
+	var prev := 1.0
+	for c: StringName in [RoadStyle.WORN, RoadStyle.DAMAGED, RoadStyle.UNPAVED]:
+		var f := RoadStyle.feel(c)
+		assert_true(float(f["top_speed"]) < prev and float(f["bump"]) > 0.0 and float(f["grip"]) < 1.0, "%s costs speed, bumps and grip" % c)
+		prev = float(f["top_speed"])
+	assert_eq(float(RoadStyle.feel(RoadStyle.GOOD)["top_speed"]), 1.0, "good roads cost nothing")
+	return true
+
+
+func test_damaged_and_unpaved_roads_get_their_marks() -> bool:
+	var kit := CityTestKit.kit()
+	var kinds := {}
+	var ruts := 0
+	var lips := 0
+	for dx in range(-8, 9):
+		for dz in range(-8, 9):
+			var cell := SPAWN + Vector2i(dx, dz)
+			if not kit.source.read_chunk(cell).ok():
+				continue
+			var plan := _plan(kit, cell)
+			for m in plan.decals:
+				kinds[m.kind] = true
+				assert_true(m.length > 0.0 and m.width > 0.0, "marks have a size")
+			ruts += plan.ruts.size()
+			lips += plan.lips.size()
+	for k: StringName in [&"manhole", &"pothole", &"stripped", &"rubble", &"puddle"]:
+		assert_true(kinds.has(k), "marks include %s (%s)" % [k, kinds.keys()])
+	assert_true(ruts > 0 and lips > 0, "ruts and soil lips on damaged roads (%d, %d)" % [ruts, lips])
+	return true
+
+
+func test_bends_get_the_outer_side() -> bool:
+	var road := _road(&"primary", 7.0, -1, false)
+	var pts := PackedVector2Array()
+	for i in 13:
+		var a := float(i) / 12.0 * PI / 2.0
+		pts.append(Vector2(sin(a), 1.0 - cos(a)) * 60.0)
+	road.points = pts
+	var span := CityLayout.RoadSpan.new()
+	span.road = road
+	span.start = 0
+	span.end = pts.size() - 1
+	var bends := RoadDetail.bends_on(road, span)
+	assert_eq(bends.size(), 1, "one bend")
+	assert_true(float(bends[0]["angle"]) > RoadDetail.BEND_SHARP and float(bends[0]["angle"]) < 1.7, "a quarter turn: %.2f rad" % float(bends[0]["angle"]))
+	# The road heads east then curves towards +Z (right-hand side when facing east is +Z), so the
+	# outer side is the left one (-Z), i.e. +1 in the left-normal sense used by offset_runs.
+	var d := pts[1] - pts[0]
+	var left := Vector2(d.y, -d.x)
+	assert_true(left.y < 0.0, "left normal of an eastward road points to -Z")
+	assert_eq(float(bends[0]["side"]), 1.0, "outer side of a right-hand bend")
+	var straight := _road(&"primary", 7.0, -1, false)
+	straight.points = PackedVector2Array([Vector2.ZERO, Vector2(50, 0), Vector2(100, 0)])
+	var s2 := CityLayout.RoadSpan.new()
+	s2.road = straight
+	s2.start = 0
+	s2.end = 2
+	assert_eq(RoadDetail.bends_on(straight, s2).size(), 0, "no bend on a straight road")
+	return true

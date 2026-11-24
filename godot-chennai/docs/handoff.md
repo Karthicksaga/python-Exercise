@@ -786,3 +786,7 @@ that is not a footway; `GroundMeshes.lane_lines` returns `Vector3` (offset, dash
 600 s retry, and `thumb` blocked by the network policy). The owner can supply photos. Footpaths
 have no collider; poles on residential streets do not light up at night; no hoardings, stalls,
 flyover pillars, median railings or road signs; llvmpipe only, not a phone.
+
+**Roads addendum (owner photographs).** Rural class (G-314) and road condition (G-315) added from ten
+owner-supplied photographs (`docs/roads.md`). Ground atlas is 21 tiles; re-bake with
+`tools/bake_city_textures.gd -- --only=ground`. `RoadStyle.feel(condition)` is the hook for vehicles (not wired).

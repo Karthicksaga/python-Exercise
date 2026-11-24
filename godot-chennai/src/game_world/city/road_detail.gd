@@ -18,6 +18,13 @@ const MIN_ARTERIAL_WIDTH := 6.0
 const TREE_APART := 5.0
 const GUARD_REACH := 3.4
 const POLE_SETBACK := 1.2
+## A chunk with fewer buildings than this is open country: rural road style (G-314).
+const RURAL_BUILDINGS := 30
+## A bend: turning at least this much (radians) over consecutive vertices; barriers and chevrons
+## from the sharper ones.
+const BEND_MIN := 0.35
+const BEND_SHARP := 0.6
+const KM_PITCH := 1000.0
 
 
 class Crossing:
@@ -36,7 +43,7 @@ class Crossing:
 
 class Mark:
 	extends RefCounted
-	## &"manhole", &"patch", &"pothole".
+	## &"manhole", &"patch", &"pothole", &"stripped", &"puddle", &"rubble".
 	var kind: StringName
 	var position: Vector2
 	var dir: Vector2
@@ -45,14 +52,30 @@ class Mark:
 	var layer: int
 
 
+class Post:
+	extends RefCounted
+	var position: Vector2
+	## Yaw as for `StreetFurniture.Pole`: the model's -Z faces the road.
+	var yaw: float
+
+
 class Plan:
 	extends RefCounted
+	## Open country (G-314): shoulders, painted kerb blocks on bends, crash barriers, chevrons.
+	var rural: bool = false
+	var blocks: Array[StreetFurniture.KerbRun] = []
+	var barriers: Array[StreetFurniture.KerbRun] = []
+	var chevrons: Array[Post] = []
+	var stones: Array[Post] = []
 	var crossings: Array[Crossing] = []
 	var decals: Array[Mark] = []
 	var trees: Array[WorldTree] = []
 	var poles: Array[StreetFurniture.Pole] = []
 	var footpaths: Array[StreetFurniture.KerbRun] = []
 	var drains: Array[StreetFurniture.KerbRun] = []
+	## Wheel ruts and the soil lip at the edge of damaged and unpaved roads (G-315).
+	var ruts: Array[StreetFurniture.KerbRun] = []
+	var lips: Array[StreetFurniture.KerbRun] = []
 
 
 ## Everything for one chunk. `furniture` is the chunk's poles, kerbs and shelters; `chunk_trees`
@@ -61,12 +84,16 @@ static func for_chunk(layout: CityLayout, chunk: ChunkData, cell: Vector2i, squa
 	var out := Plan.new()
 	var boxes := StreetFurniture.building_boxes(chunk.buildings)
 	var spots: Array = layout.spots_in(cell)
+	out.rural = chunk.buildings.size() < RURAL_BUILDINGS
 	for span: CityLayout.RoadSpan in layout.spans_in(cell):
 		var road := span.road
 		var style := RoadStyle.of(road)
 		if style.klass == RoadStyle.PATH or style.klass == RoadStyle.FLYOVER or road.tunnel:
 			continue
-		if style.klass == RoadStyle.ARTERIAL:
+		if style.klass == RoadStyle.ARTERIAL and out.rural:
+			style = RoadStyle.rural(road)
+			rural_on(out, layout, span, square)
+		elif style.klass == RoadStyle.ARTERIAL:
 			out.crossings.append_array(crossings_on(layout, span, square, spots))
 			var open := layout.blocked_stretches(span.index, false)
 			out.footpaths.append_array(StreetFurniture.offset_runs(layout, span.index, span.start, span.end, open, road.width / 2.0 + StreetFurniture.KERB_WIDTH, road.width / 2.0 + StreetFurniture.KERB_WIDTH + style.footpath, [1.0, -1.0]))
@@ -76,12 +103,94 @@ static func for_chunk(layout: CityLayout, chunk: ChunkData, cell: Vector2i, squa
 				# An open drain along one side: a dark channel with a lip.
 				var side: Array[float] = [1.0 if CityHash.unit(RoadStyle.way(road), 95) < 0.5 else -1.0]
 				out.drains.append_array(StreetFurniture.offset_runs(layout, span.index, span.start, span.end, open, road.width / 2.0 + 0.1, road.width / 2.0 + 0.5, side))
-		out.decals.append_array(decals_on(layout, span, square))
-		if style.tree_pitch > 0.0:
+		out.decals.append_array(decals_on(layout, span, square, out.rural))
+		var cond := RoadStyle.condition(road, out.rural)
+		if cond == RoadStyle.DAMAGED or cond == RoadStyle.UNPAVED:
+			wear_on(out, layout, span, cond)
+		if style.tree_pitch > 0.0 and not (out.rural and style.klass != RoadStyle.RURAL):
 			out.trees.append_array(trees_on(layout, span, style, chunk, boxes, square, furniture))
 		if style.pole_pitch > 0.0:
 			out.poles.append_array(poles_on(layout, span, style, chunk, boxes, square, out.trees))
 	return out
+
+
+## Bends of a road piece: dictionaries with i0, i1 (vertex range), side (+1 or -1, the outer side
+## in the sense of `StreetFurniture.offset_runs`) and angle (radians turned).
+static func bends_on(road: Road, span: CityLayout.RoadSpan) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var pts := road.points
+	var first := -1
+	var angle := 0.0
+	var sign := 0.0
+	for i in range(span.start + 1, span.end + 1):
+		var turn := 0.0
+		var s := 0.0
+		if i < span.end:
+			var a := pts[i] - pts[i - 1]
+			var b := pts[i + 1] - pts[i]
+			if a.length() > 0.01 and b.length() > 0.01:
+				turn = absf(a.angle_to(b))
+				s = signf(b.dot(Vector2(a.y, -a.x)))
+		if turn > 0.03 and first >= 0 and s == sign:
+			angle += turn
+			continue
+		if first >= 0 and angle >= BEND_MIN:
+			out.append({"i0": first - 1, "i1": i, "side": -sign, "angle": angle})
+		first = -1
+		angle = 0.0
+		if turn > 0.03:
+			first = i
+			angle = turn
+			sign = s
+	return out
+
+
+## Open-country detail along one arterial piece: painted kerb blocks on the outside of bends, crash
+## barriers and chevron boards on the sharp ones, kilometre stones.
+static func rural_on(out: Plan, layout: CityLayout, span: CityLayout.RoadSpan, square: Rect2) -> void:
+	var road := span.road
+	var dist: PackedFloat64Array = layout.along[span.index]
+	var total := dist[dist.size() - 1]
+	var blocked := layout.blocked_stretches(span.index, false)
+	for bend in bends_on(road, span):
+		var d0 := dist[bend["i0"]] - 3.0
+		var d1 := dist[bend["i1"]] + 3.0
+		var stretches := PackedVector2Array(blocked)
+		stretches.append(Vector2(-1.0, d0))
+		stretches.append(Vector2(d1, total + 1.0e6))
+		var side: Array[float] = []
+		side.append(float(bend["side"]))
+		var half := road.width / 2.0
+		out.blocks.append_array(StreetFurniture.offset_runs(layout, span.index, span.start, span.end, stretches, half + 0.35, half + 0.75, side))
+		if float(bend["angle"]) >= BEND_SHARP:
+			out.barriers.append_array(StreetFurniture.offset_runs(layout, span.index, span.start, span.end, stretches, half + 1.3, half + 1.3, side))
+			var d := d0 + 4.0
+			var count := 0
+			while d < d1 - 4.0 and count < 6:
+				var at := CityLayout.point_along(road.points, dist, d)
+				var dir: Vector2 = at["dir"]
+				var l := Vector2(dir.y, -dir.x) * float(bend["side"])
+				var post := Post.new()
+				post.position = (at["p"] as Vector2) + l * (half + 2.0)
+				post.yaw = StreetFurniture.facing(-l)
+				if square.has_point(post.position):
+					out.chevrons.append(post)
+				d += 11.0
+				count += 1
+	# Kilometre stones where the whole road's distance crosses a multiple of KM_PITCH.
+	var from := dist[span.start]
+	var to := dist[span.end]
+	var k := ceili(from / KM_PITCH)
+	while k * KM_PITCH < to:
+		var at := CityLayout.point_along(road.points, dist, k * KM_PITCH)
+		var dir: Vector2 = at["dir"]
+		var l := Vector2(dir.y, -dir.x)
+		var post := Post.new()
+		post.position = (at["p"] as Vector2) + l * (road.width / 2.0 + 1.2)
+		post.yaw = StreetFurniture.facing(-l)
+		if square.has_point(post.position):
+			out.stones.append(post)
+		k += 1
 
 
 ## Zebra crossings and stop lines on the arms of every junction node of an arterial road that lies
@@ -126,37 +235,48 @@ static func crossings_on(layout: CityLayout, span: CityLayout.RoadSpan, square: 
 	return out
 
 
-## Manholes, repair patches and potholes at distances fixed by the way id, so chunks agree.
-static func decals_on(layout: CityLayout, span: CityLayout.RoadSpan, square: Rect2) -> Array[Mark]:
+## Marks on the carriageway at distances fixed by the way id, so chunks agree: manholes, repair
+## patches, potholes and by condition (G-315) large stripped-tar patches, water-filled holes, puddles
+## and brick and stone rubble.
+static func decals_on(layout: CityLayout, span: CityLayout.RoadSpan, square: Rect2, rural: bool = false) -> Array[Mark]:
 	var out: Array[Mark] = []
 	var road := span.road
-	var style := RoadStyle.of(road)
-	var klass := style.klass
+	var klass := RoadStyle.klass_of(road)
 	if not MANHOLE_PITCH.has(klass) or MANHOLE_PITCH[klass] <= 0.0:
 		return out
+	var cond := RoadStyle.condition(road, rural)
 	var dist: PackedFloat64Array = layout.along[span.index]
 	var d0 := dist[span.start]
 	var d1 := dist[span.end]
-	var worn := RoadStyle.is_worn(road)
-	var concrete := RoadStyle.is_concrete(road)
+	var concrete := RoadStyle.is_concrete(road) and cond != RoadStyle.DAMAGED and cond != RoadStyle.UNPAVED
 	var way := RoadStyle.way(road)
 	var total := road.total_length if road.total_length > 0.0 else dist[dist.size() - 1]
-	# kind, pitch, salt
-	for spec: Array in [[&"manhole", MANHOLE_PITCH[klass], 201], [&"patch", PATCH_PITCH[klass], 202], [&"pothole", POTHOLE_PITCH[klass], 203]]:
+	var specs: Array = []
+	if cond != RoadStyle.UNPAVED:
+		specs.append([&"manhole", MANHOLE_PITCH[klass], 201])
+	match cond:
+		RoadStyle.WORN:
+			specs.append([&"patch", PATCH_PITCH[klass], 202])
+			specs.append([&"pothole", POTHOLE_PITCH[klass], 203])
+		RoadStyle.DAMAGED:
+			specs.append([&"stripped", 60.0, 204])
+			specs.append([&"pothole", 28.0, 203])
+			specs.append([&"rubble", 45.0, 205])
+		RoadStyle.UNPAVED:
+			specs.append([&"puddle", 30.0, 206])
+			specs.append([&"rubble", 14.0, 205])
+			specs.append([&"pothole", 22.0, 203])
+		_:
+			if concrete:
+				specs.append([&"patch", PATCH_PITCH[klass], 202])
+	for spec: Array in specs:
 		var kind: StringName = spec[0]
 		var pitch: float = spec[1]
 		var salt: int = spec[2]
-		if kind == &"patch" and not (worn or concrete):
-			continue
-		if kind == &"pothole" and concrete:
-			continue
-		if kind == &"pothole" and not worn and klass == RoadStyle.ARTERIAL:
-			continue
 		var k := maxi(0, floori(d0 / pitch) - 1)
 		while true:
-			var whole := (k + 0.15 + 0.7 * CityHash.unit(way * 31 + k, salt)) * pitch
+			var d := (k + 0.15 + 0.7 * CityHash.unit(way * 31 + k, salt)) * pitch
 			k += 1
-			var d := whole
 			if d < d0:
 				continue
 			if d >= d1:
@@ -169,6 +289,7 @@ static func decals_on(layout: CityLayout, span: CityLayout.RoadSpan, square: Rec
 			var u := CityHash.unit(way * 31 + k, salt + 10)
 			var v := CityHash.unit(way * 31 + k, salt + 20)
 			var half := road.width / 2.0
+			var centre: Vector2 = at["p"]
 			var dc := Mark.new()
 			dc.kind = kind
 			dc.dir = dir
@@ -177,20 +298,70 @@ static func decals_on(layout: CityLayout, span: CityLayout.RoadSpan, square: Rec
 					dc.length = 0.7
 					dc.width = 0.7
 					dc.layer = CityAtlas.GROUND_DARK
-					dc.position = (at["p"] as Vector2) + across * (u - 0.5) * half
+					dc.position = centre + across * (u - 0.5) * half
 				&"patch":
 					dc.length = 1.6 + 1.5 * v
 					dc.width = 1.0 + 0.6 * u
-					dc.layer = CityAtlas.GROUND_ASPHALT if (worn or concrete) else CityAtlas.GROUND_ASPHALT_WORN
-					dc.position = (at["p"] as Vector2) + across * (u - 0.5) * (half * 1.2)
+					dc.layer = CityAtlas.GROUND_ASPHALT if not concrete and cond != RoadStyle.GOOD else CityAtlas.GROUND_ASPHALT_WORN
+					dc.position = centre + across * (u - 0.5) * (half * 1.2)
+				&"stripped":
+					# Milled-off tar showing the grey base course, the length of a car or two.
+					dc.length = 6.0 + 8.0 * v
+					dc.width = minf(road.width * 0.7, 2.4 + 2.0 * u)
+					dc.layer = CityAtlas.GROUND_STRIPPED
+					dc.position = centre + across * (u - 0.5) * maxf(0.0, road.width - dc.width) * 0.8
+				&"puddle":
+					dc.length = 2.5 + 2.5 * v
+					dc.width = minf(road.width * 0.6, 1.4 + 1.6 * u)
+					dc.layer = CityAtlas.GROUND_PUDDLE
+					dc.position = centre + across * (u - 0.5) * maxf(0.0, road.width - dc.width) * 0.8
+				&"rubble":
+					dc.length = 0.18 + 0.3 * v
+					dc.width = 0.15 + 0.25 * u
+					dc.layer = CityAtlas.GROUND_BRICK if CityHash.unit(way * 31 + k, salt + 30) < 0.55 else CityAtlas.GROUND_DARK
+					dc.position = centre + across * (u - 0.5) * half * 1.5
 				_:
-					dc.length = 0.5 + 0.5 * v
-					dc.width = 0.4 + 0.5 * u
-					dc.layer = CityAtlas.GROUND_DARK
-					dc.position = (at["p"] as Vector2) + across * (1.0 if v < 0.5 else -1.0) * maxf(0.5, half - 0.6 - u * 1.4)
+					var wet := cond != RoadStyle.WORN and v < 0.5
+					dc.length = (0.9 + 1.1 * v) if cond != RoadStyle.WORN else (0.5 + 0.5 * v)
+					dc.width = (0.8 + 0.8 * u) if cond != RoadStyle.WORN else (0.4 + 0.5 * u)
+					dc.layer = CityAtlas.GROUND_PUDDLE if wet else CityAtlas.GROUND_DARK
+					if wet:
+						dc.kind = &"puddle"
+					dc.position = centre + across * (1.0 if v < 0.5 else -1.0) * maxf(0.5, half - 0.6 - u * 1.4)
 			if square.has_point(dc.position):
 				out.append(dc)
+				if kind == &"rubble":
+					# A scatter of five pieces round the first.
+					for j in 4:
+						var m := Mark.new()
+						m.kind = kind
+						m.dir = Vector2.from_angle(CityHash.unit(way * 31 + k, 240 + j) * TAU)
+						m.length = 0.12 + 0.25 * CityHash.unit(way * 31 + k, 250 + j)
+						m.width = 0.1 + 0.2 * CityHash.unit(way * 31 + k, 260 + j)
+						m.layer = CityAtlas.GROUND_BRICK if CityHash.unit(way * 31 + k, 270 + j) < 0.5 else CityAtlas.GROUND_DARK
+						m.position = dc.position + Vector2(CityHash.unit(way * 31 + k, 280 + j) - 0.5, CityHash.unit(way * 31 + k, 290 + j) - 0.5) * 1.6
+						out.append(m)
 	return out
+
+
+## Wheel ruts and a soil lip along the edges of a damaged or unpaved road piece (G-315).
+static func wear_on(out: Plan, layout: CityLayout, span: CityLayout.RoadSpan, cond: StringName) -> void:
+	var road := span.road
+	var open := layout.blocked_stretches(span.index, false)
+	var half := road.width / 2.0
+	var both: Array[float] = [1.0, -1.0]
+	# Two tracks in each lane; a narrow road has one pair either side of its middle.
+	var tracks: Array[float] = []
+	if road.width >= 4.6:
+		tracks = [half / 2.0 - 0.95, half / 2.0 + 0.5]
+	else:
+		tracks = [0.45]
+	var layer := CityAtlas.GROUND_RUT if cond == RoadStyle.UNPAVED else CityAtlas.GROUND_ASPHALT
+	for a: float in tracks:
+		for run in StreetFurniture.offset_runs(layout, span.index, span.start, span.end, open, maxf(a, 0.0), maxf(a, 0.0) + 0.45, both):
+			run.paint = layer
+			out.ruts.append(run)
+	out.lips.append_array(StreetFurniture.offset_runs(layout, span.index, span.start, span.end, open, half - 0.55, half + 0.05, both))
 
 
 ## Trees along a street that data planted none on (residential streets and lanes).

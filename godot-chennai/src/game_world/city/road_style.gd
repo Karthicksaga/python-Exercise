@@ -11,6 +11,7 @@ const RESIDENTIAL := &"residential"
 const LANE := &"lane"
 const FLYOVER := &"flyover"
 const PATH := &"path"
+const RURAL := &"rural"
 
 var klass: StringName = RESIDENTIAL
 ## Footpath width each side, metres (0 = none), and the dust verge beside the road.
@@ -41,6 +42,19 @@ static func klass_of(road: Road) -> StringName:
 	if road.kind == &"service" or road.width < 4.4:
 		return LANE
 	return RESIDENTIAL
+
+
+## Roads outside the built-up area (a chunk with fewer than `RoadDetail.RURAL_BUILDINGS` buildings):
+## a narrow dust shoulder, no kerb, rows of palmyra palms (owner-supplied photographs, G-314).
+static func rural(road: Road) -> RoadStyle:
+	var s := RoadStyle.new()
+	s.klass = RURAL
+	s.verge = 1.4
+	s.tree_pitch = 9.0
+	s.tree_edge = 3.2
+	s.tree_keep = 0.85
+	s.species = {&"palmyra": 0.55, &"coconut": 0.15, &"neem": 0.15, &"rain": 0.15}
+	return s
 
 
 static func of(road: Road) -> RoadStyle:
@@ -77,26 +91,73 @@ static func is_concrete(road: Road) -> bool:
 	return false
 
 
-## True when a tar road is the pale, patched, worn kind.
-static func is_worn(road: Road) -> bool:
-	var share := 0.3
-	match klass_of(road):
+## Surface condition of a road (G-315): &"good", &"worn", &"damaged" or &"unpaved". Drawn from the
+## road class, a hash of the way id and a hash of the 600 m square the road starts in (some districts
+## are looked after, some are not). Estimated: OSM maps `surface` for few Chennai roads.
+const GOOD := &"good"
+const WORN := &"worn"
+const DAMAGED := &"damaged"
+const UNPAVED := &"unpaved"
+const AREA_SIDE := 600.0
+
+
+## 0 to 1 per square of the map: how neglected its roads are.
+static func area_neglect(p: Vector2) -> float:
+	return CityHash.unit(floori(p.x / AREA_SIDE) * 7919 + floori(p.y / AREA_SIDE), 108)
+
+
+static func condition(road: Road, rural: bool = false) -> StringName:
+	var k := klass_of(road)
+	if k == PATH or k == FLYOVER:
+		return GOOD
+	var start := road.points[0] if not road.points.is_empty() else Vector2.ZERO
+	# One roll per way, moved by the district: neglect of 0.5 changes nothing.
+	var roll := clampf(CityHash.unit(way(road), 92) + (area_neglect(start) - 0.5) * 0.3, 0.0, 0.9999)
+	var shares: Array[float] = [0.6, 0.3, 0.1, 0.0]
+	match k:
 		ARTERIAL:
-			share = 0.3
+			shares.assign([0.4, 0.3, 0.3, 0.0] if rural else [0.55, 0.3, 0.15, 0.0])
 		RESIDENTIAL:
-			share = 0.55
+			shares.assign([0.2, 0.35, 0.35, 0.1])
 		LANE:
-			share = 0.7
-		FLYOVER:
-			share = 0.1
-	return CityHash.unit(way(road), 92) < share
+			shares.assign([0.15, 0.25, 0.3, 0.3])
+	var names: Array[StringName] = [GOOD, WORN, DAMAGED, UNPAVED]
+	var acc := 0.0
+	for i in 4:
+		acc += shares[i]
+		if roll < acc:
+			return names[i]
+	return WORN
 
 
-## Ground layer of a road's carriageway.
-static func surface(road: Road) -> int:
-	if is_concrete(road):
+## True when a tar road is the pale, patched, worn kind (worn or damaged).
+static func is_worn(road: Road, rural: bool = false) -> bool:
+	var c := condition(road, rural)
+	return c == WORN or c == DAMAGED
+
+
+## Ground layer of a road's carriageway: mud where unpaved, concrete where a lane is cemented and
+## not broken, else tar (fresh when good).
+static func surface(road: Road, rural: bool = false) -> int:
+	var c := condition(road, rural)
+	if c == UNPAVED:
+		return CityAtlas.GROUND_MUD
+	if is_concrete(road) and c != DAMAGED:
 		return CityAtlas.GROUND_CONCRETE
-	return CityAtlas.GROUND_ASPHALT_WORN if is_worn(road) else CityAtlas.GROUND_ASPHALT
+	return CityAtlas.GROUND_ASPHALT_WORN if (c == WORN or c == DAMAGED) else CityAtlas.GROUND_ASPHALT
+
+
+## What a surface does to a vehicle on it (data for the vehicles to read, G-315): the share of top
+## speed a cheap vehicle keeps, bump amplitude in metres, and the grip multiplier.
+static func feel(c: StringName) -> Dictionary:
+	match c:
+		WORN:
+			return {"top_speed": 0.97, "bump": 0.01, "grip": 0.98}
+		DAMAGED:
+			return {"top_speed": 0.85, "bump": 0.04, "grip": 0.92}
+		UNPAVED:
+			return {"top_speed": 0.65, "bump": 0.06, "grip": 0.7}
+	return {"top_speed": 1.0, "bump": 0.0, "grip": 1.0}
 
 
 ## Ground layer of the kerb paint: yellow and black on primary roads and some secondary ones, black

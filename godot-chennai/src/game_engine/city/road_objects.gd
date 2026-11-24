@@ -86,3 +86,37 @@ static func shrubs(into: MeshBuilder, models: CityModels, runs: Array[StreetFurn
 static func guards(into: MeshBuilder, models: CityModels, at: Array[Vector2], centre: Vector2) -> void:
 	for p in at:
 		CityModels.place(into, models.guard, Vector3(p.x - centre.x, 0.0, p.y - centre.y), CityHash.tree_unit(p, 74) * PI)
+
+
+## W-beam crash barrier along each run's inner line: a post every 4 m and a two-sided beam strip
+## 0.3 m high at 0.45 m, grey. Returns the number of segments.
+static func barriers(into: MeshBuilder, runs: Array[StreetFurniture.KerbRun], centre: Vector2) -> int:
+	var count := 0
+	var col := CityModels._lin(0xa3a8ab)
+	var uv := Vector2(CityModels.DARK_U, 0.5)
+	for run in runs:
+		var carry := 0.0
+		for i in run.inner.size() - 1:
+			var a := run.inner[i] - centre
+			var b := run.inner[i + 1] - centre
+			var length := a.distance_to(b)
+			if length < 0.05:
+				continue
+			var n := Vector3(b.y - a.y, 0.0, -(b.x - a.x)) / length
+			var va := Vector3(a.x, 0.45, a.y)
+			var vb := Vector3(b.x, 0.45, b.y)
+			var up := Vector3(0, 0.3, 0)
+			var i0 := into.vertex(va, n, uv, col)
+			var i1 := into.vertex(vb, n, uv, col)
+			var i2 := into.vertex(vb + up, n, uv, col)
+			var i3 := into.vertex(va + up, n, uv, col)
+			into.quad(i0, i1, i2, i3)
+			into.quad(i0, i3, i2, i1)
+			var d := 4.0 - carry
+			while d <= length:
+				var p := a.lerp(b, d / length)
+				CityModels.box(into, Vector3(p.x - 0.04, 0.0, p.y - 0.04), Vector3(p.x + 0.04, 0.78, p.y + 0.04), 0x6c7074)
+				d += 4.0
+			carry = length - (d - 4.0)
+			count += 1
+	return count

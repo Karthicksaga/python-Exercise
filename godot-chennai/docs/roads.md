@@ -3,12 +3,36 @@
 Owner's request: the roads looked flat and plain; build the details of real Chennai and Tamil
 Nadu streets. This page is the reference notes, the sources, and how the detail is built.
 
+## Owner-supplied reference photos (not redistributed)
+
+Ten photographs the owner supplied, **owner-supplied reference photos, not redistributed** (kept in a
+scratch folder outside the repository, viewed, never copied in):
+
+- Good and rural roads: 1 a highway with black-white painted kerb blocks along the median side and
+  palms; 2 a hill bend with chevron boards, a W-beam guardrail, a white-black kerb on the outside of
+  the bend and a whitewashed retaining wall; 3 a rural road with dashed centre line and red-brown dust
+  shoulder under a storm sky; 4 a lane lined with palmyra palms with an overhead line; 5 a curving
+  forest road under a dense canopy.
+- Worst roads: 6 and 8 a city street with a milled-off tar patch showing the grey base course, loose chips
+  along its edge and wheel ruts; 7 a mud lane with a large muddy puddle; 9 an aerial hill hairpin road with a
+  white-black kerb on the outer edge and thin edge lines; 10 a rubble lane with brick fragments and mud.
+
+What they changed (G-314, G-315): a **rural class** for arterials in open country (a chunk with fewer than
+30 buildings): no kerb, a 1.4 m red-brown dust shoulder, kerb blocks in black and white on the outside of
+bends (turning 20 degrees or more), a W-beam barrier and chevron boards on sharper bends (34 degrees or more),
+kilometre stones, rows of palmyra palms every 9 m; and a **condition** per road (good, worn, damaged, unpaved)
+from the class, a hash of the way id and a hash of the 600 m square: damaged roads get large stripped-tar
+patches, water-filled holes, wheel ruts, a soil lip along the edges and rubble; unpaved lanes are laterite mud with
+ruts, puddles, brick and stone scatter and no kerb. Puddles are flat shiny ground polygons (one tile, shinier
+after rain), not a reflection pass. The conditions' effect on vehicles is data only (`RoadStyle.feel`: top speed,
+bump, grip); it is not wired into the vehicle physics yet.
+
 ## Reference research (honest status)
 
 The Wikimedia Commons API answered (search, licence metadata), but **both image hosts
 (`upload.wikimedia.org`, `thumb.wikimedia.org`) refused the downloads**: `thumb` is not allowed by
 the session's network policy (HTTP 403) and `upload` answered HTTP 429 with `Retry-After: 600`, then
-120, then 600 again, for the whole research window. **No reference image was downloaded or viewed.**
+120, then 600 again, for the whole research window. **No Commons image was downloaded or viewed** (the owner's ten photographs above were).
 What follows comes from the OpenStreetMap tags in the world files (`docs/osm-detail.md`) and from
 general knowledge of the streets, so treat the colours and dimensions as estimates. The owner can
 supply photos (any of the streets below); they would go in a scratch folder, never in the repository.
@@ -106,7 +130,9 @@ guards, shrubs and wires; the 300k frame budget is touched at T. Nagar (304k, wa
 
 ## Weak or not done
 
-- No reference photo was viewed (host blocked, see above): shapes and colours are from knowledge.
+- Only the owner's ten photographs were viewed (Commons blocked): everything else is from knowledge.
+- Hill bends have no terrain: kerb blocks, barriers and chevrons follow the road's own curvature, rural chunks only. No whitewashed retaining wall, no forest canopy (trees are the two meshes), no motorbike riders on the road.
+- Surface feel (`RoadStyle.feel`) is data and tested, not wired into the vehicles; no barrier or chevron collider.
 - Footpaths are 0.12 m high but have no collider: the player's feet sink into them as they do into the
   kerbs. Concrete panels' joints follow the world axes, not the road's direction.
 - No flyover pillars beyond what decks already draw, no hoardings, stalls, bus bays or Tamil road

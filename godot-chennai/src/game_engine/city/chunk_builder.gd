@@ -133,6 +133,9 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	out.props = StreetProps.for_chunk(layout, chunk, cell, out.furniture)
 	if kit.road_detail:
 		out.roads = RoadDetail.for_chunk(layout, chunk, cell, square, out.furniture)
+		if out.roads.rural:
+			# Open country has no kerbs along the road: a dust shoulder instead (G-314).
+			out.furniture.kerbs.clear()
 
 	var view := Node3D.new()
 	view.name = "Chunk_%d_%d" % [cell.x, cell.y]
@@ -226,6 +229,12 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 		out.detail["wires"] = RoadObjects.wires(objects, all_poles, out.centre)
 		out.detail["median_shrubs"] = RoadObjects.shrubs(objects, kit.models, out.furniture.medians, out.centre)
 		out.detail["crossings"] = out.roads.crossings.size()
+		for post in out.roads.chevrons:
+			CityModels.place(objects, kit.models.chevron, _local3(post.position, out.centre), post.yaw)
+		for post in out.roads.stones:
+			CityModels.place(objects, kit.models.stone, _local3(post.position, out.centre), post.yaw)
+		out.detail["barrier_segments"] = RoadObjects.barriers(objects, out.roads.barriers, out.centre)
+		out.detail["chevrons"] = out.roads.chevrons.size()
 	if detail != null:
 		dm.add_objects(detail.objects_in(cell), water.polygons)
 		for s in out.furniture.shelters:
