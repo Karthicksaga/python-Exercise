@@ -143,9 +143,11 @@ close, light trains (painted windows), cabins in the aircraft without gauges, th
 over the car budget, and nothing seen on a phone.
 
 ## Emulator smoke made deterministic, branch `agent/godot-smoke`, 24 Nov 2026
-**Root cause** of the intermittent `android-smoke`: the portrait emulator rotated to landscape
-while the game was starting, Android relaunched the activity, and Godot ended its own process
-(G-9, amended). **Fix:** landscape emulator screen that ignores orientation requests, bounded
-readiness waits, the game's process followed by pid, full diagnostics on failure. Run several
-smoke jobs at once with *Run workflow* → `smoke_runs` = `1,2,3,4,5,6,7,8` (`smoke_settle` = `0`
-reproduces the old launch without the readiness waits).
+**Root cause** of the intermittent `android-smoke`: an overlay change on the freshly booted
+emulator changed every app's asset paths, Android relaunched the game's activity, and Godot
+ended its own process (G-9, amended, with the log evidence). **Fix:** the smoke waits, bounded,
+for the overlays and configuration to stay unchanged for 20 s before installing and before
+launching (plus boot, managers, unlocked landscape screen, install broadcasts), follows the
+game's pid, and prints the exit reason and the log before any relaunch on failure. To repeat
+the check: *Run workflow* with `smoke_runs` = `1,2,3,4,5,6,7,8` (`smoke_settle` = `0` launches
+the old way, without the waits).

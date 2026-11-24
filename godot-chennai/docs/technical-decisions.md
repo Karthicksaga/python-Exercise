@@ -123,25 +123,31 @@ device log never goes silent. No
 Gradle build: Godot's prebuilt template, so the minimum SDK is the template's: API 24
 (Android 7.0), target 36 (printed by CI). Package `com.chennaiopenworld.godot`, so it installs beside the Three.js app.
 
-**Amended 24 Nov 2026: the intermittent smoke failure.** About one emulator run in seven (and
-four in eight when launched later after boot) lost the app a few seconds after launch with no
-crash. The device log showed the cause: the emulator's screen was portrait and its launcher is
-portrait-only, so starting the landscape game rotated the display under it, and Android then
-**relaunched the game's activity** (`wm_relaunch_resume_activity`, changes `0x80000000`, asset
-paths; `handleRelaunchActivity`). Godot cannot start twice in one process, so it ended its own
-process (`ApplicationExitInfo` reason SIGNALED, signal 9; `Main::start` never finished). Whether
-it happened depended on whether the rotation landed before or after the activity was created.
-The earlier note here that Godot's Vulkan-to-OpenGL switch "lost the app" was this same race.
-**Fix:** the smoke emulator has a landscape screen (`-skin 1280x576`) and ignores orientation
-requests (`cmd window set-ignore-orientation-request true`), so nothing rotates; the script also
-waits, with bounded timeouts, for boot, the package and activity managers, an unlocked screen
-and a configuration that has not changed for 15 s, then follows the game's process id until
-10 s after `[boot] play`. On failure it prints the exit reason, configuration changes and
-relaunches, activity lifecycle events and the system log. Proven with 8 + 8 parallel runs and
-0 relaunches in each (`workflow_dispatch` input `smoke_runs`). On a phone the same relaunch can
-only follow a change Godot's manifest does not handle (asset paths, fonts, SIM country) while
-the game starts: rare, and then the game closes instead of hanging; making the engine survive a
-relaunch is Godot's, not this project's.
+**Amended 24 Nov 2026: the intermittent smoke failure.** About one emulator run in seven lost
+the app a second or two after launch, with no crash. The device log showed the chain, the same
+in every failure captured (3 of 3 with the full log): Android's overlay manager changed which
+resource overlays are enabled some seconds after boot (events log
+`commit_sys_config_file: [overlays,…]`, `idmap2d` starting), which changes every app's asset
+paths; the window manager then **relaunched the game's activity**
+(`wm_relaunch_resume_activity`, changes `0x80000000` = asset paths, which no `configChanges`
+entry can absorb); Godot cannot start twice in one process, so it ended its own process
+(`ApplicationExitInfo` reason SIGNALED, signal 9; `Main::start` never finished). Whether it hit
+depended only on whether the overlay change landed during the game's first seconds. The
+earlier note here that Godot's Vulkan-to-OpenGL switch "lost the app" was this same race.
+**Fix** (`tools/android_smoke.sh`): before installing and again before launching, wait (bounded,
+with a message for each wait) for boot, the package and activity managers, an unlocked screen,
+a landscape display, the install broadcasts, and **the overlay list and the global
+configuration unchanged for 20 s**; then follow the game's process id until 10 s after
+`[boot] play`. The emulator screen is landscape (`-skin 1280x576`) and ignores orientation
+requests, so the game is not rotated as it starts either. On failure the script prints the
+exit reason, relaunches and configuration changes, the 4 s of system log before a relaunch,
+lifecycle events and the crash buffer. Evidence: without the waits (`smoke_settle=0`) 2/8 and
+4/8 parallel runs failed this way; with them 8/8, 8/8 and 7/8 (the eighth failed before the
+emulator started: an action download timed out), each with 0 relaunches. The emulator system
+image is now cached (one run failed downloading it). Run `workflow_dispatch` with `smoke_runs`
+= `1,2,3,4,5,6,7,8` to repeat the check. On a phone the same relaunch would need an overlay or
+font change during the game's first seconds: rare, and the game closes rather than hangs;
+surviving a relaunch is the engine's limit, not this project's.
 
 
 <!-- Data agent section: G-20 to G-29. Other agents append their own ranges. -->
