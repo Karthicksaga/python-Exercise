@@ -122,12 +122,13 @@ func test_no_shipped_text_names_an_excluded_file() -> bool:
 				check(false, "%s names %s, which the export leaves out" % [rel, ex])
 	# A path built from a folder and a file name (e.g. `dir.path_join("x.glb")`): look for the
 	# bare names of the excluded GLBs in code and scenes (not in manifests, which name their cast).
+	# (The same names shipped elsewhere, e.g. assets/people/baker.glb vs a legacy baker.glb, are fine.)
 	for rel in files:
 		if not _shipped(rel) or _is_excluded(rel, pats) or not ["gd", "tscn", "tres"].has(rel.get_extension()):
 			continue
 		var text2 := FileAccess.get_file_as_string("res://" + rel)
 		for ex in excluded:
-			if ex.get_extension() in ["glb", "json"] and text2.contains('"' + ex.get_file() + '"'):
+			if ex.get_extension() == "glb" and text2.contains('"' + ex.get_file() + '"') and not _basename_ships(ex.get_file(), files, pats):
 				check(false, "%s names the file %s, which the export leaves out" % [rel, ex.get_file()])
 	return true
 
@@ -159,3 +160,38 @@ func test_models_the_game_resolves_are_in_the_export() -> bool:
 		for l in man.lods():
 			check(not _is_excluded(String(l["file"]).trim_prefix("res://"), pats), "%s: %s ships" % [man.id, l["file"]])
 	return true
+
+
+## True when a shipped file has this base name (a name that two folders share is no proof).
+func _basename_ships(file_name: String, files: Array[String], pats: PackedStringArray) -> bool:
+	for rel in files:
+		if rel.get_file() == file_name and not _is_excluded(rel, pats):
+			return true
+	return false
+
+
+func test_the_regional_world_ships_and_the_v1_chunks_do_not() -> bool:
+	# main.gd builds the regional world when it is there and falls back to the v1 chunks only
+	# without it; the APK always carries the regional world, so the v1 chunks are dead weight.
+	var pats := _exclude_patterns()[0]
+	check(RegionalWorldSource.available(), "the regional world is in the project")
+	var includes := _include_patterns()
+	for rel in _project_files():
+		if rel.begins_with("world/tiles/") and (rel.ends_with(".bin") or rel.ends_with(".json")):
+			check(not _is_excluded(rel, pats), "%s ships" % rel)
+			check(_is_excluded(rel, includes), "%s is matched by include_filter (data files that are not resources only ship when it lists them)" % rel)
+		if rel.begins_with("assets/world/c/"):
+			check(_is_excluded(rel, pats), "%s (v1 chunk) stays out of the APK" % rel)
+	check(_is_excluded("world/world.json", includes) and not _is_excluded("world/world.json", pats), "world/world.json ships")
+	return true
+
+
+func _include_patterns() -> PackedStringArray:
+	var cfg := ConfigFile.new()
+	var pats := PackedStringArray()
+	if cfg.load(PRESETS) != OK:
+		return pats
+	for p in String(cfg.get_value("preset.0", "include_filter", "")).split(","):
+		if p.strip_edges() != "":
+			pats.append(p.strip_edges())
+	return pats
