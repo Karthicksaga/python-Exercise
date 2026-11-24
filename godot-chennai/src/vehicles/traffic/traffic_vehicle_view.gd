@@ -192,7 +192,17 @@ func set_route_sign(ref: String, english: String, tamil: String, font: Font) -> 
 			route_sign.visible = false
 		return
 	if route_sign == null:
-		route_sign = RouteSign.make(variant.type.spec.half_extents, font)
+		# The body's real size from the manifest (the chassis box is smaller than the body).
+		var half := variant.type.spec.half_extents
+		var top := half.y
+		var m := VehicleCatalog.manifest_for(variant.type)
+		if m != null:
+			var size: Dictionary = m.data.get("body_size_m", m.data.get("size_m", {}))
+			if not size.is_empty():
+				# Width from the chassis box (the manifest's width counts the mirrors).
+				half = Vector3(half.x + 0.05, half.y, float(size.get("length", half.z * 2.0)) / 2.0)
+				top = model.position.y + float(size.get("height", half.y * 2.0))
+		route_sign = RouteSign.make(Vector3(half.x, top, half.z), font)
 		add_child(route_sign)
 	route_sign.show_route(ref, english, tamil)
 	route_sign.visible = true

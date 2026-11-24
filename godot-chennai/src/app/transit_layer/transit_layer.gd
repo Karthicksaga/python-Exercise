@@ -33,6 +33,8 @@ const FADE := 0.25
 const STAND := Vector3(-0.15, 1.08, 1.7)
 const EYE := Vector3(0.35, 2.75, 4.9)
 const SEATED_PASSENGERS := 4
+## The player steps off at the stop's pole when it is this close to the door, metres.
+const ALIGHT_TO_POLE := 16.0
 ## How long fast travel waits for the next stop's streets to load, physics frames.
 const JUMP_WAIT := 600
 
@@ -264,7 +266,7 @@ func station_line(sp: StationPlace, hour: float) -> String:
 	var parts: PackedStringArray = []
 	var pl := sp.platform_list()
 	if not pl.is_empty():
-		parts.append("Platforms %s" % ", ".join(pl))
+		parts.append("Platforms: %s" % ", ".join(pl))
 	var dep := trains.departures(sp.station, hour)
 	if not dep.is_empty():
 		var ln := dep[0]["line"] as TransitNetwork.RailLine
@@ -448,7 +450,10 @@ func _step_ride(dt: float) -> void:
 	var detail := "Route %s to %s" % [r.ref, r.to_name]
 	if standing and ride.can_alight(st):
 		detail += " · ACTION to get off"
-	if _announce.is_empty():
+	if standing and int(st["next"]) < r.stops.size():
+		var here := network.stops[r.stops[int(st["next"])]]
+		hint.show_ride("At %s" % here.label(), here.name_ta if here.name_ta != "" else r.to_ta, detail, _can_fast_travel(st))
+	elif _announce.is_empty():
 		hint.show_ride(detail, r.to_ta, "", _can_fast_travel(st))
 	else:
 		hint.show_ride(String(_announce["en"]), String(_announce["ta"]), detail, _can_fast_travel(st))
@@ -467,6 +472,15 @@ func alight() -> bool:
 	var stop := ride.alight(st)
 	var v := _riding_view
 	var feet := _door_point(v) if v != null else rig.body.global_position
+	# The stop's pole stands on the pavement: step off there when the bus stopped near it (a bus
+	# standing out in its lane would otherwise leave the player in the carriageway).
+	if stop != null:
+		var pole := WorldOrigin.to_scene(stop.position, feet.y)
+		var to_door := Vector2(feet.x - pole.x, feet.z - pole.z)
+		if to_door.length() < ALIGHT_TO_POLE:
+			# A step towards the road from the pole (its shelter stands on the pole).
+			var step := to_door.normalized() * minf(1.5, to_door.length())
+			feet = pole + Vector3(step.x, 0.0, step.y)
 	var yaw := (v.global_rotation.y + PI / 2.0) if v != null else rig.body.yaw
 	rig.body.exit_vehicle(feet + Vector3(0, 0.05, 0), yaw)
 	_walk_parts(true)

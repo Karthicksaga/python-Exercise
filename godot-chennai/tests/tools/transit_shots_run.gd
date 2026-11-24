@@ -50,7 +50,7 @@ func _shot(name: String) -> void:
 	await _frames(3)
 	var path := out_dir.path_join("%s_%s.png" % [name, tag] if tag != "" else "%s.png" % name)
 	get_tree().root.get_texture().get_image().save_png(path)
-	print("transit_shot %s" % path)
+	print("transit_shot %s draw_calls=%d primitives=%d" % [path, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])
 
 
 func _run() -> void:
@@ -63,11 +63,18 @@ func _run() -> void:
 	Weather.set_raining(false, true, false)
 	main = MAIN.instantiate()
 	get_tree().root.add_child(main)
-	if not await _until(func() -> bool: return main.state in [&"title", &"failed"], 60 * 240) or main.state != &"title":
+	# Loading runs on threads: with --fixed-fps a frame is no measure of time, so wait long.
+	if not await _until(func() -> bool: return main.state in [&"title", &"failed"], 60 * 60 * 30) or main.state != &"title":
 		print("transit_shots: the game did not load (%s)" % main.state)
 		get_tree().quit(1)
 		return
-	main.transit.routes_on = _arg("routes", "on") != "off"
+	if _arg("routes", "on") == "off":
+		# CityLife already steps behind the title: take the route hook out between steps.
+		var t := main.transit
+		t.routes_on = false
+		t._queue(func(sys: AgentSystem) -> void:
+			sys.routes = null
+			t.buses.follows.clear())
 	main.play()
 	if main.transit.missions != null and main.transit.missions.session != null:
 		main.transit.missions.session.runner.earn(500.0)
@@ -145,52 +152,66 @@ func _shots() -> void:
 		await _station()
 
 
-## A route bus on a raised stretch: the first raised segment of a first-set route.
+## A route bus on a raised stretch: the highest route segment round Kathipara (588C and others
+## cross its decks).
 func _flyover() -> void:
 	var t := main.transit
+	var kathipara := Vector2(-700.0, 8620.0)
 	var best_r: TransitNetwork.Route = null
 	var best_seg := -1
-	var src := main.source
-	for r in t.network.routes:
-		if not r.first or best_r != null:
-			continue
-		for k in range(0, r.path.size() - 1, 3):
-			var roads := src.roads_near(r.path[k], 30.0)
-			for rd in roads:
-				if rd.is_raised() and rd.bridge:
-					for i in rd.points.size():
-						if rd.points[i].distance_to(r.path[k]) < 0.3 and rd.height_at(mini(i, rd.points.size() - 2), 0.0) > 5.0:
-							best_r = r
-							best_seg = k
-				if best_r != null:
-					break
-			if best_r != null:
-				break
+	var best_h := 0.0
+	var pairs := t.network.route_segments_near(kathipara, 450.0)
+	for i in range(0, pairs.size(), 2):
+		var r := t.network.routes[pairs[i]]
+		var seg := pairs[i + 1]
+		var p := r.path[seg]
+		for rd in main.source.roads_near(p, 25.0):
+			if not rd.is_raised():
+				continue
+			for k in rd.points.size() - 1:
+				if rd.points[k].distance_to(p) < 0.3:
+					var h := rd.height_at(k, 0.0)
+					if h > best_h:
+						best_h = h
+						best_r = r
+						best_seg = seg
 	if best_r == null:
-		print("transit_shots: no raised route segment found")
+		print("transit_shots: no raised route segment found near Kathipara")
 		return
 	var at := best_r.path[best_seg]
-	var dir := (best_r.path[best_seg + 1] - at).normalized()
+	var dir := (best_r.path[mini(best_seg + 1, best_r.path.size() - 1)] - at).normalized()
 	var side := Vector2(dir.y, -dir.x)
-	print("transit_shots flyover route %s at %s" % [best_r.ref, at])
-	await _go(at - side * 30.0 - dir * 25.0, 0.0)
-	await _until(func() -> bool: return main.life.population != null and main.life.population.area != null and main.life.population.area.centre.distance_to(at) < 700.0, 60 * 30)
-	var placed := [false]
-	for attempt in 30:
+	print("transit_shots flyover route %s segment %d height %.1f m at %s" % [best_r.ref, best_seg, best_h, at])
+	await _go(at + side * 38.0 - dir * 12.0, 0.0)
+	await _until(func() -> bool: return main.life.population != null and main.life.population.area != null and main.life.population.area.centre.distance_to(at) < 700.0, 60 * 60)
+	var placed := [-1]
+	for attempt in 40:
 		t._queue(func(sys: AgentSystem) -> void:
 			for a in sys.agents:
-				if sys.is_bus(a) and not placed[0]:
-					placed[0] = t.buses._put(sys, a, best_r, maxi(0, best_seg - 2), 0.5))
-		await _until(func() -> bool: return placed[0], 4)
-		if placed[0]:
+				if placed[0] < 0 and sys.is_bus(a) and t.buses._put(sys, a, best_r, best_seg, 0.3):
+					placed[0] = a.id)
+		await _until(func() -> bool: return placed[0] >= 0, 6)
+		if placed[0] >= 0:
 			break
 		await _frames(10)
-	await _frames(60)
-	for id: int in t._snap:
-		if int(t._snap[id]["route"]) == best_r.index:
-			_look_at(main.life.views[id].global_position)
-	await _frames(20)
+	print("transit_shots flyover bus agent %d" % placed[0])
+	await _frames(3)
+	# A camera off to the side, looking up at the bus on the deck.
+	var target := WorldOrigin.to_scene(at, best_h)
+	if placed[0] >= 0:
+		target = main.life.views[placed[0]].global_position
+	var cam := Camera3D.new()
+	main.world.add_child(cam)
+	# Above the deck's level (seen from the ground a deck hides what is on it), 45 m to the side.
+	var foot := WorldOrigin.to_scene(at + side * 45.0 - dir * 20.0, best_h + 9.0)
+	cam.global_position = foot
+	cam.look_at(target, Vector3.UP)
+	cam.fov = 60.0
+	cam.make_current()
+	await _frames(2)
 	await _shot("flyover")
+	main.rig.camera.camera.make_current()
+	cam.queue_free()
 
 
 func _station() -> void:
@@ -237,10 +258,15 @@ static func _avg(d: Dictionary, total: String, n: String) -> float:
 
 
 func _sample(frames: int) -> String:
+	# Headless with --fixed-fps nothing waits for a display: the time between two frames is the
+	# frame's own CPU time (the monitors were noisy here, see the traffic handoff).
 	var ms := PackedFloat32Array()
+	var last := Time.get_ticks_usec()
 	for i in frames:
 		await get_tree().process_frame
-		ms.append((Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) + Performance.get_monitor(Performance.TIME_PROCESS)) * 1000.0)
+		var now := Time.get_ticks_usec()
+		ms.append((now - last) / 1000.0)
+		last = now
 	var sorted := ms.duplicate()
 	sorted.sort()
 	var total := 0.0

@@ -16,6 +16,8 @@ var _ref_labels: Array[Label3D] = []
 var _dest_labels: Array[Label3D] = []
 
 
+## `half_extents`: half the body's width and length, and in y the height of the roof above the
+## view's origin.
 static func make(half_extents: Vector3, font: Font) -> RouteSign:
 	var s := RouteSign.new()
 	s.name = "RouteSign"

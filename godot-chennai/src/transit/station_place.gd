@@ -73,12 +73,16 @@ func platform_at(p: Vector2) -> Platform:
 func platform_list() -> PackedStringArray:
 	var out := PackedStringArray()
 	var unnamed := 0
+	var named: Array[String] = []
 	for pf in platforms:
-		if pf.ref != "":
-			if not out.has(pf.ref):
-				out.append(pf.ref)
+		var ref := pf.ref.trim_prefix("Platform").trim_prefix("platform").strip_edges()
+		if ref != "":
+			if not named.has(ref):
+				named.append(ref)
 		else:
 			unnamed += 1
+	named.sort_custom(func(x: String, y: String) -> bool: return x.naturalnocasecmp_to(y) < 0)
+	out.append_array(PackedStringArray(named))
 	if unnamed > 0:
 		out.append("%d unnamed" % unnamed)
 	return out

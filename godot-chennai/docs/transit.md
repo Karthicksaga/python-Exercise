@@ -125,7 +125,25 @@ them).
    platforms; the landmarks agent's Central and Egmore buildings are the entries.
 4. Story stages 18–19 (`by_train`) then use it.
 
-## 5. Weak or not done
+## 5. Measured (this 4-core container, Godot 4.7.2, headless `--fixed-fps 60`)
+`tests/tools/transit_shots.gd -- --measure [--routes=off]`: the real game at the served stop
+nearest the start (Anna Nagar Tower Station, 10:30), 900 frames each, CPU time between frames
+(the performance monitors were noisy, as the traffic agent found). Two runs each:
+
+| | Frame avg | p95 | max | CityLife sync | AI step (own thread) | TransitLayer avg / max |
+|---|---|---|---|---|---|---|
+| Route buses off | 2.79 / 2.58 ms | 3.60 / 3.52 | 10.9 / 7.2 | 0.65 / 0.60 ms | 1.55 / 1.81 ms | 0.07 / 0.31…1.57 ms |
+| Route buses on (2 out) | 2.61 / 2.81 ms | 3.85 / 4.00 | 9.3 / 9.0 | 0.63 / 0.61 ms | 1.58 / 1.39 ms | 0.07 / 1.5…3.6 ms |
+| Riding (inside, 4 seated passengers) | 2.66 ms | 3.58 | 10.7 | 0.62 ms | 1.68 ms | 0.33 / 8.3 ms |
+
+The difference with route buses is inside the run-to-run noise (±0.2 ms avg). The `board` call
+takes 4.3 ms on the main thread (four passenger figures instanced, an interior camera); the
+TransitLayer's worst frames (1.5–3.6 ms) are a bus's first sign being built (Label3D), and 8.3 ms
+while riding once. Not measured on a phone; expect 3–4× there: the boarding frame would be a
+visible hitch (pre-instance the passengers to fix). One of the two "on" runs had no bus reach
+the stop within the tool's wait (the scene test's wait is longer and passed).
+
+## 6. Weak or not done
 - OSM maps only 77 bus routes in this world; most of Chennai's ~800 MTC routes are not there, so
   most stops are served by no route (483 of 1,463). 22 routes are broken (legs dropped), 18 use
   roads off their mapped ways; inferred stops can include a stop of a parallel road within 22 m.
