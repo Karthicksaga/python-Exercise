@@ -256,6 +256,11 @@ func _add_pause_menu() -> void:
 	pause_menu.pause_requested.connect(pause)
 	pause_menu.resume_requested.connect(resume)
 	pause_menu.title_requested.connect(show_title)
+	pause_menu.map_requested.connect(_open_map)
+	# The map's one option, on the pause menu and on the title's SETTINGS page like the others (G-281).
+	var map_settings := MapSettings.shared()
+	for host: Object in [pause_menu, title]:
+		host.call(&"add_setting", &"MinimapMode", map_settings.label, func() -> void: map_settings.set_rotating(not map_settings.rotating))
 
 
 ## The streets' traffic, walkers and crowds round the start, made during loading.
@@ -367,6 +372,13 @@ func pause() -> void:
 	_set_state(&"paused")
 
 
+## The full-screen map, from the pause menu (G-281): the missions layer owns its data.
+func _open_map() -> void:
+	var layer := find_child("MissionsLayer", false, false) as MissionsLayer
+	if layer != null:
+		layer.open_map()
+
+
 func resume() -> void:
 	if state != &"paused":
 		return
@@ -398,6 +410,10 @@ func quit() -> void:
 ## Android Back and Escape: one level up (chennai-game-design §3): play → pause menu → title,
 ## ABOUT → menu, then quit.
 func go_back() -> void:
+	# The full map is a level above the pause menu: Back closes it first (G-281).
+	var layer := find_child("MissionsLayer", false, false) as MissionsLayer
+	if layer != null and layer.close_map():
+		return
 	match state:
 		&"play":
 			pause()

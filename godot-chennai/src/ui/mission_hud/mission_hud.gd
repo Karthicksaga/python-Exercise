@@ -11,6 +11,7 @@ extends Control
 ## middle, GO INSIDE bottom-centre between the stick and the buttons. Every target is 48 tall.
 
 signal jobs_pressed
+signal map_pressed
 signal inside_pressed
 ## A dialog row's button (`id` of the row).
 signal row_chosen(id: String)
@@ -28,6 +29,8 @@ const JOBS_SIZE := Vector2(72, 48)
 ## Room right of JOBS: the PAUSE button (48, 12 off the edge gutter) and the driving EXIT beside
 ## it (`PauseMenu`, `DrivingControls`), plus a gap. JOBS used to sit exactly under PAUSE.
 const EXIT_ROOM := PauseMenu.PAUSE_RIGHT + 48.0 + 10.0
+## The corner map never gets smaller than this (px); under it, it moves left of the buttons.
+const MIN_PLATE := 84.0
 const URGENT := 10.0
 ## A dialog row's height and what the rest of a dialog takes (title, buttons, gaps, margins).
 const ROW_HEIGHT := 56.0
@@ -62,7 +65,7 @@ var stability_label: Label
 var stability_bar: MeterBar
 var suspicion_row: HBoxContainer
 var suspicion_bar: MeterBar
-var minimap: MissionMinimap
+var minimap: Minimap
 var medals_box: HBoxContainer
 var medal_badge: MedalBadge
 var medal_goals: VBoxContainer
@@ -117,16 +120,12 @@ func _ready() -> void:
 	jobs_button.offset_bottom = GUTTER + JOBS_SIZE.y
 	jobs_button.pressed.connect(func() -> void: jobs_pressed.emit())
 	add_child(jobs_button)
-	minimap = MissionMinimap.new()
-	minimap.name = "Minimap"
-	minimap.anchor_left = 1.0
-	minimap.anchor_right = 1.0
-	minimap.offset_left = -GUTTER - MissionMinimap.PLATE
-	minimap.offset_right = -GUTTER
-	minimap.offset_top = GUTTER + JOBS_SIZE.y + 8.0
-	minimap.offset_bottom = GUTTER + JOBS_SIZE.y + 8.0 + MissionMinimap.PLATE
-	minimap.visible = false
+	minimap = Minimap.new()
+	minimap.pressed.connect(func() -> void: map_pressed.emit())
 	add_child(minimap)
+	_place_minimap()
+	get_viewport().size_changed.connect(_place_minimap)
+	ControlSettings.shared().changed.connect(_place_minimap)
 	_build_toast()
 	inside_button = _button("GO INSIDE", "Inside", 16, true)
 	inside_button.anchor_left = 0.5
@@ -602,3 +601,50 @@ static func _thousands(n: int) -> String:
 		out = "," + s.right(3) + out
 		s = s.left(s.length() - 3)
 	return ("-" if n < 0 else "") + s + out
+
+
+## The corner minimap goes under the PAUSE row on the right, as large as fits without covering any
+## button of either control set (on foot: JUMP, ACTION, RUN; driving: GAS, BRAKE, HORN, EXIT), JOBS
+## or PAUSE (`ControlsLayout`): tried at the right edge first, then left of the button columns. On a
+## screen too short for any spot of at least `MIN_PLATE` it is hidden (the pause menu's MAP opens the
+## big one). Left-handed layouts mirror the buttons, so it stays at the edge (G-281).
+func _place_minimap() -> void:
+	if minimap == null:
+		return
+	var area := get_viewport_rect().size
+	var settings := ControlSettings.shared()
+	var top := GUTTER + JOBS_SIZE.y + 4.0
+	var foot := ControlsLayout.foot(area, settings)
+	var drive := ControlsLayout.driving(area, settings)
+	var blocked: Array[Rect2] = []
+	for layout: Dictionary in [foot, drive]:
+		for key: Variant in ControlsLayout.buttons_of(layout):
+			blocked.append((layout[key] as Rect2).grow(4.0))
+	var edges: Array[float] = [area.x - GUTTER]
+	for key: Variant in [&"action", &"jump", &"brake", &"horn"]:
+		var r: Rect2 = (foot if foot.has(key) else drive)[key]
+		edges.append(r.position.x - 8.0)
+	edges.sort()
+	edges.reverse()
+	for plate: float in [Minimap.PLATE, 112.0, 100.0, 92.0, MIN_PLATE]:
+		for right in edges:
+			var rect := Rect2(right - plate, top, plate, plate)
+			if rect.position.x < COLUMN_WIDTH + GUTTER * 2.0 or rect.end.y > area.y - GUTTER:
+				continue
+			if not blocked.any(func(b: Rect2) -> bool: return b.intersects(rect)):
+				_put_minimap(rect)
+				return
+	minimap.visible = false
+
+
+func _put_minimap(rect: Rect2) -> void:
+	minimap.visible = true
+	minimap.anchor_left = 0.0
+	minimap.anchor_right = 0.0
+	minimap.offset_left = rect.position.x
+	minimap.offset_right = rect.end.x
+	minimap.offset_top = rect.position.y
+	minimap.offset_bottom = rect.end.y
+	minimap.custom_minimum_size = rect.size
+	minimap.size = rect.size
+	minimap.set_plate(rect.size.x)

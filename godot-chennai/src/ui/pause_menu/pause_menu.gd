@@ -16,6 +16,7 @@ extends CanvasLayer
 signal resume_requested
 signal title_requested
 signal pause_requested
+signal map_requested
 
 ## The PAUSE button (G-290): a round glass icon, 40 to the eye, a 48 hit area.
 const PAUSE_VISUAL := 40.0
@@ -96,6 +97,8 @@ func _init() -> void:
 	_scroll.add_child(_list)
 	_resume = _menu_button("RESUME", "Resume")
 	_resume.pressed.connect(func() -> void: resume_requested.emit())
+	var map := _menu_button("MAP", "Map")
+	map.pressed.connect(func() -> void: map_requested.emit())
 	var quit := _menu_button("QUIT TO TITLE", "QuitToTitle")
 	quit.pressed.connect(func() -> void: title_requested.emit())
 	visible = true

@@ -1711,6 +1711,76 @@ and no Commons reference is listed (their titles name the business). Heights are
 buildings in place); `--frames=N` prints average and worst frame time over N rendered frames.
 Numbers in `handoff.md`.
 
+## Navigation and spread (G-280 to G-289, agent/godot-nav), 24 Nov 2026
+
+Owner's phone report: every mission started next to the last one, there was no map, the circles on
+the ground were unexplained, and the people to pick up could not be seen.
+
+### G-280: Stages are spread over the whole city; consecutive ones start 2 to 8 km apart
+Ten of the 21 stages left the Anna Nagar test box for real districts: Kilpauk, Perambur, Chetpet,
+Saidapet, Vadapalani, Ambattur Industrial Estate, Flower Bazaar, T. Nagar, Besant Nagar and
+Santhome. Four stay in Anna Nagar because the fiction is there (the walk from home, the cross-town
+race, Tower Park, the Roundtana). Stages 16 to 21 changed order (stadium biryani, wedding,
+planted chain, Mumbai Mail, beach road brawl, harmonium thief) so the Central and Egmore stages
+are no longer back to back. The rule, tested for all 26 (`test_stage_spread.gd`): the first marker
+of a stage is 2 000 to 8 200 m from the last marker of the one before, the stages use at least 15
+districts and span more than 10 km both ways, and everything a moved stage places (markers,
+kerbs, enemies, the vehicle parked for it) is on a street, outside buildings, on chunks the
+regional world decodes.
+How: `tools/rules/respace_stages.gd` moves each stage as a whole (first marker to the nearest
+main road of the chosen district, the others at their original distances, the bearing searched in
+15 degree steps for the least change, slid along the road until neither the marker, its kerb nor
+the parked vehicle is in a building) and writes `tools/rules/stage_sites.json`;
+`tools/rules/apply_stage_sites.py` folds it into `content.json` with the new texts. Kerbs for the
+moved stops carry no hint (`kerbSide` 0) and are reproduced by `FareSpots` on the regional layout
+(the v1 box does not reach Perambur or Besant Nagar). Parking: `auto-park` moved to the Perambur
+pick-up; `car-chetpet`, `bike-saidapet` and `bike-kodambakkam` are new. Changed expectations in
+the ported tests (stage order, "later stages start near the last end", district names of two
+stages, the label of stage 2) are marked CHANGED with the reason.
+Not moved: the 13 city jobs (their stops are still in Anna Nagar except four), life places and
+the stories; the stage text for 13 stages names real roads and districts from the data.
+
+### G-281: The minimap and the full map draw the world's own road data, at 10 Hz
+`Minimap` (src/ui/minimap): a round translucent plate (`clip_children` on a disc, so no per-segment
+clipping), roads in two weights as one `draw_multiline` each under one canvas transform, an arrow
+for the player, the mission's marker as a glyph (shape per kind, colour per kind, see G-282),
+and, off the plate, an arrow pinned to the rim with the distance in metres (`MapProjection`, pure
+and tested). Turns with the player (what is ahead is up) or north-up: one saved option
+(`MapSettings`), a row on the pause menu and the title's settings. Hazard zones and a followed
+target (G-144) are drawn on it as before. The layer refreshes it at 10 Hz of game time and the
+roads only after 100 m of travel (`MapRoadFeed.nearby`, from the layout's segment grid; no second
+data source). Tapping it opens the full map.
+`FullMap` (CanvasLayer 8): north-up roads of the neighbourhood (every street within 4 km, the main
+roads of 12.5 km, read on a worker thread by `MapRoadFeed.wide_task`), the places with their names,
+the mission's marker pinned to the edge with its distance, a legend of the kinds on the map, a
+scale bar, drag to pan, + and - to zoom (four steps, 450 m to 5.2 km from the centre to the top),
+ME to recentre, CLOSE and Back. It holds the game while open (unless the pause menu already has),
+and carries "© OpenStreetMap contributors". Pause menu: MAP button.
+The corner map sits under the PAUSE row, as large as fits without covering a button of either
+control set (tested at 915x412, 640x320, 1830x824, right- and left-handed); on 640x320 there is no
+such place and it is hidden (MAP in the pause menu still works). JOBS was under PAUSE since G-115
+(same rectangle): it is now left of it.
+
+### G-282: Markers say what they are
+`MarkerKind` (src/missions): PICKUP, DROPOFF, MISSION, FIGHT, VEHICLE, PLACE, TARGET, each with
+words ("Pick up", "Drop off", ...) and a colour (green, blue, amber, red, light blue, teal, white);
+`MissionSession.target()` carries the kind. `MissionBeacon` was redrawn: a tall thin beam of light
+whose width follows the distance (readable from 1 km), fainter near the camera; a floating icon
+whose shape is the kind (arrow down, cube, diamond, cross, sphere, dot); a label that stays one
+size on screen ("Pick up - 420 m"); a thin ring of the target's real size only inside 45 m (gone by
+70 m); no filled discs. A target beyond 1 000 m is drawn at 1 000 m in its direction (the camera's
+far plane is 1 500 m), with the true distance in its label. Places you can enter show their name
+and a small ring only within 90 m (they were five teal rings visible all over the neighbourhood).
+
+### G-283: Passengers are visible at the pick-up and on board
+`MissionSession.upcoming_fare()` shows the people waiting at a stage's pick-up while the player is
+still on the "get in the vehicle" objective (they used to appear only once the pick-up objective
+was current). `FareFigures`: a waiting person faces the player and, within 220 m, waves
+(`FareWave`: right arm raised, forearm swaying, set on the skeleton after each advance; there is
+no wave clip in the cast, so it is procedural, and one call to replace); people inside the vehicle
+are seated with the pose of agent/godot-anim (`SeatPose`, merged: hips on the seat anchor, `sit` 1.0), and
+disappear after they step out at the drop. A patient is still not drawn inside the ambulance.
+
 ### G-290: One glass look for every HUD and touch button
 Owner feedback on a phone: buttons boxy, too big, heavy yellow fill, the yellow PAUSE block ugly.
 `UiTheme` is now the one factory (`glass_box`, `glass_plate`, `style_glass`, `icon_button`) and
