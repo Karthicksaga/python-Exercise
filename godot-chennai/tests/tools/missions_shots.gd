@@ -100,24 +100,24 @@ func _new_systems(layer: Node, session: MissionSession, hud: Control, out: Strin
 		session.step(0.1, status.call(float(q["x"]) + 16.0, float(q["z"]), "bike", 8.0))
 	hud.call("set_mission", session.view("bike", 16.0), 0.0)
 	var minimap: Control = hud.get("minimap")
-	minimap.call("set_view", here, rig.global_rotation.y, [] as Array[Dictionary], PackedVector2Array(), Vector2.INF, here + Vector2(70, -90))
+	minimap.call("set_view", here, rig.global_rotation.y, [] as Array[Dictionary], MapRoads.new(), [] as Array[Dictionary], here + Vector2(70, -90))
 	await _shot(out + "_tail.png")
 	# Flood: deep water ahead and a shut road, on the minimap.
 	var zones: Array[Dictionary] = [
 		{"x": here.x + 90.0, "z": here.y - 60.0, "radius": 55.0, "kind": "flood", "depth": 0.8, "label": "Underpass"},
 		{"x": here.x - 110.0, "z": here.y + 70.0, "radius": 40.0, "kind": "flood", "depth": 0.25, "label": "Low junction"},
 		{"x": here.x + 40.0, "z": here.y + 140.0, "radius": 45.0, "kind": "strike", "depth": 0.0, "label": "Bandh"}]
-	var roads := PackedVector2Array()
+	var roads := MapRoads.new()
 	for k in range(-6, 7):
-		roads.append(here + Vector2(k * 50.0, -300.0))
-		roads.append(here + Vector2(k * 50.0, 300.0))
-		roads.append(here + Vector2(-300.0, k * 50.0))
-		roads.append(here + Vector2(300.0, k * 50.0))
+		roads.minor.append(here + Vector2(k * 50.0, -300.0))
+		roads.minor.append(here + Vector2(k * 50.0, 300.0))
+		roads.minor.append(here + Vector2(-300.0, k * 50.0))
+		roads.minor.append(here + Vector2(300.0, k * 50.0))
 	session.leave_stage()
 	hud.call("set_mission", {"title": "Mission · Monsoon Night", "objective": "Take the patient to the hospital, TTK Road", "distance": 2100.0, "seconds_left": 312.0, "stability": 78.0, "stability_label": "Patient", "suspicion": -1.0}, 0.9)
-	minimap.call("set_view", here, rig.global_rotation.y, zones, roads, here + Vector2(250, -250), Vector2.INF)
+	var points: Array[Dictionary] = [{"x": here.x + 250.0, "z": here.y - 250.0, "radius": 8.0, "kind": &"dropoff", "label": "Drop off"}]
+	minimap.call("set_view", here, rig.global_rotation.y, zones, roads, points, Vector2.INF)
 	await _shot(out + "_flood.png")
-	minimap.visible = false
 	# The dialogs, through the session's signals as in the game.
 	var wrong := session.content.any_mission("wrong-number")
 	var options: Array = wrong.objectives[3].options

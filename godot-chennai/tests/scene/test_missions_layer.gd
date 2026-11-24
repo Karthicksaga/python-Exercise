@@ -94,7 +94,7 @@ func test_stage_2_needs_the_car_and_a_full_stop() -> bool:
 	var marker := Vector2(float(g.layer.target["x"]), float(g.layer.target["z"]))
 	assert_true(marker.distance_to(Vector2(car.global_position.x, car.global_position.z)) < 0.5, "the marker points at the car")
 	assert_true(await _board(car), "in the car")
-	assert_true(await wait_until(func() -> bool: return _session().objective().label == "Drive to Anna Nagar Tower Park", 30), "getting in moves the objective on")
+	assert_true(await wait_until(func() -> bool: return _session().objective().label == "Drive to Kilpauk Garden Road, Kilpauk", 30), "getting in moves the objective on")
 	var park := _session().objective()
 	# Driving through the marker does not count; stopping in it does.
 	car.teleport(Vector3(park.x, car.global_position.y, park.z + 20.0), 0.0)
