@@ -155,8 +155,7 @@ func _swap(id: int) -> void:
 	var view := life.views[id]
 	traffic.hold(a)
 	life.taken[id] = true
-	view.visible = false
-	(view.get_child(0) as CollisionShape3D).disabled = true
+	view.set_shown(false)
 	var v := Vehicle.new()
 	v.variant = view.variant
 	v.type = view.variant.type

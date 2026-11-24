@@ -21,6 +21,8 @@ var _seats: Dictionary[int, SeatPose] = {}
 var _seat: SeatPose = null
 var _flight_phase: StringName = &""
 var _advanced_frame: int = -1
+## Set while a crash throw puts the body on its feet: solid at once (it flies with `move_and_slide`).
+var _throwing := false
 
 
 static func make(p: PlayerController) -> PlayerRiderLink:
@@ -44,12 +46,18 @@ func begin_ride(vehicle: Node3D) -> void:
 func end_ride(feet: Vector3, yaw: float) -> void:
 	_sit = 0.0
 	if player.vehicle != null:
-		player.exit_vehicle(feet, yaw)
+		player.exit_vehicle(feet, yaw, _throwing)
 	else:
 		player.respawn(feet, yaw)
 	player.figure.rotation = Vector3(0, yaw - player.rotation.y, 0)
 	player.figure.position = Vector3.ZERO
 	player.figure.set_seat(null)
+
+
+func throw_off(start: Vector3, launch: Vector3, lie_for: float, vehicle: PhysicsBody3D) -> void:
+	_throwing = true
+	super.throw_off(start, launch, lie_for, vehicle)
+	_throwing = false
 
 
 func place(feet: Vector3, yaw: float) -> void:

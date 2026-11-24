@@ -20,6 +20,11 @@ extends Node3D
 ## After the last AI step finished and before the views are synced and the next step starts:
 ## the only time game code may change agents (hold, let go, scare). `dt` is the physics step.
 signal between_steps(dt: float)
+## Something happened on the street that people react to (G-343): &"person_down" (a walker or a
+## crowd person knocked down), &"stagger", &"rider_down" (a traffic rider knocked off), at a
+## world point. Emitted by `StreetReactions` through `report_incident`; sound, missions and the
+## wanted level listen here.
+signal incident(what: StringName, at: Vector2)
 
 const TRAFFIC_POOL := 34
 const WALKER_POOL := 34
@@ -84,6 +89,14 @@ var heads: SignalHeads
 var views: Array[TrafficVehicleView] = []
 ## Agents the game took over (being carjacked): their views are not moved by the AI.
 var taken: Dictionary[int, bool] = {}
+## Walkers (agent id) and crowd people (spot key) knocked down: drawn by `StreetReactions`, not here.
+var downed: Dictionary[int, bool] = {}
+var downed_crowd: Dictionary[int, bool] = {}
+## Walkers staggering back (agent id → seconds left): drawn leaning back.
+var stagger: Dictionary[int, float] = {}
+## Crowd people within `StreetHits.BYSTANDER_REACH` of this world point turn to look at it.
+var _watch_at := Vector2.ZERO
+var _watch_left := 0.0
 ## The hour of the day for the density curves (the game clock unless a test sets it).
 var hour_override: float = -1.0
 ## Main-thread cost of the last physics frame and the worker's step (µs), for the HUD and the
@@ -205,8 +218,8 @@ func prepare(start: Vector2) -> String:
 	for a in population.traffic.agents:
 		var v := TrafficVehicleView.make(population.traffic.kinds[a.kind].name, a.variation)
 		v.agent_id = a.id
-		v.visible = false
 		add_child(v)
+		v.set_shown(false)
 		views.append(v)
 		# A frame between views keeps the loading screen alive (each is a model instance).
 		if a.id % 6 == 5:
@@ -463,9 +476,15 @@ func _sync(dt: float, focus: Vector2) -> void:
 	var tv := Time.get_ticks_usec()
 	var ws: PackedVector4Array = _walker_state[0]
 	var wy: PackedFloat32Array = _walker_state[1]
+	var leaning := not stagger.is_empty()
+	if leaning:
+		for id: int in stagger.keys():
+			stagger[id] -= dt
+			if stagger[id] <= 0.0:
+				stagger.erase(id)
 	for i in ws.size():
 		var st := ws[i]
-		if st.w < 0.0:
+		if st.w < 0.0 or downed.has(i):
 			continue
 		var pos := Vector2(st.x, st.y) + Vector2(-sin(st.z), -cos(st.z)) * st.w * ahead
 		var at := WorldOrigin.to_scene(pos, wy[i])
@@ -483,15 +502,28 @@ func _sync(dt: float, focus: Vector2) -> void:
 			fig.play(&"walk", st.w, variation * 3.0)
 		else:
 			fig.play(&"idle", 0.0, variation * 3.0)
+		if leaning and stagger.has(i):
+			# Rocked back on the heels, easing upright again (G-342).
+			var u := clampf(stagger[i] / StreetHits.STAGGER_TIME, 0.0, 1.0)
+			fig.rotate_object_local(Vector3.RIGHT, 0.32 * sin(u * PI))
 		fig.advance(dt, d, camera == null or camera.is_position_in_frustum(at + Vector3(0, 1.0, 0)))
 	var tw := Time.get_ticks_usec()
+	var watching := _watch_left > 0.0
+	if watching:
+		_watch_left -= dt
 	for p in _people:
+		if downed_crowd.has(p.key):
+			continue
 		var who := cast.crowd_person(p.look, p.child, p.play)
 		if who == "":
 			continue
 		var pos := p.pos
 		if p.pose == CrowdField.WALK:
 			pos += Vector2(-sin(p.yaw), -cos(p.yaw)) * p.speed * ahead
+		var yaw := p.yaw
+		if watching and pos.distance_squared_to(_watch_at) < StreetHits.BYSTANDER_REACH * StreetHits.BYSTANDER_REACH:
+			var to := _watch_at - pos
+			yaw = atan2(-to.x, -to.y)
 		var at := WorldOrigin.to_scene(pos, 0.0)
 		var d := at.distance_to(cam)
 		if d > _people_reach:
@@ -499,7 +531,7 @@ func _sync(dt: float, focus: Vector2) -> void:
 		var fig := pool.take(p.key, who)
 		if fig == null:
 			continue
-		fig.global_transform = Transform3D(Basis(Vector3.UP, p.yaw), at)
+		fig.global_transform = Transform3D(Basis(Vector3.UP, yaw), at)
 		match p.pose:
 			CrowdField.WALK:
 				fig.play(&"walk", p.speed, float(p.look) * 0.01)
@@ -532,6 +564,14 @@ func _hide_all() -> void:
 		Sound.set_traffic([] as Array[Dictionary], 0.0, hour())
 
 
+## A street incident at a world point (G-343): the crowd near it turns to look for a while, and
+## `incident` is emitted. Walkers are scared by the caller (between steps).
+func report_incident(what: StringName, at: Vector2, look_seconds: float = StreetHits.SCARE_SECONDS) -> void:
+	_watch_at = at
+	_watch_left = look_seconds
+	incident.emit(what, at)
+
+
 ## Settings changed: re-read the place so new caps apply at the next step.
 func refresh_caps() -> void:
 	if population != null:
@@ -544,8 +584,7 @@ func refresh_caps() -> void:
 func _show_vehicle(v: TrafficVehicleView, on: bool) -> void:
 	if v.visible == on:
 		return
-	v.visible = on
-	(v.get_child(0) as CollisionShape3D).disabled = not on
+	v.set_shown(on)
 
 
 ## The engine sound of a look (`SoundProfiles.sound_kind` names).
