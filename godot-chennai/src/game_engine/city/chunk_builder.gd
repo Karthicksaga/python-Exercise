@@ -69,6 +69,9 @@ class Build:
 	## roof_estimated, sign_mapped, object:bench, zone:pitch, …
 	var detail: Dictionary[String, int] = {}
 	var surfaces: int = 0
+	## Lamp heads for the night glow (G-316): (x, height, z) in world metres and a tint each.
+	var lamp_points: PackedVector3Array = PackedVector3Array()
+	var lamp_tints: PackedColorArray = PackedColorArray()
 	## The road detail planned for this chunk (null when switched off).
 	var roads: RoadDetail.Plan
 	var usec: int = 0
@@ -136,6 +139,8 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 		if out.roads.rural:
 			# Open country has no kerbs along the road: a dust shoulder instead (G-314).
 			out.furniture.kerbs.clear()
+			for pole in out.furniture.poles:
+				pole.kind = &"rural"
 
 	var view := Node3D.new()
 	view.name = "Chunk_%d_%d" % [cell.x, cell.y]
@@ -213,7 +218,7 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	_add_mesh(out, far, "far", meshes.far, kit.materials.objects, kit.shadows)
 
 	for pole in out.furniture.poles:
-		CityModels.place(objects, kit.models.pole, _local3(pole.position, out.centre), pole.yaw)
+		CityModels.place(objects, kit.models.pole_of(pole.kind), _local3(pole.position, out.centre), pole.yaw)
 	for s in out.furniture.shelters:
 		CityModels.place(objects, kit.models.shelter, _local3(s.position, out.centre), s.yaw)
 	for p in out.props:
@@ -224,8 +229,9 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 		var all_poles: Array[StreetFurniture.Pole] = []
 		all_poles.append_array(out.furniture.poles)
 		for pole in out.roads.poles:
-			CityModels.place(objects, kit.models.pole, _local3(pole.position, out.centre), pole.yaw)
-			all_poles.append(pole)
+			CityModels.place(objects, kit.models.pole_of(pole.kind), _local3(pole.position, out.centre), pole.yaw)
+			if pole.kind == &"arm" or pole.kind == &"rural":
+				all_poles.append(pole)
 		out.detail["wires"] = RoadObjects.wires(objects, all_poles, out.centre)
 		out.detail["median_shrubs"] = RoadObjects.shrubs(objects, kit.models, out.furniture.medians, out.centre)
 		out.detail["crossings"] = out.roads.crossings.size()
@@ -241,6 +247,7 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 			var across := Vector2(cos(s.yaw), -sin(s.yaw))
 			CityModels.place(objects, kit.models.detail.models[&"stop_pole"], _local3(s.position + across * (StreetFurniture.SHELTER_WIDTH / 2.0 + 0.7), out.centre), s.yaw)
 			dm.stats["stop_pole"] = dm.stats.get("stop_pole", 0) + 1
+	_collect_lamps(out)
 	var all_trees: Array[WorldTree] = chunk.trees.duplicate()
 	all_trees.append_array(line_trees)
 	if out.roads != null:
@@ -264,6 +271,19 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 		_body(out, "Platforms", dm.slab_faces)
 	out.usec = Time.get_ticks_usec() - started
 	return out
+
+
+## Lamp heads of every pole of the chunk (G-316), for the night glow.
+static func _collect_lamps(out: Build) -> void:
+	var poles: Array[StreetFurniture.Pole] = []
+	poles.append_array(out.furniture.poles)
+	if out.roads != null:
+		poles.append_array(out.roads.poles)
+	for pole in poles:
+		var heads := RoadLamps.heads(pole)
+		for h in heads:
+			out.lamp_points.append(h)
+			out.lamp_tints.append(RoadLamps.tint_of(pole))
 
 
 static func _local3(p: Vector2, centre: Vector2, y: float = 0.0) -> Vector3:

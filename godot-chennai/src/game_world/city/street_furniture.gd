@@ -43,6 +43,11 @@ class Pole:
 	var position: Vector2
 	var yaw: float
 	var road_id: int
+	## Lamp kind (G-316): &"arm" single-arm (arterials and streets), &"twin" on a median, &"mast" a
+	## high mast at a big junction, &"rural" the thin pole of country and unpaved roads.
+	var kind: StringName = &"arm"
+	## Lit a little warmer (residential streets, G-316).
+	var warm: bool = false
 
 
 ## One unbroken stretch of kerb along one side of a road: carriageway edge, back edge, and the

@@ -1798,3 +1798,13 @@ of the 600 m square the road starts in. Five more ground tiles (stripped tar, mu
 make the atlas 21 tiles; ruts, edge lips, stripped patches, puddles and rubble are flat ground geometry. Puddles
 are a shiny tile, not a reflection. `RoadStyle.feel` is the data the vehicles may read (speed, bump, grip); wiring
 it into `RaycastVehicle` is left to the driving owner.
+
+### G-316: Five lamp kinds by road, one glow draw call
+Poles are `StreetFurniture.Pole.kind`: `arm` (single-arm maroon steel 9 m, 2.5 m curved arm, cobra head, concrete
+base; arterials and residential streets), `twin` (10 m, two arms in opposite directions, every 30 m on medians),
+`mast` (25 m, ring platform with twelve flood panels, one per junction of four arms or a three-arm junction on a
+road of 12 m or more), `rural` (7.5 m thin pole with a sign plate; open country, lanes and unpaved roads). All
+are merged into the chunk's objects surface (no new draw call). At night `StreetLights` draws every lamp as one
+instance of one additive mesh (crossed halo quads and a ground pool quad, unshaded, tinted per lamp: cool white-blue,
+warmer on residential streets): one draw call whatever the count; the six real lights near the camera stay as in G-88.
+Lamp heads are `RoadLamps.heads` (`Build.lamp_points`, built on the worker); `set_lamps` takes the head height in y.

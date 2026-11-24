@@ -28,6 +28,10 @@ var shrub := MeshBuilder.new()
 var bloom := MeshBuilder.new()
 var guard := MeshBuilder.new()
 var chevron := MeshBuilder.new()
+## Lamp poles by kind (G-316): `pole` is the single-arm one.
+var pole_rural := MeshBuilder.new()
+var pole_twin := MeshBuilder.new()
+var pole_mast := MeshBuilder.new()
 var stone := MeshBuilder.new()
 ## Prop name -> MeshBuilder (empty when its GLB is missing).
 var props: Dictionary[StringName, MeshBuilder] = {}
@@ -50,6 +54,9 @@ static func create(with_props: bool = true) -> CityModels:
 	RoadModels.shrub(m.bloom, 0xc2557f)
 	RoadModels.guard(m.guard)
 	RoadModels.chevron(m.chevron)
+	RoadModels.rural_pole(m.pole_rural)
+	RoadModels.twin_pole(m.pole_twin)
+	RoadModels.high_mast(m.pole_mast)
 	RoadModels.stone(m.stone)
 	m.detail = DetailModels.create()
 	if with_props:
@@ -89,18 +96,21 @@ static func box(b: MeshBuilder, lo: Vector3, hi: Vector3, hex: int, taper: float
 	face.call([Vector3(x0, y0, z0), Vector3(x0, y0, z1), Vector3(x0, y1, z1), Vector3(x0, y1, z0)], Vector3.LEFT, 0.85)
 
 
-## A concrete street-light pole: tapered shaft, cross-arm with insulators, lamp over the road (-Z).
+## The single-arm street-light pole (`RoadModels.arm_pole`); the others stand beside it by kind.
 func _build_pole() -> void:
-	var s := StreetFurniture.POLE_HALF
-	var top := StreetFurniture.POLE_HEIGHT
-	var arm := StreetFurniture.POLE_ARM
-	box(pole, Vector3(-s, 0, -s), Vector3(s, top, s), 0xa8a59b, s * 0.4)
-	box(pole, Vector3(-0.7, top - 0.9, -0.06), Vector3(0.7, top - 0.78, 0.06), 0x8a877e)
-	for x: float in [-0.6, 0.0, 0.6]:
-		box(pole, Vector3(x - 0.04, top - 0.78, -0.04), Vector3(x + 0.04, top - 0.62, 0.04), 0xd8d4c8)
-	box(pole, Vector3(-0.04, top - 0.45, -arm), Vector3(0.04, top - 0.37, 0), 0x6c7074)
-	box(pole, Vector3(-0.17, top - 0.56, -arm - 0.7), Vector3(0.17, top - 0.4, -arm + 0.1), 0x505458)
-	box(pole, Vector3(-0.15, top - 0.6, -arm - 0.66), Vector3(0.15, top - 0.56, -arm + 0.06), 0xfff1d0)
+	RoadModels.arm_pole(pole)
+
+
+## The pole model of a lamp kind.
+func pole_of(kind: StringName) -> MeshBuilder:
+	match kind:
+		&"twin":
+			return pole_twin
+		&"mast":
+			return pole_mast
+		&"rural":
+			return pole_rural
+	return pole
 
 
 ## A simple bus shelter: four posts, roof slab, back panel, bench, blank route board; open

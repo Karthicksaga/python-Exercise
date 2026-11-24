@@ -85,6 +85,7 @@ static func for_chunk(layout: CityLayout, chunk: ChunkData, cell: Vector2i, squa
 	var boxes := StreetFurniture.building_boxes(chunk.buildings)
 	var spots: Array = layout.spots_in(cell)
 	out.rural = chunk.buildings.size() < RURAL_BUILDINGS
+	var masts: Dictionary[int, bool] = {}
 	for span: CityLayout.RoadSpan in layout.spans_in(cell):
 		var road := span.road
 		var style := RoadStyle.of(road)
@@ -111,6 +112,9 @@ static func for_chunk(layout: CityLayout, chunk: ChunkData, cell: Vector2i, squa
 			out.trees.append_array(trees_on(layout, span, style, chunk, boxes, square, furniture))
 		if style.pole_pitch > 0.0:
 			out.poles.append_array(poles_on(layout, span, style, chunk, boxes, square, out.trees))
+		if style.klass == RoadStyle.ARTERIAL and not out.rural:
+			masts_on(out, layout, span, chunk, boxes, square, masts)
+	out.poles.append_array(twin_poles(furniture.medians, square))
 	return out
 
 
@@ -429,7 +433,68 @@ static func poles_on(layout: CityLayout, span: CityLayout.RoadSpan, style: RoadS
 		pole.position = p
 		pole.yaw = StreetFurniture.facing(-l)
 		pole.road_id = road.id
+		var cond := RoadStyle.condition(road)
+		pole.kind = &"rural" if (cond == RoadStyle.UNPAVED or style.klass == RoadStyle.LANE) else &"arm"
+		pole.warm = style.klass == RoadStyle.RESIDENTIAL
 		out.append(pole)
+	return out
+
+
+## One high mast at each big junction (four arms, or three on a road of 12 m or more), set back to a
+## corner of the node (G-316).
+static func masts_on(out: Plan, layout: CityLayout, span: CityLayout.RoadSpan, chunk: ChunkData, boxes: Array[Rect2], square: Rect2, seen: Dictionary[int, bool]) -> void:
+	var road := span.road
+	for i in range(span.start, span.end + 1):
+		var key := CityLayout.node_key(road.points[i])
+		var node: CityLayout.RoadNode = layout.nodes.get(key)
+		if node == null or seen.has(key) or not square.has_point(road.points[i]):
+			continue
+		if node.degree < 4 and not (node.degree >= 3 and node.width >= 12.0):
+			continue
+		seen[key] = true
+		var a := road.points[mini(i + 1, road.points.size() - 1)] - road.points[maxi(i - 1, 0)]
+		if a.length() < 0.01:
+			continue
+		var dir := a.normalized()
+		var across := Vector2(-dir.y, dir.x)
+		var reach := node.width / 2.0 + 4.0
+		var sgn_a := 1.0 if CityHash.unit(key, 111) < 0.5 else -1.0
+		var sgn_b := 1.0 if CityHash.unit(key, 112) < 0.5 else -1.0
+		var p := road.points[i] + dir * sgn_a * reach + across * sgn_b * reach
+		if StreetFurniture.in_building(chunk.buildings, boxes, p, 1.0) or layout.on_other_road(p, -1, 1.0):
+			continue
+		var mast := StreetFurniture.Pole.new()
+		mast.position = p
+		mast.yaw = StreetFurniture.facing(road.points[i] - p)
+		mast.road_id = road.id
+		mast.kind = &"mast"
+		out.poles.append(mast)
+
+
+## Twin-arm poles along the medians, every 30 m (G-316): the arms run across the road.
+static func twin_poles(medians: Array[StreetFurniture.KerbRun], square: Rect2) -> Array[StreetFurniture.Pole]:
+	var out: Array[StreetFurniture.Pole] = []
+	for run in medians:
+		var carry := 12.0
+		for i in run.inner.size() - 1:
+			var a := (run.inner[i] + run.outer[i]) / 2.0
+			var b := (run.inner[i + 1] + run.outer[i + 1]) / 2.0
+			var length := a.distance_to(b)
+			if length < 0.05:
+				continue
+			var d := carry
+			var dir := (b - a) / length
+			while d <= length:
+				var p := a.lerp(b, d / length)
+				if square.has_point(p):
+					var across := Vector2(-dir.y, dir.x)
+					var pole := StreetFurniture.Pole.new()
+					pole.position = p
+					pole.yaw = atan2(-across.y, across.x)
+					pole.kind = &"twin"
+					out.append(pole)
+				d += 30.0
+			carry = d - length
 	return out
 
 

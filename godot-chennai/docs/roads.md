@@ -98,6 +98,12 @@ chunks agree. **Crossings**: one zebra and a stop line on each arm of every junc
 or more) of an arterial 6 m or wider, set back from the node by half the widest road plus 2 m, skipped
 when a mapped or signalised crossing is within 10 m.
 
+## Street lights (G-316)
+
+Five kinds from the owner's description of five lamp photographs (the files could not be saved): high mast at big
+junctions, single-arm maroon pole on arterials and streets, twin-arm pole on medians, thin rural pole (country roads,
+lanes, unpaved). Cool white-blue glow with a halo and a pool of light on the road, warmer on residential streets.
+
 ## How it is built (no new draw call)
 
 - Ground atlas `ground.png` grew from 8 to 16 tiles: worn asphalt, concrete, footpath slabs, laterite,

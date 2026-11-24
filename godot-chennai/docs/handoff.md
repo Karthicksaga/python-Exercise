@@ -790,3 +790,7 @@ flyover pillars, median railings or road signs; llvmpipe only, not a phone.
 **Roads addendum (owner photographs).** Rural class (G-314) and road condition (G-315) added from ten
 owner-supplied photographs (`docs/roads.md`). Ground atlas is 21 tiles; re-bake with
 `tools/bake_city_textures.gd -- --only=ground`. `RoadStyle.feel(condition)` is the hook for vehicles (not wired).
+
+**Lamps addendum (G-316).** Pole kinds (`arm`, `twin`, `mast`, `rural`), `RoadLamps`, one additive glow mesh in
+`StreetLights` (replaces the sodium head box; `set_lamps(points, tints)` with the head height in y).
+Weak: halos are crossed quads, not billboards; masts and twins have no night-time stays; pools are one flat quad each.

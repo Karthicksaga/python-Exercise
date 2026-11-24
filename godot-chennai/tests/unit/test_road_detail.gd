@@ -256,3 +256,46 @@ func test_bends_get_the_outer_side() -> bool:
 	s2.end = 2
 	assert_eq(RoadDetail.bends_on(straight, s2).size(), 0, "no bend on a straight road")
 	return true
+
+
+func test_lamp_kinds_by_road() -> bool:
+	var kinds := {}
+	var warm := 0
+	# The v1 world around the spawn, and the regional world's divided road (cell 124, 251) for medians.
+	var runs: Array = [[CityTestKit.kit(), SPAWN, 6], [CityTestKit.regional_kit(), Vector2i(124, 251), 3]]
+	for run: Array in runs:
+		var kit: ChunkBuilder.Kit = run[0]
+		var centre: Vector2i = run[1]
+		var reach: int = run[2]
+		for dx in range(-reach, reach + 1):
+			for dz in range(-reach, reach + 1):
+				var cell := centre + Vector2i(dx, dz)
+				if not kit.source.read_chunk(cell).ok():
+					continue
+				var built := ChunkBuilder.build(kit, cell)
+				if built.roads == null:
+					CityTestKit.free_build(built)
+					continue
+				var poles: Array[StreetFurniture.Pole] = []
+				poles.append_array(built.furniture.poles)
+				poles.append_array(built.roads.poles)
+				for p in poles:
+					kinds[p.kind] = true
+					warm += 1 if p.warm else 0
+					var heads := RoadLamps.heads(p)
+					assert_eq(heads.size(), 2 if p.kind == &"twin" else 1, "%s carries %d lamp heads" % [p.kind, heads.size()])
+					for h in heads:
+						assert_true(h.y > 5.0 and h.y < 26.0, "head height %.1f" % h.y)
+					if p.kind == &"mast":
+						assert_near(heads[0].y, RoadLamps.MAST, 0.01, "a high mast carries its head 24.6 m up")
+				assert_eq(built.lamp_points.size(), built.lamp_tints.size(), "a tint per lamp point")
+				var expected := 0
+				for p in poles:
+					expected += RoadLamps.heads(p).size()
+				assert_eq(built.lamp_points.size(), expected, "every pole's heads are lamp points")
+				CityTestKit.free_build(built)
+	for k: StringName in [&"arm", &"twin", &"mast", &"rural"]:
+		assert_true(kinds.has(k), "lamp kind %s is placed (%s)" % [k, kinds.keys()])
+	assert_true(warm > 0, "residential poles are warmer (%d)" % warm)
+	assert_true(RoadLamps.WARM.r > RoadLamps.COOL.r and RoadLamps.WARM.b < RoadLamps.COOL.b, "warm is warmer than cool")
+	return true

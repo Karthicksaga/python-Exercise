@@ -12,9 +12,8 @@ extends Node
 
 ## Lamps further than this from the focus are left out (the real lights only go to the nearest six).
 const LAMP_REACH := 160.0
-## The city pole's lamp: this far out along its arm and this high (`CityModels._build_pole`).
-const LAMP_OUT := StreetFurniture.POLE_ARM + 0.3
-const LAMP_HEIGHT := StreetFurniture.POLE_HEIGHT - 0.68
+## Default head height (lamps carry their own, `RoadLamps`).
+const LAMP_HEIGHT := 8.9
 ## Real seconds between lamp refreshes while the focus moves.
 const LAMP_EVERY := 1.0
 
@@ -23,7 +22,9 @@ var environment: CityEnvironment
 var _night: float = -1.0
 var _wet: float = -1.0
 ## Shown chunk → its lamp points (world metres).
-var _lamps: Dictionary[Vector2i, PackedVector2Array] = {}
+var _lamps: Dictionary[Vector2i, PackedVector3Array] = {}
+## The same chunks' lamp tints (G-316).
+var _tints: Dictionary[Vector2i, PackedColorArray] = {}
 var _lamps_dirty: bool = true
 var _lamp_clock: float = 0.0
 var _lamp_focus: Vector2 = Vector2(INF, INF)
@@ -68,14 +69,13 @@ func _on_chunk_shown(cell: Vector2i) -> void:
 	var b := world.streamer.build_of(cell)
 	if b == null or b.furniture == null:
 		return
-	var points := PackedVector2Array()
-	for pole in b.furniture.poles:
-		points.append(pole.position + Vector2(-sin(pole.yaw), -cos(pole.yaw)) * LAMP_OUT)
-	_lamps[cell] = points
+	_lamps[cell] = b.lamp_points
+	_tints[cell] = b.lamp_tints
 	_lamps_dirty = true
 
 
 func _on_chunk_hidden(cell: Vector2i) -> void:
+	_tints.erase(cell)
 	if _lamps.erase(cell):
 		_lamps_dirty = true
 
@@ -89,12 +89,18 @@ func _refresh_lamps(focus: Vector2) -> void:
 	_lamp_clock = LAMP_EVERY
 	_lamp_focus = focus
 	var out := PackedVector3Array()
+	var tints := PackedColorArray()
 	var reach2 := LAMP_REACH * LAMP_REACH
 	for cell: Vector2i in _lamps:
-		for p in _lamps[cell]:
-			if p.distance_squared_to(focus) <= reach2:
-				out.append(WorldOrigin.to_scene(p))
-	environment.street_lights.set_lamps(out)
+		var points: PackedVector3Array = _lamps[cell]
+		var colours: PackedColorArray = _tints[cell]
+		for i in points.size():
+			var flat := Vector2(points[i].x, points[i].z)
+			if flat.distance_squared_to(focus) <= reach2:
+				# The lamp point is the ground under the head; its y is the head's height.
+				out.append(WorldOrigin.to_scene(flat, points[i].y))
+				tints.append(colours[i])
+	environment.street_lights.set_lamps(out, tints)
 
 
 ## Lamps given to the street lights now (tests).
