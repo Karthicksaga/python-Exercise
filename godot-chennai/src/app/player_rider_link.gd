@@ -71,6 +71,7 @@ func _own_control(on: bool) -> void:
 
 
 func _show_knockdown(tip: float) -> void:
-	# Tipped onto its back about the feet, facing the way it flew.
-	player.figure.rotation = Vector3(-PI / 2.0 * tip, player.yaw - player.rotation.y, 0)
+	# Tipped onto its back about the feet, head away from the way it flew (so it never lies
+	# into the wall it hit; the body itself is the upright capsule the walls stop).
+	player.figure.rotation = Vector3(PI / 2.0 * tip, player.yaw - player.rotation.y, 0)
 	player.figure.position = Vector3(0, 0.2 * tip, 0)
