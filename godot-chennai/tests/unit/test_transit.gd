@@ -423,3 +423,54 @@ func test_real_bus_jobs_move_onto_mapped_stops() -> bool:
 			check(float(moved[i]) <= BusJobRoutes.MATCH, "%s stop %d moves at most %.0f m" % [j.id, i, BusJobRoutes.MATCH])
 		print("    bus job %s: %s; route %s" % [j.id, ", ".join(parts), rep["route"] if String(rep["route"]) != "" else "none serves them in order"])
 	return check(jobs == 3, "the three baked bus jobs (%d)" % jobs)
+
+
+func test_bus_boarding_walks_in_past_the_conductor_to_a_seat_and_back_out() -> bool:
+	var t := VehicleCatalog.variant(&"bus").type
+	var m := VehicleCatalog.manifest_for(t)
+	var conductor := BusBoarding.conductor_of(t, m.data)
+	assert_near(conductor.x, -0.85, 0.01, "the conductor's seat from the manifest (x)")
+	assert_near(conductor.y, t.seats[0].y + (1.58 - 1.58), 0.01, "on the drawn ground like the seats")
+	var ground := -VehicleModel.settled_ground(t.spec)
+	var half := t.spec.half_extents
+	var seat := BusBoarding.choose_seat(t, conductor, PackedInt32Array([2, 6, 10, 14]), false)
+	assert_true(seat >= 0 and t.seats[seat].z > conductor.z, "a free seat behind the conductor (%d)" % seat)
+	assert_eq(BusBoarding.choose_seat(t, conductor, PackedInt32Array(), true), -1, "stands when the bus is full")
+	var start := Vector3(t.entry.point.x - 3.0, ground, t.entry.point.y + 2.0)
+	var b := BusBoarding.board(t, start, ground, conductor, seat)
+	var kinds: Array[StringName] = []
+	for l in b.legs:
+		kinds.append(l.kind)
+	assert_eq(kinds[0], BusBoarding.WALK, "walks to the door first")
+	assert_true(kinds.has(BusBoarding.STEP) and kinds.find(BusBoarding.STEP) < kinds.find(BusBoarding.TICKET), "up the step, then the ticket")
+	assert_eq(kinds[kinds.size() - 1], BusBoarding.SIT, "sits down last")
+	var at_door: Vector3 = b.legs[0].to
+	assert_vec_near(Vector2(at_door.x, at_door.z), t.entry.point, 0.01, "at the manifest's door point")
+	assert_near(at_door.y, ground, 0.001, "on the ground there")
+	var step: BusBoarding.Leg = b.legs[kinds.find(BusBoarding.STEP)]
+	assert_near(step.to.y, BusBoarding.floor_of(t), 0.001, "up onto the floor")
+	var t_in := b.inside_at()
+	var inside_ok := true
+	var time := t_in + 0.05
+	while time < b.total():
+		var p: Vector3 = b.sample(time)["position"]
+		if absf(p.x) > half.x + 0.05 or absf(p.z) > half.z + 0.2:
+			inside_ok = false
+		time += 0.1
+	assert_true(inside_ok, "inside the body from the step on")
+	var end := b.sample(b.total() + 0.1)
+	assert_true(bool(end["done"]), "done")
+	assert_near(float(end["sit"]), 1.0, 0.001, "seated")
+	assert_vec_near(Vector2((end["position"] as Vector3).x, (end["position"] as Vector3).z), Vector2(t.seats[seat].x, t.seats[seat].z), 0.01, "on the chosen seat")
+	assert_true(b.ticket_at() > t_in and b.ticket_at() < b.total(), "the ticket after the step, before sitting")
+	assert_near(float(b.sample(1.0)["speed"]), BusBoarding.PACE, 0.001, "walking pace on the way")
+	assert_true(b.total() < 20.0, "boarding takes %.1f s" % b.total())
+	var off := BusBoarding.alight(t, b.ride_point, true, ground)
+	assert_eq(off.legs[0].kind, BusBoarding.SIT, "stands up first")
+	assert_near(float(off.sample(0.0)["sit"]), 1.0, 0.001, "from seated")
+	var out: Vector3 = off.sample(off.total() + 0.1)["position"]
+	assert_true(out.x < -half.x, "off on the kerb side, outside the body (x %.2f)" % out.x)
+	assert_near(out.y, ground, 0.001, "on the ground")
+	var standing := BusBoarding.board(t, start, ground, conductor, -1)
+	assert_near(float(standing.sample(standing.total() + 1.0)["sit"]), 0.0, 0.001, "standing when full")
+	return check(standing.ride_point.z > conductor.z, "standing behind the conductor")

@@ -30,7 +30,6 @@ const HOLD_AFTER := 1.6
 const FADE := 0.25
 ## Where the player stands in a city bus (bus frame, model ground at y 0; behind the middle, by the
 ## rear ceiling rail) and where the interior camera sits.
-const STAND := Vector3(-0.15, 1.08, 1.7)
 const EYE := Vector3(0.35, 2.75, 4.9)
 const SEATED_PASSENGERS := 4
 ## The player steps off at the stop's pole when it is this close to the door, metres.
@@ -77,6 +76,15 @@ var _ending := false
 var _station_check := 0.0
 var _station: StationPlace = null
 var _action_source: Callable = Callable()
+## Getting on or off (`BusBoarding`), the time into it, where the player rides and whether seated,
+## the conductor's seat, the seats the other passengers took, and the ticket bought.
+var _boarding: BusBoarding = null
+var _board_time: float = 0.0
+var _ride_point: Vector3 = Vector3.ZERO
+var _seated: bool = false
+var _conductor_seat: Vector3 = Vector3.ZERO
+var _taken: PackedInt32Array = PackedInt32Array()
+var _ticket: Dictionary = {}
 ## Main-thread time of this layer's physics frames, µs: {frames, total, max} (frame-time log).
 ## False keeps route buses out of the traffic (the before/after frame-time comparison).
 var routes_on: bool = true
@@ -289,7 +297,7 @@ func _action() -> Variant:
 		return null
 	if ride.riding():
 		var st: Dictionary = _snap.get(ride.agent_id, {})
-		if not _jumping and ride.can_alight(st):
+		if not _jumping and _boarding == null and ride.can_alight(st):
 			return ActionCandidate.make("ALIGHT", ActionContext.P_HAND_OVER + 10, 0.0, alight)
 		return null
 	if not _on_foot():
@@ -346,7 +354,9 @@ func _crashed() -> bool:
 	return not rig.body.controls_enabled or (driving != null and driving.mode() == &"thrown")
 
 
-## Board the route bus `id` standing at a stop.
+## Board the route bus `id` standing at a stop: pay, then walk to the front door, up the step,
+## past the conductor (the ticket) to a free seat, or to the standing place when the bus is full
+## (`BusBoarding`, G-220). The bus holds its doors until the player is inside.
 func board(id: int) -> bool:
 	var st: Dictionary = _snap.get(id, {})
 	if st.is_empty() or ride.riding():
@@ -354,10 +364,11 @@ func board(id: int) -> bool:
 	var r := network.routes[int(st["route"])]
 	var k := int(st["next"])
 	var out := ride.board(r, k, id, _balance(), int(wanted_level.call()), _crashed(), _on_foot())
-	_toast(String(out["title"]), String(out["detail"]))
 	if not bool(out["ok"]):
+		_toast(String(out["title"]), String(out["detail"]))
 		return false
 	_charge(int(out["fare"]))
+	_ticket = out
 	_queue(func(_t: AgentSystem) -> void:
 		buses.cancel_request()
 		buses.set_carrying(id, true)
@@ -365,12 +376,36 @@ func board(id: int) -> bool:
 	_requested_stop = -1
 	var v := life.views[id]
 	_riding_view = v
+	var t := v.variant.type
+	var m := VehicleCatalog.manifest_for(t)
+	_conductor_seat = BusBoarding.conductor_of(t, m.data if m != null else {})
+	_seat_passengers(v)
+	var start := v.to_local(rig.body.global_position)
+	var seat := BusBoarding.choose_seat(t, _conductor_seat, _taken, full_at(life.hour()))
+	_boarding = BusBoarding.board(t, start, v.model.position.y, _conductor_seat, seat)
+	_board_time = 0.0
 	_anchor = Node3D.new()
 	_anchor.name = "PassengerSpot"
 	v.add_child(_anchor)
-	_anchor.position = STAND + Vector3(0, v.model.position.y, 0)
+	_anchor.position = start
 	rig.body.enter_vehicle(v, _anchor)
+	rig.body.figure.rotation = Vector3.ZERO
 	_walk_parts(false)
+	_announce = {}
+	hint.show_ride("Route %s to %s" % [r.ref, r.to_name], r.to_ta, "Getting on…", false)
+	boarded.emit(r.ref, int(out["fare"]))
+	return true
+
+
+## Peak hours: the bus is full and the player stands (an estimate of Chennai's rush).
+static func full_at(hour: float) -> bool:
+	return (hour >= 8.0 and hour < 10.5) or (hour >= 17.5 and hour < 20.5)
+
+
+## The interior camera, down the bus from the back.
+func _interior_camera(v: TrafficVehicleView) -> void:
+	if _eye != null:
+		return
 	_eye = Camera3D.new()
 	_eye.name = "InteriorCamera"
 	_eye.fov = 72.0
@@ -379,14 +414,6 @@ func board(id: int) -> bool:
 	_eye.position = EYE + Vector3(0, v.model.position.y, 0)
 	_eye.rotation = Vector3(-0.12, 0.0, 0.0)
 	_eye.make_current()
-	_seat_passengers(v)
-	_announce = {}
-	hint.show_ride("Route %s to %s" % [r.ref, r.to_name], r.to_ta, String(out["title"]), false)
-	get_tree().create_timer(HOLD_AFTER, false, true).timeout.connect(func() -> void:
-		if ride.riding() and ride.agent_id == id:
-			_queue(func(_t: AgentSystem) -> void: buses.hold_doors(id, false)))
-	boarded.emit(r.ref, int(out["fare"]))
-	return true
 
 
 ## Riding, the stick and JUMP do nothing: hide them (only real options); ACTION stays for ALIGHT.
@@ -399,37 +426,95 @@ func _walk_parts(on: bool) -> void:
 			n.visible = on
 
 
+## Seated adults from the cast on some of the bus's own passenger seats, and the conductor on
+## the conductor's seat (G-220; the driver is CityLife's, G-265). Adults only (walkers are).
 func _seat_passengers(v: TrafficVehicleView) -> void:
-	var m := VehicleCatalog.manifest_for(v.variant.type)
-	if m == null or life.pool == null or life.cast == null:
+	_taken = PackedInt32Array()
+	var t := v.variant.type
+	if life.pool == null or life.cast == null or t.seats.is_empty():
 		return
-	var seats: Array[Vector3] = []
-	for s: Dictionary in m.data.get("seats", []):
-		if String(s.get("role", "")) == "passenger":
-			var hip: Array = s.get("hip", [0, 0, 0])
-			seats.append(Vector3(float(hip[0]), float(hip[1]), float(hip[2])))
-	for i in mini(SEATED_PASSENGERS, seats.size()):
-		# Every fourth seat from the front: the bus is not full. Adults only (walkers are adults).
-		var seat := seats[mini(seats.size() - 1, 2 + i * 4)]
-		var who := life.cast.walker(37 + i * 5)
+	var floor_drop := clampf(t.seats[0].y - BusBoarding.floor_of(t), 0.3, 0.5)
+	var pose := SeatPose.passenger(BusBoarding.SEAT_HIP, floor_drop)
+	var spots: Array[Vector3] = [_conductor_seat]
+	for i in SEATED_PASSENGERS:
+		# Every fourth seat from the front: the bus is not full.
+		var index := mini(t.seats.size() - 1, 2 + i * 4)
+		_taken.append(index)
+		spots.append(t.seats[index])
+	for i in spots.size():
+		var who := life.cast.walker(31 + i * 5)
 		if who == "":
 			continue
 		var fig := life.pool.make_view(who)
 		if fig == null:
 			continue
 		v.add_child(fig)
-		fig.position = seat + Vector3(0, v.model.position.y - fig.seat_height, 0)
+		fig.position = spots[i] - Vector3(0, BusBoarding.SEAT_HIP, 0)
 		fig.rotation = Vector3.ZERO
 		fig.play(&"sit", 0.0, 0.3 * i)
+		fig.set_seat(pose)
 		_passengers.append(fig)
 
 
+## The seated pose for the player on the bus's seats.
+func _player_seat(t: VehicleType) -> SeatPose:
+	return SeatPose.passenger(BusBoarding.SEAT_HIP, clampf((t.seats[0].y if not t.seats.is_empty() else 0.5) - BusBoarding.floor_of(t), 0.3, 0.5))
+
+
+## Walking on or off: move the anchor along the plan, play the walk clip, blend the seat.
+func _step_boarding(dt: float) -> void:
+	var v := _riding_view
+	if v == null or _boarding == null:
+		return
+	var before := _board_time
+	_board_time += dt
+	var s := _boarding.sample(_board_time)
+	_anchor.transform = Transform3D(Basis(Vector3.UP, float(s["yaw"])), s["position"] as Vector3)
+	var fig := rig.body.figure
+	var sit := float(s["sit"])
+	if sit > 0.0:
+		fig.set_seat(_player_seat(v.variant.type), sit)
+	else:
+		fig.set_seat(null)
+	fig.advance(dt, float(s["speed"]), true)
+	if not _boarding.leaving:
+		var inside := _boarding.inside_at()
+		if before < inside and _board_time >= inside:
+			_interior_camera(v)
+			var id := ride.agent_id
+			get_tree().create_timer(0.4, false, true).timeout.connect(func() -> void:
+				if ride.riding() and ride.agent_id == id:
+					_queue(func(_t: AgentSystem) -> void: buses.hold_doors(id, false)))
+		var ticket := _boarding.ticket_at()
+		if before < ticket and _board_time >= ticket and not _ticket.is_empty():
+			_toast(String(_ticket["title"]), "From the conductor · %s" % String(_ticket["detail"]))
+	elif _eye != null and String(s["kind"]) == String(BusBoarding.STEP):
+		_eye.queue_free()
+		_eye = null
+		rig.camera.camera.make_current()
+		rig.camera.snap()
+	if bool(s["done"]):
+		var leaving := _boarding.leaving
+		_ride_point = _boarding.ride_point
+		_seated = _boarding.seat >= 0
+		_boarding = null
+		if leaving:
+			_finish_alight()
+
+
+func boarding() -> bool:
+	return _boarding != null
+
+
 func _step_ride(dt: float) -> void:
-	rig.body.figure.advance(dt, 0.0, true)
+	if _boarding != null:
+		_step_boarding(dt)
+	else:
+		rig.body.figure.advance(dt, 0.0, true)
 	for p in _passengers:
 		p.advance(dt, 2.0)
 	var st: Dictionary = _snap.get(ride.agent_id, {})
-	if _jumping or _ending:
+	if _jumping or _ending or _boarding != null:
 		return
 	for e in ride.update(st):
 		match String(e["type"]):
@@ -442,7 +527,8 @@ func _step_ride(dt: float) -> void:
 					if ride.riding():
 						alight())
 			"lost":
-				alight()
+				_boarding = null
+				_finish_alight()
 				return
 	var r := ride.route
 	if r == null:
@@ -461,30 +547,49 @@ func _step_ride(dt: float) -> void:
 
 
 func _can_fast_travel(st: Dictionary) -> bool:
-	return not st.is_empty() and ride.riding() and int(st["next"]) < ride.route.stops.size() and not _jumping
+	return not st.is_empty() and ride.riding() and _boarding == null and int(st["next"]) < ride.route.stops.size() and not _jumping
 
 
-## Get off the bus: back on the pavement by the front door, facing away from the road.
+## Get off the bus at a stop: stand up, back along the aisle, down the step and onto the
+## pavement (by the stop's pole when the bus stands near it). The doors stay open meanwhile.
 func alight() -> bool:
-	if not ride.riding():
+	if not ride.riding() or _boarding != null:
 		return false
+	var id := ride.agent_id
+	var v := _riding_view
+	if v == null:
+		_finish_alight()
+		return true
+	_queue(func(_t: AgentSystem) -> void: buses.hold_doors(id, true))
+	var t := v.variant.type
+	var out_to: Variant = null
+	var st: Dictionary = _snap.get(id, {})
+	var n := int(st.get("next", -1))
+	if ride.route != null and n >= 0 and n < ride.route.stops.size():
+		var stop := network.stops[ride.route.stops[n]]
+		var door := v.global_transform * Vector3(t.entry.point.x, v.model.position.y, t.entry.point.y)
+		var pole := WorldOrigin.to_scene(stop.position, door.y)
+		var to_door := Vector2(door.x - pole.x, door.z - pole.z)
+		if to_door.length() < ALIGHT_TO_POLE:
+			# Off the kerb: a step from the pole away from the bus (OSM puts poles at the kerb line;
+			# the shelter stands back on the pavement, further than this).
+			var away := -to_door.normalized() * PAVEMENT_STEP
+			out_to = v.to_local(pole + Vector3(away.x, 0.0, away.y))
+	_boarding = BusBoarding.alight(t, _ride_point, _seated, v.model.position.y, out_to)
+	_board_time = 0.0
+	hint.show_ride("Getting off", "", "", false)
+	return true
+
+
+func _finish_alight() -> void:
 	var id := ride.agent_id
 	var st: Dictionary = _snap.get(id, {})
 	var stop := ride.alight(st)
 	var v := _riding_view
-	var feet := _door_point(v) if v != null else rig.body.global_position
-	# The stop's pole stands on the pavement: step off there when the bus stopped near it (a bus
-	# standing out in its lane would otherwise leave the player in the carriageway).
-	if stop != null:
-		var pole := WorldOrigin.to_scene(stop.position, feet.y)
-		var to_door := Vector2(feet.x - pole.x, feet.z - pole.z)
-		if to_door.length() < ALIGHT_TO_POLE:
-			# Off the kerb: a step from the pole away from the bus (OSM puts poles at the kerb
-			# line; the shelter stands back on the pavement, further than this).
-			var away := -to_door.normalized() * PAVEMENT_STEP
-			feet = pole + Vector3(away.x, 0.15, away.y)
+	var feet := _anchor.global_position if _anchor != null else rig.body.global_position
 	var yaw := (v.global_rotation.y + PI / 2.0) if v != null else rig.body.yaw
-	rig.body.exit_vehicle(feet + Vector3(0, 0.05, 0), yaw)
+	rig.body.figure.set_seat(null)
+	rig.body.exit_vehicle(feet + Vector3(0, 0.1, 0), yaw)
 	_walk_parts(true)
 	rig.camera.camera.make_current()
 	rig.camera.yaw = yaw
@@ -499,6 +604,7 @@ func alight() -> bool:
 		_anchor.queue_free()
 		_anchor = null
 	_riding_view = null
+	_ticket = {}
 	_queue(func(_t: AgentSystem) -> void:
 		buses.set_carrying(id, false)
 		buses.hold_doors(id, true))
@@ -509,7 +615,6 @@ func alight() -> bool:
 	if name_text != "":
 		_toast(name_text, stop.name_ta)
 	alighted.emit(name_text)
-	return true
 
 
 ## Skip the ride to the next stop behind a short fade (instant with reduced motion). When the

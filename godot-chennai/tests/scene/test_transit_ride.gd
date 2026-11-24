@@ -95,7 +95,21 @@ func test_board_ride_fast_travel_and_alight() -> bool:
 	assert_near(t._balance(), money - t.ride.fare, 0.01, "the ticket (₹%d) was paid" % t.ride.fare)
 	assert_true(t.ride.fare >= TransitFare.MIN_FARE, "a fare")
 	assert_false(main.rig.body.is_on_foot(), "the player is in the bus")
+	# Getting on (G-220, owner's request): walk to the front door, up the step, past the
+	# conductor (the ticket), to a free seat; the interior camera once inside.
+	assert_true(t.boarding(), "walking on")
+	var door := view.global_transform * Vector3(view.variant.type.entry.point.x, view.model.position.y, view.variant.type.entry.point.y)
+	var closest := [INF]
+	var on := await wait_until(func() -> bool:
+		closest[0] = minf(closest[0], Vector2(main.rig.body.global_position.x - door.x, main.rig.body.global_position.z - door.z).length())
+		return not t.boarding(), 60 * 30)
+	assert_true(on, "got on and sat down")
+	assert_true(closest[0] < 0.4, "through the front door (passed %.2f m from its point)" % closest[0])
 	assert_true(main.get_viewport().get_camera_3d() == t._eye, "the interior camera")
+	assert_true(main.rig.body.figure.seat_amount > 0.99, "seated (11:00 is not the rush)")
+	assert_eq(t._passengers.size(), TransitLayer.SEATED_PASSENGERS + 1, "the conductor and the seated passengers")
+	if t.missions != null:
+		assert_contains(t.missions.hud.toast_text(), "Ticket", "the ticket from the conductor")
 	# The bus drives on; the next stop is announced.
 	var at0 := main.rig.body.global_position
 	assert_true(await wait_until(func() -> bool: return main.rig.body.global_position.distance_to(at0) > 20.0, 60 * 60), "the bus carries the player along its route")
@@ -112,6 +126,7 @@ func test_board_ride_fast_travel_and_alight() -> bool:
 	assert_true(await wait_until(func() -> bool: return main.rig.controls.action_context.label() == "ALIGHT" or not t.ride.riding(), 60 * 90), "ALIGHT offered at a stop")
 	if t.ride.riding():
 		assert_true(main.rig.controls.action_context.trigger(), "pressed ALIGHT")
+	assert_true(await wait_until(func() -> bool: return not t.ride.riding(), 60 * 30), "walked off the bus")
 	assert_false(t.ride.riding(), "off the bus")
 	assert_true(main.rig.body.is_on_foot(), "on foot")
 	assert_true(main.get_viewport().get_camera_3d() == main.rig.camera.camera, "the follow camera again")
