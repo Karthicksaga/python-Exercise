@@ -72,6 +72,8 @@ CELL = 50.0
 NOT_DRIVEN = {"footway", "service"}
 # Stations: suburban trains, the MRTS and the Metro; long-distance express routes are not lines.
 STATION_SEARCH = 350.0
+PLATFORM_REACH = 300.0
+ENTRANCE_REACH = 250.0
 # Estimated service (no published timetable is used): minutes between buses or trains, hours.
 BUS_HEADWAY = 15
 MINIBUS_HEADWAY = 25
@@ -117,6 +119,8 @@ class Station:
     name_ta: str
     system: str  # suburban, mrts, metro (railway stations) or bus (bus stations)
     lines: list[str] = field(default_factory=list)
+    platforms: list[tuple[str, float, float, float]] = field(default_factory=list)  # (ref, x, z, length)
+    entrances: list[tuple[float, float, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -151,6 +155,8 @@ class TransitOsm:
     routes: list[RouteRel] = field(default_factory=list)
     rail: list[RailRel] = field(default_factory=list)
     way_nodes: dict[int, list[Point]] = field(default_factory=dict)  # route member ways
+    platforms: list[tuple[str, float, float, float]] = field(default_factory=list)  # railway platforms
+    entrances: list[tuple[float, float, str]] = field(default_factory=list)  # station entrances
     stats: Counter[str] = field(default_factory=Counter)
 
 
@@ -179,6 +185,10 @@ def is_stop(t: Tags) -> bool:
     if t.get("highway") == "bus_stop":
         return True
     return t.get("public_transport") == "platform" and (t.get("bus") == "yes" or t.get("highway") == "bus_stop") and t.get("railway") != "platform" and t.get("train") != "yes"
+
+
+def is_rail_platform(t: Tags) -> bool:
+    return t.get("railway") == "platform" or (t.get("public_transport") == "platform" and (t.get("train") == "yes" or t.get("subway") == "yes" or t.get("light_rail") == "yes"))
 
 
 def station_system(t: Tags) -> str | None:
@@ -243,6 +253,10 @@ def parse_transit(path: Path, projection: GeoProjection = PROJECTION) -> Transit
             if w.id in route_ways and len(pts) >= 2:
                 out.way_nodes[w.id] = pts
             t = {k.k: k.v for k in w.tags}
+            if pts and is_rail_platform(t):
+                length = sum(math.dist(pts[i - 1], pts[i]) for i in range(1, len(pts)))
+                ring = pts[:-1] if len(pts) > 2 and pts[0] == pts[-1] else pts
+                out.platforms.append((t.get("ref", "") or t.get("name", ""), round(sum(p[0] for p in ring) / len(ring), 2), round(sum(p[1] for p in ring) / len(ring), 2), round(length, 1)))
             if not pts or not (key in wanted_ways or is_stop(t) or t.get("amenity") == "bus_station" or station_system(t)):
                 return
             ring = pts[:-1] if len(pts) > 2 and pts[0] == pts[-1] else pts
@@ -251,6 +265,10 @@ def parse_transit(path: Path, projection: GeoProjection = PROJECTION) -> Transit
             self._point(key, t, round(x, 2), round(z, 2))
 
         def _point(self, key: str, t: Tags, x: float, z: float) -> None:
+            if key[0] == "n" and t.get("railway") in ("subway_entrance", "train_station_entrance"):
+                out.entrances.append((x, z, t.get("ref", "") or _english(t)))
+            if key[0] == "n" and is_rail_platform(t):
+                out.platforms.append((t.get("ref", "") or t.get("name", ""), x, z, 0.0))
             if is_stop(t):
                 kind = "pole" if t.get("highway") == "bus_stop" else "platform"
                 out.stops[key] = Stop(key, x, z, _english(t), _name_ta(t), t.get("ref", ""), kind)
@@ -852,6 +870,22 @@ def rail_lines(osm: TransitOsm) -> list[dict[str, Any]]:
     return lines
 
 
+def attach_places(osm: TransitOsm) -> None:
+    """Railway platforms and entrances go to the nearest station within reach (OSM maps them as
+    separate objects; the station is the place the player walks into)."""
+    for ref, x, z, length in osm.platforms:
+        st = min(osm.stations, key=lambda s: math.hypot(s.x - x, s.z - z), default=None)
+        if st is not None and math.hypot(st.x - x, st.z - z) <= PLATFORM_REACH:
+            st.platforms.append((ref, x, z, length))
+    for x, z, label in osm.entrances:
+        st = min(osm.stations, key=lambda s: math.hypot(s.x - x, s.z - z), default=None)
+        if st is not None and math.hypot(st.x - x, st.z - z) <= ENTRANCE_REACH:
+            st.entrances.append((x, z, label))
+    for st in osm.stations:
+        st.platforms.sort()
+        st.entrances.sort()
+
+
 def dedupe_stations(stations: list[Station]) -> list[Station]:
     """A station mapped as a node and as an area (or twice) is kept once: same system and name
     (or no English name) within 300 m."""
@@ -888,6 +922,7 @@ def build_network(osm: TransitOsm, g: DriveGraph, bounds: tuple[float, float, fl
     for i, s in enumerate(table):
         grid.setdefault((math.floor(s.x / CELL), math.floor(s.z / CELL)), []).append(i)
     osm.stations = dedupe_stations(osm.stations)
+    attach_places(osm)
     lines = rail_lines(osm)
     routes: list[Snapped] = []
     for rel in sorted(osm.routes, key=lambda r: r.id):
@@ -1022,7 +1057,8 @@ def network_json(net: Network, data_date: str) -> dict[str, Any]:
         "stopKinds": KINDS,
         "stops": [[s.key, round(s.x, 2), round(s.z, 2), s.name, s.name_ta, s.ref, KINDS.index(s.kind)] for s in net.stops],
         "busStations": [[s.key, round(s.x, 2), round(s.z, 2), s.name, s.name_ta] for s in net.bus_stations],
-        "stations": [{"key": s.key, "x": round(s.x, 2), "z": round(s.z, 2), "name": s.name, "nameTa": s.name_ta, "system": s.system, "lines": s.lines} for s in net.stations],
+        "stations": [{"key": s.key, "x": round(s.x, 2), "z": round(s.z, 2), "name": s.name, "nameTa": s.name_ta, "system": s.system, "lines": s.lines,
+                      "platforms": [[r, round(x, 2), round(z, 2), ln] for r, x, z, ln in s.platforms], "entrances": [[round(x, 2), round(z, 2), lb] for x, z, lb in s.entrances]} for s in net.stations],
         "lines": net.lines,
         "routes": routes,
         "routesFile": "routes.bin",
@@ -1080,6 +1116,7 @@ def report(net: Network, world: Path) -> str:
     for system in ("suburban", "mrts", "metro"):
         ss = [x for x in net.stations if x.system == system]
         lines.append(f"| {system} | {len(ss)} | {sum(1 for x in ss if x.name_ta)} | {sum(1 for x in ss if x.lines)} |")
+    lines.append(f"\nRailway platforms attached to a station: {sum(len(x.platforms) for x in net.stations)} (of {len(net.stations)} stations, {sum(1 for x in net.stations if x.platforms)} have one); entrances: {sum(len(x.entrances) for x in net.stations)}.")
     lines += ["\n## Rail lines\n", "| Line | System | Stations | Headway (min, estimate) |", "|---|---|---|---|"]
     for ln in net.lines:
         lines.append(f"| {ln['name']} | {ln['system']} | {len(ln['stations'])} | {ln['headwayMinutes']} |")

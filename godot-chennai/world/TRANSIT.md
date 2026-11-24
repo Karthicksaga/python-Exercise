@@ -61,6 +61,8 @@ Built by `tools/geo` `cli transit` from the OSM extract and the built roads (dec
 | mrts | 3 | 0 | 2 |
 | metro | 93 | 63 | 51 |
 
+Railway platforms attached to a station: 129 (of 185 stations, 52 have one); entrances: 65.
+
 ## Rail lines
 
 | Line | System | Stations | Headway (min, estimate) |
