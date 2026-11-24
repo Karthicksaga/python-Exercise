@@ -33,6 +33,18 @@ var parked: Dictionary[String, Vehicle] = {}
 ## The marker this frame in world metres {x, z, radius}, or {} (tests read it).
 var target: Dictionary = {}
 
+## G-143/G-144: driving feel measured each step for the fragile meters, the horn this step, the
+## rain the layer asked of `Weather` (and what it was before), the checkpoint retry pending.
+var _prev_speed := 0.0
+var _prev_yaw := 0.0
+var _have_prev := false
+var _decel := 0.0
+var _lateral := 0.0
+var _horned := false
+var _asked_rain := false
+var _rain_before := false
+var _retry_pending := false
+var _board_tab := "jobs"
 var _canvas: CanvasLayer
 var _impact := 0.0
 var _dialog := ""
@@ -84,6 +96,13 @@ func _ready() -> void:
 	session.notice.connect(func(title: String, detail: String, seconds: float) -> void: hud.toast(title, detail, seconds))
 	session.result.connect(_on_result)
 	session.cue.connect(_on_cue)
+	session.retry_offered.connect(_on_retry_offered)
+	session.choice_asked.connect(_on_choice_asked)
+	session.stage_result.connect(_on_stage_result)
+	session.event_started.connect(_on_event_started)
+	session.event_ended.connect(_on_event_ended)
+	session.heat_raised.connect(func(stars: int) -> void: hud.toast("Police heat +%d" % stars, "They may remember this", 3.0))
+	session.meter_warning.connect(_on_meter_warning)
 	if _main != null:
 		_attach_main()
 
@@ -135,8 +154,12 @@ func _physics_process(dt: float) -> void:
 		_find_driving()
 	_park_near()
 	var st := status()
+	_measure_feel(dt, st)
 	session.step(dt, st, _impact)
+	_apply_hazards(st)
+	_follow_rain()
 	_impact = 0.0
+	_horned = false
 	if driving != null and driving.mode() == &"driving" and driving.vehicle != null and driving.vehicle.type.kind == &"ambulance":
 		session.by_ambulance = true
 
@@ -146,7 +169,13 @@ func status() -> MissionData.PlayerStatus:
 	var v := driven()
 	var at := WorldOrigin.to_world(v.global_position if v != null else rig.body.global_position)
 	var speed := absf(v.forward_speed()) if v != null else Vector2(rig.body.velocity.x, rig.body.velocity.z).length()
-	return MissionData.PlayerStatus.make(at.x, at.y, String(v.type.kind) if v != null else "foot", speed)
+	var p := MissionData.PlayerStatus.make(at.x, at.y, String(v.type.kind) if v != null else "foot", speed)
+	p.decel = _decel
+	p.lateral = _lateral
+	p.crash = clampf(_impact, 0.0, 1.0)
+	p.horn = _horned
+	p.rain = Weather.rain_level()
+	return p
 
 
 ## The vehicle the player is driving, or null (on foot, getting in or out).
@@ -169,6 +198,63 @@ func _find_driving() -> void:
 func _watch_driving() -> void:
 	if driving != null and not driving.crashed.is_connected(_on_crash):
 		driving.crashed.connect(_on_crash)
+	if driving != null and not driving.horn.is_connected(_on_horn):
+		driving.horn.connect(_on_horn)
+
+
+func _on_horn(_v: Vehicle) -> void:
+	_horned = true
+
+
+## Braking and cornering of the driven vehicle this step (m/s^2, positive): what the stability
+## meter of a fragile load feels. Zero on foot. Speed breakers and potholes are the objective's
+## own patches (data), crossed by position in the rules.
+func _measure_feel(dt: float, st: MissionData.PlayerStatus) -> void:
+	var v := driven()
+	if v == null or dt <= 0.0:
+		_decel = 0.0
+		_lateral = 0.0
+		_have_prev = false
+		return
+	var speed := v.forward_speed()
+	var yaw := v.global_rotation.y
+	if _have_prev:
+		_decel = maxf(0.0, (_prev_speed - speed) / dt)
+		_lateral = absf(speed * wrapf(yaw - _prev_yaw, -PI, PI) / dt)
+	_prev_speed = speed
+	_prev_yaw = yaw
+	_have_prev = true
+	st.decel = _decel
+	st.lateral = _lateral
+
+
+## Flood water slows the driven vehicle, deep water stalls it (G-143).
+func _apply_hazards(st: MissionData.PlayerStatus) -> void:
+	var v := driven()
+	if v == null:
+		return
+	var e := session.hazard_effect(st.x, st.z, Weather.rain_level())
+	if not bool(e["inside"]):
+		return
+	var forward := v.forward_speed()
+	if bool(e["stalled"]) or float(e["speed_scale"]) <= 0.0:
+		if forward > 0.0:
+			v.set_speed(0.0)
+	elif forward > 0.0:
+		v.set_speed(forward * lerpf(1.0, float(e["speed_scale"]), 0.2))
+
+
+## A mission that wants rain gets it (and the weather is put back after); events can start it.
+func _follow_rain() -> void:
+	var m := session.runner.mission() if session.jobs.job() == null else null
+	var want := m != null and m.rain > 0.0 and active
+	if want and not _asked_rain:
+		_asked_rain = true
+		_rain_before = Weather.raining
+		Weather.set_raining(true, false, false)
+	elif not want and _asked_rain and not session.rain_from_event:
+		_asked_rain = false
+		Weather.set_raining(_rain_before, false, false)
 
 
 func _on_crash(_v: Vehicle, _outcome: CrashRules.Outcome) -> void:
@@ -277,6 +363,7 @@ func _process(dt: float) -> void:
 	var place := session.place_near(at, st.mode)
 	hud.set_place_prompt(str(place.get("name", "")) if not held else "")
 	figures.show_scene(dt, session.fare_scene(), session.goods_scene(), driven(), _ground_y())
+	_update_minimap(dt, at, st)
 
 
 ## Radians clockwise from where the camera looks to `spot` (scene position).
@@ -311,14 +398,26 @@ func open_board() -> void:
 		return
 	_hold()
 	_dialog = "board"
+	_show_board()
+
+
+func _show_board() -> void:
 	var actions: Array[Dictionary] = []
+	var stages := _board_tab == "stages"
+	actions.append({"id": "tab", "label": "JOBS" if stages else "STAGES", "quiet": true})
 	if session.jobs.job() != null:
 		actions.append({"id": "quit", "label": "QUIT JOB", "quiet": true})
 	actions.append({"id": "close", "label": "CLOSE", "quiet": true})
-	var rows := session.board_rows(GameLoop.clock.hour)
-	for r in rows:
-		r["button"] = "TAKE JOB"
-	hud.show_dialog("Job board", session.board_message(), rows, actions)
+	if stages:
+		var rows := session.stage_rows()
+		for r in rows:
+			r["button"] = "PLAY"
+		hud.show_dialog("Stages", "Missions and finished stages, for the medal. A replay pays a quarter.", rows, actions)
+	else:
+		var rows := session.board_rows(GameLoop.clock.hour)
+		for r in rows:
+			r["button"] = "TAKE JOB"
+		hud.show_dialog("Job board", session.board_message(), rows, actions)
 
 
 func close_dialog() -> void:
@@ -337,12 +436,71 @@ func _on_result(title: String, message: String, board: bool) -> void:
 	hud.show_dialog(title, message, [], actions)
 
 
+## A stage was failed: RETRY at the checkpoint (or the stage's start), or START OVER (G-140).
+func _on_retry_offered(reason: String, _reason_id: String, checkpoint: int) -> void:
+	_hold()
+	_dialog = "retry"
+	var actions: Array[Dictionary] = [{"id": "retry", "label": "RETRY"}]
+	if checkpoint > 0:
+		actions.append({"id": "start_over", "label": "START OVER", "quiet": true})
+	var m := session.runner.mission()
+	var where := "from the checkpoint" if checkpoint > 0 else "from the start"
+	hud.show_dialog(reason, "%s: try again %s." % [m.title if m != null else "The stage", where], [] as Array[Dictionary], actions)
+
+
+## The retry itself: the player and their vehicle go back to where the checkpoint was reached.
+func do_retry() -> void:
+	var place := session.checkpoint_place()
+	if place.is_empty() or rig == null:
+		return
+	var at := WorldOrigin.to_scene_xz(float(place["x"]), float(place["z"]), _ground_y() + 0.05)
+	var v := driven()
+	if v != null:
+		v.teleport(Vector3(at.x, v.global_position.y, at.z), v.global_rotation.y)
+		v.set_speed(0.0)
+	elif str(place["mode"]) == "foot" or driving == null or driving.mode() == &"foot":
+		rig.place(at, 0.0)
+	_have_prev = false
+
+
+## A choice: its options as rows; the game waits (G-142).
+func _on_choice_asked(title: String, options: Array) -> void:
+	_hold()
+	_dialog = "choice"
+	var rows: Array[Dictionary] = []
+	for o: Dictionary in options:
+		var meta := PackedStringArray()
+		if int(o.get("reward", 0)) > 0:
+			meta.append("+₹%s" % MissionSession.rupees(int(o["reward"])))
+		if int(o.get("reputation", 0)) > 0:
+			meta.append("★ +%d" % int(o["reputation"]))
+		if int(o.get("wanted", 0)) > 0:
+			meta.append("police heat")
+		rows.append({"id": str(o["id"]), "title": str(o["label"]), "detail": str(o.get("detail", "")), "meta": " · ".join(meta), "button": "CHOOSE"})
+	hud.show_dialog(title, "Nothing happens until you decide.", rows, [] as Array[Dictionary])
+
+
+## The medals screen after a stage with goals (G-142).
+func _on_stage_result(title: String, medal: String, goals: Array, paid: int, replay: bool) -> void:
+	_hold()
+	_dialog = "medals"
+	var actions: Array[Dictionary] = [{"id": "continue", "label": "CONTINUE"}, {"id": "stages", "label": "STAGES", "quiet": true}]
+	hud.show_medals(title, medal, goals, paid, replay, actions)
+
+
 func _on_row(id: String) -> void:
 	match _dialog:
 		"board":
-			var hour := GameLoop.clock.hour
+			if _board_tab == "stages":
+				close_dialog()
+				session.play_stage(id)
+			else:
+				var hour := GameLoop.clock.hour
+				close_dialog()
+				session.take_job(id, hour)
+		"choice":
 			close_dialog()
-			session.take_job(id, hour)
+			session.choose(id)
 		"place":
 			_do_place(id)
 
@@ -353,10 +511,24 @@ func _on_action(id: String) -> void:
 			close_dialog()
 		"board":
 			close_dialog()
+			_board_tab = "jobs"
 			open_board()
+		"stages":
+			close_dialog()
+			_board_tab = "stages"
+			open_board()
+		"tab":
+			_board_tab = "jobs" if _board_tab == "stages" else "stages"
+			_show_board()
 		"quit":
 			close_dialog()
 			session.quit_job()
+		"retry":
+			close_dialog()
+			do_retry()
+		"start_over":
+			close_dialog()
+			session.start_over()
 
 
 func _go_inside() -> void:
@@ -418,10 +590,74 @@ func _apply_place(id: String, good: int) -> void:
 	_show_place(text)
 
 
+## The cues the rules ask for go to the real `Sound` autoload (W10): "chime", "fanfare", "cash",
+## "fail" and "click" are its UI tones; a warning meter plays "hurt".
 func _on_cue(cue_name: StringName) -> void:
-	# The sound agent's cues are not in `Sound` yet; the HUD carries the news meanwhile.
-	if cue_name == &"fanfare" and Sound.has_method(&"chime"):
-		Sound.call(&"chime")
+	Sound.cue(String(cue_name))
+
+
+func _on_meter_warning(meter: String) -> void:
+	if meter == "stability":
+		hud.toast("Careful", "The load is shaking: smooth and slow", 2.2)
+		Sound.cue("hurt")
+	else:
+		hud.toast("He is noticing you", "Drop back", 2.2)
+		Sound.cue("click")
+
+
+func _on_event_started(e: Dictionary) -> void:
+	if str(e["kind"]) == "rain" and not _asked_rain:
+		_asked_rain = true
+		_rain_before = Weather.raining
+		Weather.set_raining(true, false, false)
+
+
+func _on_event_ended(_e: Dictionary) -> void:
+	pass
+
+
+## The mission minimap: hazards (flood, procession, strike), the tail's target and the marker,
+## with the roads round the player when the city is loaded (G-144).
+var _roads_at := Vector2.INF
+var _roads := PackedVector2Array()
+
+
+func _update_minimap(_dt: float, at: Vector2, st: MissionData.PlayerStatus) -> void:
+	var zones: Array[Dictionary] = []
+	for h in session.hazard_zones():
+		var z: HazardZone = h["zone"]
+		var t := float(h["t"])
+		if not z.active(t):
+			continue
+		var c := z.centre_at(t)
+		var depth := z.depth_at(c.x, c.y, t, Weather.rain_level()) / HazardZone.STALL_DEPTH if z.kind == "flood" else 0.0
+		zones.append({"x": c.x, "z": c.y, "radius": z.radius_at(t), "kind": z.kind, "depth": depth, "label": z.label})
+	var followed := Vector2.INF
+	var q: Variant = session.runner.tail_target() if session.jobs.job() == null else null
+	if q is Dictionary:
+		followed = Vector2(float(q["x"]), float(q["z"]))
+	var marker := Vector2.INF
+	if not target.is_empty():
+		marker = Vector2(float(target["x"]), float(target["z"]))
+	if (not zones.is_empty() or followed != Vector2.INF) and (_roads_at == Vector2.INF or _roads_at.distance_to(at) > 60.0):
+		_roads_at = at
+		_roads = _nearby_roads(at)
+	var yaw := rig.body.global_rotation.y if driven() == null else driven().global_rotation.y
+	hud.minimap.set_view(at, yaw, zones, _roads, marker, followed)
+
+
+func _nearby_roads(at: Vector2) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	if world == null or world.layouts == null:
+		return out
+	var layout := world.layouts.layout_for(world.source.cell_at(at))
+	layout.segments_near(at, MissionMinimap.RANGE, func(ri: int, i: int) -> bool:
+		var road := layout.roads[ri]
+		if road.kind != &"footway" and out.size() < 4000:
+			out.append(road.points[i])
+			out.append(road.points[i + 1])
+		return false)
+	return out
 
 
 ## NEW GAME: forget the progress, park everything back and put the player at the start.

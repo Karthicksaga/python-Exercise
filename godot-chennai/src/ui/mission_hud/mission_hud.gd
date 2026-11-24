@@ -27,6 +27,9 @@ const JOBS_SIZE := Vector2(96, 48)
 ## The driving EXIT button's width and gap (`DrivingControls`): JOBS stays left of it.
 const EXIT_ROOM := 112.0
 const URGENT := 10.0
+## A dialog row's height and what the rest of a dialog takes (title, buttons, gaps, margins).
+const ROW_HEIGHT := 56.0
+const DIALOG_CHROME := 128.0
 
 var _fit_toast := false
 
@@ -51,6 +54,16 @@ var dialog_actions: HBoxContainer
 var needle_box: Control
 var needle_bar: NeedleBar
 var lift_button: Button
+## G-144: the meters under the objective, the minimap, and the medals screen's body.
+var stability_row: HBoxContainer
+var stability_label: Label
+var stability_bar: MeterBar
+var suspicion_row: HBoxContainer
+var suspicion_bar: MeterBar
+var minimap: MissionMinimap
+var medals_box: HBoxContainer
+var medal_badge: MedalBadge
+var medal_goals: VBoxContainer
 
 var _toast_left := 0.0
 ## Buttons in the open dialog, by id (tests press them).
@@ -102,6 +115,16 @@ func _ready() -> void:
 	jobs_button.offset_bottom = GUTTER + JOBS_SIZE.y
 	jobs_button.pressed.connect(func() -> void: jobs_pressed.emit())
 	add_child(jobs_button)
+	minimap = MissionMinimap.new()
+	minimap.name = "Minimap"
+	minimap.anchor_left = 1.0
+	minimap.anchor_right = 1.0
+	minimap.offset_left = -GUTTER - MissionMinimap.PLATE
+	minimap.offset_right = -GUTTER
+	minimap.offset_top = GUTTER + JOBS_SIZE.y + 8.0
+	minimap.offset_bottom = GUTTER + JOBS_SIZE.y + 8.0 + MissionMinimap.PLATE
+	minimap.visible = false
+	add_child(minimap)
 	_build_toast()
 	inside_button = _button("GO INSIDE", "Inside", 16, true)
 	inside_button.anchor_left = 0.5
@@ -206,6 +229,34 @@ func _build_column() -> void:
 	meta_label = UiTheme.label("", 13, UiTheme.TEXT_DIM)
 	meta_label.name = "Meta"
 	meta_row.add_child(meta_label)
+	stability_row = HBoxContainer.new()
+	stability_row.name = "StabilityRow"
+	stability_row.add_theme_constant_override("separation", 8)
+	stability_label = UiTheme.label("Cargo", 12, UiTheme.TEXT_DIM)
+	stability_label.custom_minimum_size.x = 54
+	stability_row.add_child(stability_label)
+	stability_bar = MeterBar.new()
+	stability_bar.name = "Stability"
+	stability_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stability_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	stability_row.add_child(stability_bar)
+	stability_row.visible = false
+	rows.add_child(stability_row)
+	suspicion_row = HBoxContainer.new()
+	suspicion_row.name = "SuspicionRow"
+	suspicion_row.add_theme_constant_override("separation", 8)
+	var sl := UiTheme.label("Noticed", 12, UiTheme.TEXT_DIM)
+	sl.custom_minimum_size.x = 54
+	suspicion_row.add_child(sl)
+	suspicion_bar = MeterBar.new()
+	suspicion_bar.name = "Suspicion"
+	suspicion_bar.bad_when_high = true
+	suspicion_bar.value = 0.0
+	suspicion_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	suspicion_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	suspicion_row.add_child(suspicion_bar)
+	suspicion_row.visible = false
+	rows.add_child(suspicion_row)
 
 
 func _build_toast() -> void:
@@ -254,7 +305,7 @@ func _build_dialog() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dialog.add_child(dim)
 	var margin := SafeAreaMargin.new()
-	margin.gutter = 16
+	margin.gutter = 12
 	dialog.add_child(margin)
 	var centre := CenterContainer.new()
 	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -262,17 +313,30 @@ func _build_dialog() -> void:
 	var v := VBoxContainer.new()
 	v.name = "Body"
 	v.custom_minimum_size = Vector2(600, 0)
-	v.add_theme_constant_override("separation", 10)
+	v.add_theme_constant_override("separation", 6)
 	centre.add_child(v)
-	dialog_title = UiTheme.label("", 22)
+	dialog_title = UiTheme.label("", 20)
 	dialog_title.name = "DialogTitle"
 	dialog_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(dialog_title)
-	dialog_message = UiTheme.label("", 13, UiTheme.TEXT_DIM)
+	dialog_message = UiTheme.label("", 12, UiTheme.TEXT_DIM)
 	dialog_message.name = "DialogMessage"
 	dialog_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dialog_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(dialog_message)
+	medals_box = HBoxContainer.new()
+	medals_box.name = "Medals"
+	medals_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	medals_box.add_theme_constant_override("separation", 16)
+	medal_badge = MedalBadge.new()
+	medals_box.add_child(medal_badge)
+	medal_goals = VBoxContainer.new()
+	medal_goals.name = "Goals"
+	medal_goals.add_theme_constant_override("separation", 4)
+	medal_goals.custom_minimum_size.x = 420
+	medals_box.add_child(medal_goals)
+	medals_box.visible = false
+	v.add_child(medals_box)
 	var scroll := ScrollContainer.new()
 	scroll.name = "Scroll"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -345,6 +409,15 @@ func set_mission(view: Dictionary, bearing: float) -> void:
 		parts.append("%d:%02d" % [s / 60, s % 60])
 	_text(meta_label, "  ·  ".join(parts))
 	meta_label.add_theme_color_override("font_color", UiTheme.DANGER if seconds >= 0.0 and seconds < URGENT else UiTheme.TEXT_DIM)
+	var stab: float = float(view.get("stability", -1.0))
+	stability_row.visible = stab >= 0.0
+	if stab >= 0.0:
+		stability_bar.set_value(stab)
+		_text(stability_label, str(view.get("stability_label", "Cargo")))
+	var susp: float = float(view.get("suspicion", -1.0))
+	suspicion_row.visible = susp >= 0.0
+	if susp >= 0.0:
+		suspicion_bar.set_value(susp)
 	arrow.visible = not is_nan(bearing) and distance >= 0.0
 	if arrow.bearing != bearing:
 		arrow.bearing = bearing
@@ -401,10 +474,12 @@ func show_dialog(title: String, message: String, rows: Array[Dictionary] = [], a
 	for r in rows:
 		var row := _row(r)
 		dialog_rows.add_child(row)
-		list_height += 64.0
+		list_height += ROW_HEIGHT + 6.0
 	var scroll := dialog_rows.get_parent() as ScrollContainer
-	var room := (size.y if size.y > 0.0 else 412.0) - 170.0 - (40.0 if message != "" else 0.0)
-	scroll.custom_minimum_size.y = minf(list_height, maxf(64.0, room))
+	# The header (title, message) and the buttons stay pinned; the rows scroll in what is left:
+	# four rows at the 915x412 base.
+	var room := (size.y if size.y > 0.0 else 412.0) - DIALOG_CHROME - (18.0 if message != "" else 0.0)
+	scroll.custom_minimum_size.y = minf(list_height, maxf(ROW_HEIGHT, room))
 	scroll.visible = not rows.is_empty()
 	for a in actions:
 		var b := _button(str(a["label"]), "Action_%s" % str(a["id"]), 16, not bool(a.get("quiet", false)))
@@ -435,6 +510,7 @@ func _row(r: Dictionary) -> Control:
 	box.content_margin_top = 4
 	box.content_margin_bottom = 4
 	panel.add_theme_stylebox_override("panel", box)
+	panel.custom_minimum_size.y = ROW_HEIGHT
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 12)
 	panel.add_child(h)
@@ -444,16 +520,18 @@ func _row(r: Dictionary) -> Control:
 	h.add_child(text)
 	text.add_child(UiTheme.label(str(r["title"]), 15))
 	var disabled := str(r.get("disabled", ""))
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 10)
+	text.add_child(line)
 	var detail := UiTheme.label(disabled if disabled != "" else str(r.get("detail", "")), 12, UiTheme.TEXT_DIM)
 	detail.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	detail.custom_minimum_size.x = 100
-	text.add_child(detail)
+	detail.custom_minimum_size.x = 60
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.add_child(detail)
 	var meta := str(r.get("meta", ""))
 	if meta != "":
 		var m := UiTheme.label(meta, 12, Color("#ffd166"))
-		m.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		m.custom_minimum_size.x = 100
-		text.add_child(m)
+		line.add_child(m)
 	var b := Button.new()
 	var id := str(r["id"])
 	b.name = "Take_%s" % id
@@ -485,6 +563,10 @@ func hide_dialog() -> void:
 		dialog_actions.remove_child(c)
 		c.queue_free()
 	needle_box.visible = false
+	medals_box.visible = false
+	for c in medal_goals.get_children():
+		medal_goals.remove_child(c)
+		c.queue_free()
 	dialog.visible = false
 
 
@@ -499,3 +581,32 @@ func press(id: String) -> bool:
 		return false
 	b.pressed.emit()
 	return true
+
+
+## The medals screen (G-144): the medal, each bonus goal ticked or not, and the pay.
+## `goals`: [{label, met}].
+func show_medals(title: String, medal: String, goals: Array, paid: int, replay: bool, actions: Array[Dictionary]) -> void:
+	var met := 0
+	for g: Dictionary in goals:
+		met += 1 if bool(g["met"]) else 0
+	var message := "+₹%s%s" % [_thousands(paid), " (replay)" if replay else ""]
+	if medal != "":
+		message += "  ·  %s medal  ·  %d of %d goals" % [medal.capitalize(), met, goals.size()]
+	show_dialog(title, message, [] as Array[Dictionary], actions)
+	medal_badge.set_medal(medal)
+	for g: Dictionary in goals:
+		var done := bool(g["met"])
+		var l := UiTheme.label("%s  %s" % ["✔" if done else "✘", str(g["label"])], 14, Color("#4ccb6b") if done else UiTheme.TEXT_DIM)
+		l.name = "Goal"
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		medal_goals.add_child(l)
+	medals_box.visible = true
+
+
+static func _thousands(n: int) -> String:
+	var s := str(absi(n))
+	var out := ""
+	while s.length() > 3:
+		out = "," + s.right(3) + out
+		s = s.left(s.length() - 3)
+	return ("-" if n < 0 else "") + s + out

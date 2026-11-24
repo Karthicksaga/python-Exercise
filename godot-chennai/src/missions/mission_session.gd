@@ -53,6 +53,8 @@ var events: DynamicEvents = null
 var _event_zones: Array[Dictionary] = []
 var _event_clock := 0.0
 var _attempt := 0
+## True while a dynamic event is making it rain (the layer puts the weather back afterwards).
+var rain_from_event := false
 var _warned := {"stability": false, "suspicion": false}
 ## Notices waiting for their game time: [{at, title, detail, seconds}].
 var _later: Array[Dictionary] = []
@@ -279,6 +281,8 @@ func _begin_event(e: Dictionary, p: MissionData.PlayerStatus) -> void:
 		else:
 			runner.extend_time(seconds)
 	var kind := str(e["kind"])
+	if kind == "rain":
+		rain_from_event = true
 	var tgt := _event_target(p)
 	if tgt != Vector2.INF and (kind == "detour" or kind == "procession" or kind == "bandh"):
 		var from := Vector2(p.x, p.z)
@@ -300,6 +304,8 @@ func _begin_event(e: Dictionary, p: MissionData.PlayerStatus) -> void:
 
 
 func _end_event(e: Dictionary) -> void:
+	if str(e["kind"]) == "rain":
+		rain_from_event = false
 	_event_zones = _event_zones.filter(func(z: Dictionary) -> bool: return str(z["kind"]) != str(e["kind"]))
 	event_ended.emit(e)
 
@@ -309,6 +315,7 @@ func end_events() -> void:
 	if events != null and not events.active().is_empty():
 		event_ended.emit(events.active())
 	events = null
+	rain_from_event = false
 	_event_zones.clear()
 
 
@@ -514,6 +521,15 @@ func _nearest_vehicle(kind: String, at: Vector2, vehicles: Array) -> Dictionary:
 		if d < best_d:
 			best_d = d
 			best = {"x": float(v["x"]), "z": float(v["z"]), "radius": VEHICLE_RADIUS}
+	if best.is_empty():
+		# None in the city yet (they appear as the player nears): lead to the nearest parking spot.
+		for spot in content.parking:
+			if str(spot["kind"]) != kind:
+				continue
+			var d := Vector2(float(spot["x"]), float(spot["z"])).distance_to(at)
+			if d < best_d:
+				best_d = d
+				best = {"x": float(spot["x"]), "z": float(spot["z"]), "radius": VEHICLE_RADIUS}
 	return best
 
 

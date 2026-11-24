@@ -205,6 +205,7 @@ func set_police_siren(level: float) -> void:
 
 
 func cue(name: String) -> void:
+	_counts["cue.%s" % name] = int(_counts.get("cue.%s" % name, 0)) + 1
 	_one_shot(_ui_pool if name in ["cash", "chime", "fanfare", "fail"] else _world_pool, "cue.%s" % name, 1.0, 1.0)
 
 
