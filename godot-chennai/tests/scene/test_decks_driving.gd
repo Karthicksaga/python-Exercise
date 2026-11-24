@@ -207,7 +207,10 @@ func _over_the_flyover(kind: StringName) -> bool:
 	assert_true(peak_y > top - 0.5, "rode up onto the deck (peak %.2f m, deck %.1f m)" % [peak_y, top])
 	assert_true(lowest_y > -0.5, "never sank through the ground (lowest %.2f m)" % lowest_y)
 	assert_true(worst_gap < 0.9, "stayed on the ramp and deck surface, never fell off it (worst %.2f m)" % worst_gap)
-	assert_true(worst_off < 6.0, "kept to the carriageway (worst %.1f m off the centre line)" % worst_off)
+	# The test's driver steers with a car's gain; a bike weaves wider but must stay on the deck
+	# (the Anna flyover's carriageway is about 15 m wide).
+	var lane_limit := 6.0 if kind == &"car" else 7.0
+	assert_true(worst_off < lane_limit, "kept to the carriageway (worst %.1f m off the centre line)" % worst_off)
 	assert_true(on_deck_frames > 60 and on_deck_min_speed > 12.0, "crossed the deck at speed (%d frames, slowest %.1f m/s)" % [on_deck_frames, on_deck_min_speed])
 	car.queue_free()
 	return _finish()
