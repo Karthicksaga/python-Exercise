@@ -359,3 +359,14 @@ Decisions G-50…G-59. Tests: `tests/unit/test_city_meshes.gd`, `test_city_layou
 - Seen only under the Compatibility renderer on llvmpipe; not on a phone or the Mobile renderer.
 - Physics interpolation off (G-59). Kerbs are not solid, so the player's step-up is not
   exercised by the city.
+
+### 24 Nov 2026, cast agent: CC0 locomotion (branch `agent/godot-cc0-anim`)
+- idle/walk/run now come from Quaternius' Universal Animation Library (Standard, CC0 1.0), not
+  Mixamo: all 70 people rebuilt, and `assets/animations/locomotion.glb` is written by
+  `tools/blender/characters.py --locomotion` (same clip names, MPFB skeleton) for the player's
+  run-time retarget. `sync_from_threejs.py` no longer copies the old file. G-100.
+- Download used: `https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip`
+  (opengameart.org is reachable from the cloud container; quaternius.com and itch.io are not).
+- New test `tests/unit/test_asset_licences.gd`: nothing under `assets/` may name Mixamo.
+- The run is a jog in the library's style (lower, deeper knees); compare renders in the report.
+

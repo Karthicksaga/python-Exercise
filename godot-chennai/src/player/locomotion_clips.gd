@@ -1,6 +1,6 @@
 class_name LocomotionClips
 extends RefCounted
-## The idle, walk and run clips (Mixamo, T-pose, `assets/animations/locomotion.glb`) and their
+## The idle, walk and run clips (CC0, `assets/animations/locomotion.glb`, decision G-100) and their
 ## retargeted copies per skeleton (decision G-61). Characters whose skeletons retarget the same
 ## way (same bone names, rest rotations and bone directions) share one result, as in the
 ## Three.js `clipCache`; retargeting runs on a worker thread (`BackgroundTask`).

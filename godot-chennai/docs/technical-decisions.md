@@ -557,8 +557,8 @@ follow the seat node each step; `exit_vehicle(feet, yaw)` puts the player back o
 `controls_enabled`; signals `jumped`, `landed`.
 
 ## G-61: Locomotion retargeted in Godot at load, on plain data
-The Mixamo clips (T-pose, `locomotion.glb`, only rotation tracks on a hierarchy of joint nodes)
-are retargeted to each MPFB character (A-pose Skeleton3D) by `Retarget.run`, a port of the
+The clips of `locomotion.glb` (a hierarchy of joint nodes; Mixamo and T-pose until G-100, now
+our CC0 clip rig on MPFB's A-pose skeleton) are retargeted to each MPFB character (A-pose Skeleton3D) by `Retarget.run`, a port of the
 Three.js `retarget.ts`: each bone's model-space rotation away from rest on the source, applied to
 the target's rest; limbs first turned to point the way the source's do; **hands aligned by their
 whole frame** (along the middle finger and across the knuckles) and each finger joint after the
@@ -651,8 +651,9 @@ visibility change. Cost: a far-only crowd still loads LOD0 (~0.3 MB of vertices 
 The Three.js version used separate `_lod1.glb` files; the manifest records mesh names instead.
 
 ### G-11: Clips are baked per person in Blender, not retargeted at run time
-idle, walk and run come from `chennai-open-world/assets/animations/locomotion.glb` (Mixamo, T-pose
-rest) and are retargeted onto each person's own MPFB A-pose skeleton in
+idle, walk and run came from the Three.js game's `locomotion.glb` (Mixamo, T-pose rest); since
+G-100 they come from a CC0 library (Rigify rest, any rest works: the source's own rest rotation
+is divided out). They are retargeted onto each person's own MPFB A-pose skeleton in
 `tools/blender/cast_animation.py`, then exported with the person. Method: spine, neck, head and
 legs take the source's world-space rotation away from its rest onto the target's own rest (both
 rest upright); shoulders, arms, hands and fingers are first aligned with a **full frame** (bone
@@ -725,6 +726,36 @@ driver or anyone who can be hit; teens likewise stay out of combat casting.
 52 bones, Godot names `mixamorig_<Bone>` (the importer turns `:` into `_`), identical names and
 hierarchy in all 70 files (tested). Rest pose MakeHuman A-pose, metres, soles at y = 0, facing
 glTF +Z. Clips from elsewhere must be retargeted to this rest (or baked by the Blender script).
+
+
+## Cast: open locomotion (G-100 …)
+
+### G-100: idle, walk and run are CC0 (Quaternius' Universal Animation Library), not Mixamo
+**Owner, 24 Nov 2026: the whole game must be open.** The Mixamo clips (Adobe's terms) are
+replaced everywhere by three clips of Quaternius' **Universal Animation Library, Standard**,
+CC0 1.0 (the pack's `License.txt`; OpenGameArt lists it as CC0, uploaded by its author):
+`Idle_Loop` → idle, `Walk_Loop` → walk, `Jog_Fwd_Loop` → run. sit and talk stay our own (CC0).
+- **The cast:** `cast_animation.py` reads the library's Godot GLB (Rigify `DEF-*` bones renamed
+  to our `mixamo` names, `UAL_BONES`), divides out its rest rotations, and keeps every earlier fix
+  (full hand frames, arms in, upright spine and level head, relaxed fingers, foot-only sole
+  planting, loops). Two new eases for this library: the idle's bent-knee "ready" stance is taken
+  75% back towards the rest pose (legs), and the idle's ~17° wrist flex half way back.
+- **The player:** `assets/animations/locomotion.glb` is no longer copied from the Three.js game
+  (removed from `sync_from_threejs.py`); `tools/blender/characters.py --locomotion` writes it: a
+  skin-less MPFB `mixamo` skeleton (an average adult man of the cast) carrying the same baked
+  clips under the same names, without the cast's arm turn-in (the player module settles arms
+  itself). `LocomotionClips`/`Retarget` read it unchanged.
+- **Not committed:** the library itself; rebuilding needs `universal_animation_librarystandard.zip`
+  from opengameart.org (hash in `assets/LICENSES.md`), its Godot GLB at `$UAL_GLB` or
+  `/opt/tools/ual/AnimationLibrary_Godot_Standard.glb`.
+- **Test:** `tests/unit/test_asset_licences.gd` fails if any licence row, manifest, text file or
+  glTF under `assets/` names Mixamo.
+- **Clip speed fixed on the way:** the Blender scene ran at its default 24 fps while keys were
+  placed one per 1/30 s, so every baked clip (before this change too) played 25% slow; the
+  scene is now set to 30 fps before baking.
+- **Quality:** the library is game mocap-style animation of good quality but a different style:
+  a jog rather than a run (deeper knee bend, the body lower), a livelier walk. See the report in
+  `docs/handoff.md` (Cast) for the comparison.
 
 ## G-70: A custom ray-cast vehicle on a Jolt `RigidBody3D`, not `VehicleBody3D`
 **Decision (23 Nov 2026, vehicles).** `RaycastVehicle` (`src/physics/raycast_vehicle.gd`) is a

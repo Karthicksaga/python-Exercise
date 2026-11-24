@@ -121,6 +121,9 @@ Not done / weak: see `handoff.md` "Data".
   shared skeleton, budgets, loops, soles on the ground in every clip and through gait blends
   (with `sole_plant.gd`), wrists, fingers, no vertex colours.
 - [x] Review renders (Compatibility renderer, xvfb) and board side-by-side sheets looked at.
+- [x] 24 Nov: idle/walk/run are CC0 (Quaternius' Universal Animation Library) for all 70 people
+  and for the player (`assets/animations/locomotion.glb` is our own clip rig now); no asset cites
+  Mixamo (tested), decision G-100.
 - [ ] Props (bags, helmet, baskets, stick, bicycle, cricket bat), the player model.
 - [ ] The game's use of them (pedestrians, drivers, crowds) is phase 3.
 

@@ -1,6 +1,6 @@
 class_name HumanFigure
 extends Node3D
-## A walking, running person drawn from a MakeHuman (MPFB) model with the retargeted Mixamo
+## A walking, running person drawn from a MakeHuman (MPFB) model with the retargeted CC0
 ## locomotion clips; port of the Three.js `HumanFigure` for the player (decisions G-61, G-62).
 ## The node sits at the figure's feet, facing -Z like every Node3D (the model is turned round).
 ##

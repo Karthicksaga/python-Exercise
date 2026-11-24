@@ -43,9 +43,9 @@ Clips (30 fps, all loops, the last frame equals the first):
 
 | Clip | Length | Source |
 |---|---|---|
-| `idle` | 2.5 s | Mixamo idle from `locomotion.glb`, retargeted, thighs 7° in |
-| `walk` | 0.97 s | Mixamo walk, retargeted (in place) |
-| `run` | 0.7 s | Mixamo run, retargeted (in place; soles planted, so no flight phase) |
+| `idle` | 2.5 s | `Idle_Loop` of Quaternius' Universal Animation Library (CC0), retargeted; legs and wrists eased towards rest (its stance is a bent-knee "ready" pose) |
+| `walk` | 1.33 s | `Walk_Loop` of the same library (CC0), retargeted (in place) |
+| `run` | 0.93 s | `Jog_Fwd_Loop` of the same library (CC0), retargeted (in place; soles planted, so no flight phase) |
 | `sit` | 4 s | authored: seated on a seat at knee height, hands towards the thighs, breathing |
 | `talk` | 5 s | authored: idle with right-hand beats, left hand, nods and a head turn |
 
@@ -215,6 +215,9 @@ school shirt, pinafore); small hard pieces (caps, hard hat, belt, ID card, sanda
 - Wrapped cloth gets a larger atlas tile (256 px of the 512 px atlas) for its border and motifs.
 
 ## Rebuilding
+0. The CC0 clips: `universal_animation_librarystandard.zip` from
+   `https://opengameart.org/content/universal-animation-library` (hash in `assets/LICENSES.md`);
+   put `Godot/AnimationLibrary_Godot_Standard.glb` at `/opt/tools/ual/` or set `UAL_GLB`.
 1. Blender 5.2 LTS and MPFB 2.0.18. The Blender extensions site was not reachable from the cloud
    container, so MPFB was built from its tagged source:
    `git clone --depth 1 --branch v2.0.18 https://github.com/makehumancommunity/mpfb2`, zip the
@@ -256,4 +259,5 @@ To change a person, edit `cast_people.py`; new garments go in the GARMENT BUILDE
   cricket bat, tiffin carrier). No glasses (MakeHuman has none under CC0 in these packs).
 - Sleeve hems are the cut edge of the MakeHuman shirt (slightly ragged up close).
 - The run is planted, so it has no flight phase.
-- idle/walk/run are Mixamo clips (Adobe terms; see `assets/LICENSES.md`).
+- The run is the library's jog: knees bend deeper and the body sits lower than the Mixamo run
+  the cast used before (G-100). Everything in the game is now CC0 or our own.

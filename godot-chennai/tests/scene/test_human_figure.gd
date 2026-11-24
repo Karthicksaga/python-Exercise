@@ -90,7 +90,7 @@ func test_wrists_and_arms_are_natural() -> bool:
 func test_wrists_bend_like_the_clips() -> bool:
 	if not figure.is_ready():
 		return false
-	# The source clips' own wrist bends (Mixamo rig): the retargeted hands bend about as much.
+	# The source clips' own wrist bends (the clip rig of locomotion.glb): the retargeted hands bend about as much.
 	var source := LocomotionClips.source()
 	var clips := LocomotionClips.clips()
 	var arm := {}

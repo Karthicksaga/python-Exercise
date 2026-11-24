@@ -30,7 +30,7 @@
       ],
       "note": "",
       "heightM": 1.678,
-      "seatHeightM": 0.402,
+      "seatHeightM": 0.445,
       "lods": [
         {
           "mesh": "Body",
@@ -51,7 +51,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -98,7 +98,7 @@
       ],
       "note": "",
       "heightM": 1.826,
-      "seatHeightM": 0.447,
+      "seatHeightM": 0.494,
       "lods": [
         {
           "mesh": "Body",
@@ -119,7 +119,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -165,7 +165,7 @@
       ],
       "note": "",
       "heightM": 1.786,
-      "seatHeightM": 0.451,
+      "seatHeightM": 0.497,
       "lods": [
         {
           "mesh": "Body",
@@ -186,7 +186,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -226,7 +226,7 @@
       ],
       "note": "",
       "heightM": 1.751,
-      "seatHeightM": 0.445,
+      "seatHeightM": 0.485,
       "lods": [
         {
           "mesh": "Body",
@@ -247,7 +247,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -287,7 +287,7 @@
       ],
       "note": "",
       "heightM": 1.748,
-      "seatHeightM": 0.446,
+      "seatHeightM": 0.486,
       "lods": [
         {
           "mesh": "Body",
@@ -308,7 +308,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -352,7 +352,7 @@
       ],
       "note": "",
       "heightM": 1.819,
-      "seatHeightM": 0.456,
+      "seatHeightM": 0.5,
       "lods": [
         {
           "mesh": "Body",
@@ -373,7 +373,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -413,7 +413,7 @@
       ],
       "note": "",
       "heightM": 1.779,
-      "seatHeightM": 0.463,
+      "seatHeightM": 0.507,
       "lods": [
         {
           "mesh": "Body",
@@ -434,7 +434,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -476,7 +476,7 @@
       ],
       "note": "",
       "heightM": 1.823,
-      "seatHeightM": 0.448,
+      "seatHeightM": 0.494,
       "lods": [
         {
           "mesh": "Body",
@@ -497,7 +497,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -544,7 +544,7 @@
       ],
       "note": "",
       "heightM": 1.711,
-      "seatHeightM": 0.453,
+      "seatHeightM": 0.488,
       "lods": [
         {
           "mesh": "Body",
@@ -565,7 +565,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/old_african_male",
         "skins/old_caucasian_male",
@@ -604,7 +604,7 @@
       ],
       "note": "",
       "heightM": 1.757,
-      "seatHeightM": 0.447,
+      "seatHeightM": 0.488,
       "lods": [
         {
           "mesh": "Body",
@@ -625,7 +625,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -665,7 +665,7 @@
       ],
       "note": "",
       "heightM": 1.516,
-      "seatHeightM": 0.344,
+      "seatHeightM": 0.379,
       "lods": [
         {
           "mesh": "Body",
@@ -686,7 +686,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -727,7 +727,7 @@
       ],
       "note": "",
       "heightM": 1.645,
-      "seatHeightM": 0.377,
+      "seatHeightM": 0.414,
       "lods": [
         {
           "mesh": "Body",
@@ -748,7 +748,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -784,7 +784,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.633,
-      "seatHeightM": 0.373,
+      "seatHeightM": 0.41,
       "lods": [
         {
           "mesh": "Body",
@@ -805,7 +805,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -839,7 +839,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.582,
-      "seatHeightM": 0.364,
+      "seatHeightM": 0.399,
       "lods": [
         {
           "mesh": "Body",
@@ -860,7 +860,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_female",
         "skins/middleage_caucasian_female",
@@ -894,7 +894,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.606,
-      "seatHeightM": 0.367,
+      "seatHeightM": 0.404,
       "lods": [
         {
           "mesh": "Body",
@@ -915,7 +915,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_female",
         "skins/middleage_caucasian_female",
@@ -955,7 +955,7 @@
       ],
       "note": "",
       "heightM": 1.626,
-      "seatHeightM": 0.379,
+      "seatHeightM": 0.416,
       "lods": [
         {
           "mesh": "Body",
@@ -976,7 +976,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -1015,7 +1015,7 @@
       ],
       "note": "",
       "heightM": 1.321,
-      "seatHeightM": 0.276,
+      "seatHeightM": 0.304,
       "lods": [
         {
           "mesh": "Body",
@@ -1036,7 +1036,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -1076,7 +1076,7 @@
       ],
       "note": "",
       "heightM": 1.533,
-      "seatHeightM": 0.356,
+      "seatHeightM": 0.391,
       "lods": [
         {
           "mesh": "Body",
@@ -1097,7 +1097,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/old_african_female",
         "skins/old_caucasian_female",
@@ -1134,7 +1134,7 @@
       ],
       "note": "",
       "heightM": 1.593,
-      "seatHeightM": 0.365,
+      "seatHeightM": 0.4,
       "lods": [
         {
           "mesh": "Body",
@@ -1155,7 +1155,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_female",
         "skins/middleage_caucasian_female",
@@ -1195,7 +1195,7 @@
       ],
       "note": "",
       "heightM": 1.63,
-      "seatHeightM": 0.372,
+      "seatHeightM": 0.408,
       "lods": [
         {
           "mesh": "Body",
@@ -1216,7 +1216,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -1249,7 +1249,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.67,
-      "seatHeightM": 0.405,
+      "seatHeightM": 0.447,
       "lods": [
         {
           "mesh": "Body",
@@ -1270,7 +1270,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -1306,7 +1306,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.311,
-      "seatHeightM": 0.257,
+      "seatHeightM": 0.289,
       "lods": [
         {
           "mesh": "Body",
@@ -1327,7 +1327,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -1362,7 +1362,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.525,
-      "seatHeightM": 0.347,
+      "seatHeightM": 0.385,
       "lods": [
         {
           "mesh": "Body",
@@ -1383,7 +1383,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -1419,7 +1419,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.765,
-      "seatHeightM": 0.445,
+      "seatHeightM": 0.487,
       "lods": [
         {
           "mesh": "Body",
@@ -1440,7 +1440,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -1474,7 +1474,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.771,
-      "seatHeightM": 0.441,
+      "seatHeightM": 0.485,
       "lods": [
         {
           "mesh": "Body",
@@ -1495,7 +1495,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -1529,7 +1529,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.769,
-      "seatHeightM": 0.448,
+      "seatHeightM": 0.49,
       "lods": [
         {
           "mesh": "Body",
@@ -1550,7 +1550,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -1584,7 +1584,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.759,
-      "seatHeightM": 0.444,
+      "seatHeightM": 0.485,
       "lods": [
         {
           "mesh": "Body",
@@ -1605,7 +1605,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -1638,7 +1638,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.744,
-      "seatHeightM": 0.449,
+      "seatHeightM": 0.488,
       "lods": [
         {
           "mesh": "Body",
@@ -1659,7 +1659,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -1693,7 +1693,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.775,
-      "seatHeightM": 0.464,
+      "seatHeightM": 0.507,
       "lods": [
         {
           "mesh": "Body",
@@ -1714,7 +1714,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -1749,7 +1749,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.766,
-      "seatHeightM": 0.449,
+      "seatHeightM": 0.491,
       "lods": [
         {
           "mesh": "Body",
@@ -1770,7 +1770,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -1804,7 +1804,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.816,
-      "seatHeightM": 0.454,
+      "seatHeightM": 0.499,
       "lods": [
         {
           "mesh": "Body",
@@ -1825,7 +1825,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -1858,7 +1858,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.81,
-      "seatHeightM": 0.458,
+      "seatHeightM": 0.502,
       "lods": [
         {
           "mesh": "Body",
@@ -1879,7 +1879,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -1914,7 +1914,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.765,
-      "seatHeightM": 0.451,
+      "seatHeightM": 0.491,
       "lods": [
         {
           "mesh": "Body",
@@ -1935,7 +1935,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -1975,7 +1975,7 @@
       ],
       "note": "",
       "heightM": 1.781,
-      "seatHeightM": 0.448,
+      "seatHeightM": 0.49,
       "lods": [
         {
           "mesh": "Body",
@@ -1996,7 +1996,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -2036,7 +2036,7 @@
       ],
       "note": "",
       "heightM": 1.737,
-      "seatHeightM": 0.454,
+      "seatHeightM": 0.492,
       "lods": [
         {
           "mesh": "Body",
@@ -2057,7 +2057,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/old_african_male",
         "skins/old_caucasian_male",
@@ -2091,7 +2091,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.697,
-      "seatHeightM": 0.453,
+      "seatHeightM": 0.488,
       "lods": [
         {
           "mesh": "Body",
@@ -2112,7 +2112,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/old_african_male",
         "skins/old_caucasian_male",
@@ -2145,7 +2145,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.558,
-      "seatHeightM": 0.354,
+      "seatHeightM": 0.394,
       "lods": [
         {
           "mesh": "Body",
@@ -2166,7 +2166,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -2204,7 +2204,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.752,
-      "seatHeightM": 0.453,
+      "seatHeightM": 0.492,
       "lods": [
         {
           "mesh": "Body",
@@ -2225,7 +2225,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -2264,7 +2264,7 @@
       ],
       "note": "",
       "heightM": 1.824,
-      "seatHeightM": 0.462,
+      "seatHeightM": 0.509,
       "lods": [
         {
           "mesh": "Body",
@@ -2285,7 +2285,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -2321,7 +2321,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.818,
-      "seatHeightM": 0.464,
+      "seatHeightM": 0.51,
       "lods": [
         {
           "mesh": "Body",
@@ -2342,7 +2342,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -2378,7 +2378,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.508,
-      "seatHeightM": 0.343,
+      "seatHeightM": 0.377,
       "lods": [
         {
           "mesh": "Body",
@@ -2399,7 +2399,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -2435,7 +2435,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.436,
-      "seatHeightM": 0.314,
+      "seatHeightM": 0.345,
       "lods": [
         {
           "mesh": "Body",
@@ -2456,7 +2456,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -2492,7 +2492,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.61,
-      "seatHeightM": 0.367,
+      "seatHeightM": 0.403,
       "lods": [
         {
           "mesh": "Body",
@@ -2513,7 +2513,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_female",
         "skins/middleage_caucasian_female",
@@ -2545,7 +2545,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.583,
-      "seatHeightM": 0.364,
+      "seatHeightM": 0.399,
       "lods": [
         {
           "mesh": "Body",
@@ -2566,7 +2566,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_female",
         "skins/middleage_caucasian_female",
@@ -2599,7 +2599,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.622,
-      "seatHeightM": 0.369,
+      "seatHeightM": 0.405,
       "lods": [
         {
           "mesh": "Body",
@@ -2620,7 +2620,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -2654,7 +2654,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.617,
-      "seatHeightM": 0.368,
+      "seatHeightM": 0.405,
       "lods": [
         {
           "mesh": "Body",
@@ -2675,7 +2675,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -2709,7 +2709,7 @@
       "alsoFigures": [],
       "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split (kept by the owner, 23 Nov 2026)",
       "heightM": 1.63,
-      "seatHeightM": 0.368,
+      "seatHeightM": 0.406,
       "lods": [
         {
           "mesh": "Body",
@@ -2730,7 +2730,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_female",
         "skins/middleage_caucasian_female",
@@ -2770,7 +2770,7 @@
       ],
       "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split (kept by the owner, 23 Nov 2026)",
       "heightM": 1.603,
-      "seatHeightM": 0.367,
+      "seatHeightM": 0.404,
       "lods": [
         {
           "mesh": "Body",
@@ -2791,7 +2791,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_female",
         "skins/middleage_caucasian_female",
@@ -2826,7 +2826,7 @@
       "alsoFigures": [],
       "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split (kept by the owner, 23 Nov 2026)",
       "heightM": 1.631,
-      "seatHeightM": 0.372,
+      "seatHeightM": 0.409,
       "lods": [
         {
           "mesh": "Body",
@@ -2847,7 +2847,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -2887,7 +2887,7 @@
       ],
       "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split (kept by the owner, 23 Nov 2026)",
       "heightM": 1.59,
-      "seatHeightM": 0.365,
+      "seatHeightM": 0.4,
       "lods": [
         {
           "mesh": "Body",
@@ -2908,7 +2908,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_female",
         "skins/middleage_caucasian_female",
@@ -2942,7 +2942,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.645,
-      "seatHeightM": 0.376,
+      "seatHeightM": 0.413,
       "lods": [
         {
           "mesh": "Body",
@@ -2963,7 +2963,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -2998,7 +2998,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.585,
-      "seatHeightM": 0.365,
+      "seatHeightM": 0.401,
       "lods": [
         {
           "mesh": "Body",
@@ -3019,7 +3019,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_female",
         "skins/middleage_caucasian_female",
@@ -3053,7 +3053,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.622,
-      "seatHeightM": 0.369,
+      "seatHeightM": 0.406,
       "lods": [
         {
           "mesh": "Body",
@@ -3074,7 +3074,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -3108,7 +3108,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.551,
-      "seatHeightM": 0.359,
+      "seatHeightM": 0.395,
       "lods": [
         {
           "mesh": "Body",
@@ -3129,7 +3129,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/old_african_female",
         "skins/old_caucasian_female",
@@ -3162,7 +3162,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.534,
-      "seatHeightM": 0.357,
+      "seatHeightM": 0.392,
       "lods": [
         {
           "mesh": "Body",
@@ -3183,7 +3183,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/old_african_female",
         "skins/old_caucasian_female",
@@ -3214,7 +3214,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.168,
-      "seatHeightM": 0.233,
+      "seatHeightM": 0.257,
       "lods": [
         {
           "mesh": "Body",
@@ -3235,7 +3235,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -3268,7 +3268,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.384,
-      "seatHeightM": 0.295,
+      "seatHeightM": 0.325,
       "lods": [
         {
           "mesh": "Body",
@@ -3289,7 +3289,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -3322,7 +3322,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.321,
-      "seatHeightM": 0.282,
+      "seatHeightM": 0.309,
       "lods": [
         {
           "mesh": "Body",
@@ -3343,7 +3343,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_female",
         "skins/young_caucasian_female",
@@ -3377,7 +3377,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.602,
-      "seatHeightM": 0.366,
+      "seatHeightM": 0.403,
       "lods": [
         {
           "mesh": "Body",
@@ -3398,7 +3398,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_female",
         "skins/middleage_caucasian_female",
@@ -3433,7 +3433,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.591,
-      "seatHeightM": 0.366,
+      "seatHeightM": 0.402,
       "lods": [
         {
           "mesh": "Body",
@@ -3454,7 +3454,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_female",
         "skins/middleage_caucasian_female",
@@ -3487,7 +3487,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.771,
-      "seatHeightM": 0.444,
+      "seatHeightM": 0.486,
       "lods": [
         {
           "mesh": "Body",
@@ -3508,7 +3508,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -3542,7 +3542,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.767,
-      "seatHeightM": 0.448,
+      "seatHeightM": 0.488,
       "lods": [
         {
           "mesh": "Body",
@@ -3563,7 +3563,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -3597,7 +3597,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.768,
-      "seatHeightM": 0.442,
+      "seatHeightM": 0.485,
       "lods": [
         {
           "mesh": "Body",
@@ -3618,7 +3618,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -3653,7 +3653,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.775,
-      "seatHeightM": 0.466,
+      "seatHeightM": 0.509,
       "lods": [
         {
           "mesh": "Body",
@@ -3674,7 +3674,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
@@ -3711,7 +3711,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.785,
-      "seatHeightM": 0.439,
+      "seatHeightM": 0.484,
       "lods": [
         {
           "mesh": "Body",
@@ -3732,7 +3732,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -3768,7 +3768,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.795,
-      "seatHeightM": 0.442,
+      "seatHeightM": 0.488,
       "lods": [
         {
           "mesh": "Body",
@@ -3789,7 +3789,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -3824,7 +3824,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.819,
-      "seatHeightM": 0.444,
+      "seatHeightM": 0.49,
       "lods": [
         {
           "mesh": "Body",
@@ -3845,7 +3845,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -3880,7 +3880,7 @@
       "alsoFigures": [],
       "note": "a child: only as a passenger with an adult or in a family group, never on a street or anywhere he can be hurt",
       "heightM": 1.244,
-      "seatHeightM": 0.247,
+      "seatHeightM": 0.277,
       "lods": [
         {
           "mesh": "Body",
@@ -3901,7 +3901,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -3936,7 +3936,7 @@
       "alsoFigures": [],
       "note": "a child: role `play` means the game may show him playing cricket only inside a safe play area (a park, a beach, a school ground) with no traffic, vehicles, police or fights; otherwise only with his family",
       "heightM": 1.306,
-      "seatHeightM": 0.268,
+      "seatHeightM": 0.299,
       "lods": [
         {
           "mesh": "Body",
@@ -3957,7 +3957,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",
@@ -3991,7 +3991,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.791,
-      "seatHeightM": 0.454,
+      "seatHeightM": 0.5,
       "lods": [
         {
           "mesh": "Body",
@@ -4012,7 +4012,7 @@
         "sit",
         "talk"
       ],
-      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; idle/walk/run retargeted from Quaternius' Universal Animation Library (CC0 1.0), sit/talk original (CC0); see assets/LICENSES.md",
       "assets": [
         "skins/young_african_male",
         "skins/young_caucasian_male",

@@ -42,6 +42,12 @@ NECK_LEVEL = 0.7
 # fingers in a tight curl (claws on MakeHuman hands).
 FINGER_CURL = {"idle": (10, 14, 9), "talk": (8, 12, 8), "walk": (12, 16, 10), "run": (22, 34, 22), "sit": (8, 12, 8)}
 FINGERS = ("Index", "Middle", "Ring", "Pinky")
+# The CC0 idle holds the wrists flexed ~17°: standing hands are turned half way back to the
+# forearm's line.
+WRIST_TO_REST = {"idle": 0.5}
+# 1 for the cast; the player's clip rig (assets/animations/locomotion.glb) sets 0, because the
+# player module settles the arms itself at run time (HumanFigure.ARM_SETTLE).
+ARM_IN_SCALE = 1.0
 P = "mixamorig:"
 
 # glTF (x, y, z) -> Blender (x, -z, y)
@@ -75,8 +81,26 @@ def second_axis_kind(name):
 # ----------------------------------------------------------------------------------------------
 # Source clips (locomotion.glb)
 # ----------------------------------------------------------------------------------------------
+# Quaternius Universal Animation Library (CC0): Rigify deform bones -> our mixamo names.
+UAL_BONES = {"DEF-hips": "Hips", "DEF-spine.001": "Spine", "DEF-spine.002": "Spine1", "DEF-spine.003": "Spine2",
+             "DEF-neck": "Neck", "DEF-head": "Head"}
+for _s, _x in (("Left", "L"), ("Right", "R")):
+    UAL_BONES.update({f"DEF-shoulder.{_x}": f"{_s}Shoulder", f"DEF-upper_arm.{_x}": f"{_s}Arm", f"DEF-forearm.{_x}": f"{_s}ForeArm",
+                      f"DEF-hand.{_x}": f"{_s}Hand", f"DEF-thigh.{_x}": f"{_s}UpLeg", f"DEF-shin.{_x}": f"{_s}Leg",
+                      f"DEF-foot.{_x}": f"{_s}Foot", f"DEF-toe.{_x}": f"{_s}ToeBase"})
+    for _f, _g in (("Index", "index"), ("Middle", "middle"), ("Ring", "ring"), ("Pinky", "pinky")):
+        for _k in (1, 2, 3):
+            UAL_BONES[f"DEF-f_{_g}.0{_k}.{_x}"] = f"{_s}Hand{_f}{_k}"
+    for _k in (1, 2, 3):
+        UAL_BONES[f"DEF-thumb.0{_k}.{_x}"] = f"{_s}HandThumb{_k}"
+UAL_CLIPS = {"idle": "Idle_Loop", "walk": "Walk_Loop", "run": "Jog_Fwd_Loop"}
+
+
 class SourceClips:
-    def __init__(self, path):
+    """Clips from a glTF file whose bones are plain nodes. `bones` renames source bones to our
+    mixamo names (default: strip `mixamorig:`); `clips` maps our clip names to the file's."""
+
+    def __init__(self, path, bones=None, clips=None):
         data = open(path, "rb").read()
         n = struct.unpack("<I", data[12:16])[0]
         self.gltf = json.loads(data[20:20 + n])
@@ -84,7 +108,8 @@ class SourceClips:
         blen = struct.unpack("<I", data[off:off + 4])[0]
         self.bin = data[off + 8:off + 8 + blen]
         nodes = self.gltf["nodes"]
-        self.names = [nd.get("name", "").replace(P, "") for nd in nodes]
+        bones = bones or {}
+        self.names = [bones.get(nd.get("name", ""), nd.get("name", "").replace(P, "")) for nd in nodes]
         self.parent = [-1] * len(nodes)
         for i, nd in enumerate(nodes):
             for ch in nd.get("children", []):
@@ -93,7 +118,10 @@ class SourceClips:
         self.rest_t = [Vector(nd.get("translation", (0, 0, 0))) for nd in nodes]
         self.rest_r = [Quaternion((nd["rotation"][3], *nd["rotation"][:3])) if "rotation" in nd else Quaternion() for nd in nodes]
         self.rest_s = [Vector(nd.get("scale", (1, 1, 1))) for nd in nodes]
-        self.clips = {a["name"]: a for a in self.gltf["animations"]}
+        by_name = {a["name"]: a for a in self.gltf["animations"]}
+        self.clips = {ours: by_name[theirs] for ours, theirs in (clips or {k: k for k in by_name}).items()}
+        # Rest-pose world rotations: identity for every Mixamo joint, not for Rigify bones.
+        self.rest_rot = self.world()[0]
 
     def accessor(self, i):
         acc = self.gltf["accessors"][i]
@@ -366,7 +394,11 @@ def solve_frame(tgt, sampler, local, extra_hips=Vector((0, 0, 0))):
 # ----------------------------------------------------------------------------------------------
 # The Mixamo idle stands with the thighs ~9 degrees out, on top of MakeHuman's own slightly open
 # rest: legs looked splayed. Standing clips bring the thighs in (the feet turned back flat).
-LEGS_IN_DEG = {"idle": 7.0}
+LEGS_IN_DEG = {"idle": 4.0}
+# The CC0 idle stands in a game "ready" stance (knees bent 21-27°, thighs 23° off vertical): most
+# of the legs' motion is taken back towards the rest pose so people stand upright.
+LEGS_TO_REST = {"idle": 0.75}
+LEG_BONES = {f"{s}{b}" for s in ("Left", "Right") for b in ("UpLeg", "Leg", "Foot", "ToeBase")}
 
 
 def retarget_pose(src, tgt, align, clip, t):
@@ -374,7 +406,10 @@ def retarget_pose(src, tgt, align, clip, t):
     world = {}
     for nm in tgt.order:
         if nm in align and nm in srot:
-            world[nm] = srot[nm] @ align[nm] @ tgt.rest_rot[nm]
+            delta = srot[nm] @ src.rest_rot[nm].transposed()
+            if nm in LEG_BONES and LEGS_TO_REST.get(clip):
+                delta = Quaternion().slerp(delta.to_quaternion(), 1 - LEGS_TO_REST[clip]).to_matrix()
+            world[nm] = delta @ align[nm] @ tgt.rest_rot[nm]
         else:
             p = tgt.parent[nm]
             rel = tgt.rest_rot[p].transposed() @ tgt.rest_rot[nm] if p else tgt.rest_rot[nm]
@@ -382,10 +417,15 @@ def retarget_pose(src, tgt, align, clip, t):
     local = locals_from_world(tgt, world)
     straighten(tgt, local, SPINE_UPRIGHT.get(clip, 0.7))
     world = world_from_locals(tgt, local)
-    arm_in = ARM_IN_BY_CLIP.get(clip, ARM_IN_DEG)
+    arm_in = ARM_IN_BY_CLIP.get(clip, ARM_IN_DEG) * ARM_IN_SCALE
     for side, sign in (("Left", 1), ("Right", -1)):
         turn_subtree(tgt, local, world, side + "Arm", Vector((0, 1, 0)), sign * arm_in)
         world = world_from_locals(tgt, local)
+    if WRIST_TO_REST.get(clip):
+        for side in ("Left", "Right"):
+            nm = side + "Hand"
+            rest = (tgt.rest_rot[tgt.parent[nm]].transposed() @ tgt.rest_rot[nm]).to_quaternion()
+            local[nm] = local[nm].to_quaternion().slerp(rest, WRIST_TO_REST[clip]).to_matrix()
     relax_fingers(tgt, local, FINGER_CURL.get(clip, FINGER_CURL["idle"]))
     legs_in = LEGS_IN_DEG.get(clip, 0.0)
     if legs_in:
@@ -497,7 +537,7 @@ def hand_on_thigh(tgt, local, side, sign):
     # The hand lies along the thigh, fingers towards the knee.
     mats = pose_matrices(tgt, local, Vector((0, 0, 0)))
     wrist = mats[side + "Hand"].translation
-    aim_bone(tgt, local, side + "Hand", side + "HandMiddle1", wrist + (knee - hip).normalized() + Vector((0, 0, -0.25)))
+    aim_bone(tgt, local, side + "Hand", side + "HandMiddle1", wrist + (knee - hip).normalized() + Vector((0, 0, -0.15)))
 
 
 def frames_for(duration):
@@ -614,6 +654,10 @@ def bake_to_rig(rig, tgt, clips):
     """One action per clip, pushed to an NLA track of the same name (the glTF exporter writes one
     animation per track)."""
     import bpy
+    # Keys are one per 1/FPS s: the scene must run at FPS too (Blender's default is 24 fps, which
+    # had stretched every clip by a quarter until 24 Nov 2026).
+    bpy.context.scene.render.fps = FPS
+    bpy.context.scene.render.fps_base = 1.0
     rig.animation_data_create()
     for pb in rig.pose.bones:
         pb.rotation_mode = "QUATERNION"
