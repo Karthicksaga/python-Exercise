@@ -1,0 +1,259 @@
+{
+ "format": 1,
+ "id": "anna-nagar-tower",
+ "kind": "tower",
+ "names": {
+  "en": "Anna Nagar Tower",
+  "ta": "அண்ணா நகர் கோபுரம்",
+  "en_source": "OSM node 295552094 name:en",
+  "ta_source": "OSM node 295552094 name"
+ },
+ "style": "1960s concrete observation tower: a slender shaft with stacked circular viewing levels, a canopy and a finial, on a stepped round plinth",
+ "height": {
+  "value": 41.0,
+  "osm_tag": null,
+  "of": "the tower to its finial",
+  "source": "https://en.wikipedia.org/wiki/Anna_Nagar_Tower_Park",
+  "alternatives": [
+   {
+    "value": 41.1,
+    "source": "https://www.thenewsminute.com/article/chennai-s-iconic-anna-nagar-tower-reopens-public-after-12-years-174860",
+    "note": "135 ft, 12 floors"
+   },
+   {
+    "value": 42.0,
+    "source": "https://www.dtnext.in/city/2023/03/14/anna-nagar-tower-park-to-reopen-for-public-all-you-need-to-know",
+    "note": "138 ft"
+   }
+  ],
+  "chosen_because": "133-138 ft in three sources; 41 m is the middle and the value the game already used."
+ },
+ "osm": {
+  "main": "tower",
+  "exclude": [
+   "tower"
+  ],
+  "parts": {
+   "tower": {
+    "osm": "way/651861526",
+    "tags": {
+     "man_made": "tower",
+     "start_date": "21/01/1968"
+    },
+    "footprint": [
+     [
+      387.69,
+      -162.39
+     ],
+     [
+      393.3,
+      -166.44
+     ],
+     [
+      399.94,
+      -168.4
+     ],
+     [
+      406.58,
+      -168.13
+     ],
+     [
+      412.78,
+      -165.76
+     ],
+     [
+      417.91,
+      -161.53
+     ],
+     [
+      421.43,
+      -155.9
+     ],
+     [
+      422.97,
+      -149.44
+     ],
+     [
+      422.39,
+      -142.82
+     ],
+     [
+      419.73,
+      -136.73
+     ],
+     [
+      415.26,
+      -131.8
+     ],
+     [
+      409.47,
+      -128.55
+     ],
+     [
+      402.66,
+      -127.31
+     ],
+     [
+      395.82,
+      -128.39
+     ],
+     [
+      389.72,
+      -131.65
+     ],
+     [
+      385.06,
+      -136.77
+     ],
+     [
+      382.35,
+      -143.13
+     ],
+     [
+      381.88,
+      -150.04
+     ],
+     [
+      383.73,
+      -156.71
+     ]
+    ],
+    "centroid": [
+     402.41,
+     -147.93
+    ],
+    "area": 1312.4,
+    "rect": {
+     "yaw_deg": 13.42,
+     "long": 40.97,
+     "short": 40.97,
+     "corners": [
+      [
+       387.1,
+       -123.22
+      ],
+      [
+       377.6,
+       -163.07
+      ],
+      [
+       417.45,
+       -172.58
+      ],
+      [
+       426.96,
+       -132.72
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "name_node": {
+    "osm": "node/295552094",
+    "tags": {
+     "name": "அண்ணா நகர் கோபுரம்",
+     "name:en": "Anna Nagar Tower",
+     "tourism": "viewpoint"
+    },
+    "centroid": [
+     399.63,
+     -145.07
+    ],
+    "role": "info"
+   }
+  },
+  "wikidata": "Q4767371",
+  "wikipedia": "en:Anna Nagar Tower Park",
+  "data_date": "2026-11-23T00:28:57Z",
+  "licence": "ODbL 1.0, © OpenStreetMap contributors"
+ },
+ "origin": [
+  402.41,
+  -147.93
+ ],
+ "yaw_deg": 13.42,
+ "recipe": {
+  "kit": "tower",
+  "params": {
+   "part": "tower",
+   "levels": 12,
+   "core_radius": 9.5
+  }
+ },
+ "colours": {
+  "plinth": "#d9d0bf",
+  "step": "#cfc5b2",
+  "cream": "#f0e7d2",
+  "white": "#f8f5ec",
+  "accent": "#a9654f",
+  "opening": "#3b3a38",
+  "rail": "#7d7a72"
+ },
+ "materials": [
+  {
+   "name": "painted concrete",
+   "where": "shaft, levels, canopy"
+  },
+  {
+   "name": "steel railings",
+   "where": "viewing levels"
+  }
+ ],
+ "facts": [
+  {
+   "en": "Built for the 1968 World Trade Fair; the park is officially Dr Visvesvaraya Tower Park.",
+   "source": "https://en.wikipedia.org/wiki/Anna_Nagar_Tower_Park"
+  },
+  {
+   "en": "About 135 ft tall with 12 floors, a spiral ramp and a central lift.",
+   "source": "https://www.thenewsminute.com/article/chennai-s-iconic-anna-nagar-tower-reopens-public-after-12-years-174860"
+  },
+  {
+   "en": "Closed in 2011 and reopened on 21 March 2023 after safety work.",
+   "source": "https://www.thenewsminute.com/article/chennai-s-iconic-anna-nagar-tower-reopens-public-after-12-years-174860"
+  }
+ ],
+ "references": [
+  {
+   "title": "File:Anna Nagar Tower.jpg",
+   "author": "Hari Kumar Kasa",
+   "licence": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Anna_Nagar_Tower.jpg",
+   "use": "modelling reference; public domain"
+  },
+  {
+   "title": "File:Annanagar-Tower-Near-View.jpg",
+   "author": "Destination8infinity",
+   "licence": "CC BY-SA 4.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Annanagar-Tower-Near-View.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:AnnaNagarTowerPark Tower 20Jan2013.jpg",
+   "author": "Rasnaboy",
+   "licence": "CC BY-SA 3.0",
+   "url": "https://commons.wikimedia.org/wiki/File:AnnaNagarTowerPark_Tower_20Jan2013.jpg",
+   "use": "modelling reference (proportions, colours)"
+  }
+ ],
+ "budget": {
+  "lod0_min": 5000,
+  "lod0_max": 15000,
+  "lod1_max": 6000,
+  "lod2_max": 2000
+ },
+ "lod": {
+  "lod0_end": 160.0,
+  "lod1_end": 600.0,
+  "lod2_end": 4000.0
+ },
+ "collision": {
+  "plan": "Jolt boxes approximating the plinth steps, the drum and the shaft with its levels.",
+  "min_boxes": 3
+ },
+ "estimated": [
+  "level count (12, from the press) and spacing",
+  "all radii except the plinth (OSM way 651861526)",
+  "colours"
+ ]
+}

@@ -1,0 +1,549 @@
+{
+ "format": 1,
+ "id": "chennai-central",
+ "kind": "station",
+ "names": {
+  "en": "Chennai Central",
+  "ta": "சென்னை சென்ட்ரல்",
+  "official_en": "Puratchi Thalaivar Dr. M.G. Ramachandran Central",
+  "en_source": "OSM way 217845073 name; OSM node 2481969291 name and alt_name",
+  "ta_source": "The station's own roof sign (reference photo) and OSM way 217845073 name:ta, which lacks the final pulli (சென்ட்ரல); OSM node 2481969291 name:ta gives the official name"
+ },
+ "style": "Gothic Revival and Romanesque: red-painted brick with white bands, an arcaded upper floor, end pavilions with pale pyramidal roofs, an off-centre clock tower",
+ "height": {
+  "value": 41.5,
+  "osm_tag": null,
+  "of": "the clock tower",
+  "source": "https://www.mintageworld.com/media/detail/5615-railway-stations-the-heritage-of-india-part-II/",
+  "alternatives": [
+   {
+    "value": 41.1,
+    "source": "https://structurae.net/fr/ouvrages/chennai-central",
+    "note": "135 ft"
+   }
+  ],
+  "chosen_because": "136 ft (41.5 m) is the figure most sources give; 135 ft is within 1 %."
+ },
+ "osm": {
+  "main": "frontage",
+  "exclude": [
+   "frontage"
+  ],
+  "parts": {
+   "frontage": {
+    "osm": "way/214739119",
+    "tags": {
+     "building": "roof",
+     "layer": "1"
+    },
+    "footprint": [
+     [
+      7046.38,
+      304.55
+     ],
+     [
+      7059.33,
+      302.51
+     ],
+     [
+      7058.6,
+      297.79
+     ],
+     [
+      7057.83,
+      292.74
+     ],
+     [
+      7065.22,
+      291.55
+     ],
+     [
+      7066.45,
+      298.93
+     ],
+     [
+      7096.77,
+      293.99
+     ],
+     [
+      7096.99,
+      295.23
+     ],
+     [
+      7103.17,
+      297.14
+     ],
+     [
+      7104.68,
+      293.92
+     ],
+     [
+      7104.48,
+      292.73
+     ],
+     [
+      7136.41,
+      287.53
+     ],
+     [
+      7137.41,
+      293.84
+     ],
+     [
+      7025.7,
+      312.42
+     ],
+     [
+      7025.08,
+      307.91
+     ]
+    ],
+    "centroid": [
+     7082.8,
+     299.33
+    ],
+    "area": 699.9,
+    "rect": {
+     "yaw_deg": 9.44,
+     "long": 113.3,
+     "short": 14.14,
+     "corners": [
+      [
+       7023.38,
+       298.47
+      ],
+      [
+       7135.14,
+       279.88
+      ],
+      [
+       7137.46,
+       293.83
+      ],
+      [
+       7025.7,
+       312.42
+      ]
+     ]
+    },
+    "role": "model_rect"
+   },
+   "station_area": {
+    "osm": "way/217845073",
+    "tags": {
+     "name": "Chennai Central",
+     "name:ta": "சென்னை சென்ட்ரல",
+     "alt_name": "Chennai Moore Market",
+     "railway": "station"
+    },
+    "footprint": [
+     [
+      7152.27,
+      282.34
+     ],
+     [
+      7155.28,
+      308.48
+     ],
+     [
+      7149.86,
+      306.42
+     ],
+     [
+      7123.08,
+      310.95
+     ],
+     [
+      7062.27,
+      321.28
+     ],
+     [
+      7049.75,
+      323.48
+     ],
+     [
+      7048.54,
+      350.43
+     ],
+     [
+      7033.33,
+      350.98
+     ],
+     [
+      7005.55,
+      354.33
+     ],
+     [
+      6852.1,
+      380.58
+     ],
+     [
+      6825.7,
+      239.46
+     ],
+     [
+      6797.1,
+      86.63
+     ],
+     [
+      6885.86,
+      80.59
+     ],
+     [
+      6862.34,
+      -61.57
+     ],
+     [
+      6853.37,
+      -154.35
+     ],
+     [
+      6837.72,
+      -308.37
+     ],
+     [
+      6882.87,
+      -318.05
+     ],
+     [
+      6911.49,
+      -190.51
+     ],
+     [
+      6936.86,
+      -83.2
+     ],
+     [
+      6960.81,
+      71.61
+     ],
+     [
+      6973.87,
+      128.88
+     ],
+     [
+      6984.32,
+      154.78
+     ],
+     [
+      6988.46,
+      169.58
+     ],
+     [
+      6992.92,
+      206.03
+     ],
+     [
+      6999.98,
+      205.49
+     ],
+     [
+      7006.32,
+      204.09
+     ],
+     [
+      7000.14,
+      157.69
+     ],
+     [
+      6984.87,
+      70.12
+     ],
+     [
+      6939.28,
+      -229.7
+     ],
+     [
+      6936.31,
+      -333.16
+     ],
+     [
+      6935.07,
+      -497.46
+     ],
+     [
+      6930.01,
+      -535.38
+     ],
+     [
+      6920.94,
+      -569.54
+     ],
+     [
+      6915.45,
+      -623.46
+     ],
+     [
+      6914.14,
+      -654.63
+     ],
+     [
+      6916.93,
+      -675.94
+     ],
+     [
+      6918.53,
+      -682.88
+     ],
+     [
+      6921.34,
+      -691.46
+     ],
+     [
+      6941.99,
+      -735.61
+     ],
+     [
+      6945.47,
+      -728.23
+     ],
+     [
+      6964.51,
+      -685.97
+     ],
+     [
+      6992.89,
+      -630.24
+     ],
+     [
+      7011.71,
+      -586.01
+     ],
+     [
+      7025.87,
+      -539.34
+     ],
+     [
+      7040.95,
+      -463.88
+     ],
+     [
+      7055.81,
+      -368.37
+     ],
+     [
+      7057.37,
+      -358.35
+     ],
+     [
+      7068.34,
+      -256.02
+     ],
+     [
+      7084.24,
+      -138.28
+     ],
+     [
+      7082.02,
+      -137.88
+     ],
+     [
+      7112.15,
+      61.89
+     ],
+     [
+      7122.19,
+      60.11
+     ]
+    ],
+    "centroid": [
+     6977.11,
+     -45.57
+    ],
+    "area": 199002.7,
+    "rect": {
+     "yaw_deg": 98.81,
+     "long": 1089.55,
+     "short": 325.32,
+     "corners": [
+      [
+       6842.9,
+       382.28
+      ],
+      [
+       6676.11,
+       -694.43
+      ],
+      [
+       6997.6,
+       -744.22
+      ],
+      [
+       7164.38,
+       332.49
+      ]
+     ]
+    },
+    "role": "info"
+   }
+  },
+  "wikidata": "Q257382",
+  "wikipedia": "en:Chennai Central railway station",
+  "data_date": "2026-11-23T00:28:57Z",
+  "licence": "ODbL 1.0, © OpenStreetMap contributors"
+ },
+ "origin": [
+  7082.8,
+  299.33
+ ],
+ "yaw_deg": 9.44,
+ "recipe": {
+  "kit": "station",
+  "params": {
+   "part": "frontage",
+   "front": "south",
+   "storeys": 2,
+   "storey_height": 6.6,
+   "arcade_floor": 1,
+   "bay": 3.4,
+   "roof_pitch": 0.12,
+   "style": "romanesque",
+   "pavilions": [
+    {
+     "at": -0.94,
+     "size": 9.0,
+     "eaves": 19.0,
+     "cap": 7.0,
+     "cap_style": "pyramid",
+     "window": "big_arch"
+    },
+    {
+     "at": 0.94,
+     "size": 9.0,
+     "eaves": 19.0,
+     "cap": 7.0,
+     "cap_style": "pyramid",
+     "window": "big_arch"
+    }
+   ],
+   "towers": [
+    {
+     "at": 0.39,
+     "size": 8.6,
+     "eaves": 34.0,
+     "cap": 6.0,
+     "cap_style": "pyramid",
+     "clock": {
+      "z": 31.2,
+      "diameter": 2.6
+     },
+     "belfry": true,
+     "balcony": true,
+     "finial": 1.5
+    }
+   ],
+   "signs": true
+  }
+ },
+ "colours": {
+  "brick": "#a8342b",
+  "band": "#f2eee4",
+  "opening": "#2c2420",
+  "roof": "#e6e2d9",
+  "cap": "#e2ded6",
+  "cap_shade": "#c9c6c0",
+  "clock": "#f6f3ea",
+  "hands": "#202020",
+  "iron": "#5d5f61",
+  "sign": "#f3f0e6",
+  "sign_text": "#1f2a44"
+ },
+ "materials": [
+  {
+   "name": "brick, painted red, with white plaster bands",
+   "where": "walls"
+  },
+  {
+   "name": "white plaster",
+   "where": "arcade columns, balustrades, cornices"
+  },
+  {
+   "name": "pale sheet roofing",
+   "where": "pyramidal caps and the low roof"
+  }
+ ],
+ "facts": [
+  {
+   "en": "The station opened in 1873; the original building was designed by George Harding.",
+   "source": "https://en.wikipedia.org/wiki/Chennai_Central_railway_station"
+  },
+  {
+   "en": "Robert Chisholm remodelled it around 1900 and added the central clock tower, 136 ft (41.5 m) tall.",
+   "source": "https://www.mintageworld.com/media/detail/5615-railway-stations-the-heritage-of-india-part-II/"
+  },
+  {
+   "en": "Renamed Puratchi Thalaivar Dr. M.G. Ramachandran Central in 2019; the old name was Madras Central.",
+   "source": "https://www.openstreetmap.org/node/2481969291"
+  },
+  {
+   "en": "OpenStreetMap does not map the heritage building's outline; the model stands on the station's frontage outline (way 214739119), the only one along the road front.",
+   "source": "https://www.openstreetmap.org/way/214739119"
+  }
+ ],
+ "references": [
+  {
+   "title": "File:Chennai train station.jpg",
+   "author": "Arian Zwegers (derivative work: MrPanyGoff)",
+   "licence": "CC BY 2.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Chennai_train_station.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Chennai Central Puratchi Thalaivar Dr. M.G. Ramachandran Central Railway Station.jpg",
+   "author": "Thamizhpparithi Maari",
+   "licence": "CC BY-SA 4.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Chennai_Central_Puratchi_Thalaivar_Dr._M.G._Ramachandran_Central_Railway_Station.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Chennai Centrail Railway Station.jpg",
+   "author": "Ganesh Mohan T",
+   "licence": "CC BY-SA 4.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Chennai_Centrail_Railway_Station.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Central Railway Station, Madras 1880.jpg",
+   "author": "Nicholas and Company",
+   "licence": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Central_Railway_Station,_Madras_1880.jpg",
+   "use": "modelling reference (the building before the clock tower); public domain"
+  },
+  {
+   "title": "File:Chennai central railway station night view.jpg",
+   "author": "Sandhiya Rangasami",
+   "licence": "CC BY 4.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Chennai_central_railway_station_night_view.jpg",
+   "use": "modelling reference (proportions, colours)"
+  }
+ ],
+ "signs": [
+  {
+   "ta": "சென்னை சென்ட்ரல்",
+   "en": "CHENNAI CENTRAL",
+   "at": -0.45,
+   "height": 1.6
+  }
+ ],
+ "budget": {
+  "lod0_min": 5000,
+  "lod0_max": 15000,
+  "lod1_max": 6000,
+  "lod2_max": 2000
+ },
+ "lod": {
+  "lod0_end": 160.0,
+  "lod1_end": 600.0,
+  "lod2_end": 4000.0
+ },
+ "collision": {
+  "plan": "Jolt boxes: the building block on the frontage outline, the pavilions and the clock tower.",
+  "min_boxes": 3
+ },
+ "estimated": [
+  "the building's length and depth (OSM has only the frontage outline)",
+  "storey heights",
+  "pavilion heights",
+  "the clock tower's position, about two thirds along the front from the west as in the reference photo"
+ ]
+}

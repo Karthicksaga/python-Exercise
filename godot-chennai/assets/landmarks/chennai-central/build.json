@@ -1,0 +1,14 @@
+{
+ "id": "chennai-central",
+ "kit": "station",
+ "script": "tools/blender/landmarks/station.py",
+ "blender": "5.2.4 LTS",
+ "spec_sha256": "9c63c8139d7a1c8181c2491c8c02948f86be4e73ffa2f85d13d8adc15415cfd8",
+ "glb_sha256": "ea543ae5c9b91c6857096ae5a6646891c692b82cab99b38bdf98ca51e51ba5e6",
+ "triangles": {
+  "lod0": 5411,
+  "lod1": 659,
+  "lod2": 263
+ },
+ "collision_boxes": 7
+}

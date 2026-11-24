@@ -1,0 +1,394 @@
+{
+ "format": 1,
+ "id": "chennai-egmore",
+ "kind": "station",
+ "names": {
+  "en": "Chennai Egmore",
+  "ta": "சென்னை எழும்பூர்",
+  "en_source": "OSM node 5275790188 name",
+  "ta_source": "OSM node 5275790188 name:ta"
+ },
+ "style": "Indo-Saracenic with Dravidian elements: red brick with cream trim, domes and pointed arches; a three-span train shed",
+ "height": {
+  "value": 24.0,
+  "osm_tag": null,
+  "of": "the tops of the porch domes",
+  "source": "estimated: two storeys of about 6.5 m plus domed porch towers, proportions from the reference photos",
+  "alternatives": [],
+  "chosen_because": "No published height was found; estimated and marked as such."
+ },
+ "osm": {
+  "main": "building",
+  "exclude": [
+   "building",
+   "west_wing",
+   "shed"
+  ],
+  "parts": {
+   "building": {
+    "osm": "way/209558519",
+    "tags": {
+     "building": "train_station"
+    },
+    "footprint": [
+     [
+      5600.01,
+      802.41
+     ],
+     [
+      5601.26,
+      810.59
+     ],
+     [
+      5586.98,
+      812.78
+     ],
+     [
+      5585.72,
+      804.6
+     ],
+     [
+      5552.43,
+      809.7
+     ],
+     [
+      5553.68,
+      817.87
+     ],
+     [
+      5539.3,
+      820.07
+     ],
+     [
+      5538.06,
+      811.9
+     ],
+     [
+      5507.07,
+      816.58
+     ],
+     [
+      5503.86,
+      796.26
+     ],
+     [
+      5624.85,
+      777.3
+     ],
+     [
+      5626.53,
+      791.31
+     ],
+     [
+      5606.95,
+      794.08
+     ],
+     [
+      5608.15,
+      801.16
+     ]
+    ],
+    "centroid": [
+     5563.65,
+     798.39
+    ],
+    "area": 2645.2,
+    "rect": {
+     "yaw_deg": 8.91,
+     "long": 122.47,
+     "short": 29.23,
+     "corners": [
+      [
+       5629.38,
+       806.18
+      ],
+      [
+       5508.39,
+       825.14
+      ],
+      [
+       5503.86,
+       796.26
+      ],
+      [
+       5624.85,
+       777.3
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "west_wing": {
+    "osm": "way/209558528",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      5507.07,
+      816.58
+     ],
+     [
+      5473.25,
+      821.91
+     ],
+     [
+      5470.25,
+      801.53
+     ],
+     [
+      5503.86,
+      796.26
+     ]
+    ],
+    "centroid": [
+     5488.61,
+     809.08
+    ],
+    "area": 702.6,
+    "rect": {
+     "yaw_deg": 8.96,
+     "long": 34.24,
+     "short": 20.6,
+     "corners": [
+      [
+       5470.04,
+       801.56
+      ],
+      [
+       5503.86,
+       796.23
+      ],
+      [
+       5507.07,
+       816.58
+      ],
+      [
+       5473.25,
+       821.91
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "shed": {
+    "osm": "way/209558533",
+    "tags": {
+     "building": "roof"
+    },
+    "footprint": [
+     [
+      5470.25,
+      801.53
+     ],
+     [
+      5462.6,
+      752.66
+     ],
+     [
+      5644.64,
+      724.14
+     ],
+     [
+      5650.98,
+      764.57
+     ],
+     [
+      5652.02,
+      771.33
+     ],
+     [
+      5652.27,
+      773.01
+     ],
+     [
+      5624.85,
+      777.3
+     ],
+     [
+      5503.86,
+      796.26
+     ]
+    ],
+    "centroid": [
+     5557.45,
+     762.83
+    ],
+    "area": 9113.6,
+    "rect": {
+     "yaw_deg": 8.9,
+     "long": 184.27,
+     "short": 49.47,
+     "corners": [
+      [
+       5652.3,
+       773.01
+      ],
+      [
+       5470.25,
+       801.53
+      ],
+      [
+       5462.59,
+       752.66
+      ],
+      [
+       5644.65,
+       724.14
+      ]
+     ]
+    },
+    "role": "area"
+   }
+  },
+  "wikidata": "Q3536643",
+  "wikipedia": "en:Chennai Egmore railway station",
+  "data_date": "2026-11-23T00:28:57Z",
+  "licence": "ODbL 1.0, © OpenStreetMap contributors"
+ },
+ "origin": [
+  5563.65,
+  798.39
+ ],
+ "yaw_deg": 8.91,
+ "recipe": {
+  "kit": "station",
+  "params": {
+   "part": "building",
+   "extra_parts": [
+    "west_wing"
+   ],
+   "front": "south",
+   "storeys": 2,
+   "storey_height": 6.4,
+   "arcade_floor": 1,
+   "bay": 4.2,
+   "roof_pitch": 0.0,
+   "style": "indo_saracenic",
+   "pavilions": [],
+   "porch_parts": true,
+   "towers": [
+    {
+     "at": -0.393,
+     "size": 7.0,
+     "eaves": 17.0,
+     "cap": 7.0,
+     "cap_style": "dome",
+     "chhatris": true
+    },
+    {
+     "at": 0.443,
+     "size": 7.0,
+     "eaves": 17.0,
+     "cap": 7.0,
+     "cap_style": "dome",
+     "chhatris": true
+    }
+   ],
+   "skyline_chhatris": 9,
+   "shed": {
+    "part": "shed",
+    "spans": 3,
+    "height": 9.5,
+    "rise": 4.0,
+    "column_spacing": 12.0
+   }
+  }
+ },
+ "colours": {
+  "brick": "#b0553a",
+  "band": "#efe2c4",
+  "opening": "#2e2520",
+  "roof": "#c9bfae",
+  "dome": "#efe2c4",
+  "dome_shade": "#d9c9a6",
+  "shed": "#8d9092",
+  "shed_roof": "#a7aaa9",
+  "gold": "#c9a24a"
+ },
+ "materials": [
+  {
+   "name": "red brick",
+   "where": "walls"
+  },
+  {
+   "name": "cream plaster",
+   "where": "bands, arches, domes and chhatris"
+  },
+  {
+   "name": "steel and sheet roofing",
+   "where": "the train shed"
+  }
+ ],
+ "facts": [
+  {
+   "en": "Building began in September 1905 and the station opened on 11 June 1908.",
+   "source": "https://en.wikipedia.org/wiki/Chennai_Egmore_railway_station"
+  },
+  {
+   "en": "Designed by Henry Irwin in the Indo-Saracenic style, the first to bring Dravidian motifs into it.",
+   "source": "https://sriramv.com/2014/11/25/chennai-landmark-the-egmore-station/"
+  },
+  {
+   "en": "Its train shed has a three-span roof.",
+   "source": "https://en.wikipedia.org/wiki/Chennai_Egmore_railway_station"
+  }
+ ],
+ "references": [
+  {
+   "title": "File:Chennai Egmore facade panorama.jpg",
+   "author": "Commons user (see file page)",
+   "licence": "CC BY-SA 3.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Chennai_Egmore_facade_panorama.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Chennai Egmore Railway Station (view from the east).jpeg",
+   "author": "Pratyeka",
+   "licence": "CC BY-SA 3.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Chennai_Egmore_Railway_Station_(view_from_the_east).jpeg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:02Madras Egmore Station.jpg",
+   "author": "Wiele & Klein",
+   "licence": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:02Madras_Egmore_Station.jpg",
+   "use": "modelling reference; public domain"
+  },
+  {
+   "title": "File:Chennai Egmore Station.jpg",
+   "author": "Ehteshaam Khatri",
+   "licence": "CC BY-SA 4.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Chennai_Egmore_Station.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Chennai Egmore railway station in Chennai city 02.jpg",
+   "author": "Pinakpani",
+   "licence": "CC BY 4.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Chennai_Egmore_railway_station_in_Chennai_city_02.jpg",
+   "use": "modelling reference (proportions, colours)"
+  }
+ ],
+ "budget": {
+  "lod0_min": 5000,
+  "lod0_max": 15000,
+  "lod1_max": 6000,
+  "lod2_max": 2000
+ },
+ "lod": {
+  "lod0_end": 160.0,
+  "lod1_end": 600.0,
+  "lod2_end": 4000.0
+ },
+ "collision": {
+  "plan": "Jolt boxes: building blocks, the domed towers, the shed's columns (the shed roof is above reach; trains pass under it).",
+  "min_boxes": 4
+ },
+ "estimated": [
+  "all heights (no published figure)",
+  "positions of the domed towers (on the two porches OSM maps on the south front)",
+  "shed height"
+ ]
+}
