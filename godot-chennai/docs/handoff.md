@@ -654,3 +654,24 @@ stayed at 0.2 ms (models load on the worker).
 - `scene/test_city_streaming.gd::test_main_thread_budget_under_cpu_load` failed once in the full
   local run (wall-clock, load-sensitive on this shared machine; not touched).
 - Seen only under the Compatibility renderer on llvmpipe; not on a phone.
+
+## APK size diet (branch `agent/godot-sizediet`), 24 Nov 2026
+**Done.** `docs/app-size.md` has the method, the breakdown, the diet with before and after, the
+budget, the forecast and the Play plan. APK (release, arm64, local unsigned) 162.68 to 115.00 MB:
+legacy cast and vehicles, `docs/` and the v1 chunks are no longer exported (the files stay in the
+repository, the sync check is green). CI budget step (`APK_BUDGET_MB: 260`) and
+`tools/apk_size_report.sh <apk>`. Size guards in `tests/unit/test_export_size.gd` and
+`test_asset_budget.gd`.
+
+**For other agents.**
+- A new file under `assets/people/legacy` or `assets/vehicles/legacy` (sync tool) fails
+  `test_export_size.gd` until it is added to `exclude_filter` in both presets.
+- New textures of 256 x 256 or more must stay VRAM compressed; a WAV over 200 KB must be Ogg.
+- The cast is the biggest line of the forecast (0.82 MB per person, 0.1 MB of it the five
+  animations every GLB repeats): a shared animation library is the next real saving (cast agent).
+- Non-resource data (`.bin`, `.json`) only ships if `include_filter` lists it: a new data folder
+  needs a pattern in both presets.
+
+**Weak or not done.** Local and CI sizes differ by about 3 %; the CI figures are in
+`docs/app-size.md` section 8 (once the run finished). No `.aab`, no asset packs, no custom
+template. Generated LODs, tangents and the world tile format were measured, not changed.

@@ -1553,3 +1553,30 @@ entered (G-152's bund stays). The spec records the rule and a test checks it is 
 `tests/tools/city_shot.gd --no-landmarks` builds the same city without landmark models (OSM
 buildings in place); `--frames=N` prints average and worst frame time over N rendered frames.
 Numbers in `handoff.md`.
+
+### G-240: The export leaves out what nothing loads
+`export_presets.cfg` `exclude_filter` (both presets) drops `docs/*`, the legacy Three.js cast and
+road vehicles (except `player.glb`, `people.json` and the motorbike) and the v1 world chunks
+(`assets/world/c/*`). The sync tool's files stay in the repository unchanged. The filter has no
+negation, so legacy people are listed by first letter. `tests/unit/test_export_size.gd` resolves
+every cast member and vehicle through the real catalogs and fails if one is excluded, if shipped
+text names an excluded file, or if a new legacy file would ship unreviewed. Release arm64 APK
+162.68 to 115.00 MB locally (`docs/app-size.md`).
+
+### G-241: Size guards on assets
+`tests/unit/test_asset_budget.gd`: textures of 256 x 256 or more import VRAM compressed (flat
+palettes under 16 KB excepted), no WAV over 200 KB (long sounds are Ogg Vorbis), no GLB embeds a
+texture over 1024 px. Textures, audio and meshes were already within these rules, so nothing was
+converted.
+
+### G-242: What was measured and not cut
+Generated LODs on models that author their LODs (-7 % per cast scene), tangents and shadow meshes
+(under 1 %), the world tiles (deflate 2:1, xz would save only 17 %) and the cast's five animations
+repeated in every GLB (0.1 MB each, 6.5 MB for 63) are documented with numbers in
+`docs/app-size.md`; each needs a phone measurement or an architecture change, so none was applied.
+
+### G-243: Budget in CI
+`APK_BUDGET_MB` (260) at the top of `.github/workflows/godot-chennai.yml`: the "APK size against
+the budget" step prints the phone APK size and the biggest items (`tools/apk_size_report.sh`) in
+the job summary and fails above it; `PLAY_BASE_LIMIT_MB` (200) only warns. The phone APK is the
+release export of the "Android" preset (arm64); the smoke APK is not budgeted.
