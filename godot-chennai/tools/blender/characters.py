@@ -753,7 +753,7 @@ def tube_bottom(lm, name):
         "knee": knee - 0.05,
         "calf": knee - 0.25 * (knee - ankle),
         "ankle": ankle + 0.03,
-        "floor": 0.025,
+        "floor": 0.045,  # clear of the ground even while clips blend
     }[name]
 
 

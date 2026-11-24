@@ -401,18 +401,26 @@ animation per file.
 
 ### G-12: Soles planted per frame when baking, and at run time during blends
 Each baked frame moves the hips so the lowest sole vertex of the real mesh (shoes and sandals
-included, skinned with its own weights) is at 0. A cross-fade between two planted clips still
-dips a sole up to 7.7 cm (measured: worst over the cast), so `assets/people/sole_plant.gd`
-re-plants at run time from up to 96 sole vertices (call `apply()` after the animation update;
-near people only). Tested: soles within 1.3 cm of the ground in every clip and through 0.22 s
-blends between idle, walk, run and talk.
+included, skinned with its own weights; only vertices moved mostly by a foot or toe bone, so a
+saree hem or a trouser cuff near the floor never lifts the feet) is at 0. A cross-fade between
+two planted clips still dips a sole up to 7.7 cm (measured: worst over the cast), so
+`assets/people/sole_plant.gd` re-plants at run time from up to 96 sole vertices (call `apply()`
+after the animation update; near people only). Tested on the imported scenes: soles within 2 cm
+of the ground in idle, walk, sit and talk, within 2.4 cm in the run (between two baked frames
+where the supporting foot changes), and within 1 cm through 0.22 s blends between idle, walk,
+run and talk. Floor-length hems end 4.5 cm above the ground so they stay clear in blends.
 
-### G-13: sit and talk are authored by script
+### G-13: sit and talk are authored by script; posture, hands and loops fixed in the bake
 No CC0 sit/talk clips were available offline; both are written in `cast_animation.py` from the
-retargeted idle pose: sit (thighs forward, shins down, hands towards the thighs, slow breathing,
-4 s loop) and talk (idle twice over, right-hand beats, left hand joining, nods and a head turn,
-5 s loop). Original work, CC0. `seatHeightM` in the manifest gives the seat height under each
-person's hips for benches and vehicle seats.
+retargeted idle pose: sit (thighs forward, shins down, hands placed on the thighs by a two-bone
+IK per arm, slow breathing, 4 s loop) and talk (idle twice over, right-hand beats, left hand
+joining, nods and a head turn, 5 s loop). Original work, CC0. `seatHeightM` in the manifest
+gives the seat height for benches and seats. Review round (24 Nov): every clip takes most of the
+Mixamo clips' forward stoop out of the spine and levels the head (relative to MakeHuman's rest),
+turns the upper arms in by clip (idle/talk 11°, walk 7°, run 5°), and replaces the clips' clawed
+fingers with relaxed ones (rest pose plus 8–16° per joint towards the palm; a loose fist when
+running). The five clips loop: `tools/blender/people_import.py` writes `settings/loop_mode = 1`
+into each `.glb.import`, so the game needs no import script.
 
 ### G-14: No vertex colours anywhere
 MPFB meshes carry a black vertex-colour channel; the exporter drops all colour attributes
@@ -423,7 +431,7 @@ material has `vertex_color_use_as_albedo`.
 Godot 4.7.2 refuses `EXT_meshopt_compression` and `KHR_mesh_quantization` (checked headless:
 "required extension … is not supported"), so the Three.js pipeline's meshopt step cannot be
 used. `tools/blender/optimize_people.py` runs glTF Transform dedup, prune, resample and WebP
-(quality 85; Godot reads `EXT_texture_webp`). About 0.9 MB per person, 55.3 MB for the 60; Godot recompresses
+(quality 85; Godot reads `EXT_texture_webp`). About 0.8 MB per person, 57.7 MB for the 70; Godot recompresses
 textures to ETC2/ASTC on import for Android.
 
 ### G-16: People tests read GLBs with GLTFDocument at run time
@@ -433,21 +441,23 @@ a throwaway project (`tools/run_people_tests.sh`) or in Foundation's project unc
 `res://assets/people/`). All timing is game time: clips are sampled with `seek()`, blends advanced
 with `AnimationPlayer.advance()`.
 
-### G-17: The boards are the casting list; 60 people for 74 board figures
-Phase 1: one person per figure of `phase1-20-characters.webp` (20). Phase 2: the 60 board shows
-74 figures (two couples, more men than women) under "30 Male + 30 Female". The 20 phase-1 people
-play their matching phase-2 figures (`alsoFigures` in the manifest), 40 new people play most of
-the rest, four figures drawn as men are cast as women to reach 30 + 30 (Doctor, Teacher, Bank
-Employee, Sanitation Worker; `note` says so), and ten figures are not cast yet (listed in
-`docs/characters.md`). Every manifest entry records board, figure id and label.
+### G-17: The boards are the casting list; 70 people for all 74 phase-2 figures
+Phase 1: one person per figure of `phase1-20-characters.webp` (20). Phase 2: the board shows 74
+figures (two couples) under "30 Male + 30 Female". The 20 phase-1 people play their matching
+phase-2 figures (`alsoFigures`), 50 new people play the rest, so every figure is played. Four
+figures drawn as men are cast as women (Doctor, Teacher, Bank Employee, Sanitation Worker);
+**the owner decided on 23 Nov 2026 to keep them as women**, and their `note` says so. The ten
+figures first left out were built at the owner's request in the same round: 70 people, 40 men
+and 30 women. Every manifest entry records board, figure id and label.
 
 ### G-18: Children are marked and kept out of harm by data
 `age: "child"` (under 13) and `child: true`; their roles are limited to `school`, `passenger`,
-`family` (checked by the tests). The game must never cast a child as a street pedestrian, enemy,
-driver or anyone who can be hit; teens likewise stay out of combat casting (rule carried over
-from the Three.js `CASTS`).
+`family` and `play` (checked by the tests). `play` (the cricket boy, owner's request) means a
+child at play only inside a safe play area (park, beach, school ground) with no traffic,
+vehicles, police or fights. The game must never cast a child as a street pedestrian, enemy,
+driver or anyone who can be hit; teens likewise stay out of combat casting.
 
 ### G-19: One shared skeleton, MPFB `mixamo`, A-pose rest
 52 bones, Godot names `mixamorig_<Bone>` (the importer turns `:` into `_`), identical names and
-hierarchy in all 60 files (tested). Rest pose MakeHuman A-pose, metres, soles at y = 0, facing
+hierarchy in all 70 files (tested). Rest pose MakeHuman A-pose, metres, soles at y = 0, facing
 glTF +Z. Clips from elsewhere must be retargeted to this rest (or baked by the Blender script).

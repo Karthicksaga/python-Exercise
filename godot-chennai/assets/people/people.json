@@ -34,12 +34,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9696,
+          "triangles": 9695,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3387,
+          "triangles": 3386,
           "from": 30.0
         }
       ],
@@ -98,16 +98,16 @@
       ],
       "note": "",
       "heightM": 1.826,
-      "seatHeightM": 0.449,
+      "seatHeightM": 0.447,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9697,
+          "triangles": 9696,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3388,
+          "triangles": 3387,
           "from": 30.0
         }
       ],
@@ -165,11 +165,11 @@
       ],
       "note": "",
       "heightM": 1.786,
-      "seatHeightM": 0.452,
+      "seatHeightM": 0.451,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9695,
+          "triangles": 9698,
           "until": 30.0
         },
         {
@@ -291,7 +291,7 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9697,
+          "triangles": 9698,
           "until": 30.0
         },
         {
@@ -352,7 +352,7 @@
       ],
       "note": "",
       "heightM": 1.819,
-      "seatHeightM": 0.457,
+      "seatHeightM": 0.456,
       "lods": [
         {
           "mesh": "Body",
@@ -413,11 +413,11 @@
       ],
       "note": "",
       "heightM": 1.779,
-      "seatHeightM": 0.464,
+      "seatHeightM": 0.463,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9653,
+          "triangles": 9648,
           "until": 30.0
         },
         {
@@ -476,7 +476,7 @@
       ],
       "note": "",
       "heightM": 1.823,
-      "seatHeightM": 0.45,
+      "seatHeightM": 0.448,
       "lods": [
         {
           "mesh": "Body",
@@ -548,12 +548,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9696,
+          "triangles": 9698,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3389,
+          "triangles": 3390,
           "from": 30.0
         }
       ],
@@ -608,7 +608,7 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8553,
+          "triangles": 8503,
           "until": 30.0
         },
         {
@@ -669,7 +669,7 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9698,
+          "triangles": 9697,
           "until": 30.0
         },
         {
@@ -839,7 +839,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.582,
-      "seatHeightM": 0.411,
+      "seatHeightM": 0.364,
       "lods": [
         {
           "mesh": "Body",
@@ -903,7 +903,7 @@
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3383,
+          "triangles": 3382,
           "from": 30.0
         }
       ],
@@ -1080,7 +1080,7 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 7833,
+          "triangles": 7875,
           "until": 30.0
         },
         {
@@ -1138,12 +1138,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8207,
+          "triangles": 8249,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3387,
+          "triangles": 3385,
           "from": 30.0
         }
       ],
@@ -1249,7 +1249,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.67,
-      "seatHeightM": 0.406,
+      "seatHeightM": 0.405,
       "lods": [
         {
           "mesh": "Body",
@@ -1306,16 +1306,16 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.311,
-      "seatHeightM": 0.258,
+      "seatHeightM": 0.257,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9695,
+          "triangles": 9696,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3387,
+          "triangles": 3389,
           "from": 30.0
         }
       ],
@@ -1362,7 +1362,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.525,
-      "seatHeightM": 0.348,
+      "seatHeightM": 0.347,
       "lods": [
         {
           "mesh": "Body",
@@ -1419,16 +1419,16 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.765,
-      "seatHeightM": 0.446,
+      "seatHeightM": 0.445,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9905,
+          "triangles": 9906,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3394,
+          "triangles": 3387,
           "from": 30.0
         }
       ],
@@ -1474,7 +1474,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.771,
-      "seatHeightM": 0.443,
+      "seatHeightM": 0.441,
       "lods": [
         {
           "mesh": "Body",
@@ -1483,7 +1483,7 @@
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3389,
+          "triangles": 3388,
           "from": 30.0
         }
       ],
@@ -1529,16 +1529,16 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.769,
-      "seatHeightM": 0.45,
+      "seatHeightM": 0.448,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9696,
+          "triangles": 9697,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3387,
+          "triangles": 3388,
           "from": 30.0
         }
       ],
@@ -1588,12 +1588,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 7322,
+          "triangles": 7394,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3385,
+          "triangles": 3388,
           "from": 30.0
         }
       ],
@@ -1642,12 +1642,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8178,
+          "triangles": 8128,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3385,
+          "triangles": 3386,
           "from": 30.0
         }
       ],
@@ -1697,7 +1697,7 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9695,
+          "triangles": 9697,
           "until": 30.0
         },
         {
@@ -1749,16 +1749,16 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.766,
-      "seatHeightM": 0.45,
+      "seatHeightM": 0.449,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9696,
+          "triangles": 9697,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3389,
+          "triangles": 3390,
           "from": 30.0
         }
       ],
@@ -1804,16 +1804,16 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.816,
-      "seatHeightM": 0.455,
+      "seatHeightM": 0.454,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9697,
+          "triangles": 9698,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3389,
+          "triangles": 3390,
           "from": 30.0
         }
       ],
@@ -1858,16 +1858,16 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.81,
-      "seatHeightM": 0.46,
+      "seatHeightM": 0.458,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9697,
+          "triangles": 9696,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3387,
+          "triangles": 3388,
           "from": 30.0
         }
       ],
@@ -1918,7 +1918,7 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9207,
+          "triangles": 9271,
           "until": 30.0
         },
         {
@@ -1979,7 +1979,7 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9208,
+          "triangles": 9271,
           "until": 30.0
         },
         {
@@ -2040,7 +2040,7 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9203,
+          "triangles": 9266,
           "until": 30.0
         },
         {
@@ -2095,12 +2095,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8565,
+          "triangles": 8514,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3386,
+          "triangles": 3387,
           "from": 30.0
         }
       ],
@@ -2145,7 +2145,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.558,
-      "seatHeightM": 0.355,
+      "seatHeightM": 0.354,
       "lods": [
         {
           "mesh": "Body",
@@ -2208,12 +2208,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9698,
+          "triangles": 9699,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3386,
+          "triangles": 3387,
           "from": 30.0
         }
       ],
@@ -2264,7 +2264,7 @@
       ],
       "note": "",
       "heightM": 1.824,
-      "seatHeightM": 0.463,
+      "seatHeightM": 0.462,
       "lods": [
         {
           "mesh": "Body",
@@ -2330,7 +2330,7 @@
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3386,
+          "triangles": 3388,
           "from": 30.0
         }
       ],
@@ -2444,7 +2444,7 @@
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3383,
+          "triangles": 3382,
           "from": 30.0
         }
       ],
@@ -2496,12 +2496,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8276,
+          "triangles": 8254,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3386,
+          "triangles": 3387,
           "from": 30.0
         }
       ],
@@ -2549,12 +2549,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8210,
+          "triangles": 8252,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3385,
+          "triangles": 3386,
           "from": 30.0
         }
       ],
@@ -2707,7 +2707,7 @@
       "figure": "healthcare-1",
       "figureLabel": "Doctor",
       "alsoFigures": [],
-      "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split",
+      "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split (kept by the owner, 23 Nov 2026)",
       "heightM": 1.63,
       "seatHeightM": 0.368,
       "lods": [
@@ -2768,18 +2768,18 @@
           "figureLabel": "Lecturer"
         }
       ],
-      "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split",
+      "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split (kept by the owner, 23 Nov 2026)",
       "heightM": 1.603,
       "seatHeightM": 0.367,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8276,
+          "triangles": 8254,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3387,
+          "triangles": 3386,
           "from": 30.0
         }
       ],
@@ -2824,7 +2824,7 @@
       "figure": "office-6",
       "figureLabel": "Bank Employee",
       "alsoFigures": [],
-      "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split",
+      "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split (kept by the owner, 23 Nov 2026)",
       "heightM": 1.631,
       "seatHeightM": 0.372,
       "lods": [
@@ -2885,13 +2885,13 @@
           "figureLabel": "Municipal Worker"
         }
       ],
-      "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split",
+      "note": "the board draws this figure as a man; cast as a woman for the board's 30 + 30 split (kept by the owner, 23 Nov 2026)",
       "heightM": 1.59,
       "seatHeightM": 0.365,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8529,
+          "triangles": 8571,
           "until": 30.0
         },
         {
@@ -3002,12 +3002,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8202,
+          "triangles": 8244,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3386,
+          "triangles": 3384,
           "from": 30.0
         }
       ],
@@ -3057,12 +3057,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8272,
+          "triangles": 8250,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3387,
+          "triangles": 3386,
           "from": 30.0
         }
       ],
@@ -3112,12 +3112,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 7827,
+          "triangles": 7869,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3384,
+          "triangles": 3388,
           "from": 30.0
         }
       ],
@@ -3166,12 +3166,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 7836,
+          "triangles": 7878,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3386,
+          "triangles": 3387,
           "from": 30.0
         }
       ],
@@ -3381,12 +3381,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8275,
+          "triangles": 8253,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3387,
+          "triangles": 3384,
           "from": 30.0
         }
       ],
@@ -3437,12 +3437,12 @@
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 8205,
+          "triangles": 8247,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3385,
+          "triangles": 3389,
           "from": 30.0
         }
       ],
@@ -3463,6 +3463,116 @@
         "eyebrows/eyebrow010",
         "eyes/low-poly",
         "eyelashes/eyelashes01"
+      ]
+    },
+    {
+      "id": "tiffin-vendor",
+      "file": "tiffin_vendor.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 38,
+      "child": false,
+      "roles": [
+        "vendor",
+        "pedestrian"
+      ],
+      "clothing": [
+        "casual",
+        "work"
+      ],
+      "outfit": "white half-sleeved shirt, grey trousers, belt, sandals, moustache (no tiffin carrier yet)",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "vendors-2",
+      "figureLabel": "Tiffin Vendor",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.771,
+      "seatHeightM": 0.444,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9329,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3388,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01"
+      ]
+    },
+    {
+      "id": "street-shop-owner",
+      "file": "street_shop_owner.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 46,
+      "child": false,
+      "roles": [
+        "shopkeeper",
+        "vendor",
+        "pedestrian"
+      ],
+      "clothing": [
+        "casual"
+      ],
+      "outfit": "light blue half-sleeved shirt with pockets, beige trousers, sandals, moustache",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "vendors-6",
+      "figureLabel": "Street Shop Owner",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.767,
+      "seatHeightM": 0.448,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9280,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3388,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01"
       ]
     },
     {
@@ -3487,16 +3597,16 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.768,
-      "seatHeightM": 0.444,
+      "seatHeightM": 0.442,
       "lods": [
         {
           "mesh": "Body",
-          "triangles": 9699,
+          "triangles": 9696,
           "until": 30.0
         },
         {
           "mesh": "Body_LOD1",
-          "triangles": 3385,
+          "triangles": 3384,
           "from": 30.0
         }
       ],
@@ -3512,6 +3622,120 @@
       "assets": [
         "skins/middleage_african_male",
         "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "plumber",
+      "file": "plumber.glb",
+      "sex": "male",
+      "age": "middle",
+      "years": 36,
+      "child": false,
+      "roles": [
+        "worker",
+        "services",
+        "pedestrian"
+      ],
+      "clothing": [
+        "work"
+      ],
+      "outfit": "blue denim work shirt with pockets, dark trousers, belt, work boots, moustache",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "workers-3",
+      "figureLabel": "Plumber",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.775,
+      "seatHeightM": 0.466,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9971,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3390,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/middleage_african_male",
+        "skins/middleage_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short04",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/shoes03"
+      ]
+    },
+    {
+      "id": "office-assistant",
+      "file": "office_assistant.glb",
+      "sex": "male",
+      "age": "young",
+      "years": 31,
+      "child": false,
+      "roles": [
+        "office",
+        "services",
+        "pedestrian",
+        "passenger"
+      ],
+      "clothing": [
+        "uniform",
+        "office"
+      ],
+      "outfit": "pale grey half-sleeved shirt with pockets, charcoal trousers, belt, blank ID card, black shoes",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "workers-7",
+      "figureLabel": "Office Assistant",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.785,
+      "seatHeightM": 0.439,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9696,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3390,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
         "proxymeshes/male1591",
         "hair/short02",
         "eyebrows/eyebrow001",
@@ -3544,7 +3768,7 @@
       "alsoFigures": [],
       "note": "",
       "heightM": 1.795,
-      "seatHeightM": 0.445,
+      "seatHeightM": 0.442,
       "lods": [
         {
           "mesh": "Body",
@@ -3576,6 +3800,118 @@
         "eyelashes/eyelashes01",
         "clothes/toigo_wool_pants",
         "clothes/shoes04"
+      ]
+    },
+    {
+      "id": "young-man",
+      "file": "young_man.glb",
+      "sex": "male",
+      "age": "young",
+      "years": 27,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "passenger",
+        "family"
+      ],
+      "clothing": [
+        "casual"
+      ],
+      "outfit": "lilac long-sleeved shirt, blue jeans, belt, brown shoes, short beard",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "families-1",
+      "figureLabel": "Young Man",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.819,
+      "seatHeightM": 0.444,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9696,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3390,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short04",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
+        "clothes/male_casualsuit01",
+        "clothes/male_casualsuit06",
+        "clothes/shoes01"
+      ]
+    },
+    {
+      "id": "boy-8-10",
+      "file": "boy_8_10.glb",
+      "sex": "male",
+      "age": "child",
+      "years": 9,
+      "child": true,
+      "roles": [
+        "passenger",
+        "family"
+      ],
+      "clothing": [
+        "casual"
+      ],
+      "outfit": "blue-and-white striped T-shirt, denim shorts, trainers",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "children-1",
+      "figureLabel": "Boy (8-10)",
+      "alsoFigures": [],
+      "note": "a child: only as a passenger with an adult or in a family group, never on a street or anywhere he can be hurt",
+      "heightM": 1.244,
+      "seatHeightM": 0.247,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9695,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3388,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short02",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "clothes/elvs_crude_t-shirt_male",
+        "clothes/cortu_jeans_shorts",
+        "clothes/shoes06"
       ]
     },
     {
@@ -3629,6 +3965,62 @@
         "hair/short04",
         "eyebrows/eyebrow001",
         "eyes/low-poly",
+        "clothes/elvs_crude_t-shirt_male",
+        "clothes/cortu_jeans_shorts",
+        "clothes/shoes05"
+      ]
+    },
+    {
+      "id": "cyclist",
+      "file": "cyclist.glb",
+      "sex": "male",
+      "age": "young",
+      "years": 30,
+      "child": false,
+      "roles": [
+        "pedestrian",
+        "sport"
+      ],
+      "clothing": [
+        "sport"
+      ],
+      "outfit": "blue T-shirt, navy shorts, trainers, small backpack (no bicycle yet)",
+      "board": "docs/concept/characters/phase2-60-characters.webp",
+      "figure": "lifestyle-3",
+      "figureLabel": "Cyclist",
+      "alsoFigures": [],
+      "note": "",
+      "heightM": 1.791,
+      "seatHeightM": 0.454,
+      "lods": [
+        {
+          "mesh": "Body",
+          "triangles": 9696,
+          "until": 30.0
+        },
+        {
+          "mesh": "Body_LOD1",
+          "triangles": 3386,
+          "from": 30.0
+        }
+      ],
+      "texture": 512,
+      "animations": [
+        "idle",
+        "walk",
+        "run",
+        "sit",
+        "talk"
+      ],
+      "licence": "Original character made by tools/blender/characters.py from MakeHuman/MPFB CC0 assets; see assets/LICENSES.md (MakeHuman CC0, CC-BY rows credited there; idle/walk/run from Mixamo via locomotion.glb)",
+      "assets": [
+        "skins/young_african_male",
+        "skins/young_caucasian_male",
+        "proxymeshes/male1591",
+        "hair/short04",
+        "eyebrows/eyebrow001",
+        "eyes/low-poly",
+        "eyelashes/eyelashes01",
         "clothes/elvs_crude_t-shirt_male",
         "clothes/cortu_jeans_shorts",
         "clothes/shoes05"

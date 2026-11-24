@@ -19,15 +19,20 @@ const CLIPS: Array[String] = ["idle", "walk", "run", "sit", "talk"]
 const LOD0_BUDGET := 10000
 const LOD1_BUDGET := 3500
 const TEXTURE_MAX := 512
-const SOLE_TOLERANCE := 0.02  # metres: lowest sole vs the ground in a clip
+## Metres: lowest sole vs the ground in a clip. Clips are planted per baked frame (30 fps); between
+## two frames of the run, where the supporting foot changes in 1/30 s, a sole can be up to ~2.5 cm
+## above the ground.
+const SOLE_TOLERANCE := {"idle": 0.02, "walk": 0.02, "run": 0.03, "sit": 0.02, "talk": 0.02}
 const BLEND_SINK := 0.02  # metres: sole vs the ground during a 0.22 s blend, with SolePlant
 ## Largest angle between the forearm's line and the hand (wrist to middle knuckle) per clip. The
 ## Mixamo clips themselves flex the wrist up to 8.9° (idle), 33.6° (walk) and 40.8° (run); a
 ## retarget that misses the hand frames bends every wrist ~70°, which these limits catch.
-const WRIST_MAX_DEG := {"idle": 20.0, "walk": 40.0, "run": 46.0, "sit": 35.0, "talk": 40.0}
-## Largest bend at any finger joint (knuckle or middle joint). Relaxed hands curl 8-16° per
-## joint; the clips' clawed fingers were 60-90°. A runner's loose fist is allowed more.
-const FINGER_MAX_DEG := {"idle": 30.0, "walk": 30.0, "run": 50.0, "sit": 30.0, "talk": 30.0}
+## Seated, the hand lies flat on the thigh with the forearm sloping down to it: up to 45°.
+const WRIST_MAX_DEG := {"idle": 20.0, "walk": 40.0, "run": 46.0, "sit": 45.0, "talk": 40.0}
+## Largest curl at any finger joint (knuckle or middle joint) beyond the rest pose's own angle.
+## Relaxed hands curl 8-16° per joint; the clips' clawed fingers were 60-90°. A runner's loose
+## fist is allowed more.
+const FINGER_MAX_DEG := {"idle": 22.0, "walk": 22.0, "run": 40.0, "sit": 22.0, "talk": 22.0}
 const FINGERS: Array[String] = ["Index", "Middle", "Ring", "Pinky"]
 const SAFE_CHILD_ROLES: Array[String] = ["school", "passenger", "family", "play"]
 const SAMPLES := 12
@@ -165,7 +170,8 @@ func test_feet_wrists_fingers_in_every_clip() -> bool:
 			worst_sole = maxf(worst_sole, maxf(absf(low), absf(high)))
 			worst_wrist = maxf(worst_wrist, wrist)
 			worst_finger = maxf(worst_finger, finger)
-			check(absf(low) <= SOLE_TOLERANCE and absf(high) <= SOLE_TOLERANCE,
+			var tolerance := float(SOLE_TOLERANCE[clip])
+			check(absf(low) <= tolerance and absf(high) <= tolerance,
 				"%s %s: lowest sole stays on the ground (%.3f .. %.3f m)" % [id, clip, low, high])
 			check(wrist <= float(WRIST_MAX_DEG[clip]), "%s %s: wrists straight enough (%.1f <= %.0f deg)" % [id, clip, wrist, WRIST_MAX_DEG[clip]])
 			check(finger <= float(FINGER_MAX_DEG[clip]), "%s %s: fingers relaxed, not clawed (%.1f <= %.0f deg)" % [id, clip, finger, FINGER_MAX_DEG[clip]])
@@ -232,18 +238,26 @@ func _wrist_angle(skeleton: Skeleton3D) -> float:
 	return worst_deg
 
 
-## The largest bend at the knuckle or middle joint of the four fingers (both hands).
+## The largest curl at the knuckle or middle joint of the four fingers (both hands), beyond the
+## same joint's angle in the rest pose.
 func _finger_angle(skeleton: Skeleton3D) -> float:
 	var worst_deg := 0.0
 	for side: String in ["Left", "Right"]:
-		var wrist := skeleton.get_bone_global_pose(skeleton.find_bone("mixamorig_%sHand" % side)).origin
 		for finger in FINGERS:
-			var p1 := skeleton.get_bone_global_pose(skeleton.find_bone("mixamorig_%sHand%s1" % [side, finger])).origin
-			var p2 := skeleton.get_bone_global_pose(skeleton.find_bone("mixamorig_%sHand%s2" % [side, finger])).origin
-			var p3 := skeleton.get_bone_global_pose(skeleton.find_bone("mixamorig_%sHand%s3" % [side, finger])).origin
-			worst_deg = maxf(worst_deg, rad_to_deg((p1 - wrist).angle_to(p2 - p1)))
-			worst_deg = maxf(worst_deg, rad_to_deg((p2 - p1).angle_to(p3 - p2)))
+			var chain: Array[int] = [skeleton.find_bone("mixamorig_%sHand" % side)]
+			for k: int in [1, 2, 3]:
+				chain.append(skeleton.find_bone("mixamorig_%sHand%s%d" % [side, finger, k]))
+			for j: int in [1, 2]:
+				worst_deg = maxf(worst_deg, _bend(skeleton, chain, j, false) - _bend(skeleton, chain, j, true))
 	return worst_deg
+
+
+func _bend(skeleton: Skeleton3D, chain: Array[int], j: int, rest: bool) -> float:
+	var p: Array[Vector3] = []
+	for k: int in [j - 1, j, j + 1]:
+		var t := skeleton.get_bone_global_rest(chain[k]) if rest else skeleton.get_bone_global_pose(chain[k])
+		p.append(t.origin)
+	return rad_to_deg((p[1] - p[0]).angle_to(p[2] - p[1]))
 
 
 ## The lowest vertices of the feet (soles, shoes), skinned on the CPU with the mesh's own
@@ -271,8 +285,19 @@ class SoleProbe:
 			var per := bones.size() / maxi(1, verts.size())
 			for i in verts.size():
 				var c: Array = [verts[i], bones.slice(i * per, i * per + per), weights.slice(i * per, i * per + per)]
-				if _skin(c).y < 0.06:
+				if _on_foot(c) and _skin(c).y < 0.06:
 					points.append(c)
+
+	## Moved mostly by a foot or toe bone (soles and shoes, not a long hem near the floor).
+	func _on_foot(c: Array) -> bool:
+		var idx: PackedInt32Array = c[1]
+		var w: PackedFloat32Array = c[2]
+		var foot := 0.0
+		for j in idx.size():
+			var bone_name := skeleton.get_bone_name(bind_bone[idx[j]])
+			if bone_name.ends_with("Foot") or bone_name.ends_with("ToeBase"):
+				foot += w[j]
+		return foot >= 0.5
 
 	func count() -> int:
 		return points.size()

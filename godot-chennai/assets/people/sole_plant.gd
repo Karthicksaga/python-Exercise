@@ -25,8 +25,8 @@ func _init(skel: Skeleton3D, body: MeshInstance3D) -> void:
 	base_y = skel.position.y
 	var skin := body.skin
 	var feet := {}
-	for side in ["Left", "Right"]:
-		for part in ["Foot", "ToeBase"]:
+	for side: String in ["Left", "Right"]:
+		for part: String in ["Foot", "ToeBase"]:
 			var b := skel.find_bone("mixamorig_%s%s" % [side, part])
 			if b >= 0:
 				feet[b] = true

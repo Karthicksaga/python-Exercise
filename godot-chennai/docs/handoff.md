@@ -167,3 +167,14 @@ to `/opt/tools/mpfb-data`.
 Next: props and the 10 uncast figures; better faces (more face targets per person, women's faces
 softer); the player model (richer budget); real-device check of the skinned look on the Mobile
 renderer (only the Compatibility renderer could be judged here).
+
+### 24 Nov 2026, cast agent: review round and integration
+- Merged `feat/godot-chennai` (Foundation, Data, Rules, Models); docs and licences keep every
+  section. The 37 Three.js people stay in `assets/people/legacy/` (Foundation's sync).
+- `tests/people/` is now a `TestCase` run by `tests/test_runner.gd` (`res://tests/people` added to
+  `TEST_DIRS`), strictly typed; `./run_tests.sh --filter=people/` runs only it. It loads the
+  imported scenes, so `--import` must have run (the runner does it).
+- The five clips loop through the `.glb.import` files (`tools/blender/people_import.py`).
+- 70 people now (owner's answers in `docs/characters.md`); the cricket boy's `play` role means
+  safe play areas only.
+

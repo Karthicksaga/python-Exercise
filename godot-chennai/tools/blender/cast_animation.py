@@ -331,6 +331,9 @@ class SoleSampler:
             ws = [(names[g.group], g.weight) for g in v.groups if g.weight > 1e-4 and names.get(g.group) in tgt.rest]
             if not ws:
                 continue
+            # Soles and shoes only: a hem or trouser cuff near the floor must not lift the feet.
+            if sum(w for nm, w in ws if nm.endswith("Foot") or nm.endswith("ToeBase")) < 0.5:
+                continue
             pts.append((p.copy(), ws))
         if not pts:
             raise RuntimeError("no sole vertices found")
@@ -452,7 +455,10 @@ def relax_fingers(tgt, local, curl):
                 d = world[nm] @ Vector((0, 1, 0))
                 sign = 1 if axis.cross(d).dot(normal) > 0 else -1
                 turn_subtree(tgt, local, world, nm, axis, sign * deg)
-                world = world_from_locals(tgt, local)
+                # Only this finger's chain moved: update its world rotations, not the skeleton's.
+                for j in range(k, 4):
+                    cj = f"{side}Hand{finger}{j}"
+                    world[cj] = world[tgt.parent[cj]] @ local[cj]
 
 
 def rotation_between(a, b):
