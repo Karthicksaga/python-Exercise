@@ -31,6 +31,10 @@ signal area_ready(point: Vector2)
 ## Chunk builds running on worker threads at once: leaves two cores to the main and render
 ## threads (a test on 4 cores with every core busy saw the main thread pre-empted mid-frame).
 @export var in_flight: int = clampi(OS.get_processor_count() - 2, 1, 3)
+## Chunks whose nearest edge is within this distance of the focus show their near look (walls
+## with the facade kit, props); the others their far look (G-53). Hysteresis: a near chunk
+## turns far only past `near_distance + 20`.
+@export var near_distance: float = 120.0
 ## Main-thread time for adding and freeing chunk parts per frame, microseconds.
 @export var budget_usec: int = 2500
 
@@ -110,6 +114,7 @@ func step() -> void:
 	if OS.has_environment("STREAM_DEBUG") and t4 - started > 3000:
 		print("stream bookkeeping prefetch %d drop %d collect %d start %d" % [t1 - started, t2 - t1, t3 - t2, t4 - t3])
 	stats["max_overhead_usec"] = maxi(stats["max_overhead_usec"], Time.get_ticks_usec() - started)
+	_update_looks()
 	var steps := 0
 	while true:
 		var t := Time.get_ticks_usec()
@@ -123,6 +128,34 @@ func step() -> void:
 	var spent := Time.get_ticks_usec() - started
 	stats["last_frame_usec"] = spent
 	stats["max_frame_usec"] = maxi(stats["max_frame_usec"], spent)
+
+
+## Shows the near or far look of every shown chunk for the current focus.
+func _update_looks() -> void:
+	for slot: Slot in _slots.values():
+		if slot.state == &"shown" and slot.build != null and slot.build.view != null:
+			_set_look(slot)
+
+
+func _set_look(slot: Slot) -> void:
+	var near := slot.build.view.get_node_or_null(^"Near") as Node3D
+	var far := slot.build.view.get_node_or_null(^"Far") as Node3D
+	if near == null or far == null:
+		return
+	var d := distance_to_cell(slot.cell, focus)
+	var want := d <= near_distance or (near.visible and d <= near_distance + 20.0)
+	if near.visible != want:
+		near.visible = want
+		far.visible = not want
+
+
+## True when a shown chunk shows its near look (tests, HUD).
+func is_near(cell: Vector2i) -> bool:
+	var slot: Slot = _slots.get(cell)
+	if slot == null or slot.build == null or slot.build.view == null:
+		return false
+	var near := slot.build.view.get_node_or_null(^"Near") as Node3D
+	return near != null and near.visible
 
 
 ## Distance from a point to a chunk square's nearest edge (0 inside it).
@@ -281,6 +314,7 @@ func _one_main_step() -> bool:
 		_note(&"body", t)
 		return true
 	var t0 := Time.get_ticks_usec()
+	_set_look(next)
 	b.view.position = WorldOrigin.to_scene(b.centre)
 	b.view.add_to_group(WorldOrigin.GROUP)
 	add_child(b.view)

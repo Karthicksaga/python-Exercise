@@ -43,7 +43,12 @@ static func free_build(b: ChunkBuilder.Build) -> void:
 ## A hash of every surface array of a build's meshes (determinism checks).
 static func digest(b: ChunkBuilder.Build) -> int:
 	var h := 0
-	for child in b.view.get_children():
+	var nodes: Array[Node] = b.view.get_children()
+	for group: String in ["Near", "Far"]:
+		var g := b.view.get_node_or_null(group)
+		if g != null:
+			nodes.append_array(g.get_children())
+	for child in nodes:
 		var mi := child as MeshInstance3D
 		if mi == null:
 			var mm := child as MultiMeshInstance3D

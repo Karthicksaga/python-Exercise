@@ -30,6 +30,12 @@ func test_loads_and_unloads_round_a_moving_point() -> bool:
 	assert_true(wanted.size() >= 4, "several chunks in reach (%d)" % wanted.size())
 	for cell in wanted:
 		assert_eq(streamer.slot_state(cell), &"shown", "chunk %s shown" % cell)
+	for cell in wanted:
+		var d := streamer.distance_to_cell(cell, SPAWN)
+		if d <= streamer.near_distance:
+			assert_true(streamer.is_near(cell), "chunk %s, %.0f m away, shows its near look" % [cell, d])
+		elif d > streamer.near_distance + 20.0:
+			assert_false(streamer.is_near(cell), "chunk %s, %.0f m away, shows its far look" % [cell, d])
 	var nodes_at_start := Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 	# Walk 2 km east and back, 40 m a frame (a fast car at 60 fps), then let it settle. The
 	# streamer runs once a process frame, so check after each one.

@@ -5,10 +5,12 @@ extends RefCounted
 ## and assembles node trees that are **not** in the scene. The streamer adds them on the main
 ## thread a few at a time (`ChunkStreamer`), so the frame only pays for `add_child`.
 ##
-## Layers (children of `view`), each with its own visibility range (G-53):
-## ground (one surface: earth, parks, water, sand, verges, tarmac, paint, kerbs), walls, roofs
-## and kit near, the one-quad-per-wall far look beyond `near_range`, objects (poles, shelters,
-## props, AC units, dishes) near only, trees and palms (MultiMesh) all the way.
+## Layers (children of `view`, G-53): Ground (one surface: earth, parks, water, sand, verges,
+## tarmac, paint, kerbs) and Trees/Palms (MultiMesh) always; under `Near`, the walls, roofs,
+## kit and objects (poles, shelters, props, AC units, dishes); under `Far`, one quad per wall
+## and flat roofs. The streamer shows Near or Far by the chunk's distance from the focus
+## (`ChunkStreamer.near_distance`): per-node visibility ranges hid chunks 160 m from the camera
+## under the Compatibility renderer, so the switch is explicit and testable.
 ## Colliders: building walls as trimesh pieces of at most PIECE_BUILDINGS buildings, and one
 ## trimesh of closed boxes for trees, poles, shelters and props.
 
@@ -33,9 +35,6 @@ class Kit:
 	var tree_triangles: int = 0
 	var palm_triangles: int = 0
 	## Distance (m, from the camera to a layer's centre) where the near look ends.
-	var near_range: float = 210.0
-	var object_range: float = 160.0
-	var tree_range: float = 0.0
 	var shadows: bool = true
 
 
@@ -96,7 +95,14 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	var ground := GroundMeshes.new()
 	ground.origin = out.centre
 	ground.build(spans, chunk.areas, square, out.furniture.kerbs)
-	_add_mesh(out, "ground", ground.mesh, kit.materials.ground, 0.0, 0.0, false)
+	var near := Node3D.new()
+	near.name = "Near"
+	view.add_child(near)
+	var far := Node3D.new()
+	far.name = "Far"
+	far.visible = false
+	view.add_child(far)
+	_add_mesh(out, view, "ground", ground.mesh, kit.materials.ground, false)
 
 	var meshes := BuildingMeshes.new()
 	meshes.origin = out.centre
@@ -106,10 +112,10 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 		var plan := BuildingMeshes.plan_facade(b, spans)
 		meshes.add(b, plan)
 		_fixtures(kit.models, objects, b, plan, chunk.buildings, boxes, out.centre)
-	_add_mesh(out, "walls", meshes.walls, kit.materials.walls, 0.0, kit.near_range, kit.shadows)
-	_add_mesh(out, "roofs", meshes.roofs, kit.materials.roofs, 0.0, kit.near_range, kit.shadows)
-	_add_mesh(out, "kit", meshes.kit, kit.materials.kit, 0.0, kit.near_range, false)
-	_add_mesh(out, "far", meshes.far, kit.materials.objects, kit.near_range, 0.0, kit.shadows)
+	_add_mesh(out, near, "walls", meshes.walls, kit.materials.walls, kit.shadows)
+	_add_mesh(out, near, "roofs", meshes.roofs, kit.materials.roofs, kit.shadows)
+	_add_mesh(out, near, "kit", meshes.kit, kit.materials.kit, false)
+	_add_mesh(out, far, "far", meshes.far, kit.materials.objects, kit.shadows)
 
 	for pole in out.furniture.poles:
 		CityModels.place(objects, kit.models.pole, _local3(pole.position, out.centre), pole.yaw)
@@ -119,7 +125,7 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 		var model: MeshBuilder = kit.models.props.get(p.kind)
 		if model != null:
 			CityModels.place(objects, model, _local3(p.position, out.centre), p.yaw)
-	_add_mesh(out, "objects", objects, kit.materials.objects, 0.0, kit.object_range, kit.shadows)
+	_add_mesh(out, near, "objects", objects, kit.materials.objects, kit.shadows)
 
 	_add_trees(kit, out, chunk)
 	_add_colliders(out, chunk)
@@ -131,21 +137,15 @@ static func _local3(p: Vector2, centre: Vector2, y: float = 0.0) -> Vector3:
 	return Vector3(p.x - centre.x, y, p.y - centre.y)
 
 
-static func _add_mesh(out: Build, layer: String, builder: MeshBuilder, material: Material, begin: float, end: float, shadows: bool, uv2: bool = false) -> void:
-	var mesh := builder.commit(material, uv2)
+static func _add_mesh(out: Build, parent: Node3D, layer: String, builder: MeshBuilder, material: Material, shadows: bool) -> void:
+	var mesh := builder.commit(material)
 	if mesh == null:
 		return
 	var mi := MeshInstance3D.new()
 	mi.name = layer.capitalize()
 	mi.mesh = mesh
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.visibility_range_begin = begin
-	mi.visibility_range_end = end
-	if begin > 0.0:
-		mi.visibility_range_begin_margin = 10.0
-	if end > 0.0:
-		mi.visibility_range_end_margin = 10.0
-	out.view.add_child(mi)
+	parent.add_child(mi)
 	out.triangles[layer] = builder.triangle_count()
 	out.surfaces += 1
 
@@ -231,7 +231,6 @@ static func _add_trees(kit: Kit, out: Build, chunk: ChunkData) -> void:
 		node.name = "Palms" if kind == 0 else "Trees"
 		node.multimesh = mm
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if kit.shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		node.visibility_range_end = kit.tree_range
 		out.view.add_child(node)
 		var per := kit.palm_triangles if kind == 0 else kit.tree_triangles
 		out.triangles["palms" if kind == 0 else "trees"] = per * list.size()

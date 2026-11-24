@@ -2,7 +2,7 @@
 // the ground atlas (asphalt, paving, grass, sand, water, paint, kerb, earth) and UV repeats inside it.
 // Explicit gradients keep the mipmap choice smooth across the tile seams made by fract().
 shader_type spatial;
-render_mode cull_back, diffuse_burley, specular_schlick_ggx;
+render_mode cull_back;
 
 uniform sampler2D atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform float tiles = 8.0;
@@ -29,4 +29,5 @@ void fragment() {
 	// Water is smooth, asphalt and stone rough.
 	ROUGHNESS = (l > 3.5 && l < 4.5) ? 0.2 : mix(0.95, 0.35, wet * paved);
 	SPECULAR = 0.3;
+	NORMAL = (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz;
 }
