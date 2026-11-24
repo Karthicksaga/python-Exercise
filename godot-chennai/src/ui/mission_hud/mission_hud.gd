@@ -20,12 +20,14 @@ signal action_chosen(id: String)
 signal lift_pressed
 
 const COLUMN_WIDTH := 330.0
-## Room left for the debug line above the column.
-const COLUMN_TOP := 52.0
+## The column starts at the corner now that the FPS line is off by default (G-290); the
+## performance overlay sits top-centre instead.
+const COLUMN_TOP := 16.0
 const GUTTER := 16.0
-const JOBS_SIZE := Vector2(96, 48)
-## The driving EXIT button's width and gap (`DrivingControls`): JOBS stays left of it.
-const EXIT_ROOM := 112.0
+const JOBS_SIZE := Vector2(72, 48)
+## Room right of JOBS: the PAUSE button (48, 12 off the edge gutter) and the driving EXIT beside
+## it (`PauseMenu`, `DrivingControls`), plus a gap. JOBS used to sit exactly under PAUSE.
+const EXIT_ROOM := PauseMenu.PAUSE_RIGHT + 48.0 + 10.0
 const URGENT := 10.0
 ## A dialog row's height and what the rest of a dialog takes (title, buttons, gaps, margins).
 const ROW_HEIGHT := 56.0
@@ -106,7 +108,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_column()
-	jobs_button = _button("JOBS", "Jobs", 16, true)
+	jobs_button = _button("JOBS", "Jobs", 15, false)
 	jobs_button.anchor_left = 1.0
 	jobs_button.anchor_right = 1.0
 	jobs_button.offset_left = -GUTTER - EXIT_ROOM - JOBS_SIZE.x
@@ -149,28 +151,22 @@ func _button(text: String, node_name: String, font: int, accent: bool) -> Button
 	b.custom_minimum_size = Vector2(0, UiTheme.MIN_TARGET)
 	b.focus_mode = Control.FOCUS_ALL
 	b.add_theme_font_size_override("font_size", font)
-	if accent:
-		var box := StyleBoxFlat.new()
-		box.bg_color = UiTheme.AMBER
-		box.set_corner_radius_all(12)
-		box.content_margin_left = 14
-		box.content_margin_right = 14
-		b.add_theme_stylebox_override("normal", box)
-		b.add_theme_stylebox_override("hover", box)
-		b.add_theme_color_override("font_color", Color("#1a1a1a"))
-		b.add_theme_color_override("font_hover_color", Color("#1a1a1a"))
-		b.add_theme_color_override("font_focus_color", Color("#1a1a1a"))
+	# Glass pills; only the primary action carries the accent outline (G-290).
+	UiTheme.style_glass(b, accent, 0.0)
+	b.add_theme_stylebox_override("normal", _pill(accent))
+	b.add_theme_stylebox_override("hover", _pill(accent))
 	return b
 
 
-static func _plate(alpha: float = 0.6) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color(0.06, 0.07, 0.12, alpha)
-	box.set_corner_radius_all(10)
-	box.content_margin_left = 12
-	box.content_margin_right = 12
-	box.content_margin_top = 6
-	box.content_margin_bottom = 6
+static func _plate(alpha: float = 0.5) -> StyleBoxFlat:
+	return UiTheme.glass_plate(alpha, 12)
+
+
+## A pill with room for its words.
+static func _pill(accent: bool) -> StyleBoxFlat:
+	var box := UiTheme.glass_box(UiTheme.GLASS_FILL, Color(UiTheme.AMBER, 0.95) if accent else UiTheme.GLASS_OUTLINE)
+	box.content_margin_left = 16
+	box.content_margin_right = 16
 	return box
 
 
@@ -263,9 +259,7 @@ func _build_toast() -> void:
 	toast_panel = PanelContainer.new()
 	toast_panel.name = "Toast"
 	toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var box := _plate(0.85)
-	box.border_color = Color(1.0, 0.82, 0.4, 0.7)
-	box.set_border_width_all(1)
+	var box := _plate(0.7)
 	box.content_margin_left = 20
 	box.content_margin_right = 20
 	box.content_margin_top = 10

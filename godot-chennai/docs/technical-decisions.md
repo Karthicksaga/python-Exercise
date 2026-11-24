@@ -1710,3 +1710,30 @@ and no Commons reference is listed (their titles name the business). Heights are
 `tests/tools/city_shot.gd --no-landmarks` builds the same city without landmark models (OSM
 buildings in place); `--frames=N` prints average and worst frame time over N rendered frames.
 Numbers in `handoff.md`.
+
+### G-290: One glass look for every HUD and touch button
+Owner feedback on a phone: buttons boxy, too big, heavy yellow fill, the yellow PAUSE block ugly.
+`UiTheme` is now the one factory (`glass_box`, `glass_plate`, `style_glass`, `icon_button`) and
+`UiIcons` draws the few icons (pause, exit, jump) from lines, so no asset licence. A button is a
+circle or pill of dark translucent glass (alpha 0.42) with a 1 px light outline and white
+text or icon; the accent (amber) is only the thin outline of the primary action (ACTION on foot,
+GO INSIDE, a dialog's main button) and the translucent fill of a pressed or held button. The drawn
+shape is inset inside a larger hit area (`StyleBoxFlat.expand_margin` negative, or `TouchButton.VISUAL`
+= 0.8), so PAUSE is 40 to the eye on a 48 target, ACTION 70 to the eye on 88 (was 104), GAS and
+BRAKE are circles of 92 and 76 (were 100x124 and 100x100 boxes). JUMP and RUN keep a 70 hit
+area because the 640x320 test needs 48 real pixels. EXIT and PAUSE are icon buttons, 48 each.
+Nothing in `test_*_layout.gd` was loosened; `test_hud_glass.gd` adds the same checks (inside the
+screen, 48 target, no overlap) for 915x412, 1830x824 and 2400x1080 on foot and driving.
+
+### G-291: The performance overlay is off by default
+The FPS line was on screen in play. `DebugSettings` (one class, save section `chennai-debug-v1`)
+holds `perf_overlay`; `DebugHud` shows its panel (now top-centre, not top-left) only when it is on.
+Switches: the pause menu row "Performance overlay: On/Off" and a hidden gesture, five taps within
+0.8 s of each other on the top-left 64x64 (`CornerTaps`, pure, tested in game time).
+`TouchControls` leaves touches in that corner unhandled so they reach the HUD. The perf agent's
+richer overlay should read `DebugSettings.shared().perf_overlay` and listen to `changed`; no second switch.
+
+### G-292: The top-right row no longer stacks JOBS under PAUSE
+`MissionHud`'s JOBS button and the PAUSE button had the same rectangle (JOBS was hidden under
+PAUSE and could not be pressed). The row is now, right to left: EXIT (driving), PAUSE, JOBS, with
+8 apart and tests for it. The mission column moved up to the corner now that the FPS line is gone.

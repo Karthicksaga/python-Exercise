@@ -21,7 +21,7 @@ signal action_pressed
 
 ## How far the knob travels from the stick's centre, UI units.
 const STICK_RADIUS := ControlsLayout.STICK_RADIUS
-const KNOB := 52.0
+const KNOB := 44.0
 ## Share of the screen's width (from the stick's side) where a touch takes the stick.
 const MOVE_SHARE := ControlsLayout.MOVE_SHARE
 
@@ -78,10 +78,11 @@ func _ready() -> void:
 	_action_button = TouchButton.new("ACTION", ControlsLayout.ACTION_SIZE)
 	_action_button.name = "Action"
 	_action_button.primary = true
-	_action_button.font_size = 18
+	_action_button.font_size = 16
 	_layer.add_child(_action_button)
 	_jump_button = TouchButton.new("JUMP", ControlsLayout.JUMP_SIZE)
 	_jump_button.name = "Jump"
+	_jump_button.icon = UiIcons.JUMP
 	_layer.add_child(_jump_button)
 	_run_button = TouchButton.new("RUN", ControlsLayout.RUN_SIZE)
 	_run_button.name = "Run"
@@ -138,7 +139,7 @@ func _process(_delta: float) -> void:
 		_label_known = true
 		_label = text
 		_action_button.text = text if text != "" else "ACTION"
-		_action_button.font_size = 18 if text.length() <= 6 else 15
+		_action_button.font_size = 16 if text.length() <= 6 else 13
 		_action_button.dim = text == ""
 
 
@@ -218,6 +219,9 @@ func _input(event: InputEvent) -> void:
 		return
 	var touch := event as InputEventScreenTouch
 	if touch != null:
+		# The top-left corner belongs to the hidden performance-overlay gesture (`DebugHud`).
+		if touch.pressed and CornerTaps.in_corner(touch.position):
+			return
 		if touch.pressed:
 			_press(touch.index, touch.position)
 		else:
@@ -301,6 +305,7 @@ class StickView:
 	func _draw() -> void:
 		var c := Vector2.ONE * radius
 		var a := 1.0 if active else 0.55
-		draw_circle(c, radius, Color(1, 1, 1, 0.12 * a))
-		draw_arc(c, radius - 1.0, 0.0, TAU, 48, Color(1, 1, 1, 0.45 * a), 2.0, true)
-		draw_circle(c + offset, knob * 0.5, Color(1, 1, 1, 0.85 * a))
+		draw_circle(c, radius, Color(UiTheme.GLASS_FILL, 0.3 * a))
+		draw_arc(c, radius - 0.5, 0.0, TAU, 48, Color(UiTheme.GLASS_OUTLINE, 0.9 * a), 1.5, true)
+		draw_circle(c + offset, knob * 0.5, Color(1, 1, 1, 0.3 * a))
+		draw_arc(c + offset, knob * 0.5 - 0.5, 0.0, TAU, 40, Color(1, 1, 1, 0.7 * a), 1.5, true)
