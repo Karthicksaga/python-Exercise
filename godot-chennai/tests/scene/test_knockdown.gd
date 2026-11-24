@@ -137,6 +137,12 @@ func test_a_street_person_has_the_same_api() -> bool:
 	return true
 
 
+func test_the_figure_gets_up_as_long_as_the_throw_does() -> bool:
+	assert_eq(HumanFigure.GETUP_TIME, CrashFlight.RISE_TIME, "the player's figure stands in the throw's rise time")
+	assert_eq(PersonView.GETUP_TIME, Knockdown.GETUP_TIME, "a street person's too")
+	return true
+
+
 func test_a_bike_crash_throws_the_figure_off_and_it_gets_up() -> bool:
 	if not check(yard.rig.body.figure.is_ready(), "the player model loads"):
 		return true

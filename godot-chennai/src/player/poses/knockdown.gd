@@ -10,10 +10,16 @@ extends RefCounted
 ## one side. Getting up: sit up on the hands, one knee, then stand into whatever the clip plays.
 ## Every phase starts from the pose the body is in, so nothing snaps.
 
-## Seconds to stand up from lying (CrashFlight.RISE_TIME, the throw's own get-up time).
-const GETUP_TIME := 0.75
+## Seconds to stand up from lying: sit up, turn onto the knees, one knee, stand. The crash
+## throw's own get-up (`CrashFlight.RISE_TIME`) is the same (G-262; 0.75 s was too quick to
+## show four poses without the legs passing through the ground).
+const GETUP_TIME := 1.2
+## Shares of GETUP_TIME: sit up, crouch on the knees, one knee, stand into the clip.
+const GETUP_SHARES: PackedFloat32Array = [0.25, 0.25, 0.2, 0.3]
 ## Seconds of each part of going down.
 const CRUMPLE_TIME := 0.25
+## How fast the body rolls on over the ground after an early landing, rad/s.
+const ROLL_SPEED := 5.0
 const SETTLE_TIME := 0.7
 ## A fall without a dive takes this long to reach the ground.
 const FALL_TIME := 0.5
@@ -45,6 +51,9 @@ var _shown: Array[Quaternion] = []
 var _shown_hips: Vector3 = Vector3.ZERO
 var _getup_wanted: bool = false
 var _landed: bool = false
+## The dive's pitch when it touched down: the roll carries on through the crumple from there.
+var _land_pitch: float = 0.0
+var _dived_landing: bool = false
 
 
 func _init(rig: PoseRig) -> void:
@@ -91,7 +100,12 @@ func land() -> void:
 		return
 	_landed = true
 	state = &"down"
-	_begin(&"crumple", &"crumple", CRUMPLE_TIME)
+	_dived_landing = dives
+	_land_pitch = _dive_pitch()
+	# Landed early in the dive: the rest of the roll is a forward roll on the ground, at a speed
+	# a body rolls (about 5 rad/s), not the rest of the flight's spin squeezed into the crumple.
+	var roll_left := absf(-1.5 * PI - _land_pitch) if dives else 0.0
+	_begin(&"crumple", &"crumple", clampf(roll_left / ROLL_SPEED, CRUMPLE_TIME, 0.7))
 
 
 ## Stand up (lands first if still in the air).
@@ -103,7 +117,7 @@ func get_up() -> void:
 		land()
 		return
 	state = &"rising"
-	_begin(&"situp", &"situp", GETUP_TIME * 0.35)
+	_begin(&"situp", &"situp", GETUP_TIME * GETUP_SHARES[0])
 
 
 ## One update after the clip (`dt` game seconds). Returns true on the update the person is up.
@@ -121,15 +135,18 @@ func step(dt: float) -> bool:
 	elif _seg_t >= _seg_len:
 		match _segment:
 			&"crumple":
+				_dived_landing = false
 				if _getup_wanted:
 					state = &"rising"
-					_begin(&"situp", &"situp", GETUP_TIME * 0.35)
+					_begin(&"situp", &"situp", GETUP_TIME * GETUP_SHARES[0])
 				else:
 					_begin(&"settle", &"lying", SETTLE_TIME)
 			&"situp":
-				_begin(&"kneel", &"kneel", GETUP_TIME * 0.3)
+				_begin(&"crouch", &"crouch", GETUP_TIME * GETUP_SHARES[1])
+			&"crouch":
+				_begin(&"kneel", &"kneel", GETUP_TIME * GETUP_SHARES[2])
 			&"kneel":
-				_begin(&"stand", &"", GETUP_TIME * 0.35)
+				_begin(&"stand", &"", GETUP_TIME * GETUP_SHARES[3])
 			&"stand":
 				state = &""
 				_segment = &""
@@ -154,10 +171,19 @@ func _write() -> void:
 		# Into the clip's own pose (read before it is overwritten), the turn unwinding.
 		var clip_hips := _rig.capture(_clip)
 		_rig.blend(_from, _from_hips, _clip, clip_hips, t)
+		# Into the clip's planted feet: only keep the body out of the ground on the way.
+		var low_s := _rig.lowest_joint()
+		if low_s < 0.0:
+			_rig.place_hips(_hip_mid() + Vector3(0, -low_s, 0))
 	else:
 		_rig.blend(_from, _from_hips, _to, _to_hips, t)
 		if _segment == &"dive":
-			_dive_root()
+			_dive_root(_dive_pitch(), 0.0, _rig.hip_height)
+		elif _segment == &"crumple" and _dived_landing:
+			# Finish the roll forwards onto the back (slerping could swing it either way).
+			var key: Array = KnockdownPoses.KEYS[&"crumple"]
+			var end_pitch := -1.5 * PI
+			_dive_root(lerpf(_land_pitch, end_pitch, t), float(key[1]) * t, _hip_mid().y)
 		if _landed:
 			var low := _rig.lowest_joint()
 			if low < JOINT_CLEARANCE:
@@ -171,17 +197,19 @@ func _take_shown() -> void:
 	_from_hips = _shown_hips
 
 
-## The dive's roll: three quarters of a turn forwards over the flight, pivoting on the hips.
-func _dive_root() -> void:
-	var s := smoothstep(0.0, 1.0, clampf(_t / _air, 0.0, 1.0))
-	var pitch := -1.5 * PI * s
-	var turn := Basis(Vector3.UP, yaw * clampf(_t / 0.2, 0.0, 1.0)) * Basis(Vector3.RIGHT, pitch)
+## The dive's pitch now: three quarters of a turn forwards over the flight.
+func _dive_pitch() -> float:
+	return -1.5 * PI * smoothstep(0.0, 1.0, clampf(_t / _air, 0.0, 1.0))
+
+
+## The body's orientation set explicitly (the dive and the landing after it): turned by `yaw`,
+## rolled by `roll`, pitched by `pitch`, the hip joints `hip_y` above the ground.
+func _dive_root(pitch: float, roll: float, hip_y: float) -> void:
+	var turn := Basis(Vector3.UP, yaw * clampf(_t / 0.2, 0.0, 1.0)) * Basis(Vector3.BACK, roll) * Basis(Vector3.RIGHT, pitch)
 	var hb := _rig.index[PoseRig.HIPS]
-	var key_rot := _rig.rest_rot[PoseRig.HIPS]
 	var skel_turn := _rig.turn * turn * _rig.turn.inverse()
-	_rig.skeleton.set_bone_pose_rotation(hb, (Basis(skel_turn) * Basis(key_rot)).get_rotation_quaternion())
-	_rig.skeleton.set_bone_pose_position(hb, _rig.rest_hips)
-	_rig.place_hips(Vector3(0, _rig.hip_height, 0))
+	_rig.skeleton.set_bone_pose_rotation(hb, (Basis(skel_turn) * Basis(_rig.rest_rot[PoseRig.HIPS])).get_rotation_quaternion())
+	_rig.place_hips(Vector3(0, hip_y, 0))
 
 
 func _hip_mid() -> Vector3:

@@ -753,7 +753,7 @@ func play_getup() -> void
 ## &"" upright (normal clips), &"falling", &"down" (crumpling or lying), &"rising".
 func knockdown_state() -> StringName
 signal got_up
-const GETUP_TIME := 0.75   # matches CrashFlight.RISE_TIME
+const GETUP_TIME := 1.2   # CrashFlight.RISE_TIME is 1.2 too (was 0.75; changed on this branch)
 ```
 
 `PlayerRiderLink` already calls them from `CrashFlight`'s phases (flying → `play_fall(launch)`,
