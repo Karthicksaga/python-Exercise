@@ -70,6 +70,8 @@ class Person:
 	var pos: Vector2
 	var yaw: float = 0.0
 	var pose: int = STAND
+	## Walking pace, m/s (strollers).
+	var speed: float = 0.0
 	## Metres walked so far (picks the walk phase), for walkers.
 	var walked: float = 0.0
 	var look: int = 0
@@ -318,6 +320,7 @@ func _person_at(s: Spot, time: float, avoid: PackedVector3Array) -> Person:
 	p.kind = s.kind
 	p.child = s.child
 	p.play = s.play
+	p.speed = s.speed
 	if s.pose == WALK and s.stroll > 0.0:
 		# Up and back along the walk: out, turn, back past the spot, turn.
 		var lap := s.stroll * 4.0

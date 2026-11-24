@@ -16,6 +16,8 @@ const WALK_CLIP_SPEED := 1.3
 const RUN_CLIP_SPEED := 3.4
 ## Frames between animation updates for a far figure.
 const FAR_EVERY := 3
+## Only figures this close cast a shadow (each shadow is two more draw calls).
+const SHADOW_NEAR := 18.0
 
 var person_id: String = ""
 var player: AnimationPlayer = null
@@ -26,6 +28,8 @@ var seat_height: float = 0.45
 var _far: bool = false
 var _skip: int = 0
 var _pending: float = 0.0
+var _body_mesh: MeshInstance3D = null
+var _shadow := true
 
 
 ## A view of person `id` from its loaded scene (no file access here; the pool loads scenes).
@@ -44,6 +48,8 @@ static func make(id: String, scene: PackedScene, seat: float) -> PersonView:
 		mi.visibility_range_begin = LOD_DISTANCE if lod1 else 0.0
 		mi.visibility_range_end = 0.0 if lod1 else LOD_DISTANCE
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if lod1 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		if not lod1:
+			v._body_mesh = mi
 	v.player = body.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if v.player != null:
 		v.player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
@@ -75,6 +81,10 @@ func advance(dt: float, distance: float) -> void:
 	if player == null:
 		return
 	_far = distance > LOD_DISTANCE
+	var shadow := distance < SHADOW_NEAR
+	if shadow != _shadow and _body_mesh != null:
+		_shadow = shadow
+		_body_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadow else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_pending += dt
 	if _far:
 		_skip += 1

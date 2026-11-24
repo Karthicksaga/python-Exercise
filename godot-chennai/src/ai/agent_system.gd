@@ -42,6 +42,8 @@ const DODGE_MAX := 1.3
 const DODGE_RATE := 1.1
 ## Room kept between two people passing, metres.
 const PASSING_ROOM := 0.3
+## Side of the broad phase's squares, metres.
+const BUCKET := 16.0
 
 
 class Agent:
@@ -560,6 +562,21 @@ func _apply_active(focus: Vector2) -> void:
 ## heading) of an emergency vehicle traffic pulls over for, or null.
 func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Variant = null) -> void:
 	_apply_active(focus)
+	# Broad phase (G-127): obstacles and agents by BUCKET-metre square, so each agent looks only
+	# at those in the squares its reach touches, not at everyone.
+	var obstacle_cells := _bucket_points(obstacles)
+	var biggest := 0.0
+	for o in obstacles:
+		biggest = maxf(biggest, o.z)
+	var agent_cells: Dictionary[Vector2i, Array] = {}
+	for other in agents:
+		if other.active:
+			var key := Vector2i(floori(other.pos.x / BUCKET), floori(other.pos.y / BUCKET))
+			if not agent_cells.has(key):
+				agent_cells[key] = []
+			agent_cells[key].append(other)
+	var near_obstacles := PackedVector3Array()
+	var near_agents: Array[Agent] = []
 	for a in agents:
 		if not a.active or _held.has(a.id):
 			continue
@@ -575,7 +592,18 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 		var walker := not settings.vehicles
 		var step_to := 0.0
 		var stepping := false
-		for o in obstacles:
+		var look := reach + maxf(_longest, biggest) + DODGE_AHEAD + 1.0
+		var c0 := Vector2i(floori((a.pos.x - look) / BUCKET), floori((a.pos.y - look) / BUCKET))
+		var c1 := Vector2i(floori((a.pos.x + look) / BUCKET), floori((a.pos.y + look) / BUCKET))
+		near_obstacles.clear()
+		near_agents.clear()
+		for cx in range(c0.x, c1.x + 1):
+			for cz in range(c0.y, c1.y + 1):
+				var key := Vector2i(cx, cz)
+				for i: int in obstacle_cells.get(key, PackedInt32Array()):
+					near_obstacles.append(obstacles[i])
+				near_agents.append_array(agent_cells.get(key, []))
+		for o in near_obstacles:
 			var r := Vector2(o.x, o.y) - a.pos
 			var ahead := r.dot(f)
 			if ahead <= 0.0 or ahead > reach + o.z:
@@ -593,7 +621,7 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 			by_obstacle = true
 		# Nobody further than this can be in the way this step (a bus's half length plus reach).
 		var near_sq := (reach + _longest + DODGE_AHEAD) * (reach + _longest + DODGE_AHEAD)
-		for other in agents:
+		for other in near_agents:
 			if other == a or not other.active or other.pos.distance_squared_to(a.pos) > near_sq:
 				continue
 			var c := cos(other.heading - a.heading)
@@ -718,6 +746,16 @@ func _aside(a: Agent, room: float, lateral: float, ahead: float) -> float:
 		return INF
 	var side := -1.0 if lateral > 0.1 else 1.0
 	return clampf(a.dodge + side * (room - absf(lateral)), -DODGE_MAX, DODGE_MAX)
+
+
+static func _bucket_points(points: PackedVector3Array) -> Dictionary[Vector2i, PackedInt32Array]:
+	var cells: Dictionary[Vector2i, PackedInt32Array] = {}
+	for i in points.size():
+		var key := Vector2i(floori(points[i].x / BUCKET), floori(points[i].y / BUCKET))
+		if not cells.has(key):
+			cells[key] = PackedInt32Array()
+		cells[key].append(i)
+	return cells
 
 
 ## Active agents' positions (for crossings and the sound of traffic).

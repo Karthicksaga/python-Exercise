@@ -59,6 +59,7 @@ static func make(variant_id: StringName, variation: float) -> TrafficVehicleView
 	v.add_child(cs)
 	v.model = VehicleModel.build(base.type, own)
 	v.add_child(v.model)
+	v._merge_far_lods(String(variant_id))
 	# The model's ground is at `model.position.y` below the chassis centre; the seat is in the
 	# model's frame (ground at 0).
 	v.driver_seat += v.model.position
@@ -68,6 +69,83 @@ static func make(variant_id: StringName, variation: float) -> TrafficVehicleView
 	for i in v._hub_y.size():
 		v.model.set_wheel(i, v._hub_y[i], 0.0, 0.0)
 	return v
+
+
+## Each model (`Lod0` near, `Lod1`/`Lod2` far: six to eighteen surfaces each) becomes one mesh
+## with a surface per material, shared by every view of the same look and paint; the far ones
+## cast no shadow. The wheels stay apart (they turn; `VehicleModel` moved them out of `Lod0`).
+## Traffic doors never open. A traffic vehicle costs about four draw calls instead of seven to
+## eighteen (G-127, measured with `traffic_shot.gd`).
+##
+## Not headless: the dummy renderer's mesh store is not thread-safe, and the city builds chunk
+## meshes on worker threads meanwhile (nothing is drawn headless anyway).
+func _merge_far_lods(look: String) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	for child in model.get_children():
+		var lod := child as Node3D
+		if lod == null or not String(lod.name).begins_with("Lod"):
+			continue
+		var parts := lod.find_children("*", "MeshInstance3D", true, false)
+		if parts.is_empty():
+			continue
+		var first := parts[0] as MeshInstance3D
+		var key := "%s:%s:%s" % [look, lod.name, paint.to_html()]
+		var mesh: ArrayMesh = _merged.get(key)
+		if mesh == null:
+			mesh = _merge(lod, parts)
+			_merged[key] = mesh
+		var merged := MeshInstance3D.new()
+		merged.name = "Merged"
+		merged.mesh = mesh
+		merged.visibility_range_begin = first.visibility_range_begin
+		merged.visibility_range_end = first.visibility_range_end
+		merged.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if lod.name == &"Lod0" else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for n in lod.get_children():
+			lod.remove_child(n)
+			n.queue_free()
+		lod.add_child(merged)
+
+
+static var _merged: Dictionary = {}
+
+
+static func _merge(lod: Node3D, parts: Array[Node]) -> ArrayMesh:
+	var tools: Dictionary = {}
+	var inverse := lod.global_transform.affine_inverse() if lod.is_inside_tree() else Transform3D.IDENTITY
+	for n in parts:
+		var mi := n as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		var xf := _relative(mi, lod) if not lod.is_inside_tree() else inverse * mi.global_transform
+		for s in mi.mesh.get_surface_count():
+			var arrays := mi.mesh.surface_get_arrays(s)
+			if arrays.is_empty():
+				continue
+			var mat := mi.get_surface_override_material(s)
+			if mat == null:
+				mat = mi.mesh.surface_get_material(s)
+			if not tools.has(mat):
+				var st := SurfaceTool.new()
+				st.begin(Mesh.PRIMITIVE_TRIANGLES)
+				st.set_material(mat)
+				tools[mat] = st
+			(tools[mat] as SurfaceTool).append_from(mi.mesh, s, xf)
+	var out := ArrayMesh.new()
+	for mat: Variant in tools:
+		(tools[mat] as SurfaceTool).commit(out)
+	return out
+
+
+static func _relative(node: Node3D, root: Node3D) -> Transform3D:
+	var xf := Transform3D.IDENTITY
+	var n: Node = node
+	while n != null and n != root:
+		var n3 := n as Node3D
+		if n3 != null:
+			xf = n3.transform * xf
+		n = n.get_parent()
+	return xf
 
 
 ## Height of the chassis centre above the road surface.
