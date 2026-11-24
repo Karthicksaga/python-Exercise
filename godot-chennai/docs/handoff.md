@@ -141,3 +141,11 @@ To continue:
 Weak spots (also in `docs/vehicles.md`): simple car fronts and rears, stepped window outlines up
 close, light trains (painted windows), cabins in the aircraft without gauges, the ported auto
 over the car budget, and nothing seen on a phone.
+
+## Emulator smoke made deterministic, branch `agent/godot-smoke`, 24 Nov 2026
+**Root cause** of the intermittent `android-smoke`: the portrait emulator rotated to landscape
+while the game was starting, Android relaunched the activity, and Godot ended its own process
+(G-9, amended). **Fix:** landscape emulator screen that ignores orientation requests, bounded
+readiness waits, the game's process followed by pid, full diagnostics on failure. Run several
+smoke jobs at once with *Run workflow* → `smoke_runs` = `1,2,3,4,5,6,7,8` (`smoke_settle` = `0`
+reproduces the old launch without the readiness waits).
