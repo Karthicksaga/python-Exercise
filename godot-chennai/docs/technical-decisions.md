@@ -1259,3 +1259,109 @@ texture bake was needed.
 primitives, objects; triangles per layer of the chunks in reach), then moves the focus 800 m
 through it at 20 m/s in game frames (headless: the streamer's main-thread maxima). Baseline is the
 same tool on the code before these changes with the same world files. Numbers in `handoff.md`.
+
+## G-170: Control settings: one shared object, one save section, live
+`ControlSettings` (`src/ui/touch_controls/`) holds the preferences: driving scheme (only `wheel`
+exists; the tilt and buttons schemes are named in the proposal but not built, by the owner's
+decision), left-handed, look sensitivity (0.5 to 2.0), invert-Y, button size (small 0.85,
+medium 1.0, large 1.15 of the 915x412 dp sizes), opacity, haptics, run toggle. `shared()` is the
+instance the game uses (loaded once from the save file); a setter saves and emits `changed`, and
+the walking and driving controls re-lay themselves out at once. Saved in the existing save file
+(`SaveStore`) as its own section `chennai-controls-v1` with `version: 1`: additive (`SaveStore`
+keeps sections it does not know, so `src/missions` is untouched), each field falls back to its
+default when missing, wrong-typed or out of range, and a newer file is read field by field. The
+pause menu gets one row per setting (`ControlSettingsRows`, same one-button-cycles-the-value
+pattern as time, weather and sound). Tests give their own instance with its own `path`.
+
+## G-171: Walking stick: dead zone 0.12, auto-run with hysteresis, no RUN button
+`MoveState` (pure): radial dead zone 0.12 (the rest rescaled from zero), run above 0.85 of the
+stick's travel, back to walking under 0.70 (between the two nothing changes, so a wobbling thumb
+does not flicker between gaits). The RUN button is gone. A walking stick is capped at 0.80 so
+`PlayerController`'s own 0.82 rule never contradicts it (it is the controller's `run` flag that
+decides). With "toggle run" on, the edge of the stick no longer runs; a RUN button (shown only
+then; a press of the pad's left-stick click on a pad) latches running until the stick is let go.
+`TouchControls.move` is still the raw stick (the existing G-66 test reads it); the rig applies
+`MoveState` to touch, pad and keys alike.
+
+## G-172: Look: sensitivity, invert-Y and a glide that adds no distance
+`LookState` (pure): a drag is pushed in UI units, scaled by sensitivity, vertical flipped when
+invert-Y is on, and delivered through a 30 ms low-pass (`step(dt)`). The glide is the inertia: the
+view settles for about a tenth of a second after the thumb leaves, but a 286-unit drag turns the
+camera exactly as far as before (the G-66 test's 1.4 to 1.75 rad still holds), so there is no
+overshoot to fight and sensitivity 1.0 is the old feel. The right stick pushes 440 units a second
+at full tilt through the same object.
+
+## G-173: Jump: 100 ms buffer, 80 ms coyote time, in the body
+`JumpState` (pure) is kept by `PlayerController` (three additive lines in `step`, plus
+`press_jump()` for the rig). A press up to 0.10 s before landing jumps on landing; a press up to
+0.08 s after walking off a kerb still jumps; one jump per press and per leaving the ground. The
+rig no longer decides when to jump, only when a press happened. JUMP is a smaller button above
+ACTION (70 dp at medium).
+
+## G-174: Steering by sliding: relative drag, auto-centre, progressive and speed-sensitive
+`SteerState` (pure) and `SteerZone` (the node over the steering side of the screen). The thumb
+lands anywhere (a ring shows where); 70 UI units of sideways drag from that point is full lock;
+the value eases to the drag at 15 a second and back to centre at 7 a second on release; a slide
+under 0.04 is a resting thumb. `SteerState.shape(x, speed_share)` is applied in `DriveInput` to
+touch and stick (the keys steer fully, as before): `|x|^1.6` (progressive) times a speed factor
+that falls smoothly from 1 at a standstill to 0.65 at top speed. Full lock at a standstill is
+exactly 1, and a firm slide (1.0) at a third of top speed still gives 0.9 or more, so what
+the Three.js handling tests measure (steer set directly on the vehicle, `test_vehicle_handling`)
+is untouched and a driver sliding fully in town gets within 10 % of the old full lock. The
+vehicle's own lock already narrows with speed (`max_steer / (1 + 0.09 v)`), which is why the
+extra reduction is gentle. Needs a real thumb to tune: the exponent and the 0.65 are first
+guesses from the prototype, in one place each.
+
+## G-175: Reverse by holding BRAKE; the gear is a readout
+`ReverseHold` (pure): BRAKE held 0.4 s while `|speed| < 0.3 m/s` starts reversing; releasing
+BRAKE, or pressing GAS, stops it; braking from speed never reverses (the 0.4 s only counts once
+stopped). `Driving.reverse_on_hold` (off by default so every earlier test and tool is
+unchanged; `PlayWiring` turns it on) drives `Gearbox` through one new method, `set_now`: R while
+reversing (throttle `-brake_amount`, so a half-pulled pad trigger reverses gently), D after. The
+P / R / D chips, the `gear_*` actions and the D-pad gears are gone; `Driving.select_gear` stays
+for tests and scripted use. `DrivingControls` shows REVERSE on BRAKE while it happens and a
+"hold to reverse" hint on it otherwise. Analogue triggers: `Driving.gas_amount` and
+`brake_amount` (1.0 for a key or a touch) scale throttle and brake.
+
+## G-176: ACTION is one button fed by `ActionContext`; GET IN is a source
+`ActionContext` (pure) is the small interface: `add_source(Callable)` where the Callable returns
+an `ActionCandidate` (label, priority, distance, activate), an Array of them or null;
+`best()` takes the highest priority and then the nearest; `trigger()` runs it; dead Callables
+(freed owners) are dropped. Priorities are constants: ENTER 20, BOARD 30, TALK 40, PICK UP 50,
+HAND OVER 60 (a waiting fare beats a car beside you). `TouchControls` owns one
+(`action_context`); the big round ACTION button shows the best label, dims (not hidden, so the
+layout is stable and the thumb finds it) and ignores presses when there is none. `DrivingWiring`
+registers GET IN. The missions layer, boarding of fares and the dialogue have no talk, pick-up
+or hand-over interaction in the game yet (fares are automatic), and `src/missions` is closed to
+this task, so nothing else registers today; each is one `add_source` call when it exists. The
+keyboard's E and the pad's A press the same button (`player_action`).
+
+## G-177: One pure layout for every control set; left-handed is its mirror
+`ControlsLayout.foot(area, settings)` and `.driving(...)` return every rectangle (buttons, the
+stick's resting ring, the stick/look and steering zones) from the size of the play area. The
+right-handed layout is computed, the left-handed one is `x' = width - x - w` of it, so the mirror
+is exact by construction and the nodes only copy rectangles. Sizes are dp at the 915x412 base
+(ACTION 104, JUMP 70, RUN 70, GAS 100x124, BRAKE 100x100, HORN 56, EXIT 100x52), scaled by the
+button-size setting and never under 48. New schemes or combat buttons add keys here. Medium
+buttons are at least 48 px on a 640x320 screen (the old G-66 rule); small is 0.85 and is under
+48 px there (48 dp at the base): noted, not tested.
+
+## G-178: Gamepad through named actions; glyphs follow the last device; vibration on crashes
+`ControlActions` registers at run time (keyboard kept): `player_action` (E, A), `player_jump`
+(Space, X), `player_run_toggle` (left-stick click), `pad_pause` (Start), and the raw stick
+actions `pad_move_*` and `pad_look_*` with dead zone 0 (consumers apply their own once).
+`DriveInput`: RT gas and LT brake (analogue), Y horn, B exit; the left stick steers through the
+same curve as a touch. Start pauses and resumes (`Main._unhandled_input`, five additive lines).
+Synthetic `InputEventJoypadMotion` / `Button` events parsed into `Input` drive all of it in the
+tests, through the same `MoveState`, `LookState`, `JumpState`, `SteerState` as touch.
+`DeviceTracker` notes which device sent the last event (a stick must move 0.5 to count); the
+ACTION, JUMP, GAS, BRAKE, HORN and EXIT buttons show a small badge (A, X, RT, LT, Y, B; keys on
+a keyboard) when it is not touch. `HapticsPlan` turns a crash outcome into a phone buzz or a pad
+rumble (thrown strongest); `DrivingWiring` plays it on `Driving.crashed` unless haptics are off.
+Kerb and speed-breaker ticks are not built. The D-pad is left to menu focus.
+
+## G-179: `ControlsGuide`: one data source for "what do the controls do"
+`ControlsGuide.rows(mode, device, settings)` returns `[control, what it does]` rows for walking or
+driving on touch, pad or keyboard, following left-handed and toggle-run. The pause menu and the
+title's CONTROLS page can both read it (the title agent may stub the same name; reconcile at
+merge: this one is `src/ui/touch_controls/controls_guide.gd`).

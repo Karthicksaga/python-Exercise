@@ -4,7 +4,9 @@ extends TestCase
 ## canvas_items, aspect expand), so each screen is checked at the UI size it gives and its
 ## buttons measured in real pixels too. With the debug HUD shown (its map credit sits
 ## bottom-right): every control inside the screen, buttons at least 48 dp (48 px at the base
-## scale) and 8 apart, nothing overlapping, stick bottom-left and buttons bottom-right.
+## scale) and 8 apart, nothing overlapping, stick bottom-left and buttons bottom-right. After
+## G-170 the buttons are ACTION and JUMP (RUN is gone: running is the stick's edge); the left-handed
+## layout, the button sizes and the thumbs' resting areas are in `test_controls_layout.gd`.
 
 const SCREENS: Array[Vector2i] = [Vector2i(915, 412), Vector2i(1830, 824), Vector2i(640, 320)]
 const BASE := Vector2(915, 412)
@@ -49,7 +51,7 @@ func test_touch_controls_fit_every_phone_screen() -> bool:
 				check(not a.intersects(b), "%s: %s and %s closer than 8 (%s, %s)" % [what, names[i], names[j], rects[names[i] as String], rects[names[j] as String]])
 		var stick := controls.stick_rect()
 		check(stick.get_center().x < ui.x * TouchControls.MOVE_SHARE and stick.get_center().y > ui.y * 0.5, "%s: stick at rest bottom-left (%s)" % [what, stick.get_center()])
-		print("    %s: JUMP %s, RUN %s, stick %s" % [what, rects["Jump"], rects["Run"], stick])
+		print("    %s: ACTION %s, JUMP %s, stick %s" % [what, rects["Action"], rects["Jump"], stick])
 		vp.queue_free()
 		await wait_frames(1)
 	return true

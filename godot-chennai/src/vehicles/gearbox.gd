@@ -64,6 +64,13 @@ func select(wanted: String, forward_speed: float) -> void:
 	pending = wanted
 
 
+## Engage `g` at once, whatever the speed, nothing pending: for reverse-on-hold (`ReverseHold`), where
+## the rule that the vehicle has stopped is already the hold's own (G-175).
+func set_now(g: String) -> void:
+	gear = g
+	pending = ""
+
+
 ## Physics controls for one fixed step from what the player holds.
 func controls(gas: bool, brake: bool, steer: float, forward_speed: float) -> Controls:
 	var stopped := absf(forward_speed) < SHIFT_SPEED
