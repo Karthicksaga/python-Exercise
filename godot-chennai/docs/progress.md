@@ -88,3 +88,33 @@ Not done / weak: see `handoff.md` "Data".
 - [ ] Use in the game (Phase 2, 6, 6b): manifest loader, visibility ranges, wheel, door and
   pivot animation, train MultiMesh.
 - [ ] Seen on a phone (nothing tried on a device yet).
+
+## Player (phase 1, branch `agent/godot-player`, 23 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Kinematic player at the fixed step: walk 2.4 / run 6.2 m/s relative to the camera, jump 7.2 m/s, gravity 24, stays on the ground, walls stop it, kerbs (15 cm) and steps (30 cm) climbed, 60 cm ledges not (G-60) | Done on the test ground | `tests/scene/test_player.gd`: three camera headings, walk 0.8–3.2 m in 1 s, run > 2.5× walk, \|y\| < 8 cm; jump apex 0.9–1.25 m and landing; wall at x = 6 and a corner; kerb, step, ledge |
+| Player model from a people manifest (default: the Three.js `player.glb` at 1.75 m) (G-63) | Done | `tests/unit/test_retarget.gd` (manifest paths); swapping to a Cast person is one call, not yet tried with a new-cast GLB |
+| Mixamo idle/walk/run retargeted to the A-pose MPFB rig: limbs, whole hand frames, finger joints (G-61) | Done | `tests/unit/test_retarget.gd` (synthetic A-pose arm vs T-pose: arm, hand, knuckles, finger within 0.01 rad); `test_human_figure.gd`: every arm, hand, knuckle-line, finger and leg direction of the player's baked clips within 2° of the clip rig at 36 moments (measured 0.00°) |
+| Soles planted per clip and every step, blends included; arms settled in (G-62) | Done | `test_human_figure.gd`, every foot vertex measured: idle 0.0 mm, walk −0.2…0 mm, run −0.3…0 mm, ten gait changes within 0.2 mm (limit 1 cm); wrists: idle ≤ 8.9° (limit 15°), walk ≤ 33.2° and run ≤ 41.9° vs the clips' own 33.2° and 40.1° (limit +3°); upper arms ≥ 3.8° out |
+| Orbit/chase camera: drag to look, smooth follow, look-ahead with speed, walls clamp at once, poles and people ease (G-65) | Done | `test_player.gd`: 720 steps swinging round walls and a corner with the camera never inside a collider; walking past a pole: seen as thin, largest step-to-step distance change < 0.25 m; drag 286 → 1.4–1.75 rad; look-ahead 0.85 m at a run |
+| Touch controls: floating stick left, look zone right, RUN and JUMP bottom-right; keyboard (G-66, G-67) | Done | `test_player.gd` (stick and drag through real touch events); `tests/scene/test_touch_layout.gd` at 915×412, 1830×824, 640×320 with the HUD: in bounds, ≥ 48 UI units and ≥ 48 px, 8 apart, no overlap, thumb zones |
+| Vehicle and combat hooks (`enter_vehicle`/`exit_vehicle`, `knock`, signals) | Done (API only) | `test_player.gd` vehicle test (follows the seat, no collision, back on foot) |
+| Screenshots (Compatibility, xvfb): idle, walk, run, by a wall, close-up, at 915×412 and 1830×824 | Done | made by `tests/tools/player_screenshot.gd` into a scratch folder (not committed, AGENTS.md) |
+| Player in the game flow (main scene) | Not done | `PlayerRig` is ready for the composition root; wiring it into `main.gd` is left to the coordinator/World so the test ground and the streamed city are swapped in one place |
+
+## Tamil Nadu road vehicles (agent/godot-tn-vehicles, 23-24 Nov 2026)
+- [x] Chennai auto-rickshaw redesigned (5.5k / 2.0k triangles, under the car budget; same wheels,
+  hip points and handling as the Three.js auto), share auto (six seats), mini goods carrier.
+- [x] Indian cars: small hatchback (redesign, same handling), compact sedan, Chennai taxi (plain
+  roof board, yellow plates); six common Indian paints each.
+- [x] Van ambulance redesigned (plain white with a red band, beacons, no emblem or name).
+- [x] Buses with three LODs: city high-floor (cream and maroon family), low-floor, state-transport
+  intercity (green and yellow), private mofussil (invented bright art), school bus (yellow, brown
+  band); every seat, the conductor, grab rails, kerb points and destination boards as nodes.
+- [x] Model checks extended (budgets per kind with legacy counts by name, exit points on the
+  ground, livery and paint colour families): 3,226 checks on 34 models, all passing
+  (`./run_tests.sh --filter=vehicle_models`).
+- [x] Review screenshots (Compatibility renderer, 915×412 and 1830×824) and side-by-side
+  comparisons with the references, not committed.
+- [ ] Compared with photographs of current Chennai buses (Commons downloads were rate limited).
+- [ ] Used in the game (Phase 2 vehicles, Phase 3 traffic); seen on a phone.

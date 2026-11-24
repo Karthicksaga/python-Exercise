@@ -425,3 +425,104 @@ nodes (`dest_front`, `dest_side`, `dest_rear`) with size and facing in the manif
 On the autos the `steering` node holds the handlebar, column, fork and front mudguard, turning
 about the column axis in the manifest; the game also turns `wheel_front` about Y. Grips are at the
 handlebar ends (the Three.js auto's hand points).
+## Player: on foot, figure, camera, touch controls (G-60 to G-69)
+
+## G-60: The player on foot is a kinematic cylinder at the fixed step (TD-6)
+`PlayerController` (`src/player/player_controller.gd`) is a `CharacterBody3D` moved with
+`move_and_slide` in `_physics_process` at 60 Hz (G-2). The movement rules are the Three.js
+`PlayerController`'s, unchanged: walk 2.4 m/s, run 6.2 m/s (× `run_scale`), the stick runs past
+82% of its travel, speed eases towards the stick at 10/s (35% of that in the air), gravity
+24 m/s², jump 7.2 m/s (apex 1.08 m), fall capped at 40 m/s, turning 12 rad/s towards the travel,
+movement relative to the camera's yaw. The Rapier character settings carry over: steps and kerbs
+up to 0.35 m are climbed (`_step_up`: up, across, down onto a walkable top), floor snap 0.3 m,
+slopes up to 50°. The body is an upright **cylinder** 1.75 m × 0.32 m, not a capsule: its flat
+base can stand on a kerb's edge once lifted over it, while a capsule's round base slid back off
+a 15 cm kerb in Jolt. It reads a `PlayerInput` (stick, jump, run, camera yaw) and knows no
+device, so tests, touch, keys and later AI or cutscenes drive it the same way.
+
+**Hooks.** Vehicles: `enter_vehicle(vehicle, seat)` turns collision off and makes the body
+follow the seat node each step; `exit_vehicle(feet, yaw)` puts the player back on foot; signals
+`entered_vehicle`, `exited_vehicle`. Combat: `knock(push)`, `facing()`, `figure`,
+`controls_enabled`; signals `jumped`, `landed`.
+
+## G-61: Locomotion retargeted in Godot at load, on plain data
+The Mixamo clips (T-pose, `locomotion.glb`, only rotation tracks on a hierarchy of joint nodes)
+are retargeted to each MPFB character (A-pose Skeleton3D) by `Retarget.run`, a port of the
+Three.js `retarget.ts`: each bone's model-space rotation away from rest on the source, applied to
+the target's rest; limbs first turned to point the way the source's do; **hands aligned by their
+whole frame** (along the middle finger and across the knuckles) and each finger joint after the
+joint above, so no wrist bends in (§7). Bones are matched by plain name (`BoneNames.plain`:
+`mixamorig:X`, `mixamorig_X` (Godot's import), `mixamorigX` → `X`); the skeleton keeps its own
+names in the track paths. It works on plain data (`RigData` read from the Skeleton3D or the
+joint nodes on the main thread), so it runs on a worker thread (`BackgroundTask`): about 0.25 s
+for the player on a desktop. Results are cached per skeleton (`LocomotionClips`), as the Three.js
+`clipCache`. Not baked to files: new cast members need no extra step, and the cost is once per
+skeleton in a loading screen. Clips play in an `AnimationTree` (blend tree: three clips, a
+`TimeScale` each, two `Blend2`) advanced manually in the physics step, so the post-steps below
+see the pose of this step and tests are deterministic.
+
+## G-62: Soles planted per clip and every step, measured on the mesh
+At retargeting, each frame's hips are raised or lowered so the lowest **sole vertex** stays at
+its rest height (`SoleSet`: vertices bound mostly to a foot bone, the lower 45% of the feet, CPU
+skinned with their bind poses: all 3,002 of the player's sole vertices, not a sample, the
+Three.js lesson of a 7 cm sink). At run time (`HumanFigure`, the player: `plants_feet`; everyone
+else only during a gait blend) the hips are moved every step so the lowest sole is exactly on
+the ground, both ways, which also holds through the 0.22 s blends (8.5 cm sink in Three.js).
+Only candidates are skinned per step: the 4 lowest of each baked frame plus the support points
+of each foot part in 200 directions (a foot part turns almost rigidly, so its lowest point is
+one of them); tests measure every foot vertex. After the clips, each upper arm is turned in
+(9° idle, 8° walk, 10° run by gait weight, never below 4° out), as `armSettle.ts`. MPFB's
+black vertex-colour channel is never used as albedo.
+
+## G-63: The player's model comes from a people manifest
+`PeopleManifest` reads the `people.json` schema (`{"people": [{"id", "file", "heightM", ...}]}`)
+shared by the legacy cast and the new cast; files resolve beside the manifest (the legacy
+`people/x.glb` resolves to `x.glb`). `PlayerRig.load_figure(manifest, id)` draws any person as
+the player (any rig whose bones have the Mixamo names); with none, the default is the Three.js
+`player.glb`, scaled to 1.75 m. The figure faces -Z (the model is turned round; glTF faces +Z).
+
+## G-64: Physics layers
+Layer 1 world (ground, buildings, kerbs, poles), 2 player, 3 people, 4 vehicles (bits 1, 2, 4,
+8; constants on `PlayerController`). The player scans world, people and vehicles; the camera's
+view is blocked by world, people and vehicles, never the player. Systems added later take
+these bits; when a shared `src/physics/` module exists the constants move there.
+
+## G-65: Orbit and chase camera that eases round thin obstacles
+`FollowCamera` (port of `FollowCamera.ts` plus `chennai-game-design` §5): drag turns yaw and
+pitch (0.0055 rad per UI unit, pitch −0.2…1.15); follows the feet + 1.5 m with
+`1 − exp(−14·dt)` smoothing (softer height in a vehicle), snapping on the first step and after
+8 m jumps; looks ahead along the velocity (0.15 s of travel on foot, 0.3 s in a vehicle, at most
+7 m, eased at 2.5/s, held off for 1.5 s after a drag); `chase()` trails the travel direction and
+adds up to 1.4 m and 7° at top speed. Collision: a 0.22 m sphere swept from the focus. If the
+obstacle is **thin** (the wanted camera place is free and a sweep back from it meets the obstacle
+within 0.8 m, as a pole or a person) the camera eases in at 2.5/s instead of snapping and eases
+out at 4/s when the view clears; a **wall** (anything thicker, or the wanted place inside
+geometry) pulls it in at once. Whatever the easing, a final check never leaves the camera inside
+a collider. It runs in the physics step after the player moves (priorities: rig −10, body 0,
+camera 100), so following the 60 Hz body cannot jitter at 60 fps. If Foundation later turns on
+physics interpolation, the camera should follow `get_global_transform_interpolated()` in
+`_process` instead.
+
+## G-66: Touch controls track every finger themselves
+`TouchControls` (`src/ui/touch_controls/`, a `CanvasLayer`) handles `InputEventScreenTouch` and
+`ScreenDrag` in `_input` by touch index, so the stick, the look drag and a button work at the
+same time (Godot's GUI focus is single-pointer). Layout (UI units, 915×412 base): floating stick
+(56 radius) where the thumb lands on the left 45%, resting bottom-left; JUMP (80) in the
+bottom-right corner lifted clear of the HUD's OSM credit; RUN (70) to its left along the
+thumb's arc, 16 apart; the rest of the screen is the look zone. Buttons of 70 or more stay at
+least 48 px on a 640×320 screen (scale 0.7). RUN is a switch (a thumb cannot hold it and steer
+the camera): tap to run, off when the stick is let go; a full stick runs too. Inside a
+`SafeAreaMargin`. The mouse drives the same code through `emulate_touch_from_mouse`.
+
+## G-67: `PlayerRig` is the on-foot unit the composition root adds
+`PlayerRig` (Node3D) owns the body, the camera and the touch controls and, each physics step
+before the body moves, turns touch and keys into a `PlayerInput`. Keyboard for desktop testing:
+WASD/arrows (walk pace), Shift run, Space jump; the actions (`player_*`) are added to the
+InputMap at run time when missing, so `project.godot` needs no edit. `reads_devices = false`
+hands control to code (tests, cutscenes).
+
+## G-68: The player's test ground until the city lands
+`PlayerTestGround` (`src/player/player_test_ground.gd`) adds to Foundation's test world a long
+wall and a corner, a 15 cm kerb, a 30 cm step, a 60 cm ledge, two 18 cm street-light poles and
+a person-sized post, and a `PlayerRig`. Tests and `tests/tools/player_screenshot.gd` use it;
+the World agent's streamed city replaces it in the game.

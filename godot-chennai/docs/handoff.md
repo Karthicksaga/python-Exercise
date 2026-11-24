@@ -141,3 +141,57 @@ To continue:
 Weak spots (also in `docs/vehicles.md`): simple car fronts and rears, stepped window outlines up
 close, light trains (painted windows), cabins in the aircraft without gauges, the ported auto
 over the car budget, and nothing seen on a phone.
+
+## Player (phase 1), branch `agent/godot-player`, 23 Nov 2026
+**Done.** `src/player/`: `PlayerController` (kinematic cylinder, Three.js movement rules,
+kerb stepping), `HumanFigure` (any MPFB/Mixamo-named model, retargeted idle/walk/run in an
+`AnimationTree` advanced in the physics step, arms settled, soles planted every step),
+`Retarget`/`RigData`/`SoleSet`/`LocomotionClips` (retargeting on plain data, on a worker
+thread, cached per skeleton), `PeopleManifest`, `FollowCamera` (orbit + chase, eases round
+thin obstacles, clamps at walls), `PlayerRig` (body + camera + touch + keys),
+`PlayerTestGround`; `src/ui/touch_controls/` (multi-touch stick, look, RUN, JUMP). Decisions
+G-60…G-68 (G-69 free). Tests: `tests/unit/test_retarget.gd`, `tests/scene/test_human_figure.gd`,
+`test_player.gd`, `test_touch_layout.gd`. Screenshots: regenerate with `tests/tools/player_screenshot.gd` into a scratch folder (never committed, AGENTS.md).
+
+**To wire it into the game** (composition root): add a `PlayerRig` to the world, `await
+rig.load_figure()` during loading (it retargets on a worker thread, about 0.25 s on a desktop),
+then `rig.place(feet, yaw)`; hide `rig.controls` outside play; the rig makes its camera current.
+Put the rig in `WorldOrigin.GROUP` and call `WorldOrigin.follow(rig.body.global_position)` from
+the step (World agent), then `rig.camera.snap()` after a recentre. A new-cast person:
+`rig.load_figure("res://assets/people/people.json", "<id>")`.
+
+**For Vehicles.** `body.enter_vehicle(vehicle, seat_node)` / `body.exit_vehicle(feet, yaw)`;
+while riding call `rig.camera.chase(velocity, heading, forward_speed, top_speed, dt)` each step
+and set `rig.camera.reach` for the vehicle (Three.js: further for cars and buses);
+`rig.camera.follow(vehicle_body)` to follow the vehicle instead of the player; the figure stays
+shown for a seated pose (none yet). Layers: G-64.
+
+**Weak or not done.**
+- Not in `main.gd` yet (see above); the touch controls appear only with a `PlayerRig`.
+- No jump or fall clip (the Three.js game had none either): in the air the gait clip plays at
+  0.55×.
+- Physics interpolation is off project-wide; the camera follows in the physics step, smooth at
+  60 fps, but on a 90/120 Hz screen the view updates at 60 Hz. Turning interpolation on means
+  the camera should read `get_global_transform_interpolated()` in `_process`.
+- The step-up uses `test_move` probes on a cylinder body; checked on boxes, not on the real
+  city's kerbs or stairs, or on slopes steeper than the ground.
+- Retargeting cost (0.25 s desktop) is untested on the Adreno 613 phone; if it is slow, bake
+  the clips per skeleton to a resource at build time.
+- Only the default player model was exercised; Cast's new models must keep the Mixamo bone
+  names (any prefix) and the A-pose for the retarget to apply.
+- In the close-up the shoulders read slightly raised; arms are judged natural, hands relaxed,
+  sandals flat on the ground.
+
+## Tamil Nadu road vehicles (agent/godot-tn-vehicles)
+State: 12 models in `assets/vehicles/` (autos, cars, ambulance, five buses), replacing the
+Three.js hatchback, auto, ambulance and bus (those stay in `legacy/`). Details, references and
+rules: `docs/vehicles.md` "Tamil Nadu road vehicles"; decisions G-90 to G-96.
+
+To continue:
+- Rebuild: `tools/blender/vehicles/build_all.sh` runs `road/autos.py`, `road/cars_in.py` and
+  `road/buses.py` after `cars.py` (they import its body method). One script:
+  `blender -b --factory-startup --python godot-chennai/tools/blender/vehicles/road/buses.py -- --only bus_city`.
+- Check: `./run_tests.sh --filter=vehicle_models`.
+- First follow-ups: look at photographs of current Chennai city and low-floor buses and correct
+  their colour families if needed (the Commons downloads were rate limited, G-90); restyle the
+  legacy motorbike; draw destination names on the `dest_*` nodes in Phase 3.
