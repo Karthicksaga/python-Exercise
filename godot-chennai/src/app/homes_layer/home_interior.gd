@@ -375,7 +375,7 @@ func _fit_camera(dt: float) -> void:
 	var w := float(room.width) + 2.0
 	var d := float(room.depth)
 	var centre := Vector3(float(room.width) * 0.5 + 0.6, 0.7, d * 0.5)
-	var radius := 0.5 * sqrt(w * w + d * d + 9.0) * 0.92
+	var radius := 0.5 * sqrt(w * w + d * d + 9.0) * 0.8
 	var half_v := deg_to_rad(FOV) * 0.5
 	var half_h := atan(tan(half_v) * aspect)
 	var dist := radius / sin(minf(half_v, half_h))

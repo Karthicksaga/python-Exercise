@@ -18,6 +18,9 @@ const INTERIOR := preload("res://src/app/homes_layer/home_interior.tscn")
 ## Boards are made and shown within this distance of the player, hidden beyond FAR.
 const NEAR := 190.0
 const FAR := 240.0
+## A listing's building is looked up (on a worker) once the player is this near, so far tiles'
+## street layouts are not built for it at the start.
+const RESOLVE_NEAR := 450.0
 const WALK_TIMEOUT := 3.5
 const FADE := 0.35
 
@@ -54,6 +57,9 @@ var _fade: ColorRect
 var _fade_layer: CanvasLayer
 var _world_mode: Node.ProcessMode = Node.PROCESS_MODE_PAUSABLE
 var _busy: bool = false
+var _pending: Dictionary[String, BackgroundTask] = {}
+var _missing: Dictionary[String, bool] = {}
+var _since_resolve: float = 99.0
 
 
 func _init() -> void:
@@ -108,28 +114,57 @@ func setup(city: CityWorld, player: PlayerRig, sess: MissionSession) -> void:
 
 
 func _prepare() -> void:
-	var source := world.source
-	var layouts := world.layouts
-	var loaded: Dictionary = await BackgroundTask.start(func() -> Dictionary:
-		var d := HomeData.load_all()
-		var found: Array[HomeSite] = []
-		if d.error() == "":
-			for l in d.listings.listings:
-				var s := HomeSite.resolve(l, source, layouts)
-				if s != null:
-					found.append(s)
-		return {"data": d, "sites": found}).finish(get_tree())
-	data = loaded["data"]
+	data = await BackgroundTask.start(HomeData.load_all).finish(get_tree())
 	if data.error() != "":
 		push_error("homes: %s" % data.error())
 		return
-	for s: HomeSite in loaded["sites"]:
-		sites[s.id()] = s
-	for l in data.listings.listings:
-		if not sites.has(l.id):
-			push_warning("homes: %s (OSM %d) is not in the world data; skipped" % [l.id, l.osm])
 	state = HomeState.from_save(session.store.section(HomeState.SAVE_KEY) if session != null else null, data)
 	ready_to_use = true
+
+
+## Finds a listing's building and door now (awaits the worker); null when it is not in the data.
+## The game does this by itself as the player comes near; tools and tests ask for it.
+func resolve_now(listing_id: String) -> HomeSite:
+	if sites.has(listing_id):
+		return sites[listing_id]
+	var l := data.listings.get_listing(listing_id)
+	if l == null:
+		return null
+	var task: BackgroundTask = _pending.get(listing_id)
+	if task == null:
+		task = BackgroundTask.start(HomeSite.resolve.bind(l, world.source, world.layouts))
+		_pending[listing_id] = task
+	await task.finish(get_tree())
+	_collect()
+	return sites.get(listing_id)
+
+
+## Takes in the lookups that have finished; starts the next one for a listing that has come near.
+func _collect() -> void:
+	for id: String in _pending.keys():
+		var t: BackgroundTask = _pending[id]
+		if not t.is_done():
+			continue
+		_pending.erase(id)
+		var s := t.result() as HomeSite
+		if s != null:
+			sites[id] = s
+		else:
+			_missing[id] = true
+			push_warning("homes: %s is not in the world data; skipped" % id)
+
+
+func _resolve_step() -> void:
+	_collect()
+	if not _pending.is_empty():
+		return
+	var at := player_world()
+	for l in data.listings.listings:
+		if sites.has(l.id) or _missing.has(l.id):
+			continue
+		if at.distance_to(l.at) <= RESOLVE_NEAR:
+			_pending[l.id] = BackgroundTask.start(HomeSite.resolve.bind(l, world.source, world.layouts))
+			return
 
 
 ## NEW GAME forgets the homes too.
@@ -148,6 +183,10 @@ func _physics_process(dt: float) -> void:
 	match phase:
 		&"street":
 			_since_view += dt
+			_since_resolve += dt
+			if active and _since_resolve >= 1.0:
+				_since_resolve = 0.0
+				_resolve_step()
 			if active and _since_view >= 0.4:
 				_since_view = 0.0
 				_update_views()
@@ -284,7 +323,7 @@ func _step_entering(dt: float) -> void:
 	rig.body.input = PlayerInput.make(Vector2(0.0, 0.5), yaw, false, false)
 	rig.camera.yaw = lerp_angle(rig.camera.yaw, yaw, minf(1.0, 3.0 * dt))
 	# The door's leaf needs a moment to swing before anyone walks through it.
-	if _timer < 0.6:
+	if _timer < 0.7:
 		rig.body.input = PlayerInput.new()
 		return
 	if to.length() < 0.5 or _timer > WALK_TIMEOUT:

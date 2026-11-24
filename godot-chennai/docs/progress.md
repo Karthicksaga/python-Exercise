@@ -262,3 +262,20 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Blender kits: gopuram complex, colonial clock tower, station, tower, lighthouse; deterministic GLBs (G-183, G-184) | Done (mall kit not built) | `build_all.sh` builds twice and compares bytes; `test_models_built_from_the_current_spec` |
 | Kapaleeshwarar Temple, Ripon Building, Chennai Central, Chennai Egmore, Anna Nagar Tower, Chennai Lighthouse in the city (G-185) | Done (Compatibility screenshots, not on a phone) | `test_landmarks.gd`: outline within 2 m of OSM, height within 10 %, budgets, LODs, collision ray, placement and floating origin, worker loading, buildings left out, names |
 | Old `LandmarkMeshes`/`LandmarkProfiles` retired | Done | tower ported to the `tower` kit; full suite |
+
+## Homes: buy, walk in, furnish, extend, save (branch `agent/godot-homes`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Four home types and 47 props from the prototype, English and Tamil, as data (G-230) | Done (Tamil needs native review) | `test_homes.gd`: files load, every prop complete with Tamil, plain pooja geometry, no business words |
+| One price file, one scale factor, economy tied to stage pay (G-231) | Done (proposal ×0.05, owner can tune) | `test_one_scale_factor_sets_every_price`, `test_prices_fit_the_game_economy` |
+| Grid placement, overlap and bounds, rotation, half refund, doorway kept clear, extensions ₹1,000 and ₹2,000 up to two, paths (G-232) | Done | `test_homes.gd` (12 tests on the rules) |
+| Save in its own versioned section; new game, damaged, unknown props, newer version (G-234) | Done | `test_state_round_trips_through_the_save_store`, `test_missing_or_damaged_sections_are_a_new_game`, `test_unknown_props_are_dropped_and_unknown_types_kept`, `test_a_newer_save_is_left_alone` |
+| 11 homes for sale on real OSM buildings in 4 areas, door on the road-facing edge, bilingual board with price, MY HOME once bought (G-233) | Done | `test_home_sites.gd` (every building resolves; door on the wall, facing out, not on a carriageway; board texts), screenshots |
+| BUY (price, dimmed when poor) then ENTER on the ACTION button (G-233, G-238) | Done | `test_homes_layer.gd`, `test_buy_is_dimmed_when_too_poor_and_the_button_still_explains` |
+| Interior scene: shell by home type plus extensions, windows, door that opens, walk in with the player's model, day/night from the game's clock, kolam (G-235) | Done | `test_home_interior.gd`, `test_homes_layer.gd`, screenshots |
+| The street is put away while inside (no AI, traffic, streaming, physics); interior sound bed; leaving restores everything (G-235) | Done (in headless tests and under llvmpipe; not on a phone) | `test_a_home_can_be_bought_entered_furnished_slept_in_and_left` |
+| SLEEP (to morning, saves), FURNISH through ActionContext inside (G-235) | Done | same test; `test_the_police_keep_you_out_and_back_leaves` |
+| Furnish editor UI with the seven category tabs, 48 dp buttons at four screen shapes (G-237) | Done | `test_hud_fits_every_screen_shape`, `test_hud_reports_what_was_pressed`, screenshots at 915x412 and 1830x824 |
+| Props as merged procedural meshes, glow at night, one real light (G-236) | Done | `test_every_prop_builds_a_small_model`, `test_a_furnished_room_is_two_meshes`, `test_a_furnished_room_is_cheap_to_draw`, `test_lamps_glow_only_at_night` |
+| Peace zone, police and vehicle entry rules (G-234) | Done (no live wanted level exists yet; a hook is ready) | `test_peace_zone_and_entry_rules`, `test_the_police_keep_you_out_and_back_leaves` |
+| Seen on a phone | Not done | — |

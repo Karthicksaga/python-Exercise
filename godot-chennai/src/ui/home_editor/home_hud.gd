@@ -23,6 +23,8 @@ signal kolam_pressed
 const PANEL_WIDTH := 392.0
 const TAB_WIDTH := 132.0
 const TOOL_W := 78.0
+## The Tamil under each context button (needs native review, docs/homes.md).
+const TAMIL: Dictionary = {"FURNISH": "அலங்கரி", "SLEEP": "தூங்கு", "LEAVE": "வெளியே"}
 const MARGIN := 12.0
 
 var data: HomeData
@@ -432,10 +434,11 @@ func _sync_actions() -> void:
 func _make_action(c: ActionCandidate, index: int) -> void:
 	var b := Button.new()
 	b.name = "Action_%s" % c.label.replace(" ", "_")
-	b.text = c.label
 	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_size_override("font_size", 20 if index == 0 else 15)
+	set_lines(b, c.label, str(TAMIL.get(c.label, "")), false, 20 if index == 0 else 15, 14 if index == 0 else 12)
 	if index == 0:
+		for l in b.find_children("*", "Label", true, false):
+			(l as Label).add_theme_color_override("font_color", Color.BLACK)
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(UiTheme.AMBER, 0.92)
 		sb.set_corner_radius_all(40)

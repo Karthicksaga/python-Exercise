@@ -114,6 +114,40 @@ func test_taps_find_the_floor_and_the_person_walks_round_furniture() -> bool:
 	return true
 
 
+func test_a_tap_on_the_floor_is_reported_but_a_drag_is_not() -> bool:
+	var vp := _viewport(Vector2i(915, 412))
+	var inside := _interior(vp)
+	await wait_frames(3)
+	var taps: Array[Vector2] = []
+	inside.floor_tapped.connect(func(p: Vector2) -> void: taps.append(p))
+	var at := inside.camera.unproject_position(Vector3(3.5, 0.0, 2.5))
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = at
+	inside._unhandled_input(press)
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = at + Vector2(3, 2)
+	inside._unhandled_input(release)
+	assert_eq(taps.size(), 1, "a tap")
+	assert_vec_near(taps[0], Vector2(3.5, 2.5), 0.15, "on the floor under the finger")
+	press.position = at
+	inside._unhandled_input(press)
+	release.position = at + Vector2(60, 0)
+	inside._unhandled_input(release)
+	assert_eq(taps.size(), 1, "a drag is not a tap")
+	inside.input_enabled = false
+	press.position = at
+	inside._unhandled_input(press)
+	release.position = at
+	inside._unhandled_input(release)
+	assert_eq(taps.size(), 1, "and nothing while the fade is up")
+	vp.queue_free()
+	return true
+
+
 func test_selection_marker_follows_the_piece() -> bool:
 	var vp := _viewport(Vector2i(915, 412))
 	var inside := _interior(vp)

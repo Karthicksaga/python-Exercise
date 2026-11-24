@@ -67,9 +67,15 @@ func _run() -> void:
 		printerr("homes not ready")
 		quit(1)
 		return
-	var sites: Dictionary = layer.get("sites")
-	print("homes_shot sites=%d" % sites.size())
-	var site: Object = sites[home_id]
+	var rig0: Node = main.get("rig")
+	var world0: Node = main.get("world")
+	var origin0 := root.get_node("/root/WorldOrigin")
+	var data0: HomeData = layer.get("data")
+	var hint := data0.listings.get_listing(home_id).at
+	rig0.call("place", origin0.call("to_scene", hint, 0.05), 0.0)
+	world0.call("look_at_world", hint, 0.0)
+	await world0.call("wait_ready_around", hint, 60.0)
+	var site: Object = await layer.call("resolve_now", home_id)
 	var stand: Vector2 = site.get("stand")
 	var normal: Vector2 = site.get("normal")
 	var yaw_in: float = site.get("yaw_in")
@@ -101,7 +107,7 @@ func _run() -> void:
 	await _shot("3_my_home")
 	# 4. ENTER: the door opens and the player walks to it.
 	controls.call("press_action")
-	await _frames(58)
+	await _frames(54)
 	await _shot("4_through_the_door", 1)
 	if not await _wait_for(func() -> bool: return layer.get("interior") != null and layer.get("_busy") == false, 60 * 20):
 		printerr("never got inside")
@@ -120,7 +126,7 @@ func _run() -> void:
 	await _frames(30)
 	await _shot("7_editor_tabs")
 	# 7. Furnish: pieces from several categories through the editor's own rules.
-	var hud: Node = layer.get("hud")
+	var hud: CanvasLayer = layer.get("hud")
 	var plan: Array = [["Living", "sofa", Vector2(2.5, 2.5)], ["Living", "ctable", Vector2(2.5, 3.5)], ["Living", "tvunit", Vector2(2.5, 0.5)], ["Bedroom", "cot", Vector2(6.5, 1.5)],
 		["Bedroom", "pero", Vector2(7.5, 3.5)], ["Kitchen", "fridge", Vector2(0.5, 3.5)], ["Kitchen", "counter", Vector2(0.5, 4.5)], ["Dining", "dtable", Vector2(4.5, 4.5)],
 		["Lighting", "fan", Vector2(3.5, 2.5)], ["Lighting", "pend", Vector2(6.5, 4.5)], ["Lighting", "tube", Vector2(5.5, 0.5)], ["Lighting", "brass", Vector2(1.5, 1.5)],
@@ -134,6 +140,9 @@ func _run() -> void:
 	layer.call("_on_armed", "")
 	await _frames(30)
 	await _shot("8_furnished_day")
+	hud.visible = false
+	await _shot("8b_furnished_3d_only")
+	hud.visible = true
 	layer.call("toggle_kolam")
 	layer.call("set_wall", "#c9e0e6")
 	hud.call("show_category", "Pooja and decor")

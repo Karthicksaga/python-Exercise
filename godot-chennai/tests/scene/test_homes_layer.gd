@@ -21,8 +21,18 @@ func _start() -> bool:
 	layer = main.homes
 	if not await wait_until(func() -> bool: return layer != null and layer.ready_to_use, 60 * 30):
 		return false
-	site = layer.sites["mylapore-1"]
 	var rig := main.rig
+	var hint := layer.data.listings.get_listing("mylapore-1").at
+	assert_eq(layer.sites.size(), 0, "nothing is looked up before the player is near")
+	rig.place(WorldOrigin.to_scene(hint, 0.05), 0.0)
+	main.world.look_at_world(hint, 0.0)
+	if not await main.world.wait_ready_around(hint, 60.0):
+		return false
+	# Coming near starts the lookup by itself (on a worker).
+	if not await wait_until(func() -> bool: return layer.sites.has("mylapore-1"), 60 * 20):
+		return false
+	site = layer.sites["mylapore-1"]
+	assert_false(layer.sites.has("anna-nagar-1"), "a home across the city is not looked up")
 	rig.place(WorldOrigin.to_scene(site.stand, 0.05), site.yaw_in)
 	main.world.look_at_world(site.stand, site.yaw_in)
 	return await main.world.wait_ready_around(site.stand, 60.0)
@@ -30,7 +40,7 @@ func _start() -> bool:
 
 func test_a_home_can_be_bought_entered_furnished_slept_in_and_left() -> bool:
 	assert_true(await _start(), "the game started and the homes are ready")
-	assert_eq(layer.sites.size(), 11, "all eleven listed buildings were found on the map")
+	assert_true(layer.sites.has("mylapore-1"), "the home by the player was found on the map")
 	var rig := main.rig
 	var session := (main.find_child("MissionsLayer", false, false) as MissionsLayer).session
 	var ctx := rig.controls.action_context
