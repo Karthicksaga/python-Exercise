@@ -39,6 +39,9 @@ func test_presets_apply_live() -> bool:
 	var main := await _boot()
 	var s := main.perf.settings
 	assert_eq(s.preset, QualitySettings.HIGH, "headless starts at High")
+	# The shader warm-up ran behind the loading screen and left nothing behind (G-346).
+	assert_true(int(main.perf.warmup.get("meshes", 0)) >= 2, "a walker and the traffic kinds were drawn once while loading (%s)" % main.perf.warmup)
+	assert_true(main.world.find_child("ShaderWarmup", false, false) == null, "and freed")
 	var vp := main.get_viewport()
 	assert_eq(vp.scaling_3d_scale, 1.0, "High: full resolution")
 	assert_eq(vp.msaa_3d, Viewport.MSAA_2X, "High: MSAA 2x as before")
@@ -55,6 +58,13 @@ func test_presets_apply_live() -> bool:
 	assert_eq(Engine.max_physics_steps_per_frame, 2, "at most two catch-up physics steps")
 	assert_true(env.sun.shadow_enabled and env.sun.directional_shadow_max_distance == 18.0, "short sun shadows")
 	assert_eq(PersonView.shadow_near, 0.0, "walkers cast no shadow")
+	assert_eq(QualityApplier._soft_quality, RenderingServer.SHADOW_QUALITY_HARD, "hard shadows on Low")
+	# A state change re-applies the preset; the shadow filter and atlas are set only when they
+	# change (each set recompiled the scene's pipelines: a 2 s frame under software Vulkan, G-346).
+	var calls_before := QualityApplier._shadow_size
+	main.pause()
+	main.resume()
+	assert_eq(QualityApplier._shadow_size, calls_before, "pause and resume leave the shadow atlas alone")
 	assert_eq(PersonView.animate_reach, 25.0, "figures animate only near")
 	assert_eq(main.play_wiring.parked.spawn_reach, 100.0, "parked vehicles only near")
 	var cell: Vector2i = main.world.streamer.shown_cells()[0]

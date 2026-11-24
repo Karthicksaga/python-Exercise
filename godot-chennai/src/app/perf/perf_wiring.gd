@@ -175,6 +175,34 @@ func _on_settings() -> void:
 		main.title.refresh_settings()
 
 
+## The shader warm-up at the end of loading (G-346): its result, for tests and the log.
+var warmup: Dictionary = {}
+
+
+func warm_up() -> void:
+	# CHENNAI_NO_WARMUP=1 skips it, to measure what it saves.
+	if main.world == null or OS.get_environment("CHENNAI_NO_WARMUP") == "1":
+		return
+	# Play's HUD, controls and mission HUD draw for those frames too (under the loading screen):
+	# their canvas pipelines were the rest of the compiles at the first play frame.
+	var hud_was := main.hud.visible
+	var ui_was := main.play_wiring != null and main.play_wiring.ui.visible
+	var ml := main.find_child("MissionsLayer", false, false) as MissionsLayer
+	var ml_hud_was := ml != null and ml.hud != null and ml.hud.visible
+	main.hud.visible = true
+	if main.play_wiring != null:
+		main.play_wiring.ui.visible = true
+	if ml != null and ml.hud != null:
+		ml.hud.visible = true
+	warmup = await ShaderWarmup.run(main.world, main.life)
+	main.hud.visible = hud_was
+	if main.play_wiring != null:
+		main.play_wiring.ui.visible = ui_was
+	if ml != null and ml.hud != null:
+		ml.hud.visible = ml_hud_was
+	print("[perf] shader warm-up: %d meshes, %d pipelines compiled, %.0f ms" % [int(warmup["meshes"]), int(warmup["pipelines"]), int(warmup["usec"]) / 1000.0])
+
+
 ## Whether the title may tour a live faraway spot (the feature switch; read by Main at start).
 static func title_tour_allowed() -> bool:
 	return QualitySettings.shared().is_on("title_life")
@@ -281,9 +309,11 @@ static func _scale_landmarks(world: CityWorld, k: float) -> void:
 var _overlay_wanted: bool = false
 
 
-## The overlay is a debug tool: it stays out from under a menu or the Jobs list (G-350). The pause
+## The overlay is a debug tool (owner, G-341): it stays out from under a menu or the Jobs list (G-350). The pause
 ## and title menus also draw above it (CanvasLayer 8 over 7); the Jobs dialog is on a lower layer.
 func _modal_open() -> bool:
+	if main.state == &"paused":
+		return true
 	if main.pause_menu != null and main.pause_menu.is_open():
 		return true
 	var ml := main.find_child("MissionsLayer", false, false) as MissionsLayer

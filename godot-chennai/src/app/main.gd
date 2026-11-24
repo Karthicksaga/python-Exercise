@@ -106,6 +106,9 @@ func _load() -> void:
 		loading.finish_step(i)
 		print("[boot] step %d/%d done: %s (%d ms since start)" % [i + 1, STEPS.size(), STEPS[i], Time.get_ticks_msec() - started])
 		await get_tree().process_frame
+	# First-use shader compiles happen now, behind the loading screen (G-346).
+	if perf != null:
+		await perf.warm_up()
 	if not OS.get_cmdline_user_args().has("--start=play"):
 		await _prepare_title()
 	_stop_watchdog()

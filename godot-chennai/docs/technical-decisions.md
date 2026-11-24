@@ -2079,6 +2079,7 @@ its padding (`test_hud_glass.gd`). Rows now in both menus: Time, Weather, Sound,
 rows), Graphics (`PerfWiring`, QualitySettings Low/Medium/High, "(auto)" when detected), Performance overlay.
 
 ## Performance, second round: the owner's phone (G-340…G-345, branch `agent/godot-perf`, 24 Nov 2026)
+## Performance, second round: the owner's phone (G-340…G-346, branch `agent/godot-perf`, 24 Nov 2026)
 
 ### G-340: A frame timeline names what a slow frame was made of
 `FrameTimeline` (`src/game_engine/quality/`) cuts every frame at its edges: two probe nodes run
@@ -2101,8 +2102,9 @@ Low → Medium → High with no way back to Auto. The save section is now `chenn
 section keeps its feature switches, never its level (back to Auto, detected again). Auto is also
 detected again once the renderer is up (`refresh_auto`). The overlay names the level and how it was
 set ("Low (auto)", "High (chosen)"). Auto's first check after the 5 s warm-up is a 4 s window (then
-10 s windows), so a level the table guessed wrong is left within seconds. The overlay is on canvas
-layer 4, under the title (5) and the pause menu (6), and hidden while paused.
+10 s windows), so a level the table guessed wrong is left within seconds. The overlay (layer 7) is
+under the title and pause menus (layer 8, G-350) and hidden while paused or while a menu or the
+Jobs list is open.
 
 ### G-342: Low cuts the pixel cost: 65 % resolution, per-vertex lighting, hard shadows
 The phone was GPU-bound (56 ms GPU at 2460x1080, MSAA 2x). Low now renders 3D at 65 % with the
@@ -2133,6 +2135,21 @@ written by the thread that owns the step.
 `TitleWiring._rain` read `RenderingServer.global_shader_parameter_get` every frame: on Vulkan that
 is an editor-only call that syncs with the render thread (the engine prints an error). It reads
 `CityEnvironment.night_level`, set beside the global parameter, instead.
+
+### G-346: Pipelines compile at load, never on a state change
+Found with the timeline under software Vulkan: the first frame of play took 2.0-2.2 s, all of it
+"render", with 17 draw-time pipeline compiles (32 in the first 1.5 s of play). `PerfWiring.apply`
+runs at every state change (loading, title, play, pause, resume) and set the directional shadow
+atlas size each time; with the soft-shadow filter level it is a renderer-wide setting, and setting
+it again recompiled the scene's pipelines. `QualityApplier.apply_engine` now sets both only when
+they change: the same run's first frame of play is 95 ms and no pipeline compiles in play (0-2 in
+4 s driving). On the phone this would be a freeze at every play start, pause and resume (not yet
+confirmed there). At the end of loading `ShaderWarmup` also draws a walker and one traffic vehicle
+of every kind in front of the camera for three frames (with the play HUD) behind the loading
+screen; measured, it changes little after the fix above (pipelines in the first 4 s of driving:
+2 without, 1 with). It stays for the Compatibility renderer, whose GL shaders compile on first
+draw and are not counted. `CHENNAI_NO_WARMUP=1` skips it for measuring.
+
 ## G-350: TouchScroll, one gesture owner for every scrolling menu
 Owner bug (phone, build afed12f): menu lists moved a little or jumped under a finger. The engine's
 `ScrollContainer` drag depends on which child takes the press and on touch versus emulated mouse

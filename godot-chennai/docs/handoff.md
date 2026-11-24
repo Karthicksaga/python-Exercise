@@ -935,15 +935,32 @@ High, 16-19 fps, GPU-bound at 56 ms GPU, 2460x1080 with MSAA 2x).**
   `docs/performance.md` (lavapipe, Mobile renderer, Vulkan).
 - City materials have no specular term at any level (suspected cause of the white dots on glass and
   walls; not reproduced here, needs the phone).
-- The overlay sits under the title and pause menus (layer 4) and hides while paused.
+- The overlay sits under the title and pause menus (7 under 8, with agent/godot-ui2, G-350) and hides
+  while paused or while a menu or the Jobs list is open.
 - Hitch breakdown (`FrameTimeline`, `ThreadClock`): every hitch line now says which part of the frame
   took the time, what was created, freed or uploaded, and whether the main thread was working or
   waiting for a core. The overlay and the log tally the causes.
 - `AiPopulation.adopt` moved off the main thread (it was the 70-340 ms traffic hitch every 500 m and
   at every jump).
-- **For agent/godot-roads:** `CityWorld.road_extras` is not on this branch yet; `PerfWiring` sets it
-  from the preset when the property exists (see the code in `apply`), so the wiring takes effect when
-  both branches are merged.
+- **Road detail by preset:** `PerfWiring.set_road_extras` sets `CityWorld.road_extras` (agent/godot-roads,
+  G-317) from the preset when the property exists: on the city the moment it joins Main (before
+  `setup`) and on the streamer's kit for chunks built later. Checked by a trial merge of
+  agent/godot-roads (`test_presets_apply_live` then asserts Low on the city and the kit).
+- **Merging agent/godot-roads (coordinator):** its `street_lights.gd` rewrite conflicts with this
+  branch. Keep from this branch the `pool` property (quality presets: 0/2/6 real lights, the trial
+  merge failed to parse without it) and the lights' `light_cull_mask` without
+  `ChunkBuilder.RENDER_LAYER` (G-259: lamps lighting the 250 m chunk meshes doubled the dusk frame).
+  Its halos are 2.6 m quads, not full-screen.
+- **Hitches (G-344, G-346):** state changes no longer recompile pipelines (the shadow atlas size and
+  filter are set only on a real change); the AI area hand-over runs on the AI thread; `ShaderWarmup`
+  draws a walker and every traffic kind behind the loading screen. Driving 70 s at 15 m/s headless:
+  0 frames over 50 ms (was 4-8, worst 340-420 ms).
+- **Not done:** draw calls per chunk were not merged. The phone's overlay showed render CPU at
+  1.2-1.4 ms a frame and 143 draws (under the 230-300 budget) while the GPU took 56 ms, so fewer
+  draws would not have moved its frame; merging the walls, roofs, objects and decks needs one atlas
+  and changes the layers the feature switches and shadow rules address. One 244 ms frame at play
+  start remains: the physics engine's step with the main thread blocked for 203 ms (waiting, not
+  working), cause not found. The white dots on glass were not reproduced here (needs the phone).
 
 
 ## Crashes: bands, effects, shake (agent/godot-crash, G-270…G-275), 24 Nov 2026

@@ -4,11 +4,12 @@ extends RefCounted
 ## (Linux and Android: `/proc/<pid>/task/<tid>/schedstat`, nanoseconds), decision G-340. With it a
 ## slow frame is told apart: work on a core, waiting for a core (other threads of the game or
 ## other apps had them all), or neither (blocked on a lock, on I/O or asleep: the frame cap).
-## Made on the main thread, it reads the main thread (its task id is the process id). Reading is
-## a seek and one short line (about 2 µs). Elsewhere, or when the kernel hides it, `ok` is false.
+## Made on the main thread, it reads the main thread (its task id is the process id). Each read
+## opens the file again (a seek back is served from Godot's read buffer, stale) and reads one short
+## line. Elsewhere, or when the kernel hides it, `ok` is false.
 
 var ok: bool = false
-var _file: FileAccess = null
+var _path: String = ""
 var _cpu_ns: int = -1
 var _wait_ns: int = -1
 
@@ -17,13 +18,15 @@ func _init() -> void:
 	if OS.get_name() != "Linux" and OS.get_name() != "Android":
 		return
 	var pid := OS.get_process_id()
-	_file = FileAccess.open("/proc/%d/task/%d/schedstat" % [pid, pid], FileAccess.READ)
-	ok = _file != null and _sample()
+	_path = "/proc/%d/task/%d/schedstat" % [pid, pid]
+	ok = FileAccess.file_exists(_path) and _sample()
 
 
 func _sample() -> bool:
-	_file.seek(0)
-	var parts := _file.get_line().split(" ", false)
+	var f := FileAccess.open(_path, FileAccess.READ)
+	if f == null:
+		return false
+	var parts := f.get_line().split(" ", false)
 	if parts.size() < 2 or not parts[0].is_valid_int() or not parts[1].is_valid_int():
 		return false
 	_cpu_ns = parts[0].to_int()
