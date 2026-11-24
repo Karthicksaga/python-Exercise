@@ -5,6 +5,8 @@ extends RefCounted
 
 static var _v1: FileWorldSource
 static var _kit: ChunkBuilder.Kit
+static var _regional: RegionalWorldSource
+static var _regional_kit: ChunkBuilder.Kit
 
 
 static func v1() -> FileWorldSource:
@@ -28,6 +30,32 @@ static func kit() -> ChunkBuilder.Kit:
 	k.tree_triangles = k.models.tree.triangle_count()
 	k.palm_triangles = k.models.palm.triangle_count()
 	_kit = k
+	return k
+
+
+## The regional world (format 2.1, with road heights), opened once.
+static func regional() -> RegionalWorldSource:
+	if _regional == null:
+		_regional = RegionalWorldSource.new()
+		_regional.open()
+	return _regional
+
+
+## A build kit over the regional world (decks, water and street spots, G-150…).
+static func regional_kit() -> ChunkBuilder.Kit:
+	if _regional_kit != null:
+		return _regional_kit
+	var base := kit()
+	var k := ChunkBuilder.Kit.new()
+	k.source = regional()
+	k.layouts = CityLayouts.create(k.source)
+	k.models = base.models
+	k.materials = base.materials
+	k.tree_mesh = base.tree_mesh
+	k.palm_mesh = base.palm_mesh
+	k.tree_triangles = base.tree_triangles
+	k.palm_triangles = base.palm_triangles
+	_regional_kit = k
 	return k
 
 
