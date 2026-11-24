@@ -195,7 +195,7 @@ func _build_shell() -> void:
 	_box(g, Vector3(0.06, 1.1, 1.4), Vector3(0.07, 1.8, wz), "#9fc9e6")
 	_glass.mesh = g.commit(_glass_mat)
 	var gb := MeshBuilder.new()
-	_box(gb, Vector3(60.0, 0.1, 60.0), Vector3(w * 0.5, -0.25, d * 0.5), "#b5a27a")
+	_box(gb, Vector3(60.0, 0.1, 60.0), Vector3(w * 0.5, -0.25, d * 0.5), "#6d7459")
 	var gm := _vertex_material()
 	_ground.mesh = gb.commit(gm)
 
@@ -254,10 +254,10 @@ func set_hour(h: float) -> void:
 	var night := look.night
 	_env.background_color = look.zenith.lerp(look.horizon, 0.45)
 	_env.ambient_light_color = look.hemi_sky.lerp(Color("#ffe2b0"), 0.25)
-	_env.ambient_light_energy = lerpf(0.9, 0.55, night)
-	_env.tonemap_exposure = clampf(look.exposure, 0.8, 1.4)
+	_env.ambient_light_energy = lerpf(0.55, 0.4, night)
+	_env.tonemap_exposure = clampf(look.exposure * 0.85, 0.7, 1.2)
 	_sun.light_color = look.light_color
-	_sun.light_energy = look.light_intensity * 0.55
+	_sun.light_energy = look.light_intensity * 0.5
 	_sun.look_at_from_position(Vector3.ZERO, -look.light)
 	_sun.visible = night < 0.95
 	_lamp.position = Vector3(float(room.width) * 0.5, HomeRoom.HEIGHT - 0.35, float(room.depth) * 0.5)
@@ -381,7 +381,7 @@ func _fit_camera(dt: float) -> void:
 	var dist := radius / sin(minf(half_v, half_h))
 	var dir := Vector3(0.62, 0.72, 1.0).normalized()
 	_shift_now = lerpf(_shift_now, view_shift, 1.0 - exp(-dt * 8.0))
-	var right := dir.cross(Vector3.UP).normalized()
+	var right := (-dir).cross(Vector3.UP).normalized()
 	# Pushing the room left leaves the right third of the screen for the panel.
 	var shift := _shift_now * dist * tan(half_h) * 0.62
 	camera.global_position = centre + dir * dist + right * shift

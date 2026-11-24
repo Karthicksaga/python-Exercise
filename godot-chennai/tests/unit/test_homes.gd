@@ -464,3 +464,61 @@ func test_a_furnished_room_is_two_meshes() -> bool:
 	assert_near(FurnitureMesh.transform_of(data.props.get_prop("fan"), PlacedProp.make("fan", 1, 1)).origin.y, 2.8, 0.001, "fan height")
 	assert_near(FurnitureMesh.transform_of(data.props.get_prop("clock"), PlacedProp.make("clock", 2, 0, 0, "b")).origin.z, 0.08, 0.001, "clock on the back wall")
 	return true
+
+
+# --- Walking, the kolam and the ACTION button ----------------------------------------------
+
+func test_the_walker_follows_a_route_at_a_steady_pace() -> bool:
+	var w := HomeWalker.new()
+	w.place(Vector2(0, 0), 0.0)
+	assert_true(w.arrived(), "no route: nothing to do")
+	w.go(PackedVector2Array([Vector2(0, 0), Vector2(3, 0), Vector2(3, 3)]))
+	assert_false(w.arrived(), "walking")
+	var t := 0.0
+	var fastest := 0.0
+	while not w.arrived() and t < 20.0:
+		var before := w.position
+		w.step(1.0 / 60.0)
+		fastest = maxf(fastest, before.distance_to(w.position) * 60.0)
+		t += 1.0 / 60.0
+	assert_vec_near(w.position, Vector2(3, 3), 0.001, "at the end")
+	assert_near(t, 6.0 / HomeWalker.PACE, 0.1, "six metres at the pace")
+	assert_true(fastest <= HomeWalker.PACE + 0.01, "never faster than the pace (%.2f)" % fastest)
+	assert_near(w.speed, 0.0, 0.001, "stopped")
+	# Walking east (+x) faces east: yaw -PI/2 in the player's convention (0 faces -z).
+	w.place(Vector2(0, 0), 0.0)
+	w.go(PackedVector2Array([Vector2(0, 0), Vector2(5, 0)]))
+	for i in 120:
+		w.step(1.0 / 60.0)
+	assert_near(w.yaw, -PI * 0.5, 0.1, "turns to face the way it goes")
+	return true
+
+
+func test_the_kolam_is_a_drawn_pattern() -> bool:
+	var img := HomeKolam.make()
+	assert_eq([img.get_width(), img.get_height()], [256, 256], "256 square")
+	var lit := 0
+	for y in 256:
+		for x in 256:
+			if img.get_pixel(x, y).a > 0.5:
+				lit += 1
+	assert_true(lit > 1500 and lit < 20000, "a pattern, not blank or filled (%d pixels)" % lit)
+	assert_true(img.get_pixel(0, 0).a == 0.0, "transparent at the corners")
+	assert_true(img.get_pixel(128, 128).a > 0.5, "a dot at the centre")
+	return true
+
+
+func test_buy_is_dimmed_when_too_poor_and_the_button_still_explains() -> bool:
+	var ctx := ActionContext.new()
+	var poor: Array[bool] = [true]
+	ctx.add_source(func() -> Variant:
+		var c := ActionCandidate.make("BUY · ₹3,000", ActionContext.P_ENTER, 1.0, func() -> void: pass)
+		c.enabled = not poor[0]
+		return c)
+	assert_eq(ctx.label(), "BUY · ₹3,000", "the label shows the price")
+	assert_false(ctx.best_enabled(), "dimmed while poor")
+	assert_true(ctx.trigger(), "it can still be pressed (to say why)")
+	poor[0] = false
+	assert_true(ctx.best_enabled(), "enabled once there is money")
+	assert_true(ActionContext.new().best_enabled(), "no candidate: nothing is disabled")
+	return true

@@ -50,3 +50,44 @@ func test_a_missing_building_is_skipped() -> bool:
 	ghost.at = Vector2(6391.1, 9506.9)
 	assert_true(HomeSite.resolve(ghost, source, layouts) == null, "no such building: no site, no crash")
 	return true
+
+
+func test_the_board_says_for_sale_then_my_home() -> bool:
+	var l := data.listings.get_listing("mylapore-1")
+	var s := HomeSite.resolve(l, source, layouts)
+	var view := HomeSiteView.make(s)
+	root.add_child(view)
+	var type := data.homes.type_of(l.type_id)
+	view.show_state(false, data.prices.home(type.id), type)
+	var texts := PackedStringArray()
+	for n in view.find_children("*", "Label3D", true, false):
+		texts.append((n as Label3D).text)
+	var joined := " | ".join(texts)
+	assert_contains(joined, "FOR SALE", "English")
+	assert_contains(joined, "விற்பனைக்கு", "Tamil")
+	assert_contains(joined, "₹9,000", "the price")
+	assert_contains(joined, "Old house with a thinnai", "the kind of home")
+	for word: String in ["ltd", "bank", "jewel", "mall"]:
+		assert_false(joined.to_lower().contains(word), "category words only, no business name (%s)" % word)
+	view.show_state(true, data.prices.home(type.id), type)
+	texts.clear()
+	for n in view.find_children("*", "Label3D", true, false):
+		texts.append((n as Label3D).text)
+	joined = " | ".join(texts)
+	assert_contains(joined, "MY HOME", "bought")
+	assert_contains(joined, "என் வீடு", "in Tamil too")
+	assert_false(joined.contains("FOR SALE"), "no longer for sale")
+	# The door leaf swings open in game time and shuts again.
+	view.open_door(true)
+	for i in 60:
+		view._process(1.0 / 60.0)
+	assert_near(view.door_open_amount(), 1.0, 0.01, "open after a second")
+	view.open_door(false)
+	for i in 60:
+		view._process(1.0 / 60.0)
+	assert_near(view.door_open_amount(), 0.0, 0.01, "shut again")
+	# The board is placed on the door, facing out of the building.
+	var out := Vector3(s.normal.x, 0.0, s.normal.y)
+	assert_true((-view.global_transform.basis.z).dot(out) < -0.99 or view.global_transform.basis.z.dot(out) > 0.99, "its front faces out of the wall")
+	view.queue_free()
+	return true

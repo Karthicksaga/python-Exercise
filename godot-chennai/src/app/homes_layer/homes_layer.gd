@@ -284,10 +284,10 @@ func _step_entering(dt: float) -> void:
 	rig.body.input = PlayerInput.make(Vector2(0.0, 0.5), yaw, false, false)
 	rig.camera.yaw = lerp_angle(rig.camera.yaw, yaw, minf(1.0, 3.0 * dt))
 	# The door's leaf needs a moment to swing before anyone walks through it.
-	if _timer < 0.5:
+	if _timer < 0.6:
 		rig.body.input = PlayerInput.new()
 		return
-	if to.length() < 0.75 or _timer > WALK_TIMEOUT:
+	if to.length() < 0.5 or _timer > WALK_TIMEOUT:
 		phase = &"inside"
 		rig.body.input = PlayerInput.new()
 		_go_inside.call_deferred()

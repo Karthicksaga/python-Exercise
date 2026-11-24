@@ -20,9 +20,9 @@ signal extend_pressed
 signal wall_chosen(colour: String)
 signal kolam_pressed
 
-const PANEL_WIDTH := 372.0
-const TAB_WIDTH := 118.0
-const TOOL_W := 82.0
+const PANEL_WIDTH := 392.0
+const TAB_WIDTH := 132.0
+const TOOL_W := 78.0
 const MARGIN := 12.0
 
 var data: HomeData
@@ -34,6 +34,7 @@ var category: String = ""
 var _root: Control
 var _safe: SafeAreaMargin
 var _chip: Label
+var _chip_panel: PanelContainer
 var _leave: Button
 var _done: Button
 var _actions: Control
@@ -69,6 +70,10 @@ func _ready() -> void:
 	theme.default_font = TitleFonts.display(false, 0.0)
 	theme.default_font_size = 15
 	theme.set_font_size("font_size", "Button", 14)
+	# Over a bright room the stock translucent buttons vanish: dark, nearly opaque ones.
+	theme.set_stylebox("normal", "Button", _box(Color(0.07, 0.08, 0.1, 0.84), Color(1, 1, 1, 0.16)))
+	theme.set_stylebox("hover", "Button", _box(Color(0.12, 0.13, 0.16, 0.9), Color(1, 1, 1, 0.3)))
+	theme.set_stylebox("disabled", "Button", _box(Color(0.07, 0.08, 0.1, 0.5), Color(1, 1, 1, 0.08)))
 	_root.theme = theme
 	add_child(_root)
 	_safe = SafeAreaMargin.new()
@@ -84,21 +89,70 @@ func _ready() -> void:
 	set_editing(false)
 
 
-func _button(en: String, ta: String, width: float = 0.0, height: float = 48.0) -> Button:
+static func _box(fill: Color, border: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = fill
+	sb.border_color = border
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
+	return sb
+
+
+## A button whose label is two lines, English over Tamil, each at its own size (the Tamil face
+## runs wider and taller than the English one, so it is set smaller).
+func _button(en: String, ta: String, width: float = 0.0, height: float = 48.0, left: bool = false) -> Button:
 	var b := Button.new()
-	b.text = "%s\n%s" % [en, ta] if ta != "" else en
 	b.custom_minimum_size = Vector2(width, maxf(height, UiTheme.MIN_TARGET))
 	b.focus_mode = Control.FOCUS_NONE
-	b.clip_text = true
+	b.clip_contents = true
+	set_lines(b, en, ta, left)
 	return b
 
 
+func set_lines(b: Button, en: String, ta: String, left: bool = false, en_size: int = 14, ta_size: int = 12) -> void:
+	for c in b.get_children():
+		c.queue_free()
+	var box := VBoxContainer.new()
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override("separation", -1)
+	b.add_child(box)
+	for pair: Array in [[en, en_size], [ta, ta_size]]:
+		if str(pair[0]) == "":
+			continue
+		var l := Label.new()
+		l.text = str(pair[0])
+		l.add_theme_font_size_override("font_size", int(pair[1]))
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if left else HORIZONTAL_ALIGNMENT_CENTER
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		l.clip_text = true
+		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		l.name = "En" if box.get_child_count() == 0 else "Ta"
+		box.add_child(l)
+	if not b.toggled.is_connected(_recolour.bind(b)):
+		b.toggled.connect(_recolour.bind(b))
+	_recolour(b.button_pressed, b)
+
+
+func _recolour(pressed: bool, b: Button) -> void:
+	var colour := Color.BLACK if pressed else UiTheme.TEXT
+	for l in b.find_children("*", "Label", true, false):
+		(l as Label).add_theme_color_override("font_color", colour)
+
+
 func _build_top(parent: Control) -> void:
-	_chip = UiTheme.label("", 15)
+	_chip_panel = PanelContainer.new()
+	_chip_panel.name = "ChipPanel"
+	_chip_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_chip = UiTheme.label("", 14)
 	_chip.name = "Chip"
-	_chip.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	_chip.position = Vector2(0, 4)
-	parent.add_child(_chip)
+	_chip_panel.add_child(_chip)
+	parent.add_child(_chip_panel)
 	_leave = _button("LEAVE", "வெளியே", 112)
 	_leave.name = "Leave"
 	_leave.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -204,17 +258,20 @@ func _build_toast(parent: Control) -> void:
 func bind(d: HomeData) -> void:
 	data = d
 	for b in _tabs.get_children():
+		_tabs.remove_child(b)
 		b.queue_free()
 	_tab_buttons.clear()
 	for c in data.props.categories:
 		var id := str(c["id"])
 		var b := _button(str(c["en"]), str(c["ta"]), TAB_WIDTH)
+		set_lines(b, str(c["en"]), str(c["ta"]), false, 13, 11)
 		b.toggle_mode = true
 		b.name = "Tab_%s" % id
 		b.pressed.connect(show_category.bind(id))
 		_tabs.add_child(b)
 		_tab_buttons[id] = b
 	for c in _walls.get_children():
+		_walls.remove_child(c)
 		c.queue_free()
 	for hex in data.homes.wall_colours:
 		var s := Button.new()
@@ -238,6 +295,7 @@ func show_category(id: String) -> void:
 	for k in _tab_buttons:
 		_tab_buttons[k].button_pressed = (k == id)
 	for b in _items.get_children():
+		_items.remove_child(b)
 		b.queue_free()
 	_item_buttons.clear()
 	for def in data.props.in_category(id):
@@ -246,9 +304,8 @@ func show_category(id: String) -> void:
 		b.toggle_mode = true
 		b.focus_mode = Control.FOCUS_NONE
 		b.custom_minimum_size = Vector2(0, 58)
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.clip_text = true
-		b.text = "%s\n%s · ₹%d" % [def.en, def.ta, data.prices.prop(def.id)]
+		b.clip_contents = true
+		set_lines(b, "%s · ₹%d" % [def.en, data.prices.prop(def.id)], def.ta, true, 14, 12)
 		b.button_pressed = (def.id == armed)
 		b.pressed.connect(_on_item.bind(def.id))
 		_items.add_child(b)
@@ -298,7 +355,7 @@ func _refresh_chip() -> void:
 	if _chip == null:
 		return
 	var lead := 124.0 if editing else 0.0
-	_chip.position = Vector2(lead, 4)
+	_chip_panel.position = Vector2(lead, 0)
 	_chip.text = "%s · %s\n₹%s · %s" % [_home_en, _home_ta, MissionSession.rupees(_wallet), _clock]
 
 
@@ -307,6 +364,7 @@ func set_editing(on: bool) -> void:
 	_panel.visible = on
 	_tools.visible = on
 	_done.visible = on
+	_leave.visible = not on
 	_actions.visible = not on
 	_walls.visible = false
 	if not on:
@@ -322,7 +380,7 @@ func set_selection(has_piece: bool, can_turn: bool) -> void:
 
 
 func set_extension(label_en: String, label_ta: String, available: bool) -> void:
-	_tool_extend.text = "%s\n%s" % [label_en, label_ta]
+	set_lines(_tool_extend, label_en, label_ta, false, 12, 11)
 	_tool_extend.disabled = not available
 
 
@@ -362,6 +420,7 @@ func _sync_actions() -> void:
 	if key != _labels:
 		_labels = key
 		for b in _action_buttons:
+			_actions.remove_child(b)
 			b.queue_free()
 		_action_buttons.clear()
 		for i in cands.size():
