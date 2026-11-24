@@ -416,3 +416,51 @@ func test_peace_zone_and_entry_rules() -> bool:
 	assert_true(HomeRules.entry_problem(0.0, false) != "", "not on a vehicle")
 	assert_true(HomeRules.entry_problem_ta(2.0, true) != "", "with a Tamil line")
 	return true
+
+
+# --- Models --------------------------------------------------------------------------------
+
+func test_every_prop_builds_a_small_model() -> bool:
+	var worst := 0
+	var total := 0
+	for def in data.props.props:
+		var parts := PropMesh.build(def)
+		var solid: MeshBuilder = parts["solid"]
+		var glow: MeshBuilder = parts["glow"]
+		var tris := solid.triangle_count() + glow.triangle_count()
+		assert_true(tris > 0, "%s has triangles" % def.id)
+		assert_true(tris < 700, "%s stays small (%d triangles)" % [def.id, tris])
+		worst = maxi(worst, tris)
+		total += tris
+		for v in solid.positions:
+			assert_true(v.is_finite() and absf(v.x) < 3.0 and v.y > -1.0 and v.y < 3.2, "%s vertex in range" % def.id)
+	print("homes: %d props, %d triangles in all, the largest prop %d" % [data.props.props.size(), total, worst])
+	var glowing := 0
+	for id: String in ["tube", "pend", "brass", "table_l", "diya", "string", "pooja"]:
+		var g: MeshBuilder = PropMesh.build(data.props.get_prop(id))["glow"]
+		if not g.is_empty():
+			glowing += 1
+	assert_eq(glowing, 7, "the lighting props and the pooja lamp glow")
+	return true
+
+
+func test_a_furnished_room_is_two_meshes() -> bool:
+	var items: Array[PlacedProp] = []
+	var e := _editor("terrace", 0, items)
+	for spec: Array in [["sofa", 2, 2], ["cot", 6, 1], ["tube", 3, 0], ["fan", 4, 3], ["fridge", 0, 4], ["pend", 6, 4], ["diya", 2, 4]]:
+		assert_true(e.place(str(spec[0]), Vector2i(int(spec[1]), int(spec[2])), 99999).ok, "placed %s" % spec[0])
+	var f := FurnitureMesh.new()
+	f.build(e.items, data.props)
+	var m := f.meshes(StandardMaterial3D.new(), StandardMaterial3D.new())
+	assert_true(m[0] != null and m[1] != null, "a solid and a glow mesh")
+	assert_eq(m[0].get_surface_count(), 1, "one surface each")
+	assert_true(f.triangles < 3000, "a furnished room is light (%d triangles)" % f.triangles)
+	var empty := FurnitureMesh.new()
+	empty.build([] as Array[PlacedProp], data.props)
+	assert_true(empty.meshes(null, null)[0] == null, "an empty room has no mesh")
+	var sofa := data.props.get_prop("sofa")
+	var at := FurnitureMesh.transform_of(sofa, PlacedProp.make("sofa", 1, 2)).origin
+	assert_vec_near(Vector2(at.x, at.z), Vector2(2.0, 2.5), 0.001, "sofa centre")
+	assert_near(FurnitureMesh.transform_of(data.props.get_prop("fan"), PlacedProp.make("fan", 1, 1)).origin.y, 2.8, 0.001, "fan height")
+	assert_near(FurnitureMesh.transform_of(data.props.get_prop("clock"), PlacedProp.make("clock", 2, 0, 0, "b")).origin.z, 0.08, 0.001, "clock on the back wall")
+	return true
