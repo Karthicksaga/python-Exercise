@@ -570,6 +570,35 @@ barriers and zones built in real chunks, barriers off the carriageway, mapped la
 **Weak or not done:** see `docs/osm-detail.md`.
 
 
+## Area atlas (areas agent), branch `agent/godot-areas`, 24 Nov 2026
+**Done.** Researched data for the landmark and building-detail work, no game code touched:
+`data/areas/areas.json`, `landmarks_shortlist.json`, `palettes.json`, `coverage.json` and their
+schemas; tools `area_lookup.py`, `area_coverage.py`, `area_palettes.py` in `tools/geo`; the atlas
+`docs/areas.md`. Decisions G-200…G-204.
+
+**For godot-osmdetail.** Read `data/areas/palettes.json` (schema in G-202 and
+`palettes.schema.json`): per area id `walls`, `roofs` (hex), `roof_types` (roof shape to weight,
+the world format's names), `storeys` (bins `1, 2, 3, 4-5, 6-9, 10+` to weight) and the area
+`boundary` (circle or corridor in world metres) to pick the area of a building; `default` for the
+rest. Everything is an estimate. OSM carries levels for 3.9 % of buildings in the areas and almost
+no roof, colour or material tags (`docs/areas.md` coverage table), so these weights are the
+palette's only source.
+
+**For godot-landmarks.** `landmarks_shortlist.json`: per landmark OSM id, footprint, tier and
+`tier.params` (kit name and numbers, mostly estimated), levels and height where tagged or sourced,
+features with sources, Commons file titles. Heights and kit parameters marked `estimated` are not
+measurements.
+
+**Weak or not done.**
+- `en.wikipedia.org`, Wikidata and most news hosts were not reachable; `sourced` claims rest on
+  search-result summaries of those pages. 114 claims are `unverified` (107 in areas.json, 7 in the shortlist).
+- No photo was viewed: the Commons image host answered 429 on the first request and fetching was
+  stopped, so the wall colours are written from descriptions.
+- Tamil names are OSM's, all need native review; T. Nagar has none.
+- Eighteen landmarks have no matching Commons file by search; the world keeps only 55 buildings in
+  Chengalpattu and 24 at Pulicat.
+- Nothing reads the data in the game yet.
+
 ## Controls redesign (G-170…G-179), branch `agent/godot-controls`, 24 Nov 2026
 **Done** (spec: `suggestions/2026-11-24-godot-controls-redesign.md`; decisions in
 `technical-decisions.md`). Everything pure and shared is in `src/ui/touch_controls/`:
@@ -688,3 +717,7 @@ stayed at 0.2 ms (models load on the worker).
 - `scene/test_city_streaming.gd::test_main_thread_budget_under_cpu_load` failed once in the full
   local run (wall-clock, load-sensitive on this shared machine; not touched).
 - Seen only under the Compatibility renderer on llvmpipe; not on a phone.
+
+**Addendum (malls).** 16 shopping complexes and two market entries added (100 landmarks: A 18, B 72,
+C 10). Game code must read `sign` and `names`, never `research_name`. Storeys come from OSM levels
+where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.

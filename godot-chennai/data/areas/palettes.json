@@ -1,34 +1,1369 @@
 {
- "_note": "STUB of the shape godot-areas delivers (data/areas/palettes.json). Keys are area ids (district slugs: lower case, a-z0-9 and _) plus 'default', used when no area matches. walls/roofs: sRGB hex lists the renderer picks from by a stable hash (estimated, marked so); roof_types: weights of roof shapes for buildings whose OSM roof:shape is not mapped; storeys: weights of storey counts for houses whose height is not mapped (null keeps the data's value). A mapped tag always wins over this file. Loader: src/game_world/city/area_palettes.gd (the only reader).",
+ "format": 1,
+ "decision": "G-200",
+ "note": "Estimated, not measured. Derived from areas.json by tools/geo/chennai_geo/area_palettes.py; regenerate, never edit by hand. Colours are hex strings (#RRGGBB). roof_types keys are the world format's roof shapes (enums.ROOF_SHAPES), weights sum to 1. storeys keys are floor-count bins, weights sum to 1. An area's boundary (circle or corridor, world metres, +X east, +Z south) lets a reader pick the area of a building: smallest distance / radius (or / half_width_m) among the areas that contain it; use `default` outside every area.",
+ "licence": "Original estimates; boundary geometry derived from OSM place data (ODbL 1.0, © OpenStreetMap contributors).",
+ "roof_shapes": [
+  "flat",
+  "gabled",
+  "hipped",
+  "pyramidal",
+  "dome",
+  "skillion",
+  "half-hipped",
+  "gambrel",
+  "mansard",
+  "round",
+  "onion",
+  "cone",
+  "saltbox",
+  "other"
+ ],
+ "storey_bins": [
+  "1",
+  "2",
+  "3",
+  "4-5",
+  "6-9",
+  "10+"
+ ],
  "default": {
+  "type": "default",
   "walls": [
-   "#F2E3C6",
-   "#E8C9A0",
-   "#CFE3D4",
-   "#F4D6CF",
-   "#D9E2F0",
-   "#F7EDB5",
-   "#E3D5EE",
-   "#FBF3E4",
-   "#C9DCCB",
-   "#EAD9C4",
-   "#DFE7D2",
-   "#F1DDB8"
+   "#B7B2A6",
+   "#EFE6D2",
+   "#F3EEE3",
+   "#E8D9A8",
+   "#D9B25F",
+   "#C9D6EA",
+   "#C9B48A",
+   "#BFD8D2"
   ],
   "roofs": [
-   "#9A9690",
-   "#A8A39B",
-   "#8C8883",
-   "#B0553A",
-   "#C4704A"
+   "#8A4B32",
+   "#BDB8AD",
+   "#8C8B85",
+   "#B7B2A6"
   ],
   "roof_types": {
-   "flat": 0.66,
-   "hipped": 0.3,
-   "gabled": 0.03,
-   "pyramidal": 0.01,
-   "dome": 0.0
+   "flat": 0.6755,
+   "gabled": 0.2074,
+   "hipped": 0.0568,
+   "pyramidal": 0.0077,
+   "dome": 0.0203,
+   "skillion": 0.0313,
+   "round": 0.001
   },
-  "storeys": null
+  "storeys": {
+   "1": 0.1271,
+   "2": 0.5035,
+   "3": 0.2094,
+   "4-5": 0.1203,
+   "6-9": 0.0345,
+   "10+": 0.0052
+  },
+  "boundary": null
+ },
+ "areas": {
+  "george-town": {
+   "type": "old-commercial",
+   "walls": [
+    "#E4D7B8",
+    "#D9B25F",
+    "#A5502F",
+    "#EFE6D2",
+    "#B7B2A6",
+    "#C9B48A",
+    "#8C6A4A",
+    "#F3EEE3"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#B7B2A6",
+    "#8C8B85",
+    "#ECE7DA"
+   ],
+   "roof_types": {
+    "flat": 0.81,
+    "gabled": 0.14,
+    "dome": 0.05
+   },
+   "storeys": {
+    "1": 0.04,
+    "2": 0.38,
+    "3": 0.28,
+    "4-5": 0.24,
+    "6-9": 0.06,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     7813.7,
+     -788.6
+    ],
+    "radius_m": 900,
+    "basis": "set to 900 m: OSM place nodes George Town, Sowcarpet, Flower Bazaar, Mannady and Kondithope all lie within 900 m of the centre"
+   }
+  },
+  "parrys-corner": {
+   "type": "dense-market",
+   "walls": [
+    "#E4D7B8",
+    "#D9B25F",
+    "#B7B2A6",
+    "#EFE6D2",
+    "#A5502F",
+    "#9C9890",
+    "#C9D6EA"
+   ],
+   "roofs": [
+    "#8C8B85",
+    "#B7B2A6",
+    "#8A4B32"
+   ],
+   "roof_types": {
+    "flat": 0.9,
+    "gabled": 0.1
+   },
+   "storeys": {
+    "1": 0.04,
+    "2": 0.27,
+    "3": 0.3,
+    "4-5": 0.34,
+    "6-9": 0.05,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     8443.2,
+     -505.5
+    ],
+    "radius_m": 500,
+    "basis": "half the distance to the nearest other area centre (690 m), clamped 450 to 2200 m"
+   }
+  },
+  "fort-st-george-island-grounds": {
+   "type": "colonial-institutional",
+   "walls": [
+    "#EFE6D2",
+    "#F3EEE3",
+    "#D9B25F",
+    "#A5502F",
+    "#C9B48A",
+    "#B7B2A6",
+    "#7F8A74"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#A5502F",
+    "#ECE7DA"
+   ],
+   "roof_types": {
+    "flat": 0.55,
+    "gabled": 0.25,
+    "hipped": 0.15,
+    "dome": 0.05
+   },
+   "storeys": {
+    "1": 0.1,
+    "2": 0.8,
+    "3": 0.09,
+    "4-5": 0.01,
+    "6-9": 0.0,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     8175.3,
+     568.4
+    ],
+    "radius_m": 550,
+    "basis": "half the distance to the nearest other area centre (1107 m), clamped 450 to 2200 m"
+   }
+  },
+  "park-town-chennai-central": {
+   "type": "colonial-institutional",
+   "walls": [
+    "#A5502F",
+    "#EFE6D2",
+    "#F3EEE3",
+    "#D9B25F",
+    "#B7B2A6",
+    "#C9B48A",
+    "#8C6A4A"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#B05A3C",
+    "#8C8B85"
+   ],
+   "roof_types": {
+    "flat": 0.55,
+    "gabled": 0.25,
+    "hipped": 0.12,
+    "dome": 0.08
+   },
+   "storeys": {
+    "1": 0.05,
+    "2": 0.5,
+    "3": 0.25,
+    "4-5": 0.14,
+    "6-9": 0.05,
+    "10+": 0.01
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     6746.8,
+     -174.9
+    ],
+    "radius_m": 600,
+    "basis": "half the distance to the nearest other area centre (1231 m), clamped 450 to 2200 m"
+   }
+  },
+  "egmore": {
+   "type": "colonial-institutional",
+   "walls": [
+    "#A5502F",
+    "#EFE6D2",
+    "#F3EEE3",
+    "#D9B25F",
+    "#C9B48A",
+    "#B7B2A6",
+    "#E8D9A8"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#B05A3C",
+    "#ECE7DA"
+   ],
+   "roof_types": {
+    "flat": 0.58,
+    "gabled": 0.2,
+    "hipped": 0.15,
+    "dome": 0.07
+   },
+   "storeys": {
+    "1": 0.05,
+    "2": 0.62,
+    "3": 0.24,
+    "4-5": 0.08,
+    "6-9": 0.01,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     5154.4,
+     1353.0
+    ],
+    "radius_m": 750,
+    "basis": "half the distance to the nearest other area centre (1510 m), clamped 450 to 2200 m"
+   }
+  },
+  "triplicane": {
+   "type": "temple-town",
+   "walls": [
+    "#E4D7B8",
+    "#EFE6D2",
+    "#D9B25F",
+    "#A5502F",
+    "#BFD8D2",
+    "#B7B2A6",
+    "#F3EEE3",
+    "#8C6A4A"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#B7B2A6",
+    "#ECE7DA"
+   ],
+   "roof_types": {
+    "flat": 0.7,
+    "gabled": 0.2,
+    "hipped": 0.07,
+    "dome": 0.03
+   },
+   "storeys": {
+    "1": 0.04,
+    "2": 0.68,
+    "3": 0.22,
+    "4-5": 0.05,
+    "6-9": 0.01,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     7036.8,
+     2732.2
+    ],
+    "radius_m": 650,
+    "basis": "half the distance to the nearest other area centre (1323 m), clamped 450 to 2200 m"
+   }
+  },
+  "marina-santhome": {
+   "type": "coastal",
+   "walls": [
+    "#F3EEE3",
+    "#EFE6D2",
+    "#C9D6EA",
+    "#D9B25F",
+    "#A5502F",
+    "#E8D9A8",
+    "#B7B2A6",
+    "#BFD8D2"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#8C8B85",
+    "#5C6F7C"
+   ],
+   "roof_types": {
+    "flat": 0.6,
+    "gabled": 0.25,
+    "hipped": 0.11,
+    "dome": 0.04
+   },
+   "storeys": {
+    "1": 0.08,
+    "2": 0.72,
+    "3": 0.17,
+    "4-5": 0.02,
+    "6-9": 0.01,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "corridor",
+    "spine_xz": [
+     [
+      8047.3,
+      1812.5
+     ],
+     [
+      8036.4,
+      3246.9
+     ],
+     [
+      7505.7,
+      5037.1
+     ],
+     [
+      7332.4,
+      5715.4
+     ],
+     [
+      7300.0,
+      7516.8
+     ]
+    ],
+    "half_width_m": 650,
+    "basis": "corridor of this half width around the spine; width chosen to cover the built-up strip seen in the world data"
+   }
+  },
+  "mylapore": {
+   "type": "temple-town",
+   "walls": [
+    "#F3EEE3",
+    "#EFE6D2",
+    "#D9B25F",
+    "#C8452E",
+    "#E4D7B8",
+    "#8FA68E",
+    "#E8D9A8",
+    "#B7B2A6"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#B05A3C",
+    "#BDB8AD"
+   ],
+   "roof_types": {
+    "flat": 0.52,
+    "gabled": 0.35,
+    "hipped": 0.09,
+    "pyramidal": 0.04
+   },
+   "storeys": {
+    "1": 0.1,
+    "2": 0.62,
+    "3": 0.2,
+    "4-5": 0.07,
+    "6-9": 0.01,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     6489.4,
+     5932.6
+    ],
+    "radius_m": 500,
+    "basis": "half the distance to the nearest other area centre (1015 m), clamped 450 to 2200 m"
+   }
+  },
+  "mandaveli": {
+   "type": "suburban",
+   "walls": [
+    "#F0C9C0",
+    "#BFD8D2",
+    "#EFE6D2",
+    "#E8D9A8",
+    "#C9D6EA",
+    "#F3EEE3",
+    "#B7B2A6"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#BDB8AD",
+    "#B7B2A6"
+   ],
+   "roof_types": {
+    "flat": 0.72,
+    "gabled": 0.2,
+    "hipped": 0.08
+   },
+   "storeys": {
+    "1": 0.1,
+    "2": 0.6,
+    "3": 0.22,
+    "4-5": 0.07,
+    "6-9": 0.01,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     5706.5,
+     6577.8
+    ],
+    "radius_m": 500,
+    "basis": "half the distance to the nearest other area centre (1015 m), clamped 450 to 2200 m"
+   }
+  },
+  "royapettah": {
+   "type": "old-commercial",
+   "walls": [
+    "#EFE6D2",
+    "#E4D7B8",
+    "#C9D6EA",
+    "#D9B25F",
+    "#B7B2A6",
+    "#F0C9C0",
+    "#F3EEE3"
+   ],
+   "roofs": [
+    "#8C8B85",
+    "#B7B2A6",
+    "#8A4B32"
+   ],
+   "roof_types": {
+    "flat": 0.78,
+    "gabled": 0.17,
+    "dome": 0.05
+   },
+   "storeys": {
+    "1": 0.05,
+    "2": 0.5,
+    "3": 0.24,
+    "4-5": 0.15,
+    "6-9": 0.05,
+    "10+": 0.01
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     5834.6,
+     3283.4
+    ],
+    "radius_m": 650,
+    "basis": "half the distance to the nearest other area centre (1323 m), clamped 450 to 2200 m"
+   }
+  },
+  "t-nagar": {
+   "type": "dense-market",
+   "walls": [
+    "#B7B2A6",
+    "#EFE6D2",
+    "#D9B25F",
+    "#C9D6EA",
+    "#F0C9C0",
+    "#E8D9A8",
+    "#9C9890",
+    "#C8452E"
+   ],
+   "roofs": [
+    "#8C8B85",
+    "#B7B2A6",
+    "#BDB8AD"
+   ],
+   "roof_types": {
+    "flat": 0.93,
+    "gabled": 0.07
+   },
+   "storeys": {
+    "1": 0.03,
+    "2": 0.22,
+    "3": 0.27,
+    "4-5": 0.33,
+    "6-9": 0.14,
+    "10+": 0.01
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     2543.0,
+     5160.0
+    ],
+    "radius_m": 1050,
+    "basis": "half the distance to the nearest other area centre (2134 m), clamped 450 to 2200 m"
+   }
+  },
+  "nungambakkam": {
+   "type": "colonial-institutional",
+   "walls": [
+    "#F3EEE3",
+    "#EFE6D2",
+    "#E8D9A8",
+    "#C9B48A",
+    "#B7B2A6",
+    "#A5502F",
+    "#BFD8D2",
+    "#7F8A74"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#B05A3C",
+    "#BDB8AD"
+   ],
+   "roof_types": {
+    "flat": 0.7,
+    "gabled": 0.1,
+    "hipped": 0.15,
+    "dome": 0.05
+   },
+   "storeys": {
+    "1": 0.05,
+    "2": 0.42,
+    "3": 0.26,
+    "4-5": 0.17,
+    "6-9": 0.08,
+    "10+": 0.02
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     3291.2,
+     2550.5
+    ],
+    "radius_m": 550,
+    "basis": "half the distance to the nearest other area centre (1135 m), clamped 450 to 2200 m"
+   }
+  },
+  "kodambakkam-vadapalani": {
+   "type": "dense-market",
+   "walls": [
+    "#B7B2A6",
+    "#EFE6D2",
+    "#C9D6EA",
+    "#F0C9C0",
+    "#D9B25F",
+    "#E8D9A8",
+    "#BFD8D2",
+    "#C8452E"
+   ],
+   "roofs": [
+    "#8C8B85",
+    "#B7B2A6",
+    "#BDB8AD"
+   ],
+   "roof_types": {
+    "flat": 0.8,
+    "gabled": 0.15,
+    "pyramidal": 0.05
+   },
+   "storeys": {
+    "1": 0.05,
+    "2": 0.4,
+    "3": 0.26,
+    "4-5": 0.2,
+    "6-9": 0.08,
+    "10+": 0.01
+   },
+   "boundary": {
+    "type": "corridor",
+    "spine_xz": [
+     [
+      1536.1,
+      3980.0
+     ],
+     [
+      279.1,
+      3597.7
+     ]
+    ],
+    "half_width_m": 900,
+    "basis": "corridor of this half width around the spine; width chosen to cover the built-up strip seen in the world data"
+   }
+  },
+  "anna-nagar": {
+   "type": "planned-residential",
+   "walls": [
+    "#F0C9C0",
+    "#BFD8D2",
+    "#C9D6EA",
+    "#E8D9A8",
+    "#F3EEE3",
+    "#C9B48A",
+    "#B7B2A6",
+    "#EFE6D2"
+   ],
+   "roofs": [
+    "#BDB8AD",
+    "#8A4B32",
+    "#B7B2A6"
+   ],
+   "roof_types": {
+    "flat": 0.88,
+    "gabled": 0.07,
+    "hipped": 0.05
+   },
+   "storeys": {
+    "1": 0.14,
+    "2": 0.52,
+    "3": 0.21,
+    "4-5": 0.12,
+    "6-9": 0.01,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "corridor",
+    "spine_xz": [
+     [
+      -1928.1,
+      -1009.5
+     ],
+     [
+      -298.9,
+      -361.3
+     ],
+     [
+      1225.3,
+      3.4
+     ]
+    ],
+    "half_width_m": 1100,
+    "basis": "corridor of this half width around the spine; width chosen to cover the built-up strip seen in the world data"
+   }
+  },
+  "kilpauk": {
+   "type": "colonial-institutional",
+   "walls": [
+    "#F3EEE3",
+    "#EFE6D2",
+    "#C9B48A",
+    "#A5502F",
+    "#7F8A74",
+    "#B7B2A6",
+    "#E8D9A8"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#B05A3C",
+    "#BDB8AD"
+   ],
+   "roof_types": {
+    "flat": 0.62,
+    "gabled": 0.12,
+    "hipped": 0.2,
+    "dome": 0.06
+   },
+   "storeys": {
+    "1": 0.08,
+    "2": 0.55,
+    "3": 0.22,
+    "4-5": 0.12,
+    "6-9": 0.03,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     3020.3,
+     198.5
+    ],
+    "radius_m": 700,
+    "basis": "half the distance to the nearest other area centre (1422 m), clamped 450 to 2200 m"
+   }
+  },
+  "purasawalkam": {
+   "type": "dense-market",
+   "walls": [
+    "#EFE6D2",
+    "#E4D7B8",
+    "#D9B25F",
+    "#B7B2A6",
+    "#C9D6EA",
+    "#F0C9C0",
+    "#F3EEE3"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#8C8B85",
+    "#BDB8AD"
+   ],
+   "roof_types": {
+    "flat": 0.78,
+    "gabled": 0.17,
+    "dome": 0.05
+   },
+   "storeys": {
+    "1": 0.05,
+    "2": 0.52,
+    "3": 0.25,
+    "4-5": 0.15,
+    "6-9": 0.03,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     4866.6,
+     -481.2
+    ],
+    "radius_m": 950,
+    "basis": "half the distance to the nearest other area centre (1857 m), clamped 450 to 2200 m"
+   }
+  },
+  "perambur": {
+   "type": "suburban",
+   "walls": [
+    "#E4D7B8",
+    "#EFE6D2",
+    "#B7B2A6",
+    "#D9B25F",
+    "#A5502F",
+    "#BFD8D2",
+    "#9C9890"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#8C8B85",
+    "#A55A43"
+   ],
+   "roof_types": {
+    "flat": 0.58,
+    "gabled": 0.32,
+    "skillion": 0.1
+   },
+   "storeys": {
+    "1": 0.12,
+    "2": 0.62,
+    "3": 0.18,
+    "4-5": 0.07,
+    "6-9": 0.01,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     3456.8,
+     -3082.8
+    ],
+    "radius_m": 1500,
+    "basis": "half the distance to the nearest other area centre (2959 m), clamped 450 to 2200 m"
+   }
+  },
+  "adyar": {
+   "type": "suburban",
+   "walls": [
+    "#F3EEE3",
+    "#EFE6D2",
+    "#E8D9A8",
+    "#C9B48A",
+    "#BFD8D2",
+    "#7F8A74",
+    "#B7B2A6"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#B05A3C",
+    "#BDB8AD"
+   ],
+   "roof_types": {
+    "flat": 0.68,
+    "gabled": 0.15,
+    "hipped": 0.17
+   },
+   "storeys": {
+    "1": 0.14,
+    "2": 0.5,
+    "3": 0.22,
+    "4-5": 0.12,
+    "6-9": 0.02,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     5164.0,
+     8734.4
+    ],
+    "radius_m": 700,
+    "basis": "half the distance to the nearest other area centre (1358 m), clamped 450 to 2200 m"
+   }
+  },
+  "besant-nagar-elliots-beach": {
+   "type": "coastal",
+   "walls": [
+    "#F3EEE3",
+    "#C9D6EA",
+    "#BFD8D2",
+    "#E8D9A8",
+    "#F0C9C0",
+    "#EFE6D2",
+    "#B7B2A6"
+   ],
+   "roofs": [
+    "#BDB8AD",
+    "#8A4B32",
+    "#8C8B85"
+   ],
+   "roof_types": {
+    "flat": 0.8,
+    "gabled": 0.15,
+    "pyramidal": 0.05
+   },
+   "storeys": {
+    "1": 0.1,
+    "2": 0.5,
+    "3": 0.25,
+    "4-5": 0.12,
+    "6-9": 0.03,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     6295.5,
+     9486.0
+    ],
+    "radius_m": 700,
+    "basis": "half the distance to the nearest other area centre (1358 m), clamped 450 to 2200 m"
+   }
+  },
+  "guindy": {
+   "type": "colonial-institutional",
+   "walls": [
+    "#F3EEE3",
+    "#EFE6D2",
+    "#C9B48A",
+    "#A5502F",
+    "#7F8A74",
+    "#B7B2A6",
+    "#9C9890"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#8C8B85",
+    "#B05A3C"
+   ],
+   "roof_types": {
+    "flat": 0.55,
+    "gabled": 0.25,
+    "hipped": 0.15,
+    "dome": 0.05
+   },
+   "storeys": {
+    "1": 0.1,
+    "2": 0.5,
+    "3": 0.2,
+    "4-5": 0.12,
+    "6-9": 0.06,
+    "10+": 0.02
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     1111.7,
+     8483.1
+    ],
+    "radius_m": 700,
+    "basis": "half the distance to the nearest other area centre (1401 m), clamped 450 to 2200 m"
+   }
+  },
+  "saidapet": {
+   "type": "suburban",
+   "walls": [
+    "#E4D7B8",
+    "#EFE6D2",
+    "#C9D6EA",
+    "#D9B25F",
+    "#B7B2A6",
+    "#F0C9C0",
+    "#9C9890"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#8C8B85",
+    "#B7B2A6"
+   ],
+   "roof_types": {
+    "flat": 0.72,
+    "gabled": 0.23,
+    "pyramidal": 0.05
+   },
+   "storeys": {
+    "1": 0.1,
+    "2": 0.62,
+    "3": 0.2,
+    "4-5": 0.07,
+    "6-9": 0.01,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     1500.5,
+     7136.8
+    ],
+    "radius_m": 700,
+    "basis": "half the distance to the nearest other area centre (1401 m), clamped 450 to 2200 m"
+   }
+  },
+  "velachery": {
+   "type": "suburban",
+   "walls": [
+    "#F0C9C0",
+    "#BFD8D2",
+    "#C9D6EA",
+    "#E8D9A8",
+    "#F3EEE3",
+    "#B7B2A6",
+    "#C9B48A"
+   ],
+   "roofs": [
+    "#BDB8AD",
+    "#8C8B85",
+    "#8A4B32"
+   ],
+   "roof_types": {
+    "flat": 0.88,
+    "gabled": 0.1,
+    "skillion": 0.02
+   },
+   "storeys": {
+    "1": 0.07,
+    "2": 0.4,
+    "3": 0.28,
+    "4-5": 0.19,
+    "6-9": 0.05,
+    "10+": 0.01
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     1171.7,
+     11980.0
+    ],
+    "radius_m": 1750,
+    "basis": "half the distance to the nearest other area centre (3497 m), clamped 450 to 2200 m"
+   }
+  },
+  "tambaram": {
+   "type": "suburban",
+   "walls": [
+    "#EFE6D2",
+    "#E4D7B8",
+    "#F3EEE3",
+    "#C9D6EA",
+    "#E8D9A8",
+    "#B7B2A6",
+    "#BFD8D2"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#B05A3C",
+    "#8C8B85"
+   ],
+   "roof_types": {
+    "flat": 0.7,
+    "gabled": 0.25,
+    "hipped": 0.05
+   },
+   "storeys": {
+    "1": 0.14,
+    "2": 0.55,
+    "3": 0.19,
+    "4-5": 0.1,
+    "6-9": 0.02,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     -10294.4,
+     17843.7
+    ],
+    "radius_m": 2200,
+    "basis": "half the distance to the nearest other area centre (8072 m), clamped 450 to 2200 m"
+   }
+  },
+  "pallavaram-meenambakkam-airport": {
+   "type": "airport",
+   "walls": [
+    "#EFE6D2",
+    "#F3EEE3",
+    "#B7B2A6",
+    "#C9D6EA",
+    "#E8D9A8",
+    "#9C9890",
+    "#D9B25F"
+   ],
+   "roofs": [
+    "#8C8B85",
+    "#BDB8AD",
+    "#8A4B32"
+   ],
+   "roof_types": {
+    "flat": 0.7,
+    "gabled": 0.22,
+    "skillion": 0.05,
+    "round": 0.03
+   },
+   "storeys": {
+    "1": 0.14,
+    "2": 0.58,
+    "3": 0.18,
+    "4-5": 0.08,
+    "6-9": 0.02,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "corridor",
+    "spine_xz": [
+     [
+      -7038.1,
+      13291.5
+     ],
+     [
+      -4057.7,
+      10941.5
+     ],
+     [
+      -5167.6,
+      9993.2
+     ]
+    ],
+    "half_width_m": 1800,
+    "basis": "corridor of this half width around the spine; width chosen to cover the built-up strip seen in the world data"
+   }
+  },
+  "omr-sholinganallur": {
+   "type": "IT-corridor",
+   "walls": [
+    "#8FA9B8",
+    "#C5CED3",
+    "#B7B2A6",
+    "#F3EEE3",
+    "#E8D9A8",
+    "#6E8392",
+    "#C9B48A"
+   ],
+   "roofs": [
+    "#8C8B85",
+    "#BDB8AD",
+    "#6E8392"
+   ],
+   "roof_types": {
+    "flat": 0.9,
+    "gabled": 0.05,
+    "skillion": 0.05
+   },
+   "storeys": {
+    "1": 0.05,
+    "2": 0.24,
+    "3": 0.22,
+    "4-5": 0.26,
+    "6-9": 0.16,
+    "10+": 0.07
+   },
+   "boundary": {
+    "type": "corridor",
+    "spine_xz": [
+     [
+      3433.9,
+      12673.6
+     ],
+     [
+      3315.3,
+      14989.9
+     ],
+     [
+      2226.5,
+      18597.0
+     ],
+     [
+      2229.8,
+      20777.7
+     ],
+     [
+      1854.5,
+      26621.2
+     ],
+     [
+      1129.7,
+      28167.0
+     ]
+    ],
+    "half_width_m": 1400,
+    "basis": "corridor of this half width around the spine; width chosen to cover the built-up strip seen in the world data"
+   }
+  },
+  "ennore-north-chennai-port": {
+   "type": "port-industrial",
+   "walls": [
+    "#9C9890",
+    "#B7B2A6",
+    "#5E7C8A",
+    "#7B9A6B",
+    "#E4D7B8",
+    "#EFE6D2",
+    "#C9B48A"
+   ],
+   "roofs": [
+    "#8C8B85",
+    "#5E7C8A",
+    "#A55A43"
+   ],
+   "roof_types": {
+    "flat": 0.4,
+    "gabled": 0.25,
+    "skillion": 0.35
+   },
+   "storeys": {
+    "1": 0.35,
+    "2": 0.5,
+    "3": 0.1,
+    "4-5": 0.04,
+    "6-9": 0.01,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "corridor",
+    "spine_xz": [
+     [
+      12348.5,
+      -15380.9
+     ],
+     [
+      13203.3,
+      -20178.0
+     ],
+     [
+      14112.6,
+      -23320.9
+     ]
+    ],
+    "half_width_m": 2200,
+    "basis": "corridor of this half width around the spine; width chosen to cover the built-up strip seen in the world data"
+   }
+  },
+  "ambattur-industrial": {
+   "type": "port-industrial",
+   "walls": [
+    "#9C9890",
+    "#B7B2A6",
+    "#E4D7B8",
+    "#5E7C8A",
+    "#A5502F",
+    "#EFE6D2",
+    "#C9B48A"
+   ],
+   "roofs": [
+    "#8C8B85",
+    "#A55A43",
+    "#5E7C8A"
+   ],
+   "roof_types": {
+    "flat": 0.3,
+    "gabled": 0.3,
+    "skillion": 0.4
+   },
+   "storeys": {
+    "1": 0.35,
+    "2": 0.4,
+    "3": 0.17,
+    "4-5": 0.07,
+    "6-9": 0.01,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     -4227.6,
+     -1098.2
+    ],
+    "radius_m": 1500,
+    "basis": "set from the OSM polygon / town extent (explicit)"
+   }
+  },
+  "thiruvanmiyur": {
+   "type": "coastal",
+   "walls": [
+    "#F3EEE3",
+    "#C9D6EA",
+    "#BFD8D2",
+    "#E8D9A8",
+    "#EFE6D2",
+    "#F0C9C0",
+    "#B7B2A6"
+   ],
+   "roofs": [
+    "#BDB8AD",
+    "#8A4B32",
+    "#8C8B85"
+   ],
+   "roof_types": {
+    "flat": 0.75,
+    "gabled": 0.2,
+    "pyramidal": 0.05
+   },
+   "storeys": {
+    "1": 0.1,
+    "2": 0.55,
+    "3": 0.22,
+    "4-5": 0.11,
+    "6-9": 0.02,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     5883.4,
+     11020.0
+    ],
+    "radius_m": 800,
+    "basis": "half the distance to the nearest other area centre (1588 m), clamped 450 to 2200 m"
+   }
+  },
+  "chetpet": {
+   "type": "suburban",
+   "walls": [
+    "#EFE6D2",
+    "#F3EEE3",
+    "#E8D9A8",
+    "#C9B48A",
+    "#BFD8D2",
+    "#B7B2A6",
+    "#7F8A74"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#BDB8AD",
+    "#B7B2A6"
+   ],
+   "roof_types": {
+    "flat": 0.76,
+    "gabled": 0.12,
+    "hipped": 0.12
+   },
+   "storeys": {
+    "1": 0.08,
+    "2": 0.55,
+    "3": 0.24,
+    "4-5": 0.11,
+    "6-9": 0.02,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     3649.7,
+     1473.9
+    ],
+    "radius_m": 550,
+    "basis": "half the distance to the nearest other area centre (1135 m), clamped 450 to 2200 m"
+   }
+  },
+  "chengalpattu": {
+   "type": "rural-edge",
+   "walls": [
+    "#EFE6D2",
+    "#E4D7B8",
+    "#E8D9A8",
+    "#C9D6EA",
+    "#B7B2A6",
+    "#D9B25F"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#B05A3C",
+    "#BDB8AD"
+   ],
+   "roof_types": {
+    "flat": 0.5,
+    "gabled": 0.4,
+    "hipped": 0.1
+   },
+   "storeys": {
+    "1": 0.35,
+    "2": 0.5,
+    "3": 0.14,
+    "4-5": 0.01,
+    "6-9": 0.0,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     -24527.7,
+     44579.4
+    ],
+    "radius_m": 1600,
+    "basis": "set from the OSM polygon / town extent (explicit)"
+   }
+  },
+  "pulicat-edge": {
+   "type": "rural-edge",
+   "walls": [
+    "#EFE6D2",
+    "#F3EEE3",
+    "#C9D6EA",
+    "#D9B25F",
+    "#B7B2A6",
+    "#8FA68E"
+   ],
+   "roofs": [
+    "#8A4B32",
+    "#A55A43",
+    "#8C8B85"
+   ],
+   "roof_types": {
+    "flat": 0.3,
+    "gabled": 0.65,
+    "dome": 0.05
+   },
+   "storeys": {
+    "1": 0.7,
+    "2": 0.28,
+    "3": 0.02,
+    "4-5": 0.0,
+    "6-9": 0.0,
+    "10+": 0.0
+   },
+   "boundary": {
+    "type": "circle",
+    "centre_xz": [
+     11542.4,
+     -36990.2
+    ],
+    "radius_m": 1500,
+    "basis": "set from the OSM polygon / town extent (explicit)"
+   }
+  }
  }
 }
