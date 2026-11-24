@@ -888,6 +888,42 @@ the honk hook); people get no reaction hook (CityLife has none). Smoke is grey a
 (cheap, reads as smoke at a distance, blobby up close). No dent geometry: damage is paint, sag and
 smoke. Effect cost measured on the desktop only (G-273). The player still stops dead against a
 light traffic vehicle (the solver's wall); only the judgement is shared by mass.
+## Thrown on boarding; people react to hits (agent/godot-crash2, G-340…G-343), 24 Nov 2026
+**Owner's phone report on afed12f, fixed.** (1) "When I entered the bike I was thrown away for a
+long distance": root cause G-340. After TAKE OVER the traffic view of the taken agent was hidden
+in the bike's place; when the player sat down the agent was respawned and the view, shown and
+re-placed in the same frame, swept out of the bike's box at thousands of m/s (Jolt moves
+kinematic bodies with `MoveKinematic` even with `sync_to_physics` off): the bike got up to
+500 m/s and the rider was thrown. Views now jump with their box off for a step. The same sweep in
+the player's own body shoved vehicles on getting out (G-341). (2) "Why is the NPC standing after
+hitting the bike?": walkers and crowd adults stagger or are knocked down, lie, get up and walk on;
+traffic bike and auto riders hit hard fall off, the bike lies over until they are back;
+bystanders look and scatter; a car near by honks (G-342, G-343). Never a child.
+
+Tests: `scene/test_boarding_safety.gd` (in `main.tscn`: the parked bike, auto and car boarded
+between parked bikes, and four take-overs of moving traffic; standing 5 s and riding off: never
+thrown, within 3 m of the vehicle, no hit felt standing), `scene/test_traffic_view_teleport.gd`
+(the mechanism, deterministic: a hidden view shown far away in five directions, a visible one
+re-placed through a bike, getting on and off three kinds never shoves the vehicle),
+`unit/test_street_hits.gd`, `scene/test_street_reactions.gd` (fast walker falls and walks on, slow
+walker staggers, traffic rider falls off and the bike waits, a child in the path is passed and
+never knocked down).
+
+**Weak or not done.**
+- Headless and xvfb (llvmpipe) only; not on a phone.
+- The end-to-end take-over test failed before the fix in 2 of 3 runs only (whether the sweep hits
+  depends on the respawn direction); the yard test is the deterministic one.
+- One unexplained run of the take-over test after the fix: a later ride-off judged a 75 km/h
+  "thrown" against a building at half throttle (fastest reached not recorded then); not seen in
+  the eight runs since. If it comes back, look for another code-placed kinematic body.
+- A crowd adult knocked down is drawn back at their spot when up (a pop of a metre or two); crowd
+  people only turn to look, they do not flee. Children in crowds only step aside by the crowd's
+  existing make-way rule (0.5 m round vehicles, at 30 Hz): no child is ever struck or knocked
+  down, but a fast car can pass close to a child at a station crowd.
+- The pulled-out carjacked driver still only staggers (Carjacking's own runner, not this hook).
+- No HUD message, no `Wanted` (none exists in the game).
+- A knockdown instantiates the person's figure the first time (1.1–1.8 ms on the desktop).
+
 ## Performance (G-250…G-259, branch `agent/godot-perf`), 24 Nov 2026
 **Where things are.** `src/game_engine/quality/` (`QualitySettings` presets, auto-detect, save
 section; `QualityApplier`; `FrameStats` and the verdict), `src/app/perf/` (`PerfWiring`: applies
