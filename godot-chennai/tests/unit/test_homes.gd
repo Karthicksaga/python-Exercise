@@ -131,10 +131,43 @@ func test_listings_are_two_or_three_per_area_in_the_four_areas() -> bool:
 		osm[l.osm] = true
 		assert_true(data.homes.type_of(l.type_id) != null, "%s has a known type" % l.id)
 		assert_true(_has_tamil(l.area_ta), "%s has the area in Tamil" % l.id)
-	for area: String in ["anna-nagar", "besant-nagar", "velachery", "mylapore"]:
+	for area: String in ["anna-nagar", "besant-nagar-elliots-beach", "velachery", "mylapore"]:
 		var n := int(per.get(area, 0))
 		assert_true(n >= 2 and n <= 3, "%s has 2 to 3 homes (%d)" % [area, n])
 	assert_eq(per.size(), 4, "exactly the four areas")
+	return true
+
+
+func test_listings_lie_in_the_areas_of_the_atlas() -> bool:
+	# data/areas/areas.json (G-200): the same area ids and Tamil names, and every home inside its
+	# area's boundary (a circle, or a corridor round a spine).
+	var atlas := HomeJson.read("res://data/areas/areas.json")
+	var by_id: Dictionary = {}
+	for a: Variant in HomeJson.array_of(atlas, "areas"):
+		if a is Dictionary:
+			by_id[str((a as Dictionary).get("id"))] = a
+	for l in data.listings.listings:
+		assert_true(by_id.has(l.area_id), "%s: area %s is in the atlas" % [l.id, l.area_id])
+		if not by_id.has(l.area_id):
+			continue
+		var area: Dictionary = by_id[l.area_id]
+		var names := HomeJson.dict_of(area, "names")
+		var ta := HomeJson.dict_of(names, "ta")
+		assert_eq(l.area_ta, HomeJson.text_of(ta, "value"), "%s: the area's Tamil name is the atlas's" % l.id)
+		var b := HomeJson.dict_of(area, "boundary")
+		var inside := false
+		if HomeJson.text_of(b, "type") == "circle":
+			var c := HomeJson.array_of(b, "centre_xz")
+			inside = l.at.distance_to(Vector2(float(c[0]), float(c[1]))) <= HomeJson.float_of(b, "radius_m")
+		else:
+			var spine := HomeJson.array_of(b, "spine_xz")
+			var best := INF
+			for i in range(spine.size() - 1):
+				var p0 := Vector2(float((spine[i] as Array)[0]), float((spine[i] as Array)[1]))
+				var p1 := Vector2(float((spine[i + 1] as Array)[0]), float((spine[i + 1] as Array)[1]))
+				best = minf(best, Geometry2D.get_closest_point_to_segment(l.at, p0, p1).distance_to(l.at))
+			inside = best <= HomeJson.float_of(b, "half_width_m")
+		assert_true(inside, "%s lies inside the %s boundary" % [l.id, l.area_id])
 	return true
 
 

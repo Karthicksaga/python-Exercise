@@ -1,6 +1,6 @@
 {
  "format": 1,
- "note": "Homes for sale: real OSM buildings (way ids) picked by tests/tools/home_picker.gd for each area, 2 to 3 per area, residential, of a size a home could have, with a road within 28 m. `at` is the building's centre in world metres (a hint to find its chunk fast); the game still looks the building up by id and skips a listing whose building is not in the world data. The areas, Tamil names and centres follow data/areas on agent/godot-areas (names from OSM, need native review); when that branch is merged this file may be replaced by a selection from its data. No business names anywhere: a sign says only the category.",
+ "note": "Homes for sale: real OSM buildings (way ids) picked by tests/tools/home_picker.gd for each area, 2 to 3 per area, residential, of a size a home could have, with a road within 28 m. `at` is the building's centre in world metres (a hint: the game looks the building up by id when the player comes near, and skips a listing whose building is not in the world data). Area ids, Tamil names and boundaries follow data/areas/areas.json (checked by test_homes.gd; the names are OSM's and need native review). No business names anywhere: a sign says only the category.",
  "areas": [
   {
    "id": "anna-nagar",
@@ -27,7 +27,7 @@
    ]
   },
   {
-   "id": "besant-nagar",
+   "id": "besant-nagar-elliots-beach",
    "en": "Besant Nagar",
    "ta": "பெசன்ட் நகர்",
    "type": "cottage",

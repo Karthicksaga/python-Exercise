@@ -1,8 +1,8 @@
 class_name HomeListings
 extends RefCounted
 ## The homes for sale, two to three real OSM buildings in each of Anna Nagar, Besant Nagar,
-## Velachery and Mylapore (G-233), from `data/homes/listings.json`. When the areas data
-## (`data/areas`, agent/godot-areas) is merged this file can be regenerated from it.
+## Velachery and Mylapore (G-233), from `data/homes/listings.json`. The area ids, Tamil names and
+## boundaries are those of `data/areas/areas.json` (a test checks each home lies inside its area).
 
 const PATH := "res://data/homes/listings.json"
 
