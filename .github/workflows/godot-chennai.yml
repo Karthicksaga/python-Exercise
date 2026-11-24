@@ -7,6 +7,13 @@ on:
   pull_request:
     paths: ['godot-chennai/**', '.github/workflows/godot-chennai.yml']
   workflow_dispatch:
+    inputs:
+      smoke_runs:
+        description: 'Emulator smoke runs in parallel, as a list (e.g. "1,2,3,4,5,6") to check it is not flaky'
+        default: '1'
+      smoke_settle:
+        description: 'Wait for the emulator to settle before installing (1), or not (0, the old behaviour)'
+        default: '1'
 
 # A newer push to the same branch or PR cancels the run still in progress.
 concurrency:
@@ -140,6 +147,12 @@ jobs:
     needs: android
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        run: ${{ fromJSON(format('[{0}]', inputs.smoke_runs || '1')) }}
+    env:
+      SMOKE_SETTLE: ${{ inputs.smoke_settle || '1' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -152,6 +165,13 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      # The system image comes from the network on every run otherwise; one smoke job failed
+      # with "Premature EOF" while downloading it.
+      - name: Cache the emulator system image
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/system-images/android-34/google_apis/x86_64
+          key: android-sysimg-34-google_apis-x86_64-v1
       - name: Run the smoke test on an emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -165,7 +185,7 @@ jobs:
           # while switching. So the smoke APK starts on the Compatibility renderer itself
           # (launch arguments in the "Android Smoke" preset); the Mobile renderer is judged on
           # real phones (G-9).
-          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -skin 1280x576 -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           working-directory: godot-chennai
           # One line: the action runs each script line as a separate command.
@@ -174,7 +194,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: godot-chennai-android-smoke-logcat
+          name: godot-chennai-android-smoke-logcat-${{ matrix.run }}
           path: godot-chennai/android-smoke/
           if-no-files-found: ignore
           retention-days: 14

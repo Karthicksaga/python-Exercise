@@ -181,3 +181,13 @@ shown for a seated pose (none yet). Layers: G-64.
   names (any prefix) and the A-pose for the retarget to apply.
 - In the close-up the shoulders read slightly raised; arms are judged natural, hands relaxed,
   sandals flat on the ground.
+
+## Emulator smoke made deterministic, branch `agent/godot-smoke`, 24 Nov 2026
+**Root cause** of the intermittent `android-smoke`: an overlay change on the freshly booted
+emulator changed every app's asset paths, Android relaunched the game's activity, and Godot
+ended its own process (G-9, amended, with the log evidence). **Fix:** the smoke waits, bounded,
+for the overlays and configuration to stay unchanged for 20 s before installing and before
+launching (plus boot, managers, unlocked landscape screen, install broadcasts), follows the
+game's pid, and prints the exit reason and the log before any relaunch on failure. To repeat
+the check: *Run workflow* with `smoke_runs` = `1,2,3,4,5,6,7,8` (`smoke_settle` = `0` launches
+the old way, without the waits).
