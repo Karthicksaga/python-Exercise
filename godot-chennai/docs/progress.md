@@ -50,3 +50,54 @@ Measured (OSM 2026-11-23T00:28:57Z, whole world):
 - Geometry: 358 slivers dropped, 1 footprint repaired.
 
 Not done / weak: see `handoff.md` "Data".
+
+
+## Rules (agent/godot-rules, 23 Nov 2026)
+- **Done:** typed GDScript ports of the missions package (stages runner, chase, fares, goods,
+  city jobs, share auto, life, stories), the combat package (TD-27 combat with `hurt` from TD-29,
+  weapons and arsenal, gangs, pedestrian hits and casualties, pickups), the wanted level with
+  TD-28 heat before stars and the TD-30 carjacking crime, TD-28's police crew rules finished as
+  `PoliceFleet`, the carjacking rules, the game clock and districts; the 21 stages, 13 city jobs,
+  9 enemy groups, parking, gangs, crews and pickups as a baked JSON table; the save file.
+- **Tests:** 251 cases (236 of 241 relevant TS cases ported, 15 new), all passing headless with
+  Godot 4.7.2 (`./run_tests.sh --filter=unit/rules/`); the runner was checked to exit 1 on a broken
+  assertion and on a test that dies, and the log is scanned for script errors.
+- **Details:** `docs/rules.md`; decisions G-40 to G-49.
+
+## Models (agent/godot-models)
+- [x] Model kit by script (`tools/blender/vehicles/vkit.py`): shared palette atlas, paint and
+  livery materials, LODs, anchors, manifests (G-30 to G-34).
+- [x] Premium cars: luxury saloon, SUV, sports coupé (LOD0/LOD1, doors on hinges, steering
+  node, seats, grips, cargo, 6 paints each).
+- [x] Race car: original open-wheel car, 4 invented liveries.
+- [x] Helicopter: main and tail rotor nodes, skids, hinged and sliding doors, 5 seats, cyclic
+  and collective grips (LOD0/1/2).
+- [x] Airliner: narrow-body twin, retract-pivot gear, ailerons, flaps, elevators, rudder, fans,
+  forward door, invented airline colours (LOD0/1/2).
+- [x] Light aircraft: high wing, propeller, control surfaces, steerable nose wheel, doors (LOD0/1/2).
+- [x] Trains: ICF-style EMU (cab, motor, trailer), AC EMU variant, WAP-7-style locomotive,
+  LHB-style coach, Vande-Bharat-style nose car and coach; bogies, wheelsets, sliding doors,
+  pantographs, formations (LOD0/1/2).
+- [x] Road vehicles ported from the Three.js game (hatchback, motorbike, auto-rickshaw, bus,
+  ambulance) with manifests from `specs.ts` (G-36).
+- [x] Model checks in the project runner (`tests/unit/test_vehicle_models.gd` →
+  `tests/models/model_checks.gd`, typed), 1,648 checks on 22 models, all
+  passing, including the embedded palette and livery texels (G-37).
+- [x] Review round: train LOD0 rebuilt with real openings, rounded roofs, vents, gangways,
+  cab fronts, the WAP-7 nose and roof gear, the VB nose; the SUV reshaped; texture checks added.
+- [ ] Use in the game (Phase 2, 6, 6b): manifest loader, visibility ranges, wheel, door and
+  pivot animation, train MultiMesh.
+- [ ] Seen on a phone (nothing tried on a device yet).
+
+## Player (phase 1, branch `agent/godot-player`, 23 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Kinematic player at the fixed step: walk 2.4 / run 6.2 m/s relative to the camera, jump 7.2 m/s, gravity 24, stays on the ground, walls stop it, kerbs (15 cm) and steps (30 cm) climbed, 60 cm ledges not (G-60) | Done on the test ground | `tests/scene/test_player.gd`: three camera headings, walk 0.8–3.2 m in 1 s, run > 2.5× walk, \|y\| < 8 cm; jump apex 0.9–1.25 m and landing; wall at x = 6 and a corner; kerb, step, ledge |
+| Player model from a people manifest (default: the Three.js `player.glb` at 1.75 m) (G-63) | Done | `tests/unit/test_retarget.gd` (manifest paths); swapping to a Cast person is one call, not yet tried with a new-cast GLB |
+| Mixamo idle/walk/run retargeted to the A-pose MPFB rig: limbs, whole hand frames, finger joints (G-61) | Done | `tests/unit/test_retarget.gd` (synthetic A-pose arm vs T-pose: arm, hand, knuckles, finger within 0.01 rad); `test_human_figure.gd`: every arm, hand, knuckle-line, finger and leg direction of the player's baked clips within 2° of the clip rig at 36 moments (measured 0.00°) |
+| Soles planted per clip and every step, blends included; arms settled in (G-62) | Done | `test_human_figure.gd`, every foot vertex measured: idle 0.0 mm, walk −0.2…0 mm, run −0.3…0 mm, ten gait changes within 0.2 mm (limit 1 cm); wrists: idle ≤ 8.9° (limit 15°), walk ≤ 33.2° and run ≤ 41.9° vs the clips' own 33.2° and 40.1° (limit +3°); upper arms ≥ 3.8° out |
+| Orbit/chase camera: drag to look, smooth follow, look-ahead with speed, walls clamp at once, poles and people ease (G-65) | Done | `test_player.gd`: 720 steps swinging round walls and a corner with the camera never inside a collider; walking past a pole: seen as thin, largest step-to-step distance change < 0.25 m; drag 286 → 1.4–1.75 rad; look-ahead 0.85 m at a run |
+| Touch controls: floating stick left, look zone right, RUN and JUMP bottom-right; keyboard (G-66, G-67) | Done | `test_player.gd` (stick and drag through real touch events); `tests/scene/test_touch_layout.gd` at 915×412, 1830×824, 640×320 with the HUD: in bounds, ≥ 48 UI units and ≥ 48 px, 8 apart, no overlap, thumb zones |
+| Vehicle and combat hooks (`enter_vehicle`/`exit_vehicle`, `knock`, signals) | Done (API only) | `test_player.gd` vehicle test (follows the seat, no collision, back on foot) |
+| Screenshots (Compatibility, xvfb): idle, walk, run, by a wall, close-up, at 915×412 and 1830×824 | Done | made by `tests/tools/player_screenshot.gd` into a scratch folder (not committed, AGENTS.md) |
+| Player in the game flow (main scene) | Not done | `PlayerRig` is ready for the composition root; wiring it into `main.gd` is left to the coordinator/World so the test ground and the streamed city are swapped in one place |

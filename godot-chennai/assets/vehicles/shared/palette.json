@@ -1,0 +1,707 @@
+{
+ "size": 512,
+ "cells_per_side": 8,
+ "uv_origin": "top-left (glTF)",
+ "roles": {
+  "black": {
+   "cell": 0,
+   "uv": [
+    0.0625,
+    0.0625
+   ],
+   "albedo_srgb": [
+    44,
+    44,
+    47
+   ],
+   "roughness": 0.55,
+   "metallic": 0.0
+  },
+  "rubber": {
+   "cell": 1,
+   "uv": [
+    0.1875,
+    0.0625
+   ],
+   "albedo_srgb": [
+    41,
+    41,
+    43
+   ],
+   "roughness": 0.92,
+   "metallic": 0.0
+  },
+  "tyre_wall": {
+   "cell": 2,
+   "uv": [
+    0.3125,
+    0.0625
+   ],
+   "albedo_srgb": [
+    53,
+    53,
+    55
+   ],
+   "roughness": 0.85,
+   "metallic": 0.0
+  },
+  "chrome": {
+   "cell": 3,
+   "uv": [
+    0.4375,
+    0.0625
+   ],
+   "albedo_srgb": [
+    234,
+    234,
+    236
+   ],
+   "roughness": 0.12,
+   "metallic": 1.0
+  },
+  "alloy": {
+   "cell": 4,
+   "uv": [
+    0.5625,
+    0.0625
+   ],
+   "albedo_srgb": [
+    206,
+    208,
+    211
+   ],
+   "roughness": 0.28,
+   "metallic": 1.0
+  },
+  "dark_alloy": {
+   "cell": 5,
+   "uv": [
+    0.6875,
+    0.0625
+   ],
+   "albedo_srgb": [
+    97,
+    97,
+    101
+   ],
+   "roughness": 0.32,
+   "metallic": 1.0
+  },
+  "steel": {
+   "cell": 6,
+   "uv": [
+    0.8125,
+    0.0625
+   ],
+   "albedo_srgb": [
+    173,
+    173,
+    175
+   ],
+   "roughness": 0.45,
+   "metallic": 1.0
+  },
+  "glass": {
+   "cell": 7,
+   "uv": [
+    0.9375,
+    0.0625
+   ],
+   "albedo_srgb": [
+    29,
+    36,
+    43
+   ],
+   "roughness": 0.08,
+   "metallic": 0.0
+  },
+  "glass_cockpit": {
+   "cell": 8,
+   "uv": [
+    0.0625,
+    0.1875
+   ],
+   "albedo_srgb": [
+    69,
+    85,
+    93
+   ],
+   "roughness": 0.05,
+   "metallic": 0.3
+  },
+  "headlamp": {
+   "cell": 9,
+   "uv": [
+    0.1875,
+    0.1875
+   ],
+   "albedo_srgb": [
+    237,
+    240,
+    243
+   ],
+   "roughness": 0.15,
+   "metallic": 0.0
+  },
+  "taillamp": {
+   "cell": 10,
+   "uv": [
+    0.3125,
+    0.1875
+   ],
+   "albedo_srgb": [
+    179,
+    39,
+    39
+   ],
+   "roughness": 0.2,
+   "metallic": 0.0
+  },
+  "indicator": {
+   "cell": 11,
+   "uv": [
+    0.4375,
+    0.1875
+   ],
+   "albedo_srgb": [
+    243,
+    173,
+    39
+   ],
+   "roughness": 0.2,
+   "metallic": 0.0
+  },
+  "interior": {
+   "cell": 12,
+   "uv": [
+    0.5625,
+    0.1875
+   ],
+   "albedo_srgb": [
+    69,
+    68,
+    66
+   ],
+   "roughness": 0.8,
+   "metallic": 0.0
+  },
+  "seat_dark": {
+   "cell": 13,
+   "uv": [
+    0.6875,
+    0.1875
+   ],
+   "albedo_srgb": [
+    63,
+    60,
+    56
+   ],
+   "roughness": 0.65,
+   "metallic": 0.0
+  },
+  "seat_tan": {
+   "cell": 14,
+   "uv": [
+    0.8125,
+    0.1875
+   ],
+   "albedo_srgb": [
+    162,
+    124,
+    89
+   ],
+   "roughness": 0.55,
+   "metallic": 0.0
+  },
+  "carbon": {
+   "cell": 15,
+   "uv": [
+    0.9375,
+    0.1875
+   ],
+   "albedo_srgb": [
+    56,
+    56,
+    60
+   ],
+   "roughness": 0.3,
+   "metallic": 0.2
+  },
+  "plate": {
+   "cell": 16,
+   "uv": [
+    0.0625,
+    0.3125
+   ],
+   "albedo_srgb": [
+    237,
+    237,
+    234
+   ],
+   "roughness": 0.4,
+   "metallic": 0.0
+  },
+  "caliper": {
+   "cell": 17,
+   "uv": [
+    0.1875,
+    0.3125
+   ],
+   "albedo_srgb": [
+    196,
+    69,
+    48
+   ],
+   "roughness": 0.35,
+   "metallic": 0.0
+  },
+  "brake": {
+   "cell": 18,
+   "uv": [
+    0.3125,
+    0.3125
+   ],
+   "albedo_srgb": [
+    149,
+    149,
+    149
+   ],
+   "roughness": 0.45,
+   "metallic": 0.9
+  },
+  "white": {
+   "cell": 19,
+   "uv": [
+    0.4375,
+    0.3125
+   ],
+   "albedo_srgb": [
+    234,
+    235,
+    234
+   ],
+   "roughness": 0.35,
+   "metallic": 0.0
+  },
+  "light_grey": {
+   "cell": 20,
+   "uv": [
+    0.5625,
+    0.3125
+   ],
+   "albedo_srgb": [
+    188,
+    189,
+    191
+   ],
+   "roughness": 0.45,
+   "metallic": 0.0
+  },
+  "mid_grey": {
+   "cell": 21,
+   "uv": [
+    0.6875,
+    0.3125
+   ],
+   "albedo_srgb": [
+    129,
+    130,
+    132
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0
+  },
+  "dark_grey": {
+   "cell": 22,
+   "uv": [
+    0.8125,
+    0.3125
+   ],
+   "albedo_srgb": [
+    77,
+    79,
+    80
+   ],
+   "roughness": 0.6,
+   "metallic": 0.0
+  },
+  "underframe": {
+   "cell": 23,
+   "uv": [
+    0.9375,
+    0.3125
+   ],
+   "albedo_srgb": [
+    63,
+    62,
+    60
+   ],
+   "roughness": 0.8,
+   "metallic": 0.2
+  },
+  "bogie": {
+   "cell": 24,
+   "uv": [
+    0.0625,
+    0.4375
+   ],
+   "albedo_srgb": [
+    75,
+    74,
+    72
+   ],
+   "roughness": 0.7,
+   "metallic": 0.4
+  },
+  "roof_grey": {
+   "cell": 25,
+   "uv": [
+    0.1875,
+    0.4375
+   ],
+   "albedo_srgb": [
+    93,
+    93,
+    91
+   ],
+   "roughness": 0.8,
+   "metallic": 0.1
+  },
+  "pantograph": {
+   "cell": 26,
+   "uv": [
+    0.3125,
+    0.4375
+   ],
+   "albedo_srgb": [
+    179,
+    179,
+    177
+   ],
+   "roughness": 0.45,
+   "metallic": 0.8
+  },
+  "insulator": {
+   "cell": 27,
+   "uv": [
+    0.4375,
+    0.4375
+   ],
+   "albedo_srgb": [
+    196,
+    97,
+    69
+   ],
+   "roughness": 0.3,
+   "metallic": 0.0
+  },
+  "engine": {
+   "cell": 28,
+   "uv": [
+    0.5625,
+    0.4375
+   ],
+   "albedo_srgb": [
+    188,
+    188,
+    191
+   ],
+   "roughness": 0.35,
+   "metallic": 0.9
+  },
+  "fan": {
+   "cell": 29,
+   "uv": [
+    0.6875,
+    0.4375
+   ],
+   "albedo_srgb": [
+    118,
+    118,
+    124
+   ],
+   "roughness": 0.35,
+   "metallic": 0.9
+  },
+  "blade": {
+   "cell": 30,
+   "uv": [
+    0.8125,
+    0.4375
+   ],
+   "albedo_srgb": [
+    75,
+    75,
+    77
+   ],
+   "roughness": 0.5,
+   "metallic": 0.2
+  },
+  "blade_tip": {
+   "cell": 31,
+   "uv": [
+    0.9375,
+    0.4375
+   ],
+   "albedo_srgb": [
+    231,
+    179,
+    39
+   ],
+   "roughness": 0.4,
+   "metallic": 0.0
+  },
+  "skid": {
+   "cell": 32,
+   "uv": [
+    0.0625,
+    0.5625
+   ],
+   "albedo_srgb": [
+    179,
+    181,
+    182
+   ],
+   "roughness": 0.5,
+   "metallic": 0.7
+  },
+  "teal": {
+   "cell": 33,
+   "uv": [
+    0.1875,
+    0.5625
+   ],
+   "albedo_srgb": [
+    18,
+    75,
+    77
+   ],
+   "roughness": 0.4,
+   "metallic": 0.0
+  },
+  "amber": {
+   "cell": 34,
+   "uv": [
+    0.3125,
+    0.5625
+   ],
+   "albedo_srgb": [
+    255,
+    179,
+    0
+   ],
+   "roughness": 0.4,
+   "metallic": 0.0
+  },
+  "red": {
+   "cell": 35,
+   "uv": [
+    0.4375,
+    0.5625
+   ],
+   "albedo_srgb": [
+    173,
+    39,
+    39
+   ],
+   "roughness": 0.4,
+   "metallic": 0.0
+  },
+  "navy": {
+   "cell": 36,
+   "uv": [
+    0.5625,
+    0.5625
+   ],
+   "albedo_srgb": [
+    25,
+    48,
+    89
+   ],
+   "roughness": 0.4,
+   "metallic": 0.0
+  },
+  "mint": {
+   "cell": 37,
+   "uv": [
+    0.6875,
+    0.5625
+   ],
+   "albedo_srgb": [
+    124,
+    188,
+    166
+   ],
+   "roughness": 0.45,
+   "metallic": 0.0
+  },
+  "nav_red": {
+   "cell": 38,
+   "uv": [
+    0.8125,
+    0.5625
+   ],
+   "albedo_srgb": [
+    203,
+    39,
+    39
+   ],
+   "roughness": 0.2,
+   "metallic": 0.0
+  },
+  "nav_green": {
+   "cell": 39,
+   "uv": [
+    0.9375,
+    0.5625
+   ],
+   "albedo_srgb": [
+    39,
+    188,
+    63
+   ],
+   "roughness": 0.2,
+   "metallic": 0.0
+  },
+  "strobe": {
+   "cell": 40,
+   "uv": [
+    0.0625,
+    0.6875
+   ],
+   "albedo_srgb": [
+    243,
+    243,
+    243
+   ],
+   "roughness": 0.2,
+   "metallic": 0.0
+  },
+  "wood": {
+   "cell": 41,
+   "uv": [
+    0.1875,
+    0.6875
+   ],
+   "albedo_srgb": [
+    124,
+    89,
+    56
+   ],
+   "roughness": 0.7,
+   "metallic": 0.0
+  },
+  "screen": {
+   "cell": 42,
+   "uv": [
+    0.3125,
+    0.6875
+   ],
+   "albedo_srgb": [
+    25,
+    33,
+    39
+   ],
+   "roughness": 0.1,
+   "metallic": 0.0
+  },
+  "yellow": {
+   "cell": 43,
+   "uv": [
+    0.4375,
+    0.6875
+   ],
+   "albedo_srgb": [
+    225,
+    196,
+    39
+   ],
+   "roughness": 0.4,
+   "metallic": 0.0
+  },
+  "cream": {
+   "cell": 44,
+   "uv": [
+    0.5625,
+    0.6875
+   ],
+   "albedo_srgb": [
+    218,
+    203,
+    170
+   ],
+   "roughness": 0.45,
+   "metallic": 0.0
+  },
+  "saffron": {
+   "cell": 45,
+   "uv": [
+    0.6875,
+    0.6875
+   ],
+   "albedo_srgb": [
+    237,
+    137,
+    39
+   ],
+   "roughness": 0.4,
+   "metallic": 0.0
+  },
+  "brown": {
+   "cell": 46,
+   "uv": [
+    0.8125,
+    0.6875
+   ],
+   "albedo_srgb": [
+    97,
+    63,
+    39
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0
+  },
+  "inside_dark": {
+   "cell": 47,
+   "uv": [
+    0.9375,
+    0.6875
+   ],
+   "albedo_srgb": [
+    29,
+    29,
+    31
+   ],
+   "roughness": 0.9,
+   "metallic": 0.0
+  },
+  "led_amber": {
+   "cell": 48,
+   "uv": [
+    0.0625,
+    0.8125
+   ],
+   "albedo_srgb": [
+    56,
+    39,
+    0
+   ],
+   "roughness": 0.2,
+   "metallic": 0.0
+  },
+  "loco_red": {
+   "cell": 49,
+   "uv": [
+    0.1875,
+    0.8125
+   ],
+   "albedo_srgb": [
+    166,
+    48,
+    39
+   ],
+   "roughness": 0.4,
+   "metallic": 0.1
+  }
+ }
+}
