@@ -34,6 +34,13 @@ var pause_menu: PauseMenu = null
 
 ## Traffic, walkers and crowds round the player (G-120…G-128).
 var life: CityLife = null
+## The live city behind the title: camera drift, chip, lightning (G-164). Made at the end of loading.
+var title_wiring: TitleWiring = null
+## The title camera tours a faraway spot (needs a display; headless runs stay with the player).
+var title_tour: bool = DisplayServer.get_name() != "headless"
+## The launch's seed for the spot (`-1`: the clock), and a spot forced by a tool or test.
+var title_seed: int = -1
+var title_spot: StringName = &""
 ## Watches for a stalled main loop while loading (see `_watch_frames`).
 var _watchdog: Thread = null
 var _watching: bool = false
@@ -88,6 +95,8 @@ func _load() -> void:
 		loading.finish_step(i)
 		print("[boot] step %d/%d done: %s (%d ms since start)" % [i + 1, STEPS.size(), STEPS[i], Time.get_ticks_msec() - started])
 		await get_tree().process_frame
+	if not OS.get_cmdline_user_args().has("--start=play"):
+		await _prepare_title()
 	_stop_watchdog()
 	loading.visible = false
 	var roads := source.loaded_roads()
@@ -98,6 +107,16 @@ func _load() -> void:
 		play()
 	else:
 		show_title()
+
+
+## Chooses the title's spot and (with `title_tour`) streams it in, still behind the loading screen.
+func _prepare_title() -> void:
+	if title_wiring == null:
+		title_wiring = TitleWiring.make(world, rig, life, title)
+		title_wiring.tour = title_tour
+		add_child(title_wiring)
+	var seed_value := title_seed if title_seed >= 0 else int(Time.get_unix_time_from_system())
+	await title_wiring.prepare(seed_value, title_spot)
 
 
 ## Runs one loading step; returns "" or what went wrong.
@@ -201,9 +220,13 @@ func _add_play() -> String:
 func _add_pause_menu() -> void:
 	pause_menu = PauseMenu.new()
 	add_child(pause_menu)
-	pause_menu.add_setting(&"Time", func() -> String: return "Time: %s (%s)" % [GameLoop.clock.label(), GameLoop.clock.text()], func() -> void: GameLoop.clock.next())
-	pause_menu.add_setting(&"Weather", Weather.label, Weather.toggle)
-	pause_menu.add_setting(&"Sound", Sound.label, Sound.toggle)
+	# The same three settings on the pause menu and on the title's SETTINGS page (G-162).
+	var time_label := func() -> String: return "Time: %s (%s)" % [GameLoop.clock.label(), GameLoop.clock.text()]
+	var time_next := func() -> void: GameLoop.clock.next()
+	for host: Object in [pause_menu, title]:
+		host.call(&"add_setting", &"Time", time_label, time_next)
+		host.call(&"add_setting", &"Weather", Weather.label, Weather.toggle)
+		host.call(&"add_setting", &"Sound", Sound.label, Sound.toggle)
 	pause_menu.pause_requested.connect(pause)
 	pause_menu.resume_requested.connect(resume)
 	pause_menu.title_requested.connect(show_title)
@@ -252,12 +275,35 @@ func _exit_tree() -> void:
 		get_tree().paused = false
 
 
+## What the title's rows say, from the live mission session and the save file (G-161): CONTINUE
+## exists only when a save does, and shows the real stage, money and stages done.
+func title_summary() -> Dictionary:
+	var out := {"has_save": false}
+	var layer := find_child("MissionsLayer", false, false) as MissionsLayer
+	if layer == null or layer.session == null:
+		return out
+	var session := layer.session
+	if not session.content.missions.is_empty():
+		out["new_game_line"] = "Begin in Chennai: Stage 1, %s" % session.content.missions[0].title
+	if SaveStore.new(session.store.path).read().progress().is_empty():
+		return out
+	var m := session.runner.mission()
+	var where := "Stage %d" % m.stage if m != null else "Free roam"
+	out["has_save"] = true
+	out["continue_line"] = "%s · ₹%s · %d of %d stages" % [where, MissionSession.rupees(session.runner.balance()), session.runner.stages_done(), session.runner.stage_count()]
+	return out
+
+
 func show_title() -> void:
 	_unpause()
 	hud.visible = false
 	_set_controls(false)
+	title.set_save(title_summary())
 	title.visible = true
 	title.show_menu()
+	title.enter()
+	if title_wiring != null:
+		title_wiring.activate()
 	Sound.suspend()
 	_set_state(&"title")
 
@@ -265,10 +311,23 @@ func show_title() -> void:
 func play() -> void:
 	_unpause()
 	title.visible = false
+	if title_wiring != null and title_wiring.release():
+		_wait_for_ground()
 	hud.visible = true
 	Sound.active = true
 	_set_controls(true)
 	_set_state(&"play")
+
+
+## After the title toured a faraway spot: the loading screen, one honest step, until the streets
+## round the player are in (game time; `TitleWiring.released`).
+func _wait_for_ground() -> void:
+	loading.set_steps(PackedStringArray([STEPS[2]]))
+	loading.begin_step(0)
+	loading.visible = true
+	await title_wiring.released
+	loading.finish_step(0)
+	loading.visible = false
 
 
 ## Pauses play: game time, physics and the world stop (the tree pauses), sound goes quiet.

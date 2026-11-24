@@ -30,6 +30,20 @@ func _check(vp: SubViewport, what: String, need_focus: bool) -> void:
 		check(vp.gui_get_focus_owner() != null, "%s at %s: nothing focused" % [what, vp.size])
 
 
+## The title's rows are reachable: inside the screen, none under the credit or the chip, and no
+## scrolling needed at these sizes (the first row to the last fit).
+func _check_rows_inside(vp: SubViewport, title: TitleMenu, what: String) -> void:
+	var screen := Rect2(Vector2.ZERO, Vector2(vp.size))
+	var credit := (title.find_child("Credit", true, false) as Control).get_global_rect()
+	for r in title.rows():
+		var rect := r.get_global_rect()
+		check(screen.encloses(rect), "%s at %s: row %s off-screen %s" % [what, vp.size, r.name, rect])
+		check(not rect.intersects(credit), "%s at %s: row %s overlaps the map credit" % [what, vp.size, r.name])
+	var scroll := title.find_child("Scroll", true, false) as ScrollContainer
+	var content := (scroll.get_child(0) as Control).get_combined_minimum_size().y
+	check(content <= scroll.size.y + 0.5, "%s at %s: the rows need scrolling (%d > %d)" % [what, vp.size, content, scroll.size.y])
+
+
 func _viewport(size: Vector2i) -> SubViewport:
 	var vp := SubViewport.new()
 	vp.size = size
@@ -53,12 +67,22 @@ func test_screens_fit_every_size() -> bool:
 		loading.queue_free()
 		var title: TitleMenu = TITLE.instantiate()
 		vp.add_child(title)
+		title.reduced_motion = true
 		title.set_credits("© OpenStreetMap contributors", "2026-11-15T00:16:27Z")
-		await wait_frames(2)
-		_check(vp, "title", true)
-		title.show_about()
-		await wait_frames(2)
-		_check(vp, "about", true)
+		title.add_setting(&"Time", func() -> String: return "Time: Evening (17:45)", func() -> void: pass)
+		title.add_setting(&"Weather", func() -> String: return "Weather: Clear", func() -> void: pass)
+		title.add_setting(&"Sound", func() -> String: return "Sound: On", func() -> void: pass)
+		title.set_place("Marina Beach", "Evening · 17:45 · Clear")
+		for save: Dictionary in [{"has_save": true, "continue_line": "Stage 3 · ₹2,400 · 2 of 21 stages"}, {"has_save": false}]:
+			title.set_save(save)
+			title.show_menu()
+			await wait_frames(2)
+			_check(vp, "title (save %s)" % save["has_save"], true)
+			_check_rows_inside(vp, title, "title")
+		for page: StringName in [&"about", &"settings", &"controls"]:
+			title.call("show_" + page)
+			await wait_frames(2)
+			_check(vp, str(page), true)
 		title.queue_free()
 		var hud: DebugHud = HUD.instantiate()
 		vp.add_child(hud)
