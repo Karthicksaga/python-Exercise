@@ -78,8 +78,10 @@ figures cast as women; 70-person cast; replace Mixamo with CC0; free/open tools 
    phone profiling on the owner's POCO M6 Pro 5G (Adreno 613), parity checklist.
 5. **World rings:** grow from today's box outward (format 2 is ready).
 
-Keep 4–5 agents at once (the usage limit stopped every agent twice when 9 ran). Mechanical agents can
-use a lighter model; World/Player/Vehicles/AI/combat/flight need the strongest.
+Keep 4–5 agents at once (the usage limit stopped every agent twice when 9 ran). **Pick each agent's
+model by task with `docs/MODEL_SELECTION.md`** (owner's rule): spawn the agent types
+`godot-complex` (Opus), `godot-standard` (Sonnet, the default) or `godot-light` (Haiku) from
+`.claude/agents/`, and don't override the model.
 
 ## 5. How the coordinator worked (lessons)
 
@@ -122,6 +124,8 @@ Untouched by the migration. Open draft PRs #13 (loading/title + phone fixes), #1
 > Read `godot-chennai/docs/COORDINATOR_HANDOFF.md`, then `godot-chennai/MASTER_PROMPT.md` and
 > `godot-chennai/MIGRATION_PROMPT.md` (all of it). Integration branch `feat/godot-chennai` (draft PR #17).
 > First: reinstall the toolchain if missing (§5), then resume the four WIP branches in §2 with one
-> agent each (give each its original task from §2 plus "continue from the WIP commit"), review and
-> merge them as in §5, then start the next waves in §4, at most 4–5 agents at once. Ask the owner only
-> the open decisions in §3.
+> agent each (give each its original task from §2 plus "continue from the WIP commit"), choosing each
+> agent's type and model with `godot-chennai/docs/MODEL_SELECTION.md` (spawn `godot-complex`,
+> `godot-standard` or `godot-light`; the last table there says which for these four). Review and merge
+> them as in §5, then start the next waves in §4, at most 4–5 agents at once. Ask the owner only the
+> open decisions in §3.
