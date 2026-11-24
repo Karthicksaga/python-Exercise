@@ -84,12 +84,8 @@ parking = []
 
 
 def park(pid, kind, name, back=14, colour=0x2f5d8a):
-    a = anchors[name]
-    h = a["heading"]
-    # A little way back along the road from the marker, on the carriageway's edge.
-    x = a["x"] - (-math.sin(h)) * back
-    z = a["z"] - (-math.cos(h)) * back
-    parking.append({"id": pid, "kind": kind, "x": r1(x), "z": r1(z), "yaw": h, "color": colour})
+    a = anchors[name]["park"]  # a few metres back along the road from the marker, baked on the road
+    parking.append({"id": pid, "kind": kind, "x": r1(a["x"]), "z": r1(a["z"]), "yaw": a["yaw"], "color": colour})
 
 
 # --- 1. Hall Ticket -----------------------------------------------------------------------------
@@ -137,9 +133,9 @@ sambar = {
         {"type": "enter", "label": "Get in the goods auto behind the caterer's", "vehicle": "auto", "checkpoint": True},
         reach("Load the sambar vessel at the caterer's kitchen", "sambar_kitchen", mode="auto", stop=True, radius=7,
               goods={"action": "load", "items": ["vessel"], "who": "shopkeeper", "kerb": kerb("sambar_kitchen")}, checkpoint=True),
-        {"type": "fragile", **reach("Deliver the vessel to the wedding hall, Venkatakrishna Road", "sambar_hall", mode="auto", stop=True, radius=8, timeLimit=300,
+        {**reach("Deliver the vessel to the wedding hall, Venkatakrishna Road", "sambar_hall", mode="auto", stop=True, radius=8, timeLimit=300,
                                     goods={"action": "unload", "items": ["vessel"], "kerb": kerb("sambar_hall")}),
-         "ruin": "cargo_ruined", "rough": rough},
+         "type": "fragile", "ruin": "cargo_ruined", "rough": rough},
     ],
 }
 
@@ -194,8 +190,8 @@ monsoon = {
     "objectives": [
         {"type": "enter", "label": "Get in the ambulance", "vehicle": "ambulance", "checkpoint": True},
         reach("Pick up the patient on Santhome High Road", "monsoon_patient", mode="ambulance", stop=True, radius=8, strict=True, fare=fare(board=1, k=kerb("monsoon_patient"), patient=True), checkpoint=True),
-        {"type": "fragile", **reach("Take the patient to the hospital, TTK Road", "monsoon_hospital", mode="ambulance", stop=True, radius=9, timeLimit=480, strict=True, fare=fare(alight=1, k=kerb("monsoon_hospital"), patient=True)),
-         "ruin": "patient_lost", "hazards": floods},
+        {**reach("Take the patient to the hospital, TTK Road", "monsoon_hospital", mode="ambulance", stop=True, radius=9, timeLimit=480, strict=True, fare=fare(alight=1, k=kerb("monsoon_hospital"), patient=True)),
+         "type": "fragile", "ruin": "patient_lost", "hazards": floods},
     ],
 }
 

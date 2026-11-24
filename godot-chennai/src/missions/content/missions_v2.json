@@ -14,8 +14,8 @@
   {
    "id": "auto-sambar",
    "kind": "auto",
-   "x": 6397.2,
-   "z": 5861.3,
+   "x": 6400.0,
+   "z": 5847.6,
    "yaw": -0.2,
    "color": 4156218
   },
@@ -30,16 +30,16 @@
   {
    "id": "ambulance-monsoon",
    "kind": "ambulance",
-   "x": 7215.5,
-   "z": 6145.1,
-   "yaw": 2.905,
+   "x": 7217.5,
+   "z": 6139.4,
+   "yaw": 2.858,
    "color": 15132390
   },
   {
    "id": "bike-bandh",
    "kind": "bike",
-   "x": 5281.7,
-   "z": 1507.0,
+   "x": 5325.1,
+   "z": 1465.7,
    "yaw": -0.811,
    "color": 3100463
   }
@@ -189,7 +189,7 @@
      "checkpoint": true
     },
     {
-     "type": "reach",
+     "type": "fragile",
      "label": "Deliver the vessel to the wedding hall, Venkatakrishna Road",
      "x": 5720.0,
      "z": 6486.1,
@@ -863,16 +863,16 @@
     {
      "type": "reach",
      "label": "Pick up the patient on Santhome High Road",
-     "x": 7212.2,
-     "z": 6158.7,
+     "x": 7213.6,
+     "z": 6152.9,
      "radius": 8,
      "mode": "ambulance",
      "stop": true,
      "strict": true,
      "fare": {
       "kerb": {
-       "x": 7220.0,
-       "z": 6160.6
+       "x": 7205.7,
+       "z": 6151.0
       },
       "board": 1,
       "patient": true
@@ -880,7 +880,7 @@
      "checkpoint": true
     },
     {
-     "type": "reach",
+     "type": "fragile",
      "label": "Take the patient to the hospital, TTK Road",
      "x": 5097.7,
      "z": 5132.9,
@@ -902,8 +902,8 @@
       {
        "kind": "flood",
        "label": "Underpass on the shortest road",
-       "x": 6462.7,
-       "z": 5863.1,
+       "x": 6458.8,
+       "z": 5862.1,
        "radius": 22,
        "growth": 0.12,
        "maxRadius": 40,
@@ -914,8 +914,8 @@
       {
        "kind": "flood",
        "label": "Low junction ahead",
-       "x": 5778.8,
-       "z": 5667.8,
+       "x": 5776.5,
+       "z": 5667.4,
        "radius": 20,
        "growth": 0.1,
        "maxRadius": 36,
@@ -926,8 +926,8 @@
       {
        "kind": "flood",
        "label": "The long way floods last",
-       "x": 6253.3,
-       "z": 5499.9,
+       "x": 6252.8,
+       "z": 5496.9,
        "radius": 20,
        "growth": 0.08,
        "maxRadius": 32,
@@ -979,8 +979,8 @@
     {
      "type": "reach",
      "label": "Collect the three urgent parcels at the depot's back door, Pantheon Road",
-     "x": 5291.8,
-     "z": 1497.4,
+     "x": 5335.2,
+     "z": 1456.1,
      "radius": 7,
      "mode": "bike",
      "stop": true,
@@ -993,8 +993,8 @@
       ],
       "who": "sender",
       "kerb": {
-       "x": 5286.6,
-       "z": 1491.9
+       "x": 5333.8,
+       "z": 1446.5
       }
      },
      "checkpoint": true,
@@ -1031,8 +1031,8 @@
     {
      "type": "reach",
      "label": "Back door 1, Bharathi Salai: the medicine",
-     "x": 6094.3,
-     "z": 2962.6,
+     "x": 6106.2,
+     "z": 2961.6,
      "radius": 7,
      "mode": "bike",
      "stop": true,
@@ -1043,8 +1043,8 @@
        "medicine"
       ],
       "kerb": {
-       "x": 6093.6,
-       "z": 2957.0
+       "x": 6106.0,
+       "z": 2967.2
       },
       "who": ""
      },

@@ -44,6 +44,7 @@ var _roads: Array[Road] = []
 var _districts: DistrictIndex
 var _layout: CityLayout
 var _source: FileWorldSource
+var _regional: RegionalWorldSource
 
 
 func _initialize() -> void:
@@ -58,6 +59,8 @@ func _run() -> void:
 		quit(1)
 		return
 	_roads = _source.loaded_roads().roads
+	_regional = RegionalWorldSource.new()
+	_regional.open_index()
 	var list: Array = []
 	for p: Place in _source.index_at(Vector2.ZERO).districts:
 		list.append({"name": p.name, "kind": str(p.kind), "x": p.position.x, "z": p.position.y})
@@ -102,7 +105,9 @@ func _anchor(spec: Dictionary) -> Dictionary:
 				base = l.position
 	var want := str(spec.get("road", ""))
 	var best := INF
-	var found: Dictionary = {}
+	var road_found: Road = null
+	var seg := 0
+	var foot := Vector2.ZERO
 	for road in _roads:
 		if road.kind == &"footway" or (want != "" and not road.name.contains(want)):
 			continue
@@ -111,13 +116,62 @@ func _anchor(spec: Dictionary) -> Dictionary:
 			var d := q.distance_to(base)
 			if d < best:
 				best = d
-				found = {"point": q, "road": road, "heading": atan2(-(road.points[i + 1].x - road.points[i].x), -(road.points[i + 1].y - road.points[i].y))}
-	if found.is_empty():
+				road_found = road
+				seg = i
+				foot = q
+	if road_found == null:
 		return {}
-	var p: Vector2 = FareSpots.round_tenth(found["point"])
-	var kerb := FareSpots.kerb_spot(_layout, p)
-	var near := _districts.at(p.x, p.y)
-	return {"x": p.x, "z": p.y, "road": (found["road"] as Road).name, "kind": str((found["road"] as Road).kind), "width": (found["road"] as Road).width, "district": str(near.get("name", "")), "heading": snappedf(float(found["heading"]), 0.001), "kerb": {"x": snappedf(kerb.x, 0.1), "z": snappedf(kerb.y, 0.1)}}
+	# Slide along the road to a spot where neither the marker, its kerb nor the vehicle parked
+	# behind it is inside a building (the roads and buildings of the data overlap in places).
+	for d: float in [0.0, 6.0, -6.0, 12.0, -12.0, 20.0, -20.0, 30.0, -30.0, 45.0, -45.0, 60.0, -60.0, 90.0, -90.0]:
+		var at := _walk(road_found, seg, foot, d)
+		var p: Vector2 = FareSpots.round_tenth(at["point"])
+		var kerb := FareSpots.kerb_spot(_layout, p)
+		var behind := _walk(road_found, int(at["seg"]), at["point"], -14.0)
+		var parked: Vector2 = FareSpots.round_tenth(behind["point"])
+		if _in_building(p) or _in_building(kerb) or _in_building(parked):
+			continue
+		var heading: float = at["heading"]
+		var near := _districts.at(p.x, p.y)
+		return {"x": p.x, "z": p.y, "road": road_found.name, "kind": str(road_found.kind), "width": road_found.width, "district": str(near.get("name", "")), "heading": snappedf(heading, 0.001), "kerb": {"x": snappedf(kerb.x, 0.1), "z": snappedf(kerb.y, 0.1)}, "park": {"x": parked.x, "z": parked.y, "yaw": snappedf(float((_walk(road_found, int(behind["seg"]), behind["point"], 0.0))["heading"]), 0.001)}, "slid": d}
+	return {}
+
+
+func _in_building(p: Vector2) -> bool:
+	for b in _regional.read_chunk(_regional.cell_at(p)).buildings:
+		if StreetFurniture.point_in_polygon(p, b.outline):
+			return true
+	return false
+
+
+## The point `d` metres along a road from `from` on segment `seg` (negative: backwards, along the
+## road's drawn direction reversed), clamped to the road's ends: {point, seg, heading}.
+func _walk(road: Road, seg: int, from: Vector2, d: float) -> Dictionary:
+	var pts := road.points
+	var at := from
+	var i := seg
+	var left := absf(d)
+	var forward := d >= 0.0
+	while left > 0.0:
+		var target := pts[i + 1] if forward else pts[i]
+		var gap := at.distance_to(target)
+		if gap >= left:
+			at = at.move_toward(target, left)
+			left = 0.0
+		else:
+			left -= gap
+			at = target
+			if forward:
+				if i + 1 >= pts.size() - 1:
+					break
+				i += 1
+			else:
+				if i == 0:
+					break
+				i -= 1
+	var a := pts[i]
+	var b := pts[i + 1]
+	return {"point": at, "seg": i, "heading": atan2(-(b.x - a.x), -(b.y - a.y))}
 
 
 func _key(p: Vector2) -> Vector2i:
