@@ -1355,6 +1355,46 @@ in `handoff.md`. The machine was loaded by other agents (load average 8 to 9), s
 are worse than a quiet run; the counts are exact.
 
 
+### G-200: The area atlas is researched data in `data/areas/`, one claim at a time
+`areas.json` (31 areas), `landmarks_shortlist.json` (83 landmarks), `palettes.json` and
+`coverage.json`, with JSON schemas and `tools/geo/tests/test_areas_data.py`. Every statement that
+looks like a fact is a claim `{text, status, source}`: `sourced` (a URL says it), `osm` (read from
+the extract or the built world), `estimated` (with a `basis`) or `unverified` (no source, never to
+be shown as fact). Wall colours, roof weights, storey weights and street widths are always
+`estimated`. Tamil names are only OSM's `name:ta` (or the Tamil `name`) and every one says "needs
+native review". No business or brand names: malls and IT parks are generic entries that keep only
+their OSM id. `docs/areas.md` is generated from this data.
+
+### G-201: Area boundaries are circles and corridors from the district data
+Centres are the world's own district and settlement points (or OSM place nodes and polygon
+centroids); a circle's radius is half the distance to the nearest other centre, clamped 450 to
+2200 m, or set from an OSM polygon; linear areas (Marina, OMR, Ennore port, airport axis, Anna
+Nagar, Kodambakkam to Vadapalani) are corridors round a spine of those points. A building belongs
+to the containing area with the smallest distance / radius. Not administrative borders; they exist
+to pick a palette.
+
+### G-202: `palettes.json` schema
+`{format, roof_shapes, storey_bins, default, areas: {id: {type, walls[hex], roofs[hex],
+roof_types{shape: weight}, storeys{bin: weight}, boundary}}}`. Roof shape keys are
+`enums.ROOF_SHAPES`; storey bins are `1, 2, 3, 4-5, 6-9, 10+`; weights sum to 1. Derived from
+`areas.json` by `python -m chennai_geo.area_palettes` (a test fails if it is stale), never edited
+by hand.
+
+### G-203: Landmarks are found by name in the PBF, not by hand-copied coordinates
+`tools/geo/chennai_geo/area_lookup.py` (pyosmium, one pass, no Overpass) returns candidates with
+centre, footprint, area and key tags; the shortlist keeps the checked best candidate per
+landmark with its OSM type and id, footprint, levels and height tags, Wikidata id from OSM and
+Commons file titles with licences (titles only, no images). Tiers: A hand-made hero, B parametric
+kit (parameters in `tier.params`), C recoloured standard building. Not found by name (Pulicat Lake
+as a polygon, the Egmore station building, the Mylapore tank water) is listed in
+`not_found_in_osm`.
+
+### G-204: Coverage numbers come from two places
+`area_coverage.py` counts levels, height, roof shape and use from the built world, and colour,
+material and roof tags from the extract (the world format keeps no colour or material). In the 31
+areas levels are mapped for 3.9 % of buildings (four fifths of them in George Town and Parry's
+Corner); height, roof shape, colour and material tags are each under 0.2 %.
+
 ## G-170: Control settings: one shared object, one save section, live
 `ControlSettings` (`src/ui/touch_controls/`) holds the preferences: driving scheme (only `wheel`
 exists; the tilt and buttons schemes are named in the proposal but not built, by the owner's
@@ -1460,3 +1500,10 @@ Kerb and speed-breaker ticks are not built. The D-pad is left to menu focus.
 driving on touch, pad or keyboard, following left-handed and toggle-run. The pause menu and the
 title's CONTROLS page can both read it (the title agent may stub the same name; reconcile at
 merge: this one is `src/ui/touch_controls/controls_guide.gd`).
+
+### G-205: Malls are generic entries with a research-only name field (TD-18)
+`landmarks_shortlist.json` holds 16 shopping complexes (kind `mall`, tier B), found by scanning the
+extract for `shop=mall` and for `building=retail|commercial` of 8,000 m2 or more or five levels or
+more. `names.en` is "Shopping complex, <area>", the sign is `sign` = `வணிக வளாகம் / SHOPPING COMPLEX`,
+`osm.osm_name` is null, and the OSM name sits only in `research_name` (marked research only; a test
+keeps it out of every other field). Also added: Sowcarpet and Flower Bazaar, Marina Beach Market.

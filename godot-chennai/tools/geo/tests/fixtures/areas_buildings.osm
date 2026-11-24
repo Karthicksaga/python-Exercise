@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="hand">
+  <node id="1" version="1" lat="13.0000" lon="80.2000"/><node id="2" version="1" lat="13.0000" lon="80.2002"/>
+  <node id="3" version="1" lat="13.0002" lon="80.2002"/><node id="4" version="1" lat="13.0002" lon="80.2000"/>
+  <node id="5" version="1" lat="13.0100" lon="80.2100"/><node id="6" version="1" lat="13.0100" lon="80.2102"/>
+  <node id="7" version="1" lat="13.0102" lon="80.2102"/><node id="8" version="1" lat="13.0102" lon="80.2100"/>
+  <node id="9" version="1" lat="13.5000" lon="80.5000"/><node id="10" version="1" lat="13.5000" lon="80.5002"/>
+  <node id="11" version="1" lat="13.5002" lon="80.5002"/><node id="12" version="1" lat="13.5002" lon="80.5000"/>
+  <way id="100" version="1"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/>
+    <tag k="building" v="house"/><tag k="building:levels" v="2"/><tag k="building:colour" v="#F5E6C8"/><tag k="building:material" v="plaster"/><tag k="roof:shape" v="flat"/></way>
+  <way id="101" version="1"><nd ref="5"/><nd ref="6"/><nd ref="7"/><nd ref="8"/><nd ref="5"/>
+    <tag k="building" v="commercial"/><tag k="height" v="12"/></way>
+  <way id="102" version="1"><nd ref="9"/><nd ref="10"/><nd ref="11"/><nd ref="12"/><nd ref="9"/>
+    <tag k="building" v="yes"/></way>
+</osm>

@@ -239,6 +239,16 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Name plates for public places; steps onto platforms; swimming; fence and wall textures | Not done | |
 
 
+## Area atlas (branch `agent/godot-areas`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| `data/areas/areas.json`: 31 areas with character, storeys, roofs, wall palettes, materials, streets, trees, street life, signage; claims with sources or marked (G-200) | Done (estimates marked; Tamil needs native review; no photos viewed) | `tools/geo/tests/test_areas_data.py` (schema, claim rules, weights, Tamil only from OSM, no brands) |
+| `landmarks_shortlist.json`: 100 landmarks, tiers A 18 / B 72 / C 10, incl. 16 generic malls (G-205), all found in the extract by name, Commons titles and licences (G-203) | Done | same tests; `test_area_lookup.py` for the lookup |
+| `palettes.json` derived from areas.json for building detail (G-202) | Done | staleness test |
+| Area boundaries and coverage table (G-201, G-204) | Done | `test_area_coverage.py`; world total equals `world/REPORT.md` |
+| `docs/areas.md` atlas | Done (generated) | read through; numbers from `coverage.json` |
+| Used by the building and landmark code | Not done (other agents) | |
+
 ## Controls redesign (G-170…G-179, branch `agent/godot-controls`, 24 Nov 2026)
 Built from the owner-approved proposal `suggestions/2026-11-24-godot-controls-redesign.md` and its
 interactive prototype (the Proposed on-foot layout and scheme A "wheel").
