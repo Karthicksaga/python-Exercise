@@ -52,6 +52,14 @@ autoloads, project settings) get small additive edits only.
 - Report (compact): branch and head commit; what works (checklist); test counts; CI result and APK
   artifact; screenshot paths; decisions; what's weak or not done.
 
+## Model per agent (owner, 24 Nov 2026)
+Only complex tasks use the strongest model. Before spawning, choose the agent type with
+`godot-chennai/docs/MODEL_SELECTION.md`: `godot-complex` (Opus) for physics, AI, streaming and
+performance, animation retargeting, architecture and root causes; `godot-standard` (Sonnet) as the
+default for specified implementation, assets by script, ports and UI; `godot-light` (Haiku) for docs,
+licence rows, reports and running checks. The types live in `.claude/agents/`; don't override their
+model.
+
 ## 3. Your loop as coordinator
 1. Spawn the wave's agents. While they run, don't duplicate their work.
 2. On each report: read it, open 2-3 of its screenshots yourself, check its CI run. If something is
