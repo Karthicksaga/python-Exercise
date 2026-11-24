@@ -41,7 +41,8 @@ func _run() -> void:
 	await _frames(5)
 	if _want("seat"):
 		for variant: StringName in [&"auto", &"motorbike", &"hatchback", &"bus"]:
-			await _seat(variant)
+			if only.is_empty() or only.has("seat_" + String(variant)) or only.has("seat"):
+				await _seat(variant)
 	if _want("steer"):
 		for variant: StringName in [&"auto", &"hatchback"]:
 			await _steer(variant)
@@ -58,7 +59,12 @@ func _run() -> void:
 
 
 func _want(what: String) -> bool:
-	return only.is_empty() or only.has(what)
+	if only.is_empty():
+		return true
+	for o in only:
+		if o == what or o.begins_with(what + "_"):
+			return true
+	return false
 
 
 func _frames(n: int) -> void:
@@ -170,21 +176,25 @@ func _steer(variant: StringName) -> void:
 func _fare(variant: StringName) -> void:
 	var v := yard.spawn(variant, Vector3(0, 0, 20), 0.0, &"ride")
 	await _frames(30)
-	var figures := FareFigures.new()
+	# Loaded by path: FareFigures uses autoloads, which a --script main loop compiles after this.
+	var figures: Node3D = (load("res://src/app/missions_layer/fare_figures.gd") as GDScript).new()
 	yard.add_child(figures)
 	var kerb := v.global_position + Vector3(-3, 0, 0)
 	var fare := {"stop": FareStop.new(MissionData.Fare.make(0, 2, kerb.x, kerb.z), String(v.type.kind))}
 	for i in 600:
-		figures.show_scene(1.0 / 60.0, fare, {}, v, 0.0)
-		var ready := figures._figures.size() >= 2 and figures._figures[0] != null and figures._figures[1] != null and figures._figures[1].is_ready()
+		figures.call("show_scene", 1.0 / 60.0, fare, {}, v, 0.0)
+		var figs: Array = figures.get("_figures")
+		var ready := figs.size() >= 2 and figs[0] != null and figs[1] != null and (figs[1] as HumanFigure).is_ready()
 		if ready and i > 30:
 			break
 		await physics_frame
 	for i in 10:
-		figures.show_scene(1.0 / 60.0, fare, {}, v, 0.0)
+		figures.call("show_scene", 1.0 / 60.0, fare, {}, v, 0.0)
 		await physics_frame
-	var slot: Vector3 = figures.people[0]["slot"]
-	var seat := FareFigures.seat_transform(v, slot)
+	var people: Array = figures.get("people")
+	var slot: Vector3 = (people[0] as Dictionary)["slot"]
+	var seat_local := v.model.global_transform * Transform3D(Basis.IDENTITY, slot - v.model.position)
+	var seat := Transform3D(seat_local.basis.orthonormalized(), seat_local.origin)
 	cam.look_at_from_position(seat.origin - v.global_basis.x * 3.2 + v.global_basis.z * 0.8 + Vector3(0, 0.5, 0), seat.origin + Vector3(0, 0.1, 0))
 	await _shot("fare_%s" % variant)
 	v.model.visible = false
