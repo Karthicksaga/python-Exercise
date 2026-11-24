@@ -25,6 +25,8 @@
         "kind": {"type": "string", "minLength": 3},
         "tier": {"type": "object", "required": ["tier", "reason"], "properties": {"tier": {"enum": ["A", "B", "C"]}, "reason": {"type": "string", "minLength": 20}, "params": {"type": "object"}}},
         "osm": {"type": "object", "required": ["found"], "properties": {"found": {"type": "boolean"}, "type": {"enum": ["node", "way", "relation"]}, "id": {"type": "integer"}, "url": {"$ref": "#/$defs/url"}, "lat": {"type": "number", "minimum": 12, "maximum": 14}, "lng": {"type": "number", "minimum": 79, "maximum": 81}, "x": {"type": "number"}, "z": {"type": "number"}, "geometry": {"enum": ["polygon", "line", "node"]}}},
+        "research_name": {"type": "object", "required": ["value", "marked"]},
+        "sign": {"type": "object", "required": ["ta", "en"]},
         "wikidata": {"type": ["string", "null"], "pattern": "^Q[0-9]+$"},
         "levels": {"$ref": "#/$defs/valueclaim"},
         "height_m": {"$ref": "#/$defs/valueclaim"},

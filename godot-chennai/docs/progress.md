@@ -230,7 +230,7 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Item | State | How it was tested |
 |---|---|---|
 | `data/areas/areas.json`: 31 areas with character, storeys, roofs, wall palettes, materials, streets, trees, street life, signage; claims with sources or marked (G-200) | Done (estimates marked; Tamil needs native review; no photos viewed) | `tools/geo/tests/test_areas_data.py` (schema, claim rules, weights, Tamil only from OSM, no brands) |
-| `landmarks_shortlist.json`: 83 landmarks, tiers A 18 / B 55 / C 10, all found in the extract by name, Commons titles and licences (G-203) | Done | same tests; `test_area_lookup.py` for the lookup |
+| `landmarks_shortlist.json`: 100 landmarks, tiers A 18 / B 72 / C 10, incl. 16 generic malls (G-205), all found in the extract by name, Commons titles and licences (G-203) | Done | same tests; `test_area_lookup.py` for the lookup |
 | `palettes.json` derived from areas.json for building detail (G-202) | Done | staleness test |
 | Area boundaries and coverage table (G-201, G-204) | Done | `test_area_coverage.py`; world total equals `world/REPORT.md` |
 | `docs/areas.md` atlas | Done (generated) | read through; numbers from `coverage.json` |

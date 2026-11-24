@@ -1405,3 +1405,10 @@ Kerb and speed-breaker ticks are not built. The D-pad is left to menu focus.
 driving on touch, pad or keyboard, following left-handed and toggle-run. The pause menu and the
 title's CONTROLS page can both read it (the title agent may stub the same name; reconcile at
 merge: this one is `src/ui/touch_controls/controls_guide.gd`).
+
+### G-205: Malls are generic entries with a research-only name field (TD-18)
+`landmarks_shortlist.json` holds 16 shopping complexes (kind `mall`, tier B), found by scanning the
+extract for `shop=mall` and for `building=retail|commercial` of 8,000 m2 or more or five levels or
+more. `names.en` is "Shopping complex, <area>", the sign is `sign` = `வணிக வளாகம் / SHOPPING COMPLEX`,
+`osm.osm_name` is null, and the OSM name sits only in `research_name` (marked research only; a test
+keeps it out of every other field). Also added: Sowcarpet and Flower Bazaar, Marina Beach Market.

@@ -5631,12 +5631,12 @@
   {
    "id": "generic-mall-royapettah",
    "names": {
-    "en": "Large shopping mall (name withheld)",
+    "en": "Shopping complex, Royapettah",
     "ta": {
-     "value": null,
+     "value": "வணிக வளாகம்",
      "status": "unverified",
      "source": null,
-     "note": "withheld with the name (brand)"
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
     },
     "name_withheld_reason": "brand or business name; generic category used instead"
    },
@@ -5801,7 +5801,16 @@
     "commons_files": [],
     "note": "titles and licences only, from the Commons API; no images are stored in the repository"
    },
-   "status_note": null
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Express Avenue",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
   },
   {
    "id": "thousand-lights-mosque",
@@ -12713,6 +12722,2237 @@
     "note": "titles and licences only, from the Commons API; no images are stored in the repository"
    },
    "status_note": null
+  },
+  {
+   "id": "mall-anna-nagar-west",
+   "names": {
+    "en": "Shopping complex, Anna Nagar",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "anna-nagar",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Largest mall footprint in the extract (2.8 ha, 6 levels): wide podium with glass front",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 634144271,
+    "url": "https://www.openstreetmap.org/way/634144271",
+    "lat": 13.080932,
+    "lng": 80.196616,
+    "x": -1460.4,
+    "z": 452.4,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      13.0819,
+      80.195418
+     ],
+     [
+      13.081018,
+      80.195279
+     ],
+     [
+      13.08026,
+      80.196359
+     ],
+     [
+      13.080385,
+      80.196847
+     ],
+     [
+      13.080363,
+      80.197828
+     ],
+     [
+      13.080799,
+      80.197896
+     ],
+     [
+      13.081098,
+      80.196591
+     ],
+     [
+      13.081633,
+      80.196712
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      283.4,
+      182.4
+     ],
+     "area_m2": 27787.5
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "yes",
+     "building:levels": "6",
+     "wikidata": "Q56064045"
+    }
+   },
+   "wikidata": "Q56064045",
+   "levels": {
+    "value": 6,
+    "status": "osm",
+    "source": "https://www.openstreetmap.org/way/634144271"
+   },
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "Six floors with many stores",
+     "status": "sourced",
+     "source": "https://housing.com/news/biggest-malls-in-chennai"
+    },
+    {
+     "text": "OSM building:levels 6, footprint 27,788 m2",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/634144271"
+    },
+    {
+     "text": "Atrium and car park layout not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "VR Mall Chennai",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-anna-salai",
+   "names": {
+    "en": "Shopping complex, Royapettah",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "royapettah",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Seven-level old shopping complex on Anna Salai, 1.9 ha, with a large car park",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 1128509238,
+    "url": "https://www.openstreetmap.org/way/1128509238",
+    "lat": 13.061628,
+    "lng": 80.260911,
+    "x": 5503.3,
+    "z": 2598.8,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      13.061254,
+      80.261108
+     ],
+     [
+      13.061243,
+      80.261241
+     ],
+     [
+      13.061084,
+      80.261309
+     ],
+     [
+      13.061166,
+      80.261402
+     ],
+     [
+      13.061255,
+      80.261588
+     ],
+     [
+      13.061363,
+      80.261707
+     ],
+     [
+      13.061457,
+      80.261763
+     ],
+     [
+      13.061531,
+      80.26177
+     ],
+     [
+      13.061643,
+      80.261984
+     ],
+     [
+      13.061807,
+      80.26218
+     ],
+     [
+      13.062334,
+      80.261798
+     ],
+     [
+      13.061804,
+      80.261142
+     ],
+     [
+      13.061825,
+      80.261107
+     ],
+     [
+      13.061828,
+      80.261082
+     ],
+     [
+      13.061818,
+      80.261029
+     ],
+     [
+      13.062105,
+      80.260769
+     ],
+     [
+      13.062078,
+      80.260718
+     ],
+     [
+      13.062104,
+      80.260717
+     ],
+     [
+      13.062148,
+      80.260664
+     ],
+     [
+      13.062149,
+      80.26063
+     ],
+     [
+      13.062116,
+      80.260571
+     ],
+     [
+      13.062098,
+      80.260561
+     ],
+     [
+      13.062064,
+      80.260554
+     ],
+     [
+      13.06201,
+      80.26049
+     ],
+     [
+      13.062009,
+      80.260449
+     ],
+     [
+      13.061999,
+      80.260427
+     ],
+     [
+      13.061958,
+      80.260389
+     ],
+     [
+      13.061937,
+      80.260385
+     ],
+     [
+      13.061902,
+      80.260388
+     ],
+     [
+      13.061912,
+      80.260271
+     ],
+     [
+      13.061636,
+      80.260005
+     ],
+     [
+      13.061232,
+      80.260334
+     ],
+     [
+      13.061164,
+      80.260531
+     ],
+     [
+      13.061097,
+      80.260525
+     ],
+     [
+      13.061008,
+      80.260668
+     ],
+     [
+      13.060937,
+      80.260735
+     ],
+     [
+      13.061003,
+      80.260754
+     ],
+     [
+      13.061001,
+      80.260824
+     ],
+     [
+      13.061062,
+      80.2609
+     ],
+     [
+      13.061201,
+      80.260914
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      235.6,
+      155.3
+     ],
+     "area_m2": 18586.3
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "yes",
+     "building:levels": "7"
+    }
+   },
+   "wikidata": null,
+   "levels": {
+    "value": 7,
+    "status": "osm",
+    "source": "https://www.openstreetmap.org/way/1128509238"
+   },
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "An earlier 1860s building on the site was destroyed by fire in 1983 and the complex was rebuilt in the mid 1980s; about a million sq ft in three phases with space for 800 cars",
+     "status": "sourced",
+     "source": "https://en.wikipedia.org/wiki/Spencer_Plaza",
+     "note": "rebuild year differs between sources"
+    },
+    {
+     "text": "OSM building:levels 7, 18,586 m2",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/1128509238"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Spencer Plaza",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-omr-navalur-road",
+   "names": {
+    "en": "Shopping complex, OMR and Sholinganallur IT corridor",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "omr-sholinganallur",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Ten-level retail tower on OMR south, 1.1 ha",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 1040126396,
+    "url": "https://www.openstreetmap.org/way/1040126396",
+    "lat": 12.835861,
+    "lng": 80.229432,
+    "x": 2093.8,
+    "z": 27703.1,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      12.836395,
+      80.229069
+     ],
+     [
+      12.836302,
+      80.229003
+     ],
+     [
+      12.836026,
+      80.229055
+     ],
+     [
+      12.835965,
+      80.22902
+     ],
+     [
+      12.835808,
+      80.228979
+     ],
+     [
+      12.835523,
+      80.228991
+     ],
+     [
+      12.835506,
+      80.229427
+     ],
+     [
+      12.83557,
+      80.229492
+     ],
+     [
+      12.835564,
+      80.229831
+     ],
+     [
+      12.835627,
+      80.22997
+     ],
+     [
+      12.835674,
+      80.230188
+     ],
+     [
+      12.83637,
+      80.230163
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      130.9,
+      98.9
+     ],
+     "area_m2": 11496.5
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "retail",
+     "building:levels": "10",
+     "wikidata": "Q114055603"
+    }
+   },
+   "wikidata": "Q114055603",
+   "levels": {
+    "value": 10,
+    "status": "osm",
+    "source": "https://www.openstreetmap.org/way/1040126396"
+   },
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "OSM building=retail, building:levels 10, 11,497 m2",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/1040126396"
+    },
+    {
+     "text": "Facade and atrium not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Chennai Marina Mall",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-velachery-large",
+   "names": {
+    "en": "Shopping complex, Velachery",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "velachery",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Very large four-level mall with a multi-storey car park beside the Velachery road, 1.9 ha",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "relation",
+    "id": 15321422,
+    "url": "https://www.openstreetmap.org/relation/15321422",
+    "lat": 12.991825015294117,
+    "lng": 80.21682431647059,
+    "x": 728.2967983845249,
+    "z": 10360.599900129,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      12.990764,
+      80.216032
+     ],
+     [
+      12.990666,
+      80.216323
+     ],
+     [
+      12.990572,
+      80.216308
+     ],
+     [
+      12.990421,
+      80.217149
+     ],
+     [
+      12.990341,
+      80.217262
+     ],
+     [
+      12.990585,
+      80.217
+     ],
+     [
+      12.990964,
+      80.217063
+     ],
+     [
+      12.991014,
+      80.217222
+     ],
+     [
+      12.991241,
+      80.217111
+     ],
+     [
+      12.99139,
+      80.217051
+     ],
+     [
+      12.991529,
+      80.21703
+     ],
+     [
+      12.991573,
+      80.217054
+     ],
+     [
+      12.991662,
+      80.217054
+     ],
+     [
+      12.991918,
+      80.21704
+     ],
+     [
+      12.992287,
+      80.217276
+     ],
+     [
+      12.992393,
+      80.217335
+     ],
+     [
+      12.992534,
+      80.217276
+     ],
+     [
+      12.99262,
+      80.21718
+     ],
+     [
+      12.992709,
+      80.217032
+     ],
+     [
+      12.992711,
+      80.216952
+     ],
+     [
+      12.992668,
+      80.216882
+     ],
+     [
+      12.992563,
+      80.216875
+     ],
+     [
+      12.992554,
+      80.216964
+     ],
+     [
+      12.992566,
+      80.217011
+     ],
+     [
+      12.992292,
+      80.21693
+     ],
+     [
+      12.992358,
+      80.216885
+     ],
+     [
+      12.992419,
+      80.21687
+     ],
+     [
+      12.992297,
+      80.216691
+     ],
+     [
+      12.992279,
+      80.2168
+     ],
+     [
+      12.992297,
+      80.216851
+     ],
+     [
+      12.992025,
+      80.216762
+     ],
+     [
+      12.992098,
+      80.216712
+     ],
+     [
+      12.992152,
+      80.216703
+     ],
+     [
+      12.992051,
+      80.216543
+     ],
+     [
+      12.992023,
+      80.216627
+     ],
+     [
+      12.992047,
+      80.216678
+     ],
+     [
+      12.991757,
+      80.216597
+     ],
+     [
+      12.991832,
+      80.216538
+     ],
+     [
+      12.99189,
+      80.216529
+     ],
+     [
+      12.991842,
+      80.216404
+     ],
+     [
+      12.991713,
+      80.216161
+     ],
+     [
+      12.990782,
+      80.216064
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      141.1,
+      263.5
+     ],
+     "area_m2": 18689
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "yes",
+     "building:levels": "4"
+    }
+   },
+   "wikidata": null,
+   "levels": {
+    "value": 4,
+    "status": "osm",
+    "source": "https://www.openstreetmap.org/relation/15321422"
+   },
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "Opened January 2013; reported between 1.1 and 2.4 million sq ft of space (sources disagree)",
+     "status": "sourced",
+     "source": "https://www.wikipedia.com/wiki/Phoenix_Marketcity_(Chennai)"
+    },
+    {
+     "text": "OSM building:levels 4, 18,689 m2",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/relation/15321422"
+    },
+    {
+     "text": "Atrium and car park layout not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Phoenix Marketcity Chennai",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-vadapalani",
+   "names": {
+    "en": "Shopping complex, Kodambakkam and Vadapalani",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "kodambakkam-vadapalani",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Five-level mall on the Vadapalani 100 Feet Road, 1.4 ha",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 355637768,
+    "url": "https://www.openstreetmap.org/way/355637768",
+    "lat": 13.050887,
+    "lng": 80.209613,
+    "x": -52.8,
+    "z": 3793.2,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      13.051854,
+      80.20929
+     ],
+     [
+      13.051817,
+      80.209913
+     ],
+     [
+      13.051075,
+      80.209866
+     ],
+     [
+      13.051064,
+      80.209779
+     ],
+     [
+      13.050874,
+      80.209771
+     ],
+     [
+      13.050853,
+      80.209906
+     ],
+     [
+      13.05059,
+      80.209874
+     ],
+     [
+      13.050592,
+      80.209849
+     ],
+     [
+      13.049876,
+      80.209804
+     ],
+     [
+      13.049829,
+      80.209246
+     ],
+     [
+      13.050891,
+      80.209299
+     ],
+     [
+      13.050891,
+      80.209371
+     ],
+     [
+      13.051083,
+      80.209367
+     ],
+     [
+      13.051134,
+      80.209244
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      72.5,
+      225.2
+     ],
+     "area_m2": 13697.5
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "yes",
+     "building:levels": "5"
+    }
+   },
+   "wikidata": null,
+   "levels": {
+    "value": 5,
+    "status": "osm",
+    "source": "https://www.openstreetmap.org/way/355637768"
+   },
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "OSM building:levels 5, 13,698 m2",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/355637768"
+    },
+    {
+     "text": "Facade not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Nexus Vijaya Mall",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-padi-retail",
+   "names": {
+    "en": "Shopping complex, Anna Nagar",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "anna-nagar",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Six-level large single-retailer store on the Padi road, 0.9 ha",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 1534023217,
+    "url": "https://www.openstreetmap.org/way/1534023217",
+    "lat": 13.101520222222222,
+    "lng": 80.18853807777778,
+    "x": -2335.327165240774,
+    "z": -1836.9674354756503,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      13.101808,
+      80.187865
+     ],
+     [
+      13.101197,
+      80.188346
+     ],
+     [
+      13.100961,
+      80.188511
+     ],
+     [
+      13.101207,
+      80.188922
+     ],
+     [
+      13.101342,
+      80.188831
+     ],
+     [
+      13.10153,
+      80.188878
+     ],
+     [
+      13.10163,
+      80.189027
+     ],
+     [
+      13.102199,
+      80.188598
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      125.9,
+      137.7
+     ],
+     "area_m2": 9116
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "yes",
+     "building:levels": "6",
+     "wikidata": "Q29002183"
+    }
+   },
+   "wikidata": "Q29002183",
+   "levels": {
+    "value": 6,
+    "status": "osm",
+    "source": "https://www.openstreetmap.org/way/1534023217"
+   },
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "OSM building:levels 6, 9,116 m2",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/1534023217"
+    },
+    {
+     "text": "Facade not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Pothys Padi",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-santhome-high-road",
+   "names": {
+    "en": "Shopping complex, Marina and Santhome",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "marina-santhome",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Mall with a large footprint (1.1 ha) near the Mylapore and Santhome side of Dr. Radhakrishnan Salai",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 29267290,
+    "url": "https://www.openstreetmap.org/way/29267290",
+    "lat": 13.042792,
+    "lng": 80.273886,
+    "x": 6908.6,
+    "z": 4693.3,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      13.043472,
+      80.273493
+     ],
+     [
+      13.043344,
+      80.27423
+     ],
+     [
+      13.043277,
+      80.274295
+     ],
+     [
+      13.042392,
+      80.274417
+     ],
+     [
+      13.04234,
+      80.274383
+     ],
+     [
+      13.042351,
+      80.274085
+     ],
+     [
+      13.042559,
+      80.273358
+     ],
+     [
+      13.042621,
+      80.273351
+     ],
+     [
+      13.042772,
+      80.273365
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      115.5,
+      125.9
+     ],
+     "area_m2": 11162.5
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "wikidata": "Q5091433"
+    }
+   },
+   "wikidata": "Q5091433",
+   "levels": null,
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "OSM shop=mall, 11,163 m2, no levels tagged",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/29267290"
+    },
+    {
+     "text": "Storeys not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Chennai Citi Center Mall",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-aminjikarai",
+   "names": {
+    "en": "Shopping complex, Anna Nagar",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "anna-nagar",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Mall of 1.1 ha beside the Aminjikarai flyover with a skywalk link",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 393560243,
+    "url": "https://www.openstreetmap.org/way/393560243",
+    "lat": 13.07359402857143,
+    "lng": 80.22141688571428,
+    "x": 1225.7084670887377,
+    "z": 1268.287908141364,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      13.074034,
+      80.221069
+     ],
+     [
+      13.073073,
+      80.22108
+     ],
+     [
+      13.072922,
+      80.221092
+     ],
+     [
+      13.073012,
+      80.222025
+     ],
+     [
+      13.074043,
+      80.22183
+     ],
+     [
+      13.074042,
+      80.221752
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      103.5,
+      124.6
+     ],
+     "area_m2": 11059
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "yes",
+     "wikidata": "Q2844086"
+    }
+   },
+   "wikidata": "Q2844086",
+   "levels": null,
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "OSM shop=mall, 11,059 m2, no levels tagged",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/393560243"
+    },
+    {
+     "text": "Storeys and skywalk not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Ampa Skywalk",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-navalur",
+   "names": {
+    "en": "Shopping complex, OMR and Sholinganallur IT corridor",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "omr-sholinganallur",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Large mall of 1 ha on the OMR southern stretch",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 634538011,
+    "url": "https://www.openstreetmap.org/way/634538011",
+    "lat": 12.850406271428572,
+    "lng": 80.22531084285716,
+    "x": 1647.4549051997462,
+    "z": 26085.668470783716,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      12.850362,
+      80.224761
+     ],
+     [
+      12.850357,
+      80.225035
+     ],
+     [
+      12.8502,
+      80.225026
+     ],
+     [
+      12.850132,
+      80.226405
+     ],
+     [
+      12.850694,
+      80.226419
+     ],
+     [
+      12.850738,
+      80.224769
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      179.6,
+      67.4
+     ],
+     "area_m2": 10316
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "yes"
+    }
+   },
+   "wikidata": null,
+   "levels": null,
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "OSM shop=mall, 10,316 m2, no levels tagged",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/634538011"
+    },
+    {
+     "text": "Storeys not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "VIVIRA Mall",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-airport-east",
+   "names": {
+    "en": "Shopping complex, Pallavaram, Meenambakkam and the airport",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "pallavaram-meenambakkam-airport",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Seven-level retail and commercial block next to the airport terminals, 0.9 ha",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 1061239868,
+    "url": "https://www.openstreetmap.org/way/1061239868",
+    "lat": 12.981824357142857,
+    "lng": 80.16559937142857,
+    "x": -4819.770969494278,
+    "z": 11472.623885646437,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      12.981601,
+      80.164636
+     ],
+     [
+      12.981169,
+      80.164811
+     ],
+     [
+      12.981662,
+      80.166096
+     ],
+     [
+      12.981749,
+      80.166061
+     ],
+     [
+      12.981835,
+      80.16629
+     ],
+     [
+      12.982085,
+      80.166181
+     ],
+     [
+      12.982121,
+      80.166153
+     ],
+     [
+      12.982138,
+      80.166127
+     ],
+     [
+      12.982144,
+      80.166099
+     ],
+     [
+      12.982138,
+      80.166072
+     ],
+     [
+      12.981779,
+      80.165112
+     ],
+     [
+      12.981766,
+      80.165077
+     ],
+     [
+      12.981753,
+      80.165041
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      179.1,
+      108.4
+     ],
+     "area_m2": 8656
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "retail",
+     "building:levels": "7"
+    }
+   },
+   "wikidata": null,
+   "levels": {
+    "value": 7,
+    "status": "osm",
+    "source": "https://www.openstreetmap.org/way/1061239868"
+   },
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "OSM building=retail, building:levels 7, 8,656 m2",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/1061239868"
+    },
+    {
+     "text": "Facade not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Aerohub East",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-velachery-second",
+   "names": {
+    "en": "Shopping complex, Velachery",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "velachery",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Mall of 0.8 ha on the Velachery main road",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 1132414645,
+    "url": "https://www.openstreetmap.org/way/1132414645",
+    "lat": 12.99297008846154,
+    "lng": 80.21760315769231,
+    "x": 812.651478998761,
+    "z": 10233.273397404091,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      12.99304,
+      80.217191
+     ],
+     [
+      12.993024,
+      80.217214
+     ],
+     [
+      12.992999,
+      80.217214
+     ],
+     [
+      12.992971,
+      80.217217
+     ],
+     [
+      12.992935,
+      80.217238
+     ],
+     [
+      12.9929,
+      80.217271
+     ],
+     [
+      12.992869,
+      80.217251
+     ],
+     [
+      12.992737,
+      80.217474
+     ],
+     [
+      12.992693,
+      80.217482
+     ],
+     [
+      12.992695,
+      80.21755
+     ],
+     [
+      12.992687,
+      80.217592
+     ],
+     [
+      12.992652,
+      80.217659
+     ],
+     [
+      12.99261,
+      80.217706
+     ],
+     [
+      12.992544,
+      80.217757
+     ],
+     [
+      12.992529,
+      80.217788
+     ],
+     [
+      12.992529,
+      80.21783
+     ],
+     [
+      12.992794,
+      80.218238
+     ],
+     [
+      12.992814,
+      80.218248
+     ],
+     [
+      12.992834,
+      80.218248
+     ],
+     [
+      12.992856,
+      80.21824
+     ],
+     [
+      12.993692,
+      80.217638
+     ],
+     [
+      12.993698,
+      80.217627
+     ],
+     [
+      12.9937,
+      80.217615
+     ],
+     [
+      12.993695,
+      80.217604
+     ],
+     [
+      12.993685,
+      80.217596
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      114.5,
+      130.2
+     ],
+     "area_m2": 7898
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "yes"
+    }
+   },
+   "wikidata": null,
+   "levels": null,
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "OSM shop=mall, 7,898 m2, no levels tagged",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/1132414645"
+    },
+    {
+     "text": "Storeys not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Palladium",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-ambattur",
+   "names": {
+    "en": "Shopping complex, Ambattur Industrial Estate",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "ambattur-industrial",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Mall of 0.6 ha on the Ambattur side",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 1544754962,
+    "url": "https://www.openstreetmap.org/way/1544754962",
+    "lat": 13.095747028571427,
+    "lng": 80.1531963,
+    "x": -6163.121963020378,
+    "z": -1195.016704271829,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      13.095617,
+      80.152606
+     ],
+     [
+      13.095393,
+      80.153586
+     ],
+     [
+      13.09571,
+      80.153608
+     ],
+     [
+      13.095808,
+      80.153614
+     ],
+     [
+      13.09592,
+      80.153639
+     ],
+     [
+      13.096164,
+      80.152715
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      111.9,
+      85.7
+     ],
+     "area_m2": 6336
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "yes"
+    }
+   },
+   "wikidata": null,
+   "levels": null,
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "OSM shop=mall, 6,336 m2, no levels tagged",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/1544754962"
+    },
+    {
+     "text": "Storeys not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Casagrand Connect",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-thoraipakkam",
+   "names": {
+    "en": "Shopping complex, OMR and Sholinganallur IT corridor",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "omr-sholinganallur",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Mall of 0.4 ha on OMR at Thoraipakkam",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 1373636316,
+    "url": "https://www.openstreetmap.org/way/1373636316",
+    "lat": 12.94957382857143,
+    "lng": 80.24038372857142,
+    "x": 3279.967957807409,
+    "z": 15058.723997720203,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      12.949417,
+      80.240102
+     ],
+     [
+      12.949287,
+      80.240588
+     ],
+     [
+      12.949331,
+      80.240645
+     ],
+     [
+      12.949937,
+      80.240851
+     ],
+     [
+      12.950005,
+      80.24025
+     ],
+     [
+      12.949622,
+      80.240147
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      81.1,
+      79.8
+     ],
+     "area_m2": 4476
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "yes"
+    }
+   },
+   "wikidata": null,
+   "levels": null,
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "OSM shop=mall, 4,476 m2, no levels tagged",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/1373636316"
+    },
+    {
+     "text": "Storeys not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "BSR Mall",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-velachery-small",
+   "names": {
+    "en": "Shopping complex, Velachery",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "velachery",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Small mall of 0.35 ha at Velachery",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 396824231,
+    "url": "https://www.openstreetmap.org/way/396824231",
+    "lat": 12.97203780909091,
+    "lng": 80.22026131818183,
+    "x": 1100.551339538195,
+    "z": 12560.839881492011,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      12.971999,
+      80.21967
+     ],
+     [
+      12.971733,
+      80.220964
+     ],
+     [
+      12.971985,
+      80.22102
+     ],
+     [
+      12.972068,
+      80.220557
+     ],
+     [
+      12.972058,
+      80.220472
+     ],
+     [
+      12.972064,
+      80.220372
+     ],
+     [
+      12.972087,
+      80.220262
+     ],
+     [
+      12.972129,
+      80.220197
+     ],
+     [
+      12.972158,
+      80.219991
+     ],
+     [
+      12.972133,
+      80.219701
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      146.2,
+      47.3
+     ],
+     "area_m2": 3540
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "yes"
+    }
+   },
+   "wikidata": null,
+   "levels": null,
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "Described as a three-storey building with shops, cinemas and restaurants",
+     "status": "sourced",
+     "source": "https://housing.com/news/biggest-malls-in-chennai"
+    },
+    {
+     "text": "OSM shop=mall, 3,540 m2, no levels tagged",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/396824231"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Grand Square",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "mall-porur-retail",
+   "names": {
+    "en": "Shopping complex, Pallavaram, Meenambakkam and the airport",
+    "ta": {
+     "value": "வணிக வளாகம்",
+     "status": "unverified",
+     "source": null,
+     "note": "generic category word supplied by the coordinator (TD-18); needs native review"
+    },
+    "name_withheld_reason": "brand or business name; generic category used instead"
+   },
+   "area": "pallavaram-meenambakkam-airport",
+   "kind": "mall",
+   "tier": {
+    "tier": "B",
+    "reason": "Seven-level single-retailer store on the Porur road, 0.4 ha",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "mall-block",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 1559399089,
+    "url": "https://www.openstreetmap.org/way/1559399089",
+    "lat": 13.032657433333334,
+    "lng": 80.16404155,
+    "x": -4988.495383915947,
+    "z": 5820.2359001290615,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      13.032249,
+      80.16375
+     ],
+     [
+      13.032102,
+      80.164099
+     ],
+     [
+      13.03308,
+      80.16437
+     ],
+     [
+      13.033145,
+      80.164178
+     ],
+     [
+      13.033119,
+      80.164102
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      67.2,
+      116.0
+     ],
+     "area_m2": 3841
+    },
+    "length_m": null,
+    "osm_name": null,
+    "tags": {
+     "building": "retail",
+     "building:levels": "7"
+    }
+   },
+   "wikidata": null,
+   "levels": {
+    "value": 7,
+    "status": "osm",
+    "source": "https://www.openstreetmap.org/way/1559399089"
+   },
+   "height_m": null,
+   "style": "modern shopping complex",
+   "features": [
+    {
+     "text": "OSM building=retail, building:levels 7, 3,841 m2",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/1559399089"
+    },
+    {
+     "text": "Facade not sourced",
+     "status": "unverified"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null,
+   "sign": {
+    "ta": "வணிக வளாகம்",
+    "en": "SHOPPING COMPLEX",
+    "note": "the only text a sign may show for this building"
+   },
+   "research_name": {
+    "value": "Super Saravana Stores, Porur",
+    "marked": "RESEARCH ONLY: used to find the OSM object; never expose to the game, signs or UI (TD-18)"
+   }
+  },
+  {
+   "id": "sowcarpet-flower-bazaar",
+   "names": {
+    "en": "Sowcarpet and Flower Bazaar",
+    "ta": {
+     "value": "சௌகார்பேட்டை",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/node/248560768",
+     "note": "OSM name:ta; needs native review"
+    },
+    "name_withheld_reason": null
+   },
+   "area": "george-town",
+   "kind": "market street",
+   "tier": {
+    "tier": "B",
+    "reason": "Old wholesale quarter lanes (flower and textile trade): kit 'shophouse-row' with stacked awnings and handcarts",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "shophouse-row",
+     "storeys": [
+      2,
+      4
+     ],
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "node",
+    "id": 248560768,
+    "url": "https://www.openstreetmap.org/node/248560768",
+    "lat": 13.088497,
+    "lng": 80.278309,
+    "x": 7387.6,
+    "z": -388.8,
+    "geometry": "node",
+    "footprint_latlng": null,
+    "footprint": null,
+    "length_m": null,
+    "osm_name": "Sowcarpet",
+    "tags": {
+     "wikidata": "Q7571852"
+    }
+   },
+   "wikidata": "Q7571852",
+   "levels": null,
+   "height_m": null,
+   "style": "old wholesale lane",
+   "features": [
+    {
+     "text": "Flowers were sold by the sack in Flower Bazaar (Pookadai) long before the Koyambedu market opened in 1996",
+     "status": "sourced",
+     "source": "https://ruralindiaonline.org/article/pookadai"
+    },
+    {
+     "text": "Sowcarpet is a mapped place node with a Tamil name",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/node/248560768"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null
+  },
+  {
+   "id": "marina-beach-market",
+   "names": {
+    "en": "Marina Beach Market",
+    "ta": {
+     "value": null,
+     "status": "unverified",
+     "source": null,
+     "note": "no Tamil name in OSM; needs native review"
+    },
+    "name_withheld_reason": null
+   },
+   "area": "marina-santhome",
+   "kind": "market",
+   "tier": {
+    "tier": "B",
+    "reason": "Row of beach kiosks and stalls (0.8 ha) behind the Marina: kit 'market-sheds'",
+    "tier_meaning": "parametric kit",
+    "params": {
+     "kit": "market-sheds",
+     "status": "estimated"
+    }
+   },
+   "osm": {
+    "found": true,
+    "type": "way",
+    "id": 1080629454,
+    "url": "https://www.openstreetmap.org/way/1080629454",
+    "lat": 13.063138,
+    "lng": 80.28592,
+    "x": 8212.0,
+    "z": 2430.9,
+    "geometry": "polygon",
+    "footprint_latlng": [
+     [
+      13.063609,
+      80.284057
+     ],
+     [
+      13.063768,
+      80.284108
+     ],
+     [
+      13.063465,
+      80.285211
+     ],
+     [
+      13.062927,
+      80.286917
+     ],
+     [
+      13.06272,
+      80.287568
+     ],
+     [
+      13.062561,
+      80.287509
+     ],
+     [
+      13.062796,
+      80.286664
+     ],
+     [
+      13.063259,
+      80.285329
+     ]
+    ],
+    "footprint": {
+     "bbox_m": [
+      380.3,
+      134.2
+     ],
+     "area_m2": 7693.3
+    },
+    "length_m": null,
+    "osm_name": "Marina Beach Market",
+    "tags": {
+     "amenity": "marketplace"
+    }
+   },
+   "wikidata": null,
+   "levels": null,
+   "height_m": null,
+   "style": "kiosk market",
+   "features": [
+    {
+     "text": "OSM amenity=marketplace, 7,693 m2",
+     "status": "osm",
+     "source": "https://www.openstreetmap.org/way/1080629454"
+    }
+   ],
+   "photos": {
+    "commons_files": [],
+    "note": "titles and licences only, from the Commons API; no images are stored in the repository"
+   },
+   "status_note": null
   }
  ],
  "sources": [
@@ -12847,6 +15087,11 @@
    "licence": "CC BY-SA 4.0"
   },
   {
+   "url": "https://en.wikipedia.org/wiki/Spencer_Plaza",
+   "title": "Spencer Plaza (Wikipedia)",
+   "licence": "CC BY-SA 4.0"
+  },
+  {
    "url": "https://en.wikipedia.org/wiki/St._Mary%27s_Church,_Chennai",
    "title": "St. Mary's Church, Chennai (Wikipedia)",
    "licence": "CC BY-SA 4.0"
@@ -12865,6 +15110,11 @@
    "url": "https://en.wikipedia.org/wiki/Vadapalani",
    "title": "Vadapalani (Wikipedia)",
    "licence": "CC BY-SA 4.0"
+  },
+  {
+   "url": "https://housing.com/news/biggest-malls-in-chennai",
+   "title": "Top 10 biggest malls in Chennai (Housing.com)",
+   "licence": "property news, facts only"
   },
   {
    "url": "https://mcc.edu.in/?p=12688",
@@ -12942,6 +15192,11 @@
    "licence": "guide, facts only"
   },
   {
+   "url": "https://www.openstreetmap.org/node/248560768",
+   "title": "OpenStreetMap object node/248560768",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
    "url": "https://www.openstreetmap.org/node/312011819",
    "title": "OpenStreetMap object node/312011819",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
@@ -13002,6 +15257,11 @@
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
+   "url": "https://www.openstreetmap.org/relation/15321422",
+   "title": "OpenStreetMap object relation/15321422",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
    "url": "https://www.openstreetmap.org/relation/16916505",
    "title": "OpenStreetMap object relation/16916505",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
@@ -13052,6 +15312,16 @@
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
+   "url": "https://www.openstreetmap.org/way/1040126396",
+   "title": "OpenStreetMap object way/1040126396",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
+   "url": "https://www.openstreetmap.org/way/1061239868",
+   "title": "OpenStreetMap object way/1061239868",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
    "url": "https://www.openstreetmap.org/way/1080357584",
    "title": "OpenStreetMap object way/1080357584",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
@@ -13069,6 +15339,11 @@
   {
    "url": "https://www.openstreetmap.org/way/1080629434",
    "title": "OpenStreetMap object way/1080629434",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
+   "url": "https://www.openstreetmap.org/way/1080629454",
+   "title": "OpenStreetMap object way/1080629454",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
@@ -13107,6 +15382,16 @@
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
+   "url": "https://www.openstreetmap.org/way/1128509238",
+   "title": "OpenStreetMap object way/1128509238",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
+   "url": "https://www.openstreetmap.org/way/1132414645",
+   "title": "OpenStreetMap object way/1132414645",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
    "url": "https://www.openstreetmap.org/way/1178009706",
    "title": "OpenStreetMap object way/1178009706",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
@@ -13122,13 +15407,28 @@
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
+   "url": "https://www.openstreetmap.org/way/1373636316",
+   "title": "OpenStreetMap object way/1373636316",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
    "url": "https://www.openstreetmap.org/way/1419893342",
    "title": "OpenStreetMap object way/1419893342",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
+   "url": "https://www.openstreetmap.org/way/1534023217",
+   "title": "OpenStreetMap object way/1534023217",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
    "url": "https://www.openstreetmap.org/way/154030370",
    "title": "OpenStreetMap object way/154030370",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
+   "url": "https://www.openstreetmap.org/way/1544754962",
+   "title": "OpenStreetMap object way/1544754962",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
@@ -13139,6 +15439,11 @@
   {
    "url": "https://www.openstreetmap.org/way/1552580367",
    "title": "OpenStreetMap object way/1552580367",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
+   "url": "https://www.openstreetmap.org/way/1559399089",
+   "title": "OpenStreetMap object way/1559399089",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
@@ -13267,6 +15572,11 @@
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
+   "url": "https://www.openstreetmap.org/way/29267290",
+   "title": "OpenStreetMap object way/29267290",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
    "url": "https://www.openstreetmap.org/way/30738573",
    "title": "OpenStreetMap object way/30738573",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
@@ -13302,6 +15612,11 @@
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
+   "url": "https://www.openstreetmap.org/way/355637768",
+   "title": "OpenStreetMap object way/355637768",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
    "url": "https://www.openstreetmap.org/way/355724162",
    "title": "OpenStreetMap object way/355724162",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
@@ -13309,6 +15624,26 @@
   {
    "url": "https://www.openstreetmap.org/way/369454724",
    "title": "OpenStreetMap object way/369454724",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
+   "url": "https://www.openstreetmap.org/way/393560243",
+   "title": "OpenStreetMap object way/393560243",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
+   "url": "https://www.openstreetmap.org/way/396824231",
+   "title": "OpenStreetMap object way/396824231",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
+   "url": "https://www.openstreetmap.org/way/634144271",
+   "title": "OpenStreetMap object way/634144271",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
+   "url": "https://www.openstreetmap.org/way/634538011",
+   "title": "OpenStreetMap object way/634538011",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
@@ -13344,6 +15679,11 @@
   {
    "url": "https://www.wikipedia.com/wiki/Madras_Egmore",
    "title": "Chennai Egmore railway station (Wikipedia)",
+   "licence": "CC BY-SA 4.0"
+  },
+  {
+   "url": "https://www.wikipedia.com/wiki/Phoenix_Marketcity_(Chennai)",
+   "title": "Phoenix Marketcity (Chennai) (Wikipedia)",
    "licence": "CC BY-SA 4.0"
   },
   {
@@ -13388,7 +15728,7 @@
  ],
  "tier_counts": {
   "A": 18,
-  "B": 55,
+  "B": 72,
   "C": 10
  }
 }

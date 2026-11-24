@@ -8,9 +8,9 @@ Researched character of every major area, so buildings, signs and street life ca
 
 ## Counts
 
-- Areas: 31. Landmarks: 83 (tier A 18, B 55, C 10); all 83 were found in the OSM extract by name.
-- Claims: 484 in total; sourced 284, read from OSM or the world data 76, estimated 10, unverified 114. On top of that every area has four estimate blocks (storeys, roofs, wall palette, street width), each with its basis.
-- Distinct source pages: 185 (of which OSM objects: 108).
+- Areas: 31. Landmarks: 100 (tier A 18, B 72, C 10); all 100 were found in the OSM extract.
+- Claims: 519 in total; sourced 289, read from OSM or the world data 93, estimated 10, unverified 127. On top of that every area has four estimate blocks (storeys, roofs, wall palette, street width), each with its basis.
+- Distinct source pages: 205 (of which OSM objects: 125).
 
 Tier meaning: **A** hero model by hand, **B** parametric kit (parameters in the data), **C** a recoloured standard building.
 
@@ -66,11 +66,11 @@ Reading it: levels are mapped for 3.9 % of the buildings inside the areas, four 
 - Colonial and Indo-Saracenic institutions (the High Court, the Armenian Church, a medical college) sit among crowded commercial blocks and temples.
 - Mint Street and Flower Bazaar (Badrian Street) are known for wholesale trade; the lanes are narrow and busy from early morning.
 
-**Landmarks:** Madras High Court (A); Armenian Church of the Virgin Mary (B); Kaalikambal Kamadeswarar Temple (B); Kandhakottam Temple (B); Mint Street (Peddanaickenpet) (B); Stanley Medical College and Hospital (C).
+**Landmarks:** Madras High Court (A); Armenian Church of the Virgin Mary (B); Kaalikambal Kamadeswarar Temple (B); Kandhakottam Temple (B); Mint Street (Peddanaickenpet) (B); Stanley Medical College and Hospital (C); Sowcarpet and Flower Bazaar (B).
 
 **Walking there, a player would see:** narrow, winding and shaded by overhanging upper floors; frequent bottlenecks at junctions; buildings mostly 3 storeys (range 1 to 5); roofs mainly flat parapet roof, often with a water tank and staircase head (62 %) and Madras terrace on the oldest masonry houses (19 %); walls in aged lime wash #E4D7B8, ochre #D9B25F, red brick showing through #A5502F, cream #EFE6D2. Street life: Wholesale: Flower Bazaar (Badrian Street) traded flowers by the sack before the Koyambedu market opened in 1996; many wholesale shops there were sealed on High Court orders. Signs: Tamil top line, English below; also Hindi and Gujarati lettering on some trading houses (unverified).
 
-**OSM alone gives:** 6,408 building footprints (levels mapped on 49.7 %, roof shape on 2, colour tags on 0), street names and the 6 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 1 hero landmark(s).
+**OSM alone gives:** 6,408 building footprints (levels mapped on 49.7 %, roof shape on 2, colour tags on 0), street names and the 7 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 1 hero landmark(s).
 
 ### Parry's Corner
 
@@ -150,11 +150,11 @@ Reading it: levels are mapped for 3.9 % of the buildings inside the areas, four 
 - To the south at Santhome the Gothic basilica stands behind the beach road. *(estimated)*
 - The sea edge is open sand, with kiosks, boats and sunrise and evening crowds. *(unverified)*
 
-**Landmarks:** Marina Beach (B); Chennai (Marina) Lighthouse (B); M.G.R. Memorial and Anna Memorial (B); San Thome Cathedral Basilica (A).
+**Landmarks:** Marina Beach (B); Chennai (Marina) Lighthouse (B); M.G.R. Memorial and Anna Memorial (B); San Thome Cathedral Basilica (A); Shopping complex, Marina and Santhome (B); Marina Beach Market (B).
 
 **Walking there, a player would see:** wide beach road with a service lane; the sand starts almost at the kerb; buildings mostly 2 storeys (range 1 to 5); roofs mainly flat roof with water tank (houses) (60 %) and tin and tiled roofs on fishing hamlets and kiosks (25 %); walls in salt-bleached white #F3EEE3, cream #EFE6D2, pale blue #C9D6EA, ochre #D9B25F. Street life: Statues of Tamil literary and political figures line the promenade (Gandhi, Thiruvalluvar, Bharathiyar, Annie Besant and others). Signs: Tamil first; many hand-painted stall signs.
 
-**OSM alone gives:** 3,460 building footprints (levels mapped on 2.7 %, roof shape on 0, colour tags on 0), street names and the 4 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 1 hero landmark(s).
+**OSM alone gives:** 3,460 building footprints (levels mapped on 2.7 %, roof shape on 0, colour tags on 0), street names and the 6 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 1 hero landmark(s).
 
 ### Mylapore
 
@@ -192,11 +192,11 @@ Reading it: levels are mapped for 3.9 % of the buildings inside the areas, four 
 - Mix of old Muslim and Christian community streets, mid-rise apartments and large retail buildings. *(unverified)*
 - Less formal than neighbouring Mylapore; busy day and night. *(unverified)*
 
-**Landmarks:** Royapettah Government Hospital (C); Large shopping mall (name withheld) (B); Thousand Lights Mosque (B).
+**Landmarks:** Royapettah Government Hospital (C); Shopping complex, Royapettah (B); Thousand Lights Mosque (B); Shopping complex, Royapettah (B).
 
 **Walking there, a player would see:** a congested main road with side lanes; buildings mostly 3 storeys (range 1 to 8); roofs mainly flat roof with water tank and hoardings (78 %) and tiled or sheet roofs on older houses (17 %); walls in cream #EFE6D2, aged lime #E4D7B8, pale blue #C9D6EA, ochre #D9B25F. Street life: Hospital queues, small clinics, tea shops and mid-rise retail. Signs: Tamil above English.
 
-**OSM alone gives:** 891 building footprints (levels mapped on 2.9 %, roof shape on 0, colour tags on 0), street names and the 3 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 0 hero landmark(s).
+**OSM alone gives:** 891 building footprints (levels mapped on 2.9 %, roof shape on 0, colour tags on 0), street names and the 4 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 0 hero landmark(s).
 
 ### T. Nagar (Thyagaraya Nagar)
 
@@ -234,11 +234,11 @@ Reading it: levels are mapped for 3.9 % of the buildings inside the areas, four 
 - The Vadapalani Murugan Temple is an important pilgrimage centre.
 - Busy bridges and 100 Feet Road junctions; bright cinema hoardings above flat-roofed blocks. *(unverified)*
 
-**Landmarks:** Vadapalani Murugan Temple (B).
+**Landmarks:** Vadapalani Murugan Temple (B); Shopping complex, Kodambakkam and Vadapalani (B).
 
 **Walking there, a player would see:** wide commercial roads with flyovers and tight side streets; buildings mostly 3 storeys (range 1 to 10); roofs mainly flat roof with water tank, hoardings (80 %) and studio sheds with sheet roofs (15 %); walls in weathered grey #B7B2A6, cream #EFE6D2, pale blue #C9D6EA, faded pink #F0C9C0. Street life: Pilgrim queues at the temple, film crews and extras, tea stalls. Signs: Tamil first with English; large hand-painted film banners.
 
-**OSM alone gives:** 7,649 building footprints (levels mapped on 0.5 %, roof shape on 0, colour tags on 0), street names and the 1 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 0 hero landmark(s).
+**OSM alone gives:** 7,649 building footprints (levels mapped on 0.5 %, roof shape on 0, colour tags on 0), street names and the 2 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 0 hero landmark(s).
 
 ### Anna Nagar
 
@@ -248,11 +248,11 @@ Reading it: levels are mapped for 3.9 % of the buildings inside the areas, four 
 - Rows of independent houses and low apartment blocks on wide streets, with a landmark 12-storey tower inside a park.
 - Rated the second greenest part of the city, after Adyar, in a tree survey.
 
-**Landmarks:** Anna Nagar Tower (A); Anna Nagar Arch (B); Koyambedu wholesale market (B).
+**Landmarks:** Anna Nagar Tower (A); Anna Nagar Arch (B); Koyambedu wholesale market (B); Shopping complex, Anna Nagar (B); Shopping complex, Anna Nagar (B); Shopping complex, Anna Nagar (B).
 
 **Walking there, a player would see:** wide residential streets and avenue roads with roundabouts; buildings mostly 2 storeys (range 1 to 6); roofs mainly flat roof with water tank and a built-up staircase head (typical) (88 %) and pitched roofs on a few older houses (7 %); walls in faded pink #F0C9C0, mint #BFD8D2, pale blue #C9D6EA, butter yellow #E8D9A8. Street life: Adyar was rated the greenest part of the city and Anna Nagar second in a tree survey. Signs: Tamil first, English second; the commercial roads are heavier with English.
 
-**OSM alone gives:** 12,782 building footprints (levels mapped on 0.2 %, roof shape on 1, colour tags on 1), street names and the 3 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 1 hero landmark(s).
+**OSM alone gives:** 12,782 building footprints (levels mapped on 0.2 %, roof shape on 1, colour tags on 1), street names and the 6 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 1 hero landmark(s).
 
 ### Kilpauk
 
@@ -360,11 +360,11 @@ Reading it: levels are mapped for 3.9 % of the buildings inside the areas, four 
 - It floods almost every northeast-monsoon season because the marsh has shrunk to under a tenth of its size.
 - Wide commercial roads, a rail terminus, malls and many mid-rise apartments. *(unverified)*
 
-**Landmarks:** Pallikaranai Marsh (B).
+**Landmarks:** Pallikaranai Marsh (B); Shopping complex, Velachery (B); Shopping complex, Velachery (B); Shopping complex, Velachery (B).
 
 **Walking there, a player would see:** wide arterial roads with narrow residential lanes; drains and culverts; buildings mostly 3 storeys (range 1 to 12); roofs mainly flat roof with water tank and solar heaters (88 %) and sheet roofs on older lanes (10 %); walls in faded pink #F0C9C0, mint #BFD8D2, pale blue #C9D6EA, butter yellow #E8D9A8. Street life: Commuters to the OMR offices, auto stands at the rail terminus, flooded streets in the monsoon. Signs: Tamil first, English second; English heavy near the malls.
 
-**OSM alone gives:** 9,300 building footprints (levels mapped on 0.5 %, roof shape on 6, colour tags on 5), street names and the 1 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 0 hero landmark(s).
+**OSM alone gives:** 9,300 building footprints (levels mapped on 0.5 %, roof shape on 6, colour tags on 5), street names and the 4 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 0 hero landmark(s).
 
 ### Tambaram
 
@@ -388,11 +388,11 @@ Reading it: levels are mapped for 3.9 % of the buildings inside the areas, four 
 - Pallavaram is an old town with a hill and a lake; both sides have dense low-rise housing under the flight path. *(estimated)*
 - Passenger operations moved to the Tirusulam terminals in 1985 (domestic) and 1989 (international).
 
-**Landmarks:** Chennai International Airport terminals (A); Pallavaram Lake (B).
+**Landmarks:** Chennai International Airport terminals (A); Pallavaram Lake (B); Shopping complex, Pallavaram, Meenambakkam and the airport (B); Shopping complex, Pallavaram, Meenambakkam and the airport (B).
 
 **Walking there, a player would see:** airport approach roads and flyovers; narrow residential lanes under the flight path; buildings mostly 2 storeys (range 1 to 6); roofs mainly flat roof with water tank (70 %) and sheet and tile roofs, workshops (22 %); walls in cream #EFE6D2, white #F3EEE3, grey #B7B2A6, pale blue #C9D6EA. Street life: Taxis and share cabs at the arrival forecourts; aircraft low over the roofs. Signs: English and Tamil bilingual airport boards; Hindi added on terminal signs (unverified).
 
-**OSM alone gives:** 12,846 building footprints (levels mapped on 0.2 %, roof shape on 0, colour tags on 0), street names and the 2 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 1 hero landmark(s).
+**OSM alone gives:** 12,846 building footprints (levels mapped on 0.2 %, roof shape on 0, colour tags on 0), street names and the 4 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 1 hero landmark(s).
 
 ### OMR and Sholinganallur IT corridor
 
@@ -402,11 +402,11 @@ Reading it: levels are mapped for 3.9 % of the buildings inside the areas, four 
 - Glass and concrete office campuses stand behind boundary walls; apartment towers fill the gaps. *(unverified)*
 - A wide road with metro construction and service roads; very different from the old city.
 
-**Landmarks:** IT park, Perungudi (name withheld) (B); State IT SEZ campus, Sholinganallur (B).
+**Landmarks:** IT park, Perungudi (name withheld) (B); State IT SEZ campus, Sholinganallur (B); Shopping complex, OMR and Sholinganallur IT corridor (B); Shopping complex, OMR and Sholinganallur IT corridor (B); Shopping complex, OMR and Sholinganallur IT corridor (B).
 
 **Walking there, a player would see:** a six-lane arterial with service lanes and flyovers; campuses behind walls; buildings mostly 4 storeys (range 1 to 25); roofs mainly flat roof with plant rooms and water tanks (90 %) and industrial shed roofs (5 %); walls in glass blue-grey #8FA9B8, aluminium cladding #C5CED3, concrete #B7B2A6, white #F3EEE3. Street life: Shuttle buses, cabs and two-wheelers at shift change; tea stalls at campus gates. Signs: English more common than Tamil on campus and project boards; Tamil boards on village shops.
 
-**OSM alone gives:** 17,711 building footprints (levels mapped on 0.6 %, roof shape on 0, colour tags on 5), street names and the 2 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 0 hero landmark(s).
+**OSM alone gives:** 17,711 building footprints (levels mapped on 0.6 %, roof shape on 0, colour tags on 5), street names and the 5 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 0 hero landmark(s).
 
 ### Ennore and North Chennai port
 
@@ -430,11 +430,11 @@ Reading it: levels are mapped for 3.9 % of the buildings inside the areas, four 
 - A grid of numbered streets lined with one to three storey workshops and sheds with sheet roofs. *(unverified)*
 - The area moved from farmland and mango groves to manufacturing.
 
-**Landmarks:** Ambattur Industrial Estate (C).
+**Landmarks:** Ambattur Industrial Estate (C); Shopping complex, Ambattur Industrial Estate (B).
 
 **Walking there, a player would see:** regular grid of numbered streets with trucks parked on both sides; buildings mostly 1 storeys (range 1 to 5); roofs mainly sheet-metal and asbestos-style pitched sheds (single slope or saw-tooth) (40 %) and gabled sheet roofs (30 %); walls in industrial grey #9C9890, concrete #B7B2A6, aged lime #E4D7B8, blue sheet cladding #5E7C8A. Street life: Shift-change crowds on two-wheelers, tea stalls and small lorries. Signs: English and Tamil on works boards; many hand-painted unit names.
 
-**OSM alone gives:** 4,071 building footprints (levels mapped on 0.2 %, roof shape on 0, colour tags on 0), street names and the 1 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 0 hero landmark(s).
+**OSM alone gives:** 4,071 building footprints (levels mapped on 0.2 %, roof shape on 0, colour tags on 0), street names and the 2 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 0 hero landmark(s).
 
 ### Thiruvanmiyur
 
@@ -491,6 +491,31 @@ Reading it: levels are mapped for 3.9 % of the buildings inside the areas, four 
 **Walking there, a player would see:** village lanes and a causeway road; buildings mostly 1 storeys (range 1 to 2); roofs mainly thatched, tiled and sheet roofs on fishing houses (65 %) and flat concrete roofs on newer houses (30 %); walls in cream #EFE6D2, salt white #F3EEE3, pale blue #C9D6EA, ochre #D9B25F. Street life: Boating on the lagoon is offered by the local fishing villages, and a Flamingo Festival is held around December to January. Signs: Tamil boards; few signs overall.
 
 **OSM alone gives:** 24 building footprints (levels mapped on 0.0 %, roof shape on 1, colour tags on 0), street names and the 4 shortlisted landmark outlines. **Needs modelling:** wall colour and finish, roof form and water tanks, storeys beyond the mapped few, signage and awnings, street trees, and the 0 hero landmark(s).
+
+## Shopping complexes and markets
+
+Malls are businesses, so their names are withheld in game data (TD-18): each entry is called 'Shopping complex, <area>' and its sign reads `வணிக வளாகம் / SHOPPING COMPLEX`. The name used only to find the OSM object sits in a `research_name` field marked research only. Found by scanning the extract for every `shop=mall` and every `building=retail` or `commercial` of 8,000 m2 or more or five levels or more, then keeping shopping buildings and dropping office and IT blocks.
+
+| Entry | Area | Levels (OSM) | Footprint m2 | OSM |
+|---|---|---:|---:|---|
+| Shopping complex, Royapettah | royapettah | untagged | 16,961 | way/154030370 |
+| Shopping complex, Anna Nagar | anna-nagar | 6 | 27,788 | way/634144271 |
+| Shopping complex, Royapettah | royapettah | 7 | 18,586 | way/1128509238 |
+| Shopping complex, OMR and Sholinganallur IT corridor | omr-sholinganallur | 10 | 11,496 | way/1040126396 |
+| Shopping complex, Velachery | velachery | 4 | 18,689 | relation/15321422 |
+| Shopping complex, Kodambakkam and Vadapalani | kodambakkam-vadapalani | 5 | 13,698 | way/355637768 |
+| Shopping complex, Anna Nagar | anna-nagar | 6 | 9,116 | way/1534023217 |
+| Shopping complex, Marina and Santhome | marina-santhome | untagged | 11,162 | way/29267290 |
+| Shopping complex, Anna Nagar | anna-nagar | untagged | 11,059 | way/393560243 |
+| Shopping complex, OMR and Sholinganallur IT corridor | omr-sholinganallur | untagged | 10,316 | way/634538011 |
+| Shopping complex, Pallavaram, Meenambakkam and the airport | pallavaram-meenambakkam-airport | 7 | 8,656 | way/1061239868 |
+| Shopping complex, Velachery | velachery | untagged | 7,898 | way/1132414645 |
+| Shopping complex, Ambattur Industrial Estate | ambattur-industrial | untagged | 6,336 | way/1544754962 |
+| Shopping complex, OMR and Sholinganallur IT corridor | omr-sholinganallur | untagged | 4,476 | way/1373636316 |
+| Shopping complex, Velachery | velachery | untagged | 3,540 | way/396824231 |
+| Shopping complex, Pallavaram, Meenambakkam and the airport | pallavaram-meenambakkam-airport | 7 | 3,841 | way/1559399089 |
+
+Old-town shopping streets and markets on the shortlist: Ranganathan Street, Mint Street, Sowcarpet and Flower Bazaar, Marina Beach Market, Koyambedu wholesale market. Pondy Bazaar has no object of its own in OSM (see `not_found_in_osm`). Architecture details are sourced only where a page was read (a rebuilt 1980s complex with parking for 800 cars, a 2013 mall, a six-floor mall); everything else is `unverified`.
 
 ## Method and limits
 

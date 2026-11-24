@@ -146,12 +146,21 @@ def test_tamil_is_only_where_osm_supplies_it(areas_doc: dict[str, Any], lm_doc: 
             assert ta["status"] == "unverified"
     for lm in lm_doc["landmarks"]:
         ta = lm["names"]["ta"]
-        if ta["value"]:
+        if ta["value"] and lm["kind"] == "mall":
+            assert lm["sign"] == {"ta": "வணிக வளாகம்", "en": "SHOPPING COMPLEX", "note": lm["sign"]["note"]}
+        elif ta["value"]:
             assert ta["status"] == "osm" and ta["source"] and re.search(r"[஀-௿]", ta["value"]), lm["id"]
 
 
 def test_no_brands_or_business_names(areas_doc: dict[str, Any], lm_doc: dict[str, Any]) -> None:
-    text = json.dumps([areas_doc["areas"], lm_doc["landmarks"]], ensure_ascii=False).lower()
+    def strip(o: Any) -> Any:  # citations (URLs, titles) and the one marked research-only field may carry names
+        if isinstance(o, dict):
+            return {k: strip(v) for k, v in o.items() if k not in ("research_name", "source", "sources", "title")}
+        if isinstance(o, list):
+            return [strip(v) for v in o]
+        return o
+
+    text = json.dumps(strip([areas_doc["areas"], lm_doc["landmarks"]]), ensure_ascii=False).lower()
     for b in BRANDS:
         assert b not in text, f"brand/business name in data: {b}"
 
@@ -213,3 +222,16 @@ def test_coverage_file_matches_the_areas(areas_doc: dict[str, Any]) -> None:
         assert v["pbf"]["buildings"] >= w["buildings"] * 0.95, k  # the extract counts a little more (slivers, parts)
     reported = int(re.search(r"Buildings: ([\d,]+)", (GODOT / "world" / "REPORT.md").read_text()).group(1).replace(",", ""))  # type: ignore[union-attr]
     assert total == reported
+
+
+def test_malls_have_withheld_names_and_research_only_field(lm_doc: dict[str, Any]) -> None:
+    malls = [lm for lm in lm_doc["landmarks"] if lm["kind"] == "mall"]
+    assert len(malls) >= 15
+    for m in malls:
+        assert m["tier"]["tier"] == "B" and m["osm"]["found"] and m["osm"]["footprint"]
+        assert m["names"]["en"].startswith("Shopping complex, ")
+        assert m["osm"]["osm_name"] is None
+        rn = m["research_name"]
+        assert rn["value"] and "RESEARCH ONLY" in rn["marked"]
+        assert rn["value"].lower() not in json.dumps({k: v for k, v in m.items() if k not in ("research_name", "features")}, ensure_ascii=False).lower()
+        assert any(c["status"] == "unverified" or c.get("source") for c in m["features"])

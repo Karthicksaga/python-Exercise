@@ -597,3 +597,7 @@ available: pad support is tested with synthetic events. The 640x320 worst case h
 buttons at 48 px; small is under that there.
 Screenshots: `tests/tools/controls_shots.gd` (shots foot, near, driving, reverse, lefty,
 lefty_drive, pad, settings) into a scratch folder.
+
+**Addendum (malls).** 16 shopping complexes and two market entries added (100 landmarks: A 18, B 72,
+C 10). Game code must read `sign` and `names`, never `research_name`. Storeys come from OSM levels
+where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.
