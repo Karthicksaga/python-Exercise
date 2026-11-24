@@ -25,7 +25,7 @@ var _pick_timer: float = 0.0
 func _init(with_poles: bool = false) -> void:
 	name = "StreetLights"
 	_head_material = StandardMaterial3D.new()
-	_head_material.albedo_color = Color(0.9, 0.85, 0.75)
+	_head_material.albedo_color = Color(0.55, 0.45, 0.3)
 	_head_material.emission_enabled = true
 	_head_material.emission = SODIUM
 	_head_material.emission_energy_multiplier = 0.0
@@ -85,14 +85,14 @@ func set_lamps(points: PackedVector3Array) -> void:
 func step(dt: float, camera_position: Vector3, night_amount: float) -> void:
 	night = night_amount
 	var glow := clampf((night - 0.15) / 0.85, 0.0, 1.0)
-	_head_material.emission_energy_multiplier = 3.0 * glow
+	_head_material.emission_energy_multiplier = 1.4 * glow
 	_pick_timer -= dt
 	if _pick_timer <= 0.0:
 		_pick_timer = 0.25
 		_pick(camera_position)
 	for light in lights:
 		light.visible = glow > 0.01 and light.has_meta(&"lamp")
-		light.light_energy = 1.6 * glow
+		light.light_energy = 3.2 * glow
 
 
 func _pick(from: Vector3) -> void:
