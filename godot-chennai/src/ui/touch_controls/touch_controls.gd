@@ -139,7 +139,8 @@ func _process(_delta: float) -> void:
 		_label = text
 		_action_button.text = text if text != "" else "ACTION"
 		_action_button.font_size = 18 if text.length() <= 6 else 15
-		_action_button.dim = text == ""
+	# Dimmed with nothing to do, or when the best thing is not possible now (BUY, too poor).
+	_action_button.dim = text == "" or not action_context.best_enabled()
 
 
 func _rest() -> Vector2:

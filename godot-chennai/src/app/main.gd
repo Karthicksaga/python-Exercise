@@ -30,6 +30,8 @@ var rig: PlayerRig = null
 var play_wiring: PlayWiring = null
 ## The pause menu and the PAUSE button (built here, shown in play).
 var pause_menu: PauseMenu = null
+## Homes for sale, BUY and ENTER, the interior and the furnish editor (G-233…G-237).
+var homes: HomesLayer = null
 
 
 ## Traffic, walkers and crowds round the player (G-120…G-128).
@@ -201,6 +203,8 @@ func _add_player() -> String:
 	WorldOrigin.shifted.connect(func(_offset: Vector3) -> void: rig.camera.snap())
 	# The missions, jobs, fares and their HUD (G-130): they follow `state_changed` and NEW GAME.
 	add_child(MissionsLayer.for_main(self))
+	homes = HomesLayer.for_main(self)
+	add_child(homes)
 	return ""
 
 
@@ -352,6 +356,16 @@ func resume() -> void:
 	_set_state(&"play")
 
 
+## Inside a home (G-235): `HomesLayer` suspends the world; the street's HUD, controls and PAUSE
+## button give way to the home's own. Back leaves the home (`go_back`).
+func set_home(on: bool) -> void:
+	if on == (state == &"home") or (on and state != &"play"):
+		return
+	hud.visible = not on
+	_set_controls(not on)
+	_set_state(&"home" if on else &"play")
+
+
 func _unpause() -> void:
 	pause_menu.close()
 	get_tree().paused = false
@@ -379,6 +393,9 @@ func go_back() -> void:
 			pause()
 		&"paused":
 			show_title()
+		&"home":
+			if homes != null:
+				homes.back()
 		&"title":
 			if not title.go_back():
 				quit()

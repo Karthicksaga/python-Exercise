@@ -75,6 +75,12 @@ func best() -> ActionCandidate:
 	return top
 
 
+## Whether the best candidate can be done now (true when there is none).
+func best_enabled() -> bool:
+	var b := best()
+	return b == null or b.enabled
+
+
 ## The button's label now: the best candidate's, or "" when nothing applies.
 func label() -> String:
 	var b := best()

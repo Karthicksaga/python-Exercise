@@ -9,6 +9,9 @@ var label: String = ""
 var priority: int = 0
 var distance: float = 0.0
 var activate: Callable = Callable()
+## False: the button shows it dimmed (BUY with too little money) but still calls `activate`, so it
+## can explain why (G-238).
+var enabled: bool = true
 
 
 static func make(label_: String, priority_: int, distance_: float, activate_: Callable) -> ActionCandidate:
