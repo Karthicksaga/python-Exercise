@@ -258,7 +258,7 @@ func _paint_scale(v: Control, size: Vector2) -> void:
 		if candidate * ppm >= 70.0:
 			break
 	var px := length * ppm
-	var from := Vector2(size.x - GUTTER - px, size.y - 30.0)
+	var from := Vector2(GUTTER, size.y - 62.0)
 	v.draw_line(from, from + Vector2(px, 0), Color(1, 1, 1, 0.85), 2.0)
 	v.draw_line(from, from + Vector2(0, -6), Color(1, 1, 1, 0.85), 2.0)
 	v.draw_line(from + Vector2(px, 0), from + Vector2(px, -6), Color(1, 1, 1, 0.85), 2.0)

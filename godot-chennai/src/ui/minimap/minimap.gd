@@ -200,7 +200,7 @@ func _paint_overlay(l: Control) -> void:
 			MapGlyphs.draw(l, kind, at, 6.0 if i == 0 else 4.5, colour)
 		elif i == 0:
 			# The waypoint arrow: pinned to the edge, with how far it is.
-			MapGlyphs.draw_arrow(l, at, hit["direction"], 6.5, colour)
+			MapGlyphs.draw_arrow(l, at, hit["direction"], 8.0, colour)
 			var text := MapProjection.distance_text(world.distance_to(player))
 			var width := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE).x
 			var inward: Vector2 = -(hit["direction"] as Vector2)
