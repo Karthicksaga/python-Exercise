@@ -7,14 +7,14 @@
  "frame": "metres; +Y up, front faces -Z, +X right; ground at y = 0; origin centred between the axles",
  "size_m": {
   "width": 1.708,
-  "height": 1.557,
-  "length": 3.748
+  "height": 1.541,
+  "length": 3.678
  },
  "mass_kg": 950,
  "lods": [
   {
    "file": "hatchback.glb",
-   "triangles": 9234,
+   "triangles": 9206,
    "max_distance_m": 28
   },
   {
@@ -239,12 +239,12 @@
    "centre": [
     0.0,
     0.585,
-    -0.05
+    -0.085
    ],
    "half_extents": [
     0.8,
     0.345,
-    1.82
+    1.785
    ]
   },
   {
@@ -252,12 +252,12 @@
    "centre": [
     0.0,
     1.245,
-    0.209
+    0.174
    ],
    "half_extents": [
     0.7,
     0.315,
-    1.561
+    1.526
    ]
   }
  ],

@@ -128,6 +128,8 @@ def auto_build(d, lod):
         glass.data.polygons[0].flip()
     parts.append(glass)
     parts.append(K.box("ws_header", (1.1, 0.05, 0.06), (0, fy, d["hood_low"] + 0.08), role("black")))
+    # The painted band across the front of the hood, over the windscreen (yellow on Chennai autos).
+    parts.append(K.box("hood_band", (2 * d["hood_hw"] - 0.1, 0.06, 0.13), (0, fy + 0.02, d["hood_top"] - 0.13), paint, bevel=0.02))
     parts.append(K.box("ws_sill", (0.95, 0.06, 0.04), (0, 1.13, 1.06), role("black")))
     if lod == 0:
         w = K.box("wiper", (0.42, 0.012, 0.012), (0.05, 1.10, 1.14), role("black"))
@@ -135,7 +137,6 @@ def auto_build(d, lod):
         parts.append(w)
     # Front: one round headlamp on the cowl, a dark slot under it, two indicator pods on the
     # cowl's top corners, the front plate (yellow, blank) and the front mudguard (on the steering).
-    parts += T.lamp_disc((0, 1.425, 0.83), 0.085, (0, 1, -0.15), depth=0.05)
     parts.append(K.box("cowl_vent", (0.3, 0.03, 0.035), (0, 1.43, 0.70), role("black"), bevel=0.01))
     parts.append(T.plate((0, 1.44, 0.63), 1, width=0.26, height=0.09))
     for sx in (1, -1):
@@ -200,9 +201,10 @@ def auto_build(d, lod):
     for i in range(k + 1):
         a = math.radians(-35 + 170 * i / k)
         pts.append((0, fw.y + math.cos(a) * (d["tyre"] + 0.05), fw.z + math.sin(a) * (d["tyre"] + 0.05)))
-    guard = K.path_tube("mudguard", pts, 0.07, role("black"), verts=K.seg(8, 4))
-    guard.scale = (1.0, 1.0, 1.0)
+    guard = K.path_tube("mudguard", pts, 0.07, paint, verts=K.seg(8, 4))
     sp.append(guard)
+    # The headlamp rides on the front mudguard (it turns with the steering, as on the real ones).
+    sp += T.lamp_disc((0, fw.y + d["tyre"] + 0.11, fw.z + 0.12), 0.075, (0, 1, 0), depth=0.06)
     steer = K.join(sp, "steering")
     K.set_origin(steer, hb)
     # Wheels: drum-braked steel rims, 4.00-8 tyres.

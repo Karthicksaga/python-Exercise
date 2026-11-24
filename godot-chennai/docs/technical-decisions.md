@@ -422,7 +422,7 @@ kerb points `stand_door_*` where passengers wait and alight. Exit and kerb point
 nodes (`dest_front`, `dest_side`, `dest_rear`) with size and facing in the manifest.
 
 ### G-96 Handlebar steering turns the fork and mudguard too
-On the autos the `steering` node holds the handlebar, column, fork and front mudguard, turning
+On the autos the `steering` node holds the handlebar, column, fork, front mudguard and (on the Chennai auto) the headlamp, turning
 about the column axis in the manifest; the game also turns `wheel_front` about Y. Grips are at the
 handlebar ends (the Three.js auto's hand points).
 ## Player: on foot, figure, camera, touch controls (G-60 to G-69)

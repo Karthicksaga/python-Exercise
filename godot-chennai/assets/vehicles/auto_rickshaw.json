@@ -8,18 +8,18 @@
  "size_m": {
   "width": 1.5,
   "height": 1.702,
-  "length": 2.713
+  "length": 2.691
  },
  "mass_kg": 420,
  "lods": [
   {
    "file": "auto_rickshaw.glb",
-   "triangles": 5542,
+   "triangles": 5586,
    "max_distance_m": 28
   },
   {
    "file": "auto_rickshaw_lod1.glb",
-   "triangles": 2028,
+   "triangles": 2040,
    "min_distance_m": 28,
    "max_distance_m": 300
   }
