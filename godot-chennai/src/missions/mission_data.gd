@@ -132,6 +132,8 @@ class Objective:
 	var checkpoint := false
 	var on_fail := ""
 	var on_fail_scale := 0.5
+	## When done, jump to the objective with this id ("end": finish the stage) instead of the next.
+	var next := ""
 	var strict := false
 	## choice: [{id, label, detail, reward, reputation, wanted, flag, next}].
 	var options: Array[Dictionary] = []
@@ -217,6 +219,7 @@ class Objective:
 		o.on_fail = MissionData._s(d, "onFail")
 		o.on_fail_scale = MissionData._f(d, "onFailScale", 0.5)
 		o.strict = bool(d.get("strict", false))
+		o.next = MissionData._s(d, "next")
 		for opt: Dictionary in d.get("options", []):
 			o.options.append(opt)
 		o.near = MissionData._f(d, "near")
@@ -252,6 +255,13 @@ class Mission:
 	var kind := "stage"
 	## Where the mission is offered (a place name for the board), and a seed for its events.
 	var where := ""
+	## G-145: zones where the horn counts against the quiet goal [{x, z, radius, label}], the rain
+	## the mission wants (0..1; the layer asks `Weather`), whether the seeded dynamic events run,
+	## and brief lines added when a choice flag is set {flag: text} (a later stage reacting).
+	var quiet_zones: Array[Dictionary] = []
+	var rain := 0.0
+	var dynamic := false
+	var brief_if: Dictionary = {}
 
 	static func make(mission_id: String, n: int, money: int, steps: Array) -> Mission:
 		var m := Mission.new()
@@ -279,6 +289,13 @@ class Mission:
 			m.goals.append(g)
 		m.kind = MissionData._s(d, "kind", "stage")
 		m.where = MissionData._s(d, "where")
+		for q: Dictionary in d.get("quietZones", []):
+			m.quiet_zones.append(q)
+		m.rain = MissionData._f(d, "rain")
+		m.dynamic = bool(d.get("dynamic", false))
+		var bi: Variant = d.get("briefIf", {})
+		if bi is Dictionary:
+			m.brief_if = bi
 		return m
 
 

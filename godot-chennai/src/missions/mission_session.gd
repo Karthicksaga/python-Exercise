@@ -18,6 +18,21 @@ signal result(title: String, message: String, board: bool)
 signal cue(name: StringName)
 ## The save file was written.
 signal saved()
+## G-140: a stage was failed; offers RETRY (from the checkpoint) and START OVER. `checkpoint`: the
+## index the retry resumes at (0: the stage's start).
+signal retry_offered(reason: String, reason_id: String, checkpoint: int)
+## G-142: a choice objective asks; `options` [{id, label, detail, reward, ...}].
+signal choice_asked(title: String, options: Array)
+## A choice raised the police heat (stars) for the combat runtime to apply.
+signal heat_raised(stars: int)
+## G-146: a dynamic event started or ended; `event` {kind, text, duration, time}.
+signal event_started(event: Dictionary)
+signal event_ended(event: Dictionary)
+## G-142: a stage or extra was completed: the medals screen. `goals` [{label, met}], `medal`
+## ("" for none), `paid` rupees, `replay`.
+signal stage_result(title: String, medal: String, goals: Array, paid: int, replay: bool)
+## G-143: a meter crossed into the warning band ("stability" or "suspicion").
+signal meter_warning(meter: String)
 
 ## Seconds between a stage's completion toast and the next stage's brief (TS: 4.2 s timers;
 ## here in game time so tests replay it).
@@ -33,6 +48,12 @@ var runner: MissionRunner
 var jobs: JobRunner
 var stories: StoryRunner
 var life: Life
+## G-146: the seeded events of the job or stage being played, and the zones they made.
+var events: DynamicEvents = null
+var _event_zones: Array[Dictionary] = []
+var _event_clock := 0.0
+var _attempt := 0
+var _warned := {"stability": false, "suspicion": false}
 ## Notices waiting for their game time: [{at, title, detail, seconds}].
 var _later: Array[Dictionary] = []
 var _clock := 0.0
@@ -52,7 +73,7 @@ static func open(save_path: String = SaveStore.DEFAULT_PATH, content_path: Strin
 ## Read the save file again and rebuild every runner from it (what reopening the game does).
 func reload() -> void:
 	store.read()
-	runner = MissionRunner.new(content.missions, store.progress())
+	runner = MissionRunner.new(content.missions, store.progress(), content.extras, store.extras())
 	var record: Variant = store.section(SaveStore.JOBS, {})
 	jobs = JobRunner.new(record if record is Dictionary else {})
 	var progress: Variant = store.section(SaveStore.PROGRESS, {})
@@ -66,6 +87,7 @@ func reload() -> void:
 ## Write the stage progress (with the life state), the job record and the hour.
 func save(hour: float = -1.0) -> Error:
 	store.save_progress(runner.progress())
+	store.save_extras(runner.extras_state())
 	var progress: Variant = store.section(SaveStore.PROGRESS, {})
 	store.set_section(SaveStore.PROGRESS, Life.save_with_life(progress, life.state()))
 	store.set_section(SaveStore.JOBS, jobs.record())
@@ -92,7 +114,7 @@ func new_game() -> void:
 func announce_stage() -> void:
 	var m := runner.mission()
 	if m != null:
-		notice.emit("Stage %d: %s" % [m.stage, m.title], m.brief, 5.0)
+		notice.emit("Stage %d: %s" % [m.stage, m.title], brief_for(m), 5.0)
 	else:
 		notice.emit("Free roam", "Every stage is complete. The city is yours.", 4.0)
 
@@ -100,6 +122,7 @@ func announce_stage() -> void:
 ## One fixed step. `impact`: a crash of the player's vehicle this step (> 0), for job bumps.
 func step(dt: float, p: MissionData.PlayerStatus, impact: float = 0.0) -> void:
 	_clock += dt
+	_step_events(dt, p)
 	_flush_later()
 	# A story or a city job puts the stage on hold until it is finished or quit (`Game.fixedUpdate`).
 	if stories.story() != null:
@@ -110,6 +133,7 @@ func step(dt: float, p: MissionData.PlayerStatus, impact: float = 0.0) -> void:
 		_on_job(jobs.update(dt, p.x, p.z, p.mode, p.speed))
 	elif stories.story() == null:
 		_on_stage(runner.update(dt, p))
+		_watch_meters()
 	var o := runner.objective()
 	if o != _last_objective:
 		_last_objective = o
@@ -125,30 +149,248 @@ func _notice_later(delay: float, title: String, detail: String, seconds: float) 
 	_later.append({"at": _clock + delay, "title": title, "detail": detail, "seconds": seconds})
 
 
-func _on_stage(events: Array[Dictionary]) -> void:
-	for e in events:
+func _on_stage(stage_events: Array[Dictionary]) -> void:
+	for e in stage_events:
 		match str(e["type"]):
 			"objective":
 				cue.emit(&"chime")
+			"checkpoint":
+				notice.emit("Checkpoint", "A retry starts here", 2.0)
 			"completed":
-				var m: MissionData.Mission = e["mission"]
-				cue.emit(&"fanfare")
-				var rep := ""
-				if m.reputation > 0:
-					var gained := jobs.gain_reputation(m.reputation)
-					rep = " · reputation +%d" % gained if gained > 0 else ""
-				# Weapons a stage hands over wait for the combat runtime (phase 5).
-				notice.emit("Stage %d complete" % m.stage, "%s · +₹%s%s" % [m.title, rupees(m.reward), rep], 4.0)
-				save()
-				var next := runner.mission()
-				if next != null:
-					_notice_later(NEXT_BRIEF_DELAY, "Stage %d: %s" % [next.stage, next.title], next.brief, 5.0)
+				_on_completed(e)
 			"failed":
 				var fm: MissionData.Mission = e["mission"]
 				cue.emit(&"fail")
-				notice.emit(str(e["reason"]), "%s starts again" % fm.title, 3.5)
+				var cp := int(e.get("checkpoint", 0))
+				notice.emit(str(e["reason"]), "%s: back to the checkpoint" % fm.title if cp > 0 else "%s starts again" % fm.title, 3.5)
+				retry_offered.emit(str(e["reason"]), str(e.get("reason_id", "")), cp)
+			"forwarded":
+				cue.emit(&"fail")
+				notice.emit(str(e["reason"]), "%s · half pay now" % str(e["label"]) if float(e["scale"]) <= 0.5 else str(e["label"]), 4.0)
+			"choice":
+				cue.emit(&"chime")
+				var asked := runner.objective()
+				choice_asked.emit(asked.label if asked != null else "", e["options"])
+			"chosen":
+				var opt: Dictionary = e["option"]
+				cue.emit(&"click")
+				var rep := int(opt.get("reputation", 0))
+				if rep > 0:
+					jobs.gain_reputation(rep)
+				var heat := int(opt.get("wanted", 0))
+				if heat > 0:
+					heat_raised.emit(heat)
+				var gain := int(opt.get("reward", 0))
+				notice.emit(str(opt.get("label", "")), "+₹%s" % rupees(gain) if gain > 0 else "", 3.0)
+				save()
 			"allDone":
 				_notice_later(NEXT_BRIEF_DELAY, "All stages complete", "Free roam: the city is yours.", 6.0)
+
+
+func _on_completed(e: Dictionary) -> void:
+	var m: MissionData.Mission = e["mission"]
+	var medal := str(e.get("medal", ""))
+	var replay := bool(e.get("replay", false))
+	cue.emit(&"fanfare")
+	var rep := ""
+	if m.reputation > 0 and not replay:
+		var gained := jobs.gain_reputation(m.reputation)
+		rep = " · reputation +%d" % gained if gained > 0 else ""
+	var paid := int(e.get("paid", m.reward))
+	# Weapons a stage hands over wait for the combat runtime (phase 5).
+	var head := "Stage %d complete" % m.stage if m.kind == "stage" and not replay else "%s complete" % m.title
+	notice.emit(head, "%s · +₹%s%s%s" % [m.title, rupees(paid), rep, " · %s medal" % medal if medal != "" else ""], 4.0)
+	if not m.goals.is_empty():
+		var rows: Array[Dictionary] = []
+		var met: Array = e.get("goals_met", [])
+		for g in m.goals:
+			rows.append({"label": str(g.get("label", "")), "met": met.has(str(g.get("id", "")))})
+		stage_result.emit(m.title, medal, rows, paid, replay)
+		if medal == "gold":
+			cue.emit(&"fanfare")
+	end_events()
+	save()
+	var next := runner.mission()
+	if next != null and not runner.is_replay() and m.kind == "stage" and not replay:
+		_notice_later(NEXT_BRIEF_DELAY, "Stage %d: %s" % [next.stage, next.title], brief_for(next), 5.0)
+
+
+## The mission's brief with the lines its set choice flags add (a later stage reacting).
+func brief_for(m: MissionData.Mission) -> String:
+	var text := m.brief
+	for flag: Variant in m.brief_if:
+		if runner.has_flag(str(flag)):
+			text += " " + str(m.brief_if[flag])
+	return text
+
+
+## The player chose option `id` of the question being asked.
+func choose(id: String) -> void:
+	_on_stage(runner.choose(id))
+
+
+## RETRY: nothing to rebuild (the runner is at the checkpoint); START OVER: from the first objective.
+func start_over() -> void:
+	runner.restart_stage()
+	end_events()
+
+
+## Where a retry puts the player: {x, z, mode} of the checkpoint, or {} for the stage's start.
+func checkpoint_place() -> Dictionary:
+	return runner.checkpoint_place()
+
+
+# --- Dynamic events (G-146) ---------------------------------------------------------------------
+
+func _wants_events(p: MissionData.PlayerStatus) -> bool:
+	var j := jobs.job()
+	if j != null:
+		return jobs.started()
+	var m := runner.mission()
+	return stories.story() == null and m != null and m.dynamic and runner.objective() != null and p.mode != "foot"
+
+
+func _step_events(dt: float, p: MissionData.PlayerStatus) -> void:
+	if not _wants_events(p):
+		if events != null:
+			end_events()
+		return
+	if events == null:
+		_attempt += 1
+		var j := jobs.job()
+		var id: String = j.id if j != null else runner.mission().id
+		var fares := (j != null and (j.kind == "cab" or j.kind == "bus" or j.kind == "ambulance")) or (j == null and runner.fare() != null)
+		events = DynamicEvents.new("%s#%d" % [id, _attempt], fares)
+		_event_clock = 0.0
+	_event_clock += dt
+	var started := events.step(dt, false)
+	if not events.last_ended.is_empty():
+		_end_event(events.last_ended)
+	if not started.is_empty():
+		_begin_event(started, p)
+	_event_zones = _event_zones.filter(func(z: Dictionary) -> bool: return float(z["until"]) > _event_clock)
+
+
+func _begin_event(e: Dictionary, p: MissionData.PlayerStatus) -> void:
+	var seconds := float(e.get("time", 0.0))
+	if seconds != 0.0:
+		if jobs.job() != null:
+			jobs.extend(seconds)
+		else:
+			runner.extend_time(seconds)
+	var kind := str(e["kind"])
+	var tgt := _event_target(p)
+	if tgt != Vector2.INF and (kind == "detour" or kind == "procession" or kind == "bandh"):
+		var from := Vector2(p.x, p.z)
+		var ahead := from + (tgt - from).normalized() * minf(140.0, from.distance_to(tgt) * 0.5)
+		var zone := HazardZone.new()
+		zone.kind = "strike" if kind == "bandh" else ("procession" if kind == "procession" else "strike")
+		zone.label = {"detour": "Road blocked", "procession": "Procession", "bandh": "Bandh"}[kind]
+		zone.x = ahead.x
+		zone.z = ahead.y
+		zone.radius = 40.0 if kind == "bandh" else (30.0 if kind == "procession" else 18.0)
+		zone.max_radius = zone.radius
+		zone.blocks = kind != "procession"
+		zone.inside_scale = 0.4
+		zone.start = _event_clock
+		_event_zones.append({"zone": zone, "until": _event_clock + float(e["duration"]), "kind": kind})
+	cue.emit(&"chime")
+	notice.emit({"detour": "Detour", "procession": "Procession", "rain": "Rain", "bandh": "Bandh", "passenger_change": "Change of plan"}.get(kind, "Event"), str(e["text"]), 4.0)
+	event_started.emit(e)
+
+
+func _end_event(e: Dictionary) -> void:
+	_event_zones = _event_zones.filter(func(z: Dictionary) -> bool: return str(z["kind"]) != str(e["kind"]))
+	event_ended.emit(e)
+
+
+## Stop the run's events and forget their zones (the job or stage is over).
+func end_events() -> void:
+	if events != null and not events.active().is_empty():
+		event_ended.emit(events.active())
+	events = null
+	_event_zones.clear()
+
+
+func _event_target(p: MissionData.PlayerStatus) -> Vector2:
+	var t := job_stop_target() if jobs.job() != null else _objective_target(runner.objective(), Vector2(p.x, p.z), [])
+	return Vector2(float(t["x"]), float(t["z"])) if not t.is_empty() else Vector2.INF
+
+
+## What the hazards do at a point now (the stage's own zones and the events'): the slowest speed
+## scale, stalled if any stalls. {inside, speed_scale, stalled, depth}.
+func hazard_effect(x: float, z: float, rain: float) -> Dictionary:
+	var out: Dictionary = {"inside": false, "speed_scale": 1.0, "stalled": false, "depth": 0.0}
+	var all := hazard_zones()
+	for h in all:
+		var zone: HazardZone = h["zone"]
+		var e := zone.effect(x, z, float(h["t"]), rain)
+		if bool(e["inside"]):
+			out["inside"] = true
+			out["speed_scale"] = minf(float(out["speed_scale"]), float(e["speed_scale"]))
+			out["stalled"] = bool(out["stalled"]) or bool(e["stalled"])
+			out["depth"] = maxf(float(out["depth"]), float(e["depth"]))
+	return out
+
+
+## Every zone to draw or to apply: [{zone: HazardZone, t: its clock}].
+func hazard_zones() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if jobs.job() == null and stories.story() == null:
+		for z in runner.hazards():
+			out.append({"zone": z, "t": runner.objective_clock()})
+	for z in _event_zones:
+		out.append({"zone": z["zone"], "t": _event_clock})
+	return out
+
+
+func _watch_meters() -> void:
+	var o := runner.objective()
+	var stab := o != null and o.type == "fragile"
+	var low := stab and runner.stability().is_warning()
+	if low and not bool(_warned["stability"]):
+		meter_warning.emit("stability")
+	_warned["stability"] = low
+	var tw := runner.tail()
+	var high := tw != null and tw.is_warning()
+	if high and not bool(_warned["suspicion"]):
+		meter_warning.emit("suspicion")
+	_warned["suspicion"] = high
+
+
+# --- Stages tab: replay and extras (G-142) ---------------------------------------------------------
+
+## One row per stage that can be played again or is an extra: {id, title, detail, meta, disabled}.
+func stage_rows() -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	var extras_done: Array = runner.extras_state()["extrasDone"]
+	for m in runner.replayable():
+		var medal := runner.medal_of(m.id)
+		var done := runner.stages_done() > 0 and m.kind == "stage"
+		var pay := "up to ₹%s" % rupees(m.reward) if m.kind == "extra" and not extras_done.has(m.id) else "replay pays ₹%s" % rupees(floori(float(m.reward) * MissionRunner.REPLAY_SCALE))
+		var meta := "%s · %s%s" % ["Mission" if m.kind == "extra" else "Stage %d" % m.stage, pay, " · %s medal" % medal if medal != "" else ""]
+		var disabled := ""
+		if jobs.job() != null:
+			disabled = "Finish or quit the current job first"
+		elif runner.is_replay() and runner.mission().id == m.id:
+			disabled = "Playing now"
+		rows.append({"id": m.id, "title": m.title, "detail": brief_for(m), "meta": meta, "disabled": disabled, "done": done})
+	return rows
+
+
+## Play a stage again, or an extra, from the Stages tab; false if it is not open.
+func play_stage(id: String) -> bool:
+	if jobs.job() != null or not runner.play(id):
+		return false
+	end_events()
+	var m := runner.mission()
+	notice.emit(m.title, brief_for(m), 5.0)
+	return true
+
+
+func leave_stage() -> void:
+	runner.leave_replay()
+	end_events()
 
 
 func _on_job(events: Array[Dictionary]) -> void:
@@ -244,8 +486,13 @@ func _objective_target(o: MissionData.Objective, at: Vector2, vehicles: Array) -
 	if o == null:
 		return {}
 	match o.type:
-		"reach", "defeat", "activity":
+		"reach", "defeat", "activity", "fragile", "hazard_zone":
 			return {"x": o.x, "z": o.z, "radius": o.radius}
+		"tail":
+			var t: Variant = runner.tail_target()
+			return {"x": float(t["x"]), "z": float(t["z"]), "radius": o.near} if t is Dictionary else {}
+		"choice":
+			return {}
 		"evade":
 			# Losing the police has no marker: the stars on the HUD show how it is going.
 			return {}
@@ -320,7 +567,13 @@ func view(mode: String, distance: float) -> Dictionary:
 		note = runner.fare().note()
 	if note == "" and runner.goods() != null:
 		note = runner.goods().note()
-	return _panel("Stage %d · %s" % [m.stage, m.title], "%s · %s" % [o.label, note] if note != "" else o.label, distance, runner.seconds_left())
+	var title := "Stage %d · %s" % [m.stage, m.title] if m.kind == "stage" else "%s · %s" % ["Replay" if runner.is_replay() and runner.stages_done() > 0 and m.kind == "stage" else "Mission", m.title]
+	var panel := _panel(title, "%s · %s" % [o.label, note] if note != "" else o.label, distance, runner.seconds_left())
+	panel["stability"] = runner.stability().value if o.type == "fragile" else -1.0
+	panel["stability_label"] = "Patient" if o.ruin == "patient_lost" else "Cargo"
+	panel["suspicion"] = runner.tail().suspicion if runner.tail() != null else -1.0
+	panel["hazard"] = bool(runner.hazard_effect()["inside"])
+	return panel
 
 
 static func _panel(title: String, text: String, distance: float, seconds: Variant) -> Dictionary:

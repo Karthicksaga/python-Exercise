@@ -6,6 +6,8 @@ class_name GameContent
 extends RefCounted
 
 const DEFAULT_PATH := "res://src/missions/content/content.json"
+const V2_PATH := "res://src/missions/content/missions_v2.json"
+const ANCHORS_PATH := "res://src/missions/content/anchors.json"
 const FORMAT := "chennai-rules-content"
 const VERSION := 1
 
@@ -23,6 +25,10 @@ var pickups: Array[Dictionary] = []
 ## short stories offered at them (`places.ts`, baked with the rest; G-131).
 var places: Array[Dictionary] = []
 var stories: Array[StoryRunner.Story] = []
+## G-145: the extra missions (docs/mission-design.md §4) and the places and routes they were
+## built from: {anchors: {name: {x, z, road, district, kerb}}, paths: {name: [{x, z}]}}.
+var extras: Array[MissionData.Mission] = []
+var anchors: Dictionary = {}
 ## Why loading failed, or "".
 var error := ""
 
@@ -38,6 +44,8 @@ static func load_file(path: String = DEFAULT_PATH) -> GameContent:
 		c.error = "%s is not a JSON object" % path
 		return c
 	c._fill(data)
+	if path == DEFAULT_PATH:
+		c._fill_v2(V2_PATH, ANCHORS_PATH)
 	return c
 
 
@@ -68,6 +76,21 @@ func _fill(d: Dictionary) -> void:
 		places.append(p)
 	for s: Dictionary in d.get("stories", []):
 		stories.append(_story(s))
+
+
+func _fill_v2(missions_path: String, anchors_path: String) -> void:
+	var v2: Variant = JSON.parse_string(FileAccess.get_file_as_string(missions_path))
+	if not (v2 is Dictionary):
+		error = "cannot read %s" % missions_path
+		return
+	var d2: Dictionary = v2
+	for p: Dictionary in d2.get("parking", []):
+		parking.append(p)
+	for m: Dictionary in d2.get("missions", []):
+		extras.append(MissionData.Mission.from_dict(m))
+	var a: Variant = JSON.parse_string(FileAccess.get_file_as_string(anchors_path))
+	if a is Dictionary:
+		anchors = a
 
 
 static func _story(d: Dictionary) -> StoryRunner.Story:
@@ -114,3 +137,14 @@ func parked(id: String) -> Dictionary:
 		if p["id"] == id:
 			return p
 	return {}
+
+
+## Any stage or extra by id.
+func any_mission(id: String) -> MissionData.Mission:
+	var m := mission(id)
+	if m != null:
+		return m
+	for e in extras:
+		if e.id == id:
+			return e
+	return null

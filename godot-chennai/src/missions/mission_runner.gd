@@ -38,6 +38,8 @@ var _wanted_seen := false
 var _extras: Array[MissionData.Mission] = []
 var _override: MissionData.Mission = null
 var _checkpoint := 0
+var _checkpoint_at: Dictionary = {}
+var _last_status: Dictionary = {}
 var _reward_scale := 1.0
 var _stats := MissionStats.new()
 var _stability := Stability.new()
@@ -207,6 +209,7 @@ func update(dt: float, p: MissionData.PlayerStatus) -> Array[Dictionary]:
 
 
 func _update(dt: float, p: MissionData.PlayerStatus) -> Array[Dictionary]:
+	_last_status = {"x": p.x, "z": p.z, "mode": p.mode}
 	var events: Array[Dictionary] = []
 	var m := mission()
 	var o := objective()
@@ -217,7 +220,11 @@ func _update(dt: float, p: MissionData.PlayerStatus) -> Array[Dictionary]:
 	_stats.max_wanted = maxi(_stats.max_wanted, p.wanted)
 	if p.crash > 0.0:
 		_stats.damage_taken += 1
-	if p.horn and p.in_quiet_zone:
+	var quiet := p.in_quiet_zone
+	for q in m.quiet_zones:
+		if RulesMath.hypot(p.x - float(q["x"]), p.z - float(q["z"])) < float(q["radius"]):
+			quiet = true
+	if p.horn and quiet:
 		_stats.horns_in_quiet_zone += 1
 	if o.type == "evade" and p.wanted > 0:
 		_wanted_seen = true
@@ -277,8 +284,11 @@ func _update(dt: float, p: MissionData.PlayerStatus) -> Array[Dictionary]:
 func _complete_objective(m: MissionData.Mission, o: MissionData.Objective, events: Array[Dictionary], jump: int) -> void:
 	_riders = aboard()
 	var next := jump if jump >= 0 else _objective_index + 1
+	if jump < 0 and o.next != "":
+		next = m.objectives.size() if o.next == "end" else maxi(objective_index_of(o.next), _objective_index + 1)
 	if o.checkpoint and next < m.objectives.size():
 		_checkpoint = next
+		_checkpoint_at = _last_status
 		events.append({"type": "checkpoint", "index": next, "label": m.objectives[next].label})
 	_objective_index = next
 	if _objective_index < m.objectives.size():
@@ -322,6 +332,7 @@ func _is_done(m: MissionData.Mission) -> bool:
 ## A fresh attempt: no checkpoint, full reward, new stats and meters.
 func _reset_attempt() -> void:
 	_checkpoint = 0
+	_checkpoint_at = {}
 	_reward_scale = 1.0
 	_stats = MissionStats.new()
 	_stability.reset()
@@ -346,6 +357,11 @@ func _fail(m: MissionData.Mission, reason: MissionFailure.Reason, events: Array[
 	_stability.reset()
 	_arm_timer()
 	events.append({"type": "failed", "mission": m, "reason": text, "reason_id": MissionFailure.id_of(reason), "checkpoint": _checkpoint})
+
+
+## Where the player was when the last checkpoint was reached: {x, z, mode}, or {}.
+func checkpoint_place() -> Dictionary:
+	return _checkpoint_at if _checkpoint > 0 else {}
 
 
 func objective_index_of(id: String) -> int:
@@ -427,7 +443,8 @@ func choose(id: String) -> Array[Dictionary]:
 		if str(opt.get("flag", "")) != "":
 			_flags[str(opt["flag"])] = true
 		events.append({"type": "chosen", "option": opt})
-		var jump := objective_index_of(str(opt.get("next", "")))
+		var to := str(opt.get("next", ""))
+		var jump := m.objectives.size() if to == "end" else objective_index_of(to)
 		_complete_objective(m, o, events, jump)
 		_emit(events)
 		return events
@@ -574,3 +591,9 @@ func reset() -> void:
 	_mission_index = 0
 	_objective_index = 0
 	_arm_timer()
+
+
+## A dynamic event gives (or takes) seconds on the objective's clock, when it has one.
+func extend_time(seconds: float) -> void:
+	if _timed:
+		_time_left += seconds
