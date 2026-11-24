@@ -883,6 +883,69 @@ and freeing a vehicle left far behind), `scene/test_game_vehicles.gd` (end to en
 - Seen headless only; not on a phone, no screenshots (nothing new is drawn).
 
 
+## Performance (G-250…G-259, branch `agent/godot-perf`), 24 Nov 2026
+**Where things are.** `src/game_engine/quality/` (`QualitySettings` presets, auto-detect, save
+section; `QualityApplier`; `FrameStats` and the verdict), `src/app/perf/` (`PerfWiring`: applies
+presets to the game, frame stats, probes, perf log, pause-menu summary; `FeatureSwitches`),
+`src/ui/debug_hud/perf_overlay.gd` (overlay and switch panel), `tools/compat_preset.py` (the
+Compatibility APK's preset, made in CI), `docs/performance.md` (owner instructions, bisect, costs,
+presets). Tests: `tests/unit/test_quality_settings.gd`, `tests/scene/test_perf_wiring.gd`.
+
+**How other agents use it.**
+- A new optional system: add a row to `FeatureSwitches.ALL` and a branch in `apply(id)` that
+  hides or pauses it (never frees); it then appears in the panel and in safe mode.
+- A new quality knob: a key in all three rows of `QualitySettings.TABLE` (the unit test checks
+  every row has every key and that numbers rise Low → High), applied in `PerfWiring.apply()`.
+- Merged chunk meshes are on render layer 2 (`ChunkBuilder.RENDER_LAYER`); any light that should
+  not light the whole city leaves that bit out of its cull mask.
+- **Graphics row (for agent/godot-ui's scrollable settings list):** `PerfWiring._add_rows` adds the
+  setting `&"Quality"` to the pause menu and the title SETTINGS through `add_setting(id, label,
+  press)`. Its label is two lines: `QualitySettings.row_label()` ("Graphics: Auto (Low)") and
+  `QualitySettings.explain()` (what the level trades). A press runs `next_preset()`: Auto → Low →
+  Medium → High → Auto. Auto is the detected level under `auto_cap`; in play it drops one level
+  when the frame rate stays under 24 fps for 10 s after a 5 s warm-up (toast through the mission
+  HUD) and saves the cap, so the next start begins there. A chosen level is never dropped.
+  The same file adds `&"PerfOverlay"` (both menus) and `&"PerfSummary"` (pause menu: copies the log).
+- agent/godot-ui's DebugSettings: when it lands, read the overlay's on/off from it in
+  `PerfWiring._ready`/`_on_settings` instead of `QualitySettings.overlay` (one line).
+- Measuring: the scratch harnesses (boot `Main`, teleport, warm up, measure) are described in
+  `docs/performance.md`; they are not committed.
+
+**Weak or not done.**
+- Nothing here ran on a phone. GPU costs are estimates from llvmpipe; the overlay and log are how
+  the owner's phone will tell us. Whether the Vulkan or the GL APK is faster on the Adreno 613 is
+  unknown until the owner tries both.
+- Draw calls were not halved (about 110 → 90-120 at T. Nagar): Low's gain is per pixel. Halving
+  them needs fewer chunk layers or merging materials (not done).
+- Streaming stalls: every main-thread streaming step stays under a millisecond here; the 30-230 ms
+  stalls measured on the loaded build machine fell in the bookkeeping part together with OS
+  pre-emption of a control loop, so their cause on the phone is not proven. The hitch counter and
+  its breakdown line in the overlay and log will say what a slow frame was made of on the phone.
+- Godot's thread priorities do not reach Android's scheduler; Low builds one chunk at a time.
+- The feature-switch cost measurement is in real time (an overlay, not a test).
+- Figures beyond the animate reach slide in a held pose (by design, the coordinator's rule).
+
+**Second round (G-340…G-345), after the owner's phone data (POCO M6 Pro, Adreno 613, build afed12f:
+High, 16-19 fps, GPU-bound at 56 ms GPU, 2460x1080 with MSAA 2x).**
+- Why High: not the detection table (it gives Low for "Adreno (TM) 613", now tested with that string
+  and in a booted game); the level was saved by an earlier build whose row cycled Low → Medium → High
+  with no Auto. The save section is now v2: old saves keep their switches, never their level.
+- Low now cuts pixels: 65 % bilinear, no MSAA, 18 m hard shadow, per-vertex lighting on the city's
+  shared materials and a vertex-lit copy of the ground and water shaders. Numbers in
+  `docs/performance.md` (lavapipe, Mobile renderer, Vulkan).
+- City materials have no specular term at any level (suspected cause of the white dots on glass and
+  walls; not reproduced here, needs the phone).
+- The overlay sits under the title and pause menus (layer 4) and hides while paused.
+- Hitch breakdown (`FrameTimeline`, `ThreadClock`): every hitch line now says which part of the frame
+  took the time, what was created, freed or uploaded, and whether the main thread was working or
+  waiting for a core. The overlay and the log tally the causes.
+- `AiPopulation.adopt` moved off the main thread (it was the 70-340 ms traffic hitch every 500 m and
+  at every jump).
+- **For agent/godot-roads:** `CityWorld.road_extras` is not on this branch yet; `PerfWiring` sets it
+  from the preset when the property exists (see the code in `apply`), so the wiring takes effect when
+  both branches are merged.
+
+
 ## Crashes: bands, effects, shake (agent/godot-crash, G-270…G-275), 24 Nov 2026
 **Done (yard and unit tests, desktop headless; not on a phone).** The owner's bug (hitting
 another bike threw the rider far) was AI traffic being kinematic: Jolt stopped the player dead as
@@ -909,39 +972,6 @@ the honk hook); people get no reaction hook (CityLife has none). Smoke is grey a
 (cheap, reads as smoke at a distance, blobby up close). No dent geometry: damage is paint, sag and
 smoke. Effect cost measured on the desktop only (G-273). The player still stops dead against a
 light traffic vehicle (the solver's wall); only the judgement is shared by mass.
-## Performance (G-250…G-259, branch `agent/godot-perf`), 24 Nov 2026
-**Where things are.** `src/game_engine/quality/` (`QualitySettings` presets, auto-detect, save
-section; `QualityApplier`; `FrameStats` and the verdict), `src/app/perf/` (`PerfWiring`: applies
-presets to the game, frame stats, probes, perf log, pause-menu summary; `FeatureSwitches`),
-`src/ui/debug_hud/perf_overlay.gd` (overlay and switch panel), `tools/compat_preset.py` (the
-Compatibility APK's preset, made in CI), `docs/performance.md` (owner instructions, bisect, costs,
-presets). Tests: `tests/unit/test_quality_settings.gd`, `tests/scene/test_perf_wiring.gd`.
-
-**How other agents use it.**
-- A new optional system: add a row to `FeatureSwitches.ALL` and a branch in `apply(id)` that
-  hides or pauses it (never frees); it then appears in the panel and in safe mode.
-- A new quality knob: a key in all three rows of `QualitySettings.TABLE` (the unit test checks
-  every row has every key and that numbers rise Low → High), applied in `PerfWiring.apply()`.
-- Merged chunk meshes are on render layer 2 (`ChunkBuilder.RENDER_LAYER`); any light that should
-  not light the whole city leaves that bit out of its cull mask.
-- agent/godot-ui's DebugSettings: when it lands, read the overlay's on/off from it in
-  `PerfWiring._ready`/`_on_settings` instead of `QualitySettings.overlay` (one line).
-- Measuring: the scratch harnesses (boot `Main`, teleport, warm up, measure) are described in
-  `docs/performance.md`; they are not committed.
-
-**Weak or not done.**
-- Nothing here ran on a phone. GPU costs are estimates from llvmpipe; the overlay and log are how
-  the owner's phone will tell us. Whether the Vulkan or the GL APK is faster on the Adreno 613 is
-  unknown until the owner tries both.
-- Draw calls were not halved (about 110 → 90-120 at T. Nagar): Low's gain is per pixel. Halving
-  them needs fewer chunk layers or merging materials (not done).
-- Streaming stalls: every main-thread streaming step stays under a millisecond here; the 30-230 ms
-  stalls measured on the loaded build machine fell in the bookkeeping part together with OS
-  pre-emption of a control loop, so their cause on the phone is not proven. The hitch counter and
-  its breakdown line in the overlay and log will say what a slow frame was made of on the phone.
-- Godot's thread priorities do not reach Android's scheduler; Low builds one chunk at a time.
-- The feature-switch cost measurement is in real time (an overlay, not a test).
-- Figures beyond the animate reach slide in a held pose (by design, the coordinator's rule).
 
 **Update (settings and the top-right row, G-293).** Merged `agent/godot-perf`; the pause menu and the
 title both carry Graphics and Performance overlay rows (`PerfWiring._add_rows`) and both lists scroll

@@ -11,6 +11,9 @@ extends Node3D
 ## camera, no sky reflections or radiance, rain one draw call (none when dry), lamp heads one
 ## draw call, at most six omni lights.
 
+## The last night value given to the shaders (0 day, 1 night). Read this, never
+## `global_shader_parameter_get`: on Vulkan that waits for the render thread (an editor-only call).
+static var night_level: float = 0.0
 const SKY_SHADER := preload("res://src/game_engine/environment/sky.gdshader")
 ## Light units: the Three.js intensities and Godot's energies differ by about this much for the
 ## same picture (tuned on the Compatibility screenshots).
@@ -144,6 +147,7 @@ func _apply(force: bool) -> void:
 	_sky_material.set_shader_parameter(&"moon_dir", look.moon)
 	_sky_material.set_shader_parameter(&"moonlight", look.moonlight)
 	RenderingServer.global_shader_parameter_set(WeatherService.NIGHT_PARAM, look.night)
+	night_level = look.night
 	_apply_wet(wet)
 
 

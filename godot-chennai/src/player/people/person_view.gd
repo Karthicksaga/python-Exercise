@@ -117,7 +117,8 @@ func advance(dt: float, distance: float, in_view: bool = true) -> void:
 		_shadow = shadow
 		_body_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadow else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_pending += dt
-	if not in_view or distance > animate_reach:
+	var knocked := _knock != null and _knock.active()
+	if not knocked and (not in_view or distance > animate_reach):
 		# Hold the pose; the clip resumes where the time says when it is seen again close up.
 		_pending = fmod(_pending, 4.0)
 		return

@@ -42,6 +42,10 @@ static func _vertex_coloured(roughness: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.vertex_color_use_as_albedo = true
 	m.roughness = roughness
+	# No specular term on the city's rough surfaces (G-343): at roughness 0.8-1 it adds almost
+	# nothing by day, costs a GGX evaluation a pixel, and is the suspect for the single-pixel white
+	# dots the owner's Adreno 613 drew on window glass and walls (half-precision specular).
+	m.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	return m
 
@@ -97,6 +101,36 @@ static func _fallback_ground() -> ImageTexture:
 	for i in colours.size():
 		img.fill_rect(Rect2i(i * 4, 0, 4, 4), colours[i])
 	return ImageTexture.create_from_image(img)
+
+
+## Lighting per vertex instead of per pixel (the Low preset, G-342): the city is flat walls,
+## roofs and ground whose normals do not change across a face, so the sun and the ambient light
+## look the same; the pixel shaders lose their lighting loop and the specular term (the glossy
+## glint on the ground and walls). Shadows are still sampled per pixel. Live: the ground and water
+## swap to a vertex-lit copy of their shader (made once, on first use).
+var flat: bool = false
+static var _vertex_shaders: Dictionary[Shader, Shader] = {}
+
+
+func set_flat(on: bool) -> void:
+	if on == flat:
+		return
+	flat = on
+	var mode := BaseMaterial3D.SHADING_MODE_PER_VERTEX if on else BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	for m: StandardMaterial3D in [walls, roofs, kit, objects, foliage, landmark, decks]:
+		if m != null:
+			m.shading_mode = mode
+	ground.shader = vertex_lit(GROUND_SHADER) if on else GROUND_SHADER
+	water.shader = vertex_lit(WATER_SHADER) if on else WATER_SHADER
+
+
+## A copy of `shader` lit per vertex, without the specular term (cached).
+static func vertex_lit(shader: Shader) -> Shader:
+	if not _vertex_shaders.has(shader):
+		var copy := Shader.new()
+		copy.code = shader.code.replace("render_mode ", "render_mode vertex_lighting, ").replace("specular_schlick_ggx", "specular_disabled")
+		_vertex_shaders[shader] = copy
+	return _vertex_shaders[shader]
 
 
 ## 0 by day, 1 at night: lit windows and open shops glow.

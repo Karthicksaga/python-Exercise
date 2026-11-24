@@ -99,6 +99,13 @@ var _quit := false
 ## A step was handed to the thread and is not collected yet.
 var _busy := false
 var _area_task: BackgroundTask = null
+## A new area waiting to be adopted, and the one the AI thread is adopting in the running step:
+## `AiPopulation.adopt` moves every agent onto the new graphs (70-340 ms on the desktop's main
+## thread, measured, G-344), so it runs on the AI thread before that step, never on the frame.
+var _next_area: AiArea = null
+var _adopting: AiArea = null
+## A step that adopts an area may lag this many physics frames before the frame waits for it.
+const ADOPT_PATIENCE := 240
 var _stations := PackedVector2Array()
 var _ready_cells: Dictionary[Vector2i, bool] = {}
 var _ready_next: Dictionary[Vector2i, bool] = {}
@@ -214,6 +221,19 @@ func prepare(start: Vector2) -> String:
 	return ""
 
 
+## On the AI thread: take the new area, then step as usual.
+func _adopt_and_step(next: AiArea, dt: float, focus: Vector2, h: float, obstacles: PackedVector3Array, siren: Variant) -> void:
+	population.adopt(next, focus)
+	population.step(dt, focus, h, obstacles, siren)
+
+
+## Back on the main thread after a step that adopted an area: the signal heads follow it.
+func _adopted() -> void:
+	if _adopting != null:
+		heads.use(_adopting.signals)
+		_adopting = null
+
+
 ## The AI thread: one step per `_go`, then `_done`.
 func _run_steps() -> void:
 	while true:
@@ -263,20 +283,19 @@ func _physics_process(delta: float) -> void:
 	if stepping and _busy:
 		if _done.try_wait():
 			_busy = false
-		elif _frame - _step_frame < ai_patience:
+			_adopted()
+		elif _frame - _step_frame < (ADOPT_PATIENCE if _adopting != null else ai_patience):
 			stepping = false
 			stats["late"] = int(stats.get("late", 0)) + 1
 		else:
 			_done.wait()
 			_busy = false
+			_adopted()
 	var t1 := Time.get_ticks_usec()
 	if stepping:
 		if _area_task != null and _area_task.is_done():
-			var next: AiArea = _area_task.result()
+			_next_area = _area_task.result()
 			_area_task = null
-			if next != null:
-				population.adopt(next, focus)
-				heads.use(next.signals)
 		between_steps.emit(_since)
 		_snapshot()
 	_sync(delta, focus)
@@ -292,12 +311,17 @@ func _physics_process(delta: float) -> void:
 			population.traffic_cap = traffic_cap
 			population.walker_cap = walker_cap
 			population.crowds_on = crowds_on
-			_work = population.step.bind(_step_dt, focus, h, obstacles, siren)
+			if _next_area != null:
+				_adopting = _next_area
+				_next_area = null
+				_work = _adopt_and_step.bind(_adopting, _step_dt, focus, h, obstacles, siren)
+			else:
+				_work = population.step.bind(_step_dt, focus, h, obstacles, siren)
 			_step_frame = _frame
 			_busy = true
 			_go.post()
 		_since = 0.0
-		if _area_task == null and population.needs_area(focus):
+		if _area_task == null and _next_area == null and _adopting == null and population.needs_area(focus):
 			var source := _source
 			var stations := _stations
 			_area_task = BackgroundTask.start(func() -> AiArea: return AiArea.build(source, focus, stations))

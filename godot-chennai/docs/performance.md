@@ -20,8 +20,9 @@ the owner does on the phone. Decisions G-250…G-259 (`technical-decisions.md`).
 4. Pause → the row "Perf: … (tap: copy log)" copies the whole log (also saved every 10 s in the
    app's data as `perf.log`). Paste it back to us, once for each APK, at the same places: the
    morning street with traffic, the 18:40 long street, night driving.
-5. Pause → "Graphics: Low/Medium/High" changes the preset live. The first start picks one by
-   itself (an Adreno 613 starts at Low).
+5. Pause → "Graphics: Auto (Low)" changes the level live: Auto → Low → Medium → High → Auto.
+   Auto picks from the GPU name, the memory and the screen (an Adreno 613 starts at Low), and
+   drops one level by itself if play stays under 24 fps for 10 s (a message says so).
 
 ## How it is measured here (and what that is worth)
 
@@ -105,21 +106,39 @@ PowerVR, and anything under 7 GiB of memory start at Low; Adreno 640s, 700-729 a
 at Medium (Low on screens over 3 Mpx); Adreno 650/660, 730+, Mali-G710+, Immortalis, Xclipse and
 desktop GPUs at High. Headless runs use High, so tests and tools measure the full game.
 
-## Before and after (same harness, T. Nagar, xvfb 915x412)
+## Before and after (same harness, T. Nagar)
+
+Rendering under llvmpipe (xvfb, Compatibility, 915x412): ms per frame, draw calls, primitives,
+objects, shadow casters. "After" is the branch with every fix of G-256…G-259.
 
 | Hour | Build | llvmpipe ms | Draws | Primitives | Objects | Shadow casters |
 |---|---|---|---|---|---|---|
 | 08:30 | HEAD 7598647 | 697 | 111 | 265k | 230 | 166 |
-| 08:30 | this branch, High | 635 | 113 | 256k | 232 | 163 |
-| 08:30 | this branch, Low | 135 | 94 | 237k | 213 | 124 |
+| 08:30 | after, High | 654 | 116 | 262k | 235 | 163 |
+| 08:30 | after, Medium | 142 | 119 | 235k | 238 | 144 |
+| 08:30 | after, Low | 105 | 93 | 229k | 212 | 110 |
 | 18:40 | HEAD 7598647 | 1378 | 108 | 244k | 227 | 167 |
-| 18:40 | this branch, High | 800 | 84 | 225k | 203 | 162 |
-| 18:40 | this branch, Low | 78 | 89 | 191k | 209 | 110 |
+| 18:40 | after, High | 662 | 128 | 242k | 247 | 162 |
+| 18:40 | after, Medium | 165 | 118 | 206k | 237 | 144 |
+| 18:40 | after, Low | 78-139 (two runs) | 102 | 195k | 221 | 110 |
 
-(First pass of the fixes; the street lights' cull mask and the prop shadows came after these
-runs: see the handoff for the last numbers.) Low draws about the same number of things: the
-gain is per pixel (resolution, MSAA, lights, shadow reach). Draw calls stay far under the phone
-budget of the brief (230-300); halving them needs fewer chunk layers, which was not done.
+Main thread (headless, `--fixed-fps 60`, 900 frames, the box mostly quiet; script, physics and
+engine work, no drawing):
+
+| Place, hour | HEAD | after, High | after, Low | AI step HEAD → Low |
+|---|---|---|---|---|
+| T. Nagar 18:40 | 7.9 ms | 6.5 ms | 3.3 ms | 6.1 → 1.8 ms |
+| Mylapore 08:30 | 4.6 ms | 3.8 ms | 2.0 ms | 3.3 → 1.6 ms |
+| Mylapore 18:40 | 2.8 ms | 3.6 ms (noise) | 1.7 ms | 1.8 → 1.6 ms |
+
+Driving the focus at 15 m/s for 40 s (two headings): the streamer's main-thread work per frame
+peaked at 4.0-5.1 ms before and 2.7-4.2 ms after on High, 1.3-13 ms on Low (one collider add);
+every single step stayed under 4 ms. Frames over 50 ms: 0-3 before, 1-3 after on High, 0 on Low;
+in those frames the scripts took 1-3 ms (the hitch line), so the rest was the engine or the OS.
+
+Low draws about the same number of things: its gain is per pixel (resolution, MSAA, shadow
+reach and casters, lights). Draw calls stay far under the phone budget of the brief (230-300);
+halving them needs fewer chunk layers or merged materials, which was not done.
 
 ## Not known yet
 

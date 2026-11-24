@@ -379,3 +379,33 @@ func test_traffic_drivers_are_never_children() -> bool:
 			if who != "":
 				assert_false(minors.get(who, true), "the %s driver %s is an adult" % [kind, who])
 	return true
+
+
+## A new AI area (the player moved 500 m or jumped) is adopted on the AI thread with the next step,
+## not on the main thread (G-344): the frame that picks it up does almost no work, traffic keeps
+## stepping and the signal heads follow the new area.
+func test_a_new_area_is_adopted_off_the_main_thread() -> bool:
+	if not await _start():
+		return false
+	await wait_physics_frames(60 * 2)
+	var old_area := life.population.area
+	var start: Vector2 = world.spawn["point"]
+	var far := start + Vector2(AiArea.REBUILD + 150.0, 0.0)
+	body.global_position = WorldOrigin.to_scene(far, 0.1)
+	if not check(await world.wait_ready_around(far, -1.0, MAX_FRAMES), "the new streets load"):
+		return false
+	var worst_sync := 0
+	var saw_adopting := [false]
+	var adopted := func() -> bool:
+		worst_sync = maxi(worst_sync, int(life.stats["sync"]))
+		if life._adopting != null:
+			saw_adopting[0] = true
+		return life.population.area != old_area and life._adopting == null
+	assert_true(await wait_until(adopted, 60 * 60), "the area round the new place is adopted")
+	assert_true(saw_adopting[0], "by a step on the AI thread")
+	assert_true(life.population.area.centre.distance_to(far) < AiArea.REBUILD, "centred near the player")
+	assert_true(worst_sync < 30000, "no main-thread frame paid for it (worst sync %d µs)" % worst_sync)
+	var steps := int(life.stats["steps"])
+	await wait_physics_frames(30)
+	assert_true(int(life.stats["steps"]) > steps, "the AI keeps stepping")
+	return true

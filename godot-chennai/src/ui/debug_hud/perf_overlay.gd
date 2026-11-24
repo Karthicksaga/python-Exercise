@@ -32,7 +32,9 @@ var _armed: bool = false
 
 func _init() -> void:
 	name = "PerfOverlay"
-	layer = 7
+	# Under the title (5) and the pause menu (6): it never covers their rows (owner, G-341); over
+	# the mission HUD (3) and the controls.
+	layer = 4
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var root := Control.new()
 	root.name = "Root"

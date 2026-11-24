@@ -1994,7 +1994,11 @@ and tools measure the same game; headless runs always start at High.
 software GPUs, Adreno 610-639 (the Snapdragon 4/6 class, the owner's Adreno 613), Mali below
 G68 and PowerVR start at Low; Adreno 640s/700-729 and Mali-G68+ at Medium (Low on screens over
 3 Mpx); flagships at High; anything under 7 GiB of physical memory at Low (phones sold as 8 GB
-report about 7.3 GiB). A preset the player picks is kept and never re-detected.
+report about 7.3 GiB). A preset the player picks is kept and never re-detected. The Settings row
+cycles Auto → Low → Medium → High → Auto and shows what the level trades in a second line. Auto
+also watches play: after a 5 s warm-up, ten seconds under 24 fps drop it one level (a toast says
+so) and the lower level is saved as Auto's cap, so a weak phone that the table misjudged settles
+on its own; a level the player chose is never changed.
 
 ### G-252: `QualityApplier` applies the engine part; the composition root the rest
 3D resolution scale (FSR 1 on Medium under Vulkan, bilinear otherwise: Compatibility has no
@@ -2073,3 +2077,59 @@ hairline). `test_settings_scroll.gd` scrolls to the last row in both at 915x412 
 it is inside the list and the screen. Every top-right button takes a real click at its centre and in
 its padding (`test_hud_glass.gd`). Rows now in both menus: Time, Weather, Sound, (pause: the controls
 rows), Graphics (`PerfWiring`, QualitySettings Low/Medium/High, "(auto)" when detected), Performance overlay.
+
+## Performance, second round: the owner's phone (G-340…G-345, branch `agent/godot-perf`, 24 Nov 2026)
+
+### G-340: A frame timeline names what a slow frame was made of
+`FrameTimeline` (`src/game_engine/quality/`) cuts every frame at its edges: two probe nodes run
+first and last in every physics and process callback, each queues a deferred call that marks the
+end of the deferred calls, and the renderer's `frame_pre_draw` / `frame_post_draw` signals mark
+drawing (order checked on 4.7.2: process callbacks, deferred calls, timers, tweens, the delete
+queue, then drawing). Parts: physics scripts, physics deferred calls, physics engine (step, sync,
+contact signals), scripts, deferred calls, timers/tweens/frees, render, between frames. A frame
+over 50 ms in play logs a hitch line with the parts largest first, the streamer's frees, bodies
+and views that frame, the traffic's share (and how long the frame waited for the AI step), the
+change in nodes, objects, pipeline compilations (Vulkan only), mesh and texture memory, and the
+main thread's own time on a core against its time waiting for one (`ThreadClock`, the kernel's
+`/proc/<pid>/task/<tid>/schedstat`, Linux and Android; about 2 µs a read). The log keeps the last
+eight hitch lines and a tally of which part led each. Cost: a few µs a frame.
+
+### G-341: An Adreno 613 starts at Low; old saves do not keep their level; the overlay steps aside
+The owner's POCO M6 Pro ran High. The detection table gives Low for "Adreno (TM) 613" (tested with
+that exact string); the level came from a save of an earlier build whose Settings row cycled
+Low → Medium → High with no way back to Auto. The save section is now `chennai-quality-v2`: a v1
+section keeps its feature switches, never its level (back to Auto, detected again). Auto is also
+detected again once the renderer is up (`refresh_auto`). The overlay names the level and how it was
+set ("Low (auto)", "High (chosen)"). Auto's first check after the 5 s warm-up is a 4 s window (then
+10 s windows), so a level the table guessed wrong is left within seconds. The overlay is on canvas
+layer 4, under the title (5) and the pause menu (6), and hidden while paused.
+
+### G-342: Low cuts the pixel cost: 65 % resolution, per-vertex lighting, hard shadows
+The phone was GPU-bound (56 ms GPU at 2460x1080, MSAA 2x). Low now renders 3D at 65 % with the
+bilinear upscale (FSR 1 is an extra full-screen pass), no MSAA, an 18 m hard-filtered shadow, and
+lights the city per vertex: `CityMaterials.set_flat` sets the shared walls, roofs, kit, objects,
+foliage, landmark and deck materials to `SHADING_MODE_PER_VERTEX` and swaps the ground and water
+to a copy of their shader with `vertex_lighting` and no specular. The city is flat faces, so the
+sun and ambient look the same; what is lost is the glint. Medium and High keep per-pixel lighting;
+Medium also takes hard shadows. Applied live with the preset.
+
+### G-343: No specular on the city's rough materials
+Every vertex-coloured city material (roughness 0.8-1) has `specular_mode` disabled at every level:
+it added almost nothing by day and cost a GGX term a pixel. It is also the first suspect for the
+single-pixel white dots the owner's Adreno 613 drew along the glass streaks and on walls
+(half-precision specular on the Mobile renderer); that cause is not proven: the software Vulkan
+here does not reproduce the dots.
+
+### G-344: A new AI area is adopted on the AI thread
+`AiPopulation.adopt` (every agent moved onto the new road graphs, the crowd field rebuilt) ran on
+the main thread whenever the player had moved 500 m or jumped (play start, missions): 70-340 ms
+frames on the desktop. CityLife now hands the finished area to its AI thread together with the
+next step (`_adopt_and_step`); that step may lag up to `ADOPT_PATIENCE` physics frames before the
+frame waits for it (the views extrapolate meanwhile), and the signal heads switch when it is done.
+No new area is requested while one is pending or being adopted, so `population.area` is only
+written by the thread that owns the step.
+
+### G-345: The title reads the night level without asking the render thread
+`TitleWiring._rain` read `RenderingServer.global_shader_parameter_get` every frame: on Vulkan that
+is an editor-only call that syncs with the render thread (the engine prints an error). It reads
+`CityEnvironment.night_level`, set beside the global parameter, instead.

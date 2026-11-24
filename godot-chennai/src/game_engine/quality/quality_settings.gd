@@ -10,13 +10,25 @@ extends RefCounted
 
 signal changed
 
-const SECTION := "chennai-quality-v1"
-const VERSION := 1
+const SECTION := "chennai-quality-v2"
+const VERSION := 2
+## Builds before v2 saved a level the player cycled through with no way back to automatic, and the
+## owner's Adreno 613 ran at a saved High (G-341): v1 keeps its feature switches, never its level.
+const OLD_SECTION := "chennai-quality-v1"
 
 const LOW := 0
 const MEDIUM := 1
 const HIGH := 2
 const NAMES: Array[String] = ["Low", "Medium", "High"]
+## One line per level for the Settings row (what the level trades).
+const EXPLAIN: Array[String] = [
+	"65% resolution, flat lighting, less traffic",
+	"80% resolution, short shadows, fewer people",
+	"full resolution, long shadows, full traffic",
+]
+## Auto drops one level when play stays under this for AUTO_WINDOW seconds.
+const AUTO_MIN_FPS := 24
+const AUTO_WINDOW := 10.0
 
 ## 3D resolution scaling modes (Viewport.SCALING_3D_MODE_*), by name so the table reads.
 const BILINEAR := 0
@@ -26,8 +38,8 @@ const FSR1 := 1
 ## measures it); Low is for weak phones (Adreno 6xx low tier at 1080x2400).
 const TABLE: Array[Dictionary] = [
 	{
-		"scale": 0.75, "scale_mode": BILINEAR, "msaa": 0,
-		"shadows": true, "shadow_size": 1024, "shadow_distance": 20.0,
+		"scale": 0.65, "scale_mode": BILINEAR, "msaa": 0,
+		"shadows": true, "shadow_size": 1024, "shadow_distance": 18.0, "soft_shadows": false, "vertex_lighting": true,
 		"load_distance": 200.0, "unload_distance": 280.0, "near_distance": 80.0,
 		"fog_far": 240.0, "camera_far": 330.0,
 		"traffic": 18, "walkers": 14, "figures": 12, "driver_reach": 30.0, "rider_reach": 60.0,
@@ -38,7 +50,7 @@ const TABLE: Array[Dictionary] = [
 	},
 	{
 		"scale": 0.8, "scale_mode": FSR1, "msaa": 0,
-		"shadows": true, "shadow_size": 1024, "shadow_distance": 28.0,
+		"shadows": true, "shadow_size": 1024, "shadow_distance": 28.0, "soft_shadows": false, "vertex_lighting": false,
 		"load_distance": 240.0, "unload_distance": 320.0, "near_distance": 100.0,
 		"fog_far": 300.0, "camera_far": 480.0,
 		"traffic": 26, "walkers": 24, "figures": 24, "driver_reach": 40.0, "rider_reach": 80.0,
@@ -49,7 +61,7 @@ const TABLE: Array[Dictionary] = [
 	},
 	{
 		"scale": 1.0, "scale_mode": BILINEAR, "msaa": 1,
-		"shadows": true, "shadow_size": 2048, "shadow_distance": 40.0,
+		"shadows": true, "shadow_size": 2048, "shadow_distance": 40.0, "soft_shadows": true, "vertex_lighting": false,
 		"load_distance": 260.0, "unload_distance": 340.0, "near_distance": 120.0,
 		"fog_far": 340.0, "camera_far": 1500.0,
 		"traffic": 34, "walkers": 34, "figures": 36, "driver_reach": 45.0, "rider_reach": 95.0,
@@ -68,6 +80,9 @@ const BIG_SCREEN := 3_000_000
 var preset: int = LOW
 ## True while the preset is the detected default (the player never chose one).
 var auto: bool = true
+## Auto never goes above this: it is lowered when a level proved too slow in play (G-251),
+## saved, so the next start begins at the level that held.
+var auto_cap: int = HIGH
 ## Why the default was chosen ("Adreno (TM) 613: Adreno 6xx low tier").
 var reason: String = ""
 ## The performance overlay (G-253): off by default.
@@ -75,6 +90,11 @@ var overlay: bool = false
 ## Feature switches (G-254): id → on. Missing ids are on.
 var switches: Dictionary[String, bool] = {}
 var path: String = SaveStore.DEFAULT_PATH
+## The GPU name detection reads; empty: the renderer's (`RenderingServer.get_video_adapter_name`).
+## Tests set a phone's name here.
+var gpu_name: String = ""
+## Also for tests: false makes detection ignore that the run is headless.
+var headless_is_high: bool = true
 
 static var _shared: QualitySettings = null
 
@@ -190,9 +210,58 @@ func set_preset(p: int) -> void:
 	_commit()
 
 
-## Low → Medium → High → Low (the Settings row).
+## Auto → Low → Medium → High → Auto (the Settings row "Graphics").
 func next_preset() -> void:
-	set_preset((preset + 1) % NAMES.size())
+	if auto:
+		set_preset(LOW)
+	elif preset == HIGH:
+		set_auto()
+	else:
+		set_preset(preset + 1)
+
+
+## Back to the automatic level: detected again, under the cap a slow phone earned.
+func set_auto() -> void:
+	auto = true
+	_detect()
+	_commit()
+
+
+## Auto only: detect again now the renderer is up (the first read may come before it names the
+## GPU); applied and saved only when the level changes.
+func refresh_auto() -> void:
+	if not auto:
+		return
+	var before := preset
+	_detect()
+	if preset != before:
+		_commit()
+
+
+## Auto only: one level down after play stayed too slow (G-251). False at Low or when manual.
+func drop_auto() -> bool:
+	if not auto or preset <= LOW:
+		return false
+	preset -= 1
+	auto_cap = preset
+	reason = "dropped to %s: under %d fps in play" % [preset_name(), AUTO_MIN_FPS]
+	_commit()
+	return true
+
+
+## The overlay's level: "Low (auto)" or "High (chosen)".
+func overlay_label() -> String:
+	return "%s (%s)" % [preset_name(), "auto" if auto else "chosen"]
+
+
+## The Settings row: "Graphics: Auto (Low)".
+func row_label() -> String:
+	return "Graphics: %s" % ("Auto (%s)" % preset_name() if auto else preset_name())
+
+
+## What the current level changes, one line.
+func explain() -> String:
+	return EXPLAIN[clampi(preset, LOW, HIGH)]
 
 
 func set_overlay(on: bool) -> void:
@@ -227,7 +296,7 @@ func to_dict() -> Dictionary:
 		if not switches[id]:
 			off.append(id)
 	off.sort()
-	return {"version": VERSION, "preset": preset, "auto": auto, "overlay": overlay, "off": off}
+	return {"version": VERSION, "preset": preset, "auto": auto, "auto_cap": auto_cap, "overlay": overlay, "off": off}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -235,6 +304,8 @@ func from_dict(d: Dictionary) -> void:
 	preset = clampi(int(p) if (p is int or p is float) else preset, LOW, HIGH)
 	var a: Variant = d.get("auto", true)
 	auto = a if a is bool else true
+	var c: Variant = d.get("auto_cap", HIGH)
+	auto_cap = clampi(int(c) if (c is int or c is float) else HIGH, LOW, HIGH)
 	var o: Variant = d.get("overlay", false)
 	overlay = o if o is bool else false
 	switches.clear()
@@ -247,15 +318,28 @@ func from_dict(d: Dictionary) -> void:
 
 ## Reads the saved choice; with none (or an automatic one) detects the default on this device.
 func load_saved() -> void:
-	var v: Variant = SaveStore.new(path).read().section(SECTION)
+	var store := SaveStore.new(path).read()
+	var v: Variant = store.section(SECTION)
 	if v is Dictionary:
 		from_dict(v as Dictionary)
+	else:
+		var old: Variant = store.section(OLD_SECTION)
+		if old is Dictionary:
+			from_dict(old as Dictionary)
+			# The level of a v1 save is not trusted (G-341): back to automatic, no cap.
+			auto = true
+			auto_cap = HIGH
 	if auto:
-		var size := DisplayServer.screen_get_size()
-		var mem: Variant = OS.get_memory_info().get("physical", 0)
-		var found := detect(RenderingServer.get_video_adapter_name(), int(mem) if (mem is int or mem is float) else 0, size.x * size.y, DisplayServer.get_name() == "headless")
-		preset = found[0]
-		reason = found[1]
+		_detect()
+
+
+func _detect() -> void:
+	var size := DisplayServer.screen_get_size()
+	var mem: Variant = OS.get_memory_info().get("physical", 0)
+	var gpu := gpu_name if gpu_name != "" else RenderingServer.get_video_adapter_name()
+	var found := detect(gpu, int(mem) if (mem is int or mem is float) else 0, size.x * size.y, headless_is_high and DisplayServer.get_name() == "headless")
+	preset = mini(int(found[0]), auto_cap)
+	reason = String(found[1]) + (" (capped at %s after a slow run)" % NAMES[auto_cap] if auto_cap < int(found[0]) else "")
 
 
 func save() -> void:
