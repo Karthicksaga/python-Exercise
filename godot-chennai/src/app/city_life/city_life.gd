@@ -42,6 +42,8 @@ const FIGURE_CAP := 36
 const PLAYER_RADIUS := 0.45
 ## Vehicles (the player's, parked ones) within this distance are obstacles to the AI.
 const VEHICLE_REACH := 80.0
+## Drivers sit with the vehicle's ride pose (G-261): hip joints this far above the figure's origin.
+const SEAT_HIP := 0.92
 
 ## Live limits (quality presets, G-252; feature switches, G-254). `figure_cap`, the reaches and
 ## the caps take effect within a step; `traffic_on` false hides every vehicle, walker, driver and
@@ -75,6 +77,8 @@ var focus_node: Node3D
 var population: AiPopulation
 var cast: CastPicker
 var pool: PeoplePool
+## One driver's seat pose per vehicle type (palms on its grips, feet on its footrests).
+var _driver_seats: Dictionary[int, SeatPose] = {}
 var heads: SignalHeads
 ## One view per traffic agent (by id).
 var views: Array[TrafficVehicleView] = []
@@ -427,8 +431,9 @@ func _sync(dt: float, focus: Vector2) -> void:
 			var fig := pool.take(-1 - i, who) if who != "" else null
 			if fig != null:
 				var seat := v.driver_transform()
-				fig.global_transform = Transform3D(seat.basis, seat.origin - seat.basis.y * fig.seat_height)
+				fig.global_transform = Transform3D(seat.basis, seat.origin - seat.basis.y * SEAT_HIP)
 				fig.play(&"sit", 0.0, traffic.agents[i].variation * 4.0)
+				fig.set_seat(driver_seat(v.variant.type))
 				fig.advance(dt, d, camera == null or camera.is_position_in_frustum(seat.origin))
 		sounds.append({"id": i, "position": at, "speed": st.w, "kind": sound_kind(k)})
 	var tv := Time.get_ticks_usec()
@@ -549,3 +554,12 @@ func _exit_tree() -> void:
 		_go.post()
 		_thread.wait_to_finish()
 		_thread = null
+
+
+## The seat pose of a vehicle type's driver (cached per type; the solve is cached per figure).
+func driver_seat(t: VehicleType) -> SeatPose:
+	var id := t.get_instance_id()
+	if not _driver_seats.has(id):
+		var seat := RidePoses.driver(t, SEAT_HIP)
+		_driver_seats[id] = seat
+	return _driver_seats[id]

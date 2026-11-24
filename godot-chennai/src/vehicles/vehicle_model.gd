@@ -26,6 +26,11 @@ var _beacon_colour: Array[int] = []
 var _stretch := Vector3.ONE
 ## True when the model is a stand-in (fallback GLB or the code box).
 var stand_in := false
+## The handlebar or steering wheel (the model's `steering` node), its rest basis and the axis it
+## turns about in its parent's frame (G-261); null when the model has none.
+var _steering: Node3D = null
+var _steering_rest: Basis = Basis.IDENTITY
+var _steering_axis: Vector3 = Vector3.UP
 
 static var _paint_cache: Dictionary = {}
 
@@ -120,6 +125,19 @@ func _build_glb(t: VehicleType, variant: VehicleCatalog.VariantInfo, manifest: V
 		_wheels.append(node)
 		_wheel_scale.append(t.spec.wheels[i].radius / maxf(0.05, float(best["radius"])))
 		_wheel_xz.append(Vector2(at.x, at.z))
+	if not stand_in:
+		measure_ride_pose(t, body)
+	var st: Variant = manifest.data.get("steering")
+	if st is Dictionary and not stand_in:
+		var sd: Dictionary = st
+		var node := body.find_child(String(sd.get("node", "steering")), true, false) as Node3D
+		if node != null:
+			_steering = node
+			_steering_rest = node.basis
+			var ax: Variant = sd.get("axis")
+			if ax is Array:
+				var a: Array = ax
+				_steering_axis = Vector3(float(a[0]), float(a[1]), float(a[2])).normalized()
 	for d in manifest.doors():
 		var door := body.find_child(String(d["node"]), true, false) as Node3D
 		if door == null:
@@ -248,6 +266,50 @@ func _build_extras(variant: VehicleCatalog.VariantInfo, roof_height: float) -> v
 		sign.name = "RoofSign"
 		sign.position = Vector3(0, roof, 0.2)
 		add_child(sign)
+
+
+## The driver's palms and feet from the model's own nodes (G-261): `grip_r`/`grip_steer_r` and
+## `foot_r` relative to `seat_driver`, and the steering hub, into `t.pose` (the manifest's numbers
+## were typed beside the model and disagree with it in places, the city bus's grips by 22 cm).
+## The `foot_*` anchors mark the sole on the footboard; the pose wants the ankle, a little above
+## and behind it. Once per type (the first model built).
+static func measure_ride_pose(t: VehicleType, body: Node3D) -> void:
+	if t.pose.measured:
+		return
+	t.pose.measured = true
+	var seat := body.find_child("seat_driver", true, false) as Node3D
+	if seat == null:
+		return
+	var hip := _in(body, seat)
+	for grip_name: String in ["grip_r", "grip_steer_r"]:
+		var g := body.find_child(grip_name, true, false) as Node3D
+		if g != null:
+			t.pose.hand = _in(body, g) - hip
+			break
+	var foot := body.find_child("foot_r", true, false) as Node3D
+	if foot != null:
+		t.pose.foot = _in(body, foot) - hip + Vector3(0, 0.08, 0.05)
+	var wheel := body.find_child("steering", true, false) as Node3D
+	if wheel != null:
+		t.pose.hub = _in(body, wheel) - hip
+
+
+## A node's origin in `root`'s frame.
+static func _in(root: Node3D, node: Node3D) -> Vector3:
+	var xf := Transform3D.IDENTITY
+	var n: Node = node
+	while n != null and n != root:
+		var n3 := n as Node3D
+		if n3 != null:
+			xf = n3.transform * xf
+		n = n.get_parent()
+	return xf.origin
+
+
+## Turns the handlebar or steering wheel by `angle` radians about its column (+ left).
+func set_steering(angle: float) -> void:
+	if _steering != null:
+		_steering.basis = Basis(_steering_axis, angle) * _steering_rest
 
 
 ## Draws wheel `i` with its hub at `hub_y` (chassis frame), steered and spun.

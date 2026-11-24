@@ -126,6 +126,9 @@ func _physics_process(dt: float) -> void:
 	if vehicle != null:
 		if seat != null:
 			global_transform = seat.global_transform
+		# Seated (or getting in and out): the figure poses itself on the seat it was given.
+		if figure != null:
+			figure.advance(dt, 0.0, true)
 		return
 	step(input if controls_enabled else PlayerInput.new(), dt)
 	if figure != null:

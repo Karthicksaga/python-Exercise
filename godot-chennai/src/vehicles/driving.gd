@@ -344,7 +344,8 @@ func _pose_boarding(v: Vehicle, b: Boarding) -> void:
 	var standing := _standing_point(v, b.aisle())
 	var hips := v.rider_transform().origin
 	var sit := b.seated()
-	rider.set_figure_visible(v.type.open_seat or sit < 0.5 or v.type.entry.door == "none")
+	# Seen in every vehicle now that the rider sits (G-265): through an open door, a windscreen.
+	rider.set_figure_visible(true)
 	rider.set_seated(v.type if sit > 0.0 else null, sit)
 	# Turned to face forwards once on the seat; beside the door, facing it.
 	var facing := heading + (-v.type.entry.side * PI / 2.0 if sit <= 0.0 and v.type.entry.aisle.is_empty() else 0.0)
@@ -386,7 +387,7 @@ func _seat(v: Vehicle) -> void:
 	vehicle = v
 	v.take_controls()
 	rider.set_seated(v.type, 1.0)
-	rider.set_figure_visible(v.type.open_seat)
+	rider.set_figure_visible(true)
 	gearbox.reset("D")
 	reverse_hold.reset()
 	_auto_reversed = false
@@ -397,6 +398,7 @@ func _seat(v: Vehicle) -> void:
 func _hold_seat(v: Vehicle) -> void:
 	var t := v.rider_transform()
 	rider.hold(Transform3D(t.basis.orthonormalized(), t.origin))
+	rider.steer(v.steering())
 
 
 ## On foot beside the door (or wherever there is room), in control.

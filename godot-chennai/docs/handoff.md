@@ -731,6 +731,71 @@ C 10). Game code must read `sign` and `names`, never `research_name`. Storeys co
 where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.
 
 
+
+## Poses: seated, passengers, falls, arm swing (agent/godot-anim, G-260…G-269), 24 Nov 2026
+**Knockdown API (for `agent/godot-crash`; stable, committed first).** Both figures of a person
+have the same four methods and one signal: `HumanFigure` (the player, fare passengers) and
+`PersonView` (walkers, crowds, drivers from `PeoplePool`). The figure animates on its own node
+only (procedural tumble, crumple, lying and get-up poses on the skeleton, no physics bodies);
+whoever moves the body (`CrashFlight` through `RiderLink`, or the AI for a walker) keeps
+moving the node as before, and the figure never moves its own origin.
+
+```gdscript
+## Knocked off the feet with `velocity` (m/s, scene space: the launch or the hit's push). Tumbles
+## while airborne; lands by itself after the ballistic time of velocity.y (at least 0.35 s)
+## unless play_landed() comes first. Calling it again while down restarts the fall.
+func play_fall(velocity: Vector3) -> void
+## The body touched the ground (optional; CrashFlight's landing): crumple, then lie still.
+func play_landed() -> void
+## Stand up from lying (or from wherever the fall is: it lands first). Takes GETUP_TIME seconds
+## of game time, then emits got_up and the normal clips (gait, seated) take over again.
+func play_getup() -> void
+## &"" upright (normal clips), &"falling", &"down" (crumpling or lying), &"rising".
+func knockdown_state() -> StringName
+signal got_up
+const GETUP_TIME := 1.2   # CrashFlight.RISE_TIME is 1.2 too (was 0.75; changed on this branch)
+```
+
+`PlayerRiderLink` already calls them from `CrashFlight`'s phases (flying → `play_fall(launch)`,
+sliding → `play_landed()`, rising → `play_getup()`), so a bike throw through `Driving` needs
+nothing more. The figure lies on its back, head away from the way it flew, soles and head
+above the ground. The figures advance in the physics step (`HumanFigure.advance`,
+`PersonView.advance`): a figure that is not advanced does not animate its fall either.
+
+**Done (owner's phone report, 24 Nov).** All poses are procedural on the skeleton after the clip
+(`src/player/poses/`: `PoseRig`, `SeatPose`, `Knockdown` + `KnockdownPoses`, `GaitSwing`),
+shared by `HumanFigure` and `PersonView`. Decisions G-260…G-267.
+- **Drivers seated** in car, auto, bike, bus (and every other vehicle): hip joints on the seat,
+  palms on the grips (fingers closed), ankles on the footrests or pedals, torso leaning as the
+  ride pose says, head turning into the steering; hands follow the turning handlebar or wheel
+  (the model's `steering` node now turns). The ride pose's hand, foot and hub are measured from
+  the model's own `grip_r`/`foot_r`/`steering`/`seat_driver` nodes (`VehicleModel.
+  measure_ride_pose`); the driver is drawn in closed vehicles too. Traffic drivers take the same
+  seat (`CityLife.driver_seat`, `RidePoses`).
+- **Seat anchors** (driver, aisle, passenger doors and seats) are measured from the model's drawn
+  ground (`VehicleManifest.apply_geometry`): from `chassis_to_model_y` every rider sank 7–10 cm
+  into the seat (G-267). Collision boxes are unchanged.
+- **Passengers seated and visible** in their own seat slots (`VehicleType.seats`, the model's
+  passenger seats in order) in auto, car and bus; they sit down while entering and stand up
+  while getting out (`FareFigures`).
+- **Falls**: dive and roll three quarters of a turn, land on the back (or a push falls
+  backwards), crumple, lie with one knee up and the head turned; get up through sitting, a
+  crouch and one knee into the clip (1.2 s; `CrashFlight.RISE_TIME` raised from 0.75 to match).
+- **Walk**: arms swing with the opposite leg (hands 0.47 m fore and aft, was 0.07), shoulders
+  turn against the hips, small head nod, for the player and every street walker. **Run**: 15°
+  lean, elbows ~90°, cadence 4.6 → 4.2 m/s per clip speed (~186 steps/min at 6.2 m/s), and walk
+  blends into run by speed (2.6–4.0 m/s) on one normalised stride cycle.
+- Tests: `tests/scene/test_poses.gd` (drivers, steering, passengers, swing, run, blend),
+  `tests/scene/test_knockdown.gd` (API on both figures, a real bike crash). Screenshots:
+  `tests/tools/pose_shots.gd` (into a scratch folder).
+
+**Weak or not done.**
+- Share-auto passengers face forwards (their seats face inwards; `facing` is not read yet).
+- No prone pose: every fall ends on the back; a hit from behind dives and rolls to get there.
+- The get-up's feet move fast in the crouch (about 0.1 m per frame at 60 fps); 1.2 s is short.
+- The palms' facing on a steering wheel is not controlled (only position and finger curl).
+- Seen only under the Compatibility renderer on llvmpipe, not on a phone.
+
 ## APK size diet (branch `agent/godot-sizediet`), 24 Nov 2026
 **Done.** `docs/app-size.md` has the method, the breakdown, the diet with before and after, the
 budget, the forecast and the Play plan. APK (release, arm64, local unsigned) 162.68 to 115.00 MB:
