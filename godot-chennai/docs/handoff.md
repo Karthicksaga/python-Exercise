@@ -268,3 +268,54 @@ position. New kinds: add a kind and a variant to `vehicle_types.json`.
 **Weak.** Single-front-wheel vehicles turn ~15 % less from rest than in the Three.js game and the
 rear-driven ones slide a little more at full lock (cause not found; `docs/driving.md`). No seated
 pose. The yard's lighting is a test ground, not the city. No physics interpolation.
+
+## Sound and environment (agent/godot-ambient)
+**Where things are.** `src/audio/` (`SoundProfiles` data, `Synth` offline stand-ins, `SoundLibrary`
+manifest reader, `EngineBlend`/`EngineVoice` engines, `Ambience`, `PlayerSounds`, the `Sound`
+autoload), `src/game_engine/environment/` (`Lighting`, `CityEnvironment`, `RainView`,
+`StreetLights`, sky and rain shaders, the `Weather` autoload), `default_bus_layout.tres`,
+`assets/audio/` (`manifest.json`, `rec/` recordings, `standin/` synthesised), `tools/audio/`.
+Decisions G-80…G-89.
+
+**How other agents call it.**
+- Vehicles: every frame driving `Sound.set_engine(kind, speed_mps, accelerator01)`; getting out
+  `Sound.engine_off()`; `Sound.horn(kind)`, `Sound.door(kind)`, `Sound.crash(delta_v)`,
+  `Sound.set_skid(slide01)`, `Sound.set_siren(on)`. Kind names: `SoundProfiles.sound_kind()`
+  maps hatchback/taxi/police → car, suv/saloon → premium, motorbike → bike, enfield/bike350 →
+  thumper. Set `Sound.set_place(coast_m, traffic01, enclosed)` (enclosed = closed car or bus).
+- Player: add a `PlayerSounds` and `follow(rig.body)` (the composition root; not wired yet).
+- Traffic (AI): every frame `Sound.set_traffic([{id, position, speed, kind}], dt, GameLoop.clock.hour)`.
+- World: add one `CityEnvironment` to the city scene (it replaces any WorldEnvironment/sun),
+  `register_wet()` road/ground materials or read `global uniform float city_wetness;` /
+  `city_night` in shaders, and `street_lights.set_lamps(points)` with the lamp feet per loaded area.
+- UI (pause menu): `Sound.label()/toggle()`, `Weather.label()/toggle()`,
+  `GameLoop.clock.text()/next()`; `main.gd` sets `Sound.active` in play and suspends at the title.
+
+**Recordings still missing (synthesised fallback in use).** Engines: **premium, race, auto
+(no licensed auto-rickshaw recording found on Commons or OpenGameArt), bike, thumper, bus,
+ambulance**; all horns, doors, gear clunk, crashes, skid, wind, both sirens, wet footsteps,
+landing, city hum, sea, koel, interface cues. Candidates found and licence-checked but not yet
+downloaded because `upload.wikimedia.org` answers HTTP 429 with `Retry-After: 600` from this
+environment: Jawa 350 exhaust (public domain → thumper), Pulsar 2 (Bajaj Pulsar, CC BY 3.0 →
+bike), MAN SG 220 city bus engine, horn and door (CC BY 4.0, Work With Sounds → bus), FSR Tarpan
+239D diesel van (CC BY 4.0 → ambulance), Ferrari Portofino and McLaren 765LT (CC BY 3.0 →
+premium, race), "Car Horn.wav" (CC0), WWS police car siren and small waves (CC BY 4.0). Koel and
+house-crow recordings on Commons are all CC-BY-SA (not used). To add one: download it with its
+Commons metadata into a cache folder (`meta*.json`: title → url, file_url, licence, artist,
+local), add its cuts to `tools/audio/recordings.json`, run
+`python3 tools/audio/import_recordings.py --cache <folder>`, then
+`godot --headless --path . --script res://tools/audio/render_standins.gd` (drops stand-ins a
+recording replaced) and `--import`; the tests check rows, licences and the engine notes. The owner
+could also record an auto-rickshaw on a phone (idle, held revs, start, stop, horn) for the auto.
+
+**Measured.** Synthesis in GDScript: ~2 µs/sample/voice; full stand-in render 7.5-11 s (why no
+run-time synthesis). Audio size: `assets/audio` 2.9 MB on disk (engine loops WAV, imported as QOA; the rest OGG). Draw calls in the test world:
+12 dry, 13 raining. Screenshots (Compatibility, xvfb): golden hour is very warm and orange on the
+flat test ground, noon's horizon band is near-white, night pools are sodium-orange but dim at the
+edge; judge again on the real city.
+
+**Weak or not done.** Recorded engines carry one load (revving in neutral), so on-load and
+off-load sound the same apart from level; the car's top loop is a short (0.35 s) cut from a rev
+blip. Traffic voices are untested in a real scene (no traffic yet). The ambience's "coast" and
+"traffic" inputs need the world and AI. Helicopter and aeroplane sounds are not done. Sky
+reflections are off (flat car paint at night).

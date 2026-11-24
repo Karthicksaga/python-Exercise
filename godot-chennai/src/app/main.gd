@@ -167,12 +167,14 @@ func show_title() -> void:
 	hud.visible = false
 	title.visible = true
 	title.show_menu()
+	Sound.suspend()
 	_set_state(&"title")
 
 
 func play() -> void:
 	title.visible = false
 	hud.visible = true
+	Sound.active = true
 	_set_state(&"play")
 
 

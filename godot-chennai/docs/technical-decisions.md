@@ -311,6 +311,92 @@ a runner of their own; it was removed once Foundation's existed.)
 snake_case (GDScript style); event `type` strings and their keys keep the TS names so the game
 logic reads the same as the TS game's.
 
+## Sound and environment (G-80 to G-89, agent/godot-ambient)
+
+### G-80: No synthesis while the game runs; every sound is a file
+The Three.js game synthesised everything live with Web Audio. In Godot that means GDScript per
+sample into an `AudioStreamGenerator`: measured here at about 2 µs a sample for one engine voice
+(4.5 % of a desktop core per voice at 22.05 kHz; an Adreno 613-class phone CPU is 4-5× slower, so
+four engines and the ambience would take a whole core), and rendering the full set once takes
+7.5-11 s. So the game only plays files through Godot's mixer (C++), and the owner's decision of
+23 Nov (real recorded sounds) fits the same path. `AudioStreamGenerator` is not used.
+
+### G-81: Synthesised stand-ins, rendered offline, for whatever has no acceptable recording
+`tools/audio/render_standins.gd` renders the TD-26 designs (`SoundProfiles`, `Synth`: firing
+frequency = rpm / 60 × cylinders / 2, the horns' notes, the beds) into `assets/audio/standin/`,
+deterministically (seeded noise), CC0 own work. It never overwrites a recording, and a kind whose
+engine has recorded loops gets no synthesised loops. Tests render the same designs and measure
+them (horn notes, the auto's double tap, wet steps).
+
+### G-82: One manifest for every sound file, with its provenance
+`assets/audio/manifest.json` maps an id (`engine.car.loop.1.off`, `horn.auto`, `bed.rain`…) to
+its file, what it is (engine loops: rpm and load), `source` (`recording` or `synth`), licence,
+author, URL, original file name, edits and measured RMS. `SoundLibrary` reads it and starts
+threaded loads at boot. Engine loops are 16-bit mono WAV (imported as QOA, sample-accurate
+loops; tests read the source WAV); everything else is mono 22.05 kHz OGG Vorbis q3. Licences:
+CC0, public domain or CC-BY only; NC, ND, Sampling+, RemArc and unknown are refused by a test, as
+is any audio file without a manifest row and an `assets/LICENSES.md` row.
+
+### G-83: Sample-based engines: loops at rpm points, crossfaded and pitch-shifted
+Each kind (car, premium, race, auto, bike, thumper, bus, ambulance) has loops at three or four
+rpm points (stand-ins: off-load and on-load at each). At any rpm the two neighbouring points
+play, pitch = rpm / point rpm (0.5-2.5), crossfaded with equal power; the accelerator crossfades
+off-load into on-load. Every loop is a whole number of firing periods with a crossfaded wrap, so
+pitch-shifting keeps the putts in time and nothing clicks (tested: a full rev sweep is no rougher
+than the voice held still). Revs follow the HUD's gear rule (`engine_rpm`); a gear change dips
+the level for 0.15 s with a clunk; start and stop are one-shots; a single's lope is a pitch wobble
+at idle. Players run only while their gain is above zero. Traffic: the nearest three vehicles
+within 45 m, each an `EngineVoice` of `AudioStreamPlayer3D`s at the vehicle (inverse distance from
+5 m, Godot's air-absorption filter for distance dulling, faded over the last quarter).
+
+### G-84: Four buses, Three.js levels, glue and limiter on Master
+Vehicles 0.55, World 0.495, Ambience 0.4675, UI 0.44 (master 0.55 × the old bus gains) into
+Master with a 4:1 compressor at -16 dB and a hard limiter at -1 dBFS (`default_bus_layout.tres`).
+Ambience has a low-pass that closes to 1.4 kHz inside a vehicle. Bed levels are set against the
+idling hatchback (evening rush 3-10 dB under it, rain about as loud as the rush, sea a little
+under, crickets well under) and tested from the manifest's measured RMS. SOUND on/off mutes Master
+and is saved in the save file (`SaveStore`, key `cow-sound-v1`, "on"/"off" as the TS game).
+
+### G-85: Recordings from Wikimedia Commons, cut and matched by a script
+Sources (owner, 23 Nov): Wikimedia Commons through the MediaWiki API (search, categories,
+`imageinfo` for licence, author and URL) and OpenGameArt; no Freesound. Downloads from
+`upload.wikimedia.org` are rate-limited from this environment (HTTP 429, `Retry-After: 600`), so
+they are fetched slowly, one file per window. `tools/audio/import_recordings.py` (numpy, ffmpeg)
+cuts the pieces listed in `tools/audio/recordings.json`: engine loops on whole firing periods
+measured by autocorrelation, RMS matched to the stand-in each replaces (the mix was tuned on the
+stand-ins), then writes manifest and licence rows. CC-BY-SA is avoided: the only koel and house-crow
+recordings on Commons are CC-BY-SA, so the birds stay synthesised (listed in the handoff).
+
+### G-86: Day and night as numbers (`Lighting`), applied cheaply (`CityEnvironment`)
+`Lighting.at(hour, rain)` is `lighting.ts` (same keys, sun path, rain overcast), unit-tested.
+`CityEnvironment` applies it when the hour moves half a game minute or the rain changes: sun or
+moon (`DirectionalLight3D`), flat ambient colour (no sky radiance or reflections on the phone
+budget), a small sky shader (gradient, glow, sun and moon discs), ACES with the look's exposure,
+and **exponential** fog in the horizon colour reaching ~89 % at 340 m (thicker at golden hour and
+in rain) so the streaming edge melts away. Depth fog was tried first: the Compatibility renderer
+draws none. Light energies are the TS intensities × 0.32 (sun) and × 0.55 (ambient), tuned on the
+screenshots.
+
+### G-87: Weather is an autoload; wetness is a global shader parameter
+`Weather` (autoload): clear or rain, fading over 2.5 game seconds on `GameLoop.ticked`, saved as
+`cow-weather-v1`. It publishes `city_wetness` (and `CityEnvironment` publishes `city_night`) as
+global shader uniforms declared in `project.godot`, so road and wall shaders can darken and gloss;
+`CityEnvironment.register_wet()` does the same for `StandardMaterial3D`s. Rain is the TS
+`RainView`: one mesh of quads wrapped round the camera in the vertex shader, measured one extra
+draw call (12 → 13 in the test world, Compatibility) and none when dry.
+
+### G-88: Lights and shadows on the phone budget
+Shadows: one orthogonal directional shadow, 40 m from the camera (it follows the player), 2048
+atlas on mobile. Street lights: every lamp head is one instance of an emissive MultiMesh (one draw
+call); only the six nearest lamps get a real `OmniLight3D` (sodium, no shadows), re-picked four
+times a second. The world agent supplies lamp positions with `street_lights.set_lamps()`.
+
+### G-89: One clock: `GameLoop.clock`
+Foundation's `GameLoop` owns game time and the time of day (`GameClock`: `hour`, `label()`,
+`next()`, `text()`); the environment, the ambience, honking by hour and the missions all read it.
+This branch adds no clock. HUD and pause hooks: `GameLoop.clock.text()/next()`,
+`Weather.label()/toggle()`, `Sound.label()/toggle()`.
+
 ## Models (G-30 to G-39)
 
 ### G-30 Vehicles, aircraft and trains are Blender scripts; the scripts are the source
