@@ -42,8 +42,18 @@ diagnose() {
     | grep -vE "am_pss|am_mem_factor|am_freeze|am_unfreeze|am_compact" | tail -120
   echo "---- system and main log, last 200 lines (without package-filter noise) ----"
   adb logcat -d -b main,system 2>/dev/null | grep -vE "AppsFilter|BlockstoreStorage| godot   :" | tail -200
-  echo "---- install and the first seconds after launch (main, system, events) ----"
-  [ -f "$OUT/early.txt" ] && grep -vE "AppsFilter|GLES3|uniforms exceed|_compile_specialization|_display_error_with_code|Method/function failed|^.{31}godot   : *$" "$OUT/early.txt" | tail -300
+  echo "---- the 4 s before the game's activity was relaunched (main, system, events) ----"
+  if [ -f "$OUT/early.txt" ]; then
+    local at
+    at=$(grep -m1 -E "wm_relaunch_resume_activity|wm_relaunch_activity" "$OUT/early.txt" | awk '{print $2}')
+    if [ -n "$at" ]; then
+      awk -v at="$at" 'function sec(t,  a){split(t,a,":"); return a[1]*3600+a[2]*60+a[3]}
+        { d = sec(at) - sec($2) } d >= 0 && d <= 4' "$OUT/early.txt" \
+        | grep -vE "AppsFilter|GLES3|uniforms exceed|_compile_specialization|_display_error_with_code|Method/function failed|Instant App installer|ephemeral installer" | tail -250
+    else
+      echo "(no relaunch in the first 6 s)"
+    fi
+  fi
   echo "---- crash buffer ----"
   adb logcat -d -b crash 2>/dev/null | tail -60
   echo "---- global configuration now ----"
