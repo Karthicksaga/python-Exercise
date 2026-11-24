@@ -1757,3 +1757,64 @@ of sight once the player is seated, and the player's `Vehicle` is a plain node t
 never owns (freed only when parked more than `Carjacking.FORGET` m away). `Wanted` has no
 instance in the game yet, so `Carjacking.wanted` stays null and only `carjacked` is signalled;
 the fall clips come with the animation work (staggering is the fallback).
+
+
+### G-260: Procedural poses on the skeleton, after the clip, shared by every person
+Seated, falling and the arm swing are poses written to the skeleton's local bone rotations after
+the clip each update (`PoseRig`), not new clips: the CC0 library has no seated driving, fall or
+get-up clips that match our vehicles, and a pose built from the vehicle's own measured grips fits
+every vehicle and every member of the cast (different heights) without retargeting. One rig
+helper serves the player (`HumanFigure`) and the streets (`PersonView`). Limbs use an analytic
+two-bone solve that turns the current bend plane onto the wanted one, so knees and elbows keep
+their hinge.
+
+### G-261: Seats from the vehicle's model, hands follow the steering
+`SeatPose`: hips on the seat, spine lean (40 % from the pelvis), legs and arms solved onto the
+ride pose's footrests and grips, feet laid flat or onto pedals, fingers closed, head level and
+turned into the steering (0.55 × wheel angle, at most 20°). The palms turn with the handlebar (1:1)
+or wheel (2.5:1) about the manifest's steering axis; the model's `steering` node turns the same
+way. Hand, foot and hub come from the model's nodes (`VehicleModel.measure_ride_pose`), because
+the typed pose disagreed with the city bus's grips by 22 cm. A driver who cannot reach leans
+further. The driver is drawn in closed vehicles too (G-265). Solves are cached per seat version.
+
+### G-262: Falls dive, roll and lie on the back; get-up in 1.2 s
+`Knockdown`: a throw faster than 4 m/s (or one from behind) dives head first and rolls three
+quarters of a turn over its air time, landing on the back; a push falls backwards. Landing early
+in the dive becomes a forward roll at 5 rad/s. Down: crumple, then lie (one knee raised, head
+turned). Up: sit up on the hands, crouch on the knees, one knee, then blend into the clip;
+GETUP_TIME 1.2 s, and `CrashFlight.RISE_TIME` was raised from 0.75 s to the same (0.75 s could not
+show the four poses without the legs passing through the ground). Joints are kept 6 cm above the
+ground once down. API: `play_fall(velocity)`, `play_landed()`, `play_getup()`,
+`knockdown_state()`, `got_up` on `HumanFigure` and `PersonView` (docs/handoff.md).
+
+### G-263: Arm swing read from the legs
+`GaitSwing` reads each thigh's angle in the hips' frame and swings the arms with the opposite leg
+(0.8 rad per radian of leg split while walking), turns the shoulders against the hips (0.3), nods
+the head at footfalls and leans the spine (3° walking, 7° added running). Reading the legs keeps
+it in step with any clip, rate or blend with no phase bookkeeping; it touches only local
+rotations and value types (no allocation, no skeleton-wide update). The jog clip already swings
+its arms far back, so the run adds no swing or shoulder turn (adding them crossed the arms into
+the body), only lean and elbows bent to ~86°.
+
+### G-264: Walk to run by speed on one stride cycle; quicker run cadence
+Walk and run play on normalised one-stride timelines (`use_custom_timeline`), aligned on the
+left leg's furthest-forward moment and advanced together at a blended stride rate, so a blend of
+the two keeps the legs in step; the run's share follows speed from 2.6 to 4.0 m/s. Run clip speed
+4.6 → 4.2 (about 186 steps a minute at 6.2 m/s); `PersonView` run 3.4 → 3.0.
+
+### G-265: Drivers are drawn in every vehicle
+With a seated pose, a driver in a car or bus no longer needs hiding; one figure costs what the
+player on foot costs and shows through open doors and in screenshots.
+
+### G-266: Passengers sit in the vehicle's own passenger seats
+Fares take the model's passenger seats in order (`VehicleType.seats`), not the door anchor, so
+two passengers never share a place; they sit down over the last two thirds of entering and stand
+up in the first two thirds of getting out. Feet go to a floor about 0.32 m above the road (the
+drop capped at 0.5 m for buses).
+
+### G-267: Seat anchors from the model's drawn ground
+The driver's seat, aisle, passenger doors and seats were measured from `chassis_to_model_y`, but
+the model is drawn at the settled ride height (lower by the springs' sag): riders sank 7–10 cm
+into seats. They are now measured from `VehicleModel.settled_ground`. Collision boxes keep their
+frame (physics, not changed here).
+
