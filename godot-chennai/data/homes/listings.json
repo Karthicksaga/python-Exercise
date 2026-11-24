@@ -1,0 +1,126 @@
+{
+ "format": 1,
+ "note": "Homes for sale: real OSM buildings (way ids) picked by tests/tools/home_picker.gd for each area, 2 to 3 per area, residential, of a size a home could have, with a road within 28 m. `at` is the building's centre in world metres (a hint to find its chunk fast); the game still looks the building up by id and skips a listing whose building is not in the world data. The areas, Tamil names and centres follow data/areas on agent/godot-areas (names from OSM, need native review); when that branch is merged this file may be replaced by a selection from its data. No business names anywhere: a sign says only the category.",
+ "areas": [
+  {
+   "id": "anna-nagar",
+   "en": "Anna Nagar",
+   "ta": "அண்ணா நகர்",
+   "type": "flat",
+   "buildings": [
+    {
+     "id": "anna-nagar-1",
+     "osm": 354517155,
+     "at": [
+      -260.6,
+      -454.5
+     ]
+    },
+    {
+     "id": "anna-nagar-2",
+     "osm": 354516823,
+     "at": [
+      -219.5,
+      -343.6
+     ]
+    }
+   ]
+  },
+  {
+   "id": "besant-nagar",
+   "en": "Besant Nagar",
+   "ta": "பெசன்ட் நகர்",
+   "type": "cottage",
+   "buildings": [
+    {
+     "id": "besant-nagar-1",
+     "osm": 426086053,
+     "at": [
+      6391.1,
+      9506.9
+     ]
+    },
+    {
+     "id": "besant-nagar-2",
+     "osm": 369090752,
+     "at": [
+      6393.1,
+      9463.2
+     ]
+    },
+    {
+     "id": "besant-nagar-3",
+     "osm": 355989836,
+     "at": [
+      6394.2,
+      9445.1
+     ]
+    }
+   ]
+  },
+  {
+   "id": "velachery",
+   "en": "Velachery",
+   "ta": "வேளச்சேரி",
+   "type": "terrace",
+   "buildings": [
+    {
+     "id": "velachery-1",
+     "osm": 354740475,
+     "at": [
+      1226.1,
+      11994.7
+     ]
+    },
+    {
+     "id": "velachery-2",
+     "osm": 354740450,
+     "at": [
+      1242.1,
+      11993.2
+     ]
+    },
+    {
+     "id": "velachery-3",
+     "osm": 354740560,
+     "at": [
+      1230.2,
+      12018.5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mylapore",
+   "en": "Mylapore",
+   "ta": "மயிலாப்பூர்",
+   "type": "old",
+   "buildings": [
+    {
+     "id": "mylapore-1",
+     "osm": 364280036,
+     "at": [
+      6497.8,
+      5941.0
+     ]
+    },
+    {
+     "id": "mylapore-2",
+     "osm": 364279981,
+     "at": [
+      6503.5,
+      5971.5
+     ]
+    },
+    {
+     "id": "mylapore-3",
+     "osm": 364280056,
+     "at": [
+      6394.6,
+      5995.7
+     ]
+    }
+   ]
+  }
+ ]
+}
