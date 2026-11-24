@@ -115,6 +115,9 @@ func step() -> void:
 		print("stream bookkeeping prefetch %d drop %d collect %d start %d" % [t1 - started, t2 - t1, t3 - t2, t4 - t3])
 	stats["max_overhead_usec"] = maxi(stats["max_overhead_usec"], Time.get_ticks_usec() - started)
 	_update_looks()
+	for kind: String in ["free", "body", "view"]:
+		stats["last_%s_n" % kind] = 0
+		stats["last_%s_usec" % kind] = 0
 	var steps := 0
 	while true:
 		var t := Time.get_ticks_usec()
@@ -326,8 +329,12 @@ func _one_main_step() -> bool:
 
 
 func _note(kind: StringName, since: int) -> void:
+	var spent := Time.get_ticks_usec() - since
 	var key := "max_%s_usec" % kind
-	stats[key] = maxi(int(stats.get(key, 0)), Time.get_ticks_usec() - since)
+	stats[key] = maxi(int(stats.get(key, 0)), spent)
+	# This frame's count and time per kind, for the perf overlay's hitch line (G-318).
+	stats["last_%s_n" % kind] = int(stats.get("last_%s_n" % kind, 0)) + 1
+	stats["last_%s_usec" % kind] = int(stats.get("last_%s_usec" % kind, 0)) + spent
 
 
 ## True when every chunk within `radius` (default: the load distance) of a point is in the
