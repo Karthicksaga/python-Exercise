@@ -26,8 +26,10 @@ const CLEARANCE := 0.42
 signal mode_changed(mode: StringName)
 ## A short message for the player.
 signal toast(text: String)
-## A crash was judged (shaken or thrown); `outcome` is a `CrashRules.Outcome`.
+## A crash was judged (shaken, fall or thrown); `outcome` is a `CrashRules.Outcome`.
 signal crashed(vehicle: Vehicle, outcome: CrashRules.Outcome)
+## A bump: felt (a wobble, effects, a sound) but nobody hurt; not a crash for missions (G-270).
+signal bumped(vehicle: Vehicle, outcome: CrashRules.Outcome)
 ## The horn (or, on siren vehicles, the siren switch) was pressed.
 signal horn(vehicle: Vehicle)
 ## A boarding event: &"door_opening", &"seated", &"shut", &"free", &"done".
@@ -72,6 +74,8 @@ var boarding_vehicle: Vehicle = null
 var boarding: Boarding = null
 ## The last crash judged above a bump (tests, HUD).
 var last_crash: CrashRules.Outcome = null
+## The last hit judged, bumps included (tests).
+var last_hit: CrashRules.Outcome = null
 
 var _mode: StringName = &"foot"
 var _path := PackedVector2Array()
@@ -87,7 +91,7 @@ func _ready() -> void:
 	_input.register_actions()
 
 
-## &"foot", &"boarding" (getting in or out), &"driving", &"thrown".
+## &"foot", &"boarding" (getting in or out), &"driving", &"thrown" (thrown or fallen off).
 func mode() -> StringName:
 	return _mode
 
@@ -236,12 +240,17 @@ func _drive_step(dt: float) -> void:
 	if hint != "":
 		toast.emit(hint)
 	_hold_seat(v)
-	var impact := v.consume_impact()
-	if impact <= 0.0:
+	var hit := v.consume_hit()
+	if hit == null:
 		return
 	var side := 1 if steer > STEER_SIDE else -1
-	var outcome := CrashRules.judge(v.type.crash, impact, v.approach_velocity(), side)
+	var outcome := CrashRules.judge_hit(v.type.crash, hit, side)
 	if outcome.type == &"none":
+		return
+	last_hit = outcome
+	_mark(v, outcome)
+	if outcome.type == &"bump":
+		bumped.emit(v, outcome)
 		return
 	last_crash = outcome
 	crashed.emit(v, outcome)
@@ -249,6 +258,19 @@ func _drive_step(dt: float) -> void:
 		rider.hurt(outcome.damage)
 		return
 	_throw(v, outcome)
+
+
+## The marks a hit leaves: both vehicles wobble and take dents (a parked one is shoved by the
+## physics itself; traffic is the AI's, G-270).
+func _mark(v: Vehicle, outcome: CrashRules.Outcome) -> void:
+	v.wobble(outcome.wobble)
+	v.add_damage(outcome.impact_kmh)
+	var other := outcome.hit.other as Vehicle if outcome.hit != null else null
+	if other != null and is_instance_valid(other):
+		# Equal and opposite: the other's severity is ours scaled by the mass ratio.
+		var theirs := outcome.impact_kmh * v.mass / maxf(1.0, other.mass)
+		other.wobble(clampf(theirs / maxf(1.0, other.type.crash.hurt_from), CrashRules.WOBBLE_MIN, 1.0))
+		other.add_damage(theirs)
 
 
 ## Reverse-on-hold: engages R when the hold completes and goes back to D when it ends.
@@ -322,7 +344,8 @@ func _pose_boarding(v: Vehicle, b: Boarding) -> void:
 	var standing := _standing_point(v, b.aisle())
 	var hips := v.rider_transform().origin
 	var sit := b.seated()
-	rider.set_figure_visible(v.type.open_seat or sit < 0.5 or v.type.entry.door == "none")
+	# Seen in every vehicle now that the rider sits (G-265): through an open door, a windscreen.
+	rider.set_figure_visible(true)
 	rider.set_seated(v.type if sit > 0.0 else null, sit)
 	# Turned to face forwards once on the seat; beside the door, facing it.
 	var facing := heading + (-v.type.entry.side * PI / 2.0 if sit <= 0.0 and v.type.entry.aisle.is_empty() else 0.0)
@@ -364,7 +387,7 @@ func _seat(v: Vehicle) -> void:
 	vehicle = v
 	v.take_controls()
 	rider.set_seated(v.type, 1.0)
-	rider.set_figure_visible(v.type.open_seat)
+	rider.set_figure_visible(true)
 	gearbox.reset("D")
 	reverse_hold.reset()
 	_auto_reversed = false
@@ -375,6 +398,7 @@ func _seat(v: Vehicle) -> void:
 func _hold_seat(v: Vehicle) -> void:
 	var t := v.rider_transform()
 	rider.hold(Transform3D(t.basis.orthonormalized(), t.origin))
+	rider.steer(v.steering())
 
 
 ## On foot beside the door (or wherever there is room), in control.

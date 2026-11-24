@@ -26,8 +26,27 @@ var _beacon_colour: Array[int] = []
 var _stretch := Vector3.ONE
 ## True when the model is a stand-in (fallback GLB or the code box).
 var stand_in := false
+## The handlebar or steering wheel (the model's `steering` node), its rest basis and the axis it
+## turns about in its parent's frame (G-261); null when the model has none.
+var _steering: Node3D = null
+var _steering_rest: Basis = Basis.IDENTITY
+var _steering_axis: Vector3 = Vector3.UP
 
 static var _paint_cache: Dictionary = {}
+
+## Per damage stage (G-272): the paint darkens by this share (soot, scuffs), the body sags at
+## the front (pitch, radians) and leans (roll, radians), as a bent frame would.
+const DENT_DARKEN := 0.2
+const DENT_SAG := 0.025
+const DENT_LEAN := 0.015
+
+## The paint slots (mesh, surface, base material) and colour, so damage can darken them.
+var _paint_meshes: Array[MeshInstance3D] = []
+var _paint_surfaces: PackedInt32Array = []
+var _paint_bases: Array[StandardMaterial3D] = []
+var _paint_colour := Color.WHITE
+var _box_material: StandardMaterial3D = null
+var _damage_stage := 0
 
 
 static func build(t: VehicleType, variant: VehicleCatalog.VariantInfo) -> VehicleModel:
@@ -106,6 +125,19 @@ func _build_glb(t: VehicleType, variant: VehicleCatalog.VariantInfo, manifest: V
 		_wheels.append(node)
 		_wheel_scale.append(t.spec.wheels[i].radius / maxf(0.05, float(best["radius"])))
 		_wheel_xz.append(Vector2(at.x, at.z))
+	if not stand_in:
+		measure_ride_pose(t, body)
+	var st: Variant = manifest.data.get("steering")
+	if st is Dictionary and not stand_in:
+		var sd: Dictionary = st
+		var node := body.find_child(String(sd.get("node", "steering")), true, false) as Node3D
+		if node != null:
+			_steering = node
+			_steering_rest = node.basis
+			var ax: Variant = sd.get("axis")
+			if ax is Array:
+				var a: Array = ax
+				_steering_axis = Vector3(float(a[0]), float(a[1]), float(a[2])).normalized()
 	for d in manifest.doors():
 		var door := body.find_child(String(d["node"]), true, false) as Node3D
 		if door == null:
@@ -131,6 +163,10 @@ func _style_meshes(root: Node, paint_names: Array[String], beacons: Dictionary, 
 			var mname := mat.resource_name
 			if mname in paint_names and mat is StandardMaterial3D:
 				mi.set_surface_override_material(s, _painted(mat as StandardMaterial3D, paint))
+				_paint_meshes.append(mi)
+				_paint_surfaces.append(s)
+				_paint_bases.append(mat as StandardMaterial3D)
+				_paint_colour = paint
 			for colour: String in beacons:
 				var names: Array = beacons[colour]
 				if mname in names and mat is StandardMaterial3D:
@@ -166,6 +202,8 @@ func _build_box(t: VehicleType, variant: VehicleCatalog.VariantInfo) -> void:
 	mat.roughness = 0.35
 	mat.metallic = 0.3
 	box.material = mat
+	_box_material = mat
+	_paint_colour = variant.paint
 	body.mesh = box
 	body.position = Vector3(0, -position.y, 0)
 	add_child(body)
@@ -226,6 +264,50 @@ func _build_extras(variant: VehicleCatalog.VariantInfo, roof_height: float) -> v
 		add_child(sign)
 
 
+## The driver's palms and feet from the model's own nodes (G-261): `grip_r`/`grip_steer_r` and
+## `foot_r` relative to `seat_driver`, and the steering hub, into `t.pose` (the manifest's numbers
+## were typed beside the model and disagree with it in places, the city bus's grips by 22 cm).
+## The `foot_*` anchors mark the sole on the footboard; the pose wants the ankle, a little above
+## and behind it. Once per type (the first model built).
+static func measure_ride_pose(t: VehicleType, body: Node3D) -> void:
+	if t.pose.measured:
+		return
+	t.pose.measured = true
+	var seat := body.find_child("seat_driver", true, false) as Node3D
+	if seat == null:
+		return
+	var hip := _in(body, seat)
+	for grip_name: String in ["grip_r", "grip_steer_r"]:
+		var g := body.find_child(grip_name, true, false) as Node3D
+		if g != null:
+			t.pose.hand = _in(body, g) - hip
+			break
+	var foot := body.find_child("foot_r", true, false) as Node3D
+	if foot != null:
+		t.pose.foot = _in(body, foot) - hip + Vector3(0, 0.08, 0.05)
+	var wheel := body.find_child("steering", true, false) as Node3D
+	if wheel != null:
+		t.pose.hub = _in(body, wheel) - hip
+
+
+## A node's origin in `root`'s frame.
+static func _in(root: Node3D, node: Node3D) -> Vector3:
+	var xf := Transform3D.IDENTITY
+	var n: Node = node
+	while n != null and n != root:
+		var n3 := n as Node3D
+		if n3 != null:
+			xf = n3.transform * xf
+		n = n.get_parent()
+	return xf.origin
+
+
+## Turns the handlebar or steering wheel by `angle` radians about its column (+ left).
+func set_steering(angle: float) -> void:
+	if _steering != null:
+		_steering.basis = Basis(_steering_axis, angle) * _steering_rest
+
+
 ## Draws wheel `i` with its hub at `hub_y` (chassis frame), steered and spun.
 func set_wheel(i: int, hub_y: float, steer: float, spin: float) -> void:
 	if i >= _wheels.size() or _wheels[i] == null:
@@ -238,7 +320,24 @@ func set_wheel(i: int, hub_y: float, steer: float, spin: float) -> void:
 
 ## Lean or topple: roll about the forward axis, pivoting on the ground.
 func set_roll(angle: float) -> void:
-	rotation = Vector3(0, 0, angle)
+	var st := float(_damage_stage)
+	rotation = Vector3(-DENT_SAG * st, 0, angle + DENT_LEAN * st)
+
+
+## Show damage stage 0 (clean), 1 (dented) or 2 (wrecked): darker paint (shared materials per
+## colour, so no per-vehicle copies) and a sagging body. Called on a stage change only.
+func set_damage(stage: int) -> void:
+	_damage_stage = clampi(stage, 0, 2)
+	var colour := _paint_colour.darkened(DENT_DARKEN * float(_damage_stage))
+	for i in _paint_meshes.size():
+		if is_instance_valid(_paint_meshes[i]):
+			_paint_meshes[i].set_surface_override_material(_paint_surfaces[i], _painted(_paint_bases[i], colour))
+	if _box_material != null:
+		_box_material.albedo_color = colour
+
+
+func damage_stage() -> int:
+	return _damage_stage
 
 
 func set_door(leaf: int, amount: float) -> void:
