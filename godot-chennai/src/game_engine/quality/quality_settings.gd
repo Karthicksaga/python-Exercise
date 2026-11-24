@@ -26,14 +26,15 @@ const FSR1 := 1
 ## measures it); Low is for weak phones (Adreno 6xx low tier at 1080x2400).
 const TABLE: Array[Dictionary] = [
 	{
-		"scale": 0.67, "scale_mode": BILINEAR, "msaa": 0,
-		"shadows": false, "shadow_size": 1024, "shadow_distance": 0.0,
+		"scale": 0.75, "scale_mode": BILINEAR, "msaa": 0,
+		"shadows": true, "shadow_size": 1024, "shadow_distance": 20.0,
 		"load_distance": 200.0, "unload_distance": 280.0, "near_distance": 80.0,
 		"fog_far": 240.0, "camera_far": 330.0,
 		"traffic": 18, "walkers": 14, "figures": 12, "driver_reach": 30.0, "rider_reach": 60.0,
 		"rain": 0.4, "title_rain_layers": 0, "water_detail": false, "ground_detail": false,
 		"lod_threshold": 4.0, "landmark_range": 0.6, "aniso": 0,
 		"max_fps": 30, "physics_steps": 2, "workers": 1, "street_lights": 0, "ai_patience": 6,
+		"animate_reach": 25.0, "npc_shadow": 0.0, "parked_reach": 100.0,
 	},
 	{
 		"scale": 0.8, "scale_mode": FSR1, "msaa": 0,
@@ -44,6 +45,7 @@ const TABLE: Array[Dictionary] = [
 		"rain": 0.7, "title_rain_layers": 1, "water_detail": true, "ground_detail": true,
 		"lod_threshold": 2.0, "landmark_range": 0.8, "aniso": 1,
 		"max_fps": 60, "physics_steps": 3, "workers": 2, "street_lights": 2, "ai_patience": 4,
+		"animate_reach": 35.0, "npc_shadow": 0.0, "parked_reach": 150.0,
 	},
 	{
 		"scale": 1.0, "scale_mode": BILINEAR, "msaa": 1,
@@ -54,6 +56,7 @@ const TABLE: Array[Dictionary] = [
 		"rain": 1.0, "title_rain_layers": 2, "water_detail": true, "ground_detail": true,
 		"lod_threshold": 1.0, "landmark_range": 1.0, "aniso": 2,
 		"max_fps": 0, "physics_steps": 5, "workers": 3, "street_lights": 6, "ai_patience": 2,
+		"animate_reach": 45.0, "npc_shadow": 18.0, "parked_reach": 200.0,
 	},
 ]
 

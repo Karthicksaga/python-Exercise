@@ -21,15 +21,17 @@ func test_every_preset_has_every_value_and_low_is_lightest() -> bool:
 	var low := QualitySettings.values(QualitySettings.LOW)
 	var mid := QualitySettings.values(QualitySettings.MEDIUM)
 	var high := QualitySettings.values(QualitySettings.HIGH)
-	assert_true(float(low["scale"]) >= 0.6 and float(low["scale"]) <= 0.7, "Low renders 3D at 60-70 %")
+	assert_true(float(low["scale"]) >= 0.7 and float(low["scale"]) <= 0.8, "Low renders 3D at 75 % (coordinator: 0.75-0.85 for the Adreno 613)")
 	assert_eq(float(mid["scale"]), 0.8, "Medium at 80 %")
 	assert_eq(float(high["scale"]), 1.0, "High at full resolution")
 	assert_eq(int(mid["scale_mode"]), QualitySettings.FSR1, "Medium upscales with FSR 1")
 	assert_eq(int(low["msaa"]), 0, "no MSAA on Low")
-	assert_false(bool(low["shadows"]), "no sun shadows on Low")
+	assert_true(int(low["shadow_size"]) == 1024 and float(low["shadow_distance"]) <= 20.0, "Low: a small shadow map, short reach")
+	assert_eq(float(low["npc_shadow"]), 0.0, "no shadows from walkers on Low")
+	assert_eq(float(mid["npc_shadow"]), 0.0, "nor on Medium")
 	assert_eq(int(low["aniso"]), 0, "no anisotropic filtering on Low")
 	assert_false(bool(low["ground_detail"]) or bool(low["water_detail"]), "light ground and water shaders on Low")
-	for k: String in ["load_distance", "near_distance", "fog_far", "camera_far", "traffic", "walkers", "figures", "rain", "title_rain_layers", "workers", "street_lights", "physics_steps", "shadow_distance"]:
+	for k: String in ["load_distance", "near_distance", "fog_far", "camera_far", "traffic", "walkers", "figures", "rain", "title_rain_layers", "workers", "street_lights", "physics_steps", "shadow_distance", "animate_reach", "parked_reach"]:
 		assert_true(float(low[k]) <= float(mid[k]) and float(mid[k]) <= float(high[k]), "%s rises Low → Medium → High" % k)
 	assert_true(float(low["unload_distance"]) > float(low["load_distance"]), "Low unloads beyond its load distance")
 	# High is the game as it was before presets (tests and tools measure it).

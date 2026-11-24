@@ -401,6 +401,7 @@ func _camera_point() -> Vector3:
 func _sync(dt: float, focus: Vector2) -> void:
 	_sync_start = Time.get_ticks_usec()
 	var cam := _camera_point()
+	var camera := get_viewport().get_camera_3d()
 	var ahead := _since
 	pool.begin_frame()
 	var traffic := population.traffic
@@ -428,7 +429,7 @@ func _sync(dt: float, focus: Vector2) -> void:
 				var seat := v.driver_transform()
 				fig.global_transform = Transform3D(seat.basis, seat.origin - seat.basis.y * fig.seat_height)
 				fig.play(&"sit", 0.0, traffic.agents[i].variation * 4.0)
-				fig.advance(dt, d)
+				fig.advance(dt, d, camera == null or camera.is_position_in_frustum(seat.origin))
 		sounds.append({"id": i, "position": at, "speed": st.w, "kind": sound_kind(k)})
 	var tv := Time.get_ticks_usec()
 	var ws: PackedVector4Array = _walker_state[0]
@@ -453,7 +454,7 @@ func _sync(dt: float, focus: Vector2) -> void:
 			fig.play(&"walk", st.w, variation * 3.0)
 		else:
 			fig.play(&"idle", 0.0, variation * 3.0)
-		fig.advance(dt, d)
+		fig.advance(dt, d, camera == null or camera.is_position_in_frustum(at + Vector3(0, 1.0, 0)))
 	var tw := Time.get_ticks_usec()
 	for p in _people:
 		var who := cast.crowd_person(p.look, p.child, p.play)
@@ -478,7 +479,7 @@ func _sync(dt: float, focus: Vector2) -> void:
 			_:
 				# Sitting on the sand has no clip (the cast's `sit` is on a seat): they stand.
 				fig.play(&"idle", 0.0, float(p.look) * 0.01)
-		fig.advance(dt, d)
+		fig.advance(dt, d, camera == null or camera.is_position_in_frustum(at + Vector3(0, 1.0, 0)))
 	var tc := Time.get_ticks_usec()
 	pool.end_frame()
 	heads.refresh(focus)

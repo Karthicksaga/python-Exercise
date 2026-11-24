@@ -38,6 +38,10 @@ var _window_avgs := PackedFloat32Array()
 var _started_usec: int = 0
 var _world_hooked: CityWorld = null
 var _measuring_viewport: bool = false
+## Frames slower than HITCH_MS since the start, and what the last one was made of.
+const HITCH_MS := 50.0
+var hitches: int = 0
+var last_hitch: String = ""
 ## Main-thread script time per frame (process + all physics steps), smoothed, ms.
 var scripts_ms: float = 0.0
 var _probe_first: _Probe = null
@@ -144,7 +148,12 @@ func apply() -> void:
 		if _world_hooked != world and world.streamer != null:
 			_world_hooked = world
 			world.streamer.chunk_shown.connect(switches.on_chunk_shown)
+	PersonView.animate_reach = float(v["animate_reach"])
+	PersonView.shadow_near = float(v["npc_shadow"])
 	var pw := main.play_wiring
+	if pw != null and pw.parked != null:
+		pw.parked.spawn_reach = float(v["parked_reach"])
+		pw.parked.free_reach = float(v["parked_reach"]) * 1.55
 	if pw != null and pw.environment != null:
 		var env := pw.environment.environment
 		QualityApplier.apply_environment(env, v)
@@ -228,6 +237,9 @@ func _process(_delta: float) -> void:
 	stats.add(ms, steps)
 	if _probe_last != null:
 		var frame_scripts := (_probe_last.process_usec + _probe_last.physics_usec) / 1000.0
+		if ms > HITCH_MS and main.state == &"play":
+			hitches += 1
+			last_hitch = _hitch_line(ms, steps, frame_scripts)
 		_probe_last.physics_usec = 0
 		_probe_last.physics_n = 0
 		scripts_ms = lerpf(scripts_ms, frame_scripts, 0.05)
@@ -249,6 +261,19 @@ func _process(_delta: float) -> void:
 			overlay.set_text(overlay_text())
 			if switches.last_line != "" and overlay.is_panel_open():
 				_refresh_switches()
+
+
+## What a slow frame was made of: the parts this wiring can see (the rest is the engine, the
+## driver or the OS taking the core away).
+func _hitch_line(ms: float, steps: int, scripts: float) -> String:
+	var r := render_times()
+	var stream := 0.0
+	if main.world != null and main.world.streamer != null:
+		stream = int(main.world.streamer.stats.get("last_frame_usec", 0)) / 1000.0
+	var life_ms := 0.0
+	if main.life != null:
+		life_ms = (int(main.life.stats.get("sync", 0)) + int(main.life.stats.get("wait", 0))) / 1000.0
+	return "hitch %.0f ms at t=%ds: scripts %.1f (streaming %.1f, traffic %.1f), physics steps %d, render cpu %.1f, gpu %.1f" % [ms, roundi((Time.get_ticks_usec() - _started_usec) / 1e6), scripts, stream, life_ms, steps, r.x, r.y]
 
 
 func _refresh_switches() -> void:
@@ -353,7 +378,9 @@ func overlay_text() -> String:
 	var lines := PackedStringArray()
 	for w in warnings():
 		lines.append(w)
-	lines.append("FPS %.0f · frame avg %.1f ms · worst %.1f ms (last %d)" % [stats.fps(), stats.average(), stats.worst(), stats.count()])
+	lines.append("FPS %.0f · frame avg %.1f ms · worst %.1f ms (last %d) · hitches >50 ms: %d" % [stats.fps(), stats.average(), stats.worst(), stats.count(), hitches])
+	if last_hitch != "":
+		lines.append(last_hitch)
 	lines.append("CPU: scripts %.1f ms/frame · render %.1f · physics steps %d (max %d) · worst in 1 s: process %.1f, physics step %.1f" % [p["scripts"], p["render_cpu"], p["steps"], stats.max_physics_steps, p["process_max"], p["physics_max"]])
 	lines.append("GPU: %s ms · verdict: %s" % [("%.1f" % p["gpu"]) if float(p["gpu"]) > 0.0 else "n/a", FrameStats.verdict(stats.average(), float(p["cpu"]), float(p["gpu"]))])
 	lines.append("draws %d · primitives %dk · objects %d · video memory %d MB · textures %d MB" % [
@@ -447,7 +474,7 @@ func write_log() -> void:
 
 
 func log_text() -> String:
-	return "%s\n%s\n%s\n" % [_log_header(), "\n".join(log_lines), drift_line()]
+	return "%s\n%s\n%s\nhitches over 50 ms in play: %d%s\n" % [_log_header(), "\n".join(log_lines), drift_line(), hitches, ("; last: " + last_hitch) if last_hitch != "" else ""]
 
 
 ## The pause menu's summary row: the whole log to the clipboard (and to logcat).

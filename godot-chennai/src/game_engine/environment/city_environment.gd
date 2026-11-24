@@ -32,7 +32,7 @@ var place_haze: float = 1.0
 var fog_far: float = FOG_FAR:
 	set(value):
 		fog_far = clampf(value, 60.0, 2000.0)
-		_applied_hour = -100.0
+		_applied_haze = -1.0
 
 var look: Lighting.Look = Lighting.at(Lighting.DEFAULT_HOUR)
 var sun: DirectionalLight3D
