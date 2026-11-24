@@ -750,3 +750,19 @@ repository, the sync check is green). CI budget step (`APK_BUDGET_MB: 260`) and
 
 **Weak or not done.** CI: phone APK 115.13 MB, smoke APK 119.73 MB (run 45381255694, all green). No `.aab`, no asset packs, no custom
 template. Generated LODs, tangents and the world tile format were measured, not changed.
+
+
+## Take over (branch `agent/godot-take`, 24 Nov 2026)
+**Done.** The carjacking was never added to the game; now `Main` wires `Carjacking` to the life
+layer and the ACTION button (G-300). TAKE OVER is offered beside a moving or stopped car, auto or
+bike; pressed, the driver is pulled out through the boarding's pull phase, the player gets in on
+the right and drives, the driver staggers and runs off. Tests: `scene/test_city_life.gd`
+(moving car, moving bike, bus refused, refused while boarding, adults-only drivers, bookkeeping
+and freeing a vehicle left far behind), `scene/test_game_vehicles.gd` (end to end in `Main`),
+`unit/rules/test_carjack.gd`.
+
+**Weak or not done.**
+- No `Wanted` instance exists in the game, so there is no heat yet: hook `Carjacking.wanted`.
+- The pulled driver's fall is a lean while staggering (no fall clip); the moving vehicle stops
+  dead at the press instead of braking.
+- Seen headless only; not on a phone, no screenshots (nothing new is drawn).

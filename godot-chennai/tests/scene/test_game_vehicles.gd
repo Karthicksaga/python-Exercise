@@ -230,3 +230,44 @@ func test_parked_vehicles_follow_the_chunk_ring_and_origin() -> bool:
 		assert_true(w.distance_to(main.world.streamer.focus) <= parked.free_reach, "%s within the ring" % id)
 	_restore()
 	return true
+
+
+## TAKE OVER in the real game (G-300): `Main` wires `Carjacking` to the ACTION button, and
+## pressing it beside a moving traffic car pulls the driver out and the player drives it.
+func test_main_wires_take_over_for_moving_traffic() -> bool:
+	var main := await _play()
+	if main == null:
+		return true
+	assert_true(main.carjacking != null, "main made the carjacking")
+	assert_true(main.carjacking.life == main.life and main.carjacking.driving == main.play_wiring.driving, "on the game's life layer and driving")
+	var ctx := main.rig.controls.action_context
+	var d := main.play_wiring.driving
+	var traffic := main.life.population.traffic
+	var pick := func() -> AgentSystem.Agent:
+		var best: AgentSystem.Agent = null
+		var best_d := INF
+		for a in traffic.agents:
+			var k := traffic.kinds[a.kind]
+			if a.active and (k.group == &"car" or k.group == &"bike") and a.speed > 3.0 and a.pos.distance_to(main.life.focus_world()) < best_d:
+				best = a
+				best_d = a.pos.distance_to(main.life.focus_world())
+		return best
+	var found := await wait_until(func() -> bool: return pick.call() != null, 60 * 60)
+	if not assert_true(found, "a moving car or bike is near"):
+		_restore()
+		return true
+	var id: int = (pick.call() as AgentSystem.Agent).id
+	var follow := func(stop: Callable) -> bool:
+		var a := traffic.agents[id]
+		var k := traffic.kinds[a.kind]
+		main.rig.body.global_position = WorldOrigin.to_scene(a.pos + Vector2(cos(a.heading), -sin(a.heading)) * (k.half_width + 0.9), a.y + 0.1)
+		return bool(stop.call())
+	var offered := await wait_until(func() -> bool: return follow.call(func() -> bool: return ctx.label() == "TAKE OVER"), 60 * 8)
+	assert_true(offered, "the ACTION button reads TAKE OVER beside it")
+	if offered:
+		assert_true(ctx.trigger(), "pressed")
+		await wait_until(func() -> bool: return follow.call(func() -> bool: return main.carjacking.vehicle != null), 60 * 2)
+		assert_true(main.carjacking.vehicle != null, "the vehicle is swapped in")
+		assert_true(await wait_until(func() -> bool: return d.mode() == &"driving", 60 * 15), "and the player is driving it")
+	_restore()
+	return true
