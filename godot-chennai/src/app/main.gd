@@ -34,6 +34,8 @@ var pause_menu: PauseMenu = null
 
 ## Traffic, walkers and crowds round the player (G-120…G-128).
 var life: CityLife = null
+## Taking over traffic cars, autos and bikes on foot (G-300); the ACTION button's TAKE OVER.
+var carjacking: Carjacking = null
 ## The live city behind the title: camera drift, chip, lightning (G-164). Made at the end of loading.
 var title_wiring: TitleWiring = null
 ## The title camera tours a faraway spot (needs a display; headless runs stay with the player).
@@ -214,7 +216,19 @@ func _add_play() -> String:
 		push_warning("[boot] content: %s (only the extra parking spots)" % content.error)
 	play_wiring = PlayWiring.make(world, rig, content)
 	world.add_child(play_wiring)
-	return await play_wiring.prepare(world.spawn["point"])
+	var error := await play_wiring.prepare(world.spawn["point"])
+	if error == "":
+		_add_carjacking()
+	return error
+
+
+## TAKE OVER on the ACTION button: a traffic car, auto or bike beside the player on foot.
+func _add_carjacking() -> void:
+	if carjacking != null or life == null:
+		return
+	carjacking = Carjacking.make(life, play_wiring.driving)
+	world.add_child(carjacking)
+	rig.controls.action_context.add_source(carjacking.offer)
 
 
 ## The pause menu's real settings: time of day, weather, sound (G-115).
