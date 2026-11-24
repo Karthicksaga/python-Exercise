@@ -222,7 +222,7 @@ recording replaced) and `--import`; the tests check rows, licences and the engin
 could also record an auto-rickshaw on a phone (idle, held revs, start, stop, horn) for the auto.
 
 **Measured.** Synthesis in GDScript: ~2 µs/sample/voice; full stand-in render 7.5-11 s (why no
-run-time synthesis). Audio size: `assets/audio` 2.4 MB on disk. Draw calls in the test world:
+run-time synthesis). Audio size: `assets/audio` 2.9 MB on disk (engine loops WAV, imported as QOA; the rest OGG). Draw calls in the test world:
 12 dry, 13 raining. Screenshots (Compatibility, xvfb): golden hour is very warm and orange on the
 flat test ground, noon's horizon band is near-white, night pools are sodium-orange but dim at the
 edge; judge again on the real city.
