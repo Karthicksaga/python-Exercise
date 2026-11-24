@@ -72,7 +72,7 @@ wait_soft() {
 booted() { [ "$(dev getprop sys.boot_completed)" = 1 ] && [ "$(dev getprop init.svc.bootanim)" = stopped ]; }
 services() { dev pm path android | grep -q package: && dev cmd activity get-config > /dev/null && dev dumpsys window | grep -q mCurrentFocus; }
 unlocked() { ! dev dumpsys window | grep -qE "mDreamingLockscreen=true|isKeyguardShowing=true|mShowingLockscreen=true"; }
-landscape() { { dev dumpsys input; dev dumpsys window displays; } | grep -qE "SurfaceOrientation: (1|3)|mRotation=(1|3)|ROTATION_(90|270)"; }
+landscape() { config | grep -q " land "; }
 
 # The global configuration unchanged for 15 s. Root cause of the flaky runs: launched while the
 # emulator was still finishing its boot (boot-completed receivers running), the game's activity
@@ -102,12 +102,14 @@ if [ "$SETTLE" = 1 ]; then
   wait_for 120 "package and activity managers answer" services
   dev input keyevent KEYCODE_WAKEUP; dev wm dismiss-keyguard; dev input keyevent KEYCODE_MENU
   wait_for 60 "screen unlocked" unlocked
-  # The game asks for landscape; turning the display first means no rotation while it starts.
-  dev settings put system accelerometer_rotation 0
-  dev settings put system user_rotation 1
-  # Only reported: dumpsys wording differs between Android versions; the steady configuration
-  # below is what the launch waits on.
-  if wait_soft 30 landscape; then log "ready: display in landscape"; else log "note: could not confirm landscape from dumpsys"; fi
+  # The game asks for landscape. If the display is still portrait when it starts, Android
+  # rotates it under the starting game; turn it first and lock it there.
+  for rotation in 0 1 3; do
+    dev cmd window user-rotation lock "$rotation"
+    if wait_soft 10 landscape; then break; fi
+  done
+  landscape || fail "could not turn the display to landscape: $(config)"
+  log "ready: display in landscape"
   config_steady
 fi
 
@@ -148,5 +150,6 @@ current=$(dev pidof "$PACKAGE")
 [ "$current" != "$pid" ] && fail "the app's process $pid is gone 10 s after reaching the test world (now: '${current:-none}')"
 if crashed; then fail "the app crashed after reaching the test world"; fi
 boot_log | grep -F "[boot]" | sed 's/.*\[boot\]/  [boot]/'
+log "activity relaunches since launch: $(adb logcat -d -b events 2>/dev/null | grep -c wm_relaunch)"
 save
 log "pass (pid $pid)"
