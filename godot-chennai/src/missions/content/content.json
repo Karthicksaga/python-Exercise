@@ -4545,5 +4545,163 @@
    "x": 5106.7,
    "z": 1203.7
   }
+ ],
+ "places": [
+  {
+   "id": "home",
+   "kind": "home",
+   "name": "Home",
+   "x": 18,
+   "z": 42.8,
+   "radius": 3
+  },
+  {
+   "id": "hospital",
+   "kind": "hospital",
+   "name": "Sugam Hospital",
+   "x": 311.4,
+   "z": 45.2,
+   "radius": 3
+  },
+  {
+   "id": "gym",
+   "kind": "gym",
+   "name": "Thol Power Gym",
+   "x": -112.5,
+   "z": -148.7,
+   "radius": 3
+  },
+  {
+   "id": "mall",
+   "kind": "mall",
+   "name": "Vaanavil Mall",
+   "x": 156.6,
+   "z": -301.2,
+   "radius": 3
+  },
+  {
+   "id": "cinema",
+   "kind": "cinema",
+   "name": "Minnal Cinemas",
+   "x": 314.8,
+   "z": -29.1,
+   "radius": 3
+  }
+ ],
+ "stories": [
+  {
+   "id": "paati-checkup",
+   "title": "Paati's check-up",
+   "brief": "Your grandmother has a check-up at Sugam Hospital and has been ready since six in the morning. Drive her there, and home again before her TV serial starts.",
+   "reward": 400,
+   "offeredAt": "home",
+   "ending": "Paati gives you ₹400 and the rest of her tiffin. The doctor's advice for you: fewer vadas.",
+   "steps": [
+    {
+     "type": "enter",
+     "label": "Get in a car: Paati is waiting",
+     "vehicle": "car"
+    },
+    {
+     "type": "reach",
+     "label": "Drive Paati to Sugam Hospital. Gently: she is holding a tiffin box",
+     "x": 311.4,
+     "z": 45.2,
+     "radius": 10,
+     "mode": "car",
+     "stop": true
+    },
+    {
+     "type": "activity",
+     "label": "Walk Paati in for her check-up (ENTER Sugam Hospital)",
+     "place": "hospital",
+     "activity": "checkup",
+     "x": 311.4,
+     "z": 45.2,
+     "radius": 3
+    },
+    {
+     "type": "reach",
+     "label": "Drive Paati home before her serial starts",
+     "x": 18,
+     "z": 42.8,
+     "radius": 10,
+     "mode": "car",
+     "stop": true,
+     "timeLimit": 139
+    }
+   ]
+  },
+  {
+   "id": "gym-bet",
+   "title": "Selva's gym bet",
+   "brief": "Your friend Selva bets you can't match his four good reps, then beat him to the juice shop on foot. Loser buys the sugarcane juice.",
+   "reward": 300,
+   "offeredAt": "gym",
+   "ending": "Selva pays for the juice and the bet, and books a rematch for next week.",
+   "steps": [
+    {
+     "type": "activity",
+     "label": "Match Selva: 4 good reps out of 5 (in the gym)",
+     "place": "gym",
+     "activity": "gym-bet",
+     "x": -112.5,
+     "z": -148.7,
+     "radius": 3
+    },
+    {
+     "type": "reach",
+     "label": "Race Selva to the juice shop, on foot",
+     "x": -102.4,
+     "z": -270,
+     "radius": 5,
+     "mode": "foot",
+     "timeLimit": 50
+    }
+   ]
+  },
+  {
+   "id": "first-show",
+   "title": "First day, first show",
+   "brief": "Ravi got two tickets for the first show of a new film at Minnal Cinemas. Pick him up on the motorbike and get there before the hero's entry.",
+   "reward": 250,
+   "offeredAt": "home",
+   "ending": "Ravi pays you back for the petrol. He has already booked the second show.",
+   "steps": [
+    {
+     "type": "enter",
+     "label": "Get on a motorbike: the show starts soon",
+     "vehicle": "bike"
+    },
+    {
+     "type": "reach",
+     "label": "Pick up Ravi (he is still choosing a shirt)",
+     "x": 157.4,
+     "z": -60.3,
+     "radius": 7,
+     "mode": "bike",
+     "stop": true
+    },
+    {
+     "type": "reach",
+     "label": "Ride to Minnal Cinemas before the hero's entry",
+     "x": 314.8,
+     "z": -29.1,
+     "radius": 10,
+     "mode": "bike",
+     "stop": true,
+     "timeLimit": 67
+    },
+    {
+     "type": "activity",
+     "label": "Go in for the first show (ENTER Minnal Cinemas)",
+     "place": "cinema",
+     "activity": "first-show",
+     "x": 314.8,
+     "z": -29.1,
+     "radius": 3
+    }
+   ]
+  }
  ]
 }

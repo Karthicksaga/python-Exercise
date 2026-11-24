@@ -1,11 +1,13 @@
 class_name TitleMenu
 extends CanvasLayer
-## The title menu over the city (TD-25): PLAY, ABOUT (credits, OpenStreetMap attribution with
+## The title menu over the city (TD-25): PLAY (carries on from the save), NEW GAME, ABOUT (credits, OpenStreetMap attribution with
 ## the extract date, what is estimated) and QUIT (only where an app can quit). Only real options.
 ## Keyboard and D-pad focus work on both pages; Back goes from ABOUT to the menu, then asks the
 ## composition root to quit.
 
 signal play_requested
+## NEW GAME: forget the saved progress, then play (emitted before `play_requested`).
+signal new_game_requested
 signal quit_requested
 
 var _menu: VBoxContainer
@@ -39,6 +41,12 @@ func _ready() -> void:
 	_play.name = "Play"
 	_play.pressed.connect(func() -> void: play_requested.emit())
 	_menu.add_child(_play)
+	var fresh := UiTheme.button("NEW GAME")
+	fresh.name = "NewGame"
+	fresh.pressed.connect(func() -> void:
+		new_game_requested.emit()
+		play_requested.emit())
+	_menu.add_child(fresh)
 	var about := UiTheme.button("ABOUT")
 	about.name = "About"
 	about.pressed.connect(show_about)
