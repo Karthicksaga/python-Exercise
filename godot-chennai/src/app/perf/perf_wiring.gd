@@ -124,7 +124,7 @@ func _ready() -> void:
 	switches = FeatureSwitches.make(main, settings)
 	switches.frame_ms = func() -> float: return stats.average()
 	add_child(switches)
-	overlay.toggle_requested.connect(func() -> void: settings.set_overlay(not settings.overlay))
+	overlay.toggle_requested.connect(DebugSettings.toggle)
 	overlay.switch_pressed.connect(func(id: String) -> void:
 		switches.toggle(id)
 		_refresh_switches())
@@ -135,12 +135,14 @@ func _ready() -> void:
 		switches.all_on()
 		_refresh_switches())
 	settings.changed.connect(_on_settings)
+	# The one on/off switch of the overlay is `DebugSettings` (G-291): pause row, five corner taps.
+	DebugSettings.shared().changed.connect(_on_settings)
 	main.state_changed.connect(func(_s: StringName) -> void: apply())
 	_add_rows()
 	_set_viewport_measure(true)
 	_add_probes()
 	apply()
-	_show_overlay(settings.overlay)
+	_show_overlay(DebugSettings.shared().perf_overlay)
 	print("[perf] %s" % _device_line())
 	print("[perf] quality %s (%s)" % [settings.preset_name(), settings.reason if settings.auto else "chosen in Settings"])
 
@@ -150,16 +152,18 @@ func _add_rows() -> void:
 		if host == null:
 			continue
 		host.call(&"add_setting", &"Quality", func() -> String: return "%s\n%s" % [settings.row_label(), settings.explain()], func() -> void: settings.next_preset())
-		host.call(&"add_setting", &"PerfOverlay", func() -> String: return "Performance overlay: %s" % ("On" if settings.overlay else "Off"), func() -> void: settings.set_overlay(not settings.overlay))
+		host.call(&"add_setting", &"PerfOverlay", DebugSettings.label, DebugSettings.toggle)
 	if main.pause_menu != null:
 		main.pause_menu.add_setting(&"PerfSummary", func() -> String: return summary + " (tap: copy log)", copy_log)
 
 
 func _on_settings() -> void:
 	apply()
-	_show_overlay(settings.overlay)
+	_show_overlay(DebugSettings.shared().perf_overlay)
 	if main.pause_menu != null:
 		main.pause_menu.refresh()
+	if main.title != null:
+		main.title.refresh_settings()
 
 
 ## Whether the title may tour a live faraway spot (the feature switch; read by Main at start).

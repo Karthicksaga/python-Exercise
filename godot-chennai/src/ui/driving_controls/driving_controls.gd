@@ -2,9 +2,10 @@ class_name DrivingControls
 extends Control
 ## Touch driving controls, scheme A "wheel" (chennai-game-design §3, input-systems; decisions
 ## G-78, G-174): slide-to-steer anywhere on the left (a ring shows where the thumb landed), GAS
-## (largest) and BRAKE under the right thumb (BRAKE says "hold to reverse"), HORN above BRAKE
-## (SIREN on the ambulance and police car), EXIT top-right, speed and gear bottom-centre as a
-## readout only. No steering slider and no P / R / D chips. Each control appears only while
+## (largest) and BRAKE under the right thumb (BRAKE says "hold to reverse" under it), HORN above
+## BRAKE (SIREN on the ambulance and police car), EXIT top-right (a round icon), speed and gear
+## bottom-centre as a readout only. All round glass (G-290): the drawn circle is inset in a larger
+## hit area, white labels, the accent only while held. No steering slider and no P / R / D chips. Each control appears only while
 ## driving; GET IN is the ACTION button on foot (`ActionContext`), not part of this set.
 ## Sizes and the left-handed mirror come from `ControlsLayout` (UI units at the 915x412 base).
 ##
@@ -57,39 +58,45 @@ func _init() -> void:
 	steer_pad = SteerZone.new()
 	steer_pad.name = "Steer"
 	_area.add_child(steer_pad)
-	gas = _button("GAS", "Gas", 22)
+	gas = _button("GAS", "Gas", 20, 5.0)
 	_area.add_child(gas)
-	brake = _button("BRAKE", "Brake", 18)
-	brake.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	brake.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+	brake = _button("BRAKE", "Brake", 14, 4.0)
 	_area.add_child(brake)
-	brake_hint = UiTheme.label("hold to reverse", 12, UiTheme.TEXT_DIM)
+	brake_hint = UiTheme.label("hold to reverse", 11, UiTheme.TEXT)
+	brake_hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	brake_hint.add_theme_constant_override("outline_size", 3)
 	brake_hint.name = "ReverseHint"
 	brake_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	brake_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# Under the circle, in the strip below the pedals (DRIVE_BOTTOM), not inside it.
 	brake_hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	brake_hint.offset_top = -26.0
-	brake_hint.offset_bottom = -6.0
+	brake_hint.offset_left = -12.0
+	brake_hint.offset_right = 12.0
+	brake_hint.offset_top = 1.0
+	brake_hint.offset_bottom = 17.0
 	brake.add_child(brake_hint)
-	horn = _button("HORN", "Horn", 16)
+	horn = _button("HORN", "Horn", 12, 3.0)
 	_area.add_child(horn)
-	exit_button = _button("EXIT", "Exit", 16)
+	exit_button = _button("", "Exit", 16, 4.0)
+	exit_button.tooltip_text = "Exit"
+	var exit_icon := UiTheme.IconOverlay.new()
+	exit_icon.kind = UiIcons.EXIT
+	exit_icon.visual = 40.0
+	exit_button.add_child(exit_icon)
 	_area.add_child(exit_button)
 	readout = UiTheme.label("", 18)
 	readout.name = "Readout"
 	readout.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	readout.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	readout.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var panel := StyleBoxFlat.new()
-	panel.bg_color = UiTheme.PANEL
-	panel.set_corner_radius_all(10)
+	var panel := UiTheme.glass_plate(0.5, UiTheme.ROUND)
 	panel.content_margin_left = 14
 	panel.content_margin_right = 14
 	panel.content_margin_top = 4
 	panel.content_margin_bottom = 4
 	readout.add_theme_stylebox_override("normal", panel)
 	_area.add_child(readout)
-	toast_label = UiTheme.label("", 16, UiTheme.AMBER)
+	toast_label = UiTheme.label("", 16)
 	toast_label.name = "Toast"
 	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	toast_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -137,12 +144,8 @@ func _place() -> void:
 	steer_pad.size = zone.size
 	steer_pad.rest = Rect2((r[&"steer_rest"] as Rect2).position - zone.position, (r[&"steer_rest"] as Rect2).size)
 	steer_pad.queue_redraw()
-	# The horn is round.
-	var radius := int((r[&"horn"] as Rect2).size.x * 0.5)
-	for state: String in ["normal", "hover", "pressed", "hover_pressed"]:
-		var box := horn.get_theme_stylebox(state) as StyleBoxFlat
-		if box != null:
-			box.set_corner_radius_all(radius)
+	for pair: Array in [[gas, 5.0], [brake, 4.0], [horn, 3.0], [exit_button, 4.0]]:
+		UiTheme.set_round(pair[0] as Button, pair[1] as float)
 	_apply_opacity()
 
 
@@ -160,27 +163,15 @@ func _on_device(device: DeviceTracker.Device) -> void:
 	exit_button.hint = DeviceTracker.glyph(&"exit", device)
 
 
-func _button(text: String, node_name: String, font: int) -> HoldButton:
+func _button(text: String, node_name: String, font: int, inset: float) -> HoldButton:
 	var b := HoldButton.new()
 	b.text = text
 	b.name = node_name
 	b.add_theme_font_size_override("font_size", font)
-	# Dark translucent panels so the labels read over a bright sky or a white wall.
-	b.add_theme_stylebox_override("normal", _box(Color(0.06, 0.07, 0.09, 0.62), Color(1, 1, 1, 0.22)))
-	b.add_theme_stylebox_override("hover", _box(Color(0.1, 0.11, 0.14, 0.7), Color(1, 1, 1, 0.3)))
-	b.add_theme_stylebox_override("pressed", _box(UiTheme.AMBER, UiTheme.AMBER))
-	b.add_theme_stylebox_override("hover_pressed", _box(UiTheme.AMBER, UiTheme.AMBER))
-	b.add_theme_color_override("font_hover_pressed_color", Color.BLACK)
+	# Round dark glass over a bright sky or a white wall; the drawn circle sits `inset` inside the
+	# button's rect, which is the thumb's hit area.
+	UiTheme.style_glass(b, false, inset, 24)
 	return b
-
-
-static func _box(fill: Color, border: Color) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = fill
-	box.border_color = border
-	box.set_border_width_all(2)
-	box.set_corner_radius_all(12)
-	return box
 
 
 func gas_held() -> bool:
@@ -217,6 +208,7 @@ func set_readout(text: String) -> void:
 func set_reversing(on: bool) -> void:
 	_reversing = on
 	brake.text = "REVERSE" if on else "BRAKE"
+	brake.add_theme_font_size_override("font_size", 12 if on else 14)
 	brake_hint.visible = not on
 
 

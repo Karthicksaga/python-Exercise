@@ -51,7 +51,11 @@ func test_a_touch_on_the_action_button_presses_it() -> bool:
 	_touch(5, ab.get_global_rect().get_center(), true)
 	_touch(5, ab.get_global_rect().get_center(), false)
 	assert_eq(log, ["talk"], "a touch on the big button runs it")
-	assert_true(ab.get_global_rect().size.x >= 96.0, "it is the big one")
+	# G-290: smaller on purpose (hit area 88, was 104; the drawn circle is 70), still the biggest.
+	assert_true(ab.get_global_rect().size.x >= 88.0, "it keeps an 88 hit area")
+	for other in c.buttons():
+		if other != ab:
+			assert_true(ab.get_global_rect().size.x > other.get_global_rect().size.x, "it is bigger than %s" % other.name)
 	return true
 
 

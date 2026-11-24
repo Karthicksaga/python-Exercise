@@ -796,6 +796,35 @@ shared by `HumanFigure` and `PersonView`. Decisions G-260…G-267.
 - The palms' facing on a steering wheel is not controlled (only position and finger curl).
 - Seen only under the Compatibility renderer on llvmpipe, not on a phone.
 
+## Glass HUD and the performance overlay switch (G-290 to G-292, agent/godot-ui), 24 Nov 2026
+**Owner bug report from the phone, fixed.** (1) The FPS line showed in play: it is now off by
+default. Single switch: `DebugSettings` (`src/ui/debug_hud/debug_settings.gd`, saved in
+`chennai-debug-v1`); `DebugHud` shows its overlay panel only while `perf_overlay` is true. Turn it
+on from the pause menu row "Performance overlay" or by five quick taps (0.8 s apart at most) on the
+top-left corner (`CornerTaps`). **The perf agent's overlay uses that same flag** (merged: `PerfWiring` reads
+`DebugSettings.shared().perf_overlay`, G-291). (2) Buttons are round or pill glass with
+a thin outline and white icons or text, the accent only on the primary action and on a pressed
+button; PAUSE is an icon. All styling comes from `UiTheme` (`glass_box`, `glass_plate`,
+`style_glass`, `icon_button`) and `UiIcons`; add a new button through those, not a new StyleBox.
+Visual size is smaller than the hit area (the drawn circle is inset), see G-290 for the numbers.
+**Tests.** `tests/scene/test_hud_glass.gd` (new: layout at 915x412, 1830x824, 2400x1080 on foot and
+driving, glass style, the gesture, the pause row, saving); `test_touch_layout.gd` and
+`test_ui_layout.gd` check the overlay in its widest state (on). Screenshots:
+`tests/tools/hud_shots.gd` (foot, near, driving, pause, `--overlay`).
+**Found while looking at the owner's screenshots, not changed** (suggestions, not invented
+features): (a) JOBS sat exactly under PAUSE (fixed, G-292); (b) the mission panel is large for one
+line of objective plus a distance, and the stats pill above it repeats stage count the panel's title
+already says; (c) the map credit shows the whole time on the bottom-right, next to GAS; the licence
+needs it wherever the map is shown, so a shorter "(c) OpenStreetMap" in play and the full line on
+the title and pause screens would free the corner; (d) the speed readout is a separate pill at
+bottom-centre while the rest is glass of another opacity; (e) in the tilted night shot the objective
+turns red under 10 s with the same weight as the title; (f) the title menu's CONTINUE row still has a
+solid amber block and a yellow bar (not touched: this task named the in-game HUD); (g) the loading
+and title screens still use `UiTheme._box` buttons with a solid amber pressed state.
+**Not done / weak.** Real thumbs on a phone have not judged the smaller buttons; the visuals were
+checked on the Compatibility renderer under xvfb only. GO INSIDE and dialog buttons use the pill
+style but their sizes were not reworked.
+
 ## APK size diet (branch `agent/godot-sizediet`), 24 Nov 2026
 **Done.** `docs/app-size.md` has the method, the breakdown, the diet with before and after, the
 budget, the forecast and the Play plan. APK (release, arm64, local unsigned) 162.68 to 115.00 MB:
@@ -831,6 +860,7 @@ and freeing a vehicle left far behind), `scene/test_game_vehicles.gd` (end to en
 - The pulled driver's fall is a lean while staggering (no fall clip); the moving vehicle stops
   dead at the press instead of braking.
 - Seen headless only; not on a phone, no screenshots (nothing new is drawn).
+
 
 ## Performance (G-250…G-259, branch `agent/godot-perf`), 24 Nov 2026
 **Where things are.** `src/game_engine/quality/` (`QualitySettings` presets, auto-detect, save
@@ -901,3 +931,10 @@ the honk hook); people get no reaction hook (CityLife has none). Smoke is grey a
 (cheap, reads as smoke at a distance, blobby up close). No dent geometry: damage is paint, sag and
 smoke. Effect cost measured on the desktop only (G-273). The player still stops dead against a
 light traffic vehicle (the solver's wall); only the judgement is shared by mass.
+
+**Update (settings and the top-right row, G-293).** Merged `agent/godot-perf`; the pause menu and the
+title both carry Graphics and Performance overlay rows (`PerfWiring._add_rows`) and both lists scroll
+(`UiTheme.touch_scroll`). The top-right row is EXIT (driving), PAUSE, JOBS: rects never intersect and a
+tap on each reaches its handler (`test_every_top_right_button_takes_its_tap`). Not tested: a real finger
+drag on a phone (a synthetic touch drag does not reach `ScrollContainer` in a headless SubViewport, so
+the test checks the deadzone setting and that the end of the list scrolls into view).
