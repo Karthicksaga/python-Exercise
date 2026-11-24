@@ -60,7 +60,14 @@ var seat: Node3D = null
 var controls_enabled: bool = true
 var figure: HumanFigure = null
 var _was_grounded: bool = true
+## Jump buffer and coyote time (G-173).
+var _jump := JumpState.new()
 var _knock: Vector3 = Vector3.ZERO
+
+
+## A jump press from outside `step` (the rig, between steps); same as `PlayerInput.jump`.
+func press_jump() -> void:
+	_jump.press()
 
 
 func _init() -> void:
@@ -142,10 +149,13 @@ func step(i: PlayerInput, dt: float) -> void:
 	var blend := minf(1.0, RESPONSE * (1.0 if grounded else AIR_CONTROL) * dt)
 	velocity.x += (dir.x * target - velocity.x) * blend
 	velocity.z += (dir.z * target - velocity.z) * blend
-	if grounded:
-		velocity.y = JUMP_SPEED if i.jump else 0.0
-		if i.jump:
-			jumped.emit()
+	if i.jump:
+		_jump.press()
+	if _jump.tick(dt, grounded):
+		velocity.y = JUMP_SPEED
+		jumped.emit()
+	elif grounded:
+		velocity.y = 0.0
 	else:
 		velocity.y = maxf(-MAX_FALL, velocity.y - GRAVITY * dt)
 	if _knock != Vector3.ZERO:
