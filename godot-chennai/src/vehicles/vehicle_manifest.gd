@@ -83,7 +83,7 @@ func beacons() -> Dictionary:
 ## Roof height above the ground (for a light bar or roof sign).
 func roof() -> float:
 	var s: Dictionary = data.get("body_size_m", data.get("size_m", {}))
-	return float(s.get("height", 1.5)) * 0.93
+	return float(s.get("height", 1.5))
 
 
 ## Wheel nodes: [{node, centre (model frame), radius}].
