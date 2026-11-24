@@ -44,26 +44,31 @@ func _uv(world: Vector2, scale: float) -> Vector2:
 	return Vector2(uv.x + _layer_index * LAYER_U, uv.y)
 
 
-## A flat ribbon along a polyline with a disc at every vertex to close joints (`ribbon`).
-func ribbon(points: PackedVector2Array, width: float, y: float, uv_scale: float, layer: int) -> void:
+## A flat ribbon along a polyline with a disc at every vertex to close joints (`ribbon`). With
+## `heights` (one per point, G-151) the ribbon follows a deck or ramp.
+func ribbon(points: PackedVector2Array, width: float, y: float, uv_scale: float, layer: int, heights: PackedFloat32Array = PackedFloat32Array()) -> void:
 	_layer(layer)
 	var half := width / 2.0
+	var raised := heights.size() == points.size()
 	for i in points.size() - 1:
 		var a := points[i] - origin
 		var b := points[i + 1] - origin
 		var length := a.distance_to(b)
 		if length < 0.01:
 			continue
+		var ya := y + (heights[i] if raised else 0.0)
+		var yb := y + (heights[i + 1] if raised else 0.0)
 		var o := Vector2(-(b.y - a.y), b.x - a.x) / length * half
-		mesh.quad(_v(a + o, y, uv_scale), _v(b + o, y, uv_scale), _v(b - o, y, uv_scale), _v(a - o, y, uv_scale))
+		mesh.quad(_v(a + o, ya, uv_scale), _v(b + o, yb, uv_scale), _v(b - o, yb, uv_scale), _v(a - o, ya, uv_scale))
 	var sides := 10 if width > 8.0 else 8
-	for p0 in points:
-		var p := p0 - origin
-		var centre := _v(p, y, uv_scale)
+	for k in points.size():
+		var p := points[k] - origin
+		var yk := y + (heights[k] if raised else 0.0)
+		var centre := _v(p, yk, uv_scale)
 		var rim: Array[int] = []
 		for s in sides:
 			var angle := TAU * s / sides
-			rim.append(_v(p + Vector2(cos(angle), sin(angle)) * half, y, uv_scale))
+			rim.append(_v(p + Vector2(cos(angle), sin(angle)) * half, yk, uv_scale))
 		for s in sides:
 			mesh.triangle(centre, rim[(s + 1) % sides], rim[s])
 
@@ -94,17 +99,19 @@ static func lane_lines(road: Road) -> Array[Vector2]:
 	return out
 
 
-func _stripe(centre: Vector2, dir: Vector2, along: float) -> void:
-	_layer(CityAtlas.GROUND_PAINT)
+func _stripe(centre: Vector2, dir: Vector2, along: float, h0: float = 0.0, h1: float = 0.0, width: float = PAINT_WIDTH, layer: int = CityAtlas.GROUND_PAINT) -> void:
+	_layer(layer)
 	var c := centre - origin
 	var a := dir * (along / 2.0)
-	var s := Vector2(-dir.y, dir.x) * (PAINT_WIDTH / 2.0)
+	var s := Vector2(-dir.y, dir.x) * (width / 2.0)
 	var uv := Vector2(_layer_index * LAYER_U + 0.5, 0.5)
 	var n := Vector3.UP
-	var i0 := mesh.vertex(Vector3(c.x - a.x - s.x, Y_MARKING, c.y - a.y - s.y), n, uv)
-	var i1 := mesh.vertex(Vector3(c.x + a.x - s.x, Y_MARKING, c.y + a.y - s.y), n, uv)
-	var i2 := mesh.vertex(Vector3(c.x + a.x + s.x, Y_MARKING, c.y + a.y + s.y), n, uv)
-	var i3 := mesh.vertex(Vector3(c.x - a.x + s.x, Y_MARKING, c.y - a.y + s.y), n, uv)
+	var y0 := Y_MARKING + h0
+	var y1 := Y_MARKING + h1
+	var i0 := mesh.vertex(Vector3(c.x - a.x - s.x, y0, c.y - a.y - s.y), n, uv)
+	var i1 := mesh.vertex(Vector3(c.x + a.x - s.x, y1, c.y + a.y - s.y), n, uv)
+	var i2 := mesh.vertex(Vector3(c.x + a.x + s.x, y1, c.y + a.y + s.y), n, uv)
+	var i3 := mesh.vertex(Vector3(c.x - a.x + s.x, y0, c.y - a.y + s.y), n, uv)
 	# Face up: check the winding against +Y and fix it.
 	var p0 := mesh.positions[i0]
 	if (mesh.positions[i1] - p0).cross(mesh.positions[i2] - p0).y >= 0.0:
@@ -128,19 +135,29 @@ func add_stripes(span: CityLayout.RoadSpan) -> void:
 		if length < 0.01:
 			continue
 		var u := (b - a) / length
+		var road := span.road
+		var local := road.offset_along
 		for line in lines:
 			var side := Vector2(-u.y, u.x) * line.x
 			if line.y > 0.0:
 				var next := maxf(DASH_PITCH, ceilf(travelled / DASH_PITCH) * DASH_PITCH)
 				while next < travelled + length:
 					if next >= END_CLEAR and next <= span.total - END_CLEAR:
-						_stripe(a + u * (next - travelled) + side, u, DASH)
+						_stripe(a + u * (next - travelled) + side, u, DASH, road.height_along(next - DASH / 2.0 - local), road.height_along(next + DASH / 2.0 - local))
 					next += DASH_PITCH
 			else:
 				var from := maxf(0.0, END_CLEAR - travelled)
 				var to := minf(length, span.total - END_CLEAR - travelled)
 				if to - from > 0.5:
-					_stripe(a + u * ((from + to) / 2.0) + side, u, to - from)
+					if road.is_raised():
+						# Solid lines on a ramp follow it in pieces of one height step.
+						var pieces := maxi(1, ceili((to - from) / road.height_step))
+						for k in pieces:
+							var f0 := from + (to - from) * k / pieces
+							var f1 := from + (to - from) * (k + 1) / pieces
+							_stripe(a + u * ((f0 + f1) / 2.0) + side, u, f1 - f0, road.height_along(travelled + f0 - local), road.height_along(travelled + f1 - local))
+					else:
+						_stripe(a + u * ((from + to) / 2.0) + side, u, to - from)
 		travelled += length
 
 
@@ -200,6 +217,29 @@ func earth(square: Rect2) -> void:
 	mesh.quad(ids[0], ids[3], ids[2], ids[1])
 
 
+## A road on a deck, ramp or embankment (G-151): the surface follows the road's heights; the
+## verge of a main road is drawn only on the parts that touch the ground.
+func _raised(span: CityLayout.RoadSpan) -> void:
+	var road := span.road
+	var prof := DeckMeshes.profile(span)
+	if road.kind == &"footway":
+		ribbon(prof.points, road.width, Y_VERGE, 3.0, CityAtlas.GROUND_PAVING, prof.heights)
+		return
+	if road.is_main():
+		var run := PackedVector2Array()
+		for i in prof.points.size():
+			if prof.heights[i] < 0.05:
+				run.append(prof.points[i])
+				continue
+			if run.size() >= 2:
+				ribbon(run, road.width + 5.0, Y_VERGE, 3.0, CityAtlas.GROUND_PAVING)
+			run = PackedVector2Array()
+		if run.size() >= 2:
+			ribbon(run, road.width + 5.0, Y_VERGE, 3.0, CityAtlas.GROUND_PAVING)
+	ribbon(prof.points, road.width, Y_ROAD, 9.0, CityAtlas.GROUND_ASPHALT, prof.heights)
+	add_stripes(span)
+
+
 ## Kerbs: a low edge along the carriageway, painted in 1 m yellow and black bands.
 func kerbs(runs: Array[StreetFurniture.KerbRun]) -> void:
 	_layer(CityAtlas.GROUND_KERB)
@@ -250,6 +290,9 @@ func build(spans: Array, areas: Array[WorldArea], square: Rect2, kerb_runs: Arra
 	for span: CityLayout.RoadSpan in spans:
 		var road := span.road
 		var pts := road.points.slice(span.start, span.end + 1)
+		if road.is_raised():
+			_raised(span)
+			continue
 		if road.kind == &"footway":
 			ribbon(pts, road.width, Y_VERGE, 3.0, CityAtlas.GROUND_PAVING)
 			continue

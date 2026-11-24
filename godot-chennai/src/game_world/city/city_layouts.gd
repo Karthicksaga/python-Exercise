@@ -75,6 +75,8 @@ func _build_tile(tile: Vector2i) -> CityLayout:
 	var reach := rect.grow(MARGIN)
 	var network := RoadNetwork.new()
 	var stops: Array[Place] = []
+	var water: Array[WorldWaterway] = []
+	var street_spots: Array[WorldSpot] = []
 	for dx in range(-1, 2):
 		for dz in range(-1, 2):
 			var t := tile + Vector2i(dx, dz)
@@ -82,6 +84,14 @@ func _build_tile(tile: Vector2i) -> CityLayout:
 			if net == null:
 				continue
 			var own := dx == 0 and dz == 0
+			var infra := regional.tile_infra(t)
+			if infra != null and infra.ok():
+				for w in infra.waterways:
+					if own or _touches(w.points, reach.grow(w.width)):
+						water.append(w)
+				for sp in infra.spots:
+					if own or reach.has_point(sp.position):
+						street_spots.append(sp)
 			for road in net.roads:
 				if own or _touches(road.points, reach):
 					network.roads.append(road)
@@ -91,7 +101,7 @@ func _build_tile(tile: Vector2i) -> CityLayout:
 					if own or reach.has_point(s.position):
 						stops.append(s)
 	var size := Vector2(regional.grid_size) * regional.chunk_size
-	return CityLayout.build(network, Rect2(regional.grid_origin, size), regional.chunk_size, stops)
+	return CityLayout.build(network, Rect2(regional.grid_origin, size), regional.chunk_size, stops, water, street_spots)
 
 
 static func _touches(points: PackedVector2Array, r: Rect2) -> bool:

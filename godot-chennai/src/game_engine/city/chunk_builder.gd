@@ -109,6 +109,16 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	far.visible = false
 	view.add_child(far)
 	_add_mesh(out, view, "ground", ground.mesh, kit.materials.ground, false)
+	# Bridges, flyovers, ramps and covered roads (G-151): always drawn (seen from afar).
+	var decks := DeckMeshes.new()
+	decks.origin = out.centre
+	decks.layout = layout
+	for span: CityLayout.RoadSpan in spans:
+		decks.add_span(span)
+	_add_mesh(out, view, "decks", decks.mesh, kit.materials.decks, kit.shadows)
+	for piece in decks.faces:
+		if not piece.is_empty():
+			_body(out, "Decks", piece)
 
 	var meshes := BuildingMeshes.new()
 	meshes.origin = out.centre

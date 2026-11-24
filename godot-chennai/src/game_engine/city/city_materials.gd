@@ -20,6 +20,8 @@ var objects: StandardMaterial3D
 var foliage: StandardMaterial3D
 var landmark: StandardMaterial3D
 var water: StandardMaterial3D
+## Bridges, flyovers, ramps, covers (G-151): vertex colours, both sides.
+var decks: StandardMaterial3D
 ## Textures that were found, by file name.
 var loaded: PackedStringArray = PackedStringArray()
 
@@ -79,6 +81,8 @@ static func create() -> CityMaterials:
 	c.foliage = _vertex_coloured(0.9)
 	c.foliage.cull_mode = BaseMaterial3D.CULL_DISABLED
 	c.landmark = _vertex_coloured(0.82)
+	c.decks = _vertex_coloured(0.9)
+	c.decks.cull_mode = BaseMaterial3D.CULL_DISABLED
 	c.water = StandardMaterial3D.new()
 	c.water.albedo_color = Color.hex(0x3f7fa6ff)
 	c.water.roughness = 0.2

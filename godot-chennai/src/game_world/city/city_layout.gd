@@ -45,11 +45,16 @@ var along: Dictionary[int, PackedFloat64Array] = {}
 var nodes: Dictionary[int, RoadNode] = {}
 ## Chunk cell -> bus shelters standing in it (`StreetFurniture.Shelter`).
 var shelters: Dictionary[Vector2i, Array] = {}
+## Format 2.1 (G-150…G-153): waterway centre lines of the tile and its margin, and the chunk
+## cells each one's water ribbon touches; street spots (crossings, speed breakers) by chunk cell.
+var waterways: Array[WorldWaterway] = []
+var water_cells: Dictionary[Vector2i, PackedInt32Array] = {}
+var spots: Dictionary[Vector2i, Array] = {}
 ## Grid cell -> road index * 65536 + segment index.
 var _segments: Dictionary[Vector2i, PackedInt64Array] = {}
 
 
-static func build(network: RoadNetwork, world_bounds: Rect2, size: float, bus_stops: Array[Place] = []) -> CityLayout:
+static func build(network: RoadNetwork, world_bounds: Rect2, size: float, bus_stops: Array[Place] = [], water: Array[WorldWaterway] = [], street_spots: Array[WorldSpot] = []) -> CityLayout:
 	var layout := CityLayout.new()
 	layout.bounds = world_bounds
 	layout.chunk_size = size
@@ -58,7 +63,57 @@ static func build(network: RoadNetwork, world_bounds: Rect2, size: float, bus_st
 	layout._build_grid()
 	layout._build_nodes()
 	layout.shelters = StreetFurniture.place_shelters(layout, bus_stops)
+	layout._add_water(water)
+	for sp in street_spots:
+		var cell := layout.cell_at(sp.position)
+		if not layout.spots.has(cell):
+			layout.spots[cell] = []
+		layout.spots[cell].append(sp)
 	return layout
+
+
+func _add_water(water: Array[WorldWaterway]) -> void:
+	for w in water:
+		if w.tunnel or w.points.size() < 2:
+			continue
+		var wi := waterways.size()
+		waterways.append(w)
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for p in w.points:
+			lo = lo.min(p)
+			hi = hi.max(p)
+		var half := w.width / 2.0 + 2.0
+		var c0 := cell_at(lo - Vector2(half, half))
+		var c1 := cell_at(hi + Vector2(half, half))
+		for cx in range(c0.x, c1.x + 1):
+			for cz in range(c0.y, c1.y + 1):
+				var cell := Vector2i(cx, cz)
+				var square := Rect2(bounds.position + Vector2(cell) * chunk_size, Vector2(chunk_size, chunk_size)).grow(half)
+				var touches := false
+				for i in w.points.size() - 1:
+					var a := w.points[i]
+					var b := w.points[i + 1]
+					if Rect2(a.min(b), (a.max(b) - a.min(b))).grow(0.01).intersects(square):
+						touches = true
+						break
+				if touches:
+					if not water_cells.has(cell):
+						water_cells[cell] = PackedInt32Array()
+					water_cells[cell].append(wi)
+
+
+## Waterways whose ribbon may reach into a chunk.
+func water_in(cell: Vector2i) -> Array[WorldWaterway]:
+	var out: Array[WorldWaterway] = []
+	for wi: int in water_cells.get(cell, PackedInt32Array()):
+		out.append(waterways[wi])
+	return out
+
+
+## Street spots (crossings, speed breakers) standing in a chunk.
+func spots_in(cell: Vector2i) -> Array:
+	return spots.get(cell, [])
 
 
 func cell_at(p: Vector2) -> Vector2i:
@@ -226,6 +281,28 @@ func blocked_stretches(ri: int, ends: bool) -> PackedVector2Array:
 			continue
 		var clear := maxf(StreetFurniture.END_CLEAR, node.width / 2.0 + 3.0)
 		out.append(Vector2(dist[i] - clear, dist[i] + clear))
+	out.append_array(raised_stretches(road, dist[0]))
+	return out
+
+
+## Stretches (distances along the whole road) where a piece is off the ground: no kerbs, poles
+## or props stand there at ground level (G-151).
+static func raised_stretches(road: Road, start: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	if not road.is_raised():
+		return out
+	var from := -1.0
+	var n := road.heights.size()
+	for k in n:
+		var d := minf(k * road.height_step, road.along[road.along.size() - 1])
+		var up := road.heights[k] > 0.05 or (k > 0 and road.heights[k - 1] > 0.05)
+		if up and from < 0.0:
+			from = maxf(0.0, d - road.height_step)
+		elif not up and from >= 0.0:
+			out.append(Vector2(start + from - 2.0, start + d + 2.0))
+			from = -1.0
+	if from >= 0.0:
+		out.append(Vector2(start + from - 2.0, start + road.along[road.along.size() - 1] + 2.0))
 	return out
 
 

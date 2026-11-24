@@ -34,6 +34,11 @@ var cells: Dictionary[Vector2i, Vector3i] = {}
 ## Tile -> road names table.
 var _names: Dictionary[Vector2i, PackedStringArray] = {}
 var _roads: Dictionary[Vector2i, RoadNetwork] = {}
+## Format 2.1 (`world.json` `minor` >= 1): the per-tile `infra.bin` (road heights, waterways,
+## street spots; G-150), "" when the world has none.
+var minor: int = 0
+var infra_file: String = ""
+var _infra: Dictionary[Vector2i, InfraTile] = {}
 var _mutex := Mutex.new()
 var error: String = ""
 
@@ -68,6 +73,10 @@ func open_index() -> String:
 		error = "world.json format %d, expected %d." % [format, WorldCodecV2.FORMAT]
 		return error
 	name = str(d.get("name", ""))
+	minor = int(d.get("minor", 0))
+	var infra: Variant = d.get("infra")
+	if minor >= 1 and infra is Dictionary:
+		infra_file = str((infra as Dictionary).get("file", "infra.bin"))
 	var origin: Dictionary = d.get("origin", {})
 	latitude = float(origin.get("lat", 0.0))
 	longitude = float(origin.get("lng", 0.0))
@@ -275,12 +284,44 @@ func tile_roads(tile: Vector2i) -> RoadNetwork:
 		net.error = "%s not found or empty." % path
 	else:
 		net = WorldCodecV2.decode_roads(bytes, _names[tile])
+		var infra := tile_infra(tile)
+		if infra != null and infra.ok():
+			for piece: int in infra.decks:
+				if piece < net.roads.size():
+					net.roads[piece].set_heights(infra.decks[piece], infra.step)
 	_mutex.lock()
 	if not _roads.has(tile):
 		_roads[tile] = net
 	net = _roads[tile]
 	_mutex.unlock()
 	return net
+
+
+## One tile's `infra.bin` (thread-safe, cached), or null when the world has none or outside it.
+func tile_infra(tile: Vector2i) -> InfraTile:
+	if infra_file == "" or not tiles.has(tile):
+		return null
+	_mutex.lock()
+	var done: InfraTile = _infra.get(tile)
+	_mutex.unlock()
+	if done != null:
+		return done
+	var path := dir.path_join("tiles/%d_%d/%s" % [tile.x, tile.y, infra_file])
+	var bytes := FileAccess.get_file_as_bytes(path)
+	var t: InfraTile
+	if bytes.is_empty():
+		t = InfraTile.new()
+		t.error = "%s not found or empty." % path
+	else:
+		t = InfraTile.decode(bytes)
+	if not t.ok():
+		push_warning(t.error)
+	_mutex.lock()
+	if not _infra.has(tile):
+		_infra[tile] = t
+	t = _infra[tile]
+	_mutex.unlock()
+	return t
 
 
 func roads_near(point: Vector2, radius: float) -> Array[Road]:
