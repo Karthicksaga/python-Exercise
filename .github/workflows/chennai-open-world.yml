@@ -21,6 +21,9 @@ defaults:
 
 jobs:
   test:
+    # Idle on the Godot migration branches: only the Godot Chennai workflow runs there.
+    # (A PR's path filter compares against its base branch, so paths alone don't keep these out.)
+    if: ${{ github.event_name == 'workflow_dispatch' || !(startsWith(github.head_ref || github.ref_name, 'feat/godot-chennai') || startsWith(github.head_ref || github.ref_name, 'agent/godot-')) }}
     # Typecheck and unit tests: quick, and the browser shards and the APK wait for them.
     runs-on: ubuntu-latest
     permissions:
