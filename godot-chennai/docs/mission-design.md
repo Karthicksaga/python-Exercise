@@ -94,3 +94,7 @@ three rivals with checkpoints on the Island Grounds circuit).
   flood overlay, choice dialog, retry dialog, medals screen.
 - Docs: handoff section, G-140…G-149 in `technical-decisions.md`, save-format version noted.
 - `./run_tests.sh`, `tools/geo/run_tests.sh`, `sync_from_threejs.py --check` green; CI green.
+
+
+## 6. Status (24 Nov 2026, G-140..G-149)
+Built: W2 to W6 and W10, §2 (checkpoints and retry, fail-forward, medals with save version 2, choices), §3 (`tail`, `fragile`, `hazard_zone`, `dynamic_event`) and the five §4 missions, with HUD parts. Open: W7 (road-graph quarry; tails and chases play baked road routes), W8, W9, hazard re-planning, wave B. Details: `technical-decisions.md` G-140..G-149 and the Missions v2 section of `handoff.md`.

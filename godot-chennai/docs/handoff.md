@@ -377,3 +377,10 @@ Decisions G-50…G-59. Tests: `tests/unit/test_city_meshes.gd`, `test_city_layou
   and boarding belong to Integration: `MissionsLayer` spawns the content's parked vehicles itself
   (`spawn_parking`) and must be switched off if Integration parks them. Train stages (18-19) need
   the rail/train rider (not in this phase): see `by_train`.
+
+
+## Mission design v2 (G-140 to G-149, agent/godot-missions), 24 Nov 2026
+- **Done:** audit fixes W2 (checkpoints, retry, fail-forward, failure reasons), W3 (medals, goals, replay, STAGES tab, save version 2 with migration), W4 (seeded dynamic events in jobs and stages), W5 (content checked on the regional world), W6 (kerb test at 100 % of 49), W10 (cues through `Sound`, compact board with 4 rows, toast fit test). Systems: `fragile` (stability meter), `tail` (suspicion meter), `hazard_zone` (flood, procession, strike), choices. The five missions (Hall Ticket, Sambar for Sixty, Wrong Number, Monsoon Night, The Bandh) are data (`src/missions/content/missions_v2.json`, `anchors.json`), built by `tools/rules/bake_missions_v2.gd` + `build_missions_v2.py`, playable from the board's STAGES tab. HUD: meters, minimap, choice/retry/medals dialogs.
+- **Tests:** `unit/rules/test_mission_systems.gd` (31 cases, numbers and edges), `test_content_v2.gd`, `test_mission_events.gd`, `scene/test_missions_v2.gd` (retry, choice, medals, meters, flood stalls an ambulance, STAGES tab). Screenshots: `tests/tools/missions_shots.gd`.
+- **Not done:** W7 and hazard re-planning (road graph from the traffic branch), W8 (seated passengers, trains), W9 (spawn_parking off at merge), red light wiring, wanted heat wiring, wave B (stealth, race). The minimap shots place synthetic zones near the spawn because the real missions are kilometres away and not streamed in the screenshot tool.
+- **Re-baking:** `godot --headless --audio-driver Dummy --path . --script res://tools/rules/bake_missions_v2.gd` then `python3 tools/rules/build_missions_v2.py`.
