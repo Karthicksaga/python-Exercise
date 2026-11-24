@@ -17,6 +17,9 @@ var _old_hour: float
 var _old_weather: String
 var _old_sound: String
 var _old_origin: Vector2
+## The shared save as it was (the game saves mission progress while these tests ride around;
+## the next test that boots the game must find it unchanged). null: there was none.
+var _old_save: Variant = null
 
 
 func before_each() -> void:
@@ -24,6 +27,7 @@ func before_each() -> void:
 	_old_weather = Weather.settings_path
 	_old_sound = Sound.settings_path
 	_old_origin = Vector2(WorldOrigin.origin_x, WorldOrigin.origin_z)
+	_old_save = FileAccess.get_file_as_string(SaveStore.DEFAULT_PATH) if FileAccess.file_exists(SaveStore.DEFAULT_PATH) else null
 	GameLoop.clock.hour = 18.0
 	Weather.settings_path = SETTINGS
 	Sound.settings_path = SETTINGS
@@ -38,6 +42,12 @@ func _restore() -> void:
 	Weather.settings_path = _old_weather
 	Sound.settings_path = _old_sound
 	Sound.suspend()
+	if _old_save == null:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveStore.DEFAULT_PATH))
+	else:
+		var f := FileAccess.open(SaveStore.DEFAULT_PATH, FileAccess.WRITE)
+		f.store_string(String(_old_save))
+		f.close()
 
 
 func _play() -> Main:
