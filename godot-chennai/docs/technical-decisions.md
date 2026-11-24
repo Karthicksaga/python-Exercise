@@ -1737,3 +1737,50 @@ richer overlay should read `DebugSettings.shared().perf_overlay` and listen to `
 `MissionHud`'s JOBS button and the PAUSE button had the same rectangle (JOBS was hidden under
 PAUSE and could not be pressed). The row is now, right to left: EXIT (driving), PAUSE, JOBS, with
 8 apart and tests for it. The mission column moved up to the corner now that the FPS line is gone.
+
+### G-240: The export leaves out what nothing loads
+`export_presets.cfg` `exclude_filter` (both presets) drops `docs/*`, the legacy Three.js cast and
+road vehicles (except `player.glb`, `people.json` and the motorbike) and the v1 world chunks
+(`assets/world/c/*`). The sync tool's files stay in the repository unchanged. The filter has no
+negation, so legacy people are listed by first letter. `tests/unit/test_export_size.gd` resolves
+every cast member and vehicle through the real catalogs and fails if one is excluded, if shipped
+text names an excluded file, or if a new legacy file would ship unreviewed. Release arm64 APK
+162.68 to 115.00 MB locally (`docs/app-size.md`).
+
+### G-241: Size guards on assets
+`tests/unit/test_asset_budget.gd`: textures of 256 x 256 or more import VRAM compressed (flat
+palettes under 16 KB excepted), no WAV over 200 KB (long sounds are Ogg Vorbis), no GLB embeds a
+texture over 1024 px. Textures, audio and meshes were already within these rules, so nothing was
+converted.
+
+### G-242: What was measured and not cut
+Generated LODs on models that author their LODs (-7 % per cast scene), tangents and shadow meshes
+(under 1 %), the world tiles (deflate 2:1, xz would save only 17 %) and the cast's five animations
+repeated in every GLB (0.1 MB each, 6.5 MB for 63) are documented with numbers in
+`docs/app-size.md`; each needs a phone measurement or an architecture change, so none was applied.
+
+### G-243: Budget in CI
+`APK_BUDGET_MB` (260) at the top of `.github/workflows/godot-chennai.yml`: the "APK size against
+the budget" step prints the phone APK size and the biggest items (`tools/apk_size_report.sh`) in
+the job summary and fails above it; `PLAY_BASE_LIMIT_MB` (200) only warns. The phone APK is the
+release export of the "Android" preset (arm64); the smoke APK is not budgeted.
+## Taking over traffic (G-300 to G-309)
+
+### G-300: TAKE OVER works on moving traffic and is wired in `Main`
+Owner report: the player could not pull a driver off a running car or bike. `Carjacking` (G-128)
+existed but nothing added it to the game, and its rule only took vehicles under 1.2 m/s.
+`Main._add_carjacking` now makes `Carjacking.make(life, driving)` at the end of the "Parking the
+vehicles" step and registers `Carjacking.offer` with the walking controls' `ActionContext` at
+`P_TAKE_OVER` (35: above GET IN, below TALK). Rules: car, auto and bike only (`Carjack.KINDS`;
+buses and ambulances carry passengers or crews, no rule for them), up to `Carjack.MAX_TAKE_SPEED`
+(11 m/s, an estimate) within the usual reach, player on foot and not boarding. Stopped ones are
+still swapped in automatically as before and the button then reads TAKE OVER for that vehicle.
+For a moving one the AI step caches the candidate; pressing calls `request(id)`, and the next gap
+between AI steps re-checks it, swaps the vehicle in where it is drawn (stopped dead, driver at the
+wheel) and starts `Driving.enter` with the pull phase; the right-hand door and seat come from
+`Boarding`. AI agents are never read from the UI thread. Pulled drivers (adults only by
+`CastPicker`, tested) stagger leaning for 0.6 s, then run off; the agent returns to the pool out
+of sight once the player is seated, and the player's `Vehicle` is a plain node the traffic pool
+never owns (freed only when parked more than `Carjacking.FORGET` m away). `Wanted` has no
+instance in the game yet, so `Carjacking.wanted` stays null and only `carjacked` is signalled;
+the fall clips come with the animation work (staggering is the fallback).

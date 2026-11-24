@@ -288,3 +288,12 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Blender kits: gopuram complex, colonial clock tower, station, tower, lighthouse; deterministic GLBs (G-183, G-184) | Done (mall kit not built) | `build_all.sh` builds twice and compares bytes; `test_models_built_from_the_current_spec` |
 | Kapaleeshwarar Temple, Ripon Building, Chennai Central, Chennai Egmore, Anna Nagar Tower, Chennai Lighthouse in the city (G-185) | Done (Compatibility screenshots, not on a phone) | `test_landmarks.gd`: outline within 2 m of OSM, height within 10 %, budgets, LODs, collision ray, placement and floating origin, worker loading, buildings left out, names |
 | Old `LandmarkMeshes`/`LandmarkProfiles` retired | Done | tower ported to the `tower` kit; full suite |
+
+## APK size diet (branch `agent/godot-sizediet`, G-240 to G-243)
+| Item | State | How it was tested |
+|---|---|---|
+| Measured breakdown of the APK, per ABI and per build kind (`docs/app-size.md`) | Done, local export with the 4.7.2 Android templates | export, `unzip -lv`, `.import` mapping |
+| Legacy cast, legacy vehicles, docs and v1 chunks out of the export (G-240) | Done: 162.68 to 115.00 MB (local release, arm64) | `test_export_size.gd` (5 tests; fails when `player.glb` is excluded) |
+| Texture, audio and GLB size guards (G-241) | Done (nothing needed converting: already VRAM compressed and Ogg) | `test_asset_budget.gd` (3 tests) |
+| `tools/apk_size_report.sh` and the CI budget step (G-243) | Done | run on local APKs; CI job summary |
+| Forecast and the Play asset-pack plan | Written, not built | |
