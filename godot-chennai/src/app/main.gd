@@ -36,6 +36,8 @@ var pause_menu: PauseMenu = null
 var life: CityLife = null
 ## Taking over traffic cars, autos and bikes on foot (G-300); the ACTION button's TAKE OVER.
 var carjacking: Carjacking = null
+## People and traffic riders react to being hit by the player's vehicle (G-342, G-343).
+var street_reactions: StreetReactions = null
 ## The live city behind the title: camera drift, chip, lightning (G-164). Made at the end of loading.
 var title_wiring: TitleWiring = null
 ## The title camera tours a faraway spot (needs a display; headless runs stay with the player).
@@ -236,6 +238,9 @@ func _add_carjacking() -> void:
 	carjacking = Carjacking.make(life, play_wiring.driving)
 	world.add_child(carjacking)
 	rig.controls.action_context.add_source(carjacking.offer)
+	street_reactions = StreetReactions.make(life, play_wiring.driving)
+	world.add_child(street_reactions)
+	street_reactions.honk.connect(play_wiring.vehicle_sounds.on_reaction)
 
 
 ## The pause menu's real settings: time of day, weather, sound (G-115).

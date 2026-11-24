@@ -972,6 +972,75 @@ the honk hook); people get no reaction hook (CityLife has none). Smoke is grey a
 (cheap, reads as smoke at a distance, blobby up close). No dent geometry: damage is paint, sag and
 smoke. Effect cost measured on the desktop only (G-273). The player still stops dead against a
 light traffic vehicle (the solver's wall); only the judgement is shared by mass.
+## Thrown on boarding; people react to hits (agent/godot-crash2, G-340…G-343), 24 Nov 2026
+**Owner's phone report on afed12f, fixed.** (1) "When I entered the bike I was thrown away for a
+long distance": root cause G-340. After TAKE OVER the traffic view of the taken agent was hidden
+in the bike's place; when the player sat down the agent was respawned and the view, shown and
+re-placed in the same frame, swept out of the bike's box at thousands of m/s (Jolt moves
+kinematic bodies with `MoveKinematic` even with `sync_to_physics` off): the bike got up to
+500 m/s and the rider was thrown. Views now jump with their box off for a step. The same sweep in
+the player's own body shoved vehicles on getting out (G-341). (2) "Why is the NPC standing after
+hitting the bike?": walkers and crowd adults stagger or are knocked down, lie, get up and walk on;
+traffic bike and auto riders hit hard fall off, the bike lies over until they are back;
+bystanders look and scatter; a car near by honks (G-342, G-343). Never a child.
+
+Tests: `scene/test_boarding_safety.gd` (in `main.tscn`: the parked bike, auto and car boarded
+between parked bikes, and four take-overs of moving traffic; standing 5 s and riding off: never
+thrown, within 3 m of the vehicle, no hit felt standing), `scene/test_traffic_view_teleport.gd`
+(the mechanism, deterministic: a hidden view shown far away in five directions, a visible one
+re-placed through a bike, getting on and off three kinds never shoves the vehicle),
+`unit/test_street_hits.gd`, `scene/test_street_reactions.gd` (fast walker falls and walks on, slow
+walker staggers, traffic rider falls off and the bike waits, a child in the path is passed and
+never knocked down).
+
+**Weak or not done.**
+- Headless and xvfb (llvmpipe) only; not on a phone.
+- The end-to-end take-over test failed before the fix in 2 of 3 runs only (whether the sweep hits
+  depends on the respawn direction); the yard test is the deterministic one.
+- One unexplained run of the take-over test after the fix: a later ride-off judged a 75 km/h
+  "thrown" against a building at half throttle (fastest reached not recorded then); not seen in
+  the eight runs since. If it comes back, look for another code-placed kinematic body.
+- A crowd adult knocked down is drawn back at their spot when up (a pop of a metre or two); crowd
+  people only turn to look, they do not flee. Children in crowds only step aside by the crowd's
+  existing make-way rule (0.5 m round vehicles, at 30 Hz): no child is ever struck or knocked
+  down, but a fast car can pass close to a child at a station crowd.
+- The pulled-out carjacked driver still only staggers (Carjacking's own runner, not this hook).
+- No HUD message, no `Wanted` (none exists in the game).
+- A knockdown instantiates the person's figure the first time (1.1–1.8 ms on the desktop).
+
+## Performance (G-250…G-259, branch `agent/godot-perf`), 24 Nov 2026
+**Where things are.** `src/game_engine/quality/` (`QualitySettings` presets, auto-detect, save
+section; `QualityApplier`; `FrameStats` and the verdict), `src/app/perf/` (`PerfWiring`: applies
+presets to the game, frame stats, probes, perf log, pause-menu summary; `FeatureSwitches`),
+`src/ui/debug_hud/perf_overlay.gd` (overlay and switch panel), `tools/compat_preset.py` (the
+Compatibility APK's preset, made in CI), `docs/performance.md` (owner instructions, bisect, costs,
+presets). Tests: `tests/unit/test_quality_settings.gd`, `tests/scene/test_perf_wiring.gd`.
+
+**How other agents use it.**
+- A new optional system: add a row to `FeatureSwitches.ALL` and a branch in `apply(id)` that
+  hides or pauses it (never frees); it then appears in the panel and in safe mode.
+- A new quality knob: a key in all three rows of `QualitySettings.TABLE` (the unit test checks
+  every row has every key and that numbers rise Low → High), applied in `PerfWiring.apply()`.
+- Merged chunk meshes are on render layer 2 (`ChunkBuilder.RENDER_LAYER`); any light that should
+  not light the whole city leaves that bit out of its cull mask.
+- agent/godot-ui's DebugSettings: when it lands, read the overlay's on/off from it in
+  `PerfWiring._ready`/`_on_settings` instead of `QualitySettings.overlay` (one line).
+- Measuring: the scratch harnesses (boot `Main`, teleport, warm up, measure) are described in
+  `docs/performance.md`; they are not committed.
+
+**Weak or not done.**
+- Nothing here ran on a phone. GPU costs are estimates from llvmpipe; the overlay and log are how
+  the owner's phone will tell us. Whether the Vulkan or the GL APK is faster on the Adreno 613 is
+  unknown until the owner tries both.
+- Draw calls were not halved (about 110 → 90-120 at T. Nagar): Low's gain is per pixel. Halving
+  them needs fewer chunk layers or merging materials (not done).
+- Streaming stalls: every main-thread streaming step stays under a millisecond here; the 30-230 ms
+  stalls measured on the loaded build machine fell in the bookkeeping part together with OS
+  pre-emption of a control loop, so their cause on the phone is not proven. The hitch counter and
+  its breakdown line in the overlay and log will say what a slow frame was made of on the phone.
+- Godot's thread priorities do not reach Android's scheduler; Low builds one chunk at a time.
+- The feature-switch cost measurement is in real time (an overlay, not a test).
+- Figures beyond the animate reach slide in a held pose (by design, the coordinator's rule).
 
 **Update (settings and the top-right row, G-293).** Merged `agent/godot-perf`; the pause menu and the
 title both carry Graphics and Performance overlay rows (`PerfWiring._add_rows`) and both lists scroll

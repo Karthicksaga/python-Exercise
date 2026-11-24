@@ -5,9 +5,20 @@ extends AnimatableBody3D
 ## model's own Chennai colour list, wheels turning at its speed, and a kinematic chassis box on
 ## the vehicles layer, so the player's vehicle hits it and the player cannot walk through it.
 ## Moved by the AI (`CityLife`), never by physics. No driving logic here.
+##
+## **Jumps are not drives (G-340).** Jolt moves every kinematic body with `MoveKinematic`, even with
+## `sync_to_physics` off: a transform set from code is reached in one step at whatever speed that
+## takes. A view the AI puts somewhere new (a respawn out of sight, a carjacked agent let go, a view
+## shown again) would cross the gap at thousands of m/s and smash anything its box overlapped at
+## the start: the taken bike stood exactly in its hidden box, and the rider was flung tens of
+## metres the step they sat down (the owner's report on afed12f). So a jump of more than `JUMP`
+## metres beyond its speed, and every `set_shown(true)`, happens with the box off; the box comes
+## back one physics step later, at the new place.
 
 ## Wheels are turned only this close to the camera (the near model has them), metres.
 const WHEELS_NEAR := VehicleModel.LOD_DISTANCE
+## A pose further than this (metres) beyond what its speed covers in the step is a jump.
+const JUMP := 1.5
 
 var variant: VehicleCatalog.VariantInfo
 var model: VehicleModel
@@ -19,6 +30,10 @@ var open_seat: bool = false
 var agent_id: int = -1
 var _hub_y: PackedFloat32Array = PackedFloat32Array()
 var _spin: float = 0.0
+var _shape: CollisionShape3D
+var _shown: bool = true
+## The physics frame of the last jump: the box stays off until a step after it.
+var _jump_frame: int = -1
 
 
 ## A view of `variant_id` in a paint picked by `variation` (0..1) from the model's paints.
@@ -57,6 +72,8 @@ static func make(variant_id: StringName, variation: float) -> TrafficVehicleView
 	box.size = spec.half_extents * 2.0
 	cs.shape = box
 	v.add_child(cs)
+	v._shape = cs
+	v.set_physics_process(false)
 	v.model = VehicleModel.build(base.type, own)
 	v.add_child(v.model)
 	v._merge_far_lods(String(variant_id))
@@ -153,9 +170,27 @@ func ride_height() -> float:
 	return -model.position.y
 
 
+## Shown and felt, or hidden with its box off. Shown again, the box waits a step (G-340): pose it
+## at its new place in the same physics frame.
+func set_shown(on: bool) -> void:
+	visible = on
+	_shown = on
+	_shape.disabled = true
+	if on:
+		_mark_jump()
+
+
+func is_solid() -> bool:
+	return not _shape.disabled
+
+
 ## Put the view at a road point (scene position of the road surface) facing `heading`.
 func set_pose(road_point: Vector3, heading: float, speed: float, dt: float, camera_distance: float) -> void:
-	global_transform = Transform3D(Basis(Vector3.UP, heading), road_point + Vector3(0, ride_height(), 0))
+	var to := road_point + Vector3(0, ride_height(), 0)
+	if not _shape.disabled and global_position.distance_to(to) > JUMP + absf(speed) * dt:
+		_shape.disabled = true
+		_mark_jump()
+	global_transform = Transform3D(Basis(Vector3.UP, heading), to)
 	if camera_distance < WHEELS_NEAR and speed > 0.05:
 		var spec := variant.type.spec
 		_spin = fposmod(_spin + speed * dt / maxf(0.2, spec.wheels[0].radius), TAU)
@@ -166,3 +201,17 @@ func set_pose(road_point: Vector3, heading: float, speed: float, dt: float, came
 ## Where the driver's hips are, in the scene.
 func driver_transform() -> Transform3D:
 	return global_transform * Transform3D(Basis.IDENTITY, driver_seat)
+
+
+func _mark_jump() -> void:
+	_jump_frame = Engine.get_physics_frames()
+	set_physics_process(true)
+
+
+## Only while a jump is pending: the box comes back once the step that moved the view is over.
+func _physics_process(_delta: float) -> void:
+	if Engine.get_physics_frames() <= _jump_frame:
+		return
+	set_physics_process(false)
+	if _shown:
+		_shape.disabled = false

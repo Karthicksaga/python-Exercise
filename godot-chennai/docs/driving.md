@@ -102,6 +102,11 @@ solver would treat it as a wall). Effects, damage, camera shake: G-272…G-274. 
 rider's own `CharacterBody3D.move_and_slide`, so walls stop it (swept, no tunnelling); it passes
 through its own vehicle until it is up.
 
+**Boarding never shoves (G-340, G-341).** Kinematic bodies placed from code (traffic views shown
+or re-placed by the AI, the player's body put on its feet) jump with their collision off for one
+physics step: Jolt would otherwise sweep them there at jump/step m/s and fling whatever they
+overlapped. People hit by the player's vehicle and traffic riders knocked off: G-342.
+
 ## Gaps
 - No seated pose: the Player's figure has none yet; open-seat riders are drawn standing with
   the hips on the seat (`VehicleType.pose` has the hand and foot points for when it exists).
