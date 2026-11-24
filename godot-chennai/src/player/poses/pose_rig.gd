@@ -38,7 +38,7 @@ const FOOT: PackedInt32Array = [16, 20]
 const TOE: PackedInt32Array = [17, 21]
 
 var skeleton: Skeleton3D
-## Skeleton bone index of each of BONES (-1 when the rig lacks it).
+## Skeleton bone index of each of BONES, then the finger joints (see `fingers`).
 var index: PackedInt32Array = PackedInt32Array()
 ## The middle finger's first joint per side (the palm's far end), -1 when missing.
 var knuckle: PackedInt32Array = PackedInt32Array([-1, -1])
@@ -60,6 +60,10 @@ var leg_length: float = 0.0
 var hip_height: float = 0.0
 ## Half the distance between the hip joints, metres.
 var hip_half_width: float = 0.0
+## Finger joints per side (index, middle, ring, pinky; three each) and the local axis each
+## curls about (from the rest pose's own slight curl), for hands closing round a grip.
+var fingers: Array[PackedInt32Array] = [PackedInt32Array(), PackedInt32Array()]
+var finger_axes: Array[PackedVector3Array] = [PackedVector3Array(), PackedVector3Array()]
 ## Key poses for falls and getting up, built on first use (`Knockdown`).
 var keys: Dictionary[StringName, PackedVector4Array] = {}
 
@@ -81,6 +85,13 @@ static func make(sk: Skeleton3D, skel_in_fig: Transform3D) -> PoseRig:
 	r.knuckle = PackedInt32Array([by_name.get("LeftHandMiddle1", -1), by_name.get("RightHandMiddle1", -1)])
 	r.rest_hips = sk.get_bone_rest(r.index[HIPS]).origin
 	r.chest_rest_inv = sk.get_bone_global_rest(r.index[SPINE2]).basis.get_rotation_quaternion().inverse()
+	r._find_fingers(by_name)
+	# The finger joints join the posed bones after the core ones (captured, blended and reset with
+	# them), so a cached seat keeps its closed hands.
+	for side in 2:
+		for b in r.fingers[side]:
+			r.index.append(b)
+			r.rest_rot.append(sk.get_bone_rest(b).basis.get_rotation_quaternion())
 	r.to_fig = skel_in_fig
 	r.to_skel = skel_in_fig.affine_inverse()
 	r.turn = r.to_skel.basis.orthonormalized()
@@ -94,6 +105,43 @@ static func make(sk: Skeleton3D, skel_in_fig: Transform3D) -> PoseRig:
 	r.hip_height = (hl.y + hr.y) * 0.5
 	r.hip_half_width = hl.distance_to(hr) * 0.5
 	return r
+
+
+func _find_fingers(by_name: Dictionary[String, int]) -> void:
+	for side in 2:
+		var prefix := "Left" if side == 0 else "Right"
+		var index_1: int = by_name.get(prefix + "HandIndex1", -1)
+		var pinky_1: int = by_name.get(prefix + "HandPinky1", -1)
+		var middle: Array[int] = [by_name.get(prefix + "HandMiddle1", -1), by_name.get(prefix + "HandMiddle2", -1), by_name.get(prefix + "HandMiddle3", -1)]
+		if index_1 < 0 or pinky_1 < 0 or middle.has(-1):
+			continue
+		# The curl axis: across the knuckles, signed so a positive turn bends the fingertips
+		# the way the rest pose's fingers already bend (towards the palm).
+		var g := func(b: int) -> Vector3: return skeleton.get_bone_global_rest(b).origin
+		var across: Vector3 = (g.call(index_1) as Vector3) - (g.call(pinky_1) as Vector3)
+		var m1: Vector3 = g.call(middle[0])
+		var m2: Vector3 = g.call(middle[1])
+		var m3: Vector3 = g.call(middle[2])
+		var bend := (m2 - m1).cross(m3 - m2)
+		var axis := across.normalized()
+		if bend.dot(axis) < 0.0:
+			axis = -axis
+		for f: String in ["Index", "Middle", "Ring", "Pinky"]:
+			for k: int in [1, 2, 3]:
+				var b: int = by_name.get("%sHand%s%d" % [prefix, f, k], -1)
+				if b < 0:
+					continue
+				fingers[side].append(b)
+				finger_axes[side].append((skeleton.get_bone_global_rest(b).basis.orthonormalized().inverse() * axis).normalized())
+
+
+## Closes the fingers of `side` by `angle` radians at each joint (from their rest curl).
+func curl_fingers(side: int, angle: float) -> void:
+	var bones := fingers[side]
+	var axes := finger_axes[side]
+	for k in bones.size():
+		var rest := skeleton.get_bone_rest(bones[k]).basis.get_rotation_quaternion()
+		skeleton.set_bone_pose_rotation(bones[k], rest * Quaternion(axes[k], angle))
 
 
 func _rest_at(i: int) -> Vector3:

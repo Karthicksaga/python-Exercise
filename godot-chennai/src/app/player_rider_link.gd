@@ -81,12 +81,7 @@ func set_seated(type: VehicleType, amount: float) -> void:
 func seat_for(type: VehicleType) -> SeatPose:
 	var id := type.get_instance_id()
 	if not _seats.has(id):
-		var p := type.pose
-		var s := SeatPose.driver(HIP_HEIGHT, p.lean, p.hand, p.foot, p.knees)
-		s.hub = p.hub
-		s.steer_axis = p.steer_axis
-		s.steer_ratio = p.steer_ratio
-		_seats[id] = s
+		_seats[id] = RidePoses.driver(type, HIP_HEIGHT)
 	return _seats[id]
 
 

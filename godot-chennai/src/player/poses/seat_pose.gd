@@ -171,4 +171,6 @@ func _arm(r: PoseRig, side: int) -> float:
 				var to := r.axis(hand_dir)
 				if from.dot(to) < 0.99999:
 					r.set_global_basis(PoseRig.HAND[side], Basis(PoseRig._arc(from, to)) * r.pose(PoseRig.HAND[side]).basis.orthonormalized())
+	# Fingers round the grip; resting on the thighs, only relaxed.
+	r.curl_fingers(side, 0.95 if hands_on_grips else 0.25)
 	return r.palm(side).distance_to(target)
