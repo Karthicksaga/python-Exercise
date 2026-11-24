@@ -20,6 +20,8 @@ var _current: JobData.Job = null
 var _stop_index := 0
 var _running := false
 var _elapsed := 0.0
+## Seconds a dynamic event added (a detour) or took (G-146); reset with each job.
+var _bonus := 0.0
 var _dwelt := 0.0
 var _bumps := 0
 var _late := 0
@@ -113,7 +115,7 @@ func stop_number() -> int:
 
 
 func seconds_left() -> Variant:
-	return _current.time_limit - _elapsed if _current != null and _running else null
+	return _current.time_limit + _bonus - _elapsed if _current != null and _running else null
 
 
 func share() -> ShareShift:
@@ -175,6 +177,7 @@ func accept(j: JobData.Job, hour: float = -1.0) -> Array[Dictionary]:
 	_stop_index = 0
 	_running = false
 	_elapsed = 0.0
+	_bonus = 0.0
 	_dwelt = 0.0
 	_bumps = 0
 	_late = 0
@@ -197,6 +200,15 @@ func quit() -> Array[Dictionary]:
 
 
 ## The vehicle hit something while on the job.
+## A dynamic event gives (or takes, negative) seconds on the clock (a detour allows for itself).
+func extend(seconds: float) -> void:
+	_bonus += seconds
+
+
+func elapsed() -> float:
+	return _elapsed
+
+
 func bump() -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var j := _current
@@ -239,7 +251,7 @@ func _update(dt: float, x: float, z: float, mode: String, speed: float) -> Array
 		events.append({"type": "started", "job": j})
 	if not (_fare_stop != null and _fare_stop.started()) and not (_goods_stop != null and _goods_stop.started()):
 		_elapsed += dt
-	if _elapsed >= j.time_limit:
+	if _elapsed >= j.time_limit + _bonus:
 		if _shift != null:
 			events.append({"type": "completed", "result": _finish_share(j, _shift, false)})
 		else:
@@ -312,7 +324,7 @@ func _clear_job() -> void:
 
 ## How a finished run is paid: time left, bumps, lateness, and a bonus per job type.
 func _finish(j: JobData.Job) -> Dictionary:
-	var time_share := clampf(1.0 - _elapsed / j.time_limit, 0.0, 1.0)
+	var time_share := clampf(1.0 - _elapsed / (j.time_limit + _bonus), 0.0, 1.0)
 	var notes: Array[String] = []
 	var pay := j.payout * (0.7 + 0.3 * time_share)
 	notes.append("%d%% of the time left" % RulesMath.js_round_int(time_share * 100.0))

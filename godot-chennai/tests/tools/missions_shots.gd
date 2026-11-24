@@ -40,21 +40,99 @@ func _run() -> void:
 	for i in 90:
 		await physics_frame
 	var layer: Node = main.find_child("MissionsLayer", false, false)
-	var session: Object = layer.get("session")
+	var session: MissionSession = layer.get("session")
 	var hud: Control = layer.get("hud")
 	var tp: Control = hud.get("toast_panel")
 	print("TOAST ", tp.size, " min ", tp.get_combined_minimum_size(), " pos ", tp.position, " hud ", hud.size, " vis ", tp.visible)
 	await _shot(out + "_stage.png")
 	# Money and a stage done: a toast on top of the next brief.
-	session.emit_signal("notice", "Stage 1 complete", "+₹50", 4.0)
+	session.notice.emit("Stage 1 complete", "+₹50", 4.0)
 	await _shot(out + "_toast.png")
-	session.call("take_job", "courier", 10.0)
+	session.take_job("courier", 10.0)
 	for i in 30:
 		await physics_frame
 	await _shot(out + "_job.png")
 	layer.call("open_board")
 	await _shot(out + "_board.png")
 	layer.call("close_dialog")
-	session.emit_signal("result", "Job complete", "Delivered. +₹450\nReputation 4", true)
+	session.result.emit("Job complete", "Delivered. +₹450\nReputation 4", true)
 	await _shot(out + "_result.png")
+	layer.call("close_dialog")
+	session.quit_job()
+	layer.call("close_dialog")
+	await _new_systems(layer, session, hud, out)
 	quit(0)
+
+
+## The G-140..G-147 screens. The layer's own stepping is off (`active = false`, the HUD stays
+## shown) so each state is exactly what the rules say; the minimap is given zones round the player
+## because the real ones are kilometres away and not streamed in. (`layer` and `hud` stay untyped:
+## this script compiles before the autoloads they use.)
+func _new_systems(layer: Node, session: MissionSession, hud: Control, out: String) -> void:
+	layer.set("active", false)
+	hud.visible = true
+	var rig: Node3D = (layer.get("rig") as Object).get("body")
+	var here := Vector2(rig.global_position.x, rig.global_position.z)
+	var runner := session.runner
+	var status := func(x: float, z: float, mode: String, speed: float, crash: float = 0.0) -> MissionData.PlayerStatus:
+		var p := MissionData.PlayerStatus.make(x, z, mode, speed)
+		p.crash = crash
+		return p
+	# Fragile cargo: Sambar for Sixty after a crash.
+	session.play_stage("sambar-sixty")
+	var kitchen := runner.mission().objectives[1]
+	session.step(0.2, status.call(0.0, 0.0, "auto", 0.0))
+	for i in 60:
+		session.step(0.1, status.call(kitchen.x, kitchen.z, "auto", 0.0))
+	session.step(0.1, status.call(kitchen.x + 300.0, kitchen.z, "auto", 10.0, 0.5))
+	session.step(0.1, status.call(kitchen.x + 300.0, kitchen.z, "auto", 10.0, 0.4))
+	hud.call("set_mission", session.view("auto", 640.0), 0.5)
+	hud.call("set_stats", "1,200", 21, 21, 62)
+	await _shot(out + "_fragile.png")
+	# Tail: the runner's suspicion rising, the minimap with him on it.
+	session.leave_stage()
+	session.play_stage("wrong-number")
+	var start := runner.mission().objectives[1]
+	session.step(0.2, status.call(0.0, 0.0, "bike", 0.0))
+	session.step(0.2, status.call(start.x, start.z, "bike", 3.0))
+	for i in 140:
+		var q: Dictionary = runner.tail_target()
+		session.step(0.1, status.call(float(q["x"]) + 16.0, float(q["z"]), "bike", 8.0))
+	hud.call("set_mission", session.view("bike", 16.0), 0.0)
+	var minimap: Control = hud.get("minimap")
+	minimap.call("set_view", here, rig.global_rotation.y, [] as Array[Dictionary], PackedVector2Array(), Vector2.INF, here + Vector2(70, -90))
+	await _shot(out + "_tail.png")
+	# Flood: deep water ahead and a shut road, on the minimap.
+	var zones: Array[Dictionary] = [
+		{"x": here.x + 90.0, "z": here.y - 60.0, "radius": 55.0, "kind": "flood", "depth": 0.8, "label": "Underpass"},
+		{"x": here.x - 110.0, "z": here.y + 70.0, "radius": 40.0, "kind": "flood", "depth": 0.25, "label": "Low junction"},
+		{"x": here.x + 40.0, "z": here.y + 140.0, "radius": 45.0, "kind": "strike", "depth": 0.0, "label": "Bandh"}]
+	var roads := PackedVector2Array()
+	for k in range(-6, 7):
+		roads.append(here + Vector2(k * 50.0, -300.0))
+		roads.append(here + Vector2(k * 50.0, 300.0))
+		roads.append(here + Vector2(-300.0, k * 50.0))
+		roads.append(here + Vector2(300.0, k * 50.0))
+	session.leave_stage()
+	hud.call("set_mission", {"title": "Mission · Monsoon Night", "objective": "Take the patient to the hospital, TTK Road", "distance": 2100.0, "seconds_left": 312.0, "stability": 78.0, "stability_label": "Patient", "suspicion": -1.0}, 0.9)
+	minimap.call("set_view", here, rig.global_rotation.y, zones, roads, here + Vector2(250, -250), Vector2.INF)
+	await _shot(out + "_flood.png")
+	minimap.visible = false
+	# The dialogs, through the session's signals as in the game.
+	var wrong := session.content.any_mission("wrong-number")
+	var options: Array = wrong.objectives[3].options
+	session.choice_asked.emit("He has dropped the envelope. What now?", options)
+	await _shot(out + "_choice.png")
+	layer.call("close_dialog")
+	session.retry_offered.emit("You were spotted", "spotted", 2)
+	await _shot(out + "_retry.png")
+	layer.call("close_dialog")
+	var goals: Array = [{"label": "Never more than 40% suspicion", "met": true}, {"label": "No crashes", "met": true}, {"label": "Finish in 10 minutes", "met": false}]
+	session.stage_result.emit("Wrong Number", "silver", goals, 1500, false)
+	await _shot(out + "_medals.png")
+	layer.call("close_dialog")
+	layer.set("active", true)
+	layer.set("_board_tab", "stages")
+	layer.call("open_board")
+	await _shot(out + "_stages.png")
+	layer.call("close_dialog")

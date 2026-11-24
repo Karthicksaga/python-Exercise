@@ -14,6 +14,7 @@ const NAMES := {
 	"medicine": ["the medicine", "the medicine"],
 	"cash-bag": ["the money", "the money"],
 	"harmonium": ["the harmonium", "the harmoniums"],
+	"vessel": ["the sambar vessel", "the sambar vessels"],
 }
 
 var goods: MissionData.Goods
