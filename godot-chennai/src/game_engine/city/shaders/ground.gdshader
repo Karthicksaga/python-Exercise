@@ -17,9 +17,9 @@ uniform float wet : hint_range(0.0, 1.0) = 0.0;
 // reliably under the Compatibility renderer.
 const float LAYER_U = 1024.0;
 const float PERIOD = 16.0;
-const int COVERS = 9;
+const int COVERS = 12;
 // Ground covers (GroundMeshes.COVER_*): base tile, tint, noise strength.
-const float COVER_BASE[COVERS] = float[](2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0);
+const float COVER_BASE[COVERS] = float[](2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 7.0, 1.0, 7.0);
 const vec3 COVER_TINT[COVERS] = vec3[](
 	vec3(0.84, 0.88, 0.72),  // lawn (parks, gardens): toned down, sun-dried
 	vec3(1.12, 1.06, 0.74),  // meadow (dry grass)
@@ -29,9 +29,12 @@ const vec3 COVER_TINT[COVERS] = vec3[](
 	vec3(0.98, 1.10, 0.80),  // farmland (paddy)
 	vec3(0.86, 0.96, 0.74),  // sport pitch
 	vec3(0.92, 0.94, 0.84),  // cemetery
-	vec3(1.00, 0.97, 0.92)   // bare ground and salt pans (sand tile)
+	vec3(1.00, 0.97, 0.92),  // bare ground and salt pans (sand tile)
+	vec3(1.25, 0.62, 0.46),  // running track (clay over the earth tile)
+	vec3(0.78, 0.50, 0.44),  // playground and hard courts (rubber over the paving tile)
+	vec3(0.70, 0.60, 0.50)   // allotments (tilled soil over the earth tile)
 );
-const float COVER_NOISE[COVERS] = float[](0.10, 0.18, 0.26, 0.16, 0.18, 0.12, 0.05, 0.12, 0.14);
+const float COVER_NOISE[COVERS] = float[](0.10, 0.18, 0.26, 0.16, 0.18, 0.12, 0.05, 0.12, 0.14, 0.10, 0.06, 0.30);
 
 float hash2(vec2 p) {
 	p = mod(p, PERIOD);

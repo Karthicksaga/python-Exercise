@@ -1,0 +1,14 @@
+{
+ "id": "kapaleeshwarar-temple",
+ "kit": "gopuram_complex",
+ "script": "tools/blender/landmarks/gopuram_complex.py",
+ "blender": "5.2.4 LTS",
+ "spec_sha256": "91a7f566d782774829bec5d534db74db2f7fc2b7dd03724ed97861b3a7581d00",
+ "glb_sha256": "c4ab25163b745befe7b1d26d185894b7e297546316dc00776ad319f45d79af99",
+ "triangles": {
+  "lod0": 14561,
+  "lod1": 5998,
+  "lod2": 1696
+ },
+ "collision_boxes": 73
+}

@@ -4,7 +4,7 @@ extends Node3D
 ## landmarks and sea, the ground plane and the map's edge walls. It holds no gameplay.
 ##
 ## `setup(source)` prepares everything on worker threads (road layout, prop models, materials,
-## landmark meshes, the sea), then streaming runs every frame round `focus_node` (or `focus`).
+## landmark specs and models, the sea), then streaming runs every frame round `focus_node` (or `focus`).
 ## Systems that must not run on unloaded ground (AI, combat, the player's first frame) wait on
 ## `world_ready_around(point)` / `await wait_ready_around(point)`.
 ##
@@ -17,6 +17,9 @@ signal ready_to_stream
 @export var focus: Vector2 = Vector2.ZERO
 ## Followed every frame when set (its scene position, converted to world metres).
 @export var focus_node: Node3D
+## Landmark models from their specs (G-183); off leaves the OSM buildings in their place (for
+## measuring the landmarks' cost).
+@export var show_landmarks: bool = true
 ## Recentre the floating origin on `focus_node` when it wanders far (G-7).
 @export var manage_origin: bool = false
 ## The Three.js game's spawn: the nearest road to this point (`content.ts`).
@@ -30,6 +33,8 @@ var streamer: ChunkStreamer
 ## {"point": Vector2, "heading": float} on the road nearest SPAWN_NEAR.
 var spawn: Dictionary = {}
 var error: String = ""
+## Landmark specs (G-181); the chunk builder leaves out OSM buildings under their footprints.
+var landmarks: Array[LandmarkSpec] = []
 
 var _ground: StaticBody3D
 var _fixed: Node3D
@@ -79,6 +84,11 @@ func setup(world: WorldSource) -> String:
 			lo = lo.min(p)
 			hi = hi.max(p)
 		kit.sea_box = Rect2(lo, hi - lo)
+	kit.signs = SignCategories.shared()
+	kit.palettes = AreaPalettes.load_file()
+	if show_landmarks:
+		landmarks = await BackgroundTask.start(func() -> Array[LandmarkSpec]: return LandmarkSpec.load_all()).finish(get_tree())
+	kit.landmarks = landmarks
 	kit.tree_triangles = models.tree.triangle_count()
 	kit.palm_triangles = models.palm.triangle_count()
 	var fixed: Array = await BackgroundTask.start(_build_fixed).finish(get_tree())
@@ -105,55 +115,19 @@ func nearest_road_point(point: Vector2) -> Dictionary:
 	return layouts.layout_for(source.cell_at(point)).nearest_road_point(point)
 
 
-## Landmarks, sea and edge walls as nodes outside the tree (worker thread).
+## Landmarks, sea and edge walls as nodes outside the tree (worker thread). Landmark models come
+## from their specs and GLBs (`LandmarkModels`, G-183); the GLBs load here, on the worker.
 func _build_fixed() -> Array:
 	var out: Array = []
-	for mark in source.get_landmarks():
-		var mesh: LandmarkMeshes = null
-		var body := StaticBody3D.new()
-		var faces := PackedVector3Array()
-		if mark.kind == &"tower":
-			var profile := LandmarkProfiles.tower(mark)
-			mesh = LandmarkMeshes.tower(profile)
-			for step: Vector2 in profile["steps"]:
-				_prism(faces, step.x, -1.0, step.y)
-			var drum: Vector2 = profile["drum"]
-			_prism(faces, drum.x, -1.0, drum.y)
-			var levels: Array[Vector2] = profile["levels"]
-			var balcony: float = levels[levels.size() / 2].y if not levels.is_empty() else (profile["shaft"] as Vector2).x
-			_prism(faces, balcony, drum.y - 0.1, (profile["canopy"] as Vector3).y)
-		elif mark.kind == &"temple" and mark.radius > 0.0:
-			var g := LandmarkProfiles.gopuram(mark)
-			mesh = LandmarkMeshes.gopuram(g)
-			var base: Dictionary = g["base"]
-			var passage: Vector2 = g["passage"]
-			var top: float = base["top"]
-			var pier := (float(base["hz0"]) - passage.x) / 2.0
-			for side: float in [-1.0, 1.0]:
-				ChunkBuilder.solid_box(faces, Vector3(0, top / 2.0 - 0.5, side * (passage.x + pier)), Vector3(base["hx0"], top / 2.0 + 0.5, pier), 0.0)
-			ChunkBuilder.solid_box(faces, Vector3(0, (passage.y + top) / 2.0, 0), Vector3(base["hx0"], (top - passage.y) / 2.0, passage.x + 0.01), 0.0)
-			var tiers: Array[Dictionary] = g["tiers"]
-			var middle := tiers[tiers.size() / 2]
-			var vault_top: float = (g["vault"] as Dictionary)["top"]
-			ChunkBuilder.solid_box(faces, Vector3(0, (top + vault_top) / 2.0, 0), Vector3(middle["hx0"], (vault_top - top) / 2.0, middle["hz0"]), 0.0)
-		if mesh == null:
-			body.free()
+	var bounds := source.get_bounds()
+	for spec in landmarks:
+		if not bounds.has_point(spec.origin):
 			continue
-		var mi := MeshInstance3D.new()
-		mi.name = mark.id
-		mi.mesh = mesh.mesh.commit(materials.landmark)
-		var holder := _Placed.new()
-		holder.name = "Landmark_" + mark.id
-		holder.world = mark.position
-		holder.add_child(mi)
-		var shape := ConcavePolygonShape3D.new()
-		shape.backface_collision = true
-		shape.set_faces(faces)
-		var cs := CollisionShape3D.new()
-		cs.shape = shape
-		body.add_child(cs)
-		holder.add_child(body)
-		out.append(holder)
+		var built := LandmarkModels.build(spec, materials.landmark)
+		if built.error != "":
+			push_warning(built.error)
+		if built.node != null:
+			out.append(built.node)
 	var sea := source.get_sea()
 	if sea != null and sea.outline.size() >= 3:
 		out.append(_sea(sea))
@@ -169,19 +143,6 @@ class _Placed:
 	func _enter_tree() -> void:
 		position = WorldOrigin.to_scene(world)
 		add_to_group(WorldOrigin.GROUP)
-
-
-## A 24-sided prism with a lid round the origin (`landmarkSolids`).
-static func _prism(faces: PackedVector3Array, radius: float, bottom: float, top: float) -> void:
-	const SIDES := 24
-	for i in SIDES:
-		var a0 := TAU * i / SIDES
-		var a1 := TAU * (i + 1) / SIDES
-		var p0 := Vector3(cos(a0) * radius, 0, sin(a0) * radius)
-		var p1 := Vector3(cos(a1) * radius, 0, sin(a1) * radius)
-		faces.append_array([p0 + Vector3(0, bottom, 0), p0 + Vector3(0, top, 0), p1 + Vector3(0, bottom, 0)])
-		faces.append_array([p1 + Vector3(0, bottom, 0), p0 + Vector3(0, top, 0), p1 + Vector3(0, top, 0)])
-		faces.append_array([Vector3(0, top, 0), p1 + Vector3(0, top, 0), p0 + Vector3(0, top, 0)])
 
 
 ## The sea is drawn by the chunks it covers (ground water, `GroundMeshes.sea`); here only an

@@ -536,6 +536,70 @@ G-58). A frame is the 2.5 ms budget plus at most one step by design (G-50). Full
 - Kathipara hero model (Blender) not started (a later task, as asked).
 - Seen only on llvmpipe (Compatibility); not on a phone or the Mobile renderer.
 
+## OSM detail (agent/godot-osmdetail), 24 Nov 2026
+Format 2.2 (`detail.bin`), decisions G-190…G-195; the page to read is `docs/osm-detail.md` (what is
+drawn from which tag, the coverage report, the measured cost, the weak points).
+
+**Data.** `tools/geo/chennai_geo/detail.py` (+ `osm_parse.py` collecting into `OsmFeatures.detail_*`):
+one `detail.bin` per tile with building colours, materials and category, `building:part` polygons,
+street objects, barrier and platform lines, zones, sign spots; 2.0 and 2.1 files unchanged;
+`world/DETAIL.md` is the coverage report. Rebuild: `cli build --max-ring 3` (about 95 s).
+`assets/city/sign_categories.json` is the one table of the 47 sign categories shared by Python and
+the game.
+**Game.** `DetailTile` (`src/game_world/detail/`, read by `RegionalWorldSource.tile_detail`,
+`WorldSource.detail_for(cell)`); `ChunkBuilder.apply_detail` (colours, parts and hosts),
+`use_mapped_lamps`, `add_platform_shelters`; `BuildingMeshes` (roof kinds, colours, parts, category
+signs), `ShopSigns.pick`, `DetailMeshes` + `DetailModels` (objects, barriers, platforms, zones),
+`GroundMeshes` covers 17 to 19, the pool colour in `water.gdshader`, `AreaPalettes`
+(`data/areas/palettes.json`, G-194).
+**For godot-areas.** `AreaPalettes` is the only reader of `data/areas/palettes.json`, which is now the areas agent's real file (G-200 and G-202; format 1: `default` plus `areas.<id>` with `walls`, `roofs`,
+`roof_types`, `storeys` bins and a `boundary`). `AreaPalettes` (G-194, updated) picks the area of a building by
+boundary containment at its footprint centre (circle: distance over radius; corridor: distance to the spine over
+half width; the smallest wins; none contains it: `default`, which leaves a house exactly as before). The old
+district-name lookup (`slug`, `districts_of`) is gone. Roof types and storey bins are picked by weight. Mapped OSM
+tags always win.
+**For the landmarks agent.** The world build already leaves out a building, its parts and signs at
+a landmark footprint; `DetailMeshes` never draws inside a building's footprint or on water.
+**Tests.** `tools/geo/tests/test_detail.py` (17), `tests/unit/test_osm_detail.gd` (14): the tile
+decoded like the Python reader, every tile's detail, Tamil font coverage and baked ink, sign
+picking, roof kinds and meshes, colours, floating parts, hosts replaced by parts, objects,
+barriers and zones built in real chunks, barriers off the carriageway, mapped lamps, palette file.
+`test_city_meshes.gd` lost the ten-sign test (now the category-table test) and `test_infra*` accept
+`minor >= 1`.
+**Weak or not done:** see `docs/osm-detail.md`.
+
+
+## Area atlas (areas agent), branch `agent/godot-areas`, 24 Nov 2026
+**Done.** Researched data for the landmark and building-detail work, no game code touched:
+`data/areas/areas.json`, `landmarks_shortlist.json`, `palettes.json`, `coverage.json` and their
+schemas; tools `area_lookup.py`, `area_coverage.py`, `area_palettes.py` in `tools/geo`; the atlas
+`docs/areas.md`. Decisions G-200…G-204.
+
+**For godot-osmdetail.** Read `data/areas/palettes.json` (schema in G-202 and
+`palettes.schema.json`): per area id `walls`, `roofs` (hex), `roof_types` (roof shape to weight,
+the world format's names), `storeys` (bins `1, 2, 3, 4-5, 6-9, 10+` to weight) and the area
+`boundary` (circle or corridor in world metres) to pick the area of a building; `default` for the
+rest. Everything is an estimate. OSM carries levels for 3.9 % of buildings in the areas and almost
+no roof, colour or material tags (`docs/areas.md` coverage table), so these weights are the
+palette's only source.
+
+**For godot-landmarks.** `landmarks_shortlist.json`: per landmark OSM id, footprint, tier and
+`tier.params` (kit name and numbers, mostly estimated), levels and height where tagged or sourced,
+features with sources, Commons file titles. Heights and kit parameters marked `estimated` are not
+measurements.
+
+**Weak or not done.**
+- `en.wikipedia.org`, Wikidata and most news hosts were not reachable; `sourced` claims rest on
+  search-result summaries of those pages. 114 claims are `unverified` (107 in areas.json, 7 in the shortlist).
+- No photo was viewed: the Commons image host answered 429 on the first request and fetching was
+  stopped, so the wall colours are written from descriptions.
+- Tamil names are OSM's, all need native review; T. Nagar has none.
+- Eighteen landmarks have no matching Commons file by search; the world keeps only 55 buildings in
+  Chengalpattu and 24 at Pulicat.
+- Nothing reads the data in the game yet.
+
+
+
 ## Controls redesign (G-170…G-179), branch `agent/godot-controls`, 24 Nov 2026
 **Done** (spec: `suggestions/2026-11-24-godot-controls-redesign.md`; decisions in
 `technical-decisions.md`). Everything pure and shared is in `src/ui/touch_controls/`:
@@ -568,6 +632,103 @@ available: pad support is tested with synthetic events. The 640x320 worst case h
 buttons at 48 px; small is under that there.
 Screenshots: `tests/tools/controls_shots.gd` (shots foot, near, driving, reverse, lefty,
 lefty_drive, pad, settings) into a scratch folder.
+
+
+**Addendum (malls).** 16 shopping complexes and two market entries added (100 landmarks: A 18, B 72,
+C 10). Game code must read `sign` and `names`, never `research_name`. Storeys come from OSM levels
+where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.
+
+## Title screen (G-160 to G-165, agent/godot-title), 24 Nov 2026
+**Where things are.** `src/ui/title_menu/` (`TitleMenu` the page and rows, `TitleRow`, `TitleFonts`,
+`ControlsGuide`), `src/app/title_wiring/` (`TitleWiring` camera, chip, rain layers, lightning;
+`TitleSpots` the three places; `TitlePlace` real names), fonts in `assets/fonts/title/`,
+`tests/scene/test_title_screen.gd`, `test_title_wiring.gd`, `tests/unit/test_title_places.gd`,
+the screenshot tool `tests/tools/title_shots.gd`. `Main` gained `title_summary()`, `title_wiring`,
+`title_tour`, `title_seed`, `title_spot`.
+
+**How other agents call it.**
+- Another controls scheme: change `ControlsGuide.groups()` only; the CONTROLS page and its test follow.
+- A new setting: add it in `Main._add_pause_menu` (one loop feeds the pause menu and SETTINGS).
+- Tests that boot `Main` and press play are unaffected: headless runs keep `title_tour` off, so
+  streaming stays on the player. A test of the tour sets `main.title_tour = true` (and
+  `title_spot`) before adding `Main` to the tree (see `test_title_wiring.gd`).
+- Screenshots: `HOME=<scratch> xvfb-run ... --script res://tests/tools/title_shots.gd -- --spot=central --hour=21.5 --rain=1 --storm=1 --save=1 --page=controls --out=...`
+  (HOME keeps the save file out of the real one; `--custom=x,z,heading,distance,height` tries a spot).
+
+**Measured (container, Godot 4.7.2, Compatibility under xvfb, software GL: only counts and script
+time mean anything).** The title's own script work per frame: about 150 µs on average, 230 µs at most
+(`TitleWiring.stats`). Draw calls at T. Nagar and Central with the title over them: about 170 dry; the two
+extra rain layers add 2 while it rains and 5k triangles (the camera's own rain adds one more); see
+G-165. Boot to title now also waits for the spot's streets (about 4 s longer in the test run).
+
+**Weak or not done.** Not seen on a phone. Morning and noon are blown out by the existing lighting
+(white walls and sand at Marina), night is nearly black (`Lighting`; the title adds no light of
+its own). No splash rings or ripples, no mist bands, no radial vignette, no thunder or rain sound
+(sound is suspended on the title). "Central" resolves to the district name "Evening Bazaar"
+(the data has no Chennai Central landmark). CONTINUE and NEW GAME wait for the player's streets
+to load after a tour (a loading screen of one step); NEW GAME has no confirmation (as before).
+Screenshots of the title at the three spots show the existing renderer's look, not a design pass
+on the world.
+
+**Loading screen (G-166).** Restyled with the title: `src/ui/loading_screen/loading_screen.gd`, tests
+`tests/scene/test_loading_screen.gd` and the loading cases in `test_ui_layout.gd`, screenshots with
+`tests/tools/loading_shots.gd -- --state=mid|failed|slow`. Tamil step lines need native review
+(listed in `LoadingScreen.TAMIL`). Not seen on a phone; it adds no animation, so the Adreno 613
+failure of the old animated screen should not return, but that is untested there.
+
+
+## Landmarks (agent/godot-landmarks), 24 Nov 2026
+Decisions G-180…G-188; how-to and every reference with its licence in `docs/landmarks.md`.
+
+**Done.** Ranking (`cli landmarks-rank` → `data/landmarks/candidates.json`, `COVERAGE.md`: 2,341
+candidates in the world, 396 with Wikidata, 401 with Wikipedia, 1,392 with a footprint). Specs
+in `assets/landmarks/<id>/spec.json` (OSM part filled by `cli landmark-osm`), Blender kits in
+`tools/blender/landmarks/` (`build_all.sh` builds twice, checks the bytes, runs the tests), game
+side `LandmarkSpec` + `LandmarkModels` (worker loading, OSM origin, LOD ranges, Jolt boxes,
+real-name signs) and the building filter in `ChunkBuilder`. Six landmarks: Kapaleeshwarar
+Temple (east and west gopurams, striped compound wall, shrines, mandapams on the OSM buildings,
+flagstaff, tank steps and mandapam), Ripon Building, Chennai Central (with the Tamil/English
+roof sign), Chennai Egmore (with the train shed), Anna Nagar Tower (ported), Chennai Lighthouse.
+
+| Landmark | LOD0 / LOD1 / LOD2 triangles | Boxes | Height model / spec |
+|---|---|---|---|
+| Kapaleeshwarar Temple | 14,561 / 5,998 / 1,696 | 73 | 37 m (east gopuram) |
+| Ripon Building | 6,463 / 793 / 405 | 14 | 43 m |
+| Chennai Central | 5,411 / 659 / 263 | 7 | 41.5 m |
+| Chennai Egmore | 8,792 / 1,942 / 374 | 84 | 24 m (estimated) |
+| Anna Nagar Tower | 5,459 / 1,535 / 543 | 6 | 41 m |
+| Chennai Lighthouse | 5,369 / 1,739 / 411 | 4 | 45.72 m (OSM tag) |
+| Shopping complex, Royapettah (generic, G-189) | 5,068 / 982 / 653 | 28 | 29.6 m (estimated) |
+
+**Measured** (this shared 4-core box, xvfb + llvmpipe, Compatibility, 915x412, `city_shot.gd
+--frames=180`, two runs each; `--no-landmarks` leaves the OSM buildings in place). Temple from
+above (NE, 85 m back, 22 m up): with landmarks 52 draw calls, 148.0k primitives, frame 130.5 /
+132.4 ms average; without 50 draw calls, 125.3k primitives, 117.0 / 119.5 ms. Sannadhi Street at
+eye level: with 46 draw calls, 131.3k primitives, 124.4 / 111.7 ms; without 44, 108.6k, 125.2 /
+106.9 ms. Software rendering, so the milliseconds only compare runs; the cost is one draw call
+per visible landmark and about 23k primitives at the temple. Main-thread maximum while filling
+stayed at 0.2 ms (models load on the worker).
+
+**Weak or not done.**
+- Few reference photos were actually seen: Commons thumbnails were rate-limited (shared with the
+  coordinator). Central follows a real photo; the gopuram, Ripon and Egmore follow published
+  descriptions and general knowledge of the styles; tier counts, colours and many heights are
+  estimated (each spec's `estimated`). Facts were checked through search summaries; Wikipedia and
+  Wikidata cannot be fetched from this container.
+- Chennai Central's heritage building is not mapped in OSM; the model stands on the frontage
+  way's rectangle. Ripon's OSM outline (68 x 20 m) is smaller than the published 85 x 32 m.
+- The committed world was not rebuilt with the landmark outlines (the game filters at run time).
+- Kapaleeshwarar's tank steps sit inside the water polygon above the 0.75 m sunk water; the bund
+  and barrier still close the tank (no walking the steps yet, culture note §3 visit not built).
+- The mall kit makes a generic block (one mall from the godot-areas shortlist so far; its shortlist file is not merged here, the spec copies the OSM id); no interiors; no night lighting on landmarks; GLBs carry float vertex
+  colours (0.2–1.5 MB each, 4.6 MB in all).
+- `scene/test_city_streaming.gd::test_main_thread_budget_under_cpu_load` failed once in the full
+  local run (wall-clock, load-sensitive on this shared machine; not touched).
+- Seen only under the Compatibility renderer on llvmpipe; not on a phone.
+
+**Addendum (malls).** 16 shopping complexes and two market entries added (100 landmarks: A 18, B 72,
+C 10). Game code must read `sign` and `names`, never `research_name`. Storeys come from OSM levels
+where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.
 
 ## Transit (G-210…G-219), branch `agent/godot-transit`, 24 Nov 2026
 **Done.** Data: `tools/geo/chennai_geo/transit.py` (`cli transit`) → `world/transit/` and

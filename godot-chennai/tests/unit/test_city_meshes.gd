@@ -111,30 +111,17 @@ func test_facade_kit() -> bool:
 	return true
 
 
-func test_signs_are_generic_words() -> bool:
-	for s: Dictionary in ShopSigns.SIGNS:
-		for word in str(s["english"]).replace("&", " ").replace("·", " ").split(" ", false):
+func test_signs_are_category_words() -> bool:
+	# G-192: the ten invented signs became one table of category words in Tamil and English.
+	var table := SignCategories.shared()
+	assert_eq(table.error, "", "the sign table loads")
+	assert_true(table.count() >= 40 and table.count() <= CityAtlas.SIGN_CAPACITY, "the categories (%d) fit the atlas" % table.count())
+	for c in table.items:
+		for word in str(c["english"]).split(" ", false):
 			assert_true(ShopSigns.SIGN_WORDS.has(word), "sign word %s is on the generic list" % word)
-		assert_true(str(s["tamil"]).length() > 0, "Tamil line first")
-	assert_eq(ShopSigns.wide().size(), CityAtlas.WIDE_ROWS, "wide signs fill their atlas rows")
-	assert_true(ShopSigns.narrow().size() <= CityAtlas.NARROW_ROWS * 2, "narrow signs fit the atlas")
-	return true
-
-
-func test_landmarks() -> bool:
-	var src := CityTestKit.v1()
-	for mark in src.index.landmarks:
-		if mark.kind == &"tower":
-			var p := LandmarkProfiles.tower(mark)
-			var m := LandmarkMeshes.tower(p)
-			assert_true(m.mesh.triangle_count() > 2000 and m.mesh.triangle_count() < 15000, "tower %d triangles" % m.mesh.triangle_count())
-			var top := 0.0
-			for v in m.mesh.positions:
-				top = maxf(top, v.y)
-			assert_near(top, mark.height, 0.01, "tower as tall as its estimated height")
-		elif mark.kind == &"temple":
-			var g := LandmarkMeshes.gopuram(LandmarkProfiles.gopuram(mark))
-			assert_true(g.mesh.triangle_count() > 1000 and g.mesh.triangle_count() < 15000, "gopuram %d triangles" % g.mesh.triangle_count())
+		assert_true(str(c["tamil"]).length() > 0, "Tamil line first")
+		var r := CityAtlas.sign_rect(int(c["id"]))
+		assert_true(r.end.x <= CityAtlas.KIT_PX and r.end.y <= CityAtlas.CELL_Y, "category %s lies in the sign area of the atlas" % c["key"])
 	return true
 
 

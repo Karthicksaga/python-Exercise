@@ -10,7 +10,7 @@ const KATHIPARA_TILE := Vector2i(2, 6)
 
 func test_infra_tile_matches_the_python_reader() -> bool:
 	var source := CityTestKit.regional()
-	assert_eq(source.minor, 1, "world.json says format 2.1")
+	assert_true(source.minor >= 1, "world.json says format 2.1 or later (2.2 adds detail.bin)")
 	var t := source.tile_infra(KATHIPARA_TILE)
 	assert_true(t != null and t.ok(), "the tile's infra.bin decodes")
 	# Values printed by tools/geo (chennai_geo.infra.decode_infra) for tile 2_6.

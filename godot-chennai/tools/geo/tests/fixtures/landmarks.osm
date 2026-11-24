@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-made test extract for the landmark tools near Mylapore (13.0337, 80.2697). Not real data. -->
+<osm version="0.6" generator="hand-made">
+  <node id="1" lat="13.0341047" lon="80.2692845"/>
+  <node id="2" lat="13.0341047" lon="80.2701155"/>
+  <node id="3" lat="13.0332953" lon="80.2701155"/>
+  <node id="4" lat="13.0332953" lon="80.2692845"/>
+  <node id="5" lat="13.0337495" lon="80.2698016"/>
+  <node id="6" lat="13.0337495" lon="80.2699678"/>
+  <node id="7" lat="13.0336505" lon="80.2699678"/>
+  <node id="8" lat="13.0336505" lon="80.2698016"/>
+  <node id="9" lat="13.0342396" lon="80.2676226"/>
+  <node id="10" lat="13.0342396" lon="80.2693768"/>
+  <node id="11" lat="13.0329805" lon="80.2693768"/>
+  <node id="12" lat="13.0329805" lon="80.2676226"/>
+  <node id="13" lat="13.0338799" lon="80.2746858"/>
+  <node id="14" lat="13.0338799" lon="80.2757937"/>
+  <node id="15" lat="13.0335201" lon="80.2757937"/>
+  <node id="16" lat="13.0335201" lon="80.2746858"/>
+  <node id="17" lat="13.0337000" lon="80.2752398"><tag k="railway" v="station"/><tag k="name" v="Test Central"/><tag k="name:ta" v="சோதனை சென்ட்ரல்"/><tag k="wikidata" v="Q2"/><tag k="wikipedia" v="en:Test Central"/></node>
+  <node id="18" lat="13.0310020" lon="80.2724699"><tag k="tourism" v="hotel"/><tag k="name" v="Grand Hotel"/><tag k="wikidata" v="Q3"/></node>
+  <node id="19" lat="13.0310020" lon="80.2726545"><tag k="place" v="suburb"/><tag k="name" v="Testpet"/><tag k="wikidata" v="Q4"/></node>
+  <node id="20" lat="13.0310020" lon="80.2728392"><tag k="amenity" v="place_of_worship"/><tag k="religion" v="christian"/><tag k="name" v="Test Church"/><tag k="brand" v="Chain"/></node>
+  <node id="21" lat="13.0364879" lon="80.2668378"/>
+  <node id="22" lat="13.0364879" lon="80.2670224"/>
+  <node id="23" lat="13.0363080" lon="80.2670224"/>
+  <node id="24" lat="13.0363080" lon="80.2668378"/>
+  <node id="25" lat="13.0311369" lon="80.2695615"/>
+  <node id="26" lat="13.0311369" lon="80.2698385"/>
+  <node id="27" lat="13.0308671" lon="80.2698385"/>
+  <node id="28" lat="13.0308671" lon="80.2695615"/>
+  <way id="1001"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/><tag k="amenity" v="place_of_worship"/><tag k="religion" v="hindu"/><tag k="name" v="Test Temple"/><tag k="name:ta" v="சோதனை கோயில்"/><tag k="wikidata" v="Q1"/><tag k="wikipedia" v="en:Test Temple"/></way>
+  <way id="1002"><nd ref="5"/><nd ref="6"/><nd ref="7"/><nd ref="8"/><nd ref="5"/><tag k="building" v="yes"/></way>
+  <way id="1003"><nd ref="9"/><nd ref="10"/><nd ref="11"/><nd ref="12"/><nd ref="9"/><tag k="natural" v="water"/><tag k="name" v="Test Tank"/></way>
+  <way id="1004"><nd ref="13"/><nd ref="14"/><nd ref="15"/><nd ref="16"/><nd ref="13"/><tag k="railway" v="station"/><tag k="name" v="Test Central"/></way>
+  <way id="1005"><nd ref="21"/><nd ref="22"/><nd ref="23"/><nd ref="24"/><nd ref="21"/><tag k="man_made" v="lighthouse"/><tag k="name" v="Test Light"/><tag k="height" v="45.72"/><tag k="wikidata" v="Q5"/></way>
+  <way id="1006"><nd ref="25"/><nd ref="26"/><nd ref="27"/><nd ref="28"/><nd ref="25"/><tag k="building" v="yes"/><tag k="historic" v="building"/></way>
+</osm>

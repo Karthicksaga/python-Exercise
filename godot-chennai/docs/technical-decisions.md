@@ -1260,6 +1260,145 @@ primitives, objects; triangles per layer of the chunks in reach), then moves the
 through it at 20 m/s in game frames (headless: the streamer's main-thread maxima). Baseline is the
 same tool on the code before these changes with the same world files. Numbers in `handoff.md`.
 
+## OSM detail (agent/godot-osmdetail, 24 Nov 2026)
+
+### G-190: Format 2.2 adds `detail.bin`; every 2.0 and 2.1 file stays byte for byte
+Same recipe as G-150: one `detail.bin` per tile ("COWD", sections `BLDG PART OBJ_ LINE ZONE SIGN`),
+`world.json` `minor` 2 and a `detail` key; nothing in the 2.0 chunk, road, area or `infra.bin`
+files changes, so a 2.0 or 2.1 reader still works (`diff -r` of a rebuild: only `detail.bin`,
+`DETAIL.md` and the `world.json` keys are new). It is a new file rather than new sections of
+`infra.bin` so the infrastructure and detail work version separately. The parser keeps the new
+OSM objects in their own lists (`OsmFeatures.detail_*`, `parts`) so the 2.0 selection is untouched.
+Positions in 5 cm steps, lines cut at tile edges, everything else by the tile of its centroid.
+Layout: `docs/world-format.md` §3.8. What OSM maps in Chennai is sparse (`docs/osm-detail.md`):
+`building:colour` on 0.04 % of buildings, `roof:shape` on 0.01 %, 65 `building:part`s; benches
+85, waste baskets 62, mapped street lamps 1,745, power towers 7,544, walls 620 ways. The renderer
+estimates the rest and the coverage report counts both.
+
+### G-191: Building tags in the mesh: mapped wins, estimated is marked, the legacy rule stays the default
+- Wall colour: `building:colour` exactly; else the colour of `building:material` (brick, concrete,
+  stone, glass, metal, wood; estimated); else the data's hash colour (today's 12 plasters) or, where
+  an area palette exists (G-194), a hash into that palette.
+- Roof kind (`BuildingMeshes.assign_roof`): `roof:shape` flat, gabled (+ gambrel, mansard,
+  saltbox), hipped (+ half-hipped), pyramidal (+ cone), skillion, dome (+ round, onion), when the
+  footprint can carry it (a gable and a skillion need a four-corner convex footprint, a hip or a
+  pyramid a convex one, a dome a convex one; else a flat terrace); not mapped: today's rule (a third
+  of low convex houses get the clay-tile hip roof) with the default palette, or the area's
+  `roof_types` weights for houses of at most three storeys. Flat roofs keep the parapet and the
+  black water tank; a dome sits on a flat roof; pitched roofs have no parapet. `roof:colour` exactly,
+  else `roof:material` (tiles, metal, concrete, glass, thatch), else the roof kind's own colour.
+- Parts: `building:part` polygons are drawn as buildings from `min_height` up (walls from there, no
+  shops, no wall fixtures, the collider from there so a car passes under an overhang). A building
+  whose parts cover 60 % of it is not drawn (the parts are its 3D form, as OSM's rule says); a part
+  without height takes the host's. A building at a landmark footprint is left out of the world
+  already (G-27) and so are its parts and signs.
+- Triangle budget (measured, G-195): +0.6…0.8 % primitives, no new draw calls. A gable and a skillion are 6
+  triangles, a dome 96, a pyramid or hip as before.
+
+### G-192: Signs say the category, never the name (TD-18), one atlas, Tamil on top
+`assets/city/sign_categories.json` is the one table (47 categories: grocery, supermarket, bakery,
+sweets, tea shop, coffee shop, restaurant, snacks, vegetables, meat, fish, flowers, pharmacy,
+clinic, dental, hospital, bank, ATM, textiles, tailor, jewellery, footwear, electronics, mobile,
+hardware, furniture, stationery, books, salon, laundry, petrol, vehicle repair, bus stand, railway
+station, school, college, temple, church, mosque, police, post office, library, cinema, lodge,
+marriage hall, office, shop). The world build maps OSM tags to a category id (the `name` tag is
+never read), the game bakes the kit atlas from it (`tools/bake_city_textures.gd`: 2 columns x 24
+rows of 512 x 88 px signs, then the shutter, interior and railing cells; the atlas grew from
+1024 x 1024 to 1024 x 2368: about 26 MB with its glow partner and mipmaps if left uncompressed,
+to be compressed for the phone later). Text is drawn once at build time with Noto Sans Tamil Bold (the full Tamil
+range, `assets/city/noto-sans-tamil-categories.woff2`: the two older subsets lacked ய ர ற ங ஜ ே ொ,
+which fell back to a thin font), Tamil 34 px above English 19 px, squeezed to fit.
+A shop front gets the category of the building when OSM maps a shop, amenity, office or tourism tag
+on it, else of the nearest mapped shop node within 14 m of the shop, else an everyday street shop
+chosen by hash (estimated, counted). A building mapped as a shop gets fronts even with one
+storey. A two-bay shop shows the same board twice. Public places keep `name:ta` and `name:en` in
+`detail.bin` (786 in the world) for a later name plate; no sign draws them yet. 39 mapped places
+are themselves named with a category word ("Temple", "Tea Shop"): their sign says the same word
+because the table does. The ten invented signs of `shopSigns.ts` ("NILA TIFFIN CENTRE", "NEW STORES")
+are gone; `ShopSigns.SIGN_WORDS` guards the English words in a test.
+
+### G-193: Street objects, barriers, zones and platforms: near only, no new draw calls, blocked only where it should be
+Drawn into the chunk's existing surfaces (objects, ground, water), so the draw-call count does not
+change; the objects and barriers sit under `Near` (shown by the streamer's distance switch, G-53),
+the zone paint in the ground surface. Benches, waste baskets, drinking water, post boxes, toilets,
+power poles and towers, bollards, gates are small procedural models (`DetailModels`: 24 to 96 triangles, the lattice tower 504). Mapped street lamps replace generated poles within 14 m. A shelter is added for a
+`public_transport=platform` node with none within 20 m, and every shelter gets a bus-stop pole.
+Walls (with a pilaster every 4 m), retaining walls, hedges, fences (posts and two rails), kerbs,
+jersey barriers and guard rails are thin merged boxes; a segment is cut where it would stand in a
+carriageway and drawn only by the chunk holding its middle. Walls, fences, hedges, jersey barriers
+and guard rails block walking (closed boxes); kerbs do not. Heights: the mapped `height`, else wall
+1.9, fence 1.5, hedge 1.2, retaining wall 1.6, kerb 0.15, jersey 0.8 m (estimated). Tree rows are
+trees every 7 m. Platforms: a railway platform is a 0.9 m slab with a yellow edge line and a shelter
+every 40 m, a bus platform 0.18 m; both have colliders. Pitches are marked ground (grass, or rubber
+for courts, clay for kabaddi) with the lines of the mapped sport (football and hockey with boxes
+and circle, cricket the pitch strip and creases, basketball, tennis, volleyball and badminton,
+kabaddi; a plain marked field when no sport is mapped); playgrounds, running tracks and allotments
+are covers of the ground shader (`COVER_TRACK`, `COVER_PLAYGROUND`, `COVER_ALLOTMENT`); a swimming
+pool is flat water on the ground with the water shader (clear aqua, `pool_water`, vertex red 0) and
+a paving rim. Nobody swims yet (the culture note's swimming is a later task).
+
+### G-194: Area character comes from `data/areas/palettes.json`, one loader, by boundary
+`AreaPalettes` (`src/game_world/city/area_palettes.gd`) is the only reader of the godot-areas file
+(format 1, derived from `areas.json`, never hand-edited): `default` and `areas.<id>` with `walls`,
+`roofs`, `roof_types` (shape: weight), `storeys` (bins "1", "2", "3", "4-5", "6-9", "10+": weight)
+and a `boundary` (circle: centre, radius; corridor: spine, half width; world metres). The area of a
+building is the one whose boundary contains its footprint centre with the smallest distance over
+radius (or half width); none: `default`. A storey count is the bin by weight, then a count inside the
+bin (10+ is 10 to 12). The palette is applied only to what OSM does not map: houses with an
+estimated height (storeys), buildings without `roof:shape` (roof types, houses up to three
+storeys), without `building:colour` or `roof:colour` (walls, roofs); mapped tags always win. The
+`default` entry changes nothing: outside every area the 12 plasters, the legacy roof rule and the
+data's storeys apply as before G-190.
+
+### G-195: Measuring the detail
+`tests/tools/city_shot.gd` (draw calls, primitives, objects, worst build and main-thread ms) at
+T. Nagar, Mylapore and the Marina, the same tool and world on `ab3acba` and on this branch; numbers
+in `handoff.md`. The machine was loaded by other agents (load average 8 to 9), so the milliseconds
+are worse than a quiet run; the counts are exact.
+
+
+### G-200: The area atlas is researched data in `data/areas/`, one claim at a time
+`areas.json` (31 areas), `landmarks_shortlist.json` (83 landmarks), `palettes.json` and
+`coverage.json`, with JSON schemas and `tools/geo/tests/test_areas_data.py`. Every statement that
+looks like a fact is a claim `{text, status, source}`: `sourced` (a URL says it), `osm` (read from
+the extract or the built world), `estimated` (with a `basis`) or `unverified` (no source, never to
+be shown as fact). Wall colours, roof weights, storey weights and street widths are always
+`estimated`. Tamil names are only OSM's `name:ta` (or the Tamil `name`) and every one says "needs
+native review". No business or brand names: malls and IT parks are generic entries that keep only
+their OSM id. `docs/areas.md` is generated from this data.
+
+### G-201: Area boundaries are circles and corridors from the district data
+Centres are the world's own district and settlement points (or OSM place nodes and polygon
+centroids); a circle's radius is half the distance to the nearest other centre, clamped 450 to
+2200 m, or set from an OSM polygon; linear areas (Marina, OMR, Ennore port, airport axis, Anna
+Nagar, Kodambakkam to Vadapalani) are corridors round a spine of those points. A building belongs
+to the containing area with the smallest distance / radius. Not administrative borders; they exist
+to pick a palette.
+
+### G-202: `palettes.json` schema
+`{format, roof_shapes, storey_bins, default, areas: {id: {type, walls[hex], roofs[hex],
+roof_types{shape: weight}, storeys{bin: weight}, boundary}}}`. Roof shape keys are
+`enums.ROOF_SHAPES`; storey bins are `1, 2, 3, 4-5, 6-9, 10+`; weights sum to 1. Derived from
+`areas.json` by `python -m chennai_geo.area_palettes` (a test fails if it is stale), never edited
+by hand.
+
+### G-203: Landmarks are found by name in the PBF, not by hand-copied coordinates
+`tools/geo/chennai_geo/area_lookup.py` (pyosmium, one pass, no Overpass) returns candidates with
+centre, footprint, area and key tags; the shortlist keeps the checked best candidate per
+landmark with its OSM type and id, footprint, levels and height tags, Wikidata id from OSM and
+Commons file titles with licences (titles only, no images). Tiers: A hand-made hero, B parametric
+kit (parameters in `tier.params`), C recoloured standard building. Not found by name (Pulicat Lake
+as a polygon, the Egmore station building, the Mylapore tank water) is listed in
+`not_found_in_osm`.
+
+### G-204: Coverage numbers come from two places
+`area_coverage.py` counts levels, height, roof shape and use from the built world, and colour,
+material and roof tags from the extract (the world format keeps no colour or material). In the 31
+areas levels are mapped for 3.9 % of buildings (four fifths of them in George Town and Parry's
+Corner); height, roof shape, colour and material tags are each under 0.2 %.
+
+
+
 ## G-170: Control settings: one shared object, one save section, live
 `ControlSettings` (`src/ui/touch_controls/`) holds the preferences: driving scheme (only `wheel`
 exists; the tilt and buttons schemes are named in the proposal but not built, by the owner's
@@ -1365,6 +1504,212 @@ Kerb and speed-breaker ticks are not built. The D-pad is left to menu focus.
 driving on touch, pad or keyboard, following left-handed and toggle-run. The pause menu and the
 title's CONTROLS page can both read it (the title agent may stub the same name; reconcile at
 merge: this one is `src/ui/touch_controls/controls_guide.gd`).
+
+
+### G-205: Malls are generic entries with a research-only name field (TD-18)
+`landmarks_shortlist.json` holds 16 shopping complexes (kind `mall`, tier B), found by scanning the
+extract for `shop=mall` and for `building=retail|commercial` of 8,000 m2 or more or five levels or
+more. `names.en` is "Shopping complex, <area>", the sign is `sign` = `வணிக வளாகம் / SHOPPING COMPLEX`,
+`osm.osm_name` is null, and the OSM name sits only in `research_name` (marked research only; a test
+keeps it out of every other field). Also added: Sowcarpet and Flower Bazaar, Marina Beach Market.
+
+## G-160: Title fonts: Barlow Condensed and Noto Sans Tamil (SIL OFL)
+The title uses Barlow Condensed Bold (menu rows, page names, the chip, spaced OPEN WORLD) and
+ExtraBold (the big CHENNAI), and Noto Sans Tamil Bold for சென்னை, as the landing-page design
+asks. Fetched from `raw.githubusercontent.com` (the google/fonts repository, `ofl/barlowcondensed`
+and `ofl/notosanstamil`; that host is allowed from this container). Barlow is stored unmodified
+(110 KB each). Noto Sans Tamil is a variable font (340 KB): it is frozen at weight 700 and cut to
+Tamil, Latin and a few punctuation marks with fontTools (56 KB). Files are in `assets/fonts/title/`
+(a folder of its own: the sync tool owns the `.woff2` files beside it), licence rows in
+`assets/LICENSES.md`, licence texts beside the fonts. `TitleFonts` loads them lazily; a missing
+file falls back to the theme font. The display face lists the Tamil face as its fallback, so one
+font draws a mixed line. A test checks that every glyph of சென்னை exists (`has_char`) and a
+screenshot shows them drawn.
+
+## G-161: The title menu follows the landing-page design
+Rows CONTINUE (only with a save; shows the real "Stage N · ₹money · D of T stages", or "Free
+roam" when every stage is done), NEW GAME (first launch: "Begin in Chennai: Stage 1, <first
+stage's title>"; with a save: "Start again from Stage 1"), SETTINGS, CONTROLS, ABOUT, QUIT (where an
+app can quit). The primary row (CONTINUE, else NEW GAME) has the amber bar and a soft pulsing glow
+and the focus. Every row is a `TitleRow` (a Button with a title and subtitle, ≥ 48 tall). Hover and
+focus show a pale plate, an amber bar and a 4-unit nudge; rows slide in one by one (0.35 s + 0.08
+s per row, 0.6 s tweens), the name parts rise, the chip comes last (0.9 s). The summary comes from
+`Main.title_summary()` (live `MissionSession` and the save file), so `ui` knows no game system.
+Layout budget: the screen is never shorter than 412 units, and six 48-unit rows are 288 of
+them, so the brand is cropped to the height of its letters (`_slot`: Tamil 1.2, CHENNAI 0.9, OPEN
+WORLD 1.15 times the font size) and the foot counts only the credit's 15 units (the chip rises
+from the corner on the right, away from the menu). At 915x412 nothing scrolls; the rows sit in a
+ScrollContainer for anything smaller. A test (`test_ui_layout`) checks every row is inside the
+screen, off the credit, and needs no scrolling, at four screen sizes with and without a save.
+The shade is one 192x96 texture (the prototype's left-to-right gradient plus the dark foot),
+one full-screen quad; the prototype's radial vignette was left out (a second full-screen layer).
+Node names changed: the first row is `Continue` or `NewGame` (was `Play`); `Main.title.primary_row()`
+is the row with the focus.
+
+## G-162: SETTINGS is the pause menu's settings, from one list
+`Main._add_pause_menu` adds Time, Weather and Sound to the pause menu and to the title's SETTINGS
+page in one loop (`add_setting(id, label, press)` on both), so they cannot drift apart. A press
+relabels the button and tells the title (`settings_changed`), whose chip shows the clock and the
+weather. Settings are plain buttons (≥ 48 tall) on dark plates so they read over a bright sky.
+
+## G-163: CONTROLS is read-only and data-driven from `ControlsGuide`
+The CONTROLS page draws `ControlsGuide.groups()` (ON FOOT, DRIVING, ANYWHERE; control and what it
+does) in three columns, and nothing else on the title knows a control. When the controls scheme
+is redesigned, change that one list (a test checks every row of it is on the page).
+
+## G-164: The title camera tours a seeded spot of the live city
+`TitleWiring` (`src/app/title_wiring/`) owns the title camera. At launch a seed (the clock, or
+`Main.title_seed`) picks Marina, T. Nagar or Central (`TitleSpots`: target point, heading,
+distance, height, a ±0.22 rad sine sweep over 64 s: the prototype's slow alternate drift, about
+1 m/s). With `tour` on (default whenever there is a display; headless runs, so every other suite,
+keep it off) the streaming focus moves to the spot during loading, behind the loading screen:
+`CityWorld.focus_node` and `CityLife.focus_node` become a marker there, so the traffic, people
+and parked vehicles are the real ones of that street. The player is frozen
+(`process_mode` DISABLED) so they cannot fall through ground that is no longer streamed. CONTINUE
+and NEW GAME call `release()`: focus goes back to the player, the loading screen shows its one
+honest step ("Building the streets around you") and the player is let go when the chunks within
+60 m of them are in (`world_ready_around`, game time). Coming back from play (QUIT TO TITLE) the
+camera just drifts over where the player is (no focus move: a driven vehicle must keep its
+ground). The chip's place name is the nearest landmark within 700 m, else the nearest district of
+the tile's index (`TitlePlace`, only names in the data: Marina Beach, T. Nagar, "Evening Bazaar"
+for the Central spot, because the data has no landmark at the station). The weather and light
+come from `GameLoop.clock` and `Weather` through `CityEnvironment`; the title adds no world.
+Cost of the tour: the wait on CONTINUE (a few seconds on a phone while the player's streets load).
+
+## G-165: Rain, lightning and reduced motion on the title
+The camera's own `CityEnvironment` rain (one box of 36 m round the camera) shows only as a few near
+streaks from a camera 25 m up, so the title adds two `RainView` layers in front of the camera
+(the prototype's middle and far drops): box 76x44x76 m, 32 m ahead, 900 drops; box 220x90x220 m,
+120 m ahead, 1100 drops, longer, wider streaks. Same shader and code as the existing rain
+(`RainView` got optional box, streak and width parameters); one draw call each, hidden when dry.
+Lightning is a full-screen additive flash (0.55, 0.75, 0.35 with a fade, 4.5–12 s apart, from
+a seed) only while it rains and the launch drew a storm (one launch in three): `Weather` stays
+clear or rain (G-87), "storm" is a title decoration and the chip says "Storm" only then. Left out
+and why: splash rings and ripples on the road (at 25 m up they are a pixel or two and need a
+road-height decal pass), the drifting mist bands (the rain already thickens the haze and the
+road shine in `Lighting`), thunder and rain sound (sound is suspended on the title by design),
+the radial vignette. Reduced motion (`DisplayServer.accessibility_should_reduce_animation() == 1`: Godot
+answers -1 when a platform cannot say, which must not count as on; read by the title menu and
+the wiring, settable before they enter the tree): no slide, nudge, glow pulse,
+camera drift or lightning; the chip says Rain. Nothing runs while loading: the wiring's `_process`
+is off until the title is shown.
+
+## G-166: The loading screen is restyled like the title
+`LoadingScreen` keeps its contract (real steps from `Main.STEPS` in order, `begin_step` / `finish_step` /
+`fail`, a frame between steps, TRY AGAIN and CLOSE, no percentage, nothing animated, no `_process`, no
+fade over the first frames) and takes the title's look: the dark backdrop with one faint warm
+gradient quad, சென்னை over CHENNAI over a spaced OPEN WORLD (the title's fonts), and on the right a
+row per step with a mark (waiting: hollow ring, current: amber ring, done: filled amber, failed:
+red), the English name and, where listed, the Tamil beneath. A thin bar moves by one share only in
+`finish_step`. One tip (`TIPS`: public facts and control hints) changes only in `begin_step`. If a step
+runs long `Main`'s existing 5 s heartbeat calls `show_slow(step, seconds)`: one dim line, no timer in
+the screen. The screen is two columns so the failure (text and two 48-unit buttons) fits at 412 high.
+Tamil lines (`LoadingScreen.TAMIL`): "சென்னை வரைபடத்தைப் படிக்கிறது", "தெருக்களைப் படிக்கிறது", "உங்களைச்
+சுற்றியுள்ள தெருக்களை உருவாக்குகிறது", "வாகனங்களை நிறுத்துகிறது" were written by the model and **need
+native review** before release; a step without an entry shows English alone.
+
+
+### G-180: Landmark candidates are ranked from the same OSM extract, not Overpass
+`python -m chennai_geo.cli landmarks-rank` reads the clipped Tamil Nadu PBF (`world.osm.pbf`) with
+pyosmium (nodes and assembled areas, ways and multipolygons) and keeps objects inside the world
+(ring 3 playable shape) that carry `wikidata` or `wikipedia`, or are a landmark kind: tourism
+attraction or museum, `historic=*`, place of worship (temple, church, mosque by `religion`),
+railway station, lighthouse, tower, and temple/church/mosque/stadium/civic/government/
+university/hospital buildings. Linked objects that are not buildings to model (places,
+boundaries, roads, water, land use) and businesses (`brand`, `shop`, hotels; TD-18) are not
+candidates. A point inside a polygon of the same kind joins it (Chennai Central's station node
+gives the station area its `wikidata`), then objects sharing a `wikidata` merge (the largest
+polygon is the footprint). The score (Wikidata 40, Wikipedia 30, Commons 6, kind 0-22, footprint
+area up to 20 on a log scale, Tamil name 5, height or levels 4, unnamed -30) only orders the
+list for choosing what to model next. Output `data/landmarks/candidates.json` (footprints for
+the top 400) and `COVERAGE.md`. Overpass is not used: it was unreliable from the build container
+and the PBF is already the world's single source.
+
+### G-181: One spec per landmark, the OSM part filled by a tool, the rest by research
+`assets/landmarks/<id>/spec.json` (format 1). OSM parts are named with roles: `model` (drawn on
+its OSM outline), `model_rect` (drawn on the outline's minimum rectangle where OSM's outline is
+not the building's own), `area` (under the model), `info` (names and links only). `cli
+landmark-osm` writes each part's footprint, tags, centroid, area and minimum rectangle, and the
+landmark's `origin` (main part's area centroid) and `yaw_deg`; OSM's `height` tag goes to
+`height.osm_tag`. By hand: names in Tamil and English with their sources (OSM first; a Tamil name
+not from OSM is marked for native-speaker review), the height with its source, alternatives and
+the reason for the choice, style (with disagreeing sources recorded), colours, materials, facts
+each with a source URL, Commons references (title, author, licence, URL, use), the kit and its
+parameters, budget, LOD distances, collision plan, what is estimated, and for temples the respect
+rule. `LandmarkSpec.validate()` checks all of it; the game lists landmarks in `index.json`.
+
+### G-182: Reference photos are listed from Commons, never committed
+`chennai_geo/landmark_refs.py` lists Commons files (category members, search, `imageinfo` with
+`extmetadata` licences), one request every 3.5 s or slower, a descriptive User-Agent with no
+personal data, an on-disk cache, and on HTTP 429/503 one wait of `Retry-After` (else 120 s) and
+then stop. Thumbnails come from `upload.wikimedia.org` (the API's thumb host is not reachable).
+Downloads go to a scratch folder outside the repository. A photo may become a texture only if
+CC0 or public domain (`usable_as_texture`); none is used today. The host rate-limited thumbnail
+downloads hard during this work (shared with the coordinator), so few photos were seen.
+
+### G-183: Landmark models are GLBs built by parametric Blender kits from the spec
+`tools/blender/landmarks/<kit>.py` builds every spec naming the kit: geometry is collected in
+plain Python lists and written as three flat-shaded meshes `LOD0`/`LOD1`/`LOD2` with a linear
+vertex colour per face corner, plus `COL_*` boxes (an axis-aligned mesh on a node carrying
+position and yaw). The GLB's origin is the spec origin and the model is built in world
+orientation, so the game places it with a translation only. `build.json` records the spec's and
+the GLB's SHA-256 and the triangle counts; `build_all.sh` builds twice and fails if any byte
+differs (deterministic: no random numbers, no timestamps, no set iteration). The game test
+compares the hashes, so a spec edited without rebuilding fails CI (CI has no Blender).
+
+### G-184: Five kits, shaped by OSM outlines and the references
+`gopuram_complex` (gopurams on their OSM footprints with stone base and passage, tapering
+painted tiers with cornices, corner and mid-face pavilions, pilasters, niches and abstract
+coloured stucco forms, barrel crown and finials; the compound wall with ochre bands, open at the
+gateways; shrine towers; mandapams on the OSM buildings inside the compound; flagstaff; the
+tank's striped steps above the city's water and its central mandapam), `colonial_clocktower`
+(Ripon Building), `station` (Chennai Central and Egmore: arcaded storeys, arch hoods, pilasters,
+corbel-arch frieze, pavilions and towers with pyramid caps or onion domes and chhatris, clock
+faces, belfry, roof sign boards, a three-span train shed), `tower` (Anna Nagar Tower, ported
+from the retired GDScript `LandmarkMeshes`/`LandmarkProfiles` so there is one landmark system),
+`lighthouse` (banded triangular tower on its OSM outline, gallery, lantern, and the base blocks OSM maps as building parts at their tagged heights). The modern mall kit
+was not built (no landmark mall chosen; a mall's name is a business name).
+
+### G-185: Placement, LODs, collision and the buildings a landmark replaces
+`CityWorld` reads the specs on a worker and `LandmarkModels.build` loads and instantiates each GLB
+on the same worker (`ResourceLoader.load` off the main thread), outside the tree: a `Placed` node
+at the spec origin in `WorldOrigin.GROUP`, the three LODs with contiguous visibility ranges from
+the spec (each LOD ends where the next begins, 12 m margins) and the shared vertex-coloured
+landmark material (one draw call per landmark), the `COL_*` boxes as `BoxShape3D`s on one
+`StaticBody3D` (Jolt), and only the real public name as `Label3D` signs (Tamil above English).
+`ChunkBuilder` drops every chunk building whose vertex average lies in a landmark's exclude
+outline before building meshes, colliders and furniture; the world builder does the same when
+the world is rebuilt (`build --max-ring 3` passes `exclude_outlines()`). The committed world was
+not rebuilt in this branch (binary diffs shared with other agents); the run-time filter covers it.
+
+### G-186: Where references disagree
+Kapaleeshwarar east gopuram 37 m (two sources: 120 ft) over Wikipedia's 40 m; Ripon Building
+43 m (Wikipedia) over 41.5 m and an outlier 58 m, neoclassical (two sources) over
+"Indo-Saracenic and neoclassical"; Ripon's size 85 x 32 m (Wikipedia) against OSM's 68 x 20 m: the
+model follows OSM. Chennai Central 41.5 m (136 ft). Egmore: no published height; 24 m estimated.
+Chennai Lighthouse 45.72 m from OSM's tag (agrees with the Directorate's 46 m). Chennai Central:
+OSM maps no outline for the heritage building, only the frontage way 214739119 (`building=roof`);
+the model stands on that way's minimum rectangle (`model_rect`), and the clock tower is placed
+about two thirds along the front from the west, where the reference photo has it and where the
+frontage outline has a bump.
+
+### G-187: Temples are architecture only
+No deity figures, images or sanctum; tier stucco is abstract coloured forms; the tank is not
+entered (G-152's bund stays). The spec records the rule and a test checks it is there.
+
+### G-189: Malls are generic, named only by their category
+The `mall` kit (podium on the OSM outline, glass atrium front with mullions and transoms,
+cladding fins, shopfront glazing, entrance canopy, atrium roof light, rooftop parking or plant, a
+plaza strip within the outline's tolerance) builds the shortlist's malls (godot-areas,
+`kind: mall`): the first is OSM way 154030370 in Royapettah. No real name, logo or livery
+anywhere: the spec's names and sign are "வணிக வளாகம் / SHOPPING COMPLEX", `osm.withhold_names`
+keeps the way's name, brand and links out of the spec, the validator rejects them for any mall,
+and no Commons reference is listed (their titles name the business). Heights are estimated.
+
+### G-188: Measuring landmarks
+`tests/tools/city_shot.gd --no-landmarks` builds the same city without landmark models (OSM
+buildings in place); `--frames=N` prints average and worst frame time over N rendered frames.
+Numbers in `handoff.md`.
 
 ## G-210: Transit data is one regional addition, versioned on its own
 `world/transit/transit.json` + `routes.bin` ("COWT", format 2, transit version 1) and

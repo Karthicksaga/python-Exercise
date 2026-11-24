@@ -1,0 +1,14 @@
+{
+ "id": "anna-nagar-tower",
+ "kit": "tower",
+ "script": "tools/blender/landmarks/tower.py",
+ "blender": "5.2.4 LTS",
+ "spec_sha256": "ceb8a3625c264cc0ebdd4b78e8aabc74c6cb2c14fb475c7f8b52d714409f8afe",
+ "glb_sha256": "7aaa0a50a8ef9e0796ebada2a2b76e381da8cc6bd4c016d44c270b12fdaab241",
+ "triangles": {
+  "lod0": 5459,
+  "lod1": 1535,
+  "lod2": 543
+ },
+ "collision_boxes": 6
+}

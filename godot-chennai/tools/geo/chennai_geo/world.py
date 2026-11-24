@@ -15,8 +15,9 @@ from shapely.validation import make_valid
 
 from .coast import build_sea
 from .enums import AEROWAY_KINDS
+from .detail import Detail, build_detail
 from .infra import Infra, build_spots, solve_heights, waterway_from_line
-from .geometry import Bounds, Point, SpatialGrid, bounds_of, centroid, clip_line, clip_polygon, signed_area
+from .geometry import Bounds, Point, SpatialGrid, bounds_of, centroid, clip_line, clip_polygon, point_in_polygon, signed_area
 from .landmarks import find_landmarks, inside_landmark
 from .model import DS_OSM_NODE, DS_OSM_WAY, Aeroway, Area, Building, OsmFeatures, OsmLine, OsmPolygon, Ref, Road, Tree
 from .regions import CHUNK_SIZE, Grid, Playable, chunk_ring, latlng_box_local, RINGS, ring0_bounds
@@ -61,6 +62,8 @@ class World:
     road_chunk_rings: dict[tuple[int, int], int] = field(default_factory=dict)
     # Format 2.1 (`infra.bin`, G-150): road heights, waterways, street spots. None for v1 builds.
     infra: Infra | None = None
+    # Format 2.2 (`detail.bin`, G-190): building detail and parts, street objects, barriers, zones, signs.
+    detail: Detail | None = None
 
 
 def building_game_id(poly: OsmPolygon) -> int:
@@ -178,9 +181,12 @@ def _aeroways(f: OsmFeatures, playable: Playable) -> list[Aeroway]:
     return out
 
 
-def build_world(f: OsmFeatures, grid: Grid, playables: list[Playable], max_ring: int, *, repair: bool = True, v2: bool = True) -> World:
+def build_world(f: OsmFeatures, grid: Grid, playables: list[Playable], max_ring: int, *, repair: bool = True, v2: bool = True,
+                landmark_footprints: list[list[Point]] | None = None) -> World:
     """Build rings 0..max_ring. `playables[r]` is ring r's area; content is kept inside
-    `playables[max_ring]`. With `v2=False` (and repair off) the v1 rules are applied exactly."""
+    `playables[max_ring]`. With `v2=False` (and repair off) the v1 rules are applied exactly.
+    `landmark_footprints`: outlines of modelled landmarks (`landmark_spec.exclude_outlines`); a
+    building whose centroid lies in one is left out, as the game does at run time (G-185)."""
     playable = playables[max_ring]
     stats: Counter[str] = Counter()
     # Roads
@@ -216,6 +222,9 @@ def build_world(f: OsmFeatures, grid: Grid, playables: list[Playable], max_ring:
             continue
         if inside_landmark(middle, landmarks):
             stats["building:under-landmark"] += 1
+            continue
+        if landmark_footprints and any(point_in_polygon(middle[0], middle[1], ring) for ring in landmark_footprints):
+            stats["building:under-landmark-model"] += 1
             continue
         if repair:
             fixed = repair_polygon(poly, stats, "building")
@@ -315,8 +324,9 @@ def build_world(f: OsmFeatures, grid: Grid, playables: list[Playable], max_ring:
     stats["roads"] = len(roads)
     stats["buildings"] = len(buildings)
     infra = build_infra(f, roads, signals, playable, stats) if v2 else None
+    detail = build_detail(f, buildings, playable, lambda p: inside_landmark(p, landmarks)) if v2 else None
     return World(grid, max_ring, playable, f.timestamp, roads, areas, chunks, pois, bus_stops, signals, districts, settlements,
-                 landmarks, _aeroways(f, playable) if v2 else [], sea, stats, road_keys, road_rings, infra)
+                 landmarks, _aeroways(f, playable) if v2 else [], sea, stats, road_keys, road_rings, infra, detail)
 
 
 def build_infra(f: OsmFeatures, roads: list[Road], signals: list[dict[str, Any]], playable: Playable, stats: Counter[str]) -> Infra:

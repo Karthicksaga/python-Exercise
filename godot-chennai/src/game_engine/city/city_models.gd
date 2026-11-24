@@ -25,6 +25,8 @@ var tree := MeshBuilder.new()
 var palm := MeshBuilder.new()
 ## Prop name -> MeshBuilder (empty when its GLB is missing).
 var props: Dictionary[StringName, MeshBuilder] = {}
+## Mapped street objects (G-191).
+var detail: DetailModels = null
 ## Prop name -> bounds after baking (min y = 0).
 var prop_bounds: Dictionary[StringName, AABB] = {}
 var error: String = ""
@@ -38,6 +40,7 @@ static func create(with_props: bool = true) -> CityModels:
 	m._build_shelter()
 	m._build_tree()
 	m._build_palm()
+	m.detail = DetailModels.create()
 	if with_props:
 		for name in PROP_FILES:
 			m._bake_prop(name, PROP_FILES[name])

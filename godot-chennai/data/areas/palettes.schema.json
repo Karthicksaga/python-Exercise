@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Chennai area palettes (G-200)",
+  "type": "object",
+  "required": ["format", "roof_shapes", "storey_bins", "default", "areas"],
+  "properties": {
+    "format": {"const": 1},
+    "roof_shapes": {"type": "array", "items": {"type": "string"}},
+    "storey_bins": {"type": "array", "items": {"type": "string"}},
+    "default": {"$ref": "#/$defs/entry"},
+    "areas": {"type": "object"}
+  },
+  "$defs": {
+    "hex": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+    "entry": {
+      "type": "object",
+      "required": ["type", "walls", "roofs", "roof_types", "storeys"],
+      "properties": {
+        "type": {"type": "string"},
+        "walls": {"type": "array", "minItems": 6, "maxItems": 8, "items": {"$ref": "#/$defs/hex"}},
+        "roofs": {"type": "array", "minItems": 3, "maxItems": 6, "items": {"$ref": "#/$defs/hex"}},
+        "roof_types": {"type": "object", "minProperties": 2},
+        "storeys": {"type": "object", "required": ["1", "2", "3", "4-5", "6-9", "10+"]}
+      }
+    }
+  }
+}
