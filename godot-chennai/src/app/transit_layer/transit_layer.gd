@@ -74,7 +74,10 @@ var _ending := false
 var _station_check := 0.0
 var _station: StationPlace = null
 var _action_source: Callable = Callable()
-var _lines_text: Dictionary[int, String] = {}
+## Main-thread time of this layer's physics frames, µs: {frames, total, max} (frame-time log).
+## False keeps route buses out of the traffic (the before/after frame-time comparison).
+var routes_on: bool = true
+var cost: Dictionary = {"frames": 0, "total": 0, "max": 0}
 
 
 static func make(city: CityWorld, city_life: CityLife, player: PlayerRig) -> TransitLayer:
@@ -146,7 +149,7 @@ func _between_steps(_dt: float) -> void:
 	var traffic := life.population.traffic if life.population != null else null
 	if traffic == null:
 		return
-	if not _hooked:
+	if not _hooked and routes_on:
 		traffic.routes = buses
 		_hooked = true
 	buses.hour = life.hour()
@@ -166,11 +169,16 @@ func _queue(c: Callable) -> void:
 func _physics_process(dt: float) -> void:
 	if network == null or life == null or not life.is_inside_tree():
 		return
+	var t0 := Time.get_ticks_usec()
 	_draw_buses()
 	if ride.riding():
 		_step_ride(dt)
 	else:
 		_step_on_foot(dt)
+	var used := Time.get_ticks_usec() - t0
+	cost["frames"] = int(cost["frames"]) + 1
+	cost["total"] = int(cost["total"]) + used
+	cost["max"] = maxi(int(cost["max"]), used)
 
 
 func _draw_buses() -> void:
@@ -262,7 +270,7 @@ func station_line(sp: StationPlace, hour: float) -> String:
 		var ln := dep[0]["line"] as TransitNetwork.RailLine
 		parts.append("%s · %d min" % [_short_line(ln.name), maxi(1, ceili(float(dep[0]["minutes"])))])
 	if not trains.has_trains():
-		parts.append("trains are not running yet")
+		parts.append("no trains yet")
 	return " · ".join(parts)
 
 
@@ -359,6 +367,7 @@ func board(id: int) -> bool:
 	v.add_child(_anchor)
 	_anchor.position = STAND + Vector3(0, v.model.position.y, 0)
 	rig.body.enter_vehicle(v, _anchor)
+	_walk_parts(false)
 	_eye = Camera3D.new()
 	_eye.name = "InteriorCamera"
 	_eye.fov = 72.0
@@ -375,6 +384,16 @@ func board(id: int) -> bool:
 			_queue(func(_t: AgentSystem) -> void: buses.hold_doors(id, false)))
 	boarded.emit(r.ref, int(out["fare"]))
 	return true
+
+
+## Riding, the stick and JUMP do nothing: hide them (only real options); ACTION stays for ALIGHT.
+func _walk_parts(on: bool) -> void:
+	if rig.controls == null:
+		return
+	for part: String in ["Stick", "Jump"]:
+		var n := rig.controls.find_child(part, true, false) as CanvasItem
+		if n != null:
+			n.visible = on
 
 
 func _seat_passengers(v: TrafficVehicleView) -> void:
@@ -450,6 +469,7 @@ func alight() -> bool:
 	var feet := _door_point(v) if v != null else rig.body.global_position
 	var yaw := (v.global_rotation.y + PI / 2.0) if v != null else rig.body.yaw
 	rig.body.exit_vehicle(feet + Vector3(0, 0.05, 0), yaw)
+	_walk_parts(true)
 	rig.camera.camera.make_current()
 	rig.camera.yaw = yaw
 	rig.camera.snap()

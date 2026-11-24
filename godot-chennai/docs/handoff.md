@@ -568,3 +568,28 @@ available: pad support is tested with synthetic events. The 640x320 worst case h
 buttons at 48 px; small is under that there.
 Screenshots: `tests/tools/controls_shots.gd` (shots foot, near, driving, reverse, lefty,
 lefty_drive, pad, settings) into a scratch folder.
+
+## Transit (G-210…G-219), branch `agent/godot-transit`, 24 Nov 2026
+**Done.** Data: `tools/geo/chennai_geo/transit.py` (`cli transit`) → `world/transit/` and
+`world/TRANSIT.md` (OSM only). Runtime: `src/transit/` (`TransitNetwork`, `TransitTimetable`,
+`TransitFare`, `RouteBuses`, `BusRide`, `TrainService` stub, `StationPlace`, `BusJobRoutes`),
+`src/ai/agent_routes.gd` (hook) with small guarded changes in `AgentSystem` and `RoadGraph`
+(heights from the roads' deck samples), views `RouteSign` and doors in `TrafficVehicleView`, wiring
+`src/app/transit_layer/` (added by `Main._add_transit` after `PlayWiring`), HUD
+`src/ui/transit_hint/`. Docs: `docs/transit.md` (format, coverage, plan for trains, weak list).
+Tests: `tools/geo/tests/test_transit.py`, `tests/unit/test_transit.gd`,
+`tests/scene/test_transit_ride.gd`. Tool: `tests/tools/transit_shots.gd` (screenshots and
+`--measure`).
+**For others.**
+- *osmdetail*: stop shelters and poles stay yours (`tile.json busStops`); transit reads the same
+  OSM stops by position and draws only bus signs and doors. Platforms: `transit.json` stations
+  carry OSM platform refs and positions for the station place; your platform meshes are the
+  visuals.
+- *landmarks*: Central and Egmore are `StationPlace`s by their OSM station point (entry area 70 m).
+- *Phase 5*: set `main.transit.wanted_level` to the `Wanted` level (boarding is refused while > 0).
+- *Phase 6 (trains)*: extend `TrainService` (`has_trains`, `train_at`, `board`); plan in
+  `docs/transit.md` §4.
+- *Missions*: on load the three baked bus jobs move onto mapped stops and a real-route job is added
+  to `session.content.jobs` (`TransitLayer._adapt_jobs`); `content.json` is unchanged.
+**Weak.** See `docs/transit.md` §5: OSM has only 77 bus relations here; most stops have no route;
+interior seen only on llvmpipe; no grip pose for the player; bicycles not built.

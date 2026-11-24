@@ -400,3 +400,26 @@ func test_real_network_loads_and_its_paths_are_graph_edges() -> bool:
 				found += 1
 	assert_true(inside > 10, "%d segments near the middle" % inside)
 	return check(found == inside, "route %s: %d of %d path segments are edges of the drive graph" % [r.ref, found, inside])
+
+
+func test_real_bus_jobs_move_onto_mapped_stops() -> bool:
+	if not TransitNetwork.available():
+		return check(true, "no transit build (skipped)")
+	var net := TransitNetwork.load_dir()
+	var content := GameContent.load_file()
+	var jobs := 0
+	for j in content.jobs:
+		if j.kind != "bus":
+			continue
+		jobs += 1
+		var before: Array[Vector2] = []
+		for s in j.stops:
+			before.append(Vector2(s.x, s.z))
+		var rep := BusJobRoutes.adapt(j, net)
+		var moved: Array = rep["moved"]
+		var parts: PackedStringArray = []
+		for i in moved.size():
+			parts.append("%s %.1f m" % [String((rep["names"] as PackedStringArray)[i]), float(moved[i])] if float(moved[i]) >= 0.0 else "(none)")
+			check(float(moved[i]) <= BusJobRoutes.MATCH, "%s stop %d moves at most %.0f m" % [j.id, i, BusJobRoutes.MATCH])
+		print("    bus job %s: %s; route %s" % [j.id, ", ".join(parts), rep["route"] if String(rep["route"]) != "" else "none serves them in order"])
+	return check(jobs == 3, "the three baked bus jobs (%d)" % jobs)

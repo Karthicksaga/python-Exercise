@@ -287,6 +287,13 @@ junction nearest a mapped traffic signal (within 25 m), set back half the widest
 a speed breaker 14 m from the main-road end of 40 % of residential, unclassified and living
 streets longer than 60 m (by a stable hash of the road id).
 
+### 3.9 `transit/` (transit version 1, decisions G-210…G-213)
+
+`world/transit/transit.json` and `world/transit/routes.bin` ("COWT"), plus `world/TRANSIT.md`:
+stops, stations, lines and bus routes snapped to the road points of `roads.bin`. Written by
+`cli transit` from the extract and the built world; no 2.x file or `world.json` key changes, the
+files carry their own version. Layout in `docs/transit.md` §1.
+
 ## 4. Ids and provenance
 
 - **Game id** (`u32`, as today, feeds colour and estimated-floor variety via the TS `hash`):

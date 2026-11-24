@@ -43,11 +43,10 @@ func _init() -> void:
 	detail_label = UiTheme.label("", 14, UiTheme.TEXT_DIM)
 	for l: Label in [tamil_label, english_label, detail_label]:
 		l.add_theme_font_override("font", font)
+		l.clip_text = true
 		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(l)
-	detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	fast_button = UiTheme.button("FAST TRAVEL")
 	fast_button.name = "FastTravel"
 	fast_button.custom_minimum_size = Vector2(160, UiTheme.MIN_TARGET)

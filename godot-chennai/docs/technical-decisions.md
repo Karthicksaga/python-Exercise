@@ -1365,3 +1365,78 @@ Kerb and speed-breaker ticks are not built. The D-pad is left to menu focus.
 driving on touch, pad or keyboard, following left-handed and toggle-run. The pause menu and the
 title's CONTROLS page can both read it (the title agent may stub the same name; reconcile at
 merge: this one is `src/ui/touch_controls/controls_guide.gd`).
+
+## G-210: Transit data is one regional addition, versioned on its own
+`world/transit/transit.json` + `routes.bin` ("COWT", format 2, transit version 1) and
+`world/TRANSIT.md`, written by `tools/geo` `cli transit` from the OSM extract **and the built
+world** (`roads.bin`, `infra.bin`), never touching a 2.x file or `world.json` (the osmdetail
+branch adds minor 2.2 there; transit carries its own version so the two merge without a
+conflict). One file for the region, not per tile: 0.32 MB for 77 relations, read once on a
+worker; the AI asks by position through a 100 m grid. Split per tile when it grows past a few MB.
+Format in `docs/transit.md` §1.
+
+## G-211: Routes are snapped to the game's own drive graph, mapped ways first
+A route's path is a run of `roads.bin` points (so of `RoadGraph` nodes), found leg by leg between
+consecutive stops by A* over the drivable graph (no footways or service roads; one-way respected)
+with mapped way members at 1 per metre and other roads at 2.5; the stops' edges are chosen
+together (Viterbi over 3 candidates each: distance, on the mapped ways, on the left, pointing the
+route's way). Legs over max(3 × straight, straight + 900 m) are dropped (the longest run of 3+
+stops kept: "broken"). Stop members out of order are put in order along the chained ways; routes
+mapped with ways but no stops get the mapped stops within 22 m on their left ("inferred").
+Status clean / fallback / broken / unusable is reported per route in `TRANSIT.md`.
+
+## G-212: Timetables are estimated headways, deterministic
+No published timetable: buses every 15 min (25 for S-/M- small buses, 20 for routes over 25 km,
+or OSM `interval`), 05:00–23:00, 16 km/h average; suburban trains 15 min (Beach–Tambaram 8, as
+`rail.json`), MRTS 15, Metro 8, 2.5 min per station; offsets from a stable hash. `TransitTimetable`
+gives minutes to the next bus at any point of a route. The AI buses are not slaved to it: when the
+player waits at a stop the soonest route's bus is sent (G-214).
+
+## G-213: First set: routes on the major roads, by stop count
+A usable route is in the first set when its path uses a road named Anna Salai / Mount Road, GST
+Road, OMR / Rajiv Gandhi Salai, ECR or Poonamallee High Road (names and refs in `roads.bin`),
+passes within 350 m of Kathipara, or crosses a bridge within 50 m of the Adyar or the Cooum
+(`infra.bin` waterway names); the 40 with most stops.
+
+## G-214: Route buses are traffic agents with a route hook
+`AgentRoutes` (`src/ai`, a no-op base) is asked by `AgentSystem` where a route changes behaviour:
+placing, the next stretch, a stop's room, keeping to the kerb, staying out. `RouteBuses`
+(`src/transit`) implements it for bus agents: they keep the lane, signal and junction logic and
+the ground gating (placed only on loaded ground, out of sight; re-placed when the next stretch is
+not loaded), dwell 9–15 s with doors open, and are recycled at the end. How many are out follows
+the crowd rules (the pool's share by place and hour, applied to the bus agents; at least one near a
+route). Views: bus views keep their near model's door nodes (not merged) and show a `RouteSign`
+(route number, Tamil and English destination; no operator). `RoadGraph.height_on` now reads the
+roads' own height samples on raised roads (G-151), so all traffic rides flyover decks.
+
+## G-215: Bus fare reuses the missions' distance fare
+`TransitFare.ticket(m) = clamp(round(ShareShift.share_fare(m) × 0.5), 5, 30)` rupees, bought on
+boarding to the end of the route (as a conductor sells it); paid from the missions' purse. An
+estimate, not MTC's stage fares.
+
+## G-216: The passenger ride is `BusRide` plus a thin view layer
+`BusRide` (pure) boards (refused on a crash, while wanted, without the fare), announces the next
+stop in Tamil and English, and alights at a stop or the terminus. `TransitLayer` (app) does the
+rest: BOARD/ALIGHT through `ActionContext`, the player put in the bus with
+`PlayerController.enter_vehicle` at a standing spot behind the bus's middle (so the AI never sees
+the player as an obstacle in front of the bus), an interior `Camera3D`, four seated adult walkers
+(`sit`), FAST TRAVEL by a fade, moving the streaming focus to the next stop and
+`RouteBuses.jump_to_stop` once its ground is loaded. Commands to the AI only between steps.
+
+## G-217: Stations are places; trains are an interface with a stub
+`StationPlace` (entry area, OSM platforms and entrances, lines) and `TrainService` (departures from
+the timetable work; `has_trains` false, `train_at` null, `board` refused). Phase 6 extends
+`TrainService`; plan in `docs/transit.md` §4.
+
+## G-218: The bus job keeps its baked rules and moves onto mapped stops
+`BusJobRoutes.adapt` moves each baked bus-job stop to the OSM stop within 45 m (its kerb with it),
+named in the report with the route serving them in order; `from_route` makes a job from five stops
+of a real first-set route (added at load next to the baked ones). `content.json` and its tests
+are unchanged (synced from the Three.js game).
+
+## G-219: Tamil text through one fallback font; the hint stays off the thumbs
+Any OSM name can be Tamil, so the cut station/sign fonts are not enough: the whole Tamil block of
+Noto Sans Tamil SemiBold (15 KB, `assets/transit/`) is the fallback of the default font for the
+hint and the bus signs (`TransitFonts`). The hint sits top centre between the mission column and
+the JOBS button (at least 240 px there, else top left), FAST TRAVEL 160 × 48 px; nothing in the
+bottom thumb zones. Tamil written by us is marked "needs native review".

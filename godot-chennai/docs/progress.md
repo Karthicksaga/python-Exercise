@@ -239,3 +239,16 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | `ControlsGuide` rows for the title's CONTROLS page (G-179) | Done | `test_control_settings.gd` |
 | Tilt (scheme B) and buttons (scheme C), combat buttons, kerb haptics | Not built (owner: later); the layout and settings are ready for them | — |
 | Feel on a phone: thumb reach, steering curve, slide distance, glide, haptics strength | Not judged: needs the POCO M6 Pro 5G | — |
+
+## Transit: bus stops, routes, riding, stations (G-210…G-219, branch `agent/godot-transit`, 24 Nov 2026)
+Details and numbers: `docs/transit.md`, `world/TRANSIT.md`.
+| Item | State | How it was tested |
+|---|---|---|
+| Stops, bus stations, railway stations with platforms and entrances, rail lines, bus routes from OSM; snapped to the drive graph; coverage report (G-210…G-213) | Done: 1,463 stops, 185 stations, 15 lines, 77 relations → 11 clean, 18 fallback, 22 broken, 26 unusable; first set 40 | `tools/geo/tests/test_transit.py` (snapping, one-ways, detours, ordering, inference, codec, committed data vs roads) |
+| `TransitNetwork`, timetable, fares, `BusRide`, `TrainService` stub, `StationPlace`, `BusJobRoutes` | Done | `tests/unit/test_transit.gd` |
+| Route buses in traffic: real routes, kerb, dwell with doors open, signs, density by place and hour, loaded ground only (G-214) | Done on desktop | `test_transit.gd`, `tests/scene/test_transit_ride.gd`, screenshots |
+| AI heights from the roads' deck samples (traffic on flyovers) | Done | `test_transit.gd` (flyover heights) |
+| Travel by bus: BOARD, ticket, interior, announcements, FAST TRAVEL, ALIGHT; not while wanted (G-215, G-216) | Done on desktop | `test_transit_ride.gd` (real game, game time) |
+| Drive a bus on real stops (G-218) | Done (baked jobs moved; one real-route job) | `test_transit.gd` |
+| Stations as places, train interface (G-217) | Done; trains not built (phase 6) | `test_transit.gd`, screenshot |
+| Bicycles | Not built | — |

@@ -120,6 +120,15 @@ func _point_at(pts: PackedVector2Array, d: float) -> Vector2:
 
 
 func test_car_drives_up_over_and_down_a_flyover_at_speed() -> bool:
+	return await _over_the_flyover(&"car")
+
+
+## Transit agent (G-214): a motorbike rides the same flyover (bikes use the same decks).
+func test_motorbike_rides_up_over_and_down_a_flyover_at_speed() -> bool:
+	return await _over_the_flyover(&"bike")
+
+
+func _over_the_flyover(kind: StringName) -> bool:
 	var kit := CityTestKit.regional_kit()
 	var layout := kit.layouts.layout_for(kit.source.cell_at(NEAR))
 	var found := _path(layout)
@@ -138,7 +147,7 @@ func test_car_drives_up_over_and_down_a_flyover_at_speed() -> bool:
 	assert_true(top > 6.0, "and climbs to the deck (%.1f m)" % top)
 	streamer.focus = pts[0]
 	assert_true(await wait_until(func() -> bool: return streamer.world_ready_around(pts[0]), MAX_FRAMES), "the start loads")
-	var t := VehicleCatalog.type(&"car")
+	var t := VehicleCatalog.type(kind)
 	var car := RaycastVehicle.new()
 	car.setup(t.spec)
 	var start_dir := (pts[1] - pts[0]).normalized()
