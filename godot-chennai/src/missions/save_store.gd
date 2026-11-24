@@ -18,9 +18,18 @@ const WEAPONS := "cow-weapons-v1"
 const DISTRICTS := "cow-districts-v1"
 const HOUR := "cow-hour-v1"
 const WEATHER := "cow-weather-v1"
+## The save format version (G-142). 1: the Three.js keys only. 2: adds `medals`, `flags` and
+## `extrasDone` inside `cow-progress-v1` for the medals, choices and extra missions. A file without
+## the key is version 1 and is migrated when read (nothing is lost; the old keys are untouched).
+const VERSION_KEY := "chennai-save-version"
+const VERSION := 2
 
 var path: String
 var data: Dictionary = {}
+## The version the file had when read (1 for a file from before the key, 0 for no file) and
+## whether it was newer than this game knows (then it is left alone).
+var read_version := 0
+var too_new := false
 
 
 func _init(file_path: String = DEFAULT_PATH) -> void:
@@ -34,11 +43,52 @@ func read() -> SaveStore:
 		var json := JSON.new()
 		if json.parse(FileAccess.get_file_as_string(path)) == OK and json.data is Dictionary:
 			data = json.data
+	_migrate()
 	return self
+
+
+## Bring an older file up to VERSION (in memory; the next write saves it).
+func _migrate() -> void:
+	if data.is_empty():
+		read_version = 0
+		return
+	var found: Variant = data.get(VERSION_KEY, 1)
+	read_version = int(found) if (found is int or found is float) else 1
+	if read_version > VERSION:
+		too_new = true
+		return
+	if read_version < 2:
+		var p: Variant = data.get(PROGRESS)
+		if p is Dictionary:
+			var progress_dict: Dictionary = p
+			if not progress_dict.has("medals"):
+				progress_dict["medals"] = {}
+			if not progress_dict.has("flags"):
+				progress_dict["flags"] = {}
+			if not progress_dict.has("extrasDone"):
+				progress_dict["extrasDone"] = []
+
+
+## The medals, choices and extra missions finished, as `MissionRunner.extras_state()` has them.
+func extras() -> Dictionary:
+	var p: Variant = data.get(PROGRESS)
+	if not (p is Dictionary):
+		return {}
+	var d: Dictionary = p
+	return {"medals": d.get("medals", {}), "flags": d.get("flags", {}), "extrasDone": d.get("extrasDone", [])}
+
+
+func save_extras(state: Dictionary) -> void:
+	var rest: Variant = data.get(PROGRESS)
+	var merged: Dictionary = (rest as Dictionary).duplicate(true) if rest is Dictionary else {}
+	merged.merge(state, true)
+	data[PROGRESS] = merged
 
 
 ## Write the file (temporary file, then rename). Returns OK or the error.
 func write() -> Error:
+	if not too_new:
+		data[VERSION_KEY] = VERSION
 	var tmp := path + ".tmp"
 	var f := FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:
