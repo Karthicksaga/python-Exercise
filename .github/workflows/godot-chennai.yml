@@ -61,6 +61,9 @@ jobs:
           path: godot-chennai/.godot
           key: godot-import-${{ env.GODOT_VERSION }}-${{ hashFiles('godot-chennai/assets/**', 'godot-chennai/project.godot') }}
       - name: Import and run the tests
+        # The suite (600+ tests) outgrew run_tests.sh's 600 s default; the job limit is 30 min.
+        env:
+          TEST_TIMEOUT: "1500"
         run: ./run_tests.sh
       - name: Upload the test log
         if: always()
