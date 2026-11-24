@@ -168,7 +168,9 @@ func prepare(start: Vector2) -> String:
 	_ready_cells = _ready_next.duplicate()
 	population.adopt(area, start)
 	for a in population.traffic.agents:
-		var v := TrafficVehicleView.make(population.traffic.kinds[a.kind].name, a.variation)
+		var kind := population.traffic.kinds[a.kind]
+		# Buses keep their door nodes: on a route they open them at stops (G-214).
+		var v := TrafficVehicleView.make(kind.name, a.variation, kind.group == &"bus")
 		v.agent_id = a.id
 		v.visible = false
 		add_child(v)

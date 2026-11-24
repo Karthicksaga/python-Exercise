@@ -19,11 +19,17 @@ var open_seat: bool = false
 var agent_id: int = -1
 var _hub_y: PackedFloat32Array = PackedFloat32Array()
 var _spin: float = 0.0
+## Route buses (G-214): the near model keeps its door nodes (not merged) so the doors open at
+## stops, and a destination sign can be shown (`set_route_sign`).
+var keeps_doors: bool = false
+var route_sign: RouteSign = null
+var _doors_open: float = 0.0
 
 
 ## A view of `variant_id` in a paint picked by `variation` (0..1) from the model's paints.
-static func make(variant_id: StringName, variation: float) -> TrafficVehicleView:
+static func make(variant_id: StringName, variation: float, with_doors: bool = false) -> TrafficVehicleView:
 	var v := TrafficVehicleView.new()
+	v.keeps_doors = with_doors
 	var base := VehicleCatalog.variant(variant_id)
 	var own := VehicleCatalog.VariantInfo.new()
 	own.id = base.id
@@ -86,6 +92,8 @@ func _merge_far_lods(look: String) -> void:
 		var lod := child as Node3D
 		if lod == null or not String(lod.name).begins_with("Lod"):
 			continue
+		if keeps_doors and lod.name == &"Lod0" and model.has_doors():
+			continue  # the doors must swing (route buses at their stops)
 		var parts := lod.find_children("*", "MeshInstance3D", true, false)
 		if parts.is_empty():
 			continue
@@ -161,6 +169,33 @@ func set_pose(road_point: Vector3, heading: float, speed: float, dt: float, came
 		_spin = fposmod(_spin + speed * dt / maxf(0.2, spec.wheels[0].radius), TAU)
 		for i in _hub_y.size():
 			model.set_wheel(i, _hub_y[i], 0.0, _spin)
+
+
+## Open (1) or close (0) every door leaf (a route bus at a stop). Cheap when unchanged.
+func set_doors(amount: float) -> void:
+	if is_equal_approx(amount, _doors_open) or not model.has_doors():
+		return
+	_doors_open = amount
+	for leaf in 4:
+		model.set_door(leaf, amount)
+
+
+func doors_open() -> float:
+	return _doors_open
+
+
+## Shows (or with an empty `ref`, hides) the destination sign: route number, Tamil and English
+## destination. `font` should carry a Tamil fallback.
+func set_route_sign(ref: String, english: String, tamil: String, font: Font) -> void:
+	if ref == "":
+		if route_sign != null:
+			route_sign.visible = false
+		return
+	if route_sign == null:
+		route_sign = RouteSign.make(variant.type.spec.half_extents, font)
+		add_child(route_sign)
+	route_sign.show_route(ref, english, tamil)
+	route_sign.visible = true
 
 
 ## Where the driver's hips are, in the scene.

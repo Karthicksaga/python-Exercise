@@ -34,6 +34,7 @@ var pause_menu: PauseMenu = null
 
 ## Traffic, walkers and crowds round the player (G-120…G-128).
 var life: CityLife = null
+var transit: TransitLayer = null
 ## Watches for a stalled main loop while loading (see `_watch_frames`).
 var _watchdog: Thread = null
 var _watching: bool = false
@@ -194,10 +195,21 @@ func _add_play() -> String:
 		push_warning("[boot] content: %s (only the extra parking spots)" % content.error)
 	play_wiring = PlayWiring.make(world, rig, content)
 	world.add_child(play_wiring)
-	return await play_wiring.prepare(world.spawn["point"])
+	var error := await play_wiring.prepare(world.spawn["point"])
+	return error if error != "" else await _add_transit()
 
 
 ## The pause menu's real settings: time of day, weather, sound (G-115).
+## Buses on their routes, the passenger ride and the stations (G-214…G-219), after the city's life.
+func _add_transit() -> String:
+	if transit != null or life == null:
+		return ""
+	transit = TransitLayer.make(world, life, rig)
+	transit.driving = play_wiring.driving
+	world.add_child(transit)
+	return await transit.prepare()
+
+
 func _add_pause_menu() -> void:
 	pause_menu = PauseMenu.new()
 	add_child(pause_menu)
