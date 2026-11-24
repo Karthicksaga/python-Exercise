@@ -91,3 +91,24 @@ func test_keeps_the_spares_per_kind_bounded() -> bool:
 			driving = choice
 	eq(slots.size(), Carjack.PER_KIND)
 	return true
+
+
+func test_moving_vehicles_can_be_taken_over_up_to_a_speed() -> bool:
+	eq(Carjack.carjackable("bike", 8.0, Carjack.MAX_TAKE_SPEED), true)
+	eq(Carjack.carjackable("car", Carjack.MAX_TAKE_SPEED + 0.1, Carjack.MAX_TAKE_SPEED), false)
+	eq(Carjack.carjackable("bus", 3.0, Carjack.MAX_TAKE_SPEED), false)
+	eq(Carjack.refusal("car", 5.0), "")
+	eq(Carjack.refusal("auto", -6.0), "")
+	eq(Carjack.refusal("bike", 12.0), "fast")
+	eq(Carjack.refusal("bus", 0.0), "kind")
+	eq(Carjack.refusal("ambulance", 0.0), "kind")
+	return true
+
+
+func test_pick_with_a_take_over_speed_takes_a_moving_vehicle_only_then() -> bool:
+	var moving := car({"x": 2.0, "speed": 7.0})
+	eq(Carjack.pick(0, 0, [moving]), {})
+	eq(Carjack.pick(0, 0, [moving], Carjack.REACH, Carjack.MAX_TAKE_SPEED).get("id"), 1)
+	eq(Carjack.pick(0, 0, [car({"x": 2.0, "kind": "bus", "speed": 3.0})], Carjack.REACH, Carjack.MAX_TAKE_SPEED), {})
+	eq(Carjack.pick(0, 0, [car({"x": 2.0, "speed": 13.0})], Carjack.REACH, Carjack.MAX_TAKE_SPEED), {})
+	return true

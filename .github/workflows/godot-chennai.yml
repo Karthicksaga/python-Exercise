@@ -25,6 +25,13 @@ permissions:
 
 env:
   GODOT_VERSION: 4.7.2
+  # The size budget of the phone APK (arm64), in MB of 1,000,000 bytes (docs/app-size.md). The
+  # "APK size against the budget" step fails the build above it. Raise it only on purpose, with a
+  # line in docs/app-size.md saying what grew and why.
+  APK_BUDGET_MB: 260
+  # Google Play's limit for the base module of an app bundle (compressed download). Over it only
+  # warns: the plan is install-time asset packs (docs/app-size.md, "Play Store limits").
+  PLAY_BASE_LIMIT_MB: 200
 
 defaults:
   run:
@@ -140,6 +147,35 @@ jobs:
           path: godot-chennai/build/android/chennai-open-world-smoke.apk
           if-no-files-found: error
           retention-days: 7
+      # After the uploads, so an APK over the budget can still be downloaded and inspected.
+      - name: APK size against the budget
+        run: |
+          apk=build/android/chennai-open-world.apk
+          bytes=$(stat -c %s "$apk")
+          mb=$(awk -v b="$bytes" 'BEGIN { printf "%.2f", b / 1e6 }')
+          smoke_mb=$(awk -v b="$(stat -c %s build/android/chennai-open-world-smoke.apk)" 'BEGIN { printf "%.2f", b / 1e6 }')
+          {
+            echo "### APK size"
+            echo
+            echo "| APK | MB | Budget |"
+            echo "|---|---|---|"
+            echo "| arm64-v8a phone APK (\`chennai-open-world.apk\`) | **$mb** | $APK_BUDGET_MB |"
+            echo "| x86_64 smoke APK (emulator only) | $smoke_mb | not budgeted |"
+            echo
+            echo "Biggest items (MB stored in the APK):"
+            echo
+            echo '```'
+            tools/apk_size_report.sh "$apk" 25
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "APK size: $mb MB (budget $APK_BUDGET_MB MB)"
+          if awk -v m="$mb" -v b="$PLAY_BASE_LIMIT_MB" 'BEGIN { exit !(m > b) }'; then
+            echo "::warning::The APK is $mb MB, over Google Play's $PLAY_BASE_LIMIT_MB MB base-module limit: split the data into asset packs (docs/app-size.md)."
+          fi
+          if awk -v m="$mb" -v b="$APK_BUDGET_MB" 'BEGIN { exit !(m > b) }'; then
+            echo "::error::The APK is $mb MB, over the $APK_BUDGET_MB MB budget (APK_BUDGET_MB in .github/workflows/godot-chennai.yml). Run tools/apk_size_report.sh on the artifact; see docs/app-size.md."
+            exit 1
+          fi
 
   android-smoke:
     # Installs the smoke APK on an emulator and checks the game reaches the test world and keeps

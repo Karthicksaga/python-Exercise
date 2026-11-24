@@ -1,5 +1,7 @@
 # Coordinator handoff (24 Nov 2026)
 
+> Newer: see `SESSION_HANDOVER.md` (second session, 24 Nov). This file is the older handoff.
+
 Read this first in a new coordinating session, then `MIGRATION_PROMPT.md` (the brief; sections 9–11
 hold the owner's later decisions), `MASTER_PROMPT.md` (how to run the team), `AGENTS.md`, and the
 agent sections in `docs/handoff.md`. The previous session stopped here at the owner's request; all
