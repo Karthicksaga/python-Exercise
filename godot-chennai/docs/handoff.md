@@ -782,6 +782,14 @@ presets). Tests: `tests/unit/test_quality_settings.gd`, `tests/scene/test_perf_w
   every row has every key and that numbers rise Low → High), applied in `PerfWiring.apply()`.
 - Merged chunk meshes are on render layer 2 (`ChunkBuilder.RENDER_LAYER`); any light that should
   not light the whole city leaves that bit out of its cull mask.
+- **Graphics row (for agent/godot-ui's scrollable settings list):** `PerfWiring._add_rows` adds the
+  setting `&"Quality"` to the pause menu and the title SETTINGS through `add_setting(id, label,
+  press)`. Its label is two lines: `QualitySettings.row_label()` ("Graphics: Auto (Low)") and
+  `QualitySettings.explain()` (what the level trades). A press runs `next_preset()`: Auto → Low →
+  Medium → High → Auto. Auto is the detected level under `auto_cap`; in play it drops one level
+  when the frame rate stays under 24 fps for 10 s after a 5 s warm-up (toast through the mission
+  HUD) and saves the cap, so the next start begins there. A chosen level is never dropped.
+  The same file adds `&"PerfOverlay"` (both menus) and `&"PerfSummary"` (pause menu: copies the log).
 - agent/godot-ui's DebugSettings: when it lands, read the overlay's on/off from it in
   `PerfWiring._ready`/`_on_settings` instead of `QualitySettings.overlay` (one line).
 - Measuring: the scratch harnesses (boot `Main`, teleport, warm up, measure) are described in

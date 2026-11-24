@@ -1773,7 +1773,11 @@ and tools measure the same game; headless runs always start at High.
 software GPUs, Adreno 610-639 (the Snapdragon 4/6 class, the owner's Adreno 613), Mali below
 G68 and PowerVR start at Low; Adreno 640s/700-729 and Mali-G68+ at Medium (Low on screens over
 3 Mpx); flagships at High; anything under 7 GiB of physical memory at Low (phones sold as 8 GB
-report about 7.3 GiB). A preset the player picks is kept and never re-detected.
+report about 7.3 GiB). A preset the player picks is kept and never re-detected. The Settings row
+cycles Auto → Low → Medium → High → Auto and shows what the level trades in a second line. Auto
+also watches play: after a 5 s warm-up, ten seconds under 24 fps drop it one level (a toast says
+so) and the lower level is saved as Auto's cap, so a weak phone that the table misjudged settles
+on its own; a level the player chose is never changed.
 
 ### G-252: `QualityApplier` applies the engine part; the composition root the rest
 3D resolution scale (FSR 1 on Medium under Vulkan, bilinear otherwise: Compatibility has no

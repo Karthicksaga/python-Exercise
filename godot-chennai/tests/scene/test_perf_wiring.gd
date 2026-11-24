@@ -75,7 +75,7 @@ func test_presets_apply_live() -> bool:
 	assert_eq(main.world.streamer.load_distance, 260.0, "with the full view")
 	assert_eq(PersonView.shadow_near, PersonView.SHADOW_NEAR, "and near walkers' shadows")
 	assert_eq(env.rain.drawn(), CityEnvironment.RAIN_DROPS, "and all the rain")
-	assert_true(main.pause_menu.setting_button(&"Quality") != null and main.pause_menu.setting_button(&"Quality").text.begins_with("Graphics: High"), "the pause menu shows the preset")
+	assert_true(main.pause_menu.setting_button(&"Quality") != null and main.pause_menu.setting_button(&"Quality").text.begins_with("Graphics: High\nfull resolution"), "the pause menu shows the preset")
 	assert_true(main.title.has_method(&"add_setting"), "the title's SETTINGS carries it too")
 	_restore()
 	return true
@@ -162,5 +162,19 @@ func test_overlay_switches_and_log() -> bool:
 	assert_contains(perf.summary, "fps", "the summary reads the frame rate")
 	perf.settings.set_overlay(false)
 	assert_false(perf.overlay.visible, "the Settings row hides it again")
+	# Auto: a warm-up, then ten seconds under 24 fps drop one level, with a toast.
+	assert_true(perf.settings.auto and perf.settings.preset == QualitySettings.HIGH, "auto at High headless")
+	for i in 100:
+		perf._watch_auto(0.05, 50.0)
+	assert_eq(perf.settings.preset, QualitySettings.HIGH, "not during the warm-up")
+	for i in 220:
+		perf._watch_auto(0.05, 50.0)
+	assert_eq(perf.settings.preset, QualitySettings.MEDIUM, "20 fps for 10 s drops to Medium")
+	assert_near(main.get_viewport().scaling_3d_scale, 0.8, 0.001, "applied at once")
+	var missions := main.find_child("MissionsLayer", false, false) as MissionsLayer
+	assert_true(missions.hud.toast_showing(), "a toast says so")
+	for i in 400:
+		perf._watch_auto(0.016, 16.0)
+	assert_eq(perf.settings.preset, QualitySettings.MEDIUM, "a fast game stays")
 	_restore()
 	return true

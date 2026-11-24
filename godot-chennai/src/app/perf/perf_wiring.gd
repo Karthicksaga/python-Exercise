@@ -115,7 +115,7 @@ func _add_rows() -> void:
 	for host: Object in [main.pause_menu, main.title]:
 		if host == null:
 			continue
-		host.call(&"add_setting", &"Quality", func() -> String: return "Graphics: %s%s" % [settings.preset_name(), " (auto)" if settings.auto else ""], func() -> void: settings.next_preset())
+		host.call(&"add_setting", &"Quality", func() -> String: return "%s\n%s" % [settings.row_label(), settings.explain()], func() -> void: settings.next_preset())
 		host.call(&"add_setting", &"PerfOverlay", func() -> String: return "Performance overlay: %s" % ("On" if settings.overlay else "Off"), func() -> void: settings.set_overlay(not settings.overlay))
 	if main.pause_menu != null:
 		main.pause_menu.add_setting(&"PerfSummary", func() -> String: return summary + " (tap: copy log)", copy_log)
@@ -270,6 +270,7 @@ func _process(_delta: float) -> void:
 	_window_sum += ms
 	_window_n += 1
 	_window_worst = maxf(_window_worst, ms)
+	_watch_auto(dt, ms)
 	if switches.measuring():
 		switches.sample(dt, ms)
 		if overlay.visible and not switches.measuring():
@@ -285,6 +286,46 @@ func _process(_delta: float) -> void:
 			overlay.set_text(overlay_text())
 			if switches.last_line != "" and overlay.is_panel_open():
 				_refresh_switches()
+
+
+## Auto (G-251): after a short warm-up in play, if the frame rate stays under
+## `QualitySettings.AUTO_MIN_FPS` for `AUTO_WINDOW` seconds, one level down, with a toast.
+const AUTO_WARMUP := 5.0
+var _auto_clock: float = 0.0
+var _auto_sum: float = 0.0
+var _auto_n: int = 0
+var _auto_play: float = 0.0
+
+
+func _watch_auto(dt: float, ms: float) -> void:
+	if not settings.auto or main.state != &"play" or settings.preset <= QualitySettings.LOW:
+		_auto_play = 0.0
+		_auto_clock = 0.0
+		_auto_sum = 0.0
+		_auto_n = 0
+		return
+	_auto_play += dt
+	if _auto_play < AUTO_WARMUP:
+		return
+	_auto_clock += dt
+	_auto_sum += ms
+	_auto_n += 1
+	if _auto_clock < QualitySettings.AUTO_WINDOW:
+		return
+	var fps := 1000.0 * _auto_n / maxf(_auto_sum, 0.001)
+	_auto_clock = 0.0
+	_auto_sum = 0.0
+	_auto_n = 0
+	if fps < QualitySettings.AUTO_MIN_FPS and settings.drop_auto():
+		_auto_play = 0.0
+		_toast("Graphics lowered to %s" % settings.preset_name(), "It ran at %d fps. Change it in Settings → Graphics." % roundi(fps))
+
+
+func _toast(title: String, detail: String) -> void:
+	print("[perf] %s: %s" % [title, detail])
+	var layer := main.find_child("MissionsLayer", false, false) as MissionsLayer
+	if layer != null and layer.hud != null:
+		layer.hud.toast(title, detail, 4.0)
 
 
 ## What a slow frame was made of: the parts this wiring can see (the rest is the engine, the

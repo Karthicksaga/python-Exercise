@@ -17,6 +17,15 @@ const LOW := 0
 const MEDIUM := 1
 const HIGH := 2
 const NAMES: Array[String] = ["Low", "Medium", "High"]
+## One line per level for the Settings row (what the level trades).
+const EXPLAIN: Array[String] = [
+	"75% resolution, short shadows, less traffic",
+	"80% resolution, short shadows, fewer people",
+	"full resolution, long shadows, full traffic",
+]
+## Auto drops one level when play stays under this for AUTO_WINDOW seconds.
+const AUTO_MIN_FPS := 24
+const AUTO_WINDOW := 10.0
 
 ## 3D resolution scaling modes (Viewport.SCALING_3D_MODE_*), by name so the table reads.
 const BILINEAR := 0
@@ -68,6 +77,9 @@ const BIG_SCREEN := 3_000_000
 var preset: int = LOW
 ## True while the preset is the detected default (the player never chose one).
 var auto: bool = true
+## Auto never goes above this: it is lowered when a level proved too slow in play (G-251),
+## saved, so the next start begins at the level that held.
+var auto_cap: int = HIGH
 ## Why the default was chosen ("Adreno (TM) 613: Adreno 6xx low tier").
 var reason: String = ""
 ## The performance overlay (G-253): off by default.
@@ -190,9 +202,42 @@ func set_preset(p: int) -> void:
 	_commit()
 
 
-## Low → Medium → High → Low (the Settings row).
+## Auto → Low → Medium → High → Auto (the Settings row "Graphics").
 func next_preset() -> void:
-	set_preset((preset + 1) % NAMES.size())
+	if auto:
+		set_preset(LOW)
+	elif preset == HIGH:
+		set_auto()
+	else:
+		set_preset(preset + 1)
+
+
+## Back to the automatic level: detected again, under the cap a slow phone earned.
+func set_auto() -> void:
+	auto = true
+	_detect()
+	_commit()
+
+
+## Auto only: one level down after play stayed too slow (G-251). False at Low or when manual.
+func drop_auto() -> bool:
+	if not auto or preset <= LOW:
+		return false
+	preset -= 1
+	auto_cap = preset
+	reason = "dropped to %s: under %d fps in play" % [preset_name(), AUTO_MIN_FPS]
+	_commit()
+	return true
+
+
+## The Settings row: "Graphics: Auto (Low)".
+func row_label() -> String:
+	return "Graphics: %s" % ("Auto (%s)" % preset_name() if auto else preset_name())
+
+
+## What the current level changes, one line.
+func explain() -> String:
+	return EXPLAIN[clampi(preset, LOW, HIGH)]
 
 
 func set_overlay(on: bool) -> void:
@@ -227,7 +272,7 @@ func to_dict() -> Dictionary:
 		if not switches[id]:
 			off.append(id)
 	off.sort()
-	return {"version": VERSION, "preset": preset, "auto": auto, "overlay": overlay, "off": off}
+	return {"version": VERSION, "preset": preset, "auto": auto, "auto_cap": auto_cap, "overlay": overlay, "off": off}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -235,6 +280,8 @@ func from_dict(d: Dictionary) -> void:
 	preset = clampi(int(p) if (p is int or p is float) else preset, LOW, HIGH)
 	var a: Variant = d.get("auto", true)
 	auto = a if a is bool else true
+	var c: Variant = d.get("auto_cap", HIGH)
+	auto_cap = clampi(int(c) if (c is int or c is float) else HIGH, LOW, HIGH)
 	var o: Variant = d.get("overlay", false)
 	overlay = o if o is bool else false
 	switches.clear()
@@ -251,11 +298,15 @@ func load_saved() -> void:
 	if v is Dictionary:
 		from_dict(v as Dictionary)
 	if auto:
-		var size := DisplayServer.screen_get_size()
-		var mem: Variant = OS.get_memory_info().get("physical", 0)
-		var found := detect(RenderingServer.get_video_adapter_name(), int(mem) if (mem is int or mem is float) else 0, size.x * size.y, DisplayServer.get_name() == "headless")
-		preset = found[0]
-		reason = found[1]
+		_detect()
+
+
+func _detect() -> void:
+	var size := DisplayServer.screen_get_size()
+	var mem: Variant = OS.get_memory_info().get("physical", 0)
+	var found := detect(RenderingServer.get_video_adapter_name(), int(mem) if (mem is int or mem is float) else 0, size.x * size.y, DisplayServer.get_name() == "headless")
+	preset = mini(int(found[0]), auto_cap)
+	reason = String(found[1]) + (" (capped at %s after a slow run)" % NAMES[auto_cap] if auto_cap < int(found[0]) else "")
 
 
 func save() -> void:

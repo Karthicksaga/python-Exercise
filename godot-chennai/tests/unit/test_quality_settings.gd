@@ -107,7 +107,13 @@ func test_saved_with_switches_and_additive() -> bool:
 	back.next_preset()
 	assert_eq(back.preset, QualitySettings.HIGH, "next: Medium → High")
 	back.next_preset()
-	assert_eq(back.preset, QualitySettings.LOW, "and round to Low")
+	assert_true(back.auto, "after High comes Auto")
+	assert_contains(back.row_label(), "Auto (", "the row says Auto and the level it picked")
+	back.next_preset()
+	assert_true(back.preset == QualitySettings.LOW and not back.auto, "and then Low")
+	assert_eq(back.row_label(), "Graphics: Low", "a manual level reads plainly")
+	for p in 3:
+		assert_true(QualitySettings.EXPLAIN[p].length() <= 48, "one short line explains %s" % QualitySettings.NAMES[p])
 	back.set_all_switches(FeatureSwitches.ids(), false)
 	assert_false(back.is_on("rain") or back.is_on("landmarks"), "safe mode turns everything off")
 	back.set_all_switches(FeatureSwitches.ids(), true)
@@ -115,6 +121,29 @@ func test_saved_with_switches_and_additive() -> bool:
 	var junk := QualitySettings.new()
 	junk.from_dict({"preset": "x", "auto": 3, "overlay": "yes", "off": "traffic"})
 	assert_true(junk.preset == QualitySettings.LOW and junk.auto and not junk.overlay and junk.switches.is_empty(), "wrong-typed fields keep their defaults")
+	_clean()
+	return true
+
+
+func test_auto_drops_one_level_and_remembers() -> bool:
+	_clean()
+	var s := QualitySettings.new()
+	s.path = PATH
+	s.auto = true
+	s.preset = QualitySettings.HIGH
+	assert_true(s.drop_auto(), "Auto drops a level")
+	assert_eq(s.preset, QualitySettings.MEDIUM, "High → Medium")
+	assert_true(s.auto, "and stays automatic")
+	var back := QualitySettings.new()
+	back.path = PATH
+	back.load_saved()
+	assert_eq(back.auto_cap, QualitySettings.MEDIUM, "the cap is saved")
+	assert_true(back.preset <= QualitySettings.MEDIUM, "the next start begins at or under it")
+	s.set_preset(QualitySettings.HIGH)
+	assert_false(s.drop_auto(), "a level the player chose is never dropped")
+	s.preset = QualitySettings.LOW
+	s.auto = true
+	assert_false(s.drop_auto(), "nothing below Low")
 	_clean()
 	return true
 
