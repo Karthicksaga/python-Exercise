@@ -10,7 +10,7 @@ extends SceneTree
 ## tests never paint at run time. Deterministic: the noise is the same LCG as the TS painters.
 
 const OUT := "res://assets/city/textures"
-const TAMIL_FONT := "res://assets/fonts/noto-sans-tamil-categories.woff2"
+const TAMIL_FONT := "res://assets/city/noto-sans-tamil-categories.woff2"
 
 var _state: int = 0
 var _tamil: Font

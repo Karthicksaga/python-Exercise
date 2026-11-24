@@ -96,5 +96,5 @@ is not worn by anyone here).
 | MPFB | 2.0.18 | GPL-3.0-or-later |
 | glTF Transform CLI (via `npx`) | 4.5.0 | MIT |
 | Godot | 4.7.2 | MIT |
-| `assets/fonts/noto-sans-tamil-categories.woff2` | Noto Sans Tamil Bold, the full Tamil range, for the category signs baked into the kit atlas (G-192) | Noto fonts via `@fontsource/noto-sans-tamil` 5.3.0 (`noto-sans-tamil-tamil-700-normal.woff2`), copied unchanged | SIL Open Font Licence 1.1, © 2022 The Noto Project Authors (`fonts/OFL.txt`) |
+| `assets/city/noto-sans-tamil-categories.woff2` | Noto Sans Tamil Bold, the full Tamil range, for the category signs baked into the kit atlas (G-192) | Noto fonts via `@fontsource/noto-sans-tamil` 5.3.0 (`noto-sans-tamil-tamil-700-normal.woff2`), copied unchanged | SIL Open Font Licence 1.1, © 2022 The Noto Project Authors (`assets/fonts/OFL.txt`) |
 | `assets/city/sign_categories.json` | The sign category table: 47 shop, amenity and public-place categories in Tamil and English, their board colours and the OSM tags that map to them (G-192) | Original, written for the project; the words are plain Tamil and English nouns, no business or brand names (TD-18) | **CC0 1.0**, original work for the project |

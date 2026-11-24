@@ -3,12 +3,12 @@
 importer="font_data_dynamic"
 type="FontFile"
 uid="uid://btjgy001td2us"
-path="res://.godot/imported/noto-sans-tamil-categories.woff2-6978e6b76df102caab5182def29af40f.fontdata"
+path="res://.godot/imported/noto-sans-tamil-categories.woff2-d4dfc853ffa49524b69ed685c9413ee8.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/noto-sans-tamil-categories.woff2"
-dest_files=["res://.godot/imported/noto-sans-tamil-categories.woff2-6978e6b76df102caab5182def29af40f.fontdata"]
+source_file="res://assets/city/noto-sans-tamil-categories.woff2"
+dest_files=["res://.godot/imported/noto-sans-tamil-categories.woff2-d4dfc853ffa49524b69ed685c9413ee8.fontdata"]
 
 [params]
 

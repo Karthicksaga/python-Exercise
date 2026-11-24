@@ -535,3 +535,37 @@ G-58). A frame is the 2.5 ms budget plus at most one step by design (G-50). Full
 - Rule speed breakers (9,867) are invented and dense; tune `RULE_BUMP_SHARE` if play says so.
 - Kathipara hero model (Blender) not started (a later task, as asked).
 - Seen only on llvmpipe (Compatibility); not on a phone or the Mobile renderer.
+
+## OSM detail (agent/godot-osmdetail), 24 Nov 2026
+Format 2.2 (`detail.bin`), decisions G-190…G-195; the page to read is `docs/osm-detail.md` (what is
+drawn from which tag, the coverage report, the measured cost, the weak points).
+
+**Data.** `tools/geo/chennai_geo/detail.py` (+ `osm_parse.py` collecting into `OsmFeatures.detail_*`):
+one `detail.bin` per tile with building colours, materials and category, `building:part` polygons,
+street objects, barrier and platform lines, zones, sign spots; 2.0 and 2.1 files unchanged;
+`world/DETAIL.md` is the coverage report. Rebuild: `cli build --max-ring 3` (about 95 s).
+`assets/city/sign_categories.json` is the one table of the 47 sign categories shared by Python and
+the game.
+**Game.** `DetailTile` (`src/game_world/detail/`, read by `RegionalWorldSource.tile_detail`,
+`WorldSource.detail_for(cell)`); `ChunkBuilder.apply_detail` (colours, parts and hosts),
+`use_mapped_lamps`, `add_platform_shelters`; `BuildingMeshes` (roof kinds, colours, parts, category
+signs), `ShopSigns.pick`, `DetailMeshes` + `DetailModels` (objects, barriers, platforms, zones),
+`GroundMeshes` covers 17 to 19, the pool colour in `water.gdshader`, `AreaPalettes`
+(`data/areas/palettes.json`, G-194).
+**For godot-areas.** `AreaPalettes` is the only reader of `data/areas/palettes.json`; the stub there
+has `default` only. Shape used: `{"<area_id>": {"walls": ["#rrggbb"], "roofs": ["#rrggbb"],
+"roof_types": {"flat": 0.6, "gabled": 0.3, "dome": 0.0, "hipped": 0.1}, "storeys": {"1": 0.1, "2":
+0.4} or null}, "default": {...}}`, plus a `_note` key that is ignored. The area id is the district
+name slugged (`AreaPalettes.slug`: lower case, anything else `_`) found by `DistrictIndex` at the
+chunk centre; roof type names may be flat, hipped, gabled, pyramidal, skillion, dome. If godot-areas
+uses other ids (its own `areas.json`), change `AreaPalettes.at` only. Mapped OSM tags always win.
+**For the landmarks agent.** The world build already leaves out a building, its parts and signs at
+a landmark footprint; `DetailMeshes` never draws inside a building's footprint or on water.
+**Tests.** `tools/geo/tests/test_detail.py` (17), `tests/unit/test_osm_detail.gd` (14): the tile
+decoded like the Python reader, every tile's detail, Tamil font coverage and baked ink, sign
+picking, roof kinds and meshes, colours, floating parts, hosts replaced by parts, objects,
+barriers and zones built in real chunks, barriers off the carriageway, mapped lamps, palette file.
+`test_city_meshes.gd` lost the ten-sign test (now the category-table test) and `test_infra*` accept
+`minor >= 1`.
+**Weak or not done:** see `docs/osm-detail.md`.
+

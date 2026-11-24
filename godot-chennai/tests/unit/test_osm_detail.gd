@@ -80,7 +80,7 @@ func test_every_tile_decodes_and_names_stay_off_shop_signs() -> bool:
 func test_sign_table_and_the_tamil_font() -> bool:
 	var table := SignCategories.shared()
 	assert_eq(table.error, "", "table loads")
-	var font := load("res://assets/fonts/noto-sans-tamil-categories.woff2") as Font
+	var font := load("res://assets/city/noto-sans-tamil-categories.woff2") as Font
 	assert_true(font != null, "the Tamil sign font loads")
 	var missing := 0
 	for c in table.items:

@@ -1306,7 +1306,7 @@ never read), the game bakes the kit atlas from it (`tools/bake_city_textures.gd`
 rows of 512 x 88 px signs, then the shutter, interior and railing cells; the atlas grew from
 1024 x 1024 to 1024 x 2368: about 26 MB with its glow partner and mipmaps if left uncompressed,
 to be compressed for the phone later). Text is drawn once at build time with Noto Sans Tamil Bold (the full Tamil
-range, `assets/fonts/noto-sans-tamil-categories.woff2`: the two older subsets lacked ய ர ற ங ஜ ே ொ,
+range, `assets/city/noto-sans-tamil-categories.woff2`: the two older subsets lacked ய ர ற ங ஜ ே ொ,
 which fell back to a thin font), Tamil 34 px above English 19 px, squeezed to fit.
 A shop front gets the category of the building when OSM maps a shop, amenity, office or tourism tag
 on it, else of the nearest mapped shop node within 14 m of the shop, else an everyday street shop
