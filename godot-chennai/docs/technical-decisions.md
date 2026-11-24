@@ -1811,8 +1811,10 @@ band: bump 0.18, shaken 0.45, fall 0.65, thrown 0.9. `shake_strength` 0 with red
 (`TitleMenu.platform_reduces_motion()` by default).
 
 ## G-275: Knockdown poses through a thin interface, with a fallback
-`RiderLink` has hooks `_show_fall(velocity)`, `_show_landed()`, `_show_getup()` fired on
-`CrashFlight`'s phase changes; `PlayerRiderLink` calls the figure's `play_fall`, `play_landed`,
-`play_getup` (agent/godot-anim's API) when the figure has them (`has_method`), and then keeps the
-figure upright on its node. Without them the old tipped figure is drawn, now rolling onto one
-side while getting up. `CrashFlight.RISE_TIME` stays 0.75 s (the API's `GETUP_TIME`).
+`RiderLink` fires hooks `_show_fall(velocity)`, `_show_landed()`, `_show_getup()` on
+`CrashFlight`'s phase changes (a link for any body can drive its figure from them). The player's
+link is left to agent/godot-anim, whose `PlayerRiderLink._show_knockdown` calls the figures'
+`play_fall`, `play_landed`, `play_getup` itself (its G-262); this branch keeps that file as on
+feat/godot-chennai so the two merge without a double call (trial merge: no conflicts). Until
+that lands the old tipped figure is the fallback. `CrashFlight.RISE_TIME` is 1.2 s, the figures'
+`GETUP_TIME` (the same hunk as the anim branch).

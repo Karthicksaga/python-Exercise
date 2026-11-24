@@ -784,11 +784,10 @@ Numbers in G-270 and G-273.
 - Listen to `Driving.bumped` for small hits (not a crash: missions ignore it); `crashed` now also
   carries `&"fall"`. `Driving.last_hit` is the last judged hit including bumps.
 - `CrashRules.Outcome.hit` has the contact point, normal and the other body.
-- **agent/godot-anim:** `PlayerRiderLink` (this branch) calls `play_fall(launch)`,
-  `play_landed()`, `play_getup()` on the player's figure when it has them (`has_method`) and then
-  stops tipping the figure; the hooks fire on `CrashFlight`'s phases from `RiderLink`. If your
-  branch also edits `PlayerRiderLink` to call them, keep one of the two at the merge (the calls
-  are the same). `RISE_TIME` stays 0.75 s.
+- **agent/godot-anim:** this branch leaves `PlayerRiderLink` as on feat/godot-chennai, so your
+  `_show_knockdown` calls to `play_fall`/`play_landed`/`play_getup` merge as they are (trial
+  merge of both branches: no conflicts, crash tests run on it). `RISE_TIME` is 1.2 s on both.
+  `RiderLink` also fires `_show_fall`/`_show_landed`/`_show_getup` hooks for other links.
 
 **Weak.** Traffic does not react physically to being hit (no shove, its rider never falls; only
 the honk hook); people get no reaction hook (CityLife has none). Smoke is grey alpha spheres
