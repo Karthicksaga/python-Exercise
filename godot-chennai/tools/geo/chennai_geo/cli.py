@@ -7,6 +7,8 @@
     python -m chennai_geo.cli build-v1 OUT           # ring 0 in today's format 1 (comparison)
     python -m chennai_geo.cli convert-v1 IN OUT      # today's files -> format 2
     python -m chennai_geo.cli compare                # ring-0 counts vs today's committed world
+    python -m chennai_geo.cli landmarks-rank         # -> data/landmarks/candidates.json + COVERAGE.md
+    python -m chennai_geo.cli landmark-osm ID        # OSM footprints into assets/landmarks/ID/spec.json
 """
 from __future__ import annotations
 
@@ -72,6 +74,12 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("out", type=Path)
     cmp_ = sub.add_parser("compare")
     cmp_.add_argument("--osm", type=Path, default=RAW / "world.osm.pbf")
+    lr = sub.add_parser("landmarks-rank")
+    lr.add_argument("--osm", type=Path, default=RAW / "world.osm.pbf")
+    lr.add_argument("--out", type=Path, default=DATA / "landmarks")
+    lo = sub.add_parser("landmark-osm")
+    lo.add_argument("ids", nargs="*", help="landmark ids (default: every spec)")
+    lo.add_argument("--osm", type=Path, default=RAW / "world.osm.pbf")
     a = ap.parse_args(argv)
 
     if a.cmd == "fetch":
@@ -106,7 +114,9 @@ def main(argv: list[str] | None = None) -> int:
         bd = load_boundary(BOUNDARY)
         if a.cmd == "build":
             playables = [playable_for(r, bd) for r in range(a.max_ring + 1)]
-            w = build_world(feats, grid, playables, a.max_ring)
+            from .landmark_spec import exclude_outlines  # noqa: PLC0415
+
+            w = build_world(feats, grid, playables, a.max_ring, landmark_footprints=exclude_outlines())
             src = {"datasets": _manifest().get("datasets", []), "boundary": "data/boundary/world-boundary.geojson", "builtBy": "godot-chennai/tools/geo"}
             sizes = write_world_v2(w, a.out, src)
             header = f"OSM data {w.data_date} (© OpenStreetMap contributors, ODbL 1.0). Rings 0..{a.max_ring}."
@@ -118,6 +128,19 @@ def main(argv: list[str] | None = None) -> int:
         else:
             w = build_world(feats, grid, [playable_for(0, None)], 0, repair=False, v2=False)
             print(json.dumps({"rebuilt_v1_rules": counts(w), "today": counts(v1_to_world(TODAY))}, indent=1))
+    elif a.cmd == "landmarks-rank":
+        from .landmark_candidates import rank, read_candidates, write_candidates  # noqa: PLC0415
+
+        world = playable_for(3, load_boundary(BOUNDARY))
+        rows = rank(read_candidates(a.osm, world.inside))
+        cov = write_candidates(rows, a.out, f"OSM Tamil Nadu extract {_osm_timestamp()}, clipped to the world boundary")
+        print(json.dumps({k: v for k, v in cov.items() if k != "by_kind"}, indent=1))
+    elif a.cmd == "landmark-osm":
+        from .landmark_spec import SPECS, fill_from_osm  # noqa: PLC0415
+
+        for path in sorted(SPECS.glob("*/spec.json")):
+            if not a.ids or path.parent.name in a.ids:
+                print(fill_from_osm(path, a.osm))
     elif a.cmd == "convert-v1":
         w = v1_to_world(a.src)
         print(write_world_v2(w, a.out, {"convertedFrom": str(a.src)}))

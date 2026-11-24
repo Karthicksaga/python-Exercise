@@ -1,0 +1,14 @@
+{
+ "id": "chennai-egmore",
+ "kit": "station",
+ "script": "tools/blender/landmarks/station.py",
+ "blender": "5.2.4 LTS",
+ "spec_sha256": "bff7dd85a7adde2bfb978d86d6dd0b2bd1daccc5a80224d14cf420e644b459fa",
+ "glb_sha256": "7594fa52eb8c3978745f7963585168db504473dbb47daa0cbdfaa3589e27b6fc",
+ "triangles": {
+  "lod0": 8792,
+  "lod1": 1942,
+  "lod2": 374
+ },
+ "collision_boxes": 84
+}

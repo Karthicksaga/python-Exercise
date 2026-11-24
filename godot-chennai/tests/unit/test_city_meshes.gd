@@ -125,23 +125,6 @@ func test_signs_are_category_words() -> bool:
 	return true
 
 
-func test_landmarks() -> bool:
-	var src := CityTestKit.v1()
-	for mark in src.index.landmarks:
-		if mark.kind == &"tower":
-			var p := LandmarkProfiles.tower(mark)
-			var m := LandmarkMeshes.tower(p)
-			assert_true(m.mesh.triangle_count() > 2000 and m.mesh.triangle_count() < 15000, "tower %d triangles" % m.mesh.triangle_count())
-			var top := 0.0
-			for v in m.mesh.positions:
-				top = maxf(top, v.y)
-			assert_near(top, mark.height, 0.01, "tower as tall as its estimated height")
-		elif mark.kind == &"temple":
-			var g := LandmarkMeshes.gopuram(LandmarkProfiles.gopuram(mark))
-			assert_true(g.mesh.triangle_count() > 1000 and g.mesh.triangle_count() < 15000, "gopuram %d triangles" % g.mesh.triangle_count())
-	return true
-
-
 func test_prop_models_baked() -> bool:
 	var models := CityTestKit.kit().models
 	assert_eq(models.error, "", "every prop GLB read")

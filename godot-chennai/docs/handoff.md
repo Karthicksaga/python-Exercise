@@ -635,3 +635,89 @@ lefty_drive, pad, settings) into a scratch folder.
 **Addendum (malls).** 16 shopping complexes and two market entries added (100 landmarks: A 18, B 72,
 C 10). Game code must read `sign` and `names`, never `research_name`. Storeys come from OSM levels
 where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.
+
+## Title screen (G-160 to G-165, agent/godot-title), 24 Nov 2026
+**Where things are.** `src/ui/title_menu/` (`TitleMenu` the page and rows, `TitleRow`, `TitleFonts`,
+`ControlsGuide`), `src/app/title_wiring/` (`TitleWiring` camera, chip, rain layers, lightning;
+`TitleSpots` the three places; `TitlePlace` real names), fonts in `assets/fonts/title/`,
+`tests/scene/test_title_screen.gd`, `test_title_wiring.gd`, `tests/unit/test_title_places.gd`,
+the screenshot tool `tests/tools/title_shots.gd`. `Main` gained `title_summary()`, `title_wiring`,
+`title_tour`, `title_seed`, `title_spot`.
+
+**How other agents call it.**
+- Another controls scheme: change `ControlsGuide.groups()` only; the CONTROLS page and its test follow.
+- A new setting: add it in `Main._add_pause_menu` (one loop feeds the pause menu and SETTINGS).
+- Tests that boot `Main` and press play are unaffected: headless runs keep `title_tour` off, so
+  streaming stays on the player. A test of the tour sets `main.title_tour = true` (and
+  `title_spot`) before adding `Main` to the tree (see `test_title_wiring.gd`).
+- Screenshots: `HOME=<scratch> xvfb-run ... --script res://tests/tools/title_shots.gd -- --spot=central --hour=21.5 --rain=1 --storm=1 --save=1 --page=controls --out=...`
+  (HOME keeps the save file out of the real one; `--custom=x,z,heading,distance,height` tries a spot).
+
+**Measured (container, Godot 4.7.2, Compatibility under xvfb, software GL: only counts and script
+time mean anything).** The title's own script work per frame: about 150 µs on average, 230 µs at most
+(`TitleWiring.stats`). Draw calls at T. Nagar and Central with the title over them: about 170 dry; the two
+extra rain layers add 2 while it rains and 5k triangles (the camera's own rain adds one more); see
+G-165. Boot to title now also waits for the spot's streets (about 4 s longer in the test run).
+
+**Weak or not done.** Not seen on a phone. Morning and noon are blown out by the existing lighting
+(white walls and sand at Marina), night is nearly black (`Lighting`; the title adds no light of
+its own). No splash rings or ripples, no mist bands, no radial vignette, no thunder or rain sound
+(sound is suspended on the title). "Central" resolves to the district name "Evening Bazaar"
+(the data has no Chennai Central landmark). CONTINUE and NEW GAME wait for the player's streets
+to load after a tour (a loading screen of one step); NEW GAME has no confirmation (as before).
+Screenshots of the title at the three spots show the existing renderer's look, not a design pass
+on the world.
+
+**Loading screen (G-166).** Restyled with the title: `src/ui/loading_screen/loading_screen.gd`, tests
+`tests/scene/test_loading_screen.gd` and the loading cases in `test_ui_layout.gd`, screenshots with
+`tests/tools/loading_shots.gd -- --state=mid|failed|slow`. Tamil step lines need native review
+(listed in `LoadingScreen.TAMIL`). Not seen on a phone; it adds no animation, so the Adreno 613
+failure of the old animated screen should not return, but that is untested there.
+
+## Landmarks (agent/godot-landmarks), 24 Nov 2026
+Decisions G-180…G-188; how-to and every reference with its licence in `docs/landmarks.md`.
+
+**Done.** Ranking (`cli landmarks-rank` → `data/landmarks/candidates.json`, `COVERAGE.md`: 2,341
+candidates in the world, 396 with Wikidata, 401 with Wikipedia, 1,392 with a footprint). Specs
+in `assets/landmarks/<id>/spec.json` (OSM part filled by `cli landmark-osm`), Blender kits in
+`tools/blender/landmarks/` (`build_all.sh` builds twice, checks the bytes, runs the tests), game
+side `LandmarkSpec` + `LandmarkModels` (worker loading, OSM origin, LOD ranges, Jolt boxes,
+real-name signs) and the building filter in `ChunkBuilder`. Six landmarks: Kapaleeshwarar
+Temple (east and west gopurams, striped compound wall, shrines, mandapams on the OSM buildings,
+flagstaff, tank steps and mandapam), Ripon Building, Chennai Central (with the Tamil/English
+roof sign), Chennai Egmore (with the train shed), Anna Nagar Tower (ported), Chennai Lighthouse.
+
+| Landmark | LOD0 / LOD1 / LOD2 triangles | Boxes | Height model / spec |
+|---|---|---|---|
+| Kapaleeshwarar Temple | 14,561 / 5,998 / 1,696 | 73 | 37 m (east gopuram) |
+| Ripon Building | 6,463 / 793 / 405 | 14 | 43 m |
+| Chennai Central | 5,411 / 659 / 263 | 7 | 41.5 m |
+| Chennai Egmore | 8,792 / 1,942 / 374 | 84 | 24 m (estimated) |
+| Anna Nagar Tower | 5,459 / 1,535 / 543 | 6 | 41 m |
+| Chennai Lighthouse | 5,369 / 1,739 / 411 | 4 | 45.72 m (OSM tag) |
+
+**Measured** (this shared 4-core box, xvfb + llvmpipe, Compatibility, 915x412, `city_shot.gd
+--frames=180`, two runs each; `--no-landmarks` leaves the OSM buildings in place). Temple from
+above (NE, 85 m back, 22 m up): with landmarks 52 draw calls, 148.0k primitives, frame 130.5 /
+132.4 ms average; without 50 draw calls, 125.3k primitives, 117.0 / 119.5 ms. Sannadhi Street at
+eye level: with 46 draw calls, 131.3k primitives, 124.4 / 111.7 ms; without 44, 108.6k, 125.2 /
+106.9 ms. Software rendering, so the milliseconds only compare runs; the cost is one draw call
+per visible landmark and about 23k primitives at the temple. Main-thread maximum while filling
+stayed at 0.2 ms (models load on the worker).
+
+**Weak or not done.**
+- Few reference photos were actually seen: Commons thumbnails were rate-limited (shared with the
+  coordinator). Central follows a real photo; the gopuram, Ripon and Egmore follow published
+  descriptions and general knowledge of the styles; tier counts, colours and many heights are
+  estimated (each spec's `estimated`). Facts were checked through search summaries; Wikipedia and
+  Wikidata cannot be fetched from this container.
+- Chennai Central's heritage building is not mapped in OSM; the model stands on the frontage
+  way's rectangle. Ripon's OSM outline (68 x 20 m) is smaller than the published 85 x 32 m.
+- The committed world was not rebuilt with the landmark outlines (the game filters at run time).
+- Kapaleeshwarar's tank steps sit inside the water polygon above the 0.75 m sunk water; the bund
+  and barrier still close the tank (no walking the steps yet, culture note §3 visit not built).
+- Mall kit not built; no interiors; no night lighting on landmarks; GLBs carry float vertex
+  colours (0.2–1.5 MB each, 4.6 MB in all).
+- `scene/test_city_streaming.gd::test_main_thread_budget_under_cpu_load` failed once in the full
+  local run (wall-clock, load-sensitive on this shared machine; not touched).
+- Seen only under the Compatibility renderer on llvmpipe; not on a phone.
