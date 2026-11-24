@@ -2147,7 +2147,7 @@ intercepted. `UiTheme.touch_scroll()` makes one; pause, title SETTINGS and CONTR
 the overlay list use it. `step(delta)` is the clock, so tests drive it with 1/60.
 Layers: pause and title are CanvasLayer 8, above the performance overlay (7); the overlay also hides
 while the pause menu or the Jobs dialog is open (`PerfWiring._modal_open`).
-### G-340: A kinematic body that jumps does so with its box off
+### G-360: A kinematic body that jumps does so with its box off
 Root cause of the owner's report on afed12f ("when I entered the bike I was thrown away for a long
 distance"). Jolt moves every kinematic body to a transform set from code with `MoveKinematic`
 (velocity = jump / step), even an `AnimatableBody3D` with `sync_to_physics` off. `Carjacking` hides
@@ -2164,7 +2164,7 @@ box off for the step of any jump (shown again, or moved more than `JUMP` 1.5 m b
 and back on one physics step later at the new place. Rejected: `sync_to_physics` (already off;
 it is not what decides), teleporting through `PhysicsServer3D.body_set_state` (the same path).
 
-### G-341: The player's body becomes solid a step after leaving a vehicle
+### G-361: The player's body becomes solid a step after leaving a vehicle
 The player's `CharacterBody3D` is kinematic too: put on its feet with collisions back on in the
 same frame, it swept from the seat inside the vehicle's box and shoved the vehicle (a hatchback
 left through the far side got 82 m/s). `PlayerController.exit_vehicle` now restores the layers one
@@ -2172,7 +2172,7 @@ physics step after the move (the body neither moves nor falls that step); a cras
 (`PlayerRiderLink.throw_off`) stays solid at once: it already passes through its own vehicle by
 a collision exception and must collide to fly.
 
-### G-342: People hit by the player's vehicle react, by band; never a child
+### G-362: People hit by the player's vehicle react, by band; never a child
 `StreetHits` (pure, `src/ai/`) and `StreetReactions` (`src/app/city_life/`). The driven vehicle's
 box, swept over the AI step (30 Hz), is tested against walkers and crowd people within 8 m.
 Bands by its speed: below 1 m/s nothing (people already make way), 1–4 m/s a **stagger** (the
@@ -2189,7 +2189,7 @@ drivers only honk (G-273). **Children:** `StreetHits.can_be_hit` is false for a 
 play and is checked before any touch test; figures are checked again against the cast's minors;
 walkers and drivers are adults by `CastPicker`. All speeds are game-design estimates.
 
-### G-343: CityLife's incident hook
+### G-363: CityLife's incident hook
 `CityLife.incident(what, at)` (`person_down`, `stagger`, `rider_down`) through `report_incident`,
 which also makes crowd people within 8 m turn to face the spot for 4 s; `StreetReactions` scares
 walkers within 8 m (stop and step back if facing, else run off), makes the nearest traffic vehicle

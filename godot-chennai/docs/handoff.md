@@ -972,17 +972,17 @@ the honk hook); people get no reaction hook (CityLife has none). Smoke is grey a
 (cheap, reads as smoke at a distance, blobby up close). No dent geometry: damage is paint, sag and
 smoke. Effect cost measured on the desktop only (G-273). The player still stops dead against a
 light traffic vehicle (the solver's wall); only the judgement is shared by mass.
-## Thrown on boarding; people react to hits (agent/godot-crash2, G-340…G-343), 24 Nov 2026
+## Thrown on boarding; people react to hits (agent/godot-crash2, G-360…G-363), 24 Nov 2026
 **Owner's phone report on afed12f, fixed.** (1) "When I entered the bike I was thrown away for a
-long distance": root cause G-340. After TAKE OVER the traffic view of the taken agent was hidden
+long distance": root cause G-360. After TAKE OVER the traffic view of the taken agent was hidden
 in the bike's place; when the player sat down the agent was respawned and the view, shown and
 re-placed in the same frame, swept out of the bike's box at thousands of m/s (Jolt moves
 kinematic bodies with `MoveKinematic` even with `sync_to_physics` off): the bike got up to
 500 m/s and the rider was thrown. Views now jump with their box off for a step. The same sweep in
-the player's own body shoved vehicles on getting out (G-341). (2) "Why is the NPC standing after
+the player's own body shoved vehicles on getting out (G-361). (2) "Why is the NPC standing after
 hitting the bike?": walkers and crowd adults stagger or are knocked down, lie, get up and walk on;
 traffic bike and auto riders hit hard fall off, the bike lies over until they are back;
-bystanders look and scatter; a car near by honks (G-342, G-343). Never a child.
+bystanders look and scatter; a car near by honks (G-362, G-363). Never a child.
 
 Tests: `scene/test_boarding_safety.gd` (in `main.tscn`: the parked bike, auto and car boarded
 between parked bikes, and four take-overs of moving traffic; standing 5 s and riding off: never

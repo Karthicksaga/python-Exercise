@@ -6,7 +6,7 @@ extends AnimatableBody3D
 ## the vehicles layer, so the player's vehicle hits it and the player cannot walk through it.
 ## Moved by the AI (`CityLife`), never by physics. No driving logic here.
 ##
-## **Jumps are not drives (G-340).** Jolt moves every kinematic body with `MoveKinematic`, even with
+## **Jumps are not drives (G-360).** Jolt moves every kinematic body with `MoveKinematic`, even with
 ## `sync_to_physics` off: a transform set from code is reached in one step at whatever speed that
 ## takes. A view the AI puts somewhere new (a respawn out of sight, a carjacked agent let go, a view
 ## shown again) would cross the gap at thousands of m/s and smash anything its box overlapped at
@@ -170,7 +170,7 @@ func ride_height() -> float:
 	return -model.position.y
 
 
-## Shown and felt, or hidden with its box off. Shown again, the box waits a step (G-340): pose it
+## Shown and felt, or hidden with its box off. Shown again, the box waits a step (G-360): pose it
 ## at its new place in the same physics frame.
 func set_shown(on: bool) -> void:
 	visible = on

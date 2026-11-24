@@ -1,6 +1,6 @@
 class_name StreetHits
 extends RefCounted
-## What a person on the street does when the player's vehicle reaches them (decision G-342). Pure
+## What a person on the street does when the player's vehicle reaches them (decision G-362). Pure
 ## rules, world metres (x, z as Vector2), no nodes; `StreetReactions` (src/app/city_life/) applies
 ## them. Speeds are game-design estimates, not measured.
 ##

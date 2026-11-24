@@ -63,7 +63,7 @@ var _was_grounded: bool = true
 ## Jump buffer and coyote time (G-173).
 var _jump := JumpState.new()
 var _knock: Vector3 = Vector3.ZERO
-## Off a vehicle: collisions come back after this physics frame (G-341), else -1.
+## Off a vehicle: collisions come back after this physics frame (G-361), else -1.
 var _solid_after: int = -1
 
 
@@ -252,7 +252,7 @@ func enter_vehicle(ride: Node3D, at: Node3D) -> void:
 ##
 ## The body is kinematic, and Jolt moves a kinematic body to a transform set from code by sweeping
 ## there within one step (`MoveKinematic`): solid at once, it would travel from the seat, inside
-## the vehicle's box, to the feet at tens of m/s and shove the vehicle (a car got 82 m/s, G-341).
+## the vehicle's box, to the feet at tens of m/s and shove the vehicle (a car got 82 m/s, G-361).
 ## So the body becomes solid one physics step after it is put on its feet; `solid_now` (a crash
 ## throw, which passes through its own vehicle by a collision exception) skips the wait.
 func exit_vehicle(feet: Vector3, facing_yaw: float, solid_now: bool = false) -> void:
@@ -277,6 +277,6 @@ func _make_solid() -> void:
 	collision_mask = LAYER_WORLD | LAYER_PEOPLE | LAYER_VEHICLES
 
 
-## Collides now, or waits for the step after leaving a vehicle (G-341).
+## Collides now, or waits for the step after leaving a vehicle (G-361).
 func is_solid() -> bool:
 	return collision_layer != 0

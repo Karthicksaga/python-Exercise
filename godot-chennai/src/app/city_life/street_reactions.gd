@@ -1,6 +1,6 @@
 class_name StreetReactions
 extends Node
-## People react to being hit by the player's vehicle (decisions G-342, G-343; the owner's report on
+## People react to being hit by the player's vehicle (decisions G-362, G-363; the owner's report on
 ## afed12f: "why is the NPC standing after hitting the bike?"). The rules are `StreetHits` (pure,
 ## src/ai/); this node applies them to the life layer and draws the people who are down.
 ##

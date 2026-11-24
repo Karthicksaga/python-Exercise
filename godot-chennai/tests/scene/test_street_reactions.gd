@@ -1,5 +1,5 @@
 extends TestCase
-## People react to being hit (G-342, G-343; the owner's report on afed12f: "why is the NPC
+## People react to being hit (G-362, G-363; the owner's report on afed12f: "why is the NPC
 ## standing after hitting the bike?"), in the streamed city with live traffic and walkers: a
 ## walker struck fast falls, lies, gets up and walks on; struck slowly they stagger back; a traffic
 ## bike rider hit hard falls off and the bike lies over until they are back; bystanders turn and the

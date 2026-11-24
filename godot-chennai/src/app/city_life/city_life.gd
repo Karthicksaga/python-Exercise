@@ -20,7 +20,7 @@ extends Node3D
 ## After the last AI step finished and before the views are synced and the next step starts:
 ## the only time game code may change agents (hold, let go, scare). `dt` is the physics step.
 signal between_steps(dt: float)
-## Something happened on the street that people react to (G-343): &"person_down" (a walker or a
+## Something happened on the street that people react to (G-363): &"person_down" (a walker or a
 ## crowd person knocked down), &"stagger", &"rider_down" (a traffic rider knocked off), at a
 ## world point. Emitted by `StreetReactions` through `report_incident`; sound, missions and the
 ## wanted level listen here.
@@ -503,7 +503,7 @@ func _sync(dt: float, focus: Vector2) -> void:
 		else:
 			fig.play(&"idle", 0.0, variation * 3.0)
 		if leaning and stagger.has(i):
-			# Rocked back on the heels, easing upright again (G-342).
+			# Rocked back on the heels, easing upright again (G-362).
 			var u := clampf(stagger[i] / StreetHits.STAGGER_TIME, 0.0, 1.0)
 			fig.rotate_object_local(Vector3.RIGHT, 0.32 * sin(u * PI))
 		fig.advance(dt, d, camera == null or camera.is_position_in_frustum(at + Vector3(0, 1.0, 0)))
@@ -564,7 +564,7 @@ func _hide_all() -> void:
 		Sound.set_traffic([] as Array[Dictionary], 0.0, hour())
 
 
-## A street incident at a world point (G-343): the crowd near it turns to look for a while, and
+## A street incident at a world point (G-363): the crowd near it turns to look for a while, and
 ## `incident` is emitted. Walkers are scared by the caller (between steps).
 func report_incident(what: StringName, at: Vector2, look_seconds: float = StreetHits.SCARE_SECONDS) -> void:
 	_watch_at = at

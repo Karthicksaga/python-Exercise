@@ -1,5 +1,5 @@
 extends TestCase
-## Street hits (G-342): the bands by speed, the swept touch test, the launch, riders falling off by
+## Street hits (G-362): the bands by speed, the swept touch test, the launch, riders falling off by
 ## their kind's `fall_from`, and that a child can never be hit.
 
 
