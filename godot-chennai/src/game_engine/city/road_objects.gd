@@ -13,7 +13,7 @@ const WIRE_COLOUR := 0x16171a
 ## Longest span a wire crosses between two poles, and the shortest worth drawing.
 const WIRE_MAX := 75.0
 const WIRE_MIN := 8.0
-const SHRUB_PITCH := 2.4
+const SHRUB_PITCH := 3.0
 
 
 ## Wires from each pole to the next pole on the same side of the same road, a little slack in each.
@@ -73,8 +73,8 @@ static func shrubs(into: MeshBuilder, models: CityModels, runs: Array[StreetFurn
 			while d <= length:
 				var p := a.lerp(b, d / length)
 				var u := CityHash.tree_unit(p, 71)
-				var model := models.bloom if u < 0.25 else models.shrub
-				var s := 0.8 + 0.6 * CityHash.tree_unit(p, 72)
+				var model := models.bloom if u < 0.18 else models.shrub
+				var s := 0.6 + 0.45 * CityHash.tree_unit(p, 72)
 				into.append(model, Transform3D(Basis(Vector3.UP, u * TAU).scaled(Vector3(s, s * (0.8 + 0.5 * CityHash.tree_unit(p, 73)), s)), Vector3(p.x - centre.x, StreetFurniture.KERB_HEIGHT + 0.07, p.y - centre.y)))
 				count += 1
 				d += SHRUB_PITCH

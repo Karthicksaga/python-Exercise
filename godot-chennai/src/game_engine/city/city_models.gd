@@ -45,7 +45,7 @@ static func create(with_props: bool = true) -> CityModels:
 	m._build_tree()
 	m._build_palm()
 	RoadModels.shrub(m.shrub, 0x3d7d3a)
-	RoadModels.shrub(m.bloom, 0xd23c78)
+	RoadModels.shrub(m.bloom, 0xc2557f)
 	RoadModels.guard(m.guard)
 	m.detail = DetailModels.create()
 	if with_props:

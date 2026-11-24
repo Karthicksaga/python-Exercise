@@ -1757,3 +1757,31 @@ of sight once the player is seated, and the player's `Vehicle` is a plain node t
 never owns (freed only when parked more than `Carjacking.FORGET` m away). `Wanted` has no
 instance in the game yet, so `Carjacking.wanted` stays null and only `carjacked` is signalled;
 the fall clips come with the animation work (staggering is the fallback).
+
+
+## Road detail (G-310 to G-313)
+
+### G-310: Roads are styled by class, from data, not by hand
+`RoadStyle` maps a road to arterial, residential, lane or flyover (kind, width, raised) and holds
+the numbers (footpath width, verge, tree and pole pitch, species weights). Surface, wear, paint fade
+and kerb colour come from a hash of the way id (`id / 10`), so a road looks the same in every chunk
+and every piece. `RoadDetail` plans a chunk from it (plain data, worker thread); nothing is stored in
+the world files. Everything OSM does not map is estimated and said so (`docs/roads.md`).
+
+### G-311: One ground surface, sixteen atlas tiles
+The ground atlas grew from 8 to 16 tiles (worn asphalt, concrete, footpath slabs, laterite, black-white
+kerb, dark iron, yellow and faded paint), layers 20 to 27 (8 to 19 stay the covers). Paint pieces are
+chosen fresh or faded by hash, solid lines come in 6 m pieces with a few worn away, crossings and
+stop lines stand on junction nodes. All of it is flat geometry in the chunk's one ground surface; the
+shader adds one noise octave on the road surfaces only. Footpaths are 0.12 m (the kerb stays 0.15)
+and have no collider, like the kerbs.
+
+### G-312: Four tree silhouettes, two draw calls
+A MultiMesh holds one mesh, so the rain tree is the neem mesh stretched 1.55 wide and 0.82 high
+and the palmyra the coconut mesh stretched 0.72 wide and 1.3 high, with a tint per species; a chunk
+keeps its two tree draws. Streets that the world builder planted nothing along (residential, lane)
+get trees from `RoadDetail.trees_on`, kept 1.5 m clear of every carriageway and out of buildings.
+
+### G-313: Wires, shrubs and guards ride in the objects surface
+Overhead wires (two per span, four steps of sag), median shrubs and tree guards are appended to the
+chunk's objects mesh; poles of streets that had none join the colliders. No per-object light.

@@ -214,7 +214,7 @@ static func trees_on(layout: CityLayout, span: CityLayout.RoadSpan, style: RoadS
 		var dir: Vector2 = at["dir"]
 		var side := 1.0 if (k % 2 == 0) != (CityHash.unit(way, 98) < 0.5) else -1.0
 		var p: Vector2 = (at["p"] as Vector2) + Vector2(dir.y, -dir.x) * side * offset
-		if not square.has_point(p) or StreetFurniture.in_building(chunk.buildings, boxes, p, 1.0) or layout.on_other_road(p, road.id, 1.8):
+		if not square.has_point(p) or StreetFurniture.in_building(chunk.buildings, boxes, p, 1.0) or layout.on_other_road(p, -1, 1.5):
 			continue
 		if _crowded(p, chunk.trees, out):
 			continue
@@ -250,7 +250,7 @@ static func poles_on(layout: CityLayout, span: CityLayout.RoadSpan, style: RoadS
 		var dir: Vector2 = at["dir"]
 		var l := Vector2(dir.y * side, -dir.x * side)
 		var p: Vector2 = (at["p"] as Vector2) + l * (road.width / 2.0 + POLE_SETBACK)
-		if not square.has_point(p) or StreetFurniture.in_building(chunk.buildings, boxes, p, 0.3) or layout.on_other_road(p, road.id, 0.8):
+		if not square.has_point(p) or StreetFurniture.in_building(chunk.buildings, boxes, p, 0.3) or layout.on_other_road(p, -1, 0.8):
 			continue
 		if _crowded(p, planted, [] as Array[WorldTree], 2.0):
 			continue
@@ -267,7 +267,7 @@ static func poles_on(layout: CityLayout, span: CityLayout.RoadSpan, style: RoadS
 static func guarded(layout: CityLayout, trees: Array[WorldTree]) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for t in trees:
-		if CityHash.tree_unit(t.position, 61) >= 0.4:
+		if CityHash.tree_unit(t.position, 61) >= 0.25:
 			continue
 		var near := [false]
 		layout.segments_near(t.position, 8.0, func(ri: int, i: int) -> bool:

@@ -55,7 +55,7 @@ static func of(road: Road) -> RoadStyle:
 			s.verge = 1.2
 			s.tree_pitch = 15.0
 			s.tree_edge = 1.9
-			s.tree_keep = 0.7
+			s.tree_keep = 0.55
 			s.pole_pitch = 30.0
 			s.species = {&"neem": 0.5, &"coconut": 0.25, &"rain": 0.15, &"palmyra": 0.1}
 		LANE:

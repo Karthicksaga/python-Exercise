@@ -444,14 +444,13 @@ func _road_tiles(c: Node2D, s: float) -> void:
 	_seed(302)
 	for i in 6:
 		_blotch(c, ox + 30 + _rand() * (s - 60), 30 + _rand() * (s - 60), 18 + _rand() * 26, _rgba(25, 25, 28, 0.20 + _rand() * 0.15))
-	for i in 3:
+	for i in 1:
 		# A repair patch: a darker rectangle with a hairline edge.
 		var w := 40 + _rand() * 50
 		var h := 30 + _rand() * 40
 		var px := ox + 10 + _rand() * (s - w - 20)
 		var py := 10 + _rand() * (s - h - 20)
-		_rect(c, px, py, w, h, _rgba(40, 40, 44, 0.35))
-		c.draw_rect(Rect2(px, py, w, h), _rgba(12, 12, 14, 0.5), false, 1.5)
+		_rect(c, px, py, w, h, _rgba(40, 40, 44, 0.22))
 	for i in 7:
 		var p := Vector2(_rand() * s, _rand() * s)
 		for k in 9:
@@ -477,12 +476,12 @@ func _road_tiles(c: Node2D, s: float) -> void:
 	# Footpath slabs: a 4 x 4 grid of cement slabs (tile = 2.4 m), shade varies per slab, a few
 	# chipped or cracked, one missing (bare dust), the grout dark.
 	ox = 10 * s
-	_rect(c, ox, 0, s, s, _css("#7d7a72"))
+	_rect(c, ox, 0, s, s, _css("#97948b"))
 	_seed(321)
 	var cell := s / 4.0
 	for gy in 4:
 		for gx in 4:
-			var shade := 0.88 + _rand() * 0.24
+			var shade := 0.95 + _rand() * 0.1
 			var base := Color(0.72 * shade, 0.70 * shade, 0.66 * shade)
 			var missing := (gx * 7 + gy * 3) % 11 == 5
 			if missing:

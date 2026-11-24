@@ -766,3 +766,23 @@ and freeing a vehicle left far behind), `scene/test_game_vehicles.gd` (end to en
 - The pulled driver's fall is a lean while staggering (no fall clip); the moving vehicle stops
   dead at the press instead of braking.
 - Seen headless only; not on a phone, no screenshots (nothing new is drawn).
+
+
+## Roads (branch `agent/godot-roads`, 24 Nov 2026)
+**Done.** Class-based road detail, G-310 to G-313 (`docs/roads.md` has the research status, the
+class table, the numbers and the cost): worn asphalt, concrete lanes, slab footpaths, laterite
+verges, black-white and yellow-black kerbs, faded and yellow paint, zebra crossings and stop lines on
+junction nodes, manholes, patches and potholes, drains, planted street trees and poles, four tree
+silhouettes in two draw calls, overhead wires, median shrubs, tree guards. Tests:
+`unit/test_road_detail.gd` (classes, markings, crossings on junction nodes, trees off the carriageway,
+determinism, chunk cost). The ground atlas is 16 tiles now: re-bake with
+`tools/bake_city_textures.gd -- --only=ground` (xvfb), then re-import.
+
+**For other agents.** `GroundMeshes.build` takes a `RoadDetail.Plan` (null keeps the old look);
+`Kit.road_detail` and `CityWorld.road_detail` switch it off; `CityLayout.along` now holds every road
+that is not a footway; `GroundMeshes.lane_lines` returns `Vector3` (offset, dashed, yellow).
+
+**Weak or not done.** No reference photo was viewed: Commons refused the downloads (429 with a
+600 s retry, and `thumb` blocked by the network policy). The owner can supply photos. Footpaths
+have no collider; poles on residential streets do not light up at night; no hoardings, stalls,
+flyover pillars, median railings or road signs; llvmpipe only, not a phone.
