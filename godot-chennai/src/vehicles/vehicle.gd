@@ -38,10 +38,13 @@ var _topple_amount := 0.0
 var _driven := false
 
 
-## A vehicle of a variant (`vehicle_types.json`), parked, ready to add to the tree.
-static func create(variant_id: StringName, vehicle_id: StringName = &"") -> Vehicle:
+## A vehicle of a variant (`vehicle_types.json`), parked, ready to add to the tree. `paint`
+## (alpha above 0) repaints this one vehicle (parked cars in the Three.js game's colours).
+static func create(variant_id: StringName, vehicle_id: StringName = &"", paint: Color = Color(0, 0, 0, 0)) -> Vehicle:
 	var v := Vehicle.new()
 	v.variant = VehicleCatalog.variant(variant_id)
+	if paint.a > 0.0:
+		v.variant = VehicleCatalog.repainted(v.variant, paint)
 	v.type = v.variant.type
 	v.id = vehicle_id if vehicle_id != &"" else variant_id
 	v.name = String(v.id)

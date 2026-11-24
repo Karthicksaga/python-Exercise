@@ -45,6 +45,18 @@ var gas := false
 var brake := false
 var steer := 0.0
 
+## False ignores the keyboard, pad and touch (menus); held inputs are let go.
+var reads_devices: bool = true:
+	set(on):
+		reads_devices = on
+		if not on:
+			gas = false
+			brake = false
+			steer = 0.0
+			touch_gas = false
+			touch_brake = false
+			touch_steer = 0.0
+
 var gearbox := Gearbox.new()
 ## The vehicle being driven (seated, in control), else null.
 var vehicle: Vehicle = null
@@ -171,7 +183,8 @@ func gear_label() -> String:
 func _physics_process(delta: float) -> void:
 	if rider == null:
 		return
-	_input.read(self)
+	if reads_devices:
+		_input.read(self)
 	rider.physics_step(delta)
 	if boarding != null:
 		_boarding_step(delta)

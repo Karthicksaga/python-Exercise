@@ -19,7 +19,7 @@ func test_loads_then_title_then_play() -> bool:
 	var reached := await wait_until(func() -> bool: return main.state != &"loading", LOAD_FRAMES)
 	assert_true(reached, "loading finished")
 	assert_eq(main.state, &"title", "title menu after loading (no --start=play)")
-	assert_eq(main.loading.lit_segments(), 3, "every step's segment lit")
+	assert_eq(main.loading.lit_segments(), Main.STEPS.size(), "every step's segment lit")
 	assert_false(main.loading.visible, "loading screen removed")
 	assert_true(main.world != null and main.world.ground_ready(), "test world with its ground collider")
 	assert_true(main.title.visible and not main.hud.visible, "title shown, HUD hidden")
@@ -38,8 +38,11 @@ func test_loads_then_title_then_play() -> bool:
 	assert_contains(main.hud.text(), "%s chunks" % Main._thousands(main.source.chunk_count()), "HUD shows what the reader loaded")
 	assert_true(main.source is RegionalWorldSource and main.source.chunk_count() == 41188, "streams the regional world")
 	assert_true(main.rig != null and main.rig.controls.visible and main.world.focus_node == main.rig.body, "the player is in the city and streaming follows them")
+	# Back goes one level up (chennai-game-design §3): play → pause menu → title.
 	main.go_back()
-	assert_eq(main.state, &"title", "Back during play returns to the title")
+	assert_eq(main.state, &"paused", "Back during play pauses")
+	main.go_back()
+	assert_eq(main.state, &"title", "Back from the pause menu returns to the title")
 	return true
 
 
