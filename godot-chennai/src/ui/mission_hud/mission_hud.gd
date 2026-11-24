@@ -28,6 +28,8 @@ const JOBS_SIZE := Vector2(96, 48)
 const EXIT_ROOM := 112.0
 const URGENT := 10.0
 
+var _fit_toast := false
+
 var money_label: Label
 var stage_label: Label
 var reputation_label: Label
@@ -247,7 +249,7 @@ func _build_dialog() -> void:
 	dialog.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dialog)
 	var dim := ColorRect.new()
-	dim.color = Color(0.04, 0.05, 0.09, 0.78)
+	dim.color = Color(0.04, 0.05, 0.09, 0.9)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dialog.add_child(dim)
@@ -302,6 +304,11 @@ func _build_dialog() -> void:
 
 
 func _process(delta: float) -> void:
+	if _fit_toast:
+		# One frame on, the labels know their wrapped height: shrink to it (a panel outside a
+		# container keeps the tallest size it was ever given).
+		_fit_toast = false
+		toast_panel.size = Vector2(toast_panel.size.x, 0)
 	if _toast_left > 0.0:
 		_toast_left -= delta
 		toast_panel.modulate.a = clampf(_toast_left / 0.3, 0.0, 1.0)
@@ -352,9 +359,14 @@ func toast(title: String, detail: String = "", seconds: float = 3.2) -> void:
 	var width := minf(size.x * 0.6 if size.x > 0.0 else 550.0, maxf(240.0, toast_title.get_theme_font("font").get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 48.0))
 	if detail != "":
 		width = minf(size.x * 0.6 if size.x > 0.0 else 550.0, maxf(width, toast_detail.get_theme_font("font").get_string_size(detail, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x * 0.5 + 48.0))
+	# A fixed width for the labels to wrap at, and a height of what they need: a label wrapped
+	# at an earlier, narrower width must not keep its tall minimum size.
+	toast_title.custom_minimum_size = Vector2(width - 40.0, 0)
+	toast_detail.custom_minimum_size = Vector2(width - 40.0, 0)
 	toast_panel.offset_left = -width / 2.0
 	toast_panel.offset_right = width / 2.0
 	toast_panel.size = Vector2(width, 0)
+	_fit_toast = true
 	toast_panel.visible = true
 	toast_panel.modulate.a = 1.0
 	_toast_left = seconds
@@ -379,6 +391,9 @@ func set_place_prompt(place_name: String) -> void:
 ## shows its reason instead of the detail); `actions`: [{id, label, quiet}].
 func show_dialog(title: String, message: String, rows: Array[Dictionary] = [], actions: Array[Dictionary] = []) -> void:
 	hide_dialog()
+	# A toast behind a full-screen dialog is noise: it goes (the dialog says the news).
+	toast_panel.visible = false
+	_toast_left = 0.0
 	dialog_title.text = title
 	dialog_message.text = message
 	dialog_message.visible = message != ""
