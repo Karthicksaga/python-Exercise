@@ -32,9 +32,8 @@ var _armed: bool = false
 
 func _init() -> void:
 	name = "PerfOverlay"
-	# Under the title (5) and the pause menu (6): it never covers their rows (owner, G-341); over
-	# the mission HUD (3) and the controls.
-	layer = 4
+	# Under the title and pause menus (8) and over the mission HUD and controls (G-350, G-341).
+	layer = 7
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var root := Control.new()
 	root.name = "Root"
@@ -111,8 +110,7 @@ func _init() -> void:
 	_ranked.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_ranked.custom_minimum_size = Vector2(320, 0)
 	inner.add_child(_ranked)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var scroll := UiTheme.touch_scroll()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inner.add_child(scroll)
 	_list = VBoxContainer.new()

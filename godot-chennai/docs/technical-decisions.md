@@ -2031,8 +2031,9 @@ Low → Medium → High with no way back to Auto. The save section is now `chenn
 section keeps its feature switches, never its level (back to Auto, detected again). Auto is also
 detected again once the renderer is up (`refresh_auto`). The overlay names the level and how it was
 set ("Low (auto)", "High (chosen)"). Auto's first check after the 5 s warm-up is a 4 s window (then
-10 s windows), so a level the table guessed wrong is left within seconds. The overlay is on canvas
-layer 4, under the title (5) and the pause menu (6), and hidden while paused.
+10 s windows), so a level the table guessed wrong is left within seconds. The overlay (layer 7) is
+under the title and pause menus (layer 8, G-350) and hidden while paused or while a menu or the
+Jobs list is open.
 
 ### G-342: Low cuts the pixel cost: 65 % resolution, per-vertex lighting, hard shadows
 The phone was GPU-bound (56 ms GPU at 2460x1080, MSAA 2x). Low now renders 3D at 65 % with the
@@ -2063,3 +2064,17 @@ written by the thread that owns the step.
 `TitleWiring._rain` read `RenderingServer.global_shader_parameter_get` every frame: on Vulkan that
 is an editor-only call that syncs with the render thread (the engine prints an error). It reads
 `CityEnvironment.night_level`, set beside the global parameter, instead.
+## G-350: TouchScroll, one gesture owner for every scrolling menu
+Owner bug (phone, build afed12f): menu lists moved a little or jumped under a finger. The engine's
+`ScrollContainer` drag depends on which child takes the press and on touch versus emulated mouse
+events (the project has `emulate_touch_from_mouse`; Android also emulates mouse from touch, so one
+finger arrives as both). `TouchScroll` (`src/ui/touch_scroll/`) owns the gesture in `_input`: the
+first family (touch or mouse) to press owns it and the other's events are swallowed; a press is held
+back, over 10 px it becomes a one-to-one drag (rubber band past the ends, 0.45 of the finger),
+a release then flicks (friction 3.2/s) and springs back from an overscroll; under 10 px it is a tap and
+a mouse click is replayed at that spot so the right row presses. The bar (18 px, `BAR_WIDTH`, plus 6 px
+of slop) is dragged by the same code, so it works with pure touch too. When the list fits, nothing is
+intercepted. `UiTheme.touch_scroll()` makes one; pause, title SETTINGS and CONTROLS, the Jobs dialog and
+the overlay list use it. `step(delta)` is the clock, so tests drive it with 1/60.
+Layers: pause and title are CanvasLayer 8, above the performance overlay (7); the overlay also hides
+while the pause menu or the Jobs dialog is open (`PerfWiring._modal_open`).

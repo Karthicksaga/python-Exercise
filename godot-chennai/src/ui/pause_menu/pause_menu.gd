@@ -26,7 +26,7 @@ const GUTTER := 16
 
 var pause_button: Button
 var _panel: PanelContainer
-var _scroll: ScrollContainer
+var _scroll: TouchScroll
 var _list: VBoxContainer
 var _resume: Button
 var _settings: Dictionary[StringName, Array] = {}  # id → [button, label: Callable, press: Callable]
@@ -35,7 +35,7 @@ var _margin: SafeAreaMargin
 
 func _init() -> void:
 	name = "PauseMenu"
-	layer = 6
+	layer = 8  # above the performance overlay (7), G-350
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var root := Control.new()
 	root.name = "Root"
@@ -87,9 +87,7 @@ func _init() -> void:
 	column.add_theme_constant_override("separation", 8)
 	_panel.add_child(column)
 	column.add_child(UiTheme.label("PAUSED", UiTheme.BUTTON_SIZE + 6, UiTheme.AMBER))
-	_scroll = ScrollContainer.new()
-	_scroll.name = "Scroll"
-	UiTheme.touch_scroll(_scroll)
+	_scroll = UiTheme.touch_scroll()
 	column.add_child(_scroll)
 	_list = VBoxContainer.new()
 	_list.name = "List"

@@ -914,7 +914,8 @@ High, 16-19 fps, GPU-bound at 56 ms GPU, 2460x1080 with MSAA 2x).**
   `docs/performance.md` (lavapipe, Mobile renderer, Vulkan).
 - City materials have no specular term at any level (suspected cause of the white dots on glass and
   walls; not reproduced here, needs the phone).
-- The overlay sits under the title and pause menus (layer 4) and hides while paused.
+- The overlay sits under the title and pause menus (7 under 8, with agent/godot-ui2, G-350) and hides
+  while paused or while a menu or the Jobs list is open.
 - Hitch breakdown (`FrameTimeline`, `ThreadClock`): every hitch line now says which part of the frame
   took the time, what was created, freed or uploaded, and whether the main thread was working or
   waiting for a core. The overlay and the log tally the causes.
@@ -958,3 +959,16 @@ title both carry Graphics and Performance overlay rows (`PerfWiring._add_rows`) 
 tap on each reaches its handler (`test_every_top_right_button_takes_its_tap`). Not tested: a real finger
 drag on a phone (a synthetic touch drag does not reach `ScrollContainer` in a headless SubViewport, so
 the test checks the deadzone setting and that the end of the list scrolls into view).
+
+## Touch scrolling and menus above the overlay (G-350, agent/godot-ui2), 24 Nov 2026
+Owner bug: pause/settings lists did not scroll smoothly with a finger. Fixed with `TouchScroll` (see
+G-350): drag, inertia, edge bounce, tap still presses, draggable 18 px bar, used by every scrolling
+menu. Tests: `tests/scene/test_touch_scroll.gd` injects `InputEventScreenTouch`/`ScreenDrag` (and mouse,
+and both at once like a phone) into the viewport at 915x412, 938x412, 915x458 and 2460x1080 and
+asserts proportional scroll, tap on the right row, flick and rest, bounce, bar drag, last row reachable.
+Pause and title are above the overlay (layer 8 over 7) and the overlay hides under the pause menu and the
+Jobs dialog. For `agent/godot-perf`: `PerfWiring._show_overlay` now keeps `_overlay_wanted`; the per-frame
+code sets `overlay.visible` from it and `_modal_open()`.
+**Not done / weak.** Not run on a phone: the tap replays a mouse click at release, so a pressed look shows
+only at release; at 2460x1080 raw the pause list fits without scrolling (the phone's real viewport is
+938x412); the mouse wheel still uses the engine; horizontal scrolling is not handled (none is used).
