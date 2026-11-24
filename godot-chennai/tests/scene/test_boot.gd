@@ -38,8 +38,12 @@ func test_loads_then_title_then_play() -> bool:
 	assert_contains(main.hud.text(), "%s chunks" % Main._thousands(main.source.chunk_count()), "HUD shows what the reader loaded")
 	assert_true(main.source is RegionalWorldSource and main.source.chunk_count() == 41188, "streams the regional world")
 	assert_true(main.rig != null and main.rig.controls.visible and main.world.focus_node == main.rig.body, "the player is in the city and streaming follows them")
+	var missions := main.find_child("MissionsLayer", false, false) as MissionsLayer
+	assert_true(missions != null and missions.active and missions.hud.visible, "the missions run in play (G-130)")
+	assert_contains(missions.hud.objective_label.text, "Walk to the marker", "stage 1 is asked of the player")
 	main.go_back()
 	assert_eq(main.state, &"title", "Back during play returns to the title")
+	assert_false(missions.active or missions.hud.visible, "the mission HUD is hidden on the title")
 	return true
 
 

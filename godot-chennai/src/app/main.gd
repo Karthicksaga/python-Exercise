@@ -164,6 +164,8 @@ func _add_player() -> String:
 	world.focus_node = rig.body
 	world.manage_origin = true
 	WorldOrigin.shifted.connect(func(_offset: Vector3) -> void: rig.camera.snap())
+	# The missions, jobs, fares and their HUD (G-130): they follow `state_changed` and NEW GAME.
+	add_child(MissionsLayer.for_main(self))
 	return ""
 
 
