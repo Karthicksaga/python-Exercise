@@ -899,3 +899,5 @@ interior seen only on llvmpipe; no grip pose for the player; bicycles not built.
   `TransitLayer.trains`; the station hint then stops saying "no trains yet" by itself
   (`has_trains`). A station departure board can read `trains.departures(...)`. If you change the
   station or line data, keep `transit.json`'s keys or bump its `transit` version.
+**Transit status (paused 25 Nov at the coordinator's request):** done and pushed: OSM stops/stations/routes data, route buses, riding, fast travel, stations, bus job on real stops, walked boarding past the conductor to a seat (G-210…G-220); filtered tests green, last CI green.
+Remaining: the final full run with TEST_TIMEOUT=3000 on the latest merge, rush-hour (standing) and 1830 boarding screenshots, approach path avoiding shelters, interior roof wedges, pre-instancing passengers (4 ms boarding frame).
