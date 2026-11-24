@@ -51,7 +51,7 @@ static func create() -> CityMaterials:
 	if glow != null:
 		c.walls.emission_enabled = true
 		c.walls.emission_texture = glow
-		c.walls.emission = Color.WHITE
+		c.walls.emission = Color.BLACK  # Godot adds the colour to the texture: black leaves only the lit glass
 		c.walls.emission_energy_multiplier = 0.0
 	c.roofs = _vertex_coloured(1.0)
 	c.roofs.albedo_texture = _texture("roof_tiles.png", c.loaded)
@@ -66,7 +66,7 @@ static func create() -> CityMaterials:
 	if kit_glow != null:
 		c.kit.emission_enabled = true
 		c.kit.emission_texture = kit_glow
-		c.kit.emission = Color.WHITE
+		c.kit.emission = Color.BLACK
 		c.kit.emission_energy_multiplier = 0.0
 	c.ground = ShaderMaterial.new()
 	c.ground.shader = GROUND_SHADER

@@ -924,3 +924,26 @@ floating origin on it (`manage_origin`; the rig is in `WorldOrigin.GROUP`, its c
 phase 1: the camera follows in the physics step (G-65), smooth at 60 fps; turning it on for
 90/120 Hz screens needs the camera to read the interpolated transform in `_process`, a Player
 change, so it is listed as open rather than half done.
+
+## Integration: parked vehicles, driving, day/night, pause (G-110…G-119)
+
+- **G-110 Parked vehicles.** `src/app/parked_vehicles/`: the Three.js game's parking (read from
+  the baked mission content) plus `parking_spots.json` for what it did not park (taxis at
+  stations and in T. Nagar, premium cars in Nungambakkam, Poes Garden, Boat Club Road and
+  Besant Nagar, the race car at Irungattukottai). A spot is a world point; it resolves to the
+  nearest road kerb on a worker thread within 560 m, a vehicle is built on a worker and joins
+  the scene within 200 m once its chunk is ready (`world_ready_around`) and nothing stands on
+  the spot; freed beyond 310 m or with its chunk. Vehicles are in `WorldOrigin.GROUP`.
+- **G-111 Driving glue.** `PlayWiring` (one node under the city) holds `Driving`, the touch
+  `DrivingControls`, `ParkedVehicles`, sounds and the environment, so `Main` only runs the flow.
+- **G-112 Crash ejection** uses the ported `CrashRules` (bike and auto riders thrown on hard
+  impacts, car drivers through the windscreen at speed; damage by impact speed, TD-29).
+- **G-113 Day/night and weather in the game.** `EnvironmentWiring` replaces the stand-in sun
+  and sky with `CityEnvironment` driven by `GameLoop.clock` and the `Weather` autoload; lit
+  windows, street lamps and wet streets follow. Emission colour of the facade and kit materials
+  is black: Godot adds the colour to the emission texture, so white lit every wall at night.
+- **G-114 Pause menu** (`src/ui/pause_menu/`): the tree pauses (game time, physics, clock);
+  RESUME, Time, Weather, Sound, QUIT TO TITLE; Back in play pauses, in the menu resumes,
+  at the title goes up one level then quits. Fits 915x412 and 640x320 (`test_ui_layout`).
+- **G-115 Tests share autoloads.** Tests that change the clock, weather or floating origin
+  restore them (an origin left shifted put the next test's ground out of reach).
