@@ -13,7 +13,7 @@ G-70…G-79 in `technical-decisions.md`. Code: `src/physics/` (the vehicle body)
 | Handling numbers | `src/physics/vehicle_spec.gd` | `VehicleSpec` |
 | Kinds, variants, seats, poses, doors, passengers, crash rules | `src/vehicles/data/vehicle_types.json`, `vehicle_type.gd`, `vehicle_catalog.gd` | `packages/vehicles/src/specs.ts`, TD-29 `crash.ts` |
 | Drivable vehicle (model, wheels, doors, siren, lean, topple, crash detection) | `src/vehicles/vehicle.gd`, `vehicle_model.gd` | `Vehicle.ts`, `glbModels.ts` |
-| Gear selector P/R/D, HUD gear | `src/vehicles/gearbox.gd` | `Gearbox.ts`, `gearFor`, `shiftedUp` |
+| Gear selector P/R/D, HUD gear | `src/vehicles/gearbox.gd` | `Gearbox.ts`, `gearFor`, `shiftedUp`. In the game the chips are gone (G-175): hold BRAKE when stopped to reverse; the gear is a readout |
 | Getting in and out (walk, door, pull, climb, sit, close) | `src/vehicles/boarding.gd` | `Boarding.ts` (with the TD-30 `pull` phase) |
 | Crash rules and the thrown body | `src/vehicles/crash_rules.gd`, `crash_flight.gd` | `crash.ts`, `Crashes.ts`, `PlayerController.throwOff` (TD-29) |
 | Driving session (input → gearbox → vehicle, boarding, crashes) | `src/vehicles/driving.gd`, `drive_input.gd` | parts of `Game.ts`, `Boarder.ts` |

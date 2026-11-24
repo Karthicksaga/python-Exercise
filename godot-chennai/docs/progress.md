@@ -238,3 +238,17 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Measured cost (G-195): no new draw calls, +0.6 to 1.0 % primitives, worst build +10 to 16 % | Done | `tests/tools/city_shot.gd` before and after |
 | Name plates for public places; steps onto platforms; swimming; fence and wall textures | Not done | |
 
+
+## Controls redesign (G-170…G-179, branch `agent/godot-controls`, 24 Nov 2026)
+Built from the owner-approved proposal `suggestions/2026-11-24-godot-controls-redesign.md` and its
+interactive prototype (the Proposed on-foot layout and scheme A "wheel").
+| Item | State | How it was tested |
+|---|---|---|
+| Pure logic: dead zone 0.12, run above 0.85 / walk under 0.70, toggle run, look sensitivity / invert-Y / glide, jump buffer 100 ms and coyote 80 ms, relative steering (full lock at 70 units), response curve, reverse on hold 0.4 s below 0.3 m/s (G-171…G-175) | Done | `tests/unit/test_control_logic.gd` (numbers, stepped in 1/60 s of game time) |
+| On foot: floating stick (left), look drag (right), big ACTION button fed by `ActionContext`, small JUMP; RUN and the separate GET IN gone (G-176) | Done on desktop | `test_touch_foot.gd`, `test_touch_layout.gd`, `test_action_context.gd` |
+| Driving, scheme A: slide-to-steer ring, GAS, BRAKE with "hold to reverse", HORN / SIREN, EXIT, readout only; steering slider and P/R/D removed (G-174, G-175) | Done on desktop | `test_driving_controls_layout.gd`, `test_reverse_on_hold.gd` (real hatchback: no reverse before 0.4 s, reverses, release stops, gas ends it, braking from speed never reverses) |
+| Gamepad: stick move/steer/run/look, A, X, RT, LT (analogue, reverses), Y, B, Start; glyphs follow the last device; rumble on crashes (G-178) | Done on desktop with synthetic events; no real pad | `test_gamepad.gd` |
+| Settings: left-handed (exact mirror), look speed, invert-Y, button size, opacity, vibration, run toggle; saved, versioned, live (G-170, G-177) | Done | `test_control_settings.gd`, `test_controls_layout.gd` (915x412 and 1830x824, every size and hand) |
+| `ControlsGuide` rows for the title's CONTROLS page (G-179) | Done | `test_control_settings.gd` |
+| Tilt (scheme B) and buttons (scheme C), combat buttons, kerb haptics | Not built (owner: later); the layout and settings are ready for them | — |
+| Feel on a phone: thumb reach, steering curve, slide distance, glide, haptics strength | Not judged: needs the POCO M6 Pro 5G | — |

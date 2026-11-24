@@ -7,6 +7,11 @@ extends Button
 signal pressed_down
 signal released
 
+## The gamepad or key hint drawn on the button's corner when that device was used last.
+var hint: String = "":
+	set(value):
+		hint = value
+		queue_redraw()
 var _touches: Dictionary = {}
 var _mouse := false
 
@@ -15,6 +20,7 @@ func _init() -> void:
 	focus_mode = Control.FOCUS_NONE
 	toggle_mode = true
 	action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	draw.connect(_draw_hint)
 
 
 func held() -> bool:
@@ -59,3 +65,13 @@ func _notification(what: int) -> void:
 		_touches.clear()
 		_mouse = false
 		set_pressed_no_signal(false)
+
+
+func _draw_hint() -> void:
+	if hint == "":
+		return
+	var font := get_theme_default_font()
+	var w := font.get_string_size(hint, HORIZONTAL_ALIGNMENT_CENTER, -1, 12).x
+	var badge := Rect2(size.x - w - 16.0, 2.0, w + 12.0, 18.0)
+	draw_rect(badge, Color(0, 0, 0, 0.7), true)
+	draw_string(font, Vector2(badge.position.x + 6.0, 15.0), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UiTheme.AMBER)

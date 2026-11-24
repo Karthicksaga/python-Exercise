@@ -39,6 +39,13 @@ var rider: RiderLink
 var touch_gas := false
 var touch_brake := false
 var touch_steer := 0.0
+## How hard GAS and BRAKE are held, 0..1: 1 for a key or a touch, the trigger's travel on a pad.
+var gas_amount := 1.0
+var brake_amount := 1.0
+## Hold BRAKE for 0.4 s when stopped to reverse, release to stop reversing (G-175). The game turns
+## it on (`PlayWiring`); the P/R/D gear API stays for tests and scripted use.
+var reverse_on_hold := false
+var reverse_hold := ReverseHold.new()
 
 ## Held inputs (set by `DriveInput`/the touch controls, or directly by tests).
 var gas := false
@@ -71,6 +78,8 @@ var _path := PackedVector2Array()
 var _thrown_from: Vehicle = null
 var _pending_damage := 0.0
 var _input := DriveInput.new()
+## The gear is R because BRAKE was held to reverse (not because R was selected).
+var _auto_reversed := false
 
 
 func _ready() -> void:
@@ -192,7 +201,7 @@ func _physics_process(delta: float) -> void:
 		_boarding_step(delta)
 	match _mode:
 		&"driving":
-			_drive_step()
+			_drive_step(delta)
 		&"thrown":
 			_thrown_step()
 
@@ -206,9 +215,22 @@ func camera_target() -> Node3D:
 	return rider.body
 
 
-func _drive_step() -> void:
+func _drive_step(dt: float) -> void:
 	var v := vehicle
-	var c := gearbox.controls(gas, brake, steer, v.forward_speed())
+	var speed := v.forward_speed()
+	if reverse_on_hold:
+		_reverse_step(dt, speed)
+	var c: Gearbox.Controls
+	if _auto_reversed:
+		# BRAKE held to reverse: it drives backwards in R, as hard as it is held.
+		c = gearbox.controls(true, false, steer, speed)
+		c.throttle *= brake_amount
+	else:
+		c = gearbox.controls(gas, brake, steer, speed)
+		if gas and gas_amount < 1.0:
+			c.throttle *= gas_amount
+		if brake and brake_amount < 1.0 and gearbox.gear != "P" and gearbox.pending == "":
+			c.brake *= brake_amount
 	v.set_controls(c.throttle, c.steer, c.brake)
 	var hint := gearbox.consume_hint()
 	if hint != "":
@@ -227,6 +249,18 @@ func _drive_step() -> void:
 		rider.hurt(outcome.damage)
 		return
 	_throw(v, outcome)
+
+
+## Reverse-on-hold: engages R when the hold completes and goes back to D when it ends.
+func _reverse_step(dt: float, speed: float) -> void:
+	var rev := reverse_hold.step(dt, brake, gas, speed)
+	if rev and not _auto_reversed and gearbox.gear == "D" and gearbox.pending == "":
+		_auto_reversed = true
+		gearbox.set_now("R")
+	elif not rev and _auto_reversed:
+		_auto_reversed = false
+		if gearbox.gear == "R":
+			gearbox.set_now("D")
 
 
 func _throw(v: Vehicle, outcome: CrashRules.Outcome) -> void:
@@ -332,6 +366,8 @@ func _seat(v: Vehicle) -> void:
 	rider.set_seated(v.type, 1.0)
 	rider.set_figure_visible(v.type.open_seat)
 	gearbox.reset("D")
+	reverse_hold.reset()
+	_auto_reversed = false
 	_hold_seat(v)
 	_set_mode(&"driving")
 
