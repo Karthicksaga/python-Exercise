@@ -3,7 +3,7 @@ extends RefCounted
 ## The flat layers of one chunk in **one** surface (`GroundMeshes.ts` and the kerbs of
 ## `StreetFurniture.ts`): bare earth, parks, water, sand, verges and footpaths, road surface,
 ## lane markings and the yellow-black kerbs of the main roads. Each vertex carries its layer in
-## UV2.x and the ground shader (`ground.gdshader`) picks that layer's tile of the ground atlas,
+## its texture u (`layer * LAYER_U + repeats`) and the ground shader (`ground.gdshader`) picks that layer's tile of the ground atlas,
 ## so a chunk's whole ground is one draw call.
 ##
 ## Markings follow the road class (invented, OSM does not map paint): a dashed centre line on
@@ -26,10 +26,21 @@ var mesh := MeshBuilder.new()
 var origin := Vector2.ZERO
 ## Stripes painted (for tests).
 var stripes := 0
+var _layer_index := 0
+## The layer is stored in u: u / LAYER_U (`ground.gdshader`); repeats stay below it.
+const LAYER_U := 1024.0
 
 
 func _layer(layer: int) -> void:
-	mesh.uv2 = Vector2(layer, 0.0)
+	_layer_index = layer
+
+
+## Texture coordinates of a world point at `scale` metres per repeat, carrying the layer: u is
+## `layer * LAYER_U +` the repeat count from a whole number of repeats 1 km left of the chunk (so tiling stays continuous across chunks and the numbers stay small).
+func _uv(world: Vector2, scale: float) -> Vector2:
+	var base := Vector2(floorf((origin.x - 1000.0) / scale), floorf((origin.y - 1000.0) / scale))
+	var uv := world / scale - base
+	return Vector2(uv.x + _layer_index * LAYER_U, uv.y)
 
 
 ## A flat ribbon along a polyline with a disc at every vertex to close joints (`ribbon`).
@@ -58,7 +69,7 @@ func ribbon(points: PackedVector2Array, width: float, y: float, uv_scale: float,
 
 func _v(p: Vector2, y: float, uv_scale: float) -> int:
 	# UVs from world positions, so textures line up across chunks.
-	return mesh.vertex(Vector3(p.x, y, p.y), Vector3.UP, (p + origin) / uv_scale)
+	return mesh.vertex(Vector3(p.x, y, p.y), Vector3.UP, _uv(p + origin, uv_scale))
 
 
 ## Lines painted on a road: offsets from the centre line and whether each is dashed (`laneLines`).
@@ -87,7 +98,7 @@ func _stripe(centre: Vector2, dir: Vector2, along: float) -> void:
 	var c := centre - origin
 	var a := dir * (along / 2.0)
 	var s := Vector2(-dir.y, dir.x) * (PAINT_WIDTH / 2.0)
-	var uv := Vector2(0.5, 0.5)
+	var uv := Vector2(_layer_index * LAYER_U + 0.5, 0.5)
 	var n := Vector3.UP
 	var i0 := mesh.vertex(Vector3(c.x - a.x - s.x, Y_MARKING, c.y - a.y - s.y), n, uv)
 	var i1 := mesh.vertex(Vector3(c.x + a.x - s.x, Y_MARKING, c.y + a.y - s.y), n, uv)
@@ -143,7 +154,7 @@ func polygon(outline: PackedVector2Array, y: float, layer: int) -> void:
 		return
 	var base := mesh.vertex_count()
 	for p in local:
-		mesh.vertex(Vector3(p.x, y, p.y), Vector3.UP, (p + origin) / 6.0)
+		mesh.vertex(Vector3(p.x, y, p.y), Vector3.UP, _uv(p + origin, 6.0))
 	for t in range(0, faces.size(), 3):
 		var p0 := local[faces[t]]
 		var p1 := local[faces[t + 1]]
@@ -154,6 +165,21 @@ func polygon(outline: PackedVector2Array, y: float, layer: int) -> void:
 			mesh.triangle(base + faces[t], base + faces[t + 2], base + faces[t + 1])
 
 
+## Ground layer of an area kind (format 1 and 2), or -1 for land use drawn as bare earth
+## (residential, industrial…, which the earth under every chunk already shows).
+static func area_layer(kind: StringName) -> int:
+	match kind:
+		&"park", &"farmland", &"orchard", &"meadow", &"scrub", &"forest", &"cemetery", &"sport", &"mangrove":
+			return CityAtlas.GROUND_GRASS
+		&"water", &"reservoir", &"wetland":
+			return CityAtlas.GROUND_WATER
+		&"beach", &"saltpan":
+			return CityAtlas.GROUND_SAND
+		&"apron", &"helipad":
+			return CityAtlas.GROUND_PAVING
+	return -1
+
+
 ## The bare earth under a whole chunk square.
 func earth(square: Rect2) -> void:
 	_layer(CityAtlas.GROUND_EARTH)
@@ -161,7 +187,7 @@ func earth(square: Rect2) -> void:
 	var ids: Array[int] = []
 	for c: Vector2 in corners:
 		var p := c - origin
-		ids.append(mesh.vertex(Vector3(p.x, Y_EARTH, p.y), Vector3.UP, c / 8.0))
+		ids.append(mesh.vertex(Vector3(p.x, Y_EARTH, p.y), Vector3.UP, _uv(c, 8.0)))
 	mesh.quad(ids[0], ids[3], ids[2], ids[1])
 
 
@@ -171,6 +197,7 @@ func kerbs(runs: Array[StreetFurniture.KerbRun]) -> void:
 	var h := StreetFurniture.KERB_HEIGHT
 	for run in runs:
 		var n := run.inner.size()
+		var run_base := floorf(run.along[0] / 2.0)
 		for i in n - 1:
 			var a0 := run.inner[i] - origin
 			var a1 := run.inner[i + 1] - origin
@@ -182,7 +209,7 @@ func kerbs(runs: Array[StreetFurniture.KerbRun]) -> void:
 			var verts: Array[Vector3] = [
 				Vector3(a0.x, h, a0.y), Vector3(a1.x, h, a1.y), Vector3(b1.x, h, b1.y), Vector3(b0.x, h, b0.y),
 				Vector3(a0.x, 0.0, a0.y), Vector3(a1.x, 0.0, a1.y), Vector3(b1.x, 0.0, b1.y), Vector3(b0.x, 0.0, b0.y)]
-			var us := [u0, u1, u1, u0, u0, u1, u1, u0]
+			var us := [u0 - run_base, u1 - run_base, u1 - run_base, u0 - run_base, u0 - run_base, u1 - run_base, u1 - run_base, u0 - run_base]
 			var d := a1 - a0
 			_kerb_face(verts, us, [0, 1, 2, 3], Vector3.UP)
 			_kerb_face(verts, us, [4, 5, 1, 0], Vector3(f.x, 0.0, f.y))
@@ -196,7 +223,7 @@ func kerbs(runs: Array[StreetFurniture.KerbRun]) -> void:
 func _kerb_face(verts: Array[Vector3], us: Array, k: Array, normal: Vector3) -> void:
 	var ids: Array[int] = []
 	for j: int in k:
-		ids.append(mesh.vertex(verts[j], normal, Vector2(float(us[j]), 0.5)))
+		ids.append(mesh.vertex(verts[j], normal, Vector2(float(us[j]) + _layer_index * LAYER_U, 0.5)))
 	var p := verts[k[0]]
 	if (verts[k[1]] - p).cross(verts[k[3]] - p).dot(normal) >= 0.0:
 		mesh.quad(ids[0], ids[1], ids[2], ids[3])
@@ -208,8 +235,9 @@ func _kerb_face(verts: Array[Vector3], us: Array, k: Array, normal: Vector3) -> 
 func build(spans: Array, areas: Array[WorldArea], square: Rect2, kerb_runs: Array[StreetFurniture.KerbRun]) -> void:
 	earth(square)
 	for area in areas:
-		var layer := CityAtlas.GROUND_GRASS if area.kind == &"park" else (CityAtlas.GROUND_WATER if area.kind == &"water" else CityAtlas.GROUND_SAND)
-		polygon(area.outline, Y_PARK, layer)
+		var layer := area_layer(area.kind)
+		if layer >= 0:
+			polygon(area.outline, Y_PARK, layer)
 	for span: CityLayout.RoadSpan in spans:
 		var road := span.road
 		var pts := road.points.slice(span.start, span.end + 1)

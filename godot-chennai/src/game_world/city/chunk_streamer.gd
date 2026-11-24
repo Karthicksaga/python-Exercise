@@ -82,6 +82,7 @@ func start(with_kit: ChunkBuilder.Kit) -> void:
 ## One frame of streaming: start builds, collect finished ones, spend the main-thread budget.
 func step() -> void:
 	var started := Time.get_ticks_usec()
+	kit.layouts.prefetch(focus)
 	_drop_far()
 	_collect()
 	_start_builds()
@@ -102,8 +103,8 @@ func step() -> void:
 
 ## Distance from a point to a chunk square's nearest edge (0 inside it).
 func distance_to_cell(cell: Vector2i, p: Vector2) -> float:
-	var size := kit.layout.chunk_size
-	var lo := kit.layout.bounds.position + Vector2(cell) * size
+	var size := kit.source.get_chunk_size()
+	var lo := kit.source.get_grid_origin() + Vector2(cell) * size
 	return p.distance_to(p.clamp(lo, lo + Vector2(size, size)))
 
 

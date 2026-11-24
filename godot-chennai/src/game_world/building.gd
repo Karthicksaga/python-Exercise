@@ -17,5 +17,15 @@ var kind: StringName = &"house"
 var color_hex: int = 0
 
 
+## Format 2 only (empty or defaults for format 1): courtyards (holes, opposite winding),
+## height of the underside above ground, OSM building use and roof shape names, provenance.
+var holes: Array[PackedVector2Array] = []
+var min_height: float = 0.0
+var use: StringName = &"unknown"
+var roof_shape: StringName = &"unknown"
+var dataset: int = 0
+var source_id: int = 0
+
+
 func color() -> Color:
 	return Color.hex((color_hex << 8) | 0xff)

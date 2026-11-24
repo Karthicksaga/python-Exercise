@@ -23,7 +23,7 @@ signal ready_to_stream
 const SPAWN_NEAR := Vector2(40.0, 60.0)
 
 var source: WorldSource
-var layout: CityLayout
+var layouts: CityLayouts
 var models: CityModels
 var materials: CityMaterials
 var streamer: ChunkStreamer
@@ -55,28 +55,26 @@ func _ready() -> void:
 ## Prepares the city from an opened source; "" or what went wrong. Awaits worker threads.
 func setup(world: WorldSource) -> String:
 	source = world
-	var index := world.index_at(world.get_bounds().get_center())
-	var stops: Array[Place] = index.bus_stops if index != null else ([] as Array[Place])
-	var roads := world.loaded_roads()
-	var bounds := world.get_bounds()
-	var size := world.get_chunk_size()
-	layout = await BackgroundTask.start(func() -> CityLayout: return CityLayout.build(roads, bounds, size, stops)).finish(get_tree())
+	layouts = await BackgroundTask.start(CityLayouts.create.bind(world)).finish(get_tree())
+	spawn = await BackgroundTask.start(_find_spawn).finish(get_tree())
 	models = await BackgroundTask.start(func() -> CityModels: return CityModels.create()).finish(get_tree())
 	if models.error != "":
 		push_warning(models.error)
-	materials = await BackgroundTask.start(CityMaterials.create).finish(get_tree())
+	# Materials on the main thread: a ShaderMaterial set up on a worker lost its parameters
+	# under the Compatibility renderer (G-52).
+	materials = CityMaterials.create()
 	var kit := ChunkBuilder.Kit.new()
 	kit.source = world
-	kit.layout = layout
+	kit.layouts = layouts
 	kit.models = models
 	kit.materials = materials
 	kit.tree_mesh = models.tree.commit(materials.foliage)
 	kit.palm_mesh = models.palm.commit(materials.foliage)
-	var fixed: Array = await BackgroundTask.start(_build_fixed.bind(index)).finish(get_tree())
+	kit.tree_triangles = models.tree.triangle_count()
+	kit.palm_triangles = models.palm.triangle_count()
+	var fixed: Array = await BackgroundTask.start(_build_fixed).finish(get_tree())
 	for node: Node3D in fixed:
 		_fixed.add_child(node)
-	var hit := layout.nearest_road_point(SPAWN_NEAR)
-	spawn = {"point": hit.get("point", SPAWN_NEAR), "heading": hit.get("heading", 0.0)}
 	if focus_node == null and focus == Vector2.ZERO:
 		focus = spawn["point"]
 	streamer.focus = _focus_world()
@@ -86,12 +84,22 @@ func setup(world: WorldSource) -> String:
 	return ""
 
 
+## The nearest road point to SPAWN_NEAR and its heading (worker thread).
+func _find_spawn() -> Dictionary:
+	var hit := nearest_road_point(SPAWN_NEAR)
+	return {"point": hit.get("point", SPAWN_NEAR), "heading": hit.get("heading", 0.0)}
+
+
+## Nearest drivable road point to a world point (`CityLayout.nearest_road_point`); may build a
+## tile's layout, so prefer a worker thread.
+func nearest_road_point(point: Vector2) -> Dictionary:
+	return layouts.layout_for(source.cell_at(point)).nearest_road_point(point)
+
+
 ## Landmarks, sea and edge walls as nodes outside the tree (worker thread).
-func _build_fixed(index: WorldIndex) -> Array:
+func _build_fixed() -> Array:
 	var out: Array = []
-	if index == null:
-		return out
-	for mark in index.landmarks:
+	for mark in source.get_landmarks():
 		var mesh: LandmarkMeshes = null
 		var body := StaticBody3D.new()
 		var faces := PackedVector3Array()
@@ -137,8 +145,9 @@ func _build_fixed(index: WorldIndex) -> Array:
 		body.add_child(cs)
 		holder.add_child(body)
 		out.append(holder)
-	if index.sea != null and index.sea.outline.size() >= 3:
-		out.append(_sea(index.sea))
+	var sea := source.get_sea()
+	if sea != null and sea.outline.size() >= 3:
+		out.append(_sea(sea))
 	out.append(_edges(source.get_bounds()))
 	return out
 

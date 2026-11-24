@@ -1,0 +1,224 @@
+{
+ "2_5": {
+  "chunks": 1599,
+  "files": 1574,
+  "buildings": 71408,
+  "trees": 29732,
+  "areas": 2453,
+  "pieces": 14987,
+  "busStops": 121,
+  "dense": {
+   "cell": [
+    108,
+    222
+   ],
+   "buildings": 332,
+   "first": {
+    "id": 354227516,
+    "height": 7.1,
+    "floors": 2,
+    "kind": "house",
+    "heightFrom": "estimated",
+    "n": 4,
+    "p0": [
+     -1254.15,
+     -1829.9
+    ],
+    "holes": 0,
+    "roof": "unknown",
+    "use": "unknown",
+    "minHeight": 0.0
+   }
+  },
+  "road0": {
+   "id": 47483480,
+   "piece": 0,
+   "kind": "service",
+   "width": 4.0,
+   "oneway": true,
+   "name": "Bus Exit",
+   "n": 23,
+   "first": [
+    -594.35,
+    1987.0
+   ],
+   "last": [
+    -1009.3,
+    1700.75
+   ],
+   "offset": 0.0,
+   "total": 543.422,
+   "bridge": false,
+   "layer": 0
+  },
+  "named": {
+   "id": 47483480,
+   "piece": 0,
+   "kind": "service",
+   "width": 4.0,
+   "oneway": true,
+   "name": "Bus Exit",
+   "n": 23,
+   "first": [
+    -594.35,
+    1987.0
+   ],
+   "last": [
+    -1009.3,
+    1700.75
+   ],
+   "offset": 0.0,
+   "total": 543.422,
+   "bridge": false,
+   "layer": 0
+  }
+ },
+ "4_4": {
+  "chunks": 96,
+  "files": 86,
+  "buildings": 1857,
+  "trees": 764,
+  "areas": 117,
+  "pieces": 331,
+  "busStops": 1,
+  "dense": {
+   "cell": [
+    163,
+    165
+   ],
+   "buildings": 358,
+   "first": {
+    "id": 1344677417,
+    "height": 7.1,
+    "floors": 2,
+    "kind": "house",
+    "heightFrom": "estimated",
+    "n": 4,
+    "p0": [
+     12629.2,
+     -15997.4
+    ],
+    "holes": 0,
+    "roof": "unknown",
+    "use": "unknown",
+    "minHeight": 0.0
+   }
+  },
+  "road0": {
+   "id": 281636350,
+   "piece": 0,
+   "kind": "residential",
+   "width": 7.0,
+   "oneway": false,
+   "name": "",
+   "n": 3,
+   "first": [
+    12031.0,
+    -13354.1
+   ],
+   "last": [
+    11668.2,
+    -13432.6
+   ],
+   "offset": 0.0,
+   "total": 371.238,
+   "bridge": false,
+   "layer": 0
+  },
+  "named": {
+   "id": 292021130,
+   "piece": 1,
+   "kind": "primary",
+   "width": 15.0,
+   "oneway": false,
+   "name": "Chennai - Ennore Road",
+   "n": 31,
+   "first": [
+    11633.7,
+    -14108.55
+   ],
+   "last": [
+    11854.85,
+    -15259.9
+   ],
+   "offset": 577.336,
+   "total": 1876.167,
+   "bridge": false,
+   "layer": 0
+  }
+ },
+ "0_0": {
+  "chunks": 73,
+  "files": 62,
+  "buildings": 9,
+  "trees": 958,
+  "areas": 23,
+  "pieces": 63,
+  "busStops": 0,
+  "dense": {
+   "cell": [
+    23,
+    24
+   ],
+   "buildings": 2,
+   "first": {
+    "id": 1274243535,
+    "height": 7.1,
+    "floors": 2,
+    "kind": "apartments",
+    "heightFrom": "estimated",
+    "n": 4,
+    "p0": [
+     -22638.65,
+     -51201.1
+    ],
+    "holes": 0,
+    "roof": "unknown",
+    "use": "unknown",
+    "minHeight": 0.0
+   }
+  },
+  "road0": {
+   "id": 1034294470,
+   "piece": 0,
+   "kind": "secondary",
+   "width": 14.0,
+   "oneway": false,
+   "name": "Aroor - Egumadurai Road",
+   "n": 9,
+   "first": [
+    -19415.65,
+    -47973.0
+   ],
+   "last": [
+    -20349.35,
+    -49788.8
+   ],
+   "offset": 0.0,
+   "total": 2071.33,
+   "bridge": false,
+   "layer": 0
+  },
+  "named": {
+   "id": 1034294470,
+   "piece": 0,
+   "kind": "secondary",
+   "width": 14.0,
+   "oneway": false,
+   "name": "Aroor - Egumadurai Road",
+   "n": 9,
+   "first": [
+    -19415.65,
+    -47973.0
+   ],
+   "last": [
+    -20349.35,
+    -49788.8
+   ],
+   "offset": 0.0,
+   "total": 2071.33,
+   "bridge": false,
+   "layer": 0
+  }
+ }
+}

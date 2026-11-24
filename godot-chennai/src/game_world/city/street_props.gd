@@ -75,7 +75,7 @@ static func along_road(road: Road, dist: PackedFloat64Array, from: float, to: fl
 				var ok := true
 				for item: Array in items:
 					var d := d0 + float(item[1]) * side
-					if d < 0.0 or d > total:
+					if d < dist[0] or d > total:
 						ok = false
 					for st in stretches:
 						if d >= st.x - 1.5 and d <= st.y + 1.5:

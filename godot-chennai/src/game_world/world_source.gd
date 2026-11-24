@@ -48,8 +48,25 @@ extends RefCounted
 @abstract func index_at(point: Vector2) -> WorldIndex
 
 
+## Corner of chunk (0, 0) of the shared grid, world metres (format 1: the bounds' corner).
+func get_grid_origin() -> Vector2:
+	return get_bounds().position
+
+
 ## Grid cell of a point on the shared chunk grid.
 func cell_at(point: Vector2) -> Vector2i:
-	var b := get_bounds()
+	var o := get_grid_origin()
 	var size := get_chunk_size()
-	return Vector2i(floori((point.x - b.position.x) / size), floori((point.y - b.position.y) / size))
+	return Vector2i(floori((point.x - o.x) / size), floori((point.y - o.y) / size))
+
+
+## Landmarks of the whole world (always loaded; they are seen from afar).
+func get_landmarks() -> Array[Landmark]:
+	var index := index_at(get_bounds().get_center())
+	return index.landmarks if index != null else ([] as Array[Landmark])
+
+
+## The sea where the map has a coast, or null.
+func get_sea() -> WorldSea:
+	var index := index_at(get_bounds().get_center())
+	return index.sea if index != null else null

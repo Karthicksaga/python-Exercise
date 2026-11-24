@@ -43,7 +43,9 @@ func _run() -> void:
 		return
 	var city: Node = (load(CITY_PATH) as PackedScene).instantiate()
 	root.add_child(city)
+	print("setup…")
 	err = await city.call("setup", source)
+	print("setup done %s textures %s" % [err, (city.get("materials") as RefCounted).get("loaded")])
 	var spawn: Dictionary = city.get("spawn")
 	var point: Vector2 = spawn["point"]
 	var heading: float = spawn["heading"]
@@ -60,7 +62,7 @@ func _run() -> void:
 				if d < best:
 					best = d
 					point = q
-		var hit: Dictionary = (city.get("layout") as RefCounted).call("nearest_road_point", point)
+		var hit: Dictionary = city.call("nearest_road_point", point)
 		heading = spec.get("heading", hit.get("heading", 0.0))
 		if spec.has("side"):
 			point += Vector2(-sin(heading), -cos(heading)) * -float(spec["side"])
@@ -72,6 +74,17 @@ func _run() -> void:
 	var ok: bool = await city.call("wait_ready_around", point)
 	for i in 20:
 		await process_frame
+	print("debug children ", streamer.get_child_count(), " env ", OS.get_environment("CITY_DEBUG"))
+	if OS.get_environment("CITY_DEBUG") != "":
+		for v: Node in streamer.get_children():
+			print(v.name, " ", v.get_children().map(func(c: Node) -> String: return c.name))
+			var g := v.get_node_or_null("Ground") as MeshInstance3D
+			if g != null:
+				var a := g.mesh.surface_get_arrays(0)
+				var uv: PackedVector2Array = a[Mesh.ARRAY_TEX_UV]
+				var vx: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+				print("ground ", v.name, " verts ", vx.size(), " uv ", uv.slice(0, 4), " fmt ", (g.mesh as ArrayMesh).surface_get_format(0))
+				break
 	var draws := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
 	var prims := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)
 	var objects := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)

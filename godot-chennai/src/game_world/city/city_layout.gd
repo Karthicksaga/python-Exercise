@@ -5,7 +5,9 @@ extends RefCounted
 ## the road segment grid (`geometry.ts`), the main-road junctions, distances and bus shelters
 ## of `furniture.ts`.
 ##
-## Read-only once built, so every chunk build on every worker thread can share it.
+## Read-only once built, so every chunk build on every worker thread can share it. For the
+## regional world there is one per 10 km tile, with the neighbours' roads near its edges
+## (`CityLayouts`).
 
 ## A run of consecutive segments of one road whose midpoints lie in one chunk.
 class RoadSpan:
@@ -74,12 +76,16 @@ func _build_spans() -> void:
 		var pts := road.points
 		if pts.size() < 2:
 			continue
+		# Distances along the whole road: a format 2 piece starts `offset_along` metres in, so
+		# dashes, poles and props stay in step across tiles.
 		var dist := PackedFloat64Array()
 		dist.resize(pts.size())
-		var total := 0.0
+		var run := road.offset_along
+		dist[0] = run
 		for i in range(1, pts.size()):
-			total += pts[i - 1].distance_to(pts[i])
-			dist[i] = total
+			run += pts[i - 1].distance_to(pts[i])
+			dist[i] = run
+		var total := road.total_length if road.total_length > 0.0 else run
 		if road.is_main():
 			along[ri] = dist
 		var run_key := Vector2i(-999999, -999999)
@@ -208,7 +214,7 @@ static func lane_count(road: Road) -> int:
 func blocked_stretches(ri: int, ends: bool) -> PackedVector2Array:
 	var road := roads[ri]
 	var dist: PackedFloat64Array = along[ri]
-	var total := dist[dist.size() - 1]
+	var total := road.total_length if road.total_length > 0.0 else dist[dist.size() - 1]
 	var out := PackedVector2Array()
 	if ends:
 		out.append(Vector2(-1.0, StreetFurniture.END_CLEAR))

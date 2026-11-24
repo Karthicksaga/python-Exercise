@@ -23,11 +23,15 @@ const AC_ABOVE_FLOOR := 0.3
 class Kit:
 	extends RefCounted
 	var source: WorldSource
-	var layout: CityLayout
+	var layouts: CityLayouts
 	var models: CityModels
 	var materials: CityMaterials
 	var tree_mesh: ArrayMesh
 	var palm_mesh: ArrayMesh
+	## Triangles of one tree and one palm (never ask the meshes on a worker: that waits on the
+	## render thread).
+	var tree_triangles: int = 0
+	var palm_triangles: int = 0
 	## Distance (m, from the camera to a layer's centre) where the near look ends.
 	var near_range: float = 210.0
 	var object_range: float = 160.0
@@ -64,24 +68,24 @@ class Build:
 		return n
 
 
-static func centre_of(layout: CityLayout, cell: Vector2i) -> Vector2:
-	return layout.bounds.position + (Vector2(cell) + Vector2(0.5, 0.5)) * layout.chunk_size
+static func centre_of(source: WorldSource, cell: Vector2i) -> Vector2:
+	return source.get_grid_origin() + (Vector2(cell) + Vector2(0.5, 0.5)) * source.get_chunk_size()
 
 
 static func build(kit: Kit, cell: Vector2i) -> Build:
 	var started := Time.get_ticks_usec()
 	var out := Build.new()
 	out.cell = cell
-	out.centre = centre_of(kit.layout, cell)
+	out.centre = centre_of(kit.source, cell)
 	var chunk := kit.source.read_chunk(cell)
 	out.chunk = chunk
 	if not chunk.ok():
 		out.error = chunk.error
 		return out
-	var layout := kit.layout
+	var layout := kit.layouts.layout_for(cell)
 	var spans := layout.spans_in(cell)
 	var size := layout.chunk_size
-	var square := Rect2(layout.bounds.position + Vector2(cell) * size, Vector2(size, size))
+	var square := Rect2(kit.source.get_grid_origin() + Vector2(cell) * size, Vector2(size, size))
 	out.furniture = StreetFurniture.for_chunk(layout, chunk, cell)
 	out.props = StreetProps.for_chunk(layout, chunk, cell, out.furniture)
 
@@ -92,7 +96,7 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	var ground := GroundMeshes.new()
 	ground.origin = out.centre
 	ground.build(spans, chunk.areas, square, out.furniture.kerbs)
-	_add_mesh(out, "ground", ground.mesh, kit.materials.ground, 0.0, 0.0, false, true)
+	_add_mesh(out, "ground", ground.mesh, kit.materials.ground, 0.0, 0.0, false)
 
 	var meshes := BuildingMeshes.new()
 	meshes.origin = out.centre
@@ -229,7 +233,7 @@ static func _add_trees(kit: Kit, out: Build, chunk: ChunkData) -> void:
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if kit.shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		node.visibility_range_end = kit.tree_range
 		out.view.add_child(node)
-		var per := (kit.palm_mesh if kind == 0 else kit.tree_mesh).get_faces().size() / 3
+		var per := kit.palm_triangles if kind == 0 else kit.tree_triangles
 		out.triangles["palms" if kind == 0 else "trees"] = per * list.size()
 		out.surfaces += 1
 
