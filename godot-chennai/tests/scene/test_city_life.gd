@@ -323,7 +323,11 @@ func test_a_taken_vehicle_left_far_behind_is_freed() -> bool:
 	assert_true(await wait_until(func() -> bool: return driving.mode() == &"foot", 60 * 10), "back on foot")
 	await wait_physics_frames(60)
 	assert_true(is_instance_valid(taken), "parked beside the player, kept")
-	body.global_position += Vector3(Carjacking.FORGET + 60.0, 0, 0)
+	# The streets centre on a point far away (the world itself keeps streaming round the player).
+	var far := Node3D.new()
+	world.add_child(far)
+	far.global_position = taken.global_position + Vector3(Carjacking.FORGET + 60.0, 0, 0)
+	life.focus_node = far
 	assert_true(await wait_until(func() -> bool: return not is_instance_valid(taken), 60 * 5), "left far behind, it is freed")
 	assert_eq(jack.stolen.size(), 0, "and forgotten")
 	return true
