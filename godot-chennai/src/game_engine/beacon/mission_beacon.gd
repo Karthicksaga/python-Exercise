@@ -180,6 +180,11 @@ func shown() -> bool:
 	return _shown
 
 
+## Entrance rings further than this from the camera are not drawn (metres).
+const ENTRANCE_REACH := 120.0
+var _entrance_mesh: Mesh = null
+
+
 ## "420 m" below a kilometre (to ten metres from 100 m), "1.2 km" above.
 static func _metres_text(m: float) -> String:
 	if m < 1000.0:
@@ -272,13 +277,18 @@ func _follow_camera() -> void:
 ## label and a small ring, and only the ones near enough to matter (the caller filters by
 ## distance; a label never shows from afar).
 func set_entrances(points: Array[Dictionary]) -> void:
+	# One mesh and material for every entrance ring (G-257): a ring each built a torus and a
+	# material per entrance, so the renderer could not share them.
+	if _entrance_mesh == null:
+		_entrance_mesh = _ring_mesh(_additive(PLACE_COLOUR, 0.7))
 	while _entrances.size() < points.size():
 		var n := Node3D.new()
 		n.name = "Entrance%d" % _entrances.size()
 		n.top_level = true
 		var r := MeshInstance3D.new()
 		r.name = "Ring"
-		r.mesh = _ring_mesh(_additive(PLACE_COLOUR, 0.7))
+		r.mesh = _entrance_mesh
+		r.visibility_range_end = ENTRANCE_REACH
 		r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		n.add_child(r)
 		var l := _make_label("Label", 26, 0.0014)

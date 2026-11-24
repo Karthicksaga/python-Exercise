@@ -13,24 +13,27 @@ extends RefCounted
 const MIN_TARGET := 48.0
 
 ## On foot.
-const ACTION_SIZE := 104.0
+## Hit-area sizes: the glass circle drawn inside is about 80 % of these (G-290), so a button is
+## smaller to the eye than before and still at least 48 dp to the thumb.
+const ACTION_SIZE := 88.0
 const JUMP_SIZE := 70.0
 const RUN_SIZE := 70.0
 const FOOT_RIGHT := 20.0
 const FOOT_BOTTOM := 36.0
-const FOOT_GAP := 8.0
+const FOOT_GAP := 10.0
 ## Share of the width, from the stick's side, where a touch takes the stick (the rest looks).
 const MOVE_SHARE := 0.45
 const STICK_RADIUS := 56.0
 const STICK_REST := 28.0
 
 ## Driving.
-const GAS_SIZE := Vector2(100, 124)
-const BRAKE_SIZE := Vector2(100, 100)
-const HORN_SIZE := 56.0
-const EXIT_SIZE := Vector2(100, 52)
+const GAS_SIZE := Vector2(92, 92)
+const BRAKE_SIZE := Vector2(76, 76)
+const HORN_SIZE := 52.0
+const EXIT_SIZE := Vector2(48, 48)
 const DRIVE_RIGHT := 16.0
-const DRIVE_BOTTOM := 24.0
+## Room under the pedals for BRAKE's "hold to reverse" line, clear of the map credit.
+const DRIVE_BOTTOM := 40.0
 const DRIVE_GAP := 12.0
 const READOUT_SIZE := Vector2(180, 40)
 ## Share of the width, from the steering side, where a touch steers.

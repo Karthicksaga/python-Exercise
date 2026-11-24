@@ -11,16 +11,28 @@ const SODIUM := Color(1.0, 0.62, 0.26)
 const POOL := 6
 const RANGE := 15.0
 const HEAD_HEIGHT := 7.5
+## The ground glow under a lamp (metres across) and how far away pools are drawn.
+const POOL_SIZE := 13.0
+const POOL_REACH := 140.0
 
 var lamps: PackedVector3Array = PackedVector3Array()
 ## Height of the lamp heads above the lamp points (the city's poles carry theirs higher).
 var head_height: float = HEAD_HEIGHT
 var night: float = 0.0
 var lights: Array[OmniLight3D] = []
+## Real lights in use, at most POOL (quality presets lower it, G-252).
+var pool: int = POOL:
+	set(value):
+		pool = clampi(value, 0, POOL)
+		_pick_timer = 0.0
 
 var _heads: MultiMeshInstance3D
 var _poles: MultiMeshInstance3D = null
 var _head_material: StandardMaterial3D
+## A soft sodium pool on the ground under every lamp (G-259): one additive, unshaded MultiMesh,
+## so the street reads lit at night without a per-pixel light on the merged chunk meshes.
+var _pools: MultiMeshInstance3D
+var _pool_material: StandardMaterial3D
 var _pick_timer: float = 0.0
 
 
@@ -36,6 +48,32 @@ func _init(with_poles: bool = false) -> void:
 	head.material = _head_material
 	_heads = _multimesh(head)
 	add_child(_heads)
+	_pool_material = StandardMaterial3D.new()
+	_pool_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_pool_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_pool_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	_pool_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	_pool_material.disable_fog = false
+	var glow := GradientTexture2D.new()
+	glow.fill = GradientTexture2D.FILL_RADIAL
+	glow.fill_from = Vector2(0.5, 0.5)
+	glow.fill_to = Vector2(0.5, 0.0)
+	glow.width = 64
+	glow.height = 64
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1, 1))
+	g.set_color(1, Color(1, 1, 1, 0))
+	glow.gradient = g
+	_pool_material.albedo_texture = glow
+	_pool_material.albedo_color = Color(SODIUM, 0.0)
+	var quad := PlaneMesh.new()
+	quad.size = Vector2(POOL_SIZE, POOL_SIZE)
+	quad.material = _pool_material
+	_pools = _multimesh(quad)
+	_pools.name = "Pools"
+	_pools.visibility_range_end = POOL_REACH
+	_pools.visible = false
+	add_child(_pools)
 	if with_poles:
 		var pole_material := StandardMaterial3D.new()
 		pole_material.albedo_color = Color(0.42, 0.43, 0.42)
@@ -54,6 +92,8 @@ func _init(with_poles: bool = false) -> void:
 		light.omni_range = RANGE
 		light.omni_attenuation = 1.2
 		light.shadow_enabled = false
+		# Not the merged chunk meshes (their glow is the ground pools); vehicles, people, props.
+		light.light_cull_mask = 0xFFFFF & ~ChunkBuilder.RENDER_LAYER
 		light.light_energy = 0.0
 		light.visible = false
 		add_child(light)
@@ -74,10 +114,12 @@ func _multimesh(m: Mesh) -> MultiMeshInstance3D:
 func set_lamps(points: PackedVector3Array) -> void:
 	lamps = points
 	_heads.multimesh.instance_count = points.size()
+	_pools.multimesh.instance_count = points.size()
 	if _poles != null:
 		_poles.multimesh.instance_count = points.size()
 	for i in points.size():
 		_heads.multimesh.set_instance_transform(i, Transform3D(Basis(), points[i] + Vector3(0, head_height, 0)))
+		_pools.multimesh.set_instance_transform(i, Transform3D(Basis(), points[i] + Vector3(0, 0.06, 0)))
 		if _poles != null:
 			_poles.multimesh.set_instance_transform(i, Transform3D(Basis(), points[i] + Vector3(0, HEAD_HEIGHT * 0.5, 0)))
 	_pick_timer = 0.0
@@ -88,25 +130,39 @@ func step(dt: float, camera_position: Vector3, night_amount: float) -> void:
 	night = night_amount
 	var glow := clampf((night - 0.15) / 0.85, 0.0, 1.0)
 	_head_material.emission_energy_multiplier = 1.4 * glow
+	_pools.visible = glow > 0.01 and not lamps.is_empty()
+	_pool_material.albedo_color = Color(SODIUM, 0.32 * glow)
 	_pick_timer -= dt
 	if _pick_timer <= 0.0:
 		_pick_timer = 0.25
 		_pick(camera_position)
-	for light in lights:
-		light.visible = glow > 0.01 and light.has_meta(&"lamp")
+	for k in lights.size():
+		var light := lights[k]
+		light.visible = glow > 0.01 and light.has_meta(&"lamp") and k < pool
 		light.light_energy = 3.2 * glow
 
 
 func _pick(from: Vector3) -> void:
-	var order: Array[int] = []
+	# The nearest few by one scan (no sort of every lamp; G-257): lights.size() is at most POOL.
+	var best: Array[int] = []
+	var best_d := PackedFloat32Array()
 	for i in lamps.size():
-		order.append(i)
-	order.sort_custom(func(a: int, b: int) -> bool: return lamps[a].distance_squared_to(from) < lamps[b].distance_squared_to(from))
+		var d := lamps[i].distance_squared_to(from)
+		if best.size() == lights.size() and d >= best_d[best.size() - 1]:
+			continue
+		var at := best.size()
+		while at > 0 and best_d[at - 1] > d:
+			at -= 1
+		best.insert(at, i)
+		best_d.insert(at, d)
+		if best.size() > lights.size():
+			best.resize(lights.size())
+			best_d.resize(lights.size())
 	for k in lights.size():
 		var light := lights[k]
-		if k < order.size():
-			light.position = lamps[order[k]] + Vector3(0, head_height - 0.3, 0)
-			light.set_meta(&"lamp", order[k])
+		if k < best.size():
+			light.position = lamps[best[k]] + Vector3(0, head_height - 0.3, 0)
+			light.set_meta(&"lamp", best[k])
 		elif light.has_meta(&"lamp"):
 			light.remove_meta(&"lamp")
 

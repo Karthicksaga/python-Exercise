@@ -21,6 +21,10 @@ func test_touch_controls_fit_every_phone_screen() -> bool:
 		vp.size = ui
 		root.add_child(vp)
 		var hud: DebugHud = HUD.instantiate()
+		# Checked with the performance overlay on: that is its widest state (off, it is hidden).
+		hud.settings = DebugSettings.new()
+		hud.settings.path = "user://layout-test-debug.json"
+		hud.settings.perf_overlay = true
 		vp.add_child(hud)
 		var controls := TouchControls.new()
 		vp.add_child(controls)
