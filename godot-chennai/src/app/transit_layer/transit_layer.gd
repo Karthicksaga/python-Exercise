@@ -32,6 +32,7 @@ const FADE := 0.25
 ## rear ceiling rail) and where the interior camera sits.
 const EYE := Vector3(0.35, 2.75, 4.9)
 const SEATED_PASSENGERS := 4
+const TICKET_NOTE := 6.0
 ## The player steps off at the stop's pole when it is this close to the door, metres.
 const ALIGHT_TO_POLE := 16.0
 const PAVEMENT_STEP := 1.2
@@ -85,6 +86,9 @@ var _seated: bool = false
 var _conductor_seat: Vector3 = Vector3.ZERO
 var _taken: PackedInt32Array = PackedInt32Array()
 var _ticket: Dictionary = {}
+## The conductor's ticket shown on the hint for TICKET_NOTE seconds.
+var _ticket_note: String = ""
+var _ticket_left: float = 0.0
 ## Main-thread time of this layer's physics frames, µs: {frames, total, max} (frame-time log).
 ## False keeps route buses out of the traffic (the before/after frame-time comparison).
 var routes_on: bool = true
@@ -186,6 +190,9 @@ func _physics_process(dt: float) -> void:
 		_step_ride(dt)
 	else:
 		_step_on_foot(dt)
+	# A mission toast sits where the hint's lower lines are: the hint steps aside meanwhile.
+	if missions != null and missions.hud != null and hint.kind() != &"":
+		hint.visible = not missions.hud.toast_showing()
 	var used := Time.get_ticks_usec() - t0
 	cost["frames"] = int(cost["frames"]) + 1
 	cost["total"] = int(cost["total"]) + used
@@ -275,7 +282,7 @@ func station_line(sp: StationPlace, hour: float) -> String:
 	var parts: PackedStringArray = []
 	var pl := sp.platform_list()
 	if not pl.is_empty():
-		parts.append("Platforms: %s" % ", ".join(pl))
+		parts.append("Platforms %s" % _platform_span(pl))
 	var dep := trains.departures(sp.station, hour)
 	if not dep.is_empty():
 		var ln := dep[0]["line"] as TransitNetwork.RailLine
@@ -283,6 +290,19 @@ func station_line(sp: StationPlace, hour: float) -> String:
 	if not trains.has_trains():
 		parts.append("no trains yet")
 	return " · ".join(parts)
+
+
+## "1–11" for numbered platforms in a run, else the names joined.
+static func _platform_span(pl: PackedStringArray) -> String:
+	var nums: Array[int] = []
+	for p in pl:
+		if not p.is_valid_int():
+			return ", ".join(pl)
+		nums.append(p.to_int())
+	nums.sort()
+	if nums.size() > 2 and nums[nums.size() - 1] - nums[0] == nums.size() - 1:
+		return "%d–%d" % [nums[0], nums[nums.size() - 1]]
+	return ", ".join(pl)
 
 
 static func _short_line(name: String) -> String:
@@ -487,7 +507,11 @@ func _step_boarding(dt: float) -> void:
 					_queue(func(_t: AgentSystem) -> void: buses.hold_doors(id, false)))
 		var ticket := _boarding.ticket_at()
 		if before < ticket and _board_time >= ticket and not _ticket.is_empty():
-			_toast(String(_ticket["title"]), "From the conductor · %s" % String(_ticket["detail"]))
+			# On the hint, not as a toast: a toast would cover the hint (G-219).
+			_ticket_note = "%s from the conductor" % String(_ticket["title"])
+			_ticket_left = TICKET_NOTE
+			if ride.route != null:
+				hint.show_ride("Route %s to %s" % [ride.route.ref, ride.route.to_name], ride.route.to_ta, _ticket_note, false)
 	elif _eye != null and String(s["kind"]) == String(BusBoarding.STEP):
 		_eye.queue_free()
 		_eye = null
@@ -535,6 +559,9 @@ func _step_ride(dt: float) -> void:
 		return
 	var standing := not st.is_empty() and int(st["state"]) != RouteBuses.DRIVING
 	var detail := "Route %s to %s" % [r.ref, r.to_name]
+	if _ticket_left > 0.0:
+		_ticket_left -= dt
+		detail = _ticket_note
 	if standing and ride.can_alight(st):
 		detail += " · ACTION to get off"
 	if standing and int(st["next"]) < r.stops.size():

@@ -133,8 +133,10 @@ func _shots() -> void:
 	_look_at(v.global_position + v.global_basis.x * 2.0)
 	await _frames(20)
 	await _shot("stop_dwell")
+	# Few physics steps a frame while walking on and off, so the short phases can be caught.
+	Engine.max_physics_steps_per_frame = 4
 	t.board(id)
-	await _frames(20)
+	await _until(func() -> bool: return t._board_time > 1.2, 60 * 10)
 	await _shot("board_approach")
 	await _until(func() -> bool: return t._boarding != null and String(t._boarding.sample(t._board_time)["kind"]) == String(BusBoarding.STEP), 60 * 30)
 	await _shot("board_step")
@@ -142,6 +144,9 @@ func _shots() -> void:
 	await _frames(4)
 	await _shot("board_ticket")
 	await _until(func() -> bool: return not t.boarding(), 60 * 30)
+	await _frames(3)
+	await _shot("seated")
+	Engine.max_physics_steps_per_frame = 30
 	await _until(func() -> bool: return t.hint.tamil_label.text.begins_with(BusRide.NEXT_TA), 60 * 40)
 	await _frames(10)
 	await _shot("riding")
@@ -150,10 +155,12 @@ func _shots() -> void:
 	await _until(func() -> bool: return main.rig.controls.action_context.label() == "ALIGHT", 60 * 120)
 	await _frames(10)
 	await _shot("alight_prompt")
+	Engine.max_physics_steps_per_frame = 4
 	t.alight()
 	await _until(func() -> bool: return t._boarding != null and String(t._boarding.sample(t._board_time)["kind"]) == String(BusBoarding.STEP), 60 * 30)
 	await _shot("alight_step")
 	await _until(func() -> bool: return not t.ride.riding(), 60 * 30)
+	Engine.max_physics_steps_per_frame = 30
 	await _frames(20)
 	_look_at(v.global_position)
 	await _frames(10)

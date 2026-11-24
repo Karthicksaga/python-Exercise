@@ -108,8 +108,8 @@ func test_board_ride_fast_travel_and_alight() -> bool:
 	assert_true(main.get_viewport().get_camera_3d() == t._eye, "the interior camera")
 	assert_true(main.rig.body.figure.seat_amount > 0.99, "seated (11:00 is not the rush)")
 	assert_eq(t._passengers.size(), TransitLayer.SEATED_PASSENGERS + 1, "the conductor and the seated passengers")
-	if t.missions != null:
-		assert_contains(t.missions.hud.toast_text(), "Ticket", "the ticket from the conductor")
+	await wait_physics_frames(2)
+	assert_contains(t.hint.detail_label.text + t.hint.english_label.text, "from the conductor", "the ticket from the conductor on the hint")
 	# The bus drives on; the next stop is announced.
 	var at0 := main.rig.body.global_position
 	assert_true(await wait_until(func() -> bool: return main.rig.body.global_position.distance_to(at0) > 20.0, 60 * 60), "the bus carries the player along its route")
