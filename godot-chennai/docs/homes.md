@@ -102,3 +102,8 @@ the toasts in `HomesLayer`/`HomeEditor`/`HomeState`. Tamil is drawn in Noto Sans
 
 ## Not done
 See `docs/handoff.md` (Homes).
+
+## Numbers (24 Nov 2026, Compatibility under llvmpipe)
+Furnished room in 3D: 8 draw calls, 8,082 primitives; with the furnish panel open 88 draw calls
+(the buttons); street view with a board 158 to 172 draw calls (the city). 47 props: 5,726
+triangles in all, the largest 648. Data 28 KB. See `docs/handoff.md`.

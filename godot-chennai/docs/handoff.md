@@ -731,3 +731,41 @@ C 10). Game code must read `sign` and `names`, never `research_name`. Storeys co
 where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.
 
 
+
+## Homes (agent/godot-homes, G-230 to G-238), 24 Nov 2026
+Buy a home, walk through its door, be inside, furnish it, extend it, save. How-to, prices, rules,
+the Tamil review list and the layout: `docs/homes.md`; decisions in `technical-decisions.md`.
+
+**Done.** Data (`data/homes/`: 4 home types, 47 props, one price file with one scale of 0.05,
+11 listings), pure logic in `src/homes/`, glue in `src/app/homes_layer/`, HUD and editor in
+`src/ui/home_editor/`. Hook-up: `Main` makes `HomesLayer.for_main(self)` after the `MissionsLayer`,
+has a `home` state (`set_home`) and Back leaves a home. `ActionCandidate.enabled` and
+`ActionContext.best_enabled()` are new (BUY dims while too poor); `TouchControls` reads it.
+`export_presets.cfg` includes `data/homes/*.json`. Listings are looked up on a worker when the
+player is within 450 m, boards and doors made within 190 m.
+
+**Numbers** (Compatibility, xvfb + llvmpipe, 915x412 and 1830x824 give the same counts;
+`tests/tools/homes_shots.gd`). Street with a FOR SALE board in view: 158 to 172 draw calls, 196k to
+234k primitives (the city; the board is 4 labels, the board and posts, the door frame and leaf: about
+a dozen draw calls, only while near). Inside, furnished (17 pieces from every category): **8 draw
+calls and 8,082 primitives for the 3D room** (shell, glass, ground, door, furniture solid and
+glow, kolam), 88 with the furnish panel open (every button and label is a canvas draw); empty room
+22 with the HUD. A furnished room is 2,558 triangles (12 pieces, `test_a_furnished_room_is_cheap_to_draw`
+asserts under 5,000); all 47 props together are 5,726 triangles, the largest prop 648. Data added:
+28 KB of JSON (props 21 KB); no new binary assets, so the APK grows by about 0.1 MB (data plus the
+scripts). Entering and leaving cost one fade each; suspending is four assignments.
+
+**Tests.** `test_homes.gd` (32), `test_home_sites.gd` (3, all 11 buildings on the real map),
+`test_home_interior.gd` (9), `test_homes_layer.gd` (2, the whole flow through `main.tscn`).
+
+**Weak or not done.**
+- Not seen on a phone. Seen under llvmpipe only; the 915x412 and 1830x824 screenshots are
+  in the report's scratch folder.
+- Every Tamil string needs native review (`docs/homes.md` lists them); the street ACTION button
+  reads BUY/ENTER in English only (the shared button takes one label), the board is bilingual.
+- No live wanted level exists, so the police rule is a hook (`HomesLayer.wanted_stars`) tested with a
+  fake; set it when the combat runtime lands.
+- A fixed camera (no orbit), no moving a piece, no stairs or second floor, no owned-home list.
+- The doors and boards stand on the OSM walls, which are estimated geometry: a building drawn with
+  a different front than its footprint edge may show the door a little off.
+- The 11 buildings were chosen by size and road distance, not looked at one by one.
