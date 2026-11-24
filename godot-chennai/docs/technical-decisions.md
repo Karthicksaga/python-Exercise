@@ -1553,3 +1553,61 @@ entered (G-152's bund stays). The spec records the rule and a test checks it is 
 `tests/tools/city_shot.gd --no-landmarks` builds the same city without landmark models (OSM
 buildings in place); `--frames=N` prints average and worst frame time over N rendered frames.
 Numbers in `handoff.md`.
+
+## Building fusion (agent/godot-fusion), 24 Nov 2026
+Owner decision of 24 Nov 2026: use OpenStreetMap, Overture Maps buildings, Google Open Buildings
+v3 and Microsoft Global ML Building Footprints, OSM primary. Details and numbers: `docs/fusion.md`,
+`world/FUSION.md`, `world-format.md` §3.9.
+
+### G-220: Download for the world box, cache outside the repository
+The box comes from `world.json bounds` through the game projection, never constants. Overture:
+DuckDB `httpfs` over HTTPS with a filter on the `bbox` struct (anonymous; the extensions are
+installed from files fetched from `extensions.duckdb.org`, because the in-process download uses
+plain HTTP). Google: the S2 level-6 cells covering the box, each streamed once and filtered.
+Microsoft: the level-9 quadkeys covering the box from `dataset-links.csv`. Extracts live in
+`$CHENNAI_FUSION_CACHE`; `data/MANIFEST.json buildings` records URL, release, bytes, sha256, rows,
+date and licence of each, and of every upstream file streamed.
+
+### G-221: Format 2.3 is one more file per tile, not a new chunk record
+`fusion.bin` holds the added buildings (compact: a box when within 10 cm of one, 7 bytes of
+geometry; a varint row into the source extract) and height fixes for estimated OSM buildings.
+Every 2.0/2.1 file stays byte for byte the same, as with `infra.bin`. Added ids start at
+`0xC0000000` (the first design's `0x40000000` collides with today's OSM way ids). Squares that
+hold only added buildings are listed in `world.json fusion.cells` so the streamer finds them. The
+game appends the added buildings to the decoded chunk (`WorldSource.apply_fusion`) right after
+`read_chunk`, so they go through the same building path, meshes and colliders; `read_chunk`
+itself still returns exactly what `chunks.bin` holds (its tests compare with the Python reader).
+
+### G-222: OSM wins; overlap cuts measured, not guessed
+An external footprint is added only when less than 15 % of it lies on OSM buildings (the minimum
+of the measured distribution, 10-20 %), and it is never added when it is the same building
+(IoU >= 0.5 or 0.8 contained). Two external footprints are the same building at 30 % overlap of
+the smaller (where the neighbours' tail meets the floor of the distribution). Sanity: >= 12 m²,
+Google confidence >= 0.75 (also through Overture), centre not in water, on an apron, on a
+carriageway, under a landmark, or outside the world. Kept between sources: a height first, then
+the higher confidence, then Overture, Google, Microsoft.
+
+### G-223: Height priority and validation
+OSM `height` > OSM levels > Overture height / floors > Microsoft height > estimate by kind
+(added: under 50 m² one floor, a house 1-2, apartments 3-5, by a hash of the id). A dataset whose
+heights disagree with OSM's (MAE > 3 m or |bias| > 2 m on >= 20 buildings) is refused. In this box
+no dataset has an independent height; the only matches are Overture's copies of OSM tags (MAE
+0.01 m on 8,662), so 17 OSM buildings get a height and every added building is estimated.
+
+### G-224: Open Buildings 2.5D left for later
+The 2.5D Temporal height raster needs an Earth Engine account, which the project does not have.
+It is the next height source (sampled per footprint at build time, `heightFrom openbuildings`,
+already in the table); listed as planned in the manifest.
+
+### G-225: Google Open Buildings taken under the ODbL
+Google offers v3 under CC BY 4.0 or ODbL. ODbL is chosen: Overture already redistributes the same
+records under ODbL, and one share-alike licence for the whole derived database is simpler than
+carrying CC BY attribution terms inside an ODbL database. Microsoft's CDLA Permissive 2.0 allows
+the combination. The committed world is a Derived Database under the ODbL; it is offered with its
+build scripts and manifest in this repository (`docs/fusion.md` §7).
+
+### G-226: Credits are data, and a test checks them
+`world.json fusion.credits` carries one line per dataset present; the About page lists them
+(`TitleMenu.set_credits(..., others)`), and `world/ATTRIBUTION.md` and `assets/LICENSES.md` carry
+them with dates. pytest and a GDScript test fail if a source's buildings are in the files without
+its credit line.
