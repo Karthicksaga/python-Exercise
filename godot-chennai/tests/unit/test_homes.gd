@@ -215,7 +215,7 @@ func test_rotation_swaps_the_footprint_and_needs_room() -> bool:
 func test_remove_and_clear_pay_half_back() -> bool:
 	var e := _editor()
 	var a := e.place("sofa", Vector2i(2, 2), 5000).item
-	e.place("cot", Vector2i(3, 3), 5000)
+	e.place("cot", Vector2i(4, 0), 5000)
 	var r := e.remove(a)
 	assert_true(r.ok, "removed")
 	assert_eq(r.delta, 112, "half of 225, rounded down")
