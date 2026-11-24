@@ -99,10 +99,17 @@ func _step(dt: float) -> void:
 		return
 	# Only as close as the Get-in button offers a vehicle (it then offers this one).
 	var reach := minf(Carjack.REACH, Driving.ENTER_REACH - 0.2)
-	var pick := Carjack.pick(feet.x, feet.y, _traffic_list(), reach, Carjack.MAX_TAKE_SPEED)
+	var list := _traffic_list()
 	var asked := _request
 	_request = -1
+	if asked >= 0:
+		# The one the player pressed for, not whoever is nearest by now.
+		list = list.filter(func(e: Dictionary) -> bool: return int(e["id"]) == asked)
+	var pick := Carjack.pick(feet.x, feet.y, list, reach, Carjack.MAX_TAKE_SPEED)
 	if pick.is_empty():
+		if asked >= 0:
+			# Gone, out of reach or too fast by now: never a silent press.
+			driving.toast.emit("Too far to take over")
 		return
 	var id := int(pick["id"])
 	if absf(float(pick["speed"])) < Carjack.MAX_SPEED or id == asked:
