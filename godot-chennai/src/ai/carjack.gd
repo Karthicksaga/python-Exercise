@@ -8,14 +8,27 @@ extends RefCounted
 const KINDS: Array[String] = ["car", "auto", "bike"]
 ## Only slower than this, m/s (stopped at a light, in a jam, or braking for the player).
 const MAX_SPEED := 1.2
+## A moving traffic vehicle can be taken over (the TAKE OVER button) up to this speed, m/s
+## (about 40 km/h: the owner's report, G-300). It is stopped dead when the driver is pulled off.
+const MAX_TAKE_SPEED := 11.0
 ## Metres from the vehicle's body the player may stand.
 const REACH := 2.6
 ## Spare drivable vehicles kept per kind.
 const PER_KIND := 2
 
 
-static func carjackable(kind: String, speed: float) -> bool:
-	return KINDS.has(kind) and absf(speed) < MAX_SPEED
+static func carjackable(kind: String, speed: float, max_speed: float = MAX_SPEED) -> bool:
+	return KINDS.has(kind) and absf(speed) < max_speed
+
+
+## Why a vehicle ({kind, speed}) cannot be taken over, "" when it can: "kind" (buses and
+## ambulances carry passengers or crews), "fast" (faster than `MAX_TAKE_SPEED`).
+static func refusal(kind: String, speed: float) -> String:
+	if not KINDS.has(kind):
+		return "kind"
+	if absf(speed) >= MAX_TAKE_SPEED:
+		return "fast"
+	return ""
 
 
 ## Distance from (px, pz) to a vehicle's rectangle ({x, z, heading, half_width, half_length}),
@@ -33,11 +46,11 @@ static func distance_to_footprint(px: float, pz: float, v: Dictionary) -> float:
 
 ## The nearest takeable vehicle ({id, kind, x, z, heading, speed, half_width, half_length})
 ## within reach of (x, z), or {}.
-static func pick(x: float, z: float, vehicles: Array, reach: float = REACH) -> Dictionary:
+static func pick(x: float, z: float, vehicles: Array, reach: float = REACH, max_speed: float = MAX_SPEED) -> Dictionary:
 	var best: Dictionary = {}
 	var best_distance := reach
 	for v: Dictionary in vehicles:
-		if not carjackable(v["kind"], v["speed"]):
+		if not carjackable(v["kind"], v["speed"], max_speed):
 			continue
 		var d := distance_to_footprint(x, z, v)
 		if d <= best_distance:

@@ -198,3 +198,184 @@ func test_walking_away_from_a_stopped_car_lets_it_drive_on() -> bool:
 	assert_true(life.views[id].visible, "and drawn again")
 	assert_eq(int(jack.stats["undone"]), 1, "undone once")
 	return true
+
+
+## --- Taking over MOVING traffic with the ACTION button (G-300) -----------------------------
+
+## The nearest active traffic agent of a group going faster than `min_speed`, or null.
+func _moving(group: StringName, min_speed: float) -> AgentSystem.Agent:
+	var traffic := life.population.traffic
+	var best: AgentSystem.Agent = null
+	var best_d := INF
+	var focus := life.focus_world()
+	for a in traffic.agents:
+		if not a.active or traffic.kinds[a.kind].group != group or a.speed < min_speed:
+			continue
+		var d := a.pos.distance_to(focus)
+		if d < best_d:
+			best_d = d
+			best = a
+	return best
+
+
+## Keep the player standing beside the vehicle of agent `id`, on its right, until `done`.
+func _walk_with(id: int, done: Callable, frames: int) -> bool:
+	var traffic := life.population.traffic
+	var follow := func() -> bool:
+		var a := traffic.agents[id]
+		var k := traffic.kinds[a.kind]
+		var right := Vector2(cos(a.heading), -sin(a.heading))
+		var p := a.pos + right * (k.half_width + 0.9)
+		body.global_position = WorldOrigin.to_scene(p, a.y + 0.1)
+		return bool(done.call())
+	return await wait_until(follow, frames)
+
+
+## Take over a moving vehicle of `group` end to end through an ActionContext, the way the touch
+## button does. Returns the taken Vehicle or null (a failed check).
+func _take_over_moving(group: StringName, jack: Carjacking) -> Vehicle:
+	var ctx := ActionContext.new()
+	ctx.add_source(jack.offer)
+	var found := await wait_until(func() -> bool: return _moving(group, 3.0) != null, 60 * 40)
+	if not check(found, "a moving %s is on the streets" % group):
+		return null
+	var agent := _moving(group, 3.0)
+	var id := agent.id
+	var speed_at_offer := [0.0]
+	var offered := await _walk_with(id, func() -> bool:
+		speed_at_offer[0] = life.population.traffic.agents[id].speed
+		return ctx.label() == "TAKE OVER", 60 * 6)
+	if not check(offered, "TAKE OVER is offered beside the moving %s" % group):
+		return null
+	assert_true(float(speed_at_offer[0]) >= Carjack.MAX_SPEED, "it was moving (%.1f m/s)" % float(speed_at_offer[0]))
+	assert_true(jack.vehicle == null, "nothing is swapped before the press")
+	assert_true(ctx.trigger(), "the button runs it")
+	if not check(await _walk_with(id, func() -> bool: return jack.vehicle != null, 60 * 2), "the vehicle is swapped in at the next step"):
+		return null
+	assert_eq(jack.agent_id, id, "the one that was offered")
+	assert_eq(driving.mode(), &"boarding", "the boarding with the pull starts")
+	assert_true(driving.boarding.phase() != &"done", "walking to the door")
+	return jack.vehicle
+
+
+func _ride_off(jack: Carjacking, taken: Vehicle, crimes: Array[StringName]) -> void:
+	var id := jack.agent_id
+	var ok := await wait_until(func() -> bool: return driving.mode() == &"driving", 60 * 15)
+	assert_true(ok, "the player ends up at the wheel")
+	await wait_physics_frames(6)  # the next AI step hands the vehicle over
+	assert_eq(crimes.size(), 1, "pulling the driver out is a crime, once")
+	assert_eq(jack.fleeing_count(), 1, "the driver is out of the vehicle and running off")
+	assert_true(driving.vehicle == taken, "the player drives the taken vehicle")
+	assert_true(taken.is_driven(), "driven")
+	assert_eq(int(jack.stats["taken"]), 1, "taken")
+	assert_false(life.taken.has(id), "its agent is back in the pool")
+	assert_true(taken.is_in_group(Vehicle.GROUP), "an ordinary vehicle of the game")
+
+
+func test_take_over_a_moving_car_from_the_action_button() -> bool:
+	if not await _start():
+		return false
+	var jack := Carjacking.make(life, driving)
+	world.add_child(jack)
+	var crimes: Array[StringName] = []
+	jack.carjacked.connect(func(look: StringName, _at: Vector2) -> void: crimes.append(look))
+	var taken := await _take_over_moving(&"car", jack)
+	if taken == null:
+		return false
+	await _ride_off(jack, taken, crimes)
+	# Bookkeeping: the traffic pool never reclaims the player's vehicle.
+	await wait_physics_frames(60 * 20)
+	assert_true(is_instance_valid(taken) and taken.is_inside_tree(), "still there after twenty seconds of traffic")
+	assert_true(jack.stolen.has(taken), "listed as stolen")
+	assert_false(life.taken.has(jack.agent_id), "not held by the swap any more")
+	assert_true(driving.vehicle == taken, "still the player's")
+	assert_true(jack.offer() == null, "no TAKE OVER while driving")
+	return true
+
+
+func test_take_over_a_moving_bike_from_the_action_button() -> bool:
+	if not await _start():
+		return false
+	var jack := Carjacking.make(life, driving)
+	world.add_child(jack)
+	var crimes: Array[StringName] = []
+	jack.carjacked.connect(func(look: StringName, _at: Vector2) -> void: crimes.append(look))
+	var taken := await _take_over_moving(&"bike", jack)
+	if taken == null:
+		return false
+	assert_true(taken.type.entry.door == "none", "a bike has no door to open")
+	await _ride_off(jack, taken, crimes)
+	return true
+
+
+func test_a_taken_vehicle_left_far_behind_is_freed() -> bool:
+	if not await _start():
+		return false
+	var jack := Carjacking.make(life, driving)
+	world.add_child(jack)
+	var crimes: Array[StringName] = []
+	jack.carjacked.connect(func(look: StringName, _at: Vector2) -> void: crimes.append(look))
+	var taken := await _take_over_moving(&"car", jack)
+	if taken == null:
+		return false
+	await _ride_off(jack, taken, crimes)
+	assert_true(driving.exit(), "stopped, so the player gets out")
+	assert_true(await wait_until(func() -> bool: return driving.mode() == &"foot", 60 * 10), "back on foot")
+	await wait_physics_frames(60)
+	assert_true(is_instance_valid(taken), "parked beside the player, kept")
+	# The streets centre on a point far away (the world itself keeps streaming round the player).
+	var far := Node3D.new()
+	world.add_child(far)
+	far.global_position = taken.global_position + Vector3(Carjacking.FORGET + 60.0, 0, 0)
+	life.focus_node = far
+	assert_true(await wait_until(func() -> bool: return not is_instance_valid(taken), 60 * 5), "left far behind, it is freed")
+	assert_eq(jack.stolen.size(), 0, "and forgotten")
+	return true
+
+
+func test_no_take_over_for_a_bus_or_a_vehicle_in_use() -> bool:
+	if not await _start():
+		return false
+	var jack := Carjacking.make(life, driving)
+	world.add_child(jack)
+	var found := await wait_until(func() -> bool: return _moving(&"bus", 0.0) != null, 60 * 40)
+	if not check(found, "a bus is on the streets"):
+		return false
+	var bus := _moving(&"bus", 0.0)
+	var id := bus.id
+	# Standing right beside a bus, even a stopped one: never offered, never swapped.
+	await _walk_with(id, func() -> bool: return false, 60 * 5)
+	assert_true(jack.offer() == null, "no TAKE OVER beside a bus")
+	assert_true(jack.vehicle == null, "no swap for a bus")
+	assert_false(life.taken.has(id), "the bus stays the AI's")
+	return true
+
+
+func test_take_over_is_refused_while_boarding_or_driving() -> bool:
+	if not await _start():
+		return false
+	var jack := Carjacking.make(life, driving)
+	world.add_child(jack)
+	var taken := await _take_over_moving(&"car", jack)
+	if taken == null:
+		return false
+	assert_true(jack.offer() == null or driving.mode() != &"foot", "no offer while boarding")
+	assert_eq(driving.mode(), &"boarding", "boarding")
+	jack.request(0)
+	await wait_physics_frames(4)
+	assert_eq(int(jack.stats["swapped"]), 1, "a second request during boarding swaps nothing")
+	return true
+
+
+func test_traffic_drivers_are_never_children() -> bool:
+	if not await _start():
+		return false
+	var minors: Dictionary[String, bool] = {}
+	for e: Dictionary in PeopleManifest.open(PeoplePool.MANIFEST).entries:
+		minors[str(e["id"])] = CastPicker.is_minor(e)
+	for kind: StringName in [&"car", &"auto", &"bike", &"bus"]:
+		for id in range(life.traffic_pool):
+			var who := life.cast.driver(kind, id)
+			if who != "":
+				assert_false(minors.get(who, true), "the %s driver %s is an adult" % [kind, who])
+	return true
