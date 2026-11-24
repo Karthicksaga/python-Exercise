@@ -146,6 +146,12 @@ func _solid(tris: Array[Vector3]) -> void:
 	faces[faces.size() - 1] = last
 
 
+## Adds ready-made collider triangles (speed breakers) to the pieces.
+func solid_faces(tris: PackedVector3Array) -> void:
+	for k in range(0, tris.size(), 3):
+		_solid([tris[k], tris[k + 1], tris[k + 2]])
+
+
 ## Collider faces of the road surface itself (flush with the ground where the ramp starts).
 func _deck_top(p0: Vector2, p1: Vector2, l0: Vector2, l1: Vector2, h0: float, h1: float, half: float) -> void:
 	var a := _v3(p0 + l0 * half, h0)

@@ -9,6 +9,7 @@ extends RefCounted
 ## environment work): windows and shops glow after dark, paved ground darkens in the rain.
 
 const GROUND_SHADER := preload("res://src/game_engine/city/shaders/ground.gdshader")
+const WATER_SHADER := preload("res://src/game_engine/city/shaders/water.gdshader")
 
 var walls: StandardMaterial3D
 var roofs: StandardMaterial3D
@@ -19,7 +20,8 @@ var objects: StandardMaterial3D
 ## Trees and palms: vertex colours, both sides (fronds are seen from below).
 var foliage: StandardMaterial3D
 var landmark: StandardMaterial3D
-var water: StandardMaterial3D
+## Rivers, canals, ponds (G-152): `water.gdshader`.
+var water: ShaderMaterial
 ## Bridges, flyovers, ramps, covers (G-151): vertex colours, both sides.
 var decks: StandardMaterial3D
 ## Textures that were found, by file name.
@@ -83,9 +85,8 @@ static func create() -> CityMaterials:
 	c.landmark = _vertex_coloured(0.82)
 	c.decks = _vertex_coloured(0.9)
 	c.decks.cull_mode = BaseMaterial3D.CULL_DISABLED
-	c.water = StandardMaterial3D.new()
-	c.water.albedo_color = Color.hex(0x3f7fa6ff)
-	c.water.roughness = 0.2
+	c.water = ShaderMaterial.new()
+	c.water.shader = WATER_SHADER
 	return c
 
 
@@ -107,6 +108,7 @@ func set_night(night: float) -> void:
 ## 0 dry, 1 soaked.
 func set_wet(wet: float) -> void:
 	ground.set_shader_parameter("wet", wet)
+	water.set_shader_parameter("wet", wet)
 	var shade := 1.0 - 0.12 * wet
 	walls.albedo_color = Color(shade, shade, shade)
 	roofs.roughness = 1.0 - 0.45 * wet

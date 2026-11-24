@@ -22,6 +22,16 @@ const DASH_PITCH := 9.0
 ## No paint this close to a road's ends, where junctions usually are.
 const END_CLEAR := 8.0
 const PAINT_WIDTH := 0.15
+## Height of the kerb round parks and grounds (G-154) and of medians (G-153).
+const PARK_KERB := 0.12
+const MEDIAN_HEIGHT := 0.22
+## Zebra crossings (G-153): bars along the road, their length, width and pitch across it.
+const ZEBRA_LENGTH := 3.0
+const ZEBRA_BAR := 0.5
+const ZEBRA_PITCH := 1.0
+## Zebras painted (tests).
+var zebras := 0
+var bumps := 0
 
 var mesh := MeshBuilder.new()
 var origin := Vector2.ZERO
@@ -36,10 +46,26 @@ func _layer(layer: int) -> void:
 	_layer_index = layer
 
 
+## Ground covers (G-154), drawn by `ground.gdshader` as layers 8 and up: a base tile tinted
+## per cover with slow noise.
+const COVER_LAWN := 8
+const COVER_MEADOW := 9
+const COVER_SCRUB := 10
+const COVER_FOREST := 11
+const COVER_WETLAND := 12
+const COVER_FARMLAND := 13
+const COVER_SPORT := 14
+const COVER_CEMETERY := 15
+const COVER_BARE := 16
+## The shader's noise repeats every NOISE_PERIOD repeats; UVs count from a multiple of it.
+const NOISE_PERIOD := 16.0
+
+
 ## Texture coordinates of a world point at `scale` metres per repeat, carrying the layer: u is
 ## `layer * LAYER_U +` the repeat count from a whole number of repeats 1 km left of the chunk (so tiling stays continuous across chunks and the numbers stay small).
+## The whole number is a multiple of NOISE_PERIOD, so the ground covers' noise continues too.
 func _uv(world: Vector2, scale: float) -> Vector2:
-	var base := Vector2(floorf((origin.x - 1000.0) / scale), floorf((origin.y - 1000.0) / scale))
+	var base := Vector2(floorf((origin.x - 1000.0) / scale / NOISE_PERIOD) * NOISE_PERIOD, floorf((origin.y - 1000.0) / scale / NOISE_PERIOD) * NOISE_PERIOD)
 	var uv := world / scale - base
 	return Vector2(uv.x + _layer_index * LAYER_U, uv.y)
 
@@ -89,6 +115,7 @@ static func lane_lines(road: Road) -> Array[Vector2]:
 		for k in range(1, lanes):
 			out.append(Vector2(-road.width / 2.0 + k * lane_width, 1.0))
 	else:
+		# The centre line stays under a median (G-153): the Three.js marking rule is kept as is.
 		out.append(Vector2(0.0, 1.0))
 		for k in range(1, lanes / 2):
 			out.append(Vector2(k * lane_width, 1.0))
@@ -162,7 +189,7 @@ func add_stripes(span: CityLayout.RoadSpan) -> void:
 
 
 ## A flat polygon (park, water, beach) at height y.
-func polygon(outline: PackedVector2Array, y: float, layer: int) -> void:
+func polygon(outline: PackedVector2Array, y: float, layer: int, uv_scale: float = 6.0) -> void:
 	_layer(layer)
 	var local := PackedVector2Array()
 	for p in outline:
@@ -172,7 +199,7 @@ func polygon(outline: PackedVector2Array, y: float, layer: int) -> void:
 		return
 	var base := mesh.vertex_count()
 	for p in local:
-		mesh.vertex(Vector3(p.x, y, p.y), Vector3.UP, _uv(p + origin, 6.0))
+		mesh.vertex(Vector3(p.x, y, p.y), Vector3.UP, _uv(p + origin, uv_scale))
 	for t in range(0, faces.size(), 3):
 		var p0 := local[faces[t]]
 		var p1 := local[faces[t + 1]]
@@ -184,18 +211,43 @@ func polygon(outline: PackedVector2Array, y: float, layer: int) -> void:
 
 
 ## Ground layer of an area kind (format 1 and 2), or -1 for land use drawn as bare earth
-## (residential, industrial…, which the earth under every chunk already shows).
+## (residential, industrial…, which the earth under every chunk already shows). Water areas are
+## drawn by `WaterMeshes` (sunk below the banks) and return -1 here too (`is_water`).
 static func area_layer(kind: StringName) -> int:
 	match kind:
-		&"park", &"farmland", &"orchard", &"meadow", &"scrub", &"forest", &"cemetery", &"sport", &"mangrove":
-			return CityAtlas.GROUND_GRASS
-		&"water", &"reservoir", &"wetland":
-			return CityAtlas.GROUND_WATER
-		&"beach", &"saltpan":
+		&"park":
+			return COVER_LAWN
+		&"meadow", &"orchard":
+			return COVER_MEADOW
+		&"scrub":
+			return COVER_SCRUB
+		&"forest":
+			return COVER_FOREST
+		&"wetland", &"mangrove":
+			return COVER_WETLAND
+		&"farmland":
+			return COVER_FARMLAND
+		&"sport":
+			return COVER_SPORT
+		&"cemetery":
+			return COVER_CEMETERY
+		&"bare", &"saltpan":
+			return COVER_BARE
+		&"beach":
 			return CityAtlas.GROUND_SAND
 		&"apron", &"helipad":
 			return CityAtlas.GROUND_PAVING
 	return -1
+
+
+## Areas drawn as open water by `WaterMeshes`.
+static func is_water(kind: StringName) -> bool:
+	return kind == &"water" or kind == &"reservoir"
+
+
+## Covers that get a kerbed edge (parks and grounds in town).
+static func kerbed(kind: StringName) -> bool:
+	return kind == &"park" or kind == &"sport" or kind == &"cemetery"
 
 
 ## The part of the sea inside a chunk square, as ground water just above the earth (the whole
@@ -241,9 +293,8 @@ func _raised(span: CityLayout.RoadSpan) -> void:
 
 
 ## Kerbs: a low edge along the carriageway, painted in 1 m yellow and black bands.
-func kerbs(runs: Array[StreetFurniture.KerbRun]) -> void:
-	_layer(CityAtlas.GROUND_KERB)
-	var h := StreetFurniture.KERB_HEIGHT
+func kerbs(runs: Array[StreetFurniture.KerbRun], layer: int = CityAtlas.GROUND_KERB, h: float = StreetFurniture.KERB_HEIGHT) -> void:
+	_layer(layer)
 	for run in runs:
 		var n := run.inner.size()
 		var run_base := floorf(run.along[0] / 2.0)
@@ -280,13 +331,27 @@ func _kerb_face(verts: Array[Vector3], us: Array, k: Array, normal: Vector3) -> 
 		mesh.quad(ids[0], ids[3], ids[2], ids[1])
 
 
-## Everything flat in one chunk (`buildGround`), roads first-come in the span order.
-func build(spans: Array, areas: Array[WorldArea], square: Rect2, kerb_runs: Array[StreetFurniture.KerbRun]) -> void:
-	earth(square)
+## Everything flat in one chunk (`buildGround`), roads first-come in the span order. `water` are
+## the chunk's water polygons (`WaterMeshes.polygons`): the earth and the covers are cut round
+## them, so the sunk water shows through.
+func build(spans: Array, areas: Array[WorldArea], square: Rect2, kerb_runs: Array[StreetFurniture.KerbRun], water: Array[PackedVector2Array] = [], medians: Array[StreetFurniture.KerbRun] = []) -> void:
+	if water.is_empty():
+		earth(square)
+	else:
+		for piece in subtract([_square(square)], water):
+			polygon(piece, Y_EARTH, CityAtlas.GROUND_EARTH, 8.0)
+	var edges: Array[StreetFurniture.KerbRun] = []
 	for area in areas:
 		var layer := area_layer(area.kind)
-		if layer >= 0:
-			polygon(area.outline, Y_PARK, layer)
+		if layer < 0:
+			continue
+		var pieces: Array[PackedVector2Array] = [area.outline]
+		if not water.is_empty():
+			pieces = subtract(pieces, water)
+		for piece in pieces:
+			polygon(piece, Y_PARK, layer)
+		if kerbed(area.kind):
+			edges.append_array(edge_runs(area.outline, square))
 	for span: CityLayout.RoadSpan in spans:
 		var road := span.road
 		var pts := road.points.slice(span.start, span.end + 1)
@@ -301,3 +366,157 @@ func build(spans: Array, areas: Array[WorldArea], square: Rect2, kerb_runs: Arra
 		ribbon(pts, road.width, Y_ROAD, 9.0, CityAtlas.GROUND_ASPHALT)
 		add_stripes(span)
 	kerbs(kerb_runs)
+	kerbs(edges, CityAtlas.GROUND_PAVING, PARK_KERB)
+	kerbs(medians, CityAtlas.GROUND_KERB, MEDIAN_HEIGHT)
+
+
+static func _square(square: Rect2) -> PackedVector2Array:
+	return PackedVector2Array([square.position, Vector2(square.end.x, square.position.y), square.end, Vector2(square.position.x, square.end.y)])
+
+
+## `pieces` minus every polygon of `holes`, as simple polygons (no holes): where a hole would fall
+## inside a piece, the piece is first cut in two through the hole (G-152).
+static func subtract(pieces: Array[PackedVector2Array], holes: Array[PackedVector2Array]) -> Array[PackedVector2Array]:
+	var out := pieces
+	for hole in holes:
+		var next: Array[PackedVector2Array] = []
+		for piece in out:
+			next.append_array(_minus(piece, hole, 0))
+		out = next
+	return out
+
+
+static func _minus(piece: PackedVector2Array, hole: PackedVector2Array, depth: int) -> Array[PackedVector2Array]:
+	var out: Array[PackedVector2Array] = []
+	var res := Geometry2D.clip_polygons(piece, hole)
+	var outer_cw := Geometry2D.is_polygon_clockwise(piece)
+	var has_hole := false
+	for r in res:
+		if r.size() >= 3 and Geometry2D.is_polygon_clockwise(r) != outer_cw:
+			has_hole = true
+	if not has_hole:
+		for r in res:
+			if r.size() >= 3:
+				out.append(r)
+		return out
+	if depth >= 6:
+		# Give up cutting: keep the outer outlines (the hole is drawn over, not cut).
+		for r in res:
+			if r.size() >= 3 and Geometry2D.is_polygon_clockwise(r) == outer_cw:
+				out.append(r)
+		return out
+	var c := Vector2.ZERO
+	for p in hole:
+		c += p
+	c /= hole.size()
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for p in piece:
+		lo = lo.min(p)
+		hi = hi.max(p)
+	lo -= Vector2(1, 1)
+	hi += Vector2(1, 1)
+	for half: PackedVector2Array in [
+			PackedVector2Array([lo, Vector2(c.x, lo.y), Vector2(c.x, hi.y), Vector2(lo.x, hi.y)]),
+			PackedVector2Array([Vector2(c.x, lo.y), Vector2(hi.x, lo.y), hi, Vector2(c.x, hi.y)])]:
+		for part in Geometry2D.intersect_polygons(piece, half):
+			if part.size() >= 3 and Geometry2D.is_polygon_clockwise(part) == outer_cw:
+				out.append_array(_minus(part, hole, depth + 1))
+	return out
+
+
+## True when both ends of an edge lie on the same side of the chunk square (a clip edge).
+static func on_square_edge(a: Vector2, b: Vector2, square: Rect2) -> bool:
+	const E := 0.05
+	for v: float in [square.position.x, square.end.x]:
+		if absf(a.x - v) < E and absf(b.x - v) < E:
+			return true
+	for v: float in [square.position.y, square.end.y]:
+		if absf(a.y - v) < E and absf(b.y - v) < E:
+			return true
+	return false
+
+
+## Kerb runs along a polygon's real edges (not the chunk square's clip edges), inside it.
+static func edge_runs(outline: PackedVector2Array, square: Rect2) -> Array[StreetFurniture.KerbRun]:
+	var out: Array[StreetFurniture.KerbRun] = []
+	var n := outline.size()
+	if n < 3:
+		return out
+	var inward := -1.0 if Geometry2D.is_polygon_clockwise(outline) else 1.0
+	var run: StreetFurniture.KerbRun = null
+	var along := 0.0
+	for i in n:
+		var a := outline[i]
+		var b := outline[(i + 1) % n]
+		if on_square_edge(a, b, square) or a.distance_to(b) < 0.3:
+			run = null
+			continue
+		var d := (b - a).normalized()
+		var nrm := Vector2(-d.y, d.x) * inward * StreetFurniture.KERB_WIDTH
+		if run == null:
+			run = StreetFurniture.KerbRun.new()
+			out.append(run)
+			run.inner.append(a)
+			run.outer.append(a + nrm)
+			run.along.append(along)
+		along += a.distance_to(b)
+		run.inner.append(b)
+		run.outer.append(b + nrm)
+		run.along.append(along)
+	return out
+
+
+## A zebra crossing across the carriageway at a spot (bars along the travel direction).
+func zebra(sp: WorldSpot, h: float) -> void:
+	var dir := sp.direction()
+	var across := Vector2(-dir.y, dir.x)
+	var usable := sp.width - 0.8
+	var bars := maxi(2, floori(usable / ZEBRA_PITCH))
+	var first := -(bars - 1) * ZEBRA_PITCH / 2.0
+	for k in bars:
+		_stripe(sp.position + across * (first + k * ZEBRA_PITCH), dir, ZEBRA_LENGTH, h, h, ZEBRA_BAR)
+	zebras += 1
+
+
+## A speed breaker's surface, painted in the kerb's yellow and black bands across the road; returns
+## its collider triangles (chunk-local; the top surface only, flush with the road at its edges).
+func bump(b: RoadBumps.Bump, h: float) -> PackedVector3Array:
+	_layer(CityAtlas.GROUND_KERB)
+	var dir := b.direction
+	var across := Vector2(-dir.y, dir.x)
+	var rows := 9
+	var cols := maxi(2, ceili(b.width / 1.0))
+	var c := b.position - origin
+	var ids: Array[PackedInt32Array] = []
+	var pos: Array[PackedVector3Array] = []
+	for r in rows:
+		var u := -1.0 + 2.0 * r / (rows - 1)
+		var along := u * b.length / 2.0
+		var y := h + Y_ROAD + b.height * RoadBumps.Bump.profile(u, b.kind)
+		var row := PackedInt32Array()
+		var prow := PackedVector3Array()
+		for k in cols + 1:
+			var w := -b.width / 2.0 + b.width * k / cols
+			var q := c + dir * along + across * w
+			var v := Vector3(q.x, y, q.y)
+			# Bands 1 m wide across the road (the kerb tile's u), and a light dip line at the crest.
+			row.append(mesh.vertex(v, Vector3.UP, Vector2((w + b.width / 2.0) / 2.0 + _layer_index * LAYER_U, 0.5)))
+			prow.append(Vector3(v.x, v.y - Y_ROAD, v.z))
+		ids.append(row)
+		pos.append(prow)
+	var faces := PackedVector3Array()
+	for r in rows - 1:
+		for k in cols:
+			var a := ids[r][k]
+			var b2 := ids[r][k + 1]
+			var c2 := ids[r + 1][k + 1]
+			var d := ids[r + 1][k]
+			var p0 := mesh.positions[a]
+			if (mesh.positions[b2] - p0).cross(mesh.positions[c2] - p0).y >= 0.0:
+				mesh.quad(a, b2, c2, d)
+			else:
+				mesh.quad(a, d, c2, b2)
+			faces.append_array([pos[r][k], pos[r][k + 1], pos[r + 1][k + 1], pos[r][k], pos[r + 1][k + 1], pos[r + 1][k]])
+	bumps += 1
+	return faces
