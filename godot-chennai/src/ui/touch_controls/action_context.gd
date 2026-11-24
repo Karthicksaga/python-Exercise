@@ -16,6 +16,8 @@ extends RefCounted
 
 const P_ENTER := 20
 const P_BOARD := 30
+## Pull the driver off a traffic vehicle (G-300): beats GET IN on a car beside it.
+const P_TAKE_OVER := 35
 const P_TALK := 40
 const P_PICK_UP := 50
 const P_HAND_OVER := 60

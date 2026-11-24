@@ -1710,3 +1710,24 @@ and no Commons reference is listed (their titles name the business). Heights are
 `tests/tools/city_shot.gd --no-landmarks` builds the same city without landmark models (OSM
 buildings in place); `--frames=N` prints average and worst frame time over N rendered frames.
 Numbers in `handoff.md`.
+
+## Taking over traffic (G-300 to G-309)
+
+### G-300: TAKE OVER works on moving traffic and is wired in `Main`
+Owner report: the player could not pull a driver off a running car or bike. `Carjacking` (G-128)
+existed but nothing added it to the game, and its rule only took vehicles under 1.2 m/s.
+`Main._add_carjacking` now makes `Carjacking.make(life, driving)` at the end of the "Parking the
+vehicles" step and registers `Carjacking.offer` with the walking controls' `ActionContext` at
+`P_TAKE_OVER` (35: above GET IN, below TALK). Rules: car, auto and bike only (`Carjack.KINDS`;
+buses and ambulances carry passengers or crews, no rule for them), up to `Carjack.MAX_TAKE_SPEED`
+(11 m/s, an estimate) within the usual reach, player on foot and not boarding. Stopped ones are
+still swapped in automatically as before and the button then reads TAKE OVER for that vehicle.
+For a moving one the AI step caches the candidate; pressing calls `request(id)`, and the next gap
+between AI steps re-checks it, swaps the vehicle in where it is drawn (stopped dead, driver at the
+wheel) and starts `Driving.enter` with the pull phase; the right-hand door and seat come from
+`Boarding`. AI agents are never read from the UI thread. Pulled drivers (adults only by
+`CastPicker`, tested) stagger leaning for 0.6 s, then run off; the agent returns to the pool out
+of sight once the player is seated, and the player's `Vehicle` is a plain node the traffic pool
+never owns (freed only when parked more than `Carjacking.FORGET` m away). `Wanted` has no
+instance in the game yet, so `Carjacking.wanted` stays null and only `carjacked` is signalled;
+the fall clips come with the animation work (staggering is the fallback).

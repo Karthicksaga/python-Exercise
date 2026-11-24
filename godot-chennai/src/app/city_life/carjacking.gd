@@ -14,6 +14,11 @@ extends Node
 ##   walkers near by are scared. Once the player is seated, the agent is let go to a new place
 ##   out of sight and the vehicle is the player's.
 ## - If the player walks away instead, the swap is undone and the traffic drives on.
+## - Moving ones too (G-300): within reach of a car, auto or bike going up to
+##   `Carjack.MAX_TAKE_SPEED`, the ACTION button offers TAKE OVER (`offer`). Pressed, the next
+##   step between the AI's steps swaps the vehicle in at once (stopped dead, the driver at the wheel)
+##   and starts the boarding with the pull phase. Buses and ambulances are never offered; drivers
+##   are adults by `CastPicker`, so no child is ever pulled out.
 ## Runs between the AI's steps (`CityLife.between_steps`), never while the AI thread runs.
 
 signal carjacked(look: StringName, at: Vector2)
@@ -24,6 +29,8 @@ const GIVE_UP := 5.0
 const FORGET := 360.0
 const FLEE_SECONDS := 9.0
 const FLEE_SPEED := 3.2
+## A pulled driver staggers (leans, slower) for this long before running (fallback for the fall clip).
+const STAGGER_SECONDS := 0.6
 
 var life: CityLife
 var driving: Driving
@@ -34,6 +41,10 @@ var vehicle: Vehicle = null
 var agent_id: int = -1
 var _driver: PersonView = null
 var _pulled := false
+## The agent the player asked to take over (TAKE OVER pressed), done in the next step; -1: none.
+var _request: int = -1
+## The takeable moving vehicle offered by the last step ({} when none), read by `offer`.
+var _offered: Dictionary = {}
 ## Drivers running away: [view, seconds left, direction (scene)].
 var _fleeing: Array[Array] = []
 ## Vehicles taken so far that still exist.
@@ -69,10 +80,13 @@ func _traffic_list() -> Array:
 func _step(dt: float) -> void:
 	_run_away(dt)
 	_forget_far()
+	_offered = {}
 	if driving.rider == null:
+		_request = -1
 		return
 	var feet := WorldOrigin.to_world(driving.rider.position())
 	if vehicle != null:
+		_request = -1
 		if driving.vehicle == vehicle:
 			_finish()
 		elif driving.boarding_vehicle != vehicle and driving.mode() == &"foot" and not _pulled:
@@ -80,12 +94,52 @@ func _step(dt: float) -> void:
 			if Carjack.distance_to_footprint(feet.x, feet.y, {"x": at.x, "z": at.y, "heading": vehicle.yaw(), "half_width": vehicle.type.spec.half_extents.x, "half_length": vehicle.type.spec.half_extents.z}) > GIVE_UP:
 				_undo()
 		return
-	if driving.mode() != &"foot":
+	if driving.mode() != &"foot" or driving.boarding != null:
+		_request = -1
 		return
 	# Only as close as the Get-in button offers a vehicle (it then offers this one).
-	var pick := Carjack.pick(feet.x, feet.y, _traffic_list(), minf(Carjack.REACH, Driving.ENTER_REACH - 0.2))
-	if not pick.is_empty():
-		_swap(int(pick["id"]))
+	var reach := minf(Carjack.REACH, Driving.ENTER_REACH - 0.2)
+	var pick := Carjack.pick(feet.x, feet.y, _traffic_list(), reach, Carjack.MAX_TAKE_SPEED)
+	var asked := _request
+	_request = -1
+	if pick.is_empty():
+		return
+	var id := int(pick["id"])
+	if absf(float(pick["speed"])) < Carjack.MAX_SPEED or id == asked:
+		_swap(id)
+		if id == asked:
+			driving.enter(vehicle)
+	else:
+		_offered = pick
+
+
+## The ACTION button's TAKE OVER (an `ActionContext` source): a moving vehicle in reach, or the
+## stopped one already swapped in. Reads only what the last step cached, never the AI's agents.
+func offer() -> Variant:
+	if driving.mode() != &"foot" or driving.rider == null or driving.boarding != null:
+		return null
+	if vehicle != null:
+		if _pulled:
+			return null
+		var gap := vehicle.global_position.distance_to(driving.rider.position())
+		return ActionCandidate.make("TAKE OVER", ActionContext.P_TAKE_OVER, gap, func() -> void: driving.enter(vehicle))
+	if _offered.is_empty():
+		return null
+	var id := int(_offered["id"])
+	var feet := WorldOrigin.to_world(driving.rider.position())
+	var gap := Carjack.distance_to_footprint(feet.x, feet.y, _offered)
+	return ActionCandidate.make("TAKE OVER", ActionContext.P_TAKE_OVER, gap, func() -> void: request(id))
+
+
+## How many pulled-out drivers are still running off.
+func fleeing_count() -> int:
+	return _fleeing.size()
+
+
+## Take over this traffic vehicle at the next step (it is checked again then: still in reach,
+## still takeable). Pressing TAKE OVER calls this.
+func request(id: int) -> void:
+	_request = id
 
 
 func _swap(id: int) -> void:
@@ -108,7 +162,9 @@ func _swap(id: int) -> void:
 	v.add_to_group(WorldOrigin.GROUP)
 	v.set_meta(&"driver_aboard", true)
 	v.park()
-	v.place(WorldOrigin.to_scene(a.pos, a.y), a.heading)
+	# Where the view is drawn (it moved on since the AI's last step), standing still from now on.
+	var drawn := WorldOrigin.to_world(view.global_position)
+	v.place(WorldOrigin.to_scene(drawn, a.y), a.heading)
 	life.world.add_child(v)
 	vehicle = v
 	agent_id = id
@@ -158,7 +214,8 @@ func _on_boarding(v: Vehicle, event: StringName) -> void:
 		feet.y = v.global_position.y + v.model.position.y
 		_driver.reparent(life.pool)
 		_driver.global_transform = Transform3D(Basis(Vector3.UP, atan2(-dir.x, -dir.z)), feet)
-		_driver.play(&"run", FLEE_SPEED)
+		# Stumbles first (the fall clips come with the animation work), then runs.
+		_driver.play(&"idle")
 		_fleeing.append([_driver, FLEE_SECONDS, dir.normalized()])
 		_driver = null
 
@@ -185,7 +242,11 @@ func _run_away(dt: float) -> void:
 		var left: float = f[1] - dt
 		f[1] = left
 		var dir: Vector3 = f[2]
-		view.global_position += dir * FLEE_SPEED * dt
+		var staggering := FLEE_SECONDS - left < STAGGER_SECONDS
+		view.rotation.x = -0.4 if staggering else 0.0
+		if not staggering and view.clip != &"run":
+			view.play(&"run", FLEE_SPEED)
+		view.global_position += dir * FLEE_SPEED * (0.4 if staggering else 1.0) * dt
 		view.advance(dt, view.global_position.distance_to(cam.global_position) if cam != null else 0.0)
 		if left <= 0.0:
 			view.queue_free()
