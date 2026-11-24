@@ -90,11 +90,22 @@ func shown() -> bool:
 
 
 ## Place entrances (scene positions, ground height) as small rings.
+## Entrance rings further than this from the camera are not drawn (metres).
+const ENTRANCE_REACH := 120.0
+var _entrance_mesh: TorusMesh = null
+
+
 func set_entrances(points: Array[Dictionary]) -> void:
+	# One mesh and material for every entrance ring (G-257): a ring each built a torus and a
+	# material per entrance, so the renderer could not share them.
+	if _entrance_mesh == null:
+		_entrance_mesh = _ring_mesh(_material(PLACE_COLOUR, 0.8))
 	while _entrances.size() < points.size():
 		var m := MeshInstance3D.new()
 		m.name = "Entrance%d" % _entrances.size()
-		m.mesh = _ring_mesh(_material(PLACE_COLOUR, 0.8))
+		m.mesh = _entrance_mesh
+		# A ring on the ground is a few pixels beyond this (and behind the haze): not drawn.
+		m.visibility_range_end = ENTRANCE_REACH
 		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		m.top_level = true
 		add_child(m)

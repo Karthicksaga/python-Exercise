@@ -33,7 +33,7 @@ const TABLE: Array[Dictionary] = [
 		"traffic": 18, "walkers": 14, "figures": 12, "driver_reach": 30.0, "rider_reach": 60.0,
 		"rain": 0.4, "title_rain_layers": 0, "water_detail": false, "ground_detail": false,
 		"lod_threshold": 4.0, "landmark_range": 0.6, "aniso": 0,
-		"max_fps": 30, "physics_steps": 2, "workers": 1, "street_lights": 2, "ai_patience": 6,
+		"max_fps": 30, "physics_steps": 2, "workers": 1, "street_lights": 0, "ai_patience": 6,
 	},
 	{
 		"scale": 0.8, "scale_mode": FSR1, "msaa": 0,
@@ -43,7 +43,7 @@ const TABLE: Array[Dictionary] = [
 		"traffic": 26, "walkers": 24, "figures": 24, "driver_reach": 40.0, "rider_reach": 80.0,
 		"rain": 0.7, "title_rain_layers": 1, "water_detail": true, "ground_detail": true,
 		"lod_threshold": 2.0, "landmark_range": 0.8, "aniso": 1,
-		"max_fps": 60, "physics_steps": 3, "workers": 2, "street_lights": 4, "ai_patience": 4,
+		"max_fps": 60, "physics_steps": 3, "workers": 2, "street_lights": 2, "ai_patience": 4,
 	},
 	{
 		"scale": 1.0, "scale_mode": BILINEAR, "msaa": 1,

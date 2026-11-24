@@ -56,7 +56,7 @@ func test_presets_apply_live() -> bool:
 	assert_eq(main.world.streamer.in_flight, 1, "one chunk build at a time")
 	assert_eq(env.fog_far, 240.0, "the haze pulled in with it")
 	assert_eq(env.rain.drawn(), roundi(CityEnvironment.RAIN_DROPS * 0.4), "fewer rain drops")
-	assert_eq(env.street_lights.pool, 2, "two real street lights")
+	assert_eq(env.street_lights.pool, 0, "no real street lights on Low (the lamp heads still glow)")
 	assert_eq(main.life.figure_cap, 12, "fewer figures drawn")
 	assert_eq(main.life.ai_patience, 6, "the AI step may lag")
 	assert_false(bool(main.world.materials.ground.get_shader_parameter(&"detail")), "light ground shader")
