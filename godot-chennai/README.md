@@ -1,5 +1,8 @@
 # godot-chennai
 
+> **Coordinators:** start with [`docs/COORDINATOR_HANDOFF.md`](docs/COORDINATOR_HANDOFF.md) (state of the migration, open branches, next steps).
+
+
 The Chennai open-world game in **Godot 4.7.2**, for Android phones in landscape, migrated phase
 by phase from the Three.js game in `../chennai-open-world/` (which stays playable until this
 version reaches parity). Phase 0 (foundation) is in: the game boots through a loading screen

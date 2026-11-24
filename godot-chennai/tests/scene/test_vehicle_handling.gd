@@ -107,11 +107,20 @@ func test_no_drift_when_slow_and_two_wheelers_never_slide() -> bool:
 
 func test_wheels_on_the_ground_and_ride_height() -> bool:
 	var ref := _reference()
-	for kind in LEGACY:
+	var kinds: Array[StringName] = []
+	kinds.append_array(LEGACY)
+	kinds.append_array(PREMIUM)
+	for kind in kinds:
+		var t := VehicleCatalog.type(kind)
 		check(bool(_measured[kind]["wheelsOnGround"]), "%s: every wheel on the ground while accelerating" % kind)
-		assert_near(float(_measured[kind]["restY"]), float(ref[String(kind)]["restY"]), 0.03, "%s settles at the Three.js ride height" % kind)
-	for kind in PREMIUM:
-		check(bool(_measured[kind]["wheelsOnGround"]), "%s: every wheel on the ground" % kind)
+		# Every vehicle settles where its own wheel and spring geometry puts it (the model's
+		# ground, `VehicleModel.settled_ground`), so the drawn wheels touch the road.
+		assert_near(float(_measured[kind]["restY"]), -VehicleModel.settled_ground(t.spec), 0.03, "%s settles at its model's ride height" % kind)
+		# Kinds still on the Three.js models also settle where the Three.js game put them. The
+		# redesigned Tamil Nadu models (hatchback, auto, ambulance, bus) have their own wheels.
+		var m := VehicleCatalog.manifest_for(t)
+		if kind in LEGACY and m != null and m.dir.ends_with("/legacy"):
+			assert_near(float(_measured[kind]["restY"]), float(ref[String(kind)]["restY"]), 0.03, "%s settles at the Three.js ride height" % kind)
 	return true
 
 
