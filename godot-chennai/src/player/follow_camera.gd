@@ -16,6 +16,11 @@ extends Node3D
 ## - `chase(...)` each step while driving: swing behind the direction of travel, pull back and
 ##   widen a little with speed.
 ##
+## - Shake on impacts (`add_trauma`, `game-feel` trauma, G-274): the lens is offset and rolled by
+##   trauma² so taps barely move it and crashes punch; trauma decays to 0 in 1/`SHAKE_DECAY` s.
+##   Visual only (never moves the rig or the probe), and `shake_strength` 0 (reduced motion)
+##   turns it off.
+##
 ## Runs in the physics step after the target has moved (`process_physics_priority`), so
 ## following a 60 Hz body never jitters (TD-6).
 
@@ -77,6 +82,16 @@ var _velocity: Vector3 = Vector3.ZERO
 var _chasing: Dictionary = {}
 var _probe: SphereShape3D = SphereShape3D.new()
 
+## Trauma lost per second; the lens offset (metres) and roll (radians) at full trauma.
+const SHAKE_DECAY := 1.6
+const SHAKE_OFFSET := 0.16
+const SHAKE_ROLL := 0.04
+## 0..1 how hard the camera is shaking (impacts add to it).
+var trauma: float = 0.0
+## The player's shake setting: 1 full, 0 off (reduced motion).
+var shake_strength: float = 1.0
+var _shake_clock: float = 0.0
+
 
 func _init() -> void:
 	top_level = true
@@ -106,6 +121,29 @@ func look(dx: float, dy: float) -> void:
 		_since_look = 0.0
 	yaw -= dx * SENSITIVITY
 	pitch = clampf(pitch + dy * SENSITIVITY, MIN_PITCH, MAX_PITCH)
+
+
+## An impact: adds to the trauma (hits add, they don't reset), at most 1.
+func add_trauma(amount: float) -> void:
+	trauma = clampf(trauma + maxf(0.0, amount), 0.0, 1.0)
+
+
+## The lens offset now (metres, x right and y up): 0 at rest.
+func shake_offset() -> Vector2:
+	return Vector2(camera.h_offset, camera.v_offset)
+
+
+func _shake(dt: float) -> void:
+	if trauma <= 0.0 and camera.h_offset == 0.0 and camera.v_offset == 0.0:
+		return
+	trauma = maxf(0.0, trauma - SHAKE_DECAY * dt)
+	_shake_clock += dt
+	var k := trauma * trauma * clampf(shake_strength, 0.0, 1.0)
+	var t := _shake_clock
+	# Three incommensurate sines per axis: noise-like, no allocation, no Noise resource.
+	camera.h_offset = SHAKE_OFFSET * k * (sin(t * 37.0) * 0.6 + sin(t * 61.0 + 1.3) * 0.4)
+	camera.v_offset = SHAKE_OFFSET * k * (sin(t * 43.0 + 0.7) * 0.6 + sin(t * 71.0 + 2.1) * 0.4)
+	camera.rotation.z = SHAKE_ROLL * k * (sin(t * 29.0 + 2.9) * 0.7 + sin(t * 53.0) * 0.3)
 
 
 ## Hard cut to the target (after a respawn or a teleport).
@@ -209,6 +247,7 @@ func update(dt: float) -> void:
 	var look_at_point := _focus + Vector3(_lead.x, 0.0, _lead.z)
 	if global_position.distance_to(look_at_point) > 0.01:
 		look_at(look_at_point, Vector3.UP)
+	_shake(dt)
 
 
 ## Distance along `dir` from `from` at which the probe sphere first touches a view blocker,

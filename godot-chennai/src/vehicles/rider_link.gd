@@ -16,6 +16,7 @@ var health: float = 100.0
 var flight := CrashFlight.new()
 var _landed := false
 var _from: PhysicsBody3D = null
+var _phase: StringName = &""
 
 
 ## Off their feet for a vehicle: no own movement or collision; `place`/`hold` move them.
@@ -76,6 +77,8 @@ func throw_off(start: Vector3, launch: Vector3, lie_for: float, vehicle: Physics
 	if vehicle != null:
 		body.add_collision_exception_with(vehicle)
 	flight.start(launch, lie_for, vehicle)
+	_phase = flight.phase
+	_show_fall(launch)
 
 
 ## &"" on foot or riding, else the throw's phase (&"flying", &"sliding", &"lying", &"rising").
@@ -96,6 +99,12 @@ func physics_step(dt: float) -> void:
 		return
 	if flight.step(body, dt):
 		_landed = true
+	if flight.phase != _phase:
+		_phase = flight.phase
+		if _phase == &"sliding":
+			_show_landed()
+		elif _phase == &"rising":
+			_show_getup()
 	_show_knockdown(flight.tip())
 	if not flight.active():
 		if _from != null and is_instance_valid(_from):
@@ -105,6 +114,23 @@ func physics_step(dt: float) -> void:
 		_own_control(true)
 
 
-## Hook: draw a thrown body tipped over (`tip` 0 upright to 1 lying on its back).
+## Hook: draw a thrown body tipped over (`tip` 0 upright to 1 lying on its back). The fallback
+## when the figure has no knockdown clips (G-275).
 func _show_knockdown(_tip: float) -> void:
+	pass
+
+
+## Hook: the body left the vehicle with `velocity` (m/s): the figure starts its fall (the
+## figures' `play_fall`, agent/godot-anim's knockdown API).
+func _show_fall(_velocity: Vector3) -> void:
+	pass
+
+
+## Hook: the body touched the ground (crumple, then lie still).
+func _show_landed() -> void:
+	pass
+
+
+## Hook: getting up begins (`CrashFlight.RISE_TIME` seconds).
+func _show_getup() -> void:
 	pass

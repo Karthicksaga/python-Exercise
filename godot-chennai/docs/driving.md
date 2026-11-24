@@ -82,19 +82,23 @@ read line by line); the remaining gap was not found.
 Premium and race cars (no Three.js reference; invented): saloon 34.9 m/s top (126 km/h),
 SUV 31.8 (115), coupé 43.0 (155), race car 61.2 (220).
 
-## Crash ejection (TD-29, G-75)
-| Vehicle | Shaken from | Thrown from | Style |
-|---|---|---|---|
-| Motorbike | 18 km/h | 35 km/h | off the seat; the bike topples |
-| Auto | 18 | 30 | off the seat |
-| Hatchback (taxi, police, gang) | 25 | 70 | through the windscreen |
-| Ambulance | 25 | 75 | windscreen |
-| Bus | 30 | never | – |
-| Saloon / SUV / coupé | 30 | 95 / 90 / 110 | windscreen (invented: above each car's reach on the flat only in a head-on) |
-| Race car | 40 | never (harness) | – |
+## Crash ejection (TD-29, G-75, G-270)
+Severity in km/h; below 4 nothing, below "shaken" a bump (a wobble, no damage).
 
-The impact is the vehicle's change of velocity in one step; into a wall it comes out about 5 %
-above the approach speed (restitution 0.1, as in Rapier). The thrown body moves with the
+| Vehicle | Shaken from | Falls off from | Thrown from | Style |
+|---|---|---|---|---|
+| Motorbike | 18 km/h | 27 (20 from the side) | 35 | off the seat; the bike topples |
+| Auto | 18 | 24 | 38 | off the seat |
+| Hatchback (taxi, police, gang) | 25 | – | 70 | through the windscreen |
+| Ambulance | 25 | – | 75 | windscreen |
+| Bus | 30 | – | never | – |
+| Saloon / SUV / coupé | 30 | – | 95 / 90 / 110 | windscreen (invented: above each car's reach on the flat only in a head-on) |
+| Race car | 40 | – | never (harness) | – |
+
+A hit from behind never throws. The severity is the vehicle's change of velocity in one step
+(into a wall about 5 % above the approach speed, restitution 0.1 as in Rapier), scaled by the
+mass share `m_other / (m_self + m_other)` when the other body is AI traffic (kinematic: the
+solver would treat it as a wall). Effects, damage, camera shake: G-272…G-274. The thrown body moves with the
 rider's own `CharacterBody3D.move_and_slide`, so walls stop it (swept, no tunnelling); it passes
 through its own vehicle until it is up.
 

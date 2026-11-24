@@ -766,3 +766,31 @@ and freeing a vehicle left far behind), `scene/test_game_vehicles.gd` (end to en
 - The pulled driver's fall is a lean while staggering (no fall clip); the moving vehicle stops
   dead at the press instead of braking.
 - Seen headless only; not on a phone, no screenshots (nothing new is drawn).
+
+
+## Crashes: bands, effects, shake (agent/godot-crash, G-270…G-275), 24 Nov 2026
+**Done (yard and unit tests, desktop headless; not on a phone).** The owner's bug (hitting
+another bike threw the rider far) was AI traffic being kinematic: Jolt stopped the player dead as
+at a wall and the old rule judged that full change. `CrashRules` now judges a severity (the
+measured change, shared by mass against traffic) in bands bump / shaken / fall / thrown, with the
+contact angle (side hits topple bikes sooner, rear hits never throw); per-kind `fall_from` and
+`fall_base` in `vehicle_types.json`. Hits leave a wobble and body damage (darker paint, sag,
+smoke when wrecked); `DrivingWiring` adds sparks and glass (`src/vehicles/crash_effects/`),
+camera trauma (`FollowCamera.add_trauma`, off with reduced motion), haptics for bumps and falls,
+and a honk from a hit traffic vehicle (`DrivingWiring.reaction` → `VehicleSounds.on_reaction`).
+Numbers in G-270 and G-273.
+
+**For other agents.**
+- Listen to `Driving.bumped` for small hits (not a crash: missions ignore it); `crashed` now also
+  carries `&"fall"`. `Driving.last_hit` is the last judged hit including bumps.
+- `CrashRules.Outcome.hit` has the contact point, normal and the other body.
+- **agent/godot-anim:** this branch leaves `PlayerRiderLink` as on feat/godot-chennai, so your
+  `_show_knockdown` calls to `play_fall`/`play_landed`/`play_getup` merge as they are (trial
+  merge of both branches: no conflicts, crash tests run on it). `RISE_TIME` is 1.2 s on both.
+  `RiderLink` also fires `_show_fall`/`_show_landed`/`_show_getup` hooks for other links.
+
+**Weak.** Traffic does not react physically to being hit (no shove, its rider never falls; only
+the honk hook); people get no reaction hook (CityLife has none). Smoke is grey alpha spheres
+(cheap, reads as smoke at a distance, blobby up close). No dent geometry: damage is paint, sag and
+smoke. Effect cost measured on the desktop only (G-273). The player still stops dead against a
+light traffic vehicle (the solver's wall); only the judgement is shared by mass.

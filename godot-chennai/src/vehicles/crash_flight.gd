@@ -3,12 +3,13 @@ extends RefCounted
 ## A body thrown from a crash (TD-29, decision G-75): it flies with the launch velocity under
 ## gravity using the character's own `move_and_slide`, so walls and the ground stop it exactly as
 ## they stop walking (a wall ahead: it slides along it, keeping 70 % of the speed); it scrapes
-## along the ground at 9 m/s², lies still for `lie_for` seconds, and gets up in 0.75 s.
+## along the ground at 9 m/s², lies still for `lie_for` seconds, and gets up in RISE_TIME.
 ## Swept motion (`move_and_slide`) cannot tunnel through a wall at these speeds.
 
 const SCRAPE := 9.0
 const WALL_KEEP := 0.7
-const RISE_TIME := 0.75
+## Seconds to get up: the figure's get-up (`Knockdown.GETUP_TIME`, G-262) takes as long.
+const RISE_TIME := 1.2
 ## A flight longer than this ends where it is (fell off the world, stuck on something).
 const MAX_FLIGHT := 6.0
 

@@ -29,6 +29,20 @@ var stand_in := false
 
 static var _paint_cache: Dictionary = {}
 
+## Per damage stage (G-272): the paint darkens by this share (soot, scuffs), the body sags at
+## the front (pitch, radians) and leans (roll, radians), as a bent frame would.
+const DENT_DARKEN := 0.2
+const DENT_SAG := 0.025
+const DENT_LEAN := 0.015
+
+## The paint slots (mesh, surface, base material) and colour, so damage can darken them.
+var _paint_meshes: Array[MeshInstance3D] = []
+var _paint_surfaces: PackedInt32Array = []
+var _paint_bases: Array[StandardMaterial3D] = []
+var _paint_colour := Color.WHITE
+var _box_material: StandardMaterial3D = null
+var _damage_stage := 0
+
 
 static func build(t: VehicleType, variant: VehicleCatalog.VariantInfo) -> VehicleModel:
 	var m := VehicleModel.new()
@@ -131,6 +145,10 @@ func _style_meshes(root: Node, paint_names: Array[String], beacons: Dictionary, 
 			var mname := mat.resource_name
 			if mname in paint_names and mat is StandardMaterial3D:
 				mi.set_surface_override_material(s, _painted(mat as StandardMaterial3D, paint))
+				_paint_meshes.append(mi)
+				_paint_surfaces.append(s)
+				_paint_bases.append(mat as StandardMaterial3D)
+				_paint_colour = paint
 			for colour: String in beacons:
 				var names: Array = beacons[colour]
 				if mname in names and mat is StandardMaterial3D:
@@ -166,6 +184,8 @@ func _build_box(t: VehicleType, variant: VehicleCatalog.VariantInfo) -> void:
 	mat.roughness = 0.35
 	mat.metallic = 0.3
 	box.material = mat
+	_box_material = mat
+	_paint_colour = variant.paint
 	body.mesh = box
 	body.position = Vector3(0, -position.y, 0)
 	add_child(body)
@@ -238,7 +258,24 @@ func set_wheel(i: int, hub_y: float, steer: float, spin: float) -> void:
 
 ## Lean or topple: roll about the forward axis, pivoting on the ground.
 func set_roll(angle: float) -> void:
-	rotation = Vector3(0, 0, angle)
+	var st := float(_damage_stage)
+	rotation = Vector3(-DENT_SAG * st, 0, angle + DENT_LEAN * st)
+
+
+## Show damage stage 0 (clean), 1 (dented) or 2 (wrecked): darker paint (shared materials per
+## colour, so no per-vehicle copies) and a sagging body. Called on a stage change only.
+func set_damage(stage: int) -> void:
+	_damage_stage = clampi(stage, 0, 2)
+	var colour := _paint_colour.darkened(DENT_DARKEN * float(_damage_stage))
+	for i in _paint_meshes.size():
+		if is_instance_valid(_paint_meshes[i]):
+			_paint_meshes[i].set_surface_override_material(_paint_surfaces[i], _painted(_paint_bases[i], colour))
+	if _box_material != null:
+		_box_material.albedo_color = colour
+
+
+func damage_stage() -> int:
+	return _damage_stage
 
 
 func set_door(leaf: int, amount: float) -> void:

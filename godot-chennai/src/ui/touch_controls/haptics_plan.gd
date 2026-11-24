@@ -11,6 +11,10 @@ static func crash(outcome_type: StringName, damage: float) -> Dictionary:
 	match outcome_type:
 		&"thrown", &"toppled":
 			return {"ms": 320, "amp": 1.0, "weak": 0.6, "strong": 1.0, "seconds": 0.5}
+		&"fall":
+			return {"ms": 240, "amp": 0.9, "weak": 0.6, "strong": 0.8, "seconds": 0.4}
+		&"bump":
+			return {"ms": 40, "amp": 0.45, "weak": 0.3, "strong": 0.1, "seconds": 0.08}
 		&"shaken":
 			return {"ms": roundi(lerpf(80.0, 220.0, hard)), "amp": lerpf(0.5, 0.9, hard), "weak": 0.5, "strong": lerpf(0.4, 0.8, hard), "seconds": 0.25}
 	return {}
