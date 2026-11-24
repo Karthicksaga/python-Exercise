@@ -107,7 +107,8 @@ func test_door_leaves() -> bool:
 
 func test_geometry_comes_from_each_model() -> bool:
 	# The kind's seat, entry and wheels are the model's own anchors in the chassis frame (model y
-	# minus the ride height), whichever model it is.
+	# plus the drawn ground: the model is drawn at the settled ride height, G-267), whichever
+	# model it is.
 	for k: StringName in [&"car", &"auto", &"bike", &"ambulance", &"bus", &"saloon", &"race"]:
 		var t := VehicleCatalog.type(k)
 		var m := VehicleCatalog.manifest_for(t)
@@ -117,7 +118,7 @@ func test_geometry_comes_from_each_model() -> bool:
 		for seat: Dictionary in m.data["seats"]:
 			if String(seat["role"]) == "driver":
 				var a: Array = seat["hip"]
-				hip = Vector3(float(a[0]), float(a[1]), float(a[2])) - Vector3(0, m.chassis_height(), 0)
+				hip = Vector3(float(a[0]), float(a[1]), float(a[2])) + Vector3(0, VehicleModel.settled_ground(t.spec), 0)
 		assert_vec_near(Vector2(t.driver.x, t.driver.y), Vector2(hip.x, hip.y), 0.001, "%s driver hip in the chassis frame" % k)
 		var e: Array = (m.data["entry"] as Dictionary)["point"]
 		assert_vec_near(t.entry.point, Vector2(float(e[0]), float(e[e.size() - 1])), 0.001, "%s entry point" % k)
@@ -126,7 +127,7 @@ func test_geometry_comes_from_each_model() -> bool:
 	var old := VehicleType.new()
 	old.spec = VehicleSpec.new()
 	VehicleManifest.read("res://assets/vehicles/legacy/hatchback.json").apply_geometry(old)
-	assert_vec_near(Vector2(old.driver.x, old.driver.y), Vector2(0.36, -0.03), 0.001, "Three.js hatchback driver hip")
+	assert_vec_near(Vector2(old.driver.x, old.driver.y), Vector2(0.36, 0.71 + VehicleModel.settled_ground(old.spec)), 0.001, "Three.js hatchback driver hip (its seat 0.71 m above the drawn ground)")
 	assert_vec_near(old.entry.point, Vector2(1.25, 0.35), 0.001, "Three.js hatchback entry point")
 	# Passenger doors come from the model's seats: the redesigned ambulance's attendant uses a rear door.
 	var amb := VehicleCatalog.type(&"ambulance")
