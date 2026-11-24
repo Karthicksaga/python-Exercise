@@ -36,6 +36,8 @@ class Draw:
 	var side: int = 1
 	## Hidden (the player's cab is drawn as this train but by its own entry).
 	var hidden: bool = false
+	## Squared distance to the focus (for sorting, set by the owner).
+	var distance: float = 0.0
 
 
 var drawn_trains: int = 0

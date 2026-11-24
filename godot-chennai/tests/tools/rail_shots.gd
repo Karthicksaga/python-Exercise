@@ -36,6 +36,10 @@ func _run() -> void:
 	for i in 60 * 240:
 		if main.get("state") == &"play":
 			break
+		if main.get("state") == &"failed":
+			print("[rail_shots] loading failed")
+			quit(1)
+			return
 		await physics_frame
 	print("[rail_shots] play after loading")
 	match shot:
@@ -255,4 +259,5 @@ func _measure() -> void:
 		var steps := maxi(1, int(timing["steps"]))
 		var fr := maxi(1, int(timing["frames"]))
 		print("[rail_shots] measure %s: draws %.0f prims %.0f frame %.2f ms | railway physics %.3f ms/step (max %.3f) frame %.3f ms (max %.3f)" % [pass_name, float(draws) / frames, float(prims) / frames, wall, float(timing["physics_total"]) / steps / 1000.0, float(timing["physics_max"]) / 1000.0, float(timing["process_total"]) / fr / 1000.0, float(timing["process_max"]) / 1000.0])
-	print("[rail_shots] snapshot %s" % str(rail.call("snapshot")))
+		print("[rail_shots] parts (listen, crowds, crossings) µs per step: %s" % str(Vector3(rail.get("parts")) / steps))
+	print("[rail_shots] snapshot %s parts %s" % [str(rail.call("snapshot")), str(rail.get("parts"))])

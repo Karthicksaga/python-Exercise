@@ -168,9 +168,12 @@ func prepare(city: CityWorld, player: PlayerRig) -> String:
 	for p in platforms:
 		_platform_points.append(p.line.path.at(p.stop.s).point())
 	apply_quality(quality)
+	prepared = true
 	return ""
 
 
+## True once `prepare` finished: nothing steps before the views exist.
+var prepared: bool = false
 ## Stops' centres and their lines, platforms' centres: so the per-frame checks only look at the
 ## few lines with a stop near the player (a projection onto a 17 km line costs ~0.1 ms).
 var _stop_points := PackedVector2Array()
@@ -227,7 +230,7 @@ var timing := {"physics_usec": 0, "process_usec": 0, "physics_total": 0, "proces
 
 
 func _physics_process(dt: float) -> void:
-	if network == null:
+	if not prepared:
 		return
 	var t0 := Time.get_ticks_usec()
 	_physics_step(dt)
@@ -246,9 +249,26 @@ func _physics_step(dt: float) -> void:
 	_step_walk(dt)
 	_step_ride()
 	_step_parked(dt, focus)
-	_listen(focus)
+	_slow_step += 1
+	var t0 := Time.get_ticks_usec()
+	# Horns, chimes and crossings need no more than ten checks a second.
+	if _slow_step % 6 == 0:
+		_listen(focus)
+	var t1 := Time.get_ticks_usec()
 	_step_crowds(dt, focus)
-	_step_crossings(dt)
+	var t2 := Time.get_ticks_usec()
+	if _slow_step % 6 == 3:
+		_step_crossings(dt * 6.0)
+	var t3 := Time.get_ticks_usec()
+	parts += Vector3i(t1 - t0, t2 - t1, t3 - t2)
+
+
+var _slow_step: int = 0
+var _hud_tick: int = 0
+## Standing trains' doorways per platform, in its frame: they do not move while a train stands.
+var _door_cache: Dictionary[String, PackedVector2Array] = {}
+## Physics time by part, summed (µs): listening (horns, chimes), crowds, crossings.
+var parts: Vector3i = Vector3i.ZERO
 
 
 ## Skips the timetable forward (tests and the debug menu; `railAdvance` in the Three.js game).
@@ -263,7 +283,7 @@ func _focus() -> Vector2:
 
 
 func _process(dt: float) -> void:
-	if network == null:
+	if not prepared:
 		return
 	var t0 := Time.get_ticks_usec()
 	_frame(dt)
@@ -277,6 +297,7 @@ func _process(dt: float) -> void:
 func reset_timing() -> void:
 	for k: String in timing.keys():
 		timing[k] = 0
+	parts = Vector3i.ZERO
 
 
 func _frame(dt: float) -> void:
@@ -289,7 +310,10 @@ func _frame(dt: float) -> void:
 	if _board_tick <= 0.0:
 		_board_tick = 1.0
 		stations_view.refresh(clock, float(hour_of.call()), _standing_keys())
-	_update_hud(focus)
+	_hud_tick += 1
+	# The HUD's words change slowly: a third of the frames is enough (the cab's dial every frame).
+	if _hud_tick % 3 == 0 or state == &"cab":
+		_update_hud(focus)
 
 
 func _standing_keys() -> Dictionary[String, bool]:
@@ -343,8 +367,9 @@ func _draw_trains(focus: Vector2) -> void:
 		d.line = parked[0] as RailLine
 		d.s = float(parked[1])
 		_draws.append(d)
-	_draws.sort_custom(func(a: TrainsView.Draw, b: TrainsView.Draw) -> bool:
-		return a.line.path.at(a.s).point().distance_squared_to(focus) < b.line.path.at(b.s).point().distance_squared_to(focus))
+	for d in _draws:
+		d.distance = d.line.path.at(d.s).point().distance_squared_to(focus)
+	_draws.sort_custom(func(a: TrainsView.Draw, b: TrainsView.Draw) -> bool: return a.distance < b.distance)
 	var cam := get_viewport().get_camera_3d()
 	var eye := cam.global_position if cam != null else WorldOrigin.to_scene(focus, 2.0)
 	trains_view.update(_draws, eye, WorldOrigin.to_scene(focus, 1.0))
@@ -367,7 +392,7 @@ func standing_train(at: Vector2, height: float) -> Array:
 ## What the ACTION button offers on foot: BOARD THE TRAIN at a standing train (registered as an
 ## `ActionContext` source by the composition root).
 func offer() -> Variant:
-	if state != &"foot" or network == null or rig == null or not rig.body.is_on_foot():
+	if state != &"foot" or not prepared or rig == null or not rig.body.is_on_foot():
 		return null
 	var at := _focus()
 	var found := standing_train(at, rig.body.global_position.y)
@@ -640,7 +665,7 @@ func toggle_view() -> void:
 
 ## The standing train whose front cab the player is beside (within DRIVE_REACH of its cab door), or null.
 func cab_offer_train() -> RailLine.TrainAt:
-	if state != &"foot" or network == null:
+	if state != &"foot" or not prepared:
 		return null
 	var at := _focus()
 	var found := standing_train(at, rig.body.global_position.y)
@@ -870,7 +895,12 @@ func _step_crowds(dt: float, focus: Vector2) -> void:
 				if not _loads.has(t.id):
 					_loads[t.id] = StationCrowd.initial_load(t.id)
 				ct.load = _loads[t.id]
-				ct.doors = _crowd_doors(p, sv, t)
+				var dk := "%s|%s" % [p.key, t.id]
+				if not _door_cache.has(dk):
+					if _door_cache.size() > 64:
+						_door_cache.clear()
+					_door_cache[dk] = _crowd_doors(p, sv, t)
+				ct.doors = _door_cache[dk]
 				trains.append(ct)
 		crowds[p.key].step(dt, StationCrowd.waiting_count(float(hour_of.call()), p.busy), trains)
 	for key: String in crowds.keys():

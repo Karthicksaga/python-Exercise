@@ -134,6 +134,8 @@ func _run_step(i: int) -> String:
 			return await _add_city()
 		3:
 			return await _add_play()
+		4:
+			return await _add_railway()
 	return "Unknown step %d." % i
 
 

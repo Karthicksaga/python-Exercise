@@ -163,18 +163,29 @@ static func _relative(root: Node3D, n: Node3D) -> Transform3D:
 	return xf
 
 
-## The cars of a train type, front first: car type names and whether each is turned round.
+static var _formations: Dictionary[String, Array] = {}
+
+
+## The cars of a train type, front first: car type names and whether each is turned round (cached).
 static func formation(train_type: String) -> Array[Array]:
+	if _formations.has(train_type):
+		return _formations[train_type]
 	var out: Array[Array] = []
 	var cars: Array = FORMATIONS.get(train_type, FORMATIONS["emu"])
 	for c: Variant in cars:
 		var s := str(c)
 		out.append([s.get_slice("@", 0), s.ends_with("@reversed")])
+	_formations[train_type] = out
 	return out
 
 
 ## Distance from the middle of a train to each car's middle (front car first, positive ahead).
+var _offsets: Dictionary[String, PackedFloat32Array] = {}
+
+
 func car_offsets(train_type: String) -> PackedFloat32Array:
+	if _offsets.has(train_type):
+		return _offsets[train_type]
 	var f := formation(train_type)
 	var lengths := PackedFloat32Array()
 	var total := 0.0
@@ -188,6 +199,7 @@ func car_offsets(train_type: String) -> PackedFloat32Array:
 	for l in lengths:
 		out.append(at - l / 2.0)
 		at -= l
+	_offsets[train_type] = out
 	return out
 
 
