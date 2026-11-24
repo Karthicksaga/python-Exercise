@@ -86,9 +86,10 @@ mode (xvfb counts):
 
 | | Low | Medium | High (as before) |
 |---|---|---|---|
-| 3D resolution | 75 %, bilinear | 80 %, FSR 1 | 100 % |
+| 3D resolution | 65 %, bilinear | 80 %, FSR 1 | 100 % |
+| City lighting | per vertex, no glint | per pixel | per pixel |
 | MSAA | off | off | 2x |
-| Sun shadows | 1024, 20 m | 1024, 28 m | 2048, 40 m |
+| Sun shadows | 1024, 18 m, hard | 1024, 28 m, hard | 2048, 40 m, soft |
 | Shadows of trees, objects, walkers | none | none | trees and objects; walkers within 18 m |
 | View: load / near look / haze / far plane | 200 / 80 / 240 / 330 m | 240 / 100 / 300 / 480 m | 260 / 120 / 340 / 1500 m |
 | Traffic / walkers / figures drawn | 18 / 14 / 12 | 26 / 24 / 24 | 34 / 34 / 36 |
@@ -139,6 +140,54 @@ in those frames the scripts took 1-3 ms (the hitch line), so the rest was the en
 Low draws about the same number of things: its gain is per pixel (resolution, MSAA, shadow
 reach and casters, lights). Draw calls stay far under the phone budget of the brief (230-300);
 halving them needs fewer chunk layers or merged materials, which was not done.
+
+## Second round: after the owner's phone (24 Nov 2026, G-340…G-346)
+
+**What the phone said (build afed12f, POCO M6 Pro, Adreno 613):** High, 16-19 fps, 56 ms of GPU
+time a frame at 2460x1080 with MSAA 2x: the GPU was the limit. It ran High because an earlier build
+saved the level; detection gives Low for this phone.
+
+**What changes for you:** start the new build once. It starts at "Graphics: Auto (Low)" (old
+saved levels are ignored once; a level you pick from now on is kept). The overlay's level line
+reads "Low (auto) · 3D 1599x702 (65% bilinear) · MSAA off · shadows 18 m · max fps 30". Low:
+
+- draws the 3D world at 65 % of the screen (42 % of the pixels; the HUD stays sharp);
+- lights buildings, roofs and ground per corner instead of per pixel (flat walls look the same;
+  the glossy glint goes);
+- keeps the sun's shadow but short (18 m) and hard-edged;
+- no MSAA, 0 real street lights, short view and less traffic, as before.
+
+**What it costs here** (software Vulkan, the Mobile renderer, 1230x540, the start of play, 10:20
+and 19:30; median of three runs, ms a frame; a quiet build machine; a phone is faster, the ratios
+are the point):
+
+| | Day | Night |
+|---|---|---|
+| High | 158 | 176 |
+| Medium | 91 | — |
+| Low (new) | 63 | 82 (58-103) |
+| Low before this round (75 %, per-pixel lighting) | 73-138 (noisy runs) | — |
+
+Draw calls at that place: High 113, Medium 97, Low 94. Pixel count is the lever: per-vertex
+lighting alone saved 5-10 % at the same resolution (A/B at 65 %: 52-54 ms against 55-59 ms of
+render time). At night on Low the lit windows (emission) cost about a fifth of the frame; the
+ground pools under the lamps cost nothing measurable.
+
+**Hitches (the 66-190 ms drops):** two causes found and fixed.
+1. Every change of game state (play start, pause, resume, title) re-applied the graphics level and
+   set the shadow map size again, which made the renderer compile its pipelines again: the first
+   frame of play took 2 s here. Now only a real change sets it; 0-2 compiles in play.
+2. Every 500 m and at every jump the traffic AI moved all its vehicles and people onto the new
+   streets on the main thread (70-340 ms). It now does it on its own thread.
+Driving 70 s at 15 m/s on High (headless, the frame's own work): 4-8 frames over 50 ms
+(worst 340-420 ms) before, 0 after (worst 37-40 ms), with the machine quieter in the second
+measurement. One 244 ms frame remains at play start: the physics engine, with the main thread
+blocked (not working) for 203 ms of it; under investigation.
+
+**New in the overlay and the log:** every hitch line says which part of the frame took the time
+(physics engine, scripts, deferred calls, frees, render, between frames), what was created, freed
+or uploaded in it, and whether the phone's main thread was working, waiting for a core or blocked.
+"hitches led by: …" counts the causes. Please send the log again from the new build.
 
 ## Not known yet
 
