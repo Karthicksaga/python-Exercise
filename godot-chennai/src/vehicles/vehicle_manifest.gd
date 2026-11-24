@@ -94,27 +94,68 @@ func wheels() -> Array[Dictionary]:
 	return out
 
 
-## Door nodes with their leaf (0 the driver's, then passengers' in order) and full opening angle.
-## Double doors (the ambulance's rear pair: the same hinge line, opposite sides) and folding
-## leaves (the bus) swing together as one leaf.
+## Door nodes with their leaf and full opening angle. Leaf 0 is the driver's door (the one the
+## driver's seat names, else the first door on the entry side); the others follow in order.
+## Doors that swing together share a leaf: a pair on one hinge line at the very front or back
+## (the ambulance's rear doors), and folding leaves of one doorway (the bus's, within 1.2 m).
 func doors() -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	var leaf := -1
-	var prev: Dictionary = {}
+	var listed: Array[Dictionary] = []
 	for d: Dictionary in data.get("doors", []):
 		if not d.has("node") or d["node"] == null:
 			continue
-		var hinge := _v3(d.get("hinge", [0, 0, 0]))
-		var folding := String(d.get("notes", "") if d.get("notes") != null else "").contains("folding")
-		# A pair at the very front or back (rear doors), on one hinge line, opposite sides.
-		var at_end := absf(hinge.z) > half_extents().z - 0.4
-		var pair := at_end and not prev.is_empty() and absf(hinge.z - (prev["hinge"] as Vector3).z) < 0.05 and signf(hinge.x) != signf((prev["hinge"] as Vector3).x)
-		if not (pair or (folding and bool(prev.get("folding", false)))):
+		var notes: Variant = d.get("notes")
+		listed.append({"node": String(d["node"]), "open": deg_to_rad(float(d.get("open_deg", 65.0))),
+			"hinge": _v3(d.get("hinge", [0, 0, 0])), "folding": notes != null and String(notes).contains("folding")})
+	var driver := _driver_door(listed)
+	if driver > 0:
+		var first: Dictionary = listed[driver]
+		listed.remove_at(driver)
+		listed.insert(0, first)
+	var half_z := half_extents().z
+	var leaf := -1
+	var prev: Dictionary = {}
+	for door in listed:
+		var hinge: Vector3 = door["hinge"]
+		var together := false
+		if not prev.is_empty():
+			var ph: Vector3 = prev["hinge"]
+			var end_pair := leaf > 0 and absf(hinge.z) > half_z - 0.4 and absf(hinge.z - ph.z) < 0.05 and signf(hinge.x) != signf(ph.x)
+			var folding_pair := bool(door["folding"]) and bool(prev["folding"]) and absf(hinge.z - ph.z) < 1.2 and signf(hinge.x) == signf(ph.x)
+			together = end_pair or folding_pair
+		if not together:
 			leaf += 1
-		var door := {"node": String(d["node"]), "leaf": leaf, "open": deg_to_rad(float(d.get("open_deg", 65.0))), "hinge": hinge, "folding": folding}
-		out.append(door)
+		door["leaf"] = leaf
 		prev = door
-	return out
+	return listed
+
+
+## Index in `listed` of the driver's door, or -1 for none.
+func _driver_door(listed: Array[Dictionary]) -> int:
+	var named := ""
+	for s: Dictionary in data.get("seats", []):
+		if String(s.get("role", "")) == "driver" and s.get("door") != null:
+			named = String(s["door"])
+	var side := float((data.get("entry", {}) as Dictionary).get("side", 1))
+	for i in listed.size():
+		if named != "" and listed[i]["node"] == named:
+			return i
+	if named == "":
+		# The door on the entry side whose hinge is just ahead of the driver's hips (a front
+		# door's hinge is about 0.5–1 m ahead of the seat; a rear door's is beside or behind it).
+		var best := -1
+		var best_d := INF
+		var hip := Vector3.ZERO
+		for s: Dictionary in data.get("seats", []):
+			if String(s.get("role", "")) == "driver":
+				hip = _v3(s["hip"])
+		for i in listed.size():
+			var h: Vector3 = listed[i]["hinge"]
+			var d := absf(h.z - (hip.z - 0.8))
+			if signf(h.x) == signf(side) and d < best_d:
+				best_d = d
+				best = i
+		return best
+	return -1
 
 
 ## Puts the model's geometry into `t` (wheels, chassis box, ride height, seat, pose, entry). The
@@ -133,7 +174,7 @@ func apply_geometry(t: VehicleType) -> void:
 			wheels.append(ws)
 		t.spec.wheels = wheels
 	t.spec.half_extents = half_extents()
-	t.spec.boxes = boxes()
+	t.spec.boxes = _clear_of_road(boxes(), VehicleModel.settled_ground(t.spec))
 	if p.has("rideHeight"):
 		t.ride_height = float(p["rideHeight"])
 	for s: Dictionary in data.get("seats", []):
@@ -156,6 +197,56 @@ func apply_geometry(t: VehicleType) -> void:
 		for a: Array in e.get("aisle", []):
 			aisle.append(_v3(a) - Vector3(0, y0, 0))
 		t.entry.aisle = aisle
+	var leaf_of := {}
+	for d in doors():
+		leaf_of[d["node"]] = int(d["leaf"])
+	var passengers: Array[VehicleType.PassengerDoor] = []
+	for seat: Dictionary in data.get("seats", []):
+		if String(seat.get("role", "")) != "passenger":
+			continue
+		var door_node: Variant = seat.get("door")
+		var stand: Variant = seat.get("stand")
+		if door_node == null and stand == null:
+			continue
+		var pd := VehicleType.PassengerDoor.new()
+		pd.inside = _v3(seat["hip"]) - Vector3(0, y0, 0)
+		pd.leaf = int(leaf_of.get(String(door_node), -1)) if door_node != null else -1
+		if stand != null:
+			var sp := _v3(stand)
+			pd.point = Vector2(sp.x, sp.z)
+		else:
+			pd.point = _outside(String(door_node), pd.inside)
+		passengers.append(pd)
+	if not passengers.is_empty():
+		t.passengers = passengers
+
+
+## Collision boxes trimmed from below so the chassis rides at least 6 cm clear of the road
+## when settled on its springs (`ground`: the settled ground in the chassis frame). A very low
+## car (the race car) otherwise rests on its belly instead of its wheels.
+static func _clear_of_road(list: Array[Dictionary], ground: float) -> Array[Dictionary]:
+	var lowest := ground + 0.06
+	var out: Array[Dictionary] = []
+	for b in list:
+		var c: Vector3 = b["centre"]
+		var h: Vector3 = b["half"]
+		var top := c.y + h.y
+		var bottom := maxf(c.y - h.y, lowest)
+		if top - bottom < 0.05:
+			continue
+		out.append({"centre": Vector3(c.x, (top + bottom) / 2.0, c.z), "half": Vector3(h.x, (top - bottom) / 2.0, h.z)})
+	return out
+
+
+## Where a passenger stands outside a door: beside it, or behind the vehicle for a rear door.
+func _outside(door_node: String, inside: Vector3) -> Vector2:
+	for d: Dictionary in data.get("doors", []):
+		if String(d.get("node", "")) == door_node:
+			var h := _v3(d["hinge"])
+			if absf(h.z) > half_extents().z - 0.4:
+				return Vector2(0.0, h.z + signf(h.z) * 1.0)
+			return Vector2(signf(h.x) * (absf(h.x) + 0.45), inside.z + 0.4)
+	return Vector2(signf(inside.x) * (half_extents().x + 0.45), inside.z)
 
 
 static func _v3(a: Array) -> Vector3:

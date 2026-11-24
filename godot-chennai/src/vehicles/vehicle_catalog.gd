@@ -45,7 +45,17 @@ static func _load() -> void:
 		var d: Dictionary = variants[id]
 		var v := VariantInfo.new()
 		v.id = StringName(id)
-		v.type = _types[StringName(String(d["kind"]))]
+		var kind := StringName(String(d["kind"]))
+		v.type = _types[kind]
+		if d.has("model"):
+			# A variant with a model of its own (the taxi): the kind's handling, that model's geometry.
+			var own_type := VehicleType.from_dict(kind, kinds[String(kind)])
+			own_type.model = String(d["model"])
+			own_type.fallback_model = v.type.model
+			var m := manifest(own_type.model)
+			if m != null and _has_glb(m):
+				m.apply_geometry(own_type)
+			v.type = own_type
 		v.label = String(d.get("label", v.type.label))
 		v.paint = Color(String(d["paint"]))
 		v.siren = bool(d.get("siren", v.type.siren))

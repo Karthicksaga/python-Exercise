@@ -24,11 +24,11 @@ G-70…G-79 in `technical-decisions.md`. Code: `src/physics/` (the vehicle body)
 ## Kinds and variants
 | Variant | Kind (handling) | Model | Notes |
 |---|---|---|---|
-| hatchback, taxi, police, gang | car | `hatchback.glb` | taxi: amber roof sign; police: light bar and siren; gang: dark paint. Paint colours are invented, no insignia |
-| auto | auto | `auto_rickshaw.glb` | open sides, step in from the kerb |
+| hatchback, taxi, police, gang | car | redesigned `hatchback.glb` (taxi: `taxi.glb`); Three.js one in `legacy/` | taxi: amber roof sign; police: light bar and siren; gang: dark paint. Paint colours are invented, no insignia |
+| auto | auto | redesigned `auto_rickshaw.glb` | open sides, step in from the kerb |
 | motorbike | bike | `motorbike.glb` | leans into corners (drawn only), topples when the rider is thrown |
-| ambulance | ambulance | `ambulance.glb` | siren (red/blue beacons), rear doors for patients |
-| bus | bus | `bus.glb` | folding front door on the kerb side, aisle to the driver's seat |
+| ambulance | ambulance | redesigned `ambulance.glb` (an Indian van: two cab doors, rear pair) | siren with a roof light bar, rear doors for patients |
+| bus | bus | `bus_city.glb` (front and rear folding doors) | folding front door on the kerb side, aisle to the driver's seat |
 | saloon, suv, coupe, race_car | saloon, suv, coupe, race | the Models agent's `saloon`, `suv`, `coupe`, `formula` GLBs and their geometry; a stretched `fallback_model` only if a GLB is missing | handling profiles are invented (MIGRATION_PROMPT §11): faster, grippier (`grip`), quieter engines are the Sound agent's |
 
 ## Model manifest (`assets/vehicles/<model>.json`, G-73)

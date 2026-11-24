@@ -764,6 +764,15 @@ scalars stay in `vehicle_types.json` (G-71, G-72). Wheels are matched to the phy
 position and drawn at the physics hub. Kinds whose GLB is not on the branch yet use a stretched
 `fallback_model`. So a redesigned auto, hatchback or bus, or the new premium cars, drop in as a
 GLB plus manifest. The ported vehicles' manifests are the Models agent's files, unchanged.
+Update (24 Nov 2026, the Tamil Nadu redesigns): the kinds draw the redesigned models
+(`hatchback`, `auto_rickshaw`, `ambulance`, `bus_city`; the taxi variant its own `taxi`), the
+Three.js ones stay in `legacy/` as fallbacks. Leaf 0 is the driver's door (named by the driver's
+seat, else the entry-side door whose hinge is about 0.8 m ahead of the hips); rear double doors
+and folding leaves of one doorway swing together; passenger doors come from the model's seats.
+Collision boxes are trimmed to ride at least 6 cm clear of the road when settled (the race car's
+proxies reached 2 cm and it rested on its belly). A siren vehicle without beacon materials gets
+the light bar. Speed and braking still match the Three.js numbers on the new geometry; ride
+height now follows each model's wheels (the new ambulance sits 16 cm lower).
 
 ## G-74: Gearbox P/R/D and the HUD gear rule (Three.js `Gearbox.ts`)
 GAS and BRAKE are pedals; the selector is P, R, D. A change needs the vehicle below 1 m/s; asked

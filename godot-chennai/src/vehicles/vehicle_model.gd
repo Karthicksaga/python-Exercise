@@ -192,7 +192,8 @@ func _build_box(t: VehicleType, variant: VehicleCatalog.VariantInfo) -> void:
 ## `roof`: height of the roof above the ground, metres (the manifest's `roof`, else the box top).
 func _build_extras(variant: VehicleCatalog.VariantInfo, roof_height: float) -> void:
 	var roof := roof_height * _stretch.y + 0.05
-	if variant.light_bar:
+	# A siren vehicle whose model has no beacon materials (the redesigned ambulance) gets the bar too.
+	if variant.light_bar or (variant.siren and _beacons.is_empty()):
 		for i in 2:
 			var lamp := MeshInstance3D.new()
 			var box := BoxMesh.new()
