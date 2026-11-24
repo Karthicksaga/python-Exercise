@@ -9,9 +9,9 @@ extends RefCounted
 ## - Drivers by vehicle kind: autos `auto-driver`, cars `cab-driver`, buses `bus-driver`,
 ##   motorbikes delivery riders and young adult commuters; never a minor. A kind with nobody
 ##   in its role falls back to an adult man (the Three.js stand-in rule).
-## - Crowds (scenery that nobody can hit): adults and teens with any street role; children only
-##   for crowd spots marked as a child (`CrowdField`: families at stations and on the sand);
-##   the cricket boy (role `play`) only for spots marked as at play (on the sand).
+## - Crowds: adults with any street role. Children and teens only for crowd spots marked as a
+##   child (`CrowdField`: beside an adult at a station or on the sand, away from any road), and
+##   the cricket boy (role `play`) only for spots marked as at play (on the sand). G-125.
 
 const DRIVER_ROLES := {
 	&"auto": ["auto-driver"],
@@ -48,13 +48,13 @@ static func create(people: Array[Dictionary]) -> CastPicker:
 	c.entries = people
 	for e in people:
 		var id := str(e["id"])
-		if is_child(e):
-			if has_role(e, "play"):
+		if is_minor(e):
+			if is_child(e) and has_role(e, "play"):
 				c.players.append(id)
 			else:
 				c.children.append(id)
 			continue
-		if has_role(e, "pedestrian") and not is_minor(e):
+		if has_role(e, "pedestrian"):
 			c.walkers.append(id)
 		for r in CROWD_ROLES:
 			if has_role(e, r):

@@ -92,6 +92,17 @@ func cell_count() -> int:
 	return _cells.size()
 
 
+## The spots made so far (handed to the next area's field: spots depend only on the roads).
+func take_cells() -> Dictionary[Vector2i, Array]:
+	var out := _cells
+	_cells = {}
+	return out
+
+
+func give_cells(cells: Dictionary[Vector2i, Array]) -> void:
+	_cells = cells
+
+
 func spots(c: Vector2i) -> Array:
 	if not _cells.has(c):
 		var list: Array = _pavement_spots(c)

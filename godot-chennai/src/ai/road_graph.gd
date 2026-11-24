@@ -8,8 +8,18 @@ extends RefCounted
 ## Edges carry what the AI needs of their road: kind, width, lanes each way, one-way, name and
 ## the road itself (for the kind of place, `PlaceMap`).
 
+## Height of a flyover deck per OSM layer above the ground, metres (an estimate: Chennai's
+## flyovers clear about 5.5 m).
+const DECK_STEP := 6.0
+## Ramps down from a deck along the roads joining it: metres of road per metre of height (5 %).
+const RAMP_RUN := 20.0
+
 ## Positions of the nodes (x, z), metres.
 var node_pos: PackedVector2Array = PackedVector2Array()
+## Height of the road surface at each node above the ground plane, metres (G-122): 0 on the
+## ground; on a flyover deck and down its ramps when the graph was built with `decks`. Traffic
+## and walkers carry this height from day one (the Three.js AI assumed y = 0).
+var node_y: PackedFloat32Array = PackedFloat32Array()
 ## Edges leaving each node.
 var node_out: Array[PackedInt32Array] = []
 var edge_from: PackedInt32Array = PackedInt32Array()
@@ -46,8 +56,13 @@ func road(edge: int) -> Road:
 ## Builds a graph from `list`. `include(road) -> bool` picks the roads (vehicles skip
 ## footpaths, pedestrians use everything); `respect_oneway` false for pedestrians, who walk
 ## both ways on any street.
-static func build(list: Array[Road], include: Callable, respect_oneway: bool = true) -> RoadGraph:
+##
+## `decks`: raise bridges with an OSM `layer` of 1 or more to `layer * DECK_STEP` and ramp the
+## roads joining them down at 1 in RAMP_RUN. Off while the world draws flyovers flat on the
+## ground (World agent, weak list): traffic must drive on the surface that is drawn.
+static func build(list: Array[Road], include: Callable, respect_oneway: bool = true, decks: bool = false) -> RoadGraph:
 	var g := RoadGraph.new()
+	var deck_nodes: Dictionary[int, float] = {}
 	for road in list:
 		if road.points.size() < 2 or not include.call(road):
 			continue
@@ -58,13 +73,57 @@ static func build(list: Array[Road], include: Callable, respect_oneway: bool = t
 		for i in road.points.size() - 1:
 			var a := g._node_at(road.points[i])
 			var b := g._node_at(road.points[i + 1])
+			if decks and road.bridge and road.layer > 0:
+				var h := road.layer * DECK_STEP
+				deck_nodes[a] = maxf(deck_nodes.get(a, 0.0), h)
+				deck_nodes[b] = maxf(deck_nodes.get(b, 0.0), h)
 			if a == b:
 				continue
 			var one := road.oneway and respect_oneway
 			g._connect(a, b, road, ri, each_way, one)
 			if not one:
 				g._connect(b, a, road, ri, each_way, false)
+	g.node_y.resize(g.node_pos.size())
+	if not deck_nodes.is_empty():
+		g._raise(deck_nodes)
 	return g
+
+
+## Heights from the deck nodes outwards: each node takes the highest of (deck height minus the
+## road distance to it over RAMP_RUN), so ramps fall evenly to the ground (a highest-first search,
+## both ways along every edge: a one-way ramp still slopes).
+func _raise(deck_nodes: Dictionary[int, float]) -> void:
+	var around: Array[PackedInt32Array] = []
+	around.resize(node_pos.size())
+	for e in edge_count():
+		around[edge_from[e]].append(e)
+		around[edge_to[e]].append(e)
+	var open: Array[Vector2] = []  # (height, node), highest last
+	for n: int in deck_nodes:
+		node_y[n] = deck_nodes[n]
+		open.append(Vector2(deck_nodes[n], n))
+	open.sort()
+	while not open.is_empty():
+		var top: Vector2 = open.pop_back()
+		var n := int(top.y)
+		if top.x < node_y[n]:
+			continue
+		for e in around[n]:
+			var m := edge_to[e] if edge_from[e] == n else edge_from[e]
+			var h := top.x - edge_length[e] / RAMP_RUN
+			if deck_nodes.has(m) or h <= node_y[m] or h <= 0.0:
+				continue
+			node_y[m] = h
+			open.insert(open.bsearch(Vector2(h, m)), Vector2(h, m))
+
+
+## Height of the road surface `along` metres down an edge.
+func height_on(edge: int, along: float) -> float:
+	var a := node_y[edge_from[edge]]
+	var b := node_y[edge_to[edge]]
+	if a == b:
+		return a
+	return lerpf(a, b, clampf(along / edge_length[edge], 0.0, 1.0))
 
 
 ## Roads that meet share a point in OpenStreetMap, so equal coordinates (to 10 cm) are a junction.

@@ -51,14 +51,11 @@ static func read_stations(path: String = RAIL) -> PackedVector2Array:
 
 ## Builds the area round `at` from an opened source (worker thread). `station_list`: from
 ## `read_stations` (read once by the caller).
-static func build(source: WorldSource, at: Vector2, station_list: PackedVector2Array) -> AiArea:
-	var area := AiArea.new()
-	area.centre = at
-	area.stations = station_list
-	area.roads = source.roads_near(at, HALF * 1.2)
+## `decks`: roads on flyovers are raised (`RoadGraph.build`); only once the world draws decks.
+static func build(source: WorldSource, at: Vector2, station_list: PackedVector2Array, decks: bool = false) -> AiArea:
+	var road_list := source.roads_near(at, HALF * 1.2)
 	var box := Rect2(at - Vector2(HALF, HALF), Vector2(HALF, HALF) * 2.0)
 	var pois: Array[Place] = []
-	var poi_points := PackedVector2Array()
 	var mapped := PackedVector2Array()
 	var areas: Array[WorldArea] = []
 	var seen: Dictionary[int, bool] = {}
@@ -71,7 +68,6 @@ static func build(source: WorldSource, at: Vector2, station_list: PackedVector2A
 		for p in index.pois:
 			if box.has_point(p.position):
 				pois.append(p)
-				poi_points.append(p.position)
 		for s in index.signals:
 			if box.has_point(s):
 				mapped.append(s)
@@ -81,12 +77,24 @@ static func build(source: WorldSource, at: Vector2, station_list: PackedVector2A
 	var sea := source.get_sea()
 	if source is RegionalWorldSource and sea != null and _near_coast(sea, at, BEACH_REACH + 600.0):
 		areas.append_array(_chunk_beaches(source, at))
-	area.drive = RoadGraph.build(area.roads, vehicle_road)
-	area.walk = RoadGraph.build(area.roads, walking_road, false)
+	return make(road_list, at, pois, mapped, areas, source.get_landmarks(), sea, station_list, decks)
+
+
+## The area from what was read (also the tests' way in, with hand-made streets).
+static func make(road_list: Array[Road], at: Vector2, pois: Array[Place], mapped: PackedVector2Array, areas: Array[WorldArea], landmarks: Array[Landmark], sea: WorldSea, station_list: PackedVector2Array, decks: bool = false) -> AiArea:
+	var area := AiArea.new()
+	area.centre = at
+	area.stations = station_list
+	area.roads = road_list
+	var poi_points := PackedVector2Array()
+	for p in pois:
+		poi_points.append(p.position)
+	area.drive = RoadGraph.build(road_list, vehicle_road, true, decks)
+	area.walk = RoadGraph.build(road_list, walking_road, false, decks)
 	area.drive_weights = TrafficDensity.edge_busyness(area.drive, poi_points)
 	area.walk_weights = TrafficDensity.edge_busyness(area.walk, poi_points)
 	area.signals = TrafficSignals.build(area.drive, mapped)
-	area.places = PlaceMap.create(area.roads, pois, areas, source.get_landmarks(), sea, station_list)
+	area.places = PlaceMap.create(road_list, pois, areas, landmarks, sea, station_list)
 	return area
 
 

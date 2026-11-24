@@ -35,6 +35,13 @@ const CELL := 100.0
 const TURN_LEFT := -1
 const TURN_STRAIGHT := 0
 const TURN_RIGHT := 1
+## Walkers step aside for someone in their way this far ahead (plus their speed), metres.
+const DODGE_AHEAD := 3.5
+## Furthest a walker steps out of its line, metres, and how fast, m/s.
+const DODGE_MAX := 1.3
+const DODGE_RATE := 1.1
+## Room kept between two people passing, metres.
+const PASSING_ROOM := 0.3
 
 
 class Agent:
@@ -47,6 +54,8 @@ class Agent:
 	## False while put away (quiet streets): not moved, not drawn, not in the way.
 	var active: bool = true
 	var pos: Vector2 = Vector2.ZERO
+	## Height of the road surface under the agent, metres (decks and ramps, G-122).
+	var y: float = 0.0
 	## Radians, 0 = towards -Z, positive turning left.
 	var heading: float = 0.0
 	var speed: float = 0.0
@@ -61,6 +70,8 @@ class Agent:
 	var giving_way: bool = false
 	## Braking for the player or an obstacle this step.
 	var blocked_by_obstacle: bool = false
+	## Walkers: metres stepped to the left (negative: right) of their line to pass someone.
+	var dodge: float = 0.0
 
 
 class Fear:
@@ -93,6 +104,8 @@ var _retire_now := false
 var _held: Dictionary[int, bool] = {}
 var _slowed: Dictionary[int, Vector2] = {}
 var _fears: Dictionary[int, Fear] = {}
+## The longest half length of any kind (the broad phase of the path check).
+var _longest: float = 0.0
 
 
 func _init(g: RoadGraph, world_bounds: Rect2, s: AgentPresets.Settings, seed_value: int = 1) -> void:
@@ -100,6 +113,8 @@ func _init(g: RoadGraph, world_bounds: Rect2, s: AgentPresets.Settings, seed_val
 	bounds = world_bounds
 	rng = AiRandom.new(seed_value)
 	kinds = s.kinds
+	for k in kinds:
+		_longest = maxf(_longest, k.half_length)
 	graph = g
 	_wanted = 0 if g.edge_count() == 0 else s.count
 	if g.edge_count() == 0:
@@ -214,7 +229,7 @@ func populate(focus: Vector2) -> void:
 
 ## Metres to the left of the centre line for an agent on an edge: its own lane.
 func lane_offset(a: Agent, e: int) -> float:
-	return settings.lane(graph, e, a.variation) + a.pull_over * PULL_OVER
+	return settings.lane(graph, e, a.variation) + a.pull_over * PULL_OVER + a.dodge
 
 
 func _pool_at(focus: Vector2) -> void:
@@ -296,10 +311,12 @@ func _place(a: Agent, focus: Vector2, any_distance: bool) -> bool:
 		return false
 	a.active = true
 	a.pull_over = 0.0
+	a.dodge = 0.0
 	a.edge = chosen
 	a.next = graph.next_edge(chosen, rng)
 	a.pos = graph.point_on(chosen, graph.edge_length[chosen] * chosen_t, lane_offset(a, chosen))
 	a.heading = graph.heading(chosen)
+	a.y = graph.height_on(chosen, graph.edge_length[chosen] * chosen_t)
 	a.speed = 0.0
 	a.stuck = 0.0
 	a.generation += 1
@@ -555,20 +572,42 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 		var clear := INF
 		var blocker: Agent = null
 		var by_obstacle := false
+		var walker := not settings.vehicles
+		var step_to := 0.0
+		var stepping := false
 		for o in obstacles:
 			var r := Vector2(o.x, o.y) - a.pos
 			var ahead := r.dot(f)
 			if ahead <= 0.0 or ahead > reach + o.z:
 				continue
-			var offset := absf(r.x * f.y - r.y * f.x)
-			if offset >= k.half_width + o.z or ahead - o.z - k.half_length >= clear:
+			var lateral := r.x * f.y - r.y * f.x
+			if walker and ahead > o.z + k.half_length + 0.15:
+				var aside := _aside(a, k.half_width + o.z + PASSING_ROOM, lateral, ahead)
+				if aside != INF:
+					step_to = aside if not stepping or absf(aside) > absf(step_to) else step_to
+					stepping = true
+				continue
+			if absf(lateral) >= k.half_width + o.z or ahead - o.z - k.half_length >= clear:
 				continue
 			clear = ahead - o.z - k.half_length
 			by_obstacle = true
+		# Nobody further than this can be in the way this step (a bus's half length plus reach).
+		var near_sq := (reach + _longest + DODGE_AHEAD) * (reach + _longest + DODGE_AHEAD)
 		for other in agents:
-			if other == a or not other.active:
+			if other == a or not other.active or other.pos.distance_squared_to(a.pos) > near_sq:
 				continue
 			var c := cos(other.heading - a.heading)
+			if walker and (c < 0.0 or other.speed < a.speed * 0.7):
+				# Someone coming the other way, or dawdling ahead: step round them.
+				var rw := other.pos - a.pos
+				var ahead_w := rw.dot(f)
+				var room := k.half_width + kinds[other.kind].half_width + PASSING_ROOM
+				if ahead_w > k.half_length + kinds[other.kind].half_length + 0.1 and ahead_w < DODGE_AHEAD + a.speed:
+					var aside_w := _aside(a, room, rw.x * f.y - rw.y * f.x, ahead_w)
+					if aside_w != INF:
+						step_to = aside_w if not stepping or absf(aside_w) > absf(step_to) else step_to
+						stepping = true
+					continue
 			if c < 0.0 and not settings.stops_for_oncoming:
 				continue
 			var theirs := kinds[other.kind]
@@ -587,6 +626,9 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 			blocker = other
 			by_obstacle = false
 		a.blocked_by_obstacle = by_obstacle
+		if walker:
+			var goal := step_to if stepping else 0.0
+			a.dodge += clampf(goal - a.dodge, -DODGE_RATE * dt, DODGE_RATE * dt)
 		var target := minf(k.max_speed, settings.speed(graph, e, a.variation) * k.speed_factor)
 		if clear < INF:
 			target = 0.0 if clear <= k.gap else minf(target, (clear - k.gap) * 1.2)
@@ -651,6 +693,7 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 		if absf(diff) > 0.5:
 			a.speed = minf(a.speed, maxf(1.2, target * 0.45))
 		a.pos += Vector2(-sin(a.heading), -cos(a.heading)) * a.speed * dt
+		a.y = graph.height_on(a.edge, (a.pos - graph.node_pos[graph.edge_from[a.edge]]).dot(graph.edge_dir[a.edge]))
 		# Reached the end of this stretch (by the front axle, which steers): carry on.
 		var moved := (a.pos - from).dot(graph.edge_dir[e]) + axle
 		if moved >= graph.edge_length[e] - 1.0:
@@ -664,6 +707,17 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 		var distance := a.pos.distance_to(focus)
 		if distance > settings.despawn or (a.stuck > 8.0 and distance > 45.0):
 			_place(a, focus, false)
+
+
+## Where a walker should stand across its line (its `dodge`, metres to the left) to pass someone
+## `lateral` metres to its left (negative: right) and `ahead` metres in front with `room` between
+## centres, or INF when there is room already. India keeps left: someone dead ahead is passed
+## on the left; someone already to one side, on the other.
+func _aside(a: Agent, room: float, lateral: float, ahead: float) -> float:
+	if absf(lateral) >= room or ahead <= 0.0:
+		return INF
+	var side := -1.0 if lateral > 0.1 else 1.0
+	return clampf(a.dodge + side * (room - absf(lateral)), -DODGE_MAX, DODGE_MAX)
 
 
 ## Active agents' positions (for crossings and the sound of traffic).

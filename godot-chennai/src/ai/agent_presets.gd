@@ -21,6 +21,9 @@ class Kind:
 	var half_length: float = 0.35
 	## Gap kept to whatever is in front when stopped, metres.
 	var gap: float = 0.9
+	## The class of road user: &"car", &"auto", &"bike", &"bus" or &"person" (drivers, carjacking,
+	## sound); `name` is the look (a vehicle variant id in `vehicle_types.json` for traffic).
+	var group: StringName = &""
 
 	static func make(n: StringName, sh: float, sf: float, ms: float, af: float, hw: float, hl: float, g: float) -> Kind:
 		var k := Kind.new()
@@ -32,6 +35,13 @@ class Kind:
 		k.half_width = hw
 		k.half_length = hl
 		k.gap = g
+		k.group = n
+		return k
+
+	## The same kind as another look of its group (footprint replaced later from the model).
+	func as_look(look: StringName, sh: float) -> Kind:
+		var k := Kind.make(look, sh, speed_factor, max_speed, acceleration_factor, half_width, half_length, gap)
+		k.group = group
 		return k
 
 
@@ -87,6 +97,32 @@ static func traffic_kinds() -> Array[Kind]:
 		Kind.make(&"bike", 0.3, 1.12, 15.0, 1.25, 0.32, 1.0, 1.2),
 		Kind.make(&"auto", 0.25, 0.82, 11.0, 0.8, 0.66, 1.3, 1.4),
 		Kind.make(&"bus", 0.1, 0.78, 11.0, 0.55, 1.25, 5.0, 2.5),
+	]
+
+
+## Chennai's traffic by look (G-124): the Tamil Nadu road vehicles and, rarely, the premium cars
+## (brief §11: about 3 in 100). Two-wheelers and autos dominate as on the city's roads; shares
+## are estimates of what is seen on an arterial, not counts. Names are vehicle variants.
+static func chennai_mix() -> Array[Kind]:
+	var base := traffic_kinds()
+	var car := base[0]
+	var bike := base[1]
+	var auto := base[2]
+	var bus := base[3]
+	return [
+		bike.as_look(&"motorbike", 0.34),
+		auto.as_look(&"auto", 0.15),
+		auto.as_look(&"share_auto", 0.04),
+		car.as_look(&"hatchback", 0.17),
+		car.as_look(&"sedan", 0.09),
+		car.as_look(&"taxi", 0.06),
+		car.as_look(&"goods_carrier", 0.04),
+		car.as_look(&"suv", 0.015),
+		car.as_look(&"saloon", 0.01),
+		car.as_look(&"coupe", 0.005),
+		bus.as_look(&"bus", 0.045),
+		bus.as_look(&"bus_lowfloor", 0.02),
+		bus.as_look(&"bus_mofussil", 0.015),
 	]
 
 
