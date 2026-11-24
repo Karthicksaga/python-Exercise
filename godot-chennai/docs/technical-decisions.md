@@ -639,3 +639,92 @@ driver or anyone who can be hit; teens likewise stay out of combat casting.
 52 bones, Godot names `mixamorig_<Bone>` (the importer turns `:` into `_`), identical names and
 hierarchy in all 70 files (tested). Rest pose MakeHuman A-pose, metres, soles at y = 0, facing
 glTF +Z. Clips from elsewhere must be retargeted to this rest (or baked by the Blender script).
+
+## G-70: A custom ray-cast vehicle on a Jolt `RigidBody3D`, not `VehicleBody3D`
+**Decision (23 Nov 2026, vehicles).** `RaycastVehicle` (`src/physics/raycast_vehicle.gd`) is a
+`RigidBody3D` whose wheels are rays: suspension spring and damper, a sideways bilateral tyre
+constraint, engine/brake/rolling impulses and Bullet's friction circle, applied in
+`_integrate_forces`. It is a line-by-line port of Rapier 0.21's `DynamicRayCastVehicleController`
+as the Three.js `VehicleBody.ts` drives it (same constants, same order: every spring measured
+before any is applied), plus that file's arcade drift and the two-wheelers' hold-the-line.
+Roll and pitch are locked (as in the Three.js game: predictable on a touchscreen, cannot flip),
+CCD is on, gravity 9.81 (Rapier's), damping 0.08/1.2.
+**Why not `VehicleBody3D`.** It is also a Bullet port, but its friction, the drift hooks and the
+per-step order are not ours to change, and matching the Three.js numbers (G-71) needs exactly
+Rapier's arithmetic. **Revisit** if a ragdoll or real roll is wanted.
+
+## G-71: Handling is tested against measurements of the Three.js vehicles
+`tools/reference/threejs_handling.mts` runs the Three.js `VehicleBody` (Rapier) on a flat plane
+(read-only use of `chennai-open-world/`) and stores speed curve, top speed, braking, coasting,
+reversing, cornering and drift numbers in `tests/data/threejs_handling.json`;
+`tests/scene/test_vehicle_handling.gd` measures the Godot vehicles the same way (all at once,
+each in its own lane) and requires 10 % (15 % for the first second, 20 % for the single-front-
+wheel vehicles' cornering: `docs/driving.md`, "Known differences"). Re-run the script if the
+Three.js handling changes.
+
+## G-72: Vehicle kinds and variants are data
+`src/vehicles/data/vehicle_types.json` holds each kind's handling (`VehicleSpec`), seat, pose,
+entry, passenger doors, gears, camera distance and crash rule, and the variants that spawn
+(taxi, police, gang = the car kind with paint and extras). The five Three.js kinds keep the
+Three.js numbers exactly; the premium saloon, SUV, coupé and the race car (MIGRATION_PROMPT §11)
+are invented profiles with a `grip` multiplier (friction limit and side stiffness).
+
+## G-73: Vehicles load through the Models agent's manifest
+`assets/vehicles/<model>.json` (the Models agent's schema, shared with the Tamil Nadu vehicles
+agent) names the LOD files and distances, wheel and door nodes, collision boxes, seats, pose,
+entry and paint. `VehicleManifest` reads it: a kind whose own model is present takes its geometry
+(wheels, chassis boxes, ride height, driver's seat, entry, aisle) from the manifest; the handling
+scalars stay in `vehicle_types.json` (G-71, G-72). Wheels are matched to the physics wheels by
+position and drawn at the physics hub. Kinds whose GLB is not on the branch yet use a stretched
+`fallback_model`. So a redesigned auto, hatchback or bus, or the new premium cars, drop in as a
+GLB plus manifest. The ported vehicles' manifests are the Models agent's files, unchanged.
+
+## G-74: Gearbox P/R/D and the HUD gear rule (Three.js `Gearbox.ts`)
+GAS and BRAKE are pedals; the selector is P, R, D. A change needs the vehicle below 1 m/s; asked
+for while moving, the gearbox brakes and shows N until it engages. The HUD shows P, R, N, D or
+D1…Dn (`gearFor`: the share of top speed in `gears` steps). Getting in selects D. Getting out is
+refused above 2.5 m/s ("Stop the vehicle first").
+
+## G-75: Crash ejection (TD-29) with the rider's own character body
+Impact = the vehicle's change of planar velocity in one step (above 1.6 m/s; driving never
+exceeds 0.4). `CrashRules.judge` applies the per-kind thresholds and damage of TD-29 (table in
+`docs/driving.md`). A thrown rider starts at the seat (pushed clear of walls), with collisions
+on, passing through its own vehicle, and `CrashFlight` moves it with `move_and_slide` (swept, so
+it cannot cross a wall), slides it to a stop at 9 m/s², lies, gets up; damage on landing. The
+motorbike topples (drawn) and scrapes to a stop. No ragdoll (same trade-off as TD-29).
+
+## G-76: Collision layers
+The vehicles use the Player agent's bits (G-64): 1 world, 2 player (and a thrown rider), 4
+people, 8 vehicles (`src/physics/physics_layers.gd`, the same values as `PlayerController`).
+Wheel rays see world and vehicles; a vehicle collides with world, vehicles, player and people.
+
+## G-77: Boarding is a timed sequence; the player is moved through a `RiderLink`
+`Boarding` (port of `Boarding.ts`, with TD-30's `pull` phase for carjacking) times walk, door,
+pull, aisle, sit, close; `Driving` turns it into the rider's place and pose and the door angle.
+`Driving` talks to a `RiderLink` (vehicles may not use the player module); `PlayerRiderLink`
+(`src/app/`) maps it onto the Player's hooks: `PlayerController.enter_vehicle(vehicle, anchor)`
+when getting in starts (the anchor walks the path to the door, then sits on the driver's hip
+point and rides with the vehicle), `exit_vehicle(feet, yaw)` when the rider is out. A crash throw
+pauses the player's own step (`controls_enabled` off and its physics process) while
+`CrashFlight` moves the same body; `knock()` is not used for it because the walking step blends
+a push away within a fraction of a second (TD-29 wants a flight of about a second). The player has
+no seated pose yet: an open-seat rider is drawn standing with the hips on the seat; closed
+vehicles hide the driver.
+
+## G-78: Touch driving controls and input
+Layout (chennai-game-design §3): steering pad bottom-left (a thumb slides left/right, deadzone
+8 %), GAS (largest) in the bottom-right corner, BRAKE beside it, P/R/D above GAS, HORN/SIREN above
+BRAKE, EXIT top-right, speed and gear bottom-centre; GET IN only on foot next to a vehicle; nothing
+while boarding or thrown. Buttons are multi-touch (`HoldButton` tracks every finger). Keyboard
+and pad actions (`drive_*`, `gear_*`) are registered at run time by `DriveInput`, so
+`project.godot` is untouched. Module boundaries: `ui` and `vehicles` do not know each other;
+`src/app/driving_wiring.gd` connects them and the camera.
+
+## G-79: The driving camera is the Player's `FollowCamera`
+`DrivingWiring` (`src/app/`) points the player's `FollowCamera` at the vehicle (`follow`, `reach`
+= the type's camera distance) and calls `chase(velocity, heading, forward_speed, top_speed, dt)`
+every step while driving (G-65: behind the travel, pulled back and widened with speed, eased
+round thin obstacles); on foot and while thrown it follows the player. A test drives past the
+houses and into a turn and checks the camera never jumps more than 0.6 m in a step beyond the
+car's own motion and settles behind the direction of travel. (The vehicles agent's own chase
+camera was removed for it.)

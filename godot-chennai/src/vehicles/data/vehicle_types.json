@@ -1,0 +1,191 @@
+{
+ "comment": "Vehicle types (decision G-72). The first five kinds are the Three.js game's VEHICLE_TYPES (packages/vehicles/src/specs.ts) with the same numbers; crash rules are TD-29 (agent/crash-ejection crash.ts). The premium cars and the race car are new (MIGRATION_PROMPT §11): invented, original, tuned by test, not measured. Chassis frame: metres, +X right, +Y up, -Z forwards, from the chassis centre. Variants reuse a kind's handling with another paint and extras.",
+ "kinds": {
+  "car": {
+   "label": "Hatchback", "model": "hatchback", "ride_height": 0.72, "camera_distance": 8.5, "gears": 5,
+   "driver": [0.36, -0.03, 0.1],
+   "pose": {"lean": -0.1, "hand": [0.17, 0.3, -0.42], "foot": [0.12, -0.15, -0.78]},
+   "entry": {"side": 1, "point": [1.25, 0.35], "door": "hinged", "style": "door"},
+   "passengers": [
+    {"point": [-1.2, 1.35], "inside": [-0.35, 0.1, 0.95], "leaf": 1},
+    {"point": [1.2, 1.35], "inside": [0.35, 0.1, 0.95], "leaf": 2}
+   ],
+   "crash": {"hurt_from": 25, "seated_damage": 0.35, "throw_from": 70, "throw_base": 35, "throw_per_kmh": 1.2, "style": "windscreen", "topples": false},
+   "physics": {
+    "half_extents": [0.82, 0.42, 1.95], "mass": 950,
+    "wheels": [
+     {"at": [-0.74, -0.12, -1.25], "radius": 0.32, "steers": true, "driven": true},
+     {"at": [0.74, -0.12, -1.25], "radius": 0.32, "steers": true, "driven": true},
+     {"at": [-0.74, -0.12, 1.25], "radius": 0.32, "steers": false, "driven": false},
+     {"at": [0.74, -0.12, 1.25], "radius": 0.32, "steers": false, "driven": false}
+    ],
+    "engine_force": 5600, "max_speed": 23, "max_steer": 0.6, "brake_force": 95, "drift": 0.55
+   }
+  },
+  "auto": {
+   "label": "Auto-rickshaw", "model": "auto_rickshaw", "ride_height": 0.7, "camera_distance": 7, "gears": 4, "open_seat": true,
+   "driver": [0, 0.22, -0.4],
+   "pose": {"lean": 0.45, "hand": [0.335, 0.25, -0.38], "foot": [0.16, -0.37, -0.24]},
+   "entry": {"side": -1, "point": [-0.95, -0.4], "door": "none", "style": "step"},
+   "passengers": [
+    {"point": [-0.95, 0.8], "inside": [-0.36, 0.17, 0.8]},
+    {"point": [0.95, 0.8], "inside": [0.36, 0.17, 0.8]}
+   ],
+   "crash": {"hurt_from": 18, "seated_damage": 0.4, "throw_from": 30, "throw_base": 12, "throw_per_kmh": 0.9, "style": "off", "topples": false},
+   "physics": {
+    "half_extents": [0.66, 0.45, 1.3], "mass": 420,
+    "wheels": [
+     {"at": [0, -0.14, -1.0], "radius": 0.24, "steers": true, "driven": false},
+     {"at": [-0.6, -0.14, 0.8], "radius": 0.24, "steers": false, "driven": true},
+     {"at": [0.6, -0.14, 0.8], "radius": 0.24, "steers": false, "driven": true}
+    ],
+    "engine_force": 1900, "max_speed": 14, "max_steer": 0.75, "brake_force": 50, "drift": 0.9
+   }
+  },
+  "bike": {
+   "label": "Motorbike", "model": "motorbike", "ride_height": 0.62, "camera_distance": 6.5, "gears": 5, "open_seat": true, "leans": true,
+   "driver": [0, 0.345, 0.2],
+   "pose": {"lean": 0.5, "hand": [0.33, 0.175, -0.62], "foot": [0.23, -0.5, -0.03], "knees": 1},
+   "entry": {"side": -1, "point": [-0.7, 0.2], "door": "none", "style": "swing"},
+   "passengers": [],
+   "crash": {"hurt_from": 18, "seated_damage": 0.4, "throw_from": 35, "throw_base": 12, "throw_per_kmh": 0.9, "style": "off", "topples": true},
+   "physics": {
+    "half_extents": [0.32, 0.36, 1.0], "mass": 190,
+    "wheels": [
+     {"at": [0, -0.02, -0.72], "radius": 0.3, "steers": true, "driven": false},
+     {"at": [0, -0.02, 0.68], "radius": 0.3, "steers": false, "driven": true}
+    ],
+    "engine_force": 1500, "max_speed": 26, "max_steer": 0.55, "brake_force": 28, "drift": 0
+   }
+  },
+  "ambulance": {
+   "label": "Ambulance", "model": "ambulance", "ride_height": 0.95, "camera_distance": 10.5, "gears": 5, "siren": true,
+   "driver": [0.45, 0.15, -0.7],
+   "pose": {"lean": -0.05, "hand": [0.17, 0.3, -0.42], "foot": [0.12, -0.38, -0.7]},
+   "entry": {"side": 1, "point": [1.5, -0.5], "door": "hinged", "style": "door"},
+   "passengers": [{"point": [0, 3.5], "inside": [0, 0.2, 1.9], "leaf": 1}],
+   "crash": {"hurt_from": 25, "seated_damage": 0.35, "throw_from": 75, "throw_base": 35, "throw_per_kmh": 1.2, "style": "windscreen", "topples": false},
+   "physics": {
+    "half_extents": [0.98, 0.8, 2.5], "mass": 2300,
+    "wheels": [
+     {"at": [-0.86, -0.42, -1.6], "radius": 0.38, "steers": true, "driven": true},
+     {"at": [0.86, -0.42, -1.6], "radius": 0.38, "steers": true, "driven": true},
+     {"at": [-0.86, -0.42, 1.55], "radius": 0.38, "steers": false, "driven": false},
+     {"at": [0.86, -0.42, 1.55], "radius": 0.38, "steers": false, "driven": false}
+    ],
+    "engine_force": 12500, "max_speed": 25, "max_steer": 0.55, "brake_force": 230, "drift": 0.45
+   }
+  },
+  "bus": {
+   "label": "City bus", "model": "bus", "ride_height": 1.25, "camera_distance": 15, "gears": 5,
+   "driver": [0.8, 0.3, -4.0],
+   "pose": {"lean": 0, "hand": [0.2, 0.25, -0.42], "foot": [0.12, -0.42, -0.62]},
+   "entry": {"side": -1, "point": [-1.85, -3.6], "door": "folding", "style": "door",
+    "aisle": [[-0.8, -0.35, -3.6], [0.25, -0.35, -3.85]]},
+   "passengers": [{"point": [-1.85, -3.6], "inside": [-0.6, 0.3, -3.0], "leaf": 0}],
+   "crash": {"hurt_from": 30, "seated_damage": 0.25, "throw_from": -1, "throw_base": 0, "throw_per_kmh": 0, "style": "windscreen", "topples": false},
+   "physics": {
+    "half_extents": [1.25, 1.1, 5.0], "mass": 9000,
+    "wheels": [
+     {"at": [-1.08, -0.72, -3.3], "radius": 0.5, "steers": true, "driven": false},
+     {"at": [1.08, -0.72, -3.3], "radius": 0.5, "steers": true, "driven": false},
+     {"at": [-1.08, -0.72, 2.8], "radius": 0.5, "steers": false, "driven": true},
+     {"at": [1.08, -0.72, 2.8], "radius": 0.5, "steers": false, "driven": true}
+    ],
+    "engine_force": 34000, "max_speed": 17, "max_steer": 0.62, "brake_force": 900, "drift": 0.95
+   }
+  },
+  "saloon": {
+   "label": "Luxury saloon", "model": "saloon", "fallback_model": "hatchback", "ride_height": 0.74, "camera_distance": 9.5, "gears": 6, "premium": true,
+   "driver": [0.4, -0.02, 0.05],
+   "pose": {"lean": -0.15, "hand": [0.17, 0.3, -0.42], "foot": [0.12, -0.16, -0.8]},
+   "entry": {"side": 1, "point": [1.35, 0.3], "door": "hinged", "style": "door"},
+   "passengers": [
+    {"point": [-1.3, 1.45], "inside": [-0.38, 0.1, 1.0], "leaf": 1},
+    {"point": [1.3, 1.45], "inside": [0.38, 0.1, 1.0], "leaf": 2}
+   ],
+   "crash": {"hurt_from": 30, "seated_damage": 0.3, "throw_from": 95, "throw_base": 35, "throw_per_kmh": 1.2, "style": "windscreen", "topples": false},
+   "physics": {
+    "half_extents": [0.92, 0.46, 2.45], "mass": 1650,
+    "wheels": [
+     {"at": [-0.8, -0.14, -1.5], "radius": 0.34, "steers": true, "driven": false},
+     {"at": [0.8, -0.14, -1.5], "radius": 0.34, "steers": true, "driven": false},
+     {"at": [-0.8, -0.14, 1.5], "radius": 0.34, "steers": false, "driven": true},
+     {"at": [0.8, -0.14, 1.5], "radius": 0.34, "steers": false, "driven": true}
+    ],
+    "engine_force": 13000, "max_speed": 36, "max_steer": 0.55, "brake_force": 230, "drift": 0.35, "grip": 1.25
+   }
+  },
+  "suv": {
+   "label": "Luxury SUV", "model": "suv", "fallback_model": "ambulance", "ride_height": 0.95, "camera_distance": 10, "gears": 6, "premium": true,
+   "driver": [0.42, 0.1, -0.2],
+   "pose": {"lean": -0.08, "hand": [0.17, 0.3, -0.42], "foot": [0.12, -0.3, -0.75]},
+   "entry": {"side": 1, "point": [1.45, -0.2], "door": "hinged", "style": "door"},
+   "passengers": [
+    {"point": [-1.4, 1.1], "inside": [-0.4, 0.15, 0.8], "leaf": 1},
+    {"point": [1.4, 1.1], "inside": [0.4, 0.15, 0.8], "leaf": 2}
+   ],
+   "crash": {"hurt_from": 30, "seated_damage": 0.3, "throw_from": 90, "throw_base": 35, "throw_per_kmh": 1.2, "style": "windscreen", "topples": false},
+   "physics": {
+    "half_extents": [0.98, 0.72, 2.4], "mass": 2150,
+    "wheels": [
+     {"at": [-0.86, -0.4, -1.45], "radius": 0.38, "steers": true, "driven": true},
+     {"at": [0.86, -0.4, -1.45], "radius": 0.38, "steers": true, "driven": true},
+     {"at": [-0.86, -0.4, 1.45], "radius": 0.38, "steers": false, "driven": true},
+     {"at": [0.86, -0.4, 1.45], "radius": 0.38, "steers": false, "driven": true}
+    ],
+    "engine_force": 18000, "max_speed": 33, "max_steer": 0.55, "brake_force": 290, "drift": 0.3, "grip": 1.15
+   }
+  },
+  "coupe": {
+   "label": "Sports coupé", "model": "coupe", "fallback_model": "hatchback", "ride_height": 0.66, "camera_distance": 8.5, "gears": 6, "premium": true,
+   "driver": [0.38, -0.08, 0.2],
+   "pose": {"lean": -0.25, "hand": [0.17, 0.27, -0.45], "foot": [0.12, -0.12, -0.85]},
+   "entry": {"side": 1, "point": [1.35, 0.25], "door": "hinged", "style": "door"},
+   "passengers": [],
+   "crash": {"hurt_from": 30, "seated_damage": 0.3, "throw_from": 110, "throw_base": 35, "throw_per_kmh": 1.2, "style": "windscreen", "topples": false},
+   "physics": {
+    "half_extents": [0.95, 0.4, 2.25], "mass": 1450,
+    "wheels": [
+     {"at": [-0.82, -0.1, -1.4], "radius": 0.33, "steers": true, "driven": false},
+     {"at": [0.82, -0.1, -1.4], "radius": 0.33, "steers": true, "driven": false},
+     {"at": [-0.82, -0.1, 1.4], "radius": 0.33, "steers": false, "driven": true},
+     {"at": [0.82, -0.1, 1.4], "radius": 0.33, "steers": false, "driven": true}
+    ],
+    "engine_force": 14000, "max_speed": 44, "max_steer": 0.58, "brake_force": 230, "drift": 0.6, "grip": 1.35
+   }
+  },
+  "race": {
+   "label": "Race car", "model": "formula", "fallback_model": "hatchback", "ride_height": 0.6, "camera_distance": 8, "gears": 6, "premium": true,
+   "driver": [0, -0.12, 0.3],
+   "pose": {"lean": -0.45, "hand": [0.16, 0.2, -0.4], "foot": [0.1, -0.1, -1.0]},
+   "entry": {"side": 1, "point": [1.3, 0.3], "door": "none", "style": "step"},
+   "passengers": [],
+   "crash": {"hurt_from": 40, "seated_damage": 0.2, "throw_from": -1, "throw_base": 0, "throw_per_kmh": 0, "style": "windscreen", "topples": false},
+   "physics": {
+    "half_extents": [0.95, 0.34, 2.4], "mass": 900,
+    "wheels": [
+     {"at": [-0.85, -0.05, -1.6], "radius": 0.33, "steers": true, "driven": false},
+     {"at": [0.85, -0.05, -1.6], "radius": 0.33, "steers": true, "driven": false},
+     {"at": [-0.85, -0.05, 1.5], "radius": 0.33, "steers": false, "driven": true},
+     {"at": [0.85, -0.05, 1.5], "radius": 0.33, "steers": false, "driven": true}
+    ],
+    "engine_force": 14000, "max_speed": 62, "max_steer": 0.45, "brake_force": 280, "drift": 0.15, "grip": 1.9
+   }
+  }
+ },
+ "variants": {
+  "hatchback": {"kind": "car", "paint": "#c0392b"},
+  "taxi": {"kind": "car", "label": "Taxi", "paint": "#e9c46a", "roof_sign": true},
+  "police": {"kind": "car", "label": "Police car", "paint": "#eef1f4", "siren": true, "light_bar": true},
+  "gang": {"kind": "car", "label": "Gang car", "paint": "#2b2d33"},
+  "auto": {"kind": "auto", "paint": "#f2c230"},
+  "motorbike": {"kind": "bike", "paint": "#1f4e8c"},
+  "ambulance": {"kind": "ambulance", "paint": "#f4f4f2"},
+  "bus": {"kind": "bus", "paint": "#3f7fbf"},
+  "saloon": {"kind": "saloon", "paint": "#1d2b3a"},
+  "suv": {"kind": "suv", "paint": "#5b5f63"},
+  "coupe": {"kind": "coupe", "paint": "#b23a2e"},
+  "race_car": {"kind": "race", "paint": "#2a9d8f"}
+ }
+}

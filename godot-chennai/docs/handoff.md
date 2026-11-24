@@ -241,3 +241,30 @@ To continue:
 - First follow-ups: look at photographs of current Chennai city and low-floor buses and correct
   their colour families if needed (the Commons downloads were rate limited, G-90); restyle the
   legacy motorbike; draw destination names on the `dest_*` nodes in Phase 3.
+
+## Vehicles (phase 2), branch `agent/godot-vehicles`, 23 Nov 2026
+**Done.** A ray-cast vehicle body that reproduces the Three.js handling (measured against the
+Rapier vehicles: `tools/reference/threejs_handling.mts`, `tests/data/threejs_handling.json`),
+the five Three.js vehicles plus taxi/police/gang variants, the premium saloon/SUV/coupé and race
+car on the Models agent's GLBs, the gearbox, boarding with doors, crash ejection, the touch
+driving controls; wired to the Player (`PlayerRiderLink`: `enter_vehicle`/`exit_vehicle`,
+`controls_enabled`; `FollowCamera.chase` while driving) in `src/app/vehicle_yard/`. Vehicles load
+through the per-vehicle manifests (`assets/vehicles/*.json`, `legacy/`). Decisions G-70…G-79;
+details in `docs/driving.md`.
+
+**For the World agent.** In `Main`: spawn with `Vehicle.create(variant)` + `place()`, add a
+`Driving` with `rider = PlayerRiderLink.make(rig.body)`, a `DrivingControls` on a CanvasLayer and
+`DrivingWiring.wire(driving, controls, rig)` (as `VehicleYard` does); put vehicles in
+`WorldOrigin.GROUP`.
+**For the Tamil Nadu vehicles and Models agents.** A GLB + `<model>.json` in `assets/vehicles/`
+replaces the `legacy/` one of the same name with its geometry (wheels, collision, seat, entry);
+handling stays in `src/vehicles/data/vehicle_types.json`. Wheels are matched to physics wheels by
+position. New kinds: add a kind and a variant to `vehicle_types.json`.
+**For the Player agent.** A seated pose would make bikes and autos right: `RiderLink.set_seated
+(type, amount)` gets `type.pose` (hands, feet, lean) and is the place to drive it.
+**For the Sound agent.** Signals: `Driving.horn`, `boarding_event` (door_opening, shut…),
+`crashed`; `Gearbox.shifted_up` for gear changes; `Vehicle.siren()`.
+
+**Weak.** Single-front-wheel vehicles turn ~15 % less from rest than in the Three.js game and the
+rear-driven ones slide a little more at full lock (cause not found; `docs/driving.md`). No seated
+pose. The yard's lighting is a test ground, not the city. No physics interpolation.
