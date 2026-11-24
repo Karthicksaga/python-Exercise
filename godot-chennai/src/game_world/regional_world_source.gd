@@ -183,6 +183,10 @@ func get_data_date() -> String:
 	return data_date
 
 
+func chunk_count() -> int:
+	return cells.size()
+
+
 func get_landmarks() -> Array[Landmark]:
 	return landmarks
 

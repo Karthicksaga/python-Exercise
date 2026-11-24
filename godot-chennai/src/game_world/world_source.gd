@@ -60,6 +60,12 @@ func cell_at(point: Vector2) -> Vector2i:
 	return Vector2i(floori((point.x - o.x) / size), floori((point.y - o.y) / size))
 
 
+## Squares with content or road surface in the world (for the HUD).
+func chunk_count() -> int:
+	var index := index_at(get_bounds().get_center())
+	return index.chunk_sizes.size() if index != null else 0
+
+
 ## Landmarks of the whole world (always loaded; they are seen from afar).
 func get_landmarks() -> Array[Landmark]:
 	var index := index_at(get_bounds().get_center())

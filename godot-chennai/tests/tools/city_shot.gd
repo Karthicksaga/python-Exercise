@@ -27,11 +27,15 @@ func _run() -> void:
 	var place := "spawn"
 	var out := "user://city.png"
 	var at := ""
+	## "back,height" of the camera behind the point (default: street level).
+	var view := "9,3.2"
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--place="):
 			place = arg.trim_prefix("--place=")
 		elif arg.begins_with("--out="):
 			out = arg.trim_prefix("--out=")
+		elif arg.begins_with("--view="):
+			view = arg.trim_prefix("--view=")
 		elif arg.begins_with("--at="):
 			at = arg.trim_prefix("--at=")
 	await process_frame
@@ -66,7 +70,8 @@ func _run() -> void:
 		heading = spec.get("heading", hit.get("heading", 0.0))
 		if spec.has("side"):
 			point += Vector2(-sin(heading), -cos(heading)) * -float(spec["side"])
-	city.call("look_at_world", point, heading)
+	var vp := view.split(",")
+	city.call("look_at_world", point, heading, float(vp[0]), float(vp[1]))
 	var streamer: Node = city.get("streamer")
 	var t0 := Time.get_ticks_msec()
 	streamer.call("fill_now")

@@ -20,8 +20,12 @@ const GROUND_WAIT_FRAMES := 120
 
 ## &"loading", &"failed", &"title" or &"play".
 var state: StringName = &"loading"
-var source: FileWorldSource = FileWorldSource.new()
+## The regional world (format 2, `world/`) when it is installed, else today's files (format 1);
+## `--world=v1` after `--` forces format 1 for comparison (G-56).
+var source: WorldSource = _default_source()
 var world: CityWorld = null
+## The player on foot, placed on loaded ground at the start (Player's G-67).
+var rig: PlayerRig = null
 ## Watches for a stalled main loop while loading (see `_watch_frames`).
 var _watchdog: Thread = null
 var _watching: bool = false
@@ -40,6 +44,12 @@ func _ready() -> void:
 	title.quit_requested.connect(quit)
 	print("[boot] %s, renderer %s" % [Engine.get_version_info().string, RenderingServer.get_current_rendering_method()])
 	_load.call_deferred()
+
+
+static func _default_source() -> WorldSource:
+	if RegionalWorldSource.available() and not OS.get_cmdline_user_args().has("--world=v1"):
+		return RegionalWorldSource.new()
+	return FileWorldSource.new()
 
 
 func _set_state(next: StringName) -> void:
@@ -70,7 +80,7 @@ func _load() -> void:
 	_stop_watchdog()
 	loading.visible = false
 	var roads := source.loaded_roads()
-	hud.set_world_text("%s roads · %s chunks" % [_thousands(roads.size()), _thousands(source.index.chunk_sizes.size())])
+	hud.set_world_text("%s roads · %s chunks" % [_thousands(roads.size()), _thousands(source.chunk_count())])
 	hud.set_credit(source.get_attribution())
 	title.set_credits(source.get_attribution(), source.get_data_date())
 	if OS.get_cmdline_user_args().has("--start=play"):
@@ -83,9 +93,9 @@ func _load() -> void:
 func _run_step(i: int) -> String:
 	match i:
 		0:
-			return await _background(i, source.open_index)
+			return await _background(i, Callable(source, &"open_index"))
 		1:
-			return await _background(i, source.open_roads)
+			return await _background(i, Callable(source, &"open_roads"))
 		2:
 			return await _add_city()
 	return "Unknown step %d." % i
@@ -130,13 +140,33 @@ func _add_city() -> String:
 		return "The streets round the start did not load."
 	for f in GROUND_WAIT_FRAMES:
 		if world.ground_ready():
-			return ""
+			return await _add_player()
 		await GameLoop.wait_physics_frames(1)
 	return "The ground's collider did not appear in %d physics frames." % GROUND_WAIT_FRAMES
 
 
-## A thread that reports when no frame has been drawn for 5 s while loading: on a device whose
-## GPU stalls, the log then says the main loop stopped rather than going silent (TD-25 lesson).
+## The player at the start, on the road the Three.js game starts on; streaming and the floating
+## origin then follow the player's body.
+func _add_player() -> String:
+	if rig != null:
+		return ""
+	rig = PlayerRig.new()
+	rig.name = "Player"
+	rig.add_to_group(WorldOrigin.GROUP)
+	rig.reads_devices = false
+	world.add_child(rig)
+	rig.controls.visible = false
+	var error := await rig.load_figure()
+	if error != "":
+		return error
+	var start: Vector2 = world.spawn["point"]
+	rig.place(WorldOrigin.to_scene(start, 0.05), world.spawn["heading"])
+	world.focus_node = rig.body
+	world.manage_origin = true
+	WorldOrigin.shifted.connect(func(_offset: Vector3) -> void: rig.camera.snap())
+	return ""
+
+
 func _start_watchdog() -> void:
 	_stop_watchdog()
 	_watching = true
@@ -171,6 +201,7 @@ func _exit_tree() -> void:
 
 func show_title() -> void:
 	hud.visible = false
+	_set_controls(false)
 	title.visible = true
 	title.show_menu()
 	_set_state(&"title")
@@ -179,7 +210,14 @@ func show_title() -> void:
 func play() -> void:
 	title.visible = false
 	hud.visible = true
+	_set_controls(true)
 	_set_state(&"play")
+
+
+func _set_controls(on: bool) -> void:
+	if rig != null:
+		rig.controls.visible = on
+		rig.reads_devices = on
 
 
 func quit() -> void:
