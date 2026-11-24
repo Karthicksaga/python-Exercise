@@ -161,8 +161,29 @@ func prepare(city: CityWorld, player: PlayerRig) -> String:
 	_interior.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_interior)
 	crossing_amounts.resize(network.crossings.size())
+	for line in network.lines:
+		for st in line.stops:
+			_stop_points.append(line.path.at(st.s).point())
+			_stop_lines.append(line)
+	for p in platforms:
+		_platform_points.append(p.line.path.at(p.stop.s).point())
 	apply_quality(quality)
 	return ""
+
+
+## Stops' centres and their lines, platforms' centres: so the per-frame checks only look at the
+## few lines with a stop near the player (a projection onto a 17 km line costs ~0.1 ms).
+var _stop_points := PackedVector2Array()
+var _stop_lines: Array[RailLine] = []
+var _platform_points := PackedVector2Array()
+
+
+func _near_lines(at: Vector2, reach: float = 100.0) -> Array[RailLine]:
+	var out: Array[RailLine] = []
+	for i in _stop_points.size():
+		if _stop_points[i].distance_squared_to(at) < reach * reach and not out.has(_stop_lines[i]):
+			out.append(_stop_lines[i])
+	return out
 
 
 ## The quality preset (0 Low, 1 Medium, 2 High; `QualitySettings` levels).
@@ -333,7 +354,7 @@ func _draw_trains(focus: Vector2) -> void:
 
 ## The train standing at the platform the player is at (any line), with the stop index, or [].
 func standing_train(at: Vector2, height: float) -> Array:
-	for line in network.lines:
+	for line in _near_lines(at):
 		var index_at := RailRules.stop_at(line, at, height)
 		if index_at < 0:
 			continue
@@ -807,7 +828,7 @@ func _listen(focus: Vector2) -> void:
 	if state != &"foot":
 		return
 	var height := rig.body.global_position.y if rig != null else 0.0
-	for line in network.lines:
+	for line in _near_lines(focus):
 		var i := RailRules.stop_at(line, focus, height)
 		if i < 0:
 			continue
@@ -823,9 +844,9 @@ func _listen(focus: Vector2) -> void:
 ## Platform crowds near the player (at most CROWD_PLATFORMS): people wait, get on and off.
 func _step_crowds(dt: float, focus: Vector2) -> void:
 	var near: Array[StationLayout.Platform] = []
-	for p in platforms:
-		if p.line.path.at(p.stop.s).point().distance_to(focus) < CROWD_RANGE:
-			near.append(p)
+	for k in platforms.size():
+		if _platform_points[k].distance_to(focus) < CROWD_RANGE:
+			near.append(platforms[k])
 	near.sort_custom(func(a: StationLayout.Platform, b: StationLayout.Platform) -> bool:
 		return a.line.path.at(a.stop.s).point().distance_squared_to(focus) < b.line.path.at(b.stop.s).point().distance_squared_to(focus))
 	var keep: Dictionary[String, bool] = {}
@@ -996,7 +1017,10 @@ func _update_hud(focus: Vector2) -> void:
 ## The platform the player is on or right by, or null.
 func _station_here(focus: Vector2) -> StationLayout.Platform:
 	var height := rig.body.global_position.y if rig != null else 0.0
-	for p in platforms:
+	for k in platforms.size():
+		if _platform_points[k].distance_squared_to(focus) > 100.0 * 100.0:
+			continue
+		var p := platforms[k]
 		if RailRules.stop_at(p.line, focus, height) == p.index:
 			return p
 		for sv in p.services:

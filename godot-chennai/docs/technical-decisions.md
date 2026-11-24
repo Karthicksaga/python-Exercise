@@ -1878,3 +1878,126 @@ the model is drawn at the settled ride height (lower by the springs' sag): rider
 into seats. They are now measured from `VehicleModel.settled_ground`. Collision boxes keep their
 frame (physics, not changed here).
 
+
+## The railway (G-320 to G-334), branch `agent/godot-railway`
+
+### G-320: The Three.js railway is reused through a Python port of its builder
+`tools/rail/build_rail.py` is a line-by-line port of `packages/rail/src/build.ts` with the line
+specs of `scripts/build-rail.ts`. `--threejs` rebuilds the Three.js `rail.json` from the same OSM
+extract (`chennai-open-world/assets/osm/rail/chennai-rail.osm.json`, read in place) and the tests
+(`tools/rail/test_build_rail.py`, run in CI) check it matches the committed file value for value.
+Nothing about the lines is derived again. Lines are clipped to the Three.js map box as before
+(trains appear and vanish 150 m beyond it): the extract only covers that box (plus 500 m), so a
+larger box would only end lines at the data's edge, and the Beach end would turn into a terminus
+with no station in the data. Running trains to Tambaram, Chengalpattu or Gummidipoondi needs a
+rebuild from the regional Tamil Nadu extract (the transit branch has the lines; not merged).
+
+### G-321: One network file, `world/rail/rail.json`
+The game, the AI's station places (`AiArea.RAIL`) and the tests read one file. It holds the
+Three.js file's two lines, tracks and stations unchanged (test `test_rail_file`) plus every other
+passenger route relation the extract covers with track and a stop on the map: Chennai MRTS both
+ways (13 stations), Chennai Central to Arakkonam and to Sullurpeta, and the express services out
+of Central (Coromandel both ways, Charminar both ways, Shatabdi both ways, Rajdhani, Saptagiri).
+The format is the Three.js one with additive keys (`format`, `note`, `crossings`, per line
+`system`, `train`, `motion`, `heights`); the synced `assets/world/rail.json` stays for comparison.
+Not included because the data does not have them: Chennai Metro (stations only), the
+Tambaram–Chengalpattu line, Chennai Fort and Beach stations, MRTS stops south of Indira Nagar.
+Coverage table: `world/rail/RAIL.md`.
+
+### G-322: Termini on the map, train types, conflict-free offsets
+Lines that start or end at Chennai Central (not beyond the map) stand at the platform for a
+terminus dwell (120 s EMU, 150 s express) instead of entering at line speed from the buffers
+(`RunProfile` `start_standing`/`end_standing`; both off is motion.ts exactly). Each line carries a
+train type and its motion figures (estimated): EMU/AC EMU 0.8/0.9 m/s², 22 m/s; express 0.4/0.6,
+25 m/s. Headways are estimates (MRTS 15 min, Central suburban 20, each express every 2 game hours;
+the real expresses run daily). The builder moves each new line's offset a minute at a time until
+no train comes within 130 m of another line's train on shared track over the two-hour cycle; a
+GDScript test checks the same on the game's own timetable.
+
+### G-323: The MRTS on its viaduct (estimated height)
+OSM tags the MRTS as `bridge=viaduct`/`layer=1`, without heights. Points whose nearest member way
+is elevated stand at a rail-top formation of 9 m (estimated), ramps at 1 in 40; platforms are
+level (points added at their ends). The view draws a deck, parapets and piers every 30 m; the deck
+is solid; each MRTS platform has a stair to the street. Ground tracks are drawn flat as in Three.js.
+
+### G-324: Tamil names not in OSM are transliterations that need native review
+Eight MRTS stations have no `name:ta`; `TAMIL_ESTIMATED` in the builder gives transliterations,
+marked * in `RAIL.md`. Boards draw Tamil above English with the full Tamil Noto font already in the
+project (`assets/city/noto-sans-tamil-categories.woff2`). Hindi names from the Three.js file are
+kept in the data, not drawn (the owner asked for Tamil and English).
+
+### G-325: Track as merged chunk meshes on worker threads
+`RailIndex` cuts tracks and elevated lines into ≤20 m pieces per 250 m world chunk (the world's
+own grid) with the distance along each track. `RailGeometry` builds a chunk on a worker thread:
+ballast with a sleeper texture (concrete sleepers every 0.65 m drawn into a 128×64 texture made
+by code, not geometry), two rails per track, the viaduct, all one vertex-coloured material: one
+draw call. The overhead line (masts every 60 m on the side with room, cantilevers, contact wire
+5.5 m and catenary 6.9 m above the rail) is a second mesh with its own visibility range, not
+built at all on Low. `RailTracksView` streams its own chunks round the player (600 m on High), at
+most two builds at once, one chunk added per frame. No per-object nodes, no lights.
+
+### G-326: The owner's cab prototype, ported as rules
+`CabDrive` is the prototype's simulation on a real `RailLine`: nine notches EMG…P4, effort ramping
+at 2.2/s up and 1.6/s down, power fading towards 29 m/s, resistance 0.02 + 0.00045 v², doors
+interlock, limits 40/60/80 km/h by distance to a stop (prototype rule, estimated), overspeed −10
+after 2.5 s, stop scoring (±3 m perfect +100, ±8 good +60, short +25, far 0, overrun −40, missed
+−60), moving with doors open −30, a starter signal 6 m past each stop mark: red while this train
+stands with its doors open or a timetabled train is within 400 m beyond it, yellow within 900 m;
+passing it at danger −80. Taking over a standing timetabled train hides that departure for the
+rest of its run; same-line trains up to 400 m behind wait out of sight; a train the player leaves
+stands at the platform 4 minutes or until the player is 300 m away.
+
+### G-327: Level crossings from OSM, closed by the timetable
+Mapped `railway=level_crossing` nodes within 3 m of a drawn track (five on the map; one on the
+Beach–Tambaram line, the others on yard and freight tracks without timetabled trains). Booms come
+down 35 s before a train's front reaches the road and go up once its rear is 8 m past; they swing
+in 6 s. The road is taken as square to the track (OSM's crossing node gives no road direction).
+While a boom is not up, `CityLife` holds traffic at points across the road (an additive
+`extra_obstacles` hook). There is no bell recording: rings are counted, not heard.
+
+### G-328: Trains as MultiMeshes of merged cars
+`TrainModels` merges each car GLB (all LODs) into one mesh per material, keeping the sliding door
+leaves apart; `TrainsView` draws every car of a type and LOD as one instance of one `MultiMesh`
+and the doors of near cars as another, so all trains in view are a handful of draw calls. Rakes
+are four cars (cab, motor, trailer, cab reversed; WAP-7 and three LHB coaches), as the Three.js
+game, because the estimated 110 m platforms and the timetable are sized for that; real EMUs run
+9 or 12 cars. Wheels and bogies do not turn. Cars within the solid range get pooled kinematic
+boxes.
+
+### G-329: Stations from the Three.js layout
+`StationLayout` (port of station.ts) gives each drawn platform its services, numbering and exits.
+The view builds the deck along the curve, yellow edge lines, ramps, a shed, yellow name boards
+with black letters (the Indian Railways scheme, no emblem), the departure board, the drivers'
+red STOP board where a train's front stands and the starter signal. OSM's own `platform` outlines
+from the detail layer are still drawn by `DetailMeshes` where mapped; they are not merged with
+these (a duplicate slab can show at some stations: weak spot).
+
+### G-330: Railway HUD in the glass style
+`RailHud` (ui module, plain data in, signals out): station chip with the next train, TIMETABLE
+sheet with departures and a route map of every line (until the nav agent's map is merged), the
+passenger's STEP OFF / SIT / VIEW, the cab's lever, dial, HORN, EMG, doors and LEAVE CAB. The glass
+look is copied from `agent/godot-ui` (`RailHudStyle`) and should become `UiTheme.glass_box` once
+that branch is merged.
+
+### G-331: Riding inside a car
+The player's body follows an anchor moved through the doorway (an additive
+`PlayerController.vehicle_gait` makes the figure walk while held), then on a bench or by the door.
+The car models are outside shells with painted windows, so `CoachInterior` draws a small interior
+(floor, ceiling, walls with window openings, benches, poles; a cab desk and windscreen frame)
+round the rider; the inside camera looks out on drag. VIEW switches to the chase camera outside.
+
+### G-332: Platform crowds through `CityLife`'s figures
+`StationCrowd` (port of crowd.ts) runs for the two platforms nearest the player; its people are
+drawn by `CityLife`'s pool through an additive `extra_people` hook, adults only (no child is ever
+on a platform edge or in the railway's crowd), at most 16 within 70 m (8 on Low).
+
+### G-333: Wiring
+`Main` gets a fifth loading step, "Running the trains" (real work: the network, index, layout and
+car models on worker threads). `RailwayWiring` adds the HUD layer, tickets from the mission
+session's balance (saved), BOARD THE TRAIN on the ACTION button, the crowd and crossing hooks.
+
+### G-334: Quality presets
+`Railway.PRESETS` by `QualitySettings` level (Low/Medium/High): trains drawn 4/6/8 within
+520/700/900 m, LOD distances ×0.6/0.8/1, track 450/520/600 m, overhead line off/160/220 m, crowd
+figures 8/12/16. `Railway.apply_quality(level)` is the hook for `QualitySettings.changed` once
+`agent/godot-perf` is merged (not wired yet: the class is not on this branch).
