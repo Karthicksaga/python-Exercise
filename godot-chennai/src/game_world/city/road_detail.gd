@@ -80,7 +80,7 @@ class Plan:
 
 ## Everything for one chunk. `furniture` is the chunk's poles, kerbs and shelters; `chunk_trees`
 ## the trees that already stand (planting keeps clear of them).
-static func for_chunk(layout: CityLayout, chunk: ChunkData, cell: Vector2i, square: Rect2, furniture: StreetFurniture.Result) -> Plan:
+static func for_chunk(layout: CityLayout, chunk: ChunkData, cell: Vector2i, square: Rect2, furniture: StreetFurniture.Result, extras: int = 2) -> Plan:
 	var out := Plan.new()
 	var boxes := StreetFurniture.building_boxes(chunk.buildings)
 	var spots: Array = layout.spots_in(cell)
@@ -104,7 +104,7 @@ static func for_chunk(layout: CityLayout, chunk: ChunkData, cell: Vector2i, squa
 				# An open drain along one side: a dark channel with a lip.
 				var side: Array[float] = [1.0 if CityHash.unit(RoadStyle.way(road), 95) < 0.5 else -1.0]
 				out.drains.append_array(StreetFurniture.offset_runs(layout, span.index, span.start, span.end, open, road.width / 2.0 + 0.1, road.width / 2.0 + 0.5, side))
-		out.decals.append_array(decals_on(layout, span, square, out.rural))
+		out.decals.append_array(decals_on(layout, span, square, out.rural, extras < 2))
 		var cond := RoadStyle.condition(road, out.rural)
 		if cond == RoadStyle.DAMAGED or cond == RoadStyle.UNPAVED:
 			wear_on(out, layout, span, cond)
@@ -242,7 +242,7 @@ static func crossings_on(layout: CityLayout, span: CityLayout.RoadSpan, square: 
 ## Marks on the carriageway at distances fixed by the way id, so chunks agree: manholes, repair
 ## patches, potholes and by condition (G-315) large stripped-tar patches, water-filled holes, puddles
 ## and brick and stone rubble.
-static func decals_on(layout: CityLayout, span: CityLayout.RoadSpan, square: Rect2, rural: bool = false) -> Array[Mark]:
+static func decals_on(layout: CityLayout, span: CityLayout.RoadSpan, square: Rect2, rural: bool = false, no_rubble: bool = false) -> Array[Mark]:
 	var out: Array[Mark] = []
 	var road := span.road
 	var klass := RoadStyle.klass_of(road)
@@ -274,6 +274,8 @@ static func decals_on(layout: CityLayout, span: CityLayout.RoadSpan, square: Rec
 			if concrete:
 				specs.append([&"patch", PATCH_PITCH[klass], 202])
 	for spec: Array in specs:
+		if no_rubble and spec[0] == &"rubble":
+			continue
 		var kind: StringName = spec[0]
 		var pitch: float = spec[1]
 		var salt: int = spec[2]

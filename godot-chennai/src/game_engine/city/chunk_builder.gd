@@ -36,6 +36,11 @@ class Kit:
 	var palm_triangles: int = 0
 	## Road detail (G-310 to G-313): off for a before and after comparison in tests and tools.
 	var road_detail: bool = true
+	## Quality of the optional road detail (G-317), the preset's number (`QualitySettings.LOW` 0,
+	## `MEDIUM` 1, `HIGH` 2): Low drops tree guards, median shrubs, wires and rubble; Medium drops
+	## guards, shrubs and rubble but keeps wires; High everything. Markings, kerbs, footpaths, the
+	## ground tiles and the lamps are kept at every level.
+	var road_extras: int = 2
 	## The sea's outline (world metres), cut to each chunk it covers and drawn as ground water;
 	## its bounding box for a quick reject. Empty when the map has no coast.
 	var sea := PackedVector2Array()
@@ -135,7 +140,7 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	add_platform_shelters(out.furniture, near_objects, layout, chunk, square)
 	out.props = StreetProps.for_chunk(layout, chunk, cell, out.furniture)
 	if kit.road_detail:
-		out.roads = RoadDetail.for_chunk(layout, chunk, cell, square, out.furniture)
+		out.roads = RoadDetail.for_chunk(layout, chunk, cell, square, out.furniture, kit.road_extras)
 		if out.roads.rural:
 			# Open country has no kerbs along the road: a dust shoulder instead (G-314).
 			out.furniture.kerbs.clear()
@@ -232,8 +237,10 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 			CityModels.place(objects, kit.models.pole_of(pole.kind), _local3(pole.position, out.centre), pole.yaw)
 			if pole.kind == &"arm" or pole.kind == &"rural":
 				all_poles.append(pole)
-		out.detail["wires"] = RoadObjects.wires(objects, all_poles, out.centre)
-		out.detail["median_shrubs"] = RoadObjects.shrubs(objects, kit.models, out.furniture.medians, out.centre)
+		if kit.road_extras >= 1:
+			out.detail["wires"] = RoadObjects.wires(objects, all_poles, out.centre)
+		if kit.road_extras >= 2:
+			out.detail["median_shrubs"] = RoadObjects.shrubs(objects, kit.models, out.furniture.medians, out.centre)
 		out.detail["crossings"] = out.roads.crossings.size()
 		for post in out.roads.chevrons:
 			CityModels.place(objects, kit.models.chevron, _local3(post.position, out.centre), post.yaw)
@@ -253,7 +260,7 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	if out.roads != null:
 		all_trees.append_array(out.roads.trees)
 	var trees := standing_trees(all_trees, water.polygons, layout)
-	if out.roads != null:
+	if out.roads != null and kit.road_extras >= 2:
 		var caged := RoadDetail.guarded(layout, trees)
 		RoadObjects.guards(objects, kit.models, caged, out.centre)
 		out.detail["tree_guards"] = caged.size()

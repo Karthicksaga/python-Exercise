@@ -299,3 +299,23 @@ func test_lamp_kinds_by_road() -> bool:
 	assert_true(warm > 0, "residential poles are warmer (%d)" % warm)
 	assert_true(RoadLamps.WARM.r > RoadLamps.COOL.r and RoadLamps.WARM.b < RoadLamps.COOL.b, "warm is warmer than cool")
 	return true
+
+
+func test_optional_detail_follows_the_quality_preset() -> bool:
+	var kit := CityTestKit.regional_kit()
+	var cell := Vector2i(124, 251)
+	var counts := {}
+	for level: int in [0, 1, 2]:
+		kit.road_extras = level
+		var b := ChunkBuilder.build(kit, cell)
+		counts[level] = {"wires": b.detail.get("wires", 0), "shrubs": b.detail.get("median_shrubs", 0), "guards": b.detail.get("tree_guards", 0), "surfaces": b.surfaces, "tris": b.total_triangles(true)}
+		CityTestKit.free_build(b)
+	kit.road_extras = 2
+	assert_eq(counts[0]["wires"], 0, "Low draws no wires")
+	assert_eq(counts[0]["shrubs"], 0, "Low draws no median shrubs")
+	assert_eq(counts[0]["guards"], 0, "Low draws no tree guards")
+	assert_true(counts[1]["wires"] > 0 and counts[1]["shrubs"] == 0 and counts[1]["guards"] == 0, "Medium keeps wires only: %s" % counts[1])
+	assert_true(counts[2]["wires"] > 0 and counts[2]["shrubs"] > 0, "High keeps everything: %s" % counts[2])
+	assert_true(int(counts[0]["tris"]) < int(counts[1]["tris"]) and int(counts[1]["tris"]) < int(counts[2]["tris"]), "each level is cheaper: %s" % counts)
+	assert_eq(counts[0]["surfaces"], counts[2]["surfaces"], "the draw calls do not change")
+	return true

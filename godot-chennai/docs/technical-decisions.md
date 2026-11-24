@@ -1808,3 +1808,11 @@ are merged into the chunk's objects surface (no new draw call). At night `Street
 instance of one additive mesh (crossed halo quads and a ground pool quad, unshaded, tinted per lamp: cool white-blue,
 warmer on residential streets): one draw call whatever the count; the six real lights near the camera stay as in G-88.
 Lamp heads are `RoadLamps.heads` (`Build.lamp_points`, built on the worker); `set_lamps` takes the head height in y.
+
+### G-317: Optional road detail follows the quality preset
+`ChunkBuilder.Kit.road_extras` (0 Low, 1 Medium, 2 High, the same numbers as `QualitySettings` in agent/godot-perf) gates
+the optional detail: Low drops tree guards, median shrubs, overhead wires and rubble; Medium drops guards, shrubs and
+rubble but keeps wires; High keeps everything. Markings, kerbs, footpaths, ground tiles and lamps stay at every level.
+`CityWorld.road_extras` carries it (default 2, so tests and tools see High). The perf wiring should set it from the
+preset: `city.road_extras = QualitySettings.shared().preset`; this branch does not reference `QualitySettings` (not in
+`feat/godot-chennai` yet). Chunks already built keep the level they were built with.
