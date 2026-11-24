@@ -52,6 +52,8 @@ func _run() -> void:
 		quit(1)
 		return
 	var city: Node = (load(CITY_PATH) as PackedScene).instantiate()
+	if OS.get_cmdline_user_args().has("--no-landmarks"):
+		city.set("show_landmarks", false)
 	root.add_child(city)
 	err = await city.call("setup", source)
 	var spawn: Dictionary = city.get("spawn")
@@ -96,10 +98,28 @@ func _run() -> void:
 			var w := v.get_node_or_null("Walls") as MeshInstance3D
 			if w != null:
 				print("%s walls d=%.0f aabb=%s visible=%s range=%s..%s" % [v.name, cam.global_position.distance_to(w.global_position), w.get_aabb(), w.is_visible_in_tree(), w.visibility_range_begin, w.visibility_range_end])
+	# --frames=N: average and worst frame time over N rendered frames (landmark cost, G-188).
+	var frame_note := ""
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--frames="):
+			var n := int(arg.trim_prefix("--frames="))
+			var times := PackedFloat64Array()
+			var last := Time.get_ticks_usec()
+			for i in n:
+				await process_frame
+				var now := Time.get_ticks_usec()
+				times.append(float(now - last) / 1000.0)
+				last = now
+			var total := 0.0
+			var worst := 0.0
+			for t in times:
+				total += t
+				worst = maxf(worst, t)
+			frame_note = "frame_avg_ms=%.2f frame_max_ms=%.2f frames=%d " % [total / maxf(1.0, n), worst, n]
 	var draws := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
 	var prims := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)
 	var objects := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)
 	var image := root.get_texture().get_image()
 	image.save_png(out)
-	print("city_shot %s ready=%s at=(%.0f, %.0f) draw_calls=%d primitives=%d objects=%d chunks=%d max_main_ms=%.2f max_build_ms=%.1f fill_ms=%d %s" % [place, ok, point.x, point.y, draws, prims, objects, (streamer.call("shown_cells") as Array).size(), float(streamer.get("stats")["max_frame_usec"]) / 1000.0, float(streamer.get("stats")["max_build_usec"]) / 1000.0, fill_ms, out])
+	print(frame_note + "city_shot %s ready=%s at=(%.0f, %.0f) draw_calls=%d primitives=%d objects=%d chunks=%d max_main_ms=%.2f max_build_ms=%.1f fill_ms=%d %s" % [place, ok, point.x, point.y, draws, prims, objects, (streamer.call("shown_cells") as Array).size(), float(streamer.get("stats")["max_frame_usec"]) / 1000.0, float(streamer.get("stats")["max_build_usec"]) / 1000.0, fill_ms, out])
 	quit(0)

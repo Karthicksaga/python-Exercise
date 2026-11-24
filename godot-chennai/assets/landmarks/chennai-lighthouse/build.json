@@ -1,0 +1,14 @@
+{
+ "id": "chennai-lighthouse",
+ "kit": "lighthouse",
+ "script": "tools/blender/landmarks/lighthouse.py",
+ "blender": "5.2.4 LTS",
+ "spec_sha256": "550f4b1bb9ba7f3d7d0d71e85413eeace4841d8af4ec1eeb4a82e7af9d6e500c",
+ "glb_sha256": "7b2464c50ccdcdc79ede639b314ec95ea274a16a3539b3e11c6616f2e1ff6a3c",
+ "triangles": {
+  "lod0": 5048,
+  "lod1": 1418,
+  "lod2": 286
+ },
+ "collision_boxes": 2
+}

@@ -1,0 +1,14 @@
+{
+ "id": "ripon-building",
+ "kit": "colonial_clocktower",
+ "script": "tools/blender/landmarks/colonial_clocktower.py",
+ "blender": "5.2.4 LTS",
+ "spec_sha256": "f4f6a2f7847a31e038ce56616df958c58b5f141119bbe4d2991315232f62535b",
+ "glb_sha256": "98ef4c565e942d3f84ae070bafa079ff0875c472da0fd350dbf23ebd0c6b764d",
+ "triangles": {
+  "lod0": 6463,
+  "lod1": 793,
+  "lod2": 405
+ },
+ "collision_boxes": 14
+}

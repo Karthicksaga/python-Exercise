@@ -1,0 +1,204 @@
+{
+ "format": 1,
+ "id": "chennai-lighthouse",
+ "kind": "lighthouse",
+ "names": {
+  "en": "Chennai Lighthouse",
+  "ta": "சென்னை மெரினா கலங்கரை விளக்கம்",
+  "en_source": "OSM way 211436935 name:en",
+  "ta_source": "OSM way 211436935 name"
+ },
+ "style": "1970s reinforced-concrete lighthouse: a triangular tower in red and white horizontal bands, a gallery and a lantern",
+ "height": {
+  "value": 45.72,
+  "osm_tag": 45.72,
+  "of": "the tower",
+  "source": "https://www.openstreetmap.org/way/211436935",
+  "alternatives": [
+   {
+    "value": 46.0,
+    "source": "https://dgll.nic.in/DGLL-light-house-location/about-chennai/chennai-lighthouse",
+    "note": "46 m RCC tower"
+   },
+   {
+    "value": 57.0,
+    "source": "https://en.wikipedia.org/wiki/Chennai_Lighthouse",
+    "note": "height of the light above sea level, not the tower"
+   }
+  ],
+  "chosen_because": "OSM's height tag (45.72 m, 150 ft) agrees with the Directorate of Lighthouses and Lightships; 57 m is the light's focal height."
+ },
+ "osm": {
+  "main": "tower",
+  "exclude": [
+   "tower"
+  ],
+  "parts": {
+   "tower": {
+    "osm": "way/211436935",
+    "role": "model",
+    "tags": {
+     "name": "சென்னை மெரினா கலங்கரை விளக்கம்",
+     "name:en": "Chennai Lighthouse",
+     "alt_name": "Chennai Marina Lighthouse",
+     "old_name": "Madras Lighthouse",
+     "building:part": "yes",
+     "height": "45.72",
+     "man_made": "lighthouse",
+     "wikidata": "Q6546309",
+     "wikipedia": "en:Chennai Lighthouse (1977)",
+     "wikimedia_commons": "Category:Chennai Lighthouse"
+    },
+    "footprint": [
+     [
+      7509.34,
+      5028.39
+     ],
+     [
+      7509.83,
+      5026.12
+     ],
+     [
+      7518.62,
+      5034.41
+     ],
+     [
+      7512.28,
+      5036.27
+     ],
+     [
+      7507.3,
+      5037.73
+     ],
+     [
+      7507.78,
+      5035.54
+     ],
+     [
+      7505.44,
+      5034.99
+     ],
+     [
+      7506.42,
+      5030.79
+     ],
+     [
+      7507.1,
+      5027.87
+     ]
+    ],
+    "centroid": [
+     7510.93,
+     5032.53
+    ],
+    "area": 78.7,
+    "rect": {
+     "yaw_deg": 136.67,
+     "long": 12.87,
+     "short": 10.19,
+     "corners": [
+      [
+       7511.63,
+       5041.82
+      ],
+      [
+       7502.27,
+       5032.99
+      ],
+      [
+       7509.26,
+       5025.58
+      ],
+      [
+       7518.62,
+       5034.41
+      ]
+     ]
+    }
+   }
+  },
+  "wikidata": "Q6546309",
+  "wikipedia": "en:Chennai Lighthouse (1977)",
+  "data_date": "2026-11-23T00:28:57Z",
+  "licence": "ODbL 1.0, © OpenStreetMap contributors"
+ },
+ "recipe": {
+  "kit": "lighthouse",
+  "params": {
+   "part": "tower",
+   "bands": 9,
+   "gallery_height": 38.0,
+   "lantern_height": 4.0,
+   "lantern_radius": 2.0,
+   "base_height": 4.0
+  }
+ },
+ "colours": {
+  "red": "#b8322b",
+  "white": "#f2efe8",
+  "base": "#d9d3c6",
+  "gallery": "#e8e4dc",
+  "glass": "#9cc3cf",
+  "dome": "#b8322b",
+  "rail": "#3d3f42",
+  "opening": "#2b2a29"
+ },
+ "materials": [
+  {
+   "name": "painted reinforced concrete",
+   "where": "tower and base"
+  },
+  {
+   "name": "glass and steel",
+   "where": "lantern"
+  }
+ ],
+ "facts": [
+  {
+   "en": "Lit on 10 January 1977, the fourth lighthouse of Madras; a triangular concrete tower in red and white bands.",
+   "source": "https://dgll.nic.in/DGLL-light-house-location/about-chennai/chennai-lighthouse"
+  },
+  {
+   "en": "The tower is 45.72 m tall and the light stands about 57 m above the sea.",
+   "source": "https://en.wikipedia.org/wiki/Chennai_Lighthouse"
+  },
+  {
+   "en": "Reopened to visitors in 2013 after 22 years, with a lift and a museum of lighthouse equipment.",
+   "source": "https://www.deccanchronicle.com/131115/news-current-affairs/article/madras-lighthouse-reopens-attracts-5000-spectators"
+  }
+ ],
+ "references": [
+  {
+   "title": "File:Chennai Lighthouse.jpg",
+   "author": "see file page",
+   "licence": "see file page (listed, not downloaded)",
+   "url": "https://commons.wikimedia.org/wiki/File:Chennai_Lighthouse.jpg",
+   "use": "modelling reference (not seen: the host rate-limited downloads); proportions from the published description"
+  }
+ ],
+ "budget": {
+  "lod0_min": 5000,
+  "lod0_max": 15000,
+  "lod1_max": 6000,
+  "lod2_max": 2000
+ },
+ "lod": {
+  "lod0_end": 160.0,
+  "lod1_end": 600.0,
+  "lod2_end": 6000.0
+ },
+ "collision": {
+  "plan": "Jolt boxes: the base and the tower.",
+  "min_boxes": 2
+ },
+ "estimated": [
+  "band count and spacing",
+  "gallery and lantern sizes",
+  "the base building (OSM maps the tower only)"
+ ],
+ "origin": [
+  7510.93,
+  5032.53
+ ],
+ "yaw_deg": 136.67
+}

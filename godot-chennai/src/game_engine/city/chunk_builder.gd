@@ -38,6 +38,9 @@ class Kit:
 	## its bounding box for a quick reject. Empty when the map has no coast.
 	var sea := PackedVector2Array()
 	var sea_box := Rect2()
+	## Landmark specs: OSM buildings whose centroid lies in a landmark footprint are left out
+	## (the landmark's model stands there; world-format.md, G-185).
+	var landmarks: Array[LandmarkSpec] = []
 	## Distance (m, from the camera to a layer's centre) where the near look ends.
 	var shadows: bool = true
 
@@ -75,6 +78,25 @@ static func centre_of(source: WorldSource, cell: Vector2i) -> Vector2:
 	return source.get_grid_origin() + (Vector2(cell) + Vector2(0.5, 0.5)) * source.get_chunk_size()
 
 
+## The buildings that no landmark replaces: one whose vertex average lies in a landmark's
+## exclude footprint is left out (as the world builder does, `world-format.md`).
+static func without_landmark_buildings(buildings: Array[Building], landmarks: Array[LandmarkSpec]) -> Array[Building]:
+	var kept: Array[Building] = []
+	for b in buildings:
+		var mid := Vector2.ZERO
+		for p in b.outline:
+			mid += p
+		mid /= maxf(1.0, float(b.outline.size()))
+		var hidden := false
+		for spec in landmarks:
+			if spec.excludes(mid):
+				hidden = true
+				break
+		if not hidden:
+			kept.append(b)
+	return kept
+
+
 static func build(kit: Kit, cell: Vector2i) -> Build:
 	var started := Time.get_ticks_usec()
 	var out := Build.new()
@@ -85,6 +107,8 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	if not chunk.ok():
 		out.error = chunk.error
 		return out
+	if not kit.landmarks.is_empty():
+		chunk.buildings = without_landmark_buildings(chunk.buildings, kit.landmarks)
 	var layout := kit.layouts.layout_for(cell)
 	var spans := layout.spans_in(cell)
 	var size := layout.chunk_size
