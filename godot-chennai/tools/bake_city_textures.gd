@@ -247,7 +247,7 @@ func _ground(c: Node2D) -> void:
 			p = q
 	# Interlocking pavers (drawn at twice the TS scale: one tile is 3 m of verge).
 	ox = CityAtlas.GROUND_PAVING * S
-	_rect(c, ox, 0, S, S, _css("#b9b2a6"))
+	_rect(c, ox, 0, S, S, _css("#a59e92"))
 	var line := _rgba(70, 65, 58, 0.5)
 	var y := 0
 	while y <= 256:
@@ -269,7 +269,7 @@ func _ground(c: Node2D) -> void:
 		c.draw_line(Vector2(ox, 0) + p, Vector2(ox, 0) + p + Vector2((_rand() - 0.5) * 3, -2 - _rand() * 4), col, 1.0)
 	# Sand, water, paint.
 	ox = CityAtlas.GROUND_SAND * S
-	_rect(c, ox, 0, S, S, _css("#e9d6a6"))
+	_rect(c, ox, 0, S, S, _css("#d9c494"))
 	_grain(c, ox, S, 2500, 0.08, 61)
 	_rect(c, CityAtlas.GROUND_WATER * S, 0, S, S, _css("#3f7fa6"))
 	_rect(c, CityAtlas.GROUND_PAINT * S, 0, S, S, _css("#f0efe6"))
@@ -279,7 +279,7 @@ func _ground(c: Node2D) -> void:
 	_rect(c, ox + S / 2, 0, S / 2, S, Color8(38, 38, 36))
 	# Bare earth.
 	ox = CityAtlas.GROUND_EARTH * S
-	_rect(c, ox, 0, S, S, _css("#b9a37c"))
+	_rect(c, ox, 0, S, S, _css("#a58c66"))
 	_seed(77)
 	for i in 40:
 		var x := _rand() * S

@@ -12,6 +12,7 @@ extends RefCounted
 
 ## Heights above the ground plane, far enough apart not to shimmer.
 const Y_EARTH := 0.0
+const Y_SEA := 0.01
 const Y_PARK := 0.02
 const Y_VERGE := 0.035
 const Y_ROAD := 0.06
@@ -178,6 +179,14 @@ static func area_layer(kind: StringName) -> int:
 		&"apron", &"helipad":
 			return CityAtlas.GROUND_PAVING
 	return -1
+
+
+## The part of the sea inside a chunk square, as ground water just above the earth (the whole
+## sea outline did not triangulate for the regional world; the clipped pieces do).
+func sea(outline: PackedVector2Array, square: Rect2) -> void:
+	var box := PackedVector2Array([square.position, Vector2(square.end.x, square.position.y), square.end, Vector2(square.position.x, square.end.y)])
+	for piece in Geometry2D.intersect_polygons(outline, box):
+		polygon(piece, Y_SEA, CityAtlas.GROUND_WATER)
 
 
 ## The bare earth under a whole chunk square.

@@ -13,8 +13,8 @@ const CITY_PATH := "res://src/game_world/city/city_world.tscn"
 
 ## Road name and a point near which to stand on it; facing along the road (or `heading`).
 const PLACES := {
-	"t_nagar": {"road": "Sir Thyagaraya Road", "near": Vector2(2543.0, 5160.0)},
-	"marina": {"road": "Kamarajar Salai", "near": Vector2(7991.7, 3422.5), "heading": -PI / 2.0, "side": 14.0},
+	"t_nagar": {"road": "Sir Thyagaraya Road", "near": Vector2(2543.0, 5160.0), "mid": true},
+	"marina": {"road": "Kamarajar Salai", "near": Vector2(7991.7, 3422.5), "heading": -PI / 2.0, "side": 330.0},
 	"anna_salai": {"road": "Anna Salai (Mount Road)", "near": Vector2(4940.0, 2915.0)},
 }
 
@@ -70,10 +70,17 @@ func _run() -> void:
 				if d < best:
 					best = d
 					point = q
+		if spec.get("mid", false):
+			var roads := today.loaded_roads().named(spec["road"])
+			var longest: Road = roads[0]
+			for r in roads:
+				if r.length() > longest.length():
+					longest = r
+			point = longest.points[longest.points.size() / 2]
 		var hit: Dictionary = city.call("nearest_road_point", point)
 		heading = spec.get("heading", hit.get("heading", 0.0))
 		if spec.has("side"):
-			point += Vector2(-sin(heading), -cos(heading)) * -float(spec["side"])
+			point += Vector2(-sin(heading), -cos(heading)) * float(spec["side"])
 	var vp := view.split(",")
 	city.call("look_at_world", point, heading, float(vp[0]), float(vp[1]))
 	var streamer: Node = city.get("streamer")

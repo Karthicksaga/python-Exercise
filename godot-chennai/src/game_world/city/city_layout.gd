@@ -166,8 +166,8 @@ func _build_nodes() -> void:
 ## road_index, point, distance and heading (radians, 0 = towards -Z), or {} when no road.
 func nearest_road_point(p: Vector2, drivable_only: bool = true) -> Dictionary:
 	for radius: float in [40.0, 160.0, 640.0]:
-		var best := {}
-		var best_d2 := INF
+		# Lambdas capture locals by value: keep the best hit in an array they share.
+		var best: Array = [{}, INF]
 		segments_near(p, radius, func(ri: int, i: int) -> bool:
 			var road := roads[ri]
 			if drivable_only and road.kind == &"footway":
@@ -176,12 +176,13 @@ func nearest_road_point(p: Vector2, drivable_only: bool = true) -> Dictionary:
 			var b := road.points[i + 1]
 			var q := Geometry2D.get_closest_point_to_segment(p, a, b)
 			var d2 := q.distance_squared_to(p)
-			if d2 < best_d2:
-				best_d2 = d2
-				best = {"road_index": ri, "point": q, "distance": sqrt(d2), "heading": atan2(-(b.x - a.x), -(b.y - a.y))}
+			if d2 < float(best[1]):
+				best[1] = d2
+				best[0] = {"road_index": ri, "point": q, "distance": sqrt(d2), "heading": atan2(-(b.x - a.x), -(b.y - a.y))}
 			return false)
-		if not best.is_empty() and float(best["distance"]) <= radius:
-			return best
+		var found: Dictionary = best[0]
+		if not found.is_empty() and float(found["distance"]) <= radius:
+			return found
 	return {}
 
 

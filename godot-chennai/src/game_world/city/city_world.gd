@@ -70,6 +70,15 @@ func setup(world: WorldSource) -> String:
 	kit.materials = materials
 	kit.tree_mesh = models.tree.commit(materials.foliage)
 	kit.palm_mesh = models.palm.commit(materials.foliage)
+	var sea := world.get_sea()
+	if sea != null:
+		kit.sea = sea.outline
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for p in sea.outline:
+			lo = lo.min(p)
+			hi = hi.max(p)
+		kit.sea_box = Rect2(lo, hi - lo)
 	kit.tree_triangles = models.tree.triangle_count()
 	kit.palm_triangles = models.palm.triangle_count()
 	var fixed: Array = await BackgroundTask.start(_build_fixed).finish(get_tree())
@@ -175,7 +184,8 @@ static func _prism(faces: PackedVector3Array, radius: float, bottom: float, top:
 		faces.append_array([Vector3(0, top, 0), p1 + Vector3(0, top, 0), p0 + Vector3(0, top, 0)])
 
 
-## The sea as one flat mesh a little below the ground, and an invisible wall a few metres out
+## The sea is drawn by the chunks it covers (ground water, `GroundMeshes.sea`); here only an
+## invisible wall a few metres out
 ## past the surf (`coastSolids`), so nobody walks or drives into the water.
 func _sea(sea: WorldSea) -> Node3D:
 	var holder := _Placed.new()
@@ -185,28 +195,6 @@ func _sea(sea: WorldSea) -> Node3D:
 		c += p
 	c /= sea.outline.size()
 	holder.world = c
-	var b := MeshBuilder.new()
-	var local := PackedVector2Array()
-	for p in sea.outline:
-		local.append(p - c)
-	var tri := Geometry2D.triangulate_polygon(local)
-	for p in local:
-		b.vertex(Vector3(p.x, -0.05, p.y), Vector3.UP, Vector2.ZERO)
-	for t in range(0, tri.size(), 3):
-		var p0 := local[tri[t]]
-		var p1 := local[tri[t + 1]]
-		var p2 := local[tri[t + 2]]
-		if (p1.y - p0.y) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.y - p0.y) > 0.0:
-			b.triangle(tri[t], tri[t + 1], tri[t + 2])
-		else:
-			b.triangle(tri[t], tri[t + 2], tri[t + 1])
-	var mesh := b.commit(materials.water)
-	if mesh != null:
-		var mi := MeshInstance3D.new()
-		mi.name = "Water"
-		mi.mesh = mesh
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		holder.add_child(mi)
 	var faces := PackedVector3Array()
 	var bounds := source.get_bounds().grow(50.0)
 	var coast := sea.coast

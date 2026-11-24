@@ -101,3 +101,21 @@ Not done / weak: see `handoff.md` "Data".
 | Vehicle and combat hooks (`enter_vehicle`/`exit_vehicle`, `knock`, signals) | Done (API only) | `test_player.gd` vehicle test (follows the seat, no collision, back on foot) |
 | Screenshots (Compatibility, xvfb): idle, walk, run, by a wall, close-up, at 915×412 and 1830×824 | Done | made by `tests/tools/player_screenshot.gd` into a scratch folder (not committed, AGENTS.md) |
 | Player in the game flow (main scene) | Not done | `PlayerRig` is ready for the composition root; wiring it into `main.gd` is left to the coordinator/World so the test ground and the streamed city are swapped in one place |
+
+## World: the streamed city (phase 1, branch `agent/godot-world`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Streamed real map round the player: 250 m chunks, load 260 m / free 340 m, nearest first (G-50) | Done | `tests/scene/test_city_streaming.gd`: every chunk in reach shown; a 2 km drive at 40 m a frame and back never keeps a chunk past 340 m; no build left running, roots freed, node count back within 40 |
+| Built off the main thread (decode, meshes, colliders, node trees), added a step at a time within 2.5 ms (G-50, G-51) | Done | `test_main_thread_budget_under_cpu_load`: with every free core busy, a frame spends at most the budget plus one step and no step reaches 16 ms (this box, quiet: max 3.3 ms a frame, 1.9 ms a step; worst build 160 ms on a worker) |
+| Ground in one surface: earth, parks, water and sea, sand, verges and footpaths, roads, lane markings, yellow-black kerbs (G-52) | Done | `tests/unit/test_city_meshes.gd` (layers present at the start, markings painted, kerbs the highest layer, lane-line rules); screenshots |
+| Buildings with the Chennai facade kit: window bays, chajjas, balconies, shop shutters and Tamil-first signboards (invented generic names), clay-tile roofs, water tanks, AC units, dishes; far look (G-52, G-53, G-57) | Done | hash parity with the Three.js game (values from node), deterministic builds (same arrays twice), facade plan (shops only on commercial or two-storey buildings facing roads), sign words on the generic list |
+| Trees and palms (MultiMesh), poles, bus shelters at mapped stops, pavement props (Blender GLBs) | Done | spawn chunk has trees, palms, poles, kerbs; 300+ shelters placed; prop models fit their collider boxes |
+| Landmarks: Anna Nagar Tower, Kapaleeshwarar gopuram with collision | Done | tower as tall as its estimated height, triangle budgets |
+| Colliders: walls (trimesh pieces), trees, poles, shelters, props, ground, map edge, coast (G-55) | Done | `test_colliders_where_buildings_are`: rays at 1 m hit all 25 buildings tried |
+| `world_ready_around` gating (G-54) | Done | a stand-in actor never steps with a chunk missing; a teleport target is not ready at once |
+| Floating origin: chunk roots, landmarks, player in `WorldOrigin.GROUP`; streaming follows the player (G-59) | Done | Foundation's origin test; `test_boot` checks the player is the focus |
+| Regional world (format 2) behind `WorldSource`, per-tile layouts; v1 kept with `--world=v1` (G-56) | Done | `tests/unit/test_regional_world_source.gd` against the Python reference (3 tiles: counts, buildings, roads), ring 0 against today's files, a chunk outside today's box builds |
+| Player in the game: `PlayerRig` placed on the start road once its streets are in (G-59) | Done | `test_boot` |
+| Budget at the densest views (Compatibility, all passes) | Met | spawn (Anna Nagar) 46 draw calls / 237k primitives; T. Nagar (Sir Thyagaraya Road) 39 / 157k; Anna Salai 30 / 104k; Marina 5 / 0.1k |
+| Screenshots at 915×412 and 1830×824: spawn, T. Nagar, Marina, Anna Salai | Done | `tests/tools/city_shot.gd` into a scratch folder (not committed) |
+| Day lighting | Minimal fallback only | a sun, sky, ambient colour and depth haze in `city_world.tscn` for the environment work to replace |

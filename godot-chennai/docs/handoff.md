@@ -181,3 +181,43 @@ shown for a seated pose (none yet). Layers: G-64.
   names (any prefix) and the A-pose for the retarget to apply.
 - In the close-up the shoulders read slightly raised; arms are judged natural, hands relaxed,
   sandals flat on the ground.
+
+## World (phase 1), branch `agent/godot-world`, 24 Nov 2026
+**Done.** `src/game_world/city/`: `CityWorld` (scene: streamer, landmarks, ground plane, edges,
+coast wall, a fallback sun/sky/haze and preview camera), `ChunkStreamer` + `ChunkWorkers`
+(streaming, gating, near/far looks), `CityLayout`/`CityLayouts` (road spans, junctions, segment
+grid, nearest road, shelters; per tile for format 2), `StreetFurniture`, `StreetProps`,
+`LandmarkProfiles`. `src/game_engine/city/`: `ChunkBuilder` (one chunk's nodes on a worker),
+`MeshBuilder`, `GroundMeshes`, `BuildingMeshes` (facade kit), `CityModels` (pole, shelter,
+tree, palm, baked prop GLBs), `LandmarkMeshes`, `CityMaterials`, `CityAtlas`, `ShopSigns`,
+`CityHash`, `shaders/ground.gdshader`. `src/game_world/regional_world_source.gd`,
+`world_codec_v2.gd`. Textures: `tools/bake_city_textures.gd` → `assets/city/textures/`.
+Decisions G-50…G-59. Tests: `tests/unit/test_city_meshes.gd`, `test_city_layout.gd`,
+`test_regional_world_source.gd`, `tests/scene/test_city_streaming.gd`, `tests/support/city_kit.gd`.
+
+**How to use.** `main.gd` builds the city in loading step 3 and adds the `PlayerRig`.
+- Gate anything that simulates: `world.world_ready_around(point)` or
+  `await world.wait_ready_around(point)` (world metres).
+- The near/far switch distance is `world.streamer.near_distance`; load and free distances
+  `load_distance`/`unload_distance`; main-thread budget `budget_usec`.
+- Time of day and weather hooks for the environment work: `world.materials.set_night(0..1)`
+  (windows and shops glow), `set_wet(0..1)`; replace the `Environment` and `Sun` nodes of
+  `city_world.tscn`. Lighting tuned only so the ground is not blown out (sun 0.6, AgX).
+- Look at a place: `godot --path . --script res://tests/tools/city_shot.gd -- --place=t_nagar`
+  (under xvfb, Compatibility) prints draw calls and primitives; `--world=v1` for today's files.
+- Rebake textures after changing a painter: `tools/bake_city_textures.gd` (xvfb), then import.
+
+**Weak or not done.**
+- Flyovers and bridges are drawn flat on the ground (format 2 has `bridge`/`layer`; no decks).
+- Courtyards (holes) in format 2 buildings are not cut out of roofs or walled; v2 roof shapes,
+  uses and min heights are read but not drawn; landuse areas (residential, industrial…) are
+  bare earth.
+- Wall-clock timing tests are sensitive to an oversubscribed machine (G-58); on this shared box
+  the budget test failed while other agents loaded every core, and passed when quieter.
+- Night glow, wet look and street-light pools exist only as material hooks (no lamp glow yet).
+- The textures are painted stand-ins (ports of the Three.js canvases); tile seams show faintly
+  on the earth layer, and the asphalt repeats visibly up close.
+- No LOD for landmarks, no occlusion; trees have no far LOD (MultiMesh, cheap so far).
+- Seen only under the Compatibility renderer on llvmpipe; not on a phone or the Mobile renderer.
+- Physics interpolation off (G-59). Kerbs are not solid, so the player's step-up is not
+  exercised by the city.

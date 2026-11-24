@@ -34,6 +34,10 @@ class Kit:
 	## render thread).
 	var tree_triangles: int = 0
 	var palm_triangles: int = 0
+	## The sea's outline (world metres), cut to each chunk it covers and drawn as ground water;
+	## its bounding box for a quick reject. Empty when the map has no coast.
+	var sea := PackedVector2Array()
+	var sea_box := Rect2()
 	## Distance (m, from the camera to a layer's centre) where the near look ends.
 	var shadows: bool = true
 
@@ -95,6 +99,8 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	var ground := GroundMeshes.new()
 	ground.origin = out.centre
 	ground.build(spans, chunk.areas, square, out.furniture.kerbs)
+	if not kit.sea.is_empty() and kit.sea_box.intersects(square):
+		ground.sea(kit.sea, square)
 	var near := Node3D.new()
 	near.name = "Near"
 	view.add_child(near)
