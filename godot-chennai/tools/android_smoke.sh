@@ -102,13 +102,12 @@ if [ "$SETTLE" = 1 ]; then
   wait_for 120 "package and activity managers answer" services
   dev input keyevent KEYCODE_WAKEUP; dev wm dismiss-keyguard; dev input keyevent KEYCODE_MENU
   wait_for 60 "screen unlocked" unlocked
-  # The game asks for landscape. If the display is still portrait when it starts, Android
-  # rotates it under the starting game; turn it first and lock it there.
-  for rotation in 0 1 3; do
-    dev cmd window user-rotation lock "$rotation"
-    if wait_soft 10 landscape; then break; fi
-  done
-  landscape || fail "could not turn the display to landscape: $(config)"
+  # The game asks for landscape. The emulator's screen is landscape (-skin in the workflow),
+  # and the display ignores orientation requests, so nothing rotates when the game starts (the
+  # portrait-only launcher would otherwise turn the display, and the game back again).
+  dev cmd window set-ignore-orientation-request true
+  dev cmd window user-rotation lock 0
+  wait_soft 30 landscape || fail "the display is not landscape: $(config)"
   log "ready: display in landscape"
   config_steady
 fi

@@ -178,7 +178,7 @@ jobs:
           # while switching. So the smoke APK starts on the Compatibility renderer itself
           # (launch arguments in the "Android Smoke" preset); the Mobile renderer is judged on
           # real phones (G-9).
-          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -skin 1280x576 -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           working-directory: godot-chennai
           # One line: the action runs each script line as a separate command.
