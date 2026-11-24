@@ -2073,6 +2073,7 @@ def manifest_entry(spec, stats):
         "note": spec["note"],
         "heightM": stats["heightM"],
         "seatHeightM": stats.get("seatHeightM"),
+        "clipSpeedsMps": stats.get("clipSpeedsMps"),
         "lods": [
             {"mesh": "Body", "triangles": stats["triangles"], "until": 30.0},
             {"mesh": "Body_LOD1", "triangles": stats["lod1Triangles"], "from": 30.0},
@@ -2128,6 +2129,7 @@ def main():
                 clips = cast_animation.make_clips(src, tgt, body)
                 cast_animation.bake_to_rig(rig, tgt, clips)
                 stats["seatHeightM"] = round(cast_animation.seat_height(tgt, clips) - 0.1, 3)
+                stats["clipSpeedsMps"] = {c: round(cast_animation.ground_speed(clips, c), 3) for c in ("walk", "run")}
             stats["assets"] = used_assets(spec)
             export(rig, [body, lod1], os.path.join(raw_dir, spec["file"]))
             entries[spec["id"]] = manifest_entry(spec, stats)

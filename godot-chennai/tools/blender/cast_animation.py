@@ -3,10 +3,11 @@ Animations for the Chennai cast, baked per person onto MPFB's `mixamo` skeleton 
 
 Five looping clips, the same names in every file: idle, walk, run, sit, talk.
 
-- idle, walk, run: retargeted from `chennai-open-world/assets/animations/locomotion.glb`
-  (Mixamo clips on the Xbot rig, T-pose rest, every joint frame identity at rest). The GLB is read
-  directly here (no Blender import: its bones are plain nodes), converted to Blender axes
-  (glTF +Y up, +Z forward -> Blender +Z up, -Y forward).
+- idle, walk, run: retargeted from Quaternius' Universal Animation Library (Standard, CC0 1.0;
+  decision G-100): `Idle_Loop`, `Walk_Loop`, `Jog_Fwd_Loop` of its Godot GLB, a Rigify rig whose
+  `DEF-*` bones are renamed to our names (`UAL_BONES`) and whose rest rotations are divided out.
+  The GLB is read directly here (no Blender import: its bones are plain nodes), converted to
+  Blender axes (glTF +Y up, +Z forward -> Blender +Z up, -Y forward).
 - sit, talk: authored here by script (original work, CC0): sit from the retargeted idle pose
   with thighs forward, shins down and hands on the thighs; talk is the idle with hand gestures
   and small head nods laid over it.
@@ -14,7 +15,7 @@ Five looping clips, the same names in every file: idle, walk, run, sit, talk.
 Retargeting (lessons from the Three.js game, MIGRATION_PROMPT.md section 7):
 - Spine, head and legs rest alike in both rigs: the source's world-space rotation away from its
   rest is applied to the target's own rest frame.
-- The MPFB rig rests in an A-pose, the clips in a T-pose. For every arm, hand and finger bone the
+- The MPFB rig rests in an A-pose, the clips in their own rest. For every arm, hand and finger bone the
   target's rest frame is first turned onto the source's rest frame with a FULL frame alignment (bone direction plus a
   second axis: the palm's index-to-pinky line for hands and fingers, the body's sideways axis for
   spine, legs and feet, forward for arms), so hands and finger joints keep their twist and the
@@ -399,6 +400,8 @@ LEGS_IN_DEG = {"idle": 4.0}
 # of the legs' motion is taken back towards the rest pose so people stand upright.
 LEGS_TO_REST = {"idle": 0.75}
 LEG_BONES = {f"{s}{b}" for s in ("Left", "Right") for b in ("UpLeg", "Leg", "Foot", "ToeBase")}
+# Seated hands: the wrist's bend between the forearm and the hand, at most (degrees).
+SIT_WRIST_MAX_DEG = 36.0
 
 
 def retarget_pose(src, tgt, align, clip, t):
@@ -535,9 +538,16 @@ def hand_on_thigh(tgt, local, side, sign):
     aim_bone(tgt, local, side + "Arm", side + "ForeArm", elbow)
     aim_bone(tgt, local, side + "ForeArm", side + "Hand", s + u * d)
     # The hand lies along the thigh, fingers towards the knee.
+    # The wrist bends at most SIT_WRIST_MAX_DEG: past that the hand is turned towards the
+    # forearm's line (a hand laid flat across a steep forearm reads as a broken wrist).
     mats = pose_matrices(tgt, local, Vector((0, 0, 0)))
     wrist = mats[side + "Hand"].translation
-    aim_bone(tgt, local, side + "Hand", side + "HandMiddle1", wrist + (knee - hip).normalized() + Vector((0, 0, -0.15)))
+    fore = (wrist - mats[side + "ForeArm"].translation).normalized()
+    want = ((knee - hip).normalized() + Vector((0, 0, -0.15))).normalized()
+    bend = math.degrees(fore.angle(want))
+    if bend > SIT_WRIST_MAX_DEG:
+        want = fore.slerp(want, SIT_WRIST_MAX_DEG / bend).normalized()
+    aim_bone(tgt, local, side + "Hand", side + "HandMiddle1", wrist + want)
 
 
 def frames_for(duration):
@@ -578,6 +588,11 @@ def make_clips(src, tgt, body):
     sit_dur = 4.0
     n = frames_for(sit_dur)
     base = retarget_pose(src, tgt, align, "idle", 0.0)
+    # The legs start from the rest pose, not the idle's stance, so the seat height and the
+    # thighs do not depend on the idle's knee bend (the sit is the same whatever idle is used).
+    for nm in LEG_BONES:
+        p = tgt.parent[nm]
+        base[nm] = tgt.rest_rot[p].transposed() @ tgt.rest_rot[nm]
     frames = []
     for k in range(n + 1):
         phase = (k / n) % 1.0
@@ -688,3 +703,16 @@ def seat_height(tgt, clips):
     """Height of the hips joint in the sit clip's first frame (the seat is ~0.1 m lower)."""
     mats = clips["sit"][0][1]
     return float(mats["Hips"].translation.z)
+
+
+def ground_speed(clips, clip):
+    """Speed (m/s) the body must move at playback rate 1 for the feet not to slide: each foot
+    swings over a range D relative to the hips (in place), and two steps per loop cover 2 D."""
+    frames = clips[clip]
+    dur = frames[-1][0]
+    ranges = []
+    for side in ("Left", "Right"):
+        ys = [mats[side + "Foot"].translation.y - mats["Hips"].translation.y for _, mats, _ in frames]
+        ranges.append(max(ys) - min(ys))
+    return 2 * (sum(ranges) / len(ranges)) / dur
+
