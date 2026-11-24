@@ -552,13 +552,12 @@ the game.
 signs), `ShopSigns.pick`, `DetailMeshes` + `DetailModels` (objects, barriers, platforms, zones),
 `GroundMeshes` covers 17 to 19, the pool colour in `water.gdshader`, `AreaPalettes`
 (`data/areas/palettes.json`, G-194).
-**For godot-areas.** `AreaPalettes` is the only reader of `data/areas/palettes.json`; the stub there
-has `default` only. Shape used: `{"<area_id>": {"walls": ["#rrggbb"], "roofs": ["#rrggbb"],
-"roof_types": {"flat": 0.6, "gabled": 0.3, "dome": 0.0, "hipped": 0.1}, "storeys": {"1": 0.1, "2":
-0.4} or null}, "default": {...}}`, plus a `_note` key that is ignored. The area id is the district
-name slugged (`AreaPalettes.slug`: lower case, anything else `_`) found by `DistrictIndex` at the
-chunk centre; roof type names may be flat, hipped, gabled, pyramidal, skillion, dome. If godot-areas
-uses other ids (its own `areas.json`), change `AreaPalettes.at` only. Mapped OSM tags always win.
+**For godot-areas.** `AreaPalettes` is the only reader of `data/areas/palettes.json`; is now the areas agent's real file (G-200 and G-202; format 1: `default` plus `areas.<id>` with `walls`, `roofs`,
+`roof_types`, `storeys` bins and a `boundary`). `AreaPalettes` (G-194, updated) picks the area of a building by
+boundary containment at its footprint centre (circle: distance over radius; corridor: distance to the spine over
+half width; the smallest wins; none contains it: `default`, which leaves a house exactly as before). The old
+district-name lookup (`slug`, `districts_of`) is gone. Roof types and storey bins are picked by weight. Mapped OSM
+tags always win.
 **For the landmarks agent.** The world build already leaves out a building, its parts and signs at
 a landmark footprint; `DetailMeshes` never draws inside a building's footprint or on water.
 **Tests.** `tools/geo/tests/test_detail.py` (17), `tests/unit/test_osm_detail.gd` (14): the tile
