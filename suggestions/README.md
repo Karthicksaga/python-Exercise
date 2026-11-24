@@ -29,3 +29,4 @@ Proposals, reviews and recommendations for Hop. These are things suggested, not 
 | 2026-11-07 | [Customising the OpenStreetMap map](2026-11-07-openstreetmap-customisation.md) | 1–3 and 3D built |
 | 2026-11-07 | [Unique features we can advertise](2026-11-07-advertisable-unique-features.md) | Proposed |
 | 2026-11-24 | [Godot controls redesign: touch and gamepad](2026-11-24-godot-controls-redesign.md) | Proposed; prototype for review |
+| 2026-11-24 | [Chennai culture and life: Tamil and English, temple visits, swimming, riding](2026-11-24-chennai-culture-and-life.md) | Proposed; owner decisions open |
