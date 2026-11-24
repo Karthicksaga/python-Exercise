@@ -25,12 +25,24 @@ static func apply_viewport(vp: Viewport, v: Dictionary) -> void:
 	vp.positional_shadow_atlas_size = 0
 
 
+static var _shadow_size: int = -1
+static var _soft_quality: int = -1
+
+
 static func apply_engine(v: Dictionary) -> void:
 	Engine.max_fps = int(v["max_fps"])
 	Engine.max_physics_steps_per_frame = int(v["physics_steps"])
-	RenderingServer.directional_shadow_atlas_set_size(int(v["shadow_size"]), true)
+	# Only when they change: `apply` runs at every state change, and these two rebuild the shadow
+	# atlas or change a shader specialization (pipelines compiled again), G-346.
+	var size := int(v["shadow_size"])
+	if size != _shadow_size:
+		_shadow_size = size
+		RenderingServer.directional_shadow_atlas_set_size(size, true)
 	# Hard shadows on Low and Medium: one shadow-map tap a pixel instead of a dozen (G-342).
-	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_LOW if bool(v["soft_shadows"]) else RenderingServer.SHADOW_QUALITY_HARD)
+	var quality := RenderingServer.SHADOW_QUALITY_SOFT_LOW if bool(v["soft_shadows"]) else RenderingServer.SHADOW_QUALITY_HARD
+	if quality != _soft_quality:
+		_soft_quality = quality
+		RenderingServer.directional_soft_shadow_filter_set_quality(quality)
 
 
 ## The city's shared materials: per-vertex lighting on Low (G-342).

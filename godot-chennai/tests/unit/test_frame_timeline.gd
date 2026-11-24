@@ -43,3 +43,22 @@ func test_a_headless_frame_without_drawing_or_physics() -> bool:
 	assert_eq(t.last[FrameTimeline.Part.FREES], 6900, "with no draw, the rest counts after the deferred calls")
 	assert_eq(t.last_steps, 0, "no steps")
 	return true
+
+
+## The main thread's time on a core, from the kernel (Linux and Android): 25 ms of busy work reads
+## as about 25 ms (a stale read once returned zeros, G-340).
+func test_the_thread_clock_sees_busy_work() -> bool:
+	var c := ThreadClock.new()
+	if OS.get_name() != "Linux":
+		print("    not Linux: the thread clock is not checked")
+		return true
+	assert_true(c.ok, "schedstat is readable here")
+	c.since_last()
+	var t := Time.get_ticks_usec()
+	var acc := 0
+	while Time.get_ticks_usec() - t < 25000:
+		acc += 1
+	var spent := c.since_last()
+	assert_true(spent.x + spent.y >= 20000, "busy work shows as time on or waiting for a core (%s µs)" % spent)
+	assert_true(spent.x <= 200000, "and nothing absurd (%s)" % spent)
+	return true
