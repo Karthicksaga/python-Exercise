@@ -211,7 +211,7 @@ func _crossing() -> void:
 		await physics_frame
 	var rig: Object = main.get("rig")
 	var cam: Object = rig.get("camera")
-	cam.set("yaw", atan2(road.x, road.y) + PI + 0.5)
+	cam.set("yaw", atan2(road.x, road.y) + 0.35)
 	cam.set("pitch", 0.15)
 	await _save("level_crossing")
 	print("[rail_shots] crossing amounts %s" % str(rail.get("crossing_amounts")))

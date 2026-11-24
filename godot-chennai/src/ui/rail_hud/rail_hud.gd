@@ -54,6 +54,7 @@ var sheet_title: Label
 var map: RouteMap
 var close_sheet: Button
 var _toast_left: float = 0.0
+var _centre: VBoxContainer
 var _dragging: bool = false
 
 
@@ -79,7 +80,6 @@ func _ready() -> void:
 	info = PanelContainer.new()
 	info.name = "Info"
 	info.add_theme_stylebox_override("panel", RailHudStyle.glass(RailHudStyle.GLASS_PANEL))
-	info.position = Vector2(0, 0)
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 0)
@@ -90,7 +90,20 @@ func _ready() -> void:
 	box.add_child(info_ta)
 	box.add_child(info_line)
 	info.add_child(box)
-	layer.add_child(info)
+	# Bottom centre, between the stick (or the lever) and the action buttons: the top-left is the
+	# mission HUD's, the top-right the pause button's.
+	var centre := VBoxContainer.new()
+	centre.name = "Centre"
+	centre.alignment = BoxContainer.ALIGNMENT_END
+	centre.add_theme_constant_override("separation", 8)
+	centre.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	centre.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	centre.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(centre)
+	_centre = centre
+	info.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	centre.add_child(info)
 	toast = RailHudStyle.label("", 15, RailHudStyle.AMBER)
 	toast.name = "Toast"
 	toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -109,17 +122,17 @@ func _ready() -> void:
 	dial = SpeedDial.new()
 	dial.name = "Dial"
 	dial.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	dial.position = Vector2(-150, 0)
+	dial.position = Vector2(-150, 60)
 	layer.add_child(dial)
 	score = RailHudStyle.label("", 14)
 	score.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	score.position = Vector2(-300, 4)
+	score.position = Vector2(-300, 70)
 	score.size = Vector2(140, 22)
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	layer.add_child(score)
 	signal_chip = RailHudStyle.label("", 14)
 	signal_chip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	signal_chip.position = Vector2(-300, 28)
+	signal_chip.position = Vector2(-300, 94)
 	signal_chip.size = Vector2(140, 22)
 	signal_chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	layer.add_child(signal_chip)
@@ -159,13 +172,12 @@ func _ready() -> void:
 	emg.add_theme_stylebox_override("normal", RailHudStyle.glass(Color(0.75, 0.12, 0.1, 0.7), 24))
 	emg.pressed.connect(func() -> void: emergency_pressed.emit())
 	row.add_child(emg)
-	# Top: TIMETABLE (and DRIVE at a cab door).
+	# Under the info: TIMETABLE (and DRIVE at a cab door).
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 10)
-	top.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	top.position = Vector2(-120, 0)
+	top.alignment = BoxContainer.ALIGNMENT_CENTER
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(top)
+	_centre.add_child(top)
 	timetable = RailHudStyle.button("TIMETABLE")
 	timetable.pressed.connect(func() -> void: timetable_pressed.emit())
 	top.add_child(timetable)
