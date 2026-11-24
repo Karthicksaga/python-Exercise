@@ -263,6 +263,8 @@ func _ride_off(jack: Carjacking, taken: Vehicle, crimes: Array[StringName]) -> v
 	var ok := await wait_until(func() -> bool: return driving.mode() == &"driving", 60 * 15)
 	assert_true(ok, "the player ends up at the wheel")
 	await wait_physics_frames(6)  # the next AI step hands the vehicle over
+	var crash := "" if driving.last_crash == null else "%s %.0f km/h" % [driving.last_crash.type, driving.last_crash.impact_kmh]
+	assert_true(driving.last_crash == null, "no crash on the way in (%s)" % crash)
 	assert_eq(crimes.size(), 1, "pulling the driver out is a crime, once")
 	assert_eq(jack.fleeing_count(), 1, "the driver is out of the vehicle and running off")
 	assert_true(driving.vehicle == taken, "the player drives the taken vehicle")
@@ -408,4 +410,23 @@ func test_a_new_area_is_adopted_off_the_main_thread() -> bool:
 	var steps := int(life.stats["steps"])
 	await wait_physics_frames(30)
 	assert_true(int(life.stats["steps"]) > steps, "the AI keeps stepping")
+	return true
+
+
+func test_pressing_take_over_on_something_out_of_reach_says_so() -> bool:
+	if not await _start():
+		return false
+	var jack := Carjacking.make(life, driving)
+	world.add_child(jack)
+	var toasts: Array[String] = []
+	driving.toast.connect(func(text: String) -> void: toasts.append(text))
+	var found := await wait_until(func() -> bool: return _moving(&"bike", 3.0) != null, 60 * 40)
+	if not check(found, "a moving bike is on the streets"):
+		return false
+	var id := _moving(&"bike", 3.0).id
+	body.global_position = WorldOrigin.to_scene(life.population.traffic.agents[id].pos + Vector2(60, 0), 0.1)
+	jack.request(id)
+	await wait_physics_frames(6)
+	assert_true(toasts.has("Too far to take over"), "told it is out of reach (%s)" % [toasts])
+	assert_true(jack.vehicle == null, "nothing swapped in")
 	return true
