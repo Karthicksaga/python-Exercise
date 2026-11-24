@@ -101,3 +101,25 @@ Not done / weak: see `handoff.md` "Data".
 | Vehicle and combat hooks (`enter_vehicle`/`exit_vehicle`, `knock`, signals) | Done (API only) | `test_player.gd` vehicle test (follows the seat, no collision, back on foot) |
 | Screenshots (Compatibility, xvfb): idle, walk, run, by a wall, close-up, at 915×412 and 1830×824 | Done | made by `tests/tools/player_screenshot.gd` into a scratch folder (not committed, AGENTS.md) |
 | Player in the game flow (main scene) | Not done | `PlayerRig` is ready for the composition root; wiring it into `main.gd` is left to the coordinator/World so the test ground and the streamed city are swapped in one place |
+
+## Cast (people)
+
+**23–24 Nov 2026: the phase-1 board (20) and every figure of the phase-2 board, 70 people, built, rigged and tested.**
+- [x] Blender pipeline: `tools/blender/characters.py` (from the Three.js version, extended),
+  `cast_people.py` (the cast, one person per board figure), `cast_animation.py` (clips),
+  `optimize_people.py`, `people_import.py`; `tools/build_people.sh` builds and imports everything.
+- [x] 20 phase-1 people, 10 men and 10 women, one per figure of `phase1-20-characters.webp`.
+- [x] Phase 2: the 20 plus 50 new people play all 74 figures of `phase2-60-characters.webp`
+  (owner, 23 Nov: the four women cast for men's figures stay; the ten first left out built too).
+- [x] One shared 52-bone skeleton; LOD0 ≤ 10k triangles, LOD1 ≤ 3.5k, 512 px textures; five
+  looping clips idle, walk, run (Mixamo, retargeted per person), sit, talk (authored).
+- [x] Review round: half sleeves and chest pockets as on the boards, plaids, chef's cap, saree
+  pleats and a hanging pallu end, less hem swing, relaxed fingers, upright spine and level head,
+  arms closer to the body, hands on the thighs when seated.
+- [x] Manifest `assets/people/people.json` (board figure, roles, clothing, LODs, licence, child flag).
+- [x] Tests `tests/people/test_people.gd` in Foundation's runner (`./run_tests.sh`): manifest,
+  shared skeleton, budgets, loops, soles on the ground in every clip and through gait blends
+  (with `sole_plant.gd`), wrists, fingers, no vertex colours.
+- [x] Review renders (Compatibility renderer, xvfb) and board side-by-side sheets looked at.
+- [ ] Props (bags, helmet, baskets, stick, bicycle, cricket bat), the player model.
+- [ ] The game's use of them (pedestrians, drivers, crowds) is phase 3.

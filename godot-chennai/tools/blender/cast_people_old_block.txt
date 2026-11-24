@@ -1,0 +1,293 @@
+ROLES = {"pedestrian", "auto-driver", "cab-driver", "traffic-police", "police", "vendor", "tea-worker", "construction", "delivery", "shopkeeper", "office", "college", "school", "passenger"}
+
+
+def c(hex_colour):
+    """An sRGB colour from '#rrggbb' (texture pixels are sRGB)."""
+    h = hex_colour.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+
+# Colours used across the cast (all invented; no brand or livery colours).
+BLACK_HAIR = c("#0b0908")
+DARK_HAIR = c("#16110d")
+GREY_HAIR = c("#8c8a86")
+WHITE_HAIR = c("#c9c6c0")
+SALT_PEPPER = c("#4a4744")
+KHAKI = c("#b59a62")
+KHAKI_DARK = c("#8f7748")
+OFF_WHITE = c("#ecebe4")
+NAVY = c("#1f2a44")
+
+
+# ----------------------------------------------------------------------------------------------
+# The cast
+# ----------------------------------------------------------------------------------------------
+def age_macro(years):
+    """MakeHuman's age slider: 0 = 1 year, 0.1875 = 11, 0.5 = 25, 1 = 90."""
+    if years <= 11:
+        return max(0.0, (years - 1) / 10 * 0.1875)
+    if years <= 25:
+        return 0.1875 + (years - 11) / 14 * 0.3125
+    return min(1.0, 0.5 + (years - 25) / 65 * 0.5)
+
+
+def age_group(years):
+    if years < 13:
+        return "child"
+    if years < 20:
+        return "teen"
+    if years < 36:
+        return "young"
+    if years < 60:
+        return "middle"
+    return "elderly"
+
+
+def person(pid, sex, years, roles, **kw):
+    """One member of the cast. Keyword arguments override the defaults below.
+
+    tone: 0 (light-medium brown) to 1 (dark brown). face: a seed for small face differences.
+    clothes: MakeHuman garments, each {"asset", "colour" | "upper"/"lower", "split", "drop",
+    "prints", "pattern"}. garments: garments made here (see GARMENT BUILDERS). shoes:
+    "sandals", "barefoot" or a MakeHuman shoe asset.
+    """
+    assert set(roles) <= ROLES, roles
+    group = age_group(years)
+    male = sex == "male"
+    spec = {
+        "id": pid,
+        "file": f"people/{pid.replace('-', '_')}.glb",
+        "sex": sex,
+        "years": years,
+        "age": group,
+        "roles": list(roles),
+        "texture": 512,
+        "budget": 10000,
+        "proxy": "male1591" if male else "female1605",
+        "body": {"muscle": 0.5, "weight": 0.5, "height": 0.5, "proportions": 0.5},
+        "tone": 0.5,
+        "face": sum(map(ord, pid)),
+        "targets": {},
+        "hair": ("short02" if male else "braid01", BLACK_HAIR),
+        "eyebrows": "eyebrow001" if male else "eyebrow010",
+        "eyelashes": True,
+        "facial": [],
+        "facial_colour": None,
+        "bindi": None,
+        "clothes": [],
+        "garments": [],
+        "shoes": "sandals",
+        "sandal_colours": (c("#2b1d12"), c("#5a3520")),
+    }
+    spec.update(kw)
+    if spec["facial_colour"] is None:
+        spec["facial_colour"] = spec["hair"][1] if group != "elderly" else SALT_PEPPER
+    return spec
+
+
+def shirt_trousers(shirt, trousers, pattern=None):
+    """Long-sleeved cotton shirt over trousers (MakeHuman male_casualsuit01, recoloured)."""
+    item = {"asset": "male_casualsuit01", "split": "z", "upper": shirt, "lower": trousers}
+    if pattern:
+        item["pattern"] = pattern
+    return [item]
+
+
+def shirt_only(shirt, pattern=None):
+    """The same shirt without the trousers (worn over a veshti or lungi)."""
+    item = {"asset": "male_casualsuit01", "split": "z", "upper": shirt, "drop": "lower"}
+    if pattern:
+        item["pattern"] = pattern
+    return [item]
+
+
+def tshirt(colour, asset="elvs_crude_t-shirt_male"):
+    return {"asset": asset, "colour": colour}
+
+
+def trousers(colour, asset="toigo_wool_pants"):
+    return {"asset": asset, "colour": colour}
+
+
+def jeans(colour=c("#2c3a55")):
+    """The jeans of male_casualsuit06 (its T-shirt dropped)."""
+    return {"asset": "male_casualsuit06", "split": "uv", "lower": colour, "drop": "upper"}
+
+
+def banian():
+    """Sleeveless cotton vest, the everyday undershirt worn on its own in the heat."""
+    return {"asset": "elvs_male_athletic_tank1", "colour": c("#efeee8")}
+
+
+def veshti(border=c("#b8902c"), length="ankle", colour=OFF_WHITE):
+    return {"kind": "tube", "texture": ("veshti", colour, border), "bottom": length, "flare": 0.05}
+
+
+def lungi(ground, stripes, length="ankle"):
+    return {"kind": "tube", "texture": ("check", ground, stripes), "bottom": length, "flare": 0.05}
+
+
+def saree(base, border, motif, blouse):
+    return [
+        {"kind": "region", "region": "blouse", "colour": blouse, "offset": 0.004},
+        {"kind": "tube", "texture": ("saree", base, border, motif), "bottom": "floor", "flare": 0.06, "pleats": True, "top": "navel"},
+        {"kind": "region", "region": "pallu", "texture": ("pallu", base, border, motif), "offset": 0.014},
+    ]
+
+
+def kurta(colour, length="knee", pattern=None, sleeves=0.75, slits=True):
+    return [
+        {"kind": "region", "region": "kurta_top", "colour": colour, "pattern": pattern, "offset": 0.008, "sleeves": sleeves},
+        {"kind": "tube", "texture": ("plain", colour, pattern), "top": "hip", "bottom": length, "flare": 0.04, "slits": slits},
+    ]
+
+
+def dupatta(colour, border=None):
+    return {"kind": "region", "region": "dupatta", "texture": ("dupatta", colour, border or colour), "offset": 0.02}
+
+
+def leggings(colour):
+    return {"kind": "region", "region": "leggings", "colour": colour, "offset": 0.003}
+
+
+def towel(colour=c("#cdb894"), stripe=c("#b23a3a")):
+    return {"kind": "region", "region": "towel", "texture": ("towel", colour, stripe), "offset": 0.035}
+
+
+def head_cloth(colour):
+    return {"kind": "region", "region": "headcloth", "colour": colour, "offset": 0.02}
+
+
+def police(sex):
+    """A generic khaki police uniform: shirt, trousers, belt, peaked cap. No insignia."""
+    items = shirt_trousers(KHAKI, KHAKI) if sex == "male" else [{"asset": "female_casualsuit01", "split": "z", "upper": KHAKI, "lower": KHAKI, "prints": True}]
+    return items
+
+
+CAST = [
+    # ---------------------------------------------------------------- the player
+    person("player", "male", 32, [], file="player.glb", texture=1024, budget=30000, proxy=None,
+           body={"muscle": 0.55, "weight": 0.52, "height": 0.5, "proportions": 0.55}, tone=0.55,
+           facial=["moustache"], clothes=shirt_trousers(c("#a9bfd8"), c("#34302c"))),
+    # ---------------------------------------------------------------- men
+    person("man-shirt-young", "male", 26, ["pedestrian", "passenger"], tone=0.45,
+           facial=["moustache"], clothes=shirt_trousers(c("#d8d2c4"), c("#3b3a3f"), ("check", c("#8a9bb8"), 34))),
+    person("man-tshirt-young", "male", 23, ["pedestrian", "passenger", "college"], tone=0.6,
+           hair=("short04", BLACK_HAIR), facial=["stubble"], clothes=[tshirt(c("#3d5f73")), jeans()], shoes="shoes06"),
+    person("man-veshti-middle", "male", 46, ["pedestrian", "passenger", "shopkeeper"], tone=0.65,
+           body={"muscle": 0.45, "weight": 0.62, "height": 0.45, "proportions": 0.5}, facial=["moustache"],
+           clothes=shirt_only(c("#f1efe8")), garments=[veshti()]),
+    person("man-lungi-middle", "male", 44, ["pedestrian", "passenger"], tone=0.8,
+           body={"muscle": 0.55, "weight": 0.45, "height": 0.42, "proportions": 0.5}, hair=("short04", BLACK_HAIR), facial=["moustache", "stubble"],
+           clothes=[banian()], garments=[lungi(c("#1c2f6b"), [c("#2f7a50"), c("#e8e6dd")], "knee")]),
+    person("man-lungi-elderly", "male", 70, ["pedestrian", "passenger"], tone=0.75,
+           body={"muscle": 0.35, "weight": 0.4, "height": 0.38, "proportions": 0.45}, hair=("short04", GREY_HAIR), facial=["moustache", "beard"],
+           facial_colour=WHITE_HAIR, clothes=shirt_only(c("#c9d3d9")), garments=[lungi(c("#5b2e2a"), [c("#c9a24a"), c("#1f1f1f")])]),
+    person("man-veshti-elderly", "male", 72, ["pedestrian", "passenger"], tone=0.55,
+           body={"muscle": 0.35, "weight": 0.5, "height": 0.4, "proportions": 0.45}, hair=("short02", GREY_HAIR), facial=["moustache"],
+           facial_colour=WHITE_HAIR, clothes=shirt_only(OFF_WHITE), garments=[veshti(c("#2e5e3a")), towel()]),
+    person("man-shirt-middle", "male", 48, ["pedestrian", "passenger", "shopkeeper"], tone=0.5,
+           body={"muscle": 0.45, "weight": 0.7, "height": 0.48, "proportions": 0.5}, facial=["moustache"],
+           clothes=shirt_trousers(c("#a7b89a"), c("#5a5346"))),
+    person("man-office-young", "male", 29, ["office", "pedestrian", "passenger"], tone=0.4,
+           body={"muscle": 0.5, "weight": 0.5, "height": 0.55, "proportions": 0.55}, facial=["moustache"],
+           clothes=shirt_trousers(c("#dfe7f2"), c("#2a2d36")), garments=[{"kind": "belt"}, {"kind": "idtag", "colour": c("#2f5d8a")}], shoes="shoes04"),
+    person("man-college", "male", 19, ["college", "pedestrian", "passenger"], tone=0.55,
+           body={"muscle": 0.45, "weight": 0.42, "height": 0.55, "proportions": 0.5}, hair=("short02", BLACK_HAIR), facial=["stubble"],
+           clothes=[{"asset": "male_casualsuit04", "split": "uv", "upper": c("#7a2531"), "lower": c("#2b3550"), "prints": True}], shoes="shoes06"),
+    person("teen-boy", "male", 16, ["pedestrian", "passenger"], tone=0.6,
+           body={"muscle": 0.4, "weight": 0.42, "height": 0.5, "proportions": 0.5}, hair=("short02", BLACK_HAIR),
+           clothes=[tshirt(c("#c98b2b")), trousers(c("#2f3a3f"), "cortu_cargo_pants")]),
+    person("boy-school", "male", 10, ["school"], tone=0.55, eyelashes=False,
+           body={"muscle": 0.45, "weight": 0.45, "height": 0.5, "proportions": 0.5}, hair=("short02", BLACK_HAIR),
+           clothes=shirt_trousers(c("#f2f2f0"), NAVY), shoes="shoes04"),
+    person("boy-casual", "male", 9, ["pedestrian"], tone=0.7, eyelashes=False,
+           body={"muscle": 0.45, "weight": 0.45, "height": 0.5, "proportions": 0.5}, hair=("short04", BLACK_HAIR),
+           clothes=[tshirt(c("#3f7f5a")), trousers(c("#4a4f5a"), "cortu_cargo_pants")]),
+    # ---------------------------------------------------------------- men at work
+    person("auto-driver", "male", 45, ["auto-driver"], tone=0.75,
+           body={"muscle": 0.5, "weight": 0.55, "height": 0.45, "proportions": 0.5}, facial=["moustache"],
+           clothes=shirt_trousers(KHAKI, c("#4a4a48"))),
+    person("auto-driver-lungi", "male", 52, ["auto-driver"], tone=0.85,
+           body={"muscle": 0.5, "weight": 0.48, "height": 0.42, "proportions": 0.5}, facial=["moustache", "stubble"],
+           clothes=shirt_only(KHAKI), garments=[lungi(c("#2c3d2f"), [c("#c8c2b0"), c("#7b2b2b")], "knee")]),
+    person("cab-driver", "male", 35, ["cab-driver", "pedestrian"], tone=0.5,
+           body={"muscle": 0.5, "weight": 0.55, "height": 0.5, "proportions": 0.5}, facial=["moustache"],
+           clothes=shirt_trousers(c("#e4e9ef"), c("#2b2d33"))),
+    person("traffic-police", "male", 40, ["traffic-police"], tone=0.65,
+           body={"muscle": 0.55, "weight": 0.55, "height": 0.55, "proportions": 0.5}, facial=["moustache"],
+           clothes=police("male"), garments=[{"kind": "belt", "colour": c("#2a2018")}, {"kind": "cap", "style": "peaked", "colour": c("#f0efea"), "band": c("#1f1f1f")}],
+           shoes="shoes04"),
+    person("police-officer", "male", 47, ["police"], tone=0.6,
+           body={"muscle": 0.55, "weight": 0.6, "height": 0.55, "proportions": 0.5}, facial=["moustache"],
+           clothes=police("male"), garments=[{"kind": "belt", "colour": c("#2a2018")}, {"kind": "cap", "style": "peaked", "colour": KHAKI_DARK, "band": c("#2a2018")}],
+           shoes="shoes04"),
+    person("vendor-lungi", "male", 50, ["vendor", "pedestrian"], tone=0.85,
+           body={"muscle": 0.5, "weight": 0.45, "height": 0.42, "proportions": 0.5}, facial=["moustache"], hair=("short04", SALT_PEPPER),
+           clothes=shirt_only(c("#8fa8a0")), garments=[lungi(c("#6d5a2f"), [c("#26353a"), c("#d8d0bb")], "knee"), towel(c("#dcd3b8"), c("#3c6f3c"))]),
+    person("tea-worker", "male", 34, ["tea-worker", "vendor"], tone=0.7,
+           body={"muscle": 0.5, "weight": 0.42, "height": 0.48, "proportions": 0.5}, facial=["moustache"],
+           clothes=[banian()], garments=[veshti(c("#7a2f2f"), "knee"), towel(c("#d9a66a"), c("#2f4f8f"))]),
+    person("construction-worker", "male", 30, ["construction"], tone=0.9,
+           body={"muscle": 0.65, "weight": 0.4, "height": 0.48, "proportions": 0.5}, facial=["moustache", "stubble"],
+           clothes=shirt_only(c("#7d6e5c"), ("stripe", c("#5f5243"), 10)), garments=[lungi(c("#3a3a52"), [c("#9a8a6a"), c("#2b2b2b")], "knee"), head_cloth(c("#cfc6b2"))]),
+    person("construction-hardhat", "male", 41, ["construction"], tone=0.8,
+           body={"muscle": 0.6, "weight": 0.45, "height": 0.5, "proportions": 0.5}, facial=["moustache"], hair=("short04", BLACK_HAIR),
+           clothes=[banian(), trousers(c("#5c5a4f"), "cortu_cargo_pants")], garments=[{"kind": "hardhat", "colour": c("#e8c22a")}]),
+    person("delivery-rider", "male", 24, ["delivery", "pedestrian"], tone=0.55,
+           body={"muscle": 0.5, "weight": 0.45, "height": 0.52, "proportions": 0.5}, facial=["stubble"],
+           clothes=[tshirt(c("#2a8c86")), jeans()], shoes="shoes06"),
+    person("delivery-rider-2", "male", 28, ["delivery", "pedestrian"], tone=0.7,
+           body={"muscle": 0.5, "weight": 0.5, "height": 0.48, "proportions": 0.5}, facial=["moustache"], hair=("short04", BLACK_HAIR),
+           clothes=[tshirt(c("#6b3fa0")), jeans(c("#3a3f4a"))], shoes="shoes06"),
+    person("shopkeeper", "male", 56, ["shopkeeper", "vendor", "pedestrian"], tone=0.55,
+           body={"muscle": 0.4, "weight": 0.68, "height": 0.45, "proportions": 0.5}, facial=["moustache"], hair=("short02", SALT_PEPPER),
+           clothes=shirt_only(c("#f4f1e6")), garments=[veshti(c("#a07a2a"))]),
+    # ---------------------------------------------------------------- women
+    person("woman-saree-young", "female", 26, ["pedestrian", "passenger"], tone=0.5,
+           body={"muscle": 0.45, "weight": 0.48, "height": 0.45, "proportions": 0.55}, bindi=c("#8a1020"),
+           garments=saree(c("#1f6f6a"), c("#c9a13a"), c("#d9b85a"), c("#7a2a3a"))),
+    person("woman-saree-middle", "female", 45, ["pedestrian", "passenger", "vendor"], tone=0.7,
+           body={"muscle": 0.4, "weight": 0.62, "height": 0.4, "proportions": 0.5}, hair=("bun", BLACK_HAIR), bindi=c("#8a1020"),
+           garments=saree(c("#7d1f3a"), c("#2e5a2e"), c("#d4a73c"), c("#2e5a2e"))),
+    person("woman-saree-elderly", "female", 70, ["pedestrian", "passenger"], tone=0.65,
+           body={"muscle": 0.35, "weight": 0.5, "height": 0.35, "proportions": 0.45}, hair=("bun", GREY_HAIR), eyelashes=False,
+           garments=saree(c("#8a8f6e"), c("#5a2a2a"), c("#c7b27a"), c("#5a2a2a"))),
+    person("woman-salwar-young", "female", 23, ["pedestrian", "passenger", "college"], tone=0.45,
+           body={"muscle": 0.45, "weight": 0.45, "height": 0.5, "proportions": 0.55},
+           clothes=[{"asset": "toigo_harem_pants", "colour": c("#efe6d2")}],
+           garments=kurta(c("#b0466a"), "knee", ("dots", c("#f3d9a0"), 22)) + [dupatta(c("#efe6d2"), c("#b0466a"))]),
+    person("woman-chudidar", "female", 38, ["pedestrian", "passenger", "office"], tone=0.6,
+           body={"muscle": 0.45, "weight": 0.55, "height": 0.45, "proportions": 0.5}, bindi=c("#5a1020"),
+           garments=[leggings(c("#d8c7a3"))] + kurta(c("#2f5f8a"), "calf", ("stripe", c("#9fc0dd"), 14)) + [{"kind": "idtag", "colour": c("#8a2f2f")}]),
+    person("woman-kurti-jeans", "female", 21, ["college", "pedestrian", "passenger"], tone=0.4,
+           body={"muscle": 0.45, "weight": 0.42, "height": 0.52, "proportions": 0.55}, hair=("ponytail01", BLACK_HAIR),
+           clothes=[{"asset": "female_casualsuit01", "split": "z", "lower": c("#33405e"), "drop": "upper"}],
+           garments=kurta(c("#e3b23c"), "thigh", ("dots", c("#a8452e"), 26), sleeves=0.5)),
+    person("woman-vendor", "female", 50, ["vendor", "pedestrian"], tone=0.85,
+           body={"muscle": 0.45, "weight": 0.5, "height": 0.38, "proportions": 0.5}, hair=("bun", DARK_HAIR), bindi=c("#8a1020"),
+           garments=saree(c("#3f5f2a"), c("#8a2a2a"), c("#c8a64a"), c("#8a2a2a"))),
+    person("woman-construction", "female", 34, ["construction"], tone=0.9,
+           body={"muscle": 0.55, "weight": 0.4, "height": 0.42, "proportions": 0.5},
+           garments=saree(c("#5a4a7a"), c("#2a2a2a"), c("#8a7aa0"), c("#7a3a2a")) + [head_cloth(c("#d6cdb6"))]),
+    person("woman-office", "female", 30, ["office", "pedestrian", "passenger"], tone=0.5,
+           body={"muscle": 0.45, "weight": 0.5, "height": 0.5, "proportions": 0.55}, hair=("bun", BLACK_HAIR),
+           garments=[leggings(c("#f0ece2"))] + kurta(c("#5d6f3a"), "calf", ("dots", c("#e8e0c0"), 30)) + [dupatta(c("#f0ece2")), {"kind": "idtag", "colour": c("#2f5d8a")}]),
+    person("woman-police", "female", 36, ["police", "traffic-police"], tone=0.6,
+           body={"muscle": 0.55, "weight": 0.5, "height": 0.52, "proportions": 0.5}, hair=("bun", BLACK_HAIR),
+           clothes=police("female"), garments=[{"kind": "belt", "colour": c("#2a2018")}, {"kind": "cap", "style": "beret", "colour": KHAKI_DARK}], shoes="shoes04"),
+    person("teen-girl", "female", 16, ["pedestrian", "passenger", "school"], tone=0.5,
+           body={"muscle": 0.4, "weight": 0.42, "height": 0.48, "proportions": 0.5},
+           clothes=[{"asset": "toigo_harem_pants", "colour": c("#1f3a5f")}],
+           garments=kurta(c("#f2f2f0"), "knee") + [dupatta(c("#1f3a5f"))]),
+    person("girl-school", "female", 10, ["school"], tone=0.55, eyelashes=False,
+           body={"muscle": 0.45, "weight": 0.45, "height": 0.5, "proportions": 0.5},
+           garments=[{"kind": "region", "region": "school_shirt", "colour": c("#f4f4f2"), "offset": 0.004},
+                     {"kind": "region", "region": "pinafore", "colour": NAVY, "offset": 0.01},
+                     {"kind": "tube", "texture": ("plain", NAVY, ("pleat", None, 24)), "top": "waist", "bottom": "knee", "flare": 0.09}],
+           shoes="shoes04"),
+    person("girl-pavadai", "female", 9, ["pedestrian"], tone=0.7, eyelashes=False,
+           body={"muscle": 0.45, "weight": 0.45, "height": 0.5, "proportions": 0.5}, bindi=c("#5a1020"),
+           clothes=[{"asset": "toigo_long_full_skirt", "colour": c("#b02a5a"), "border": c("#d9a832")}],
+           garments=[{"kind": "region", "region": "blouse_child", "colour": c("#d9a832"), "offset": 0.004}]),
+]
