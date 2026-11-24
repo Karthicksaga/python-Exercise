@@ -86,26 +86,28 @@ services() { dev pm path android | grep -q package: && dev cmd activity get-conf
 unlocked() { ! dev dumpsys window | grep -qE "mDreamingLockscreen=true|isKeyguardShowing=true|mShowingLockscreen=true"; }
 landscape() { config | grep -q " land "; }
 
-# The global configuration unchanged for 15 s. Root cause of the flaky runs: launched while the
-# emulator was still finishing its boot (boot-completed receivers running), the game's activity
-# was relaunched by a configuration change ("handleRelaunchActivity" in the events log); Godot
-# cannot start twice in one process, so it ends its own process (exit reason SIGNALED, signal 9,
-# no crash) about a second later. Godot's manifest handles rotation, but not every change
-# (overlay asset paths, SIM country, fonts), so the launch waits for a steady configuration.
+# Root cause of the flaky runs (24 Nov 2026): some seconds after boot (and again around an
+# install) Android's overlay manager changes which resource overlays are enabled (carrier
+# config, idmap2d; the events log shows `commit_sys_config_file: [overlays,...]`). That changes
+# every app's asset paths, so the game's activity is relaunched (`wm_relaunch_resume_activity`
+# with changes 0x80000000). Godot cannot start twice in one process and ends its own process
+# (exit reason SIGNALED, signal 9, no crash). So the launch waits until the overlay state and
+# the global configuration (with its sequence numbers) have both been unchanged for 20 s.
+steady_state() { config; dev cmd overlay list | md5sum; }
 config_steady() {
-  local limit=120 start last now stable_since
-  start=$(date +%s); last=$(config); stable_since=$start
+  local limit=180 start last now stable_since
+  start=$(date +%s); last=$(steady_state); stable_since=$start
   while true; do
     sleep 3
-    now=$(config)
+    now=$(steady_state)
     if [ "$now" != "$last" ]; then
-      log "configuration changed: $now"
+      log "overlays or configuration changed: $(echo "$now" | head -1 | grep -oE " as\.[0-9]+ s\.[0-9]+")"
       last=$now; stable_since=$(date +%s)
-    elif [ $(( $(date +%s) - stable_since )) -ge 15 ]; then
-      log "ready: configuration steady for 15 s"
+    elif [ $(( $(date +%s) - stable_since )) -ge 20 ]; then
+      log "ready: overlays and configuration steady for 20 s"
       return
     fi
-    [ $(( $(date +%s) - start )) -ge "$limit" ] && fail "configuration still changing after ${limit} s"
+    [ $(( $(date +%s) - start )) -ge "$limit" ] && fail "overlays or configuration still changing after ${limit} s"
   done
 }
 
