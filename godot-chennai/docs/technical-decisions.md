@@ -2171,9 +2171,9 @@ these (a duplicate slab can show at some stations: weak spot).
 ### G-330: Railway HUD in the glass style
 `RailHud` (ui module, plain data in, signals out): station chip with the next train, TIMETABLE
 sheet with departures and a route map of every line (until the nav agent's map is merged), the
-passenger's STEP OFF / SIT / VIEW, the cab's lever, dial, HORN, EMG, doors and LEAVE CAB. The glass
-look is copied from `agent/godot-ui` (`RailHudStyle`) and should become `UiTheme.glass_box` once
-that branch is merged.
+passenger's STEP OFF / SIT / VIEW, the cab's lever, dial, HORN, EMG, doors and LEAVE CAB. Panels and
+buttons are `UiTheme.glass_box` (`RailHudStyle` adds only margins). The info chip and TIMETABLE sit
+bottom centre: the top-left belongs to the mission HUD and the top-right to PAUSE.
 
 ### G-331: Riding inside a car
 The player's body follows an anchor moved through the doorway (an additive
@@ -2195,5 +2195,5 @@ session's balance (saved), BOARD THE TRAIN on the ACTION button, the crowd and c
 ### G-334: Quality presets
 `Railway.PRESETS` by `QualitySettings` level (Low/Medium/High): trains drawn 4/6/8 within
 520/700/900 m, LOD distances ×0.6/0.8/1, track 450/520/600 m, overhead line off/160/220 m, crowd
-figures 8/12/16. `Railway.apply_quality(level)` is the hook for `QualitySettings.changed` once
-`agent/godot-perf` is merged (not wired yet: the class is not on this branch).
+figures 8/12/16. `RailwayWiring` applies `QualitySettings.shared().preset` and follows its
+`changed` signal, so the level changes live with the rest of the game.

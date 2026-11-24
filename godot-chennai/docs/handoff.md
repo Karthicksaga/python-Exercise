@@ -975,8 +975,8 @@ the test checks the deadzone setting and that the end of the list scrolls into v
 (`extra_obstacles`, `extra_people` hooks), `player_controller.gd` (`vehicle_gait`), `ai_area.gd`
 (reads `world/rail/rail.json`), the CI workflow (runs the rail builder tests), `LICENSES.md`.
 
-**For the coordinator after merging perf/ui/nav/roads:** call `railway.apply_quality(level)` from
-`QualitySettings.changed`; swap `RailHudStyle` for `UiTheme.glass_box`; add the rail lines as a
+**Merged with feat/godot-chennai (glass UI, perf presets): the HUD uses `UiTheme.glass_box`, the
+railway follows `QualitySettings`. Still to do after nav/roads:** add the rail lines as a
 layer of the nav agent's city map (`Railway.show_timetable` builds the same data); reconcile with
 the transit agent's `world/transit` rail lines (their train stub should ride these trains).
 
