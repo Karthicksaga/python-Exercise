@@ -27,7 +27,12 @@ var figures: FareFigures
 ## False: no parked vehicles are spawned (another system parks them).
 var spawn_parking := true
 ## Only steps and shows while true (play, not the title).
-var active := true
+var active := true:
+	set(on):
+		active = on
+		# The map is drawn at once when play (re)starts, then at 10 Hz.
+		if on:
+			_map_clock = MAP_STEP
 ## The game is held behind a dialog (job board, a result, a place).
 var held := false
 ## Parked vehicles this layer spawned, by parking id.
