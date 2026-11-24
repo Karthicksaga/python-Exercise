@@ -62,6 +62,7 @@ world/
   tiles/<tc>_<tr>/chunks.bin       every chunk file of the tile, packed ("COWP")
   tiles/<tc>_<tr>/roads.bin        road pieces of the tile ("COWR" v2)
   tiles/<tc>_<tr>/areas.bin        whole areas of the tile, simplified ("COWA"), for map/far layer
+  tiles/<tc>_<tr>/infra.bin        format 2.1 only: road heights, waterways, street spots ("COWI", §3.7)
 ```
 
 A reader loads `world.json`, then the tiles around the player (3 × 3 tiles covers 10 km in every
@@ -90,6 +91,8 @@ world they are all ≥ 0.
 | `tiles` | [[tc, tr, chunkFiles, bytes, firstRing]] | every tile directory |
 | `landmarks` | [Landmark] | as today's `index.json` (id, kind, name, x, z, height?, levels?, radius?, opened?, source, estimated) |
 | `sea` | {coast: [{x, z}], outline: [{x, z}], source} | as today: the coastline (land on its left) carried 3 km past the edge, and the water's outline |
+| `minor` | int | **1** from format 2.1 (absent = 2.0). Minor versions only add files and keys; a 2.0 reader ignores them |
+| `infra` | {file, deckStep, note} | 2.1: the per-tile file name (`infra.bin`) and the deck sample step (5 m), §3.7 |
 
 ### 3.2 `tiles/<tc>_<tr>/tile.json`
 
@@ -224,6 +227,65 @@ area × count:
   u32 id, u8 dataset, u64 sourceId, u8 kind, u8 nRings
   nRings × { u32 n, i32 x0, i32 z0, (n - 1) × { i16 dx, i16 dz } }
 ```
+
+### 3.7 `infra.bin` (format 2.1, decisions G-150…G-153)
+
+Added on 24 Nov 2026 without touching any 2.0 file: the same PBF rebuilds every 2.0 file byte
+for byte (sha256 of the extract in `data/MANIFEST.json`), plus one `infra.bin` per tile and the
+`minor`/`infra` keys in `world.json`. 1.3 MB for the 47 tiles. Reference implementation:
+`tools/geo/chennai_geo/infra.py` (tests `tests/test_infra.py`); GDScript reader `InfraTile`.
+
+```
+u32 magic   0x49574F43 ("COWI")
+u16 format  2
+u16 minor   1
+i16 tc, i16 tr
+u16 nSections
+section × nSections: u32 tag (four letters, little-endian), u32 length, length bytes
+                     (unknown tags are skipped)
+
+"DECK"  f32 step (5.0)
+        u32 count
+        count × { u32 piece           index of the piece in this tile's roads.bin (file order)
+                  u16 n               samples: along 0, step, 2 step … and the last at the piece's end
+                  n × u16 height × 100   road surface above the ground, metres (estimated) }
+        Only pieces that are raised somewhere are listed; every other piece lies on the ground.
+"WATR"  u32 count
+        count × { f64 id (way id × 10 + clip piece), u8 dataset, u64 sourceId,
+                  u8 kind (WATERWAY_KINDS), u8 flags (1 tunnel/culvert or covered, 2 intermittent),
+                  u16 width × 100 (OSM width, else river 30, canal 18, stream 6, drain 3, ditch 1.5),
+                  u8 nameLength, name bytes (UTF-8, name:en preferred),
+                  u16 n, i32 x0, i32 z0, (n - 1) × { i16 dx, i16 dz }   as roads.bin }
+        Waterway centre lines (`waterway=river|canal|stream|drain|ditch`), split at tile edges
+        like road pieces (a segment belongs to the tile holding its midpoint).
+"SPOT"  u32 count
+        count × { u8 kind (SPOT_KINDS), u8 flags (1 mapped in OSM; 0 placed by rule),
+                  i32 x × 20, i32 z × 20, i16 yaw × 10000 (road direction, atan2(dx, dz)),
+                  u16 width × 100 (the carriageway), f64 road id }
+```
+
+| Table | Values (index order, append only) |
+|---|---|
+| WATERWAY_KINDS | river, canal, stream, drain, ditch |
+| SPOT_KINDS | zebra, signal_crossing, unmarked, bump, hump, table, cushion, rumble_strip |
+
+**Deck heights (estimated, G-151).** OSM maps `bridge`, `tunnel` and `layer`, never heights. A
+bridge chain (bridge roads joined end to end with the same `max(layer, 1)`) that crosses a lower
+road or a railway is raised 6.5 m per layer above what it crosses (5.5 m clearance and the deck),
+6 m for a footbridge, level for 100 m either side of every crossing, then down at 1:20; a chain
+that crosses nothing mapped (a river, a culvert) is level at `1 + 0.02 × length` m (1.2…5 m).
+Every other road gets the lowest heights that keep its grade within 1:20 (arterials), 1:14
+(streets, service roads) or 1:3.3 (footways: stairs), propagated over the road graph from the
+raised points, so heights agree at every shared node and across tile edges. Tunnels and covered
+roads stay at ground level and stop the propagation. The build reports the crossings checked and
+those with less than 4.5 m clearance (12 of 1,027 on 23 Nov data).
+
+**Spots.** Mapped `highway=crossing` (zebra for `crossing=zebra|marked|uncontrolled` or zebra
+markings, signal crossing, unmarked) and `traffic_calming=*` nodes, snapped to the widest drivable
+road through the node; none on decks. Rule spots (invented, flag 0): a zebra on every arm of the
+junction nearest a mapped traffic signal (within 25 m), set back half the widest road plus 2.5 m;
+a speed breaker 14 m from the main-road end of 40 % of residential, unclassified and living
+streets longer than 60 m (by a stable hash of the road id).
 
 ## 4. Ids and provenance
 

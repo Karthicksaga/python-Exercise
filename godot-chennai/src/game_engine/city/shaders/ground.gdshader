@@ -21,13 +21,13 @@ const int COVERS = 9;
 // Ground covers (GroundMeshes.COVER_*): base tile, tint, noise strength.
 const float COVER_BASE[COVERS] = float[](2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0);
 const vec3 COVER_TINT[COVERS] = vec3[](
-	vec3(1.00, 1.04, 0.95),  // lawn (parks, gardens)
+	vec3(0.84, 0.88, 0.72),  // lawn (parks, gardens): toned down, sun-dried
 	vec3(1.12, 1.06, 0.74),  // meadow (dry grass)
 	vec3(0.92, 0.86, 0.66),  // scrub
 	vec3(0.70, 0.80, 0.68),  // forest floor
 	vec3(0.62, 0.74, 0.62),  // mangrove and wetland
 	vec3(0.98, 1.10, 0.80),  // farmland (paddy)
-	vec3(0.92, 1.10, 0.86),  // sport pitch
+	vec3(0.86, 0.96, 0.74),  // sport pitch
 	vec3(0.92, 0.94, 0.84),  // cemetery
 	vec3(1.00, 0.97, 0.92)   // bare ground and salt pans (sand tile)
 );

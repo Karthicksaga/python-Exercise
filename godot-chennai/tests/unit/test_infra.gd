@@ -178,3 +178,57 @@ func test_speed_breaker_profile_and_crossing() -> bool:
 	assert_true(bumps.surface_at(mapped.position) > 0.01, "its surface rises at the spot")
 	assert_true(bumps.near(mapped.position, 5.0).size() >= 1, "found near the spot")
 	return true
+
+
+func test_river_is_sunk_and_blocked_at_its_banks() -> bool:
+	# The Adyar at Kotturpuram Bridge (G-152).
+	var kit := CityTestKit.regional_kit()
+	var at := Vector2(3641.0, 6564.0)
+	var cell := kit.source.cell_at(at)
+	var layout := kit.layouts.layout_for(cell)
+	var chunk := kit.source.read_chunk(cell)
+	var square := Rect2(kit.source.get_grid_origin() + Vector2(cell) * 250.0, Vector2(250.0, 250.0))
+	var river := false
+	for w in layout.water_in(cell):
+		if w.name.contains("Adyar"):
+			river = true
+	assert_true(river, "the Adyar's centre line reaches this chunk")
+	var water := WaterMeshes.new()
+	water.origin = ChunkBuilder.centre_of(kit.source, cell)
+	water.polygons = WaterMeshes.gather(chunk.areas, layout.water_in(cell), square)
+	assert_true(water.polygons.size() > 0, "water polygons in the chunk")
+	var decks := DeckMeshes.new()
+	decks.origin = water.origin
+	decks.layout = layout
+	water.build(square, decks, layout)
+	assert_true(water.mesh.triangle_count() > 10, "water surface drawn")
+	for p in water.mesh.positions:
+		assert_true(p.y < 0.0, "water surface below the ground")
+		if failures.size() > 0:
+			return true
+	assert_true(water.bund_pieces > 20, "bunds on the banks (%d)" % water.bund_pieces)
+	var barrier := 0
+	for piece in decks.faces:
+		for v in piece:
+			if absf(v.y - WaterMeshes.BARRIER) < 1e-4:
+				barrier += 1
+	assert_true(barrier > 0, "the bank's barrier reaches 2.2 m")
+	# The earth is cut round the water: no earth vertex lies inside a water polygon.
+	var ground := GroundMeshes.new()
+	ground.origin = water.origin
+	ground.build([], chunk.areas, square, [] as Array[StreetFurniture.KerbRun], water.polygons)
+	var inside := 0
+	for p in ground.mesh.positions:
+		var w := Vector2(p.x, p.z) + water.origin
+		for poly in water.polygons:
+			if Geometry2D.is_point_in_polygon(w, poly) and Geometry2D.get_closest_point_to_segment(w, poly[0], poly[1]).distance_to(w) > 0.5:
+				var edge := INF
+				for i in poly.size():
+					edge = minf(edge, Geometry2D.get_closest_point_to_segment(w, poly[i], poly[(i + 1) % poly.size()]).distance_to(w))
+				if edge > 0.5:
+					inside += 1
+	assert_eq(inside, 0, "no ground vertex inside the water")
+	var trees := ChunkBuilder.standing_trees(chunk.trees, water.polygons, layout)
+	for t in trees:
+		assert_false(WaterMeshes.inside_any(t.position, water.polygons, -1), "no tree in the river")
+	return true

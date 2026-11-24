@@ -32,7 +32,7 @@ const COVER_ROOF := 0.6
 const COVER_WALL := 0.4
 ## Collider pieces: Jolt builds a trimesh's tree when its body enters the space (G-55), so
 ## pieces stay small enough to add within the frame budget.
-const PIECE_FACES := 2400
+const PIECE_FACES := 1200
 
 const CONCRETE := Color(0.73, 0.71, 0.67)
 const FASCIA := Color(0.66, 0.64, 0.60)

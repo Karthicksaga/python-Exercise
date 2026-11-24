@@ -125,7 +125,7 @@ func test_car_drives_up_over_and_down_a_flyover_at_speed() -> bool:
 	var found := _path(layout)
 	assert_true(found.size() == 2, "found the Anna Flyover in the data")
 	if failures.size() > 0:
-		return true
+		return _finish()
 	var pts: PackedVector2Array = found[0]
 	var hs: PackedFloat32Array = found[1]
 	var total := 0.0
@@ -201,4 +201,49 @@ func test_car_drives_up_over_and_down_a_flyover_at_speed() -> bool:
 	assert_true(worst_off < 6.0, "kept to the carriageway (worst %.1f m off the centre line)" % worst_off)
 	assert_true(on_deck_frames > 60 and on_deck_min_speed > 12.0, "crossed the deck at speed (%d frames, slowest %.1f m/s)" % [on_deck_frames, on_deck_min_speed])
 	car.queue_free()
+	return _finish()
+
+
+## Puts the floating origin back for the tests that follow (they assume world = scene metres).
+func _finish() -> bool:
+	streamer.clear()
+	_origin().call("recentre", 0.0, 0.0)
 	return true
+
+
+func test_a_speed_breaker_lifts_the_car() -> bool:
+	# The first mapped hump of the Kathipara tile (G-153), approached straight along its road.
+	var tile := CityTestKit.regional().tile_infra(Vector2i(2, 6))
+	var hump: WorldSpot = null
+	for s in tile.spots:
+		if s.mapped and s.kind == &"hump":
+			hump = s
+			break
+	assert_true(hump != null, "a mapped hump")
+	if hump == null:
+		return _finish()
+	_origin().call("recentre", hump.position.x, hump.position.y)
+	streamer.focus = hump.position
+	assert_true(await wait_until(func() -> bool: return streamer.world_ready_around(hump.position, 120.0), MAX_FRAMES), "its streets load")
+	var dir := hump.direction()
+	var start := hump.position - dir * 14.0
+	var t := VehicleCatalog.type(&"car")
+	var car := RaycastVehicle.new()
+	car.setup(t.spec)
+	car.position = _to_scene(start, t.ride_height + 0.2)
+	car.rotation.y = atan2(-dir.x, -dir.y)
+	holder.add_child(car)
+	await wait_physics_frames(40)
+	var rest := car.global_position.y
+	var peak := rest
+	for frame in 60 * 6:
+		var speed := car.forward_speed()
+		car.set_controls(1.0 if speed < 6.0 else 0.0, 0.0, 0.0)
+		await tree.physics_frame
+		peak = maxf(peak, car.global_position.y)
+		if (_to_world(car.global_position) - hump.position).dot(dir) > 8.0:
+			break
+	assert_true((_to_world(car.global_position) - hump.position).dot(dir) > 4.0, "drove over it")
+	assert_true(peak - rest > 0.03, "the hump lifted the car (%.3f m)" % (peak - rest))
+	car.queue_free()
+	return _finish()
