@@ -413,6 +413,19 @@ func slot_count() -> int:
 	return _slots.size()
 
 
+## Chunks building on the workers, built and waiting to be added, and jobs queued for the
+## worker threads (the performance overlay, G-253).
+func queue_counts() -> Vector3i:
+	var building := _orphans.size()
+	var adding := 0
+	for slot: Slot in _slots.values():
+		if slot.state == &"building":
+			building += 1
+		elif slot.state == &"adding":
+			adding += 1
+	return Vector3i(building, adding, _workers.pending())
+
+
 func orphan_count() -> int:
 	return _orphans.size()
 

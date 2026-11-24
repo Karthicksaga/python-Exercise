@@ -12,6 +12,9 @@ uniform sampler2D atlas : source_color, filter_linear_mipmap_anisotropic, repeat
 uniform float tiles = 8.0;
 // Wet look (rain, owned by Sound/Environment later): darkens and smooths the paved layers.
 uniform float wet : hint_range(0.0, 1.0) = 0.0;
+// Quality (G-252): false skips the ground covers' noise (eight value-noise lookups a pixel),
+// the lighter ground of the Low preset; covers keep their tint.
+uniform bool detail = true;
 
 // The layer rides in u (GroundMeshes.LAYER_U): vertex colours and UV2 did not reach this shader
 // reliably under the Compatibility renderer.
@@ -77,8 +80,11 @@ void fragment() {
 	vec4 c = textureGrad(atlas, coord, dx, dy);
 	vec3 rgb = c.rgb;
 	if (cover >= 0 && cover < COVERS) {
-		// Two octaves: patches of about 4 and 1 repeats (24 m and 6 m at the green scale).
-		float n = vnoise(uv / 4.0) * 0.65 + vnoise(uv) * 0.35;
+		float n = 0.5;
+		if (detail) {
+			// Two octaves: patches of about 4 and 1 repeats (24 m and 6 m at the green scale).
+			n = vnoise(uv / 4.0) * 0.65 + vnoise(uv) * 0.35;
+		}
 		rgb *= COVER_TINT[cover] * (1.0 + (n - 0.5) * 2.0 * COVER_NOISE[cover]);
 	}
 	float paved = (l < 1.5) ? 1.0 : 0.0;
