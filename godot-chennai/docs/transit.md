@@ -143,6 +143,12 @@ while riding once. Not measured on a phone; expect 3–4× there: the boarding f
 visible hitch (pre-instance the passengers to fix). One of the two "on" runs had no bus reach
 the stop within the tool's wait (the scene test's wait is longer and passed).
 
+Draw calls (Compatibility, xvfb, 915x412, whole frame from `transit_shots`): a route bus standing
+at Anna Nagar Tower Station with the HUD 203 (287k primitives); riding inside 179 (261k); after
+alighting 118; Kathipara from above with a bus on the upper deck 120; Egmore station 102. No
+before/after pair for the unmerged bus doors was taken (only one or two buses are near at a
+time; each keeps its near model's separate meshes, roughly 10 more draw calls a bus).
+
 ## 6. Weak or not done
 - OSM maps only 77 bus routes in this world; most of Chennai's ~800 MTC routes are not there, so
   most stops are served by no route (483 of 1,463). 22 routes are broken (legs dropped), 18 use
@@ -151,8 +157,11 @@ the stop within the tool's wait (the scene test's wait is longer and passed).
   entered; routes start and end at the nearest drivable edge.
 - Timetable and fares are estimates; the timetable is not tied to the AI buses: a request sends
   the soonest route's bus, and it takes the time it takes to drive in.
-- Interior: the bus models were not built for an interior camera; see the screenshots for what
-  shows. Seated passengers are four fixed seats; no standing crowd; the player's hand is not on
+- Interior: the bus models were not built for an interior camera: seats, aisle and the player
+  read well, but the roof and window frames draw as black wedges at the top of the view
+  (single-sided faces seen from inside).
+- Alighting puts the player 1.2 m from the stop's OSM point away from the bus; where OSM's point
+  is not at the kerb line the player can stand at the road edge (seen once before this rule). Seated passengers are four fixed seats; no standing crowd; the player's hand is not on
   the rail (no grip pose for the player yet).
 - Doors on route buses cost the near model's merge (more draw calls per bus near the camera).
 - Fast travel moves the streaming focus to the next stop; if its streets do not load within 600

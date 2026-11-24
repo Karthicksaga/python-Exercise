@@ -35,6 +35,7 @@ const EYE := Vector3(0.35, 2.75, 4.9)
 const SEATED_PASSENGERS := 4
 ## The player steps off at the stop's pole when it is this close to the door, metres.
 const ALIGHT_TO_POLE := 16.0
+const PAVEMENT_STEP := 1.2
 ## How long fast travel waits for the next stop's streets to load, physics frames.
 const JUMP_WAIT := 600
 
@@ -478,9 +479,10 @@ func alight() -> bool:
 		var pole := WorldOrigin.to_scene(stop.position, feet.y)
 		var to_door := Vector2(feet.x - pole.x, feet.z - pole.z)
 		if to_door.length() < ALIGHT_TO_POLE:
-			# A step towards the road from the pole (its shelter stands on the pole).
-			var step := to_door.normalized() * minf(1.5, to_door.length())
-			feet = pole + Vector3(step.x, 0.0, step.y)
+			# Off the kerb: a step from the pole away from the bus (OSM puts poles at the kerb
+			# line; the shelter stands back on the pavement, further than this).
+			var away := -to_door.normalized() * PAVEMENT_STEP
+			feet = pole + Vector3(away.x, 0.15, away.y)
 	var yaw := (v.global_rotation.y + PI / 2.0) if v != null else rig.body.yaw
 	rig.body.exit_vehicle(feet + Vector3(0, 0.05, 0), yaw)
 	_walk_parts(true)
