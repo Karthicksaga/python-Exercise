@@ -731,3 +731,33 @@ C 10). Game code must read `sign` and `names`, never `research_name`. Storeys co
 where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.
 
 
+
+## Poses: seated, passengers, falls, arm swing (agent/godot-anim, G-260…G-269), 24 Nov 2026
+**Knockdown API (for `agent/godot-crash`; stable, committed first).** Both figures of a person
+have the same four methods and one signal: `HumanFigure` (the player, fare passengers) and
+`PersonView` (walkers, crowds, drivers from `PeoplePool`). The figure animates on its own node
+only (procedural tumble, crumple, lying and get-up poses on the skeleton, no physics bodies);
+whoever moves the body (`CrashFlight` through `RiderLink`, or the AI for a walker) keeps
+moving the node as before, and the figure never moves its own origin.
+
+```gdscript
+## Knocked off the feet with `velocity` (m/s, scene space: the launch or the hit's push). Tumbles
+## while airborne; lands by itself after the ballistic time of velocity.y (at least 0.35 s)
+## unless play_landed() comes first. Calling it again while down restarts the fall.
+func play_fall(velocity: Vector3) -> void
+## The body touched the ground (optional; CrashFlight's landing): crumple, then lie still.
+func play_landed() -> void
+## Stand up from lying (or from wherever the fall is: it lands first). Takes GETUP_TIME seconds
+## of game time, then emits got_up and the normal clips (gait, seated) take over again.
+func play_getup() -> void
+## &"" upright (normal clips), &"falling", &"down" (crumpling or lying), &"rising".
+func knockdown_state() -> StringName
+signal got_up
+const GETUP_TIME := 0.75   # matches CrashFlight.RISE_TIME
+```
+
+`PlayerRiderLink` already calls them from `CrashFlight`'s phases (flying → `play_fall(launch)`,
+sliding → `play_landed()`, rising → `play_getup()`), so a bike throw through `Driving` needs
+nothing more. The figure lies on its back, head away from the way it flew, soles and head
+above the ground. The figures advance in the physics step (`HumanFigure.advance`,
+`PersonView.advance`): a figure that is not advanced does not animate its fall either.
