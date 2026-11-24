@@ -590,6 +590,7 @@ roof sign), Chennai Egmore (with the train shed), Anna Nagar Tower (ported), Che
 | Chennai Egmore | 8,792 / 1,942 / 374 | 84 | 24 m (estimated) |
 | Anna Nagar Tower | 5,459 / 1,535 / 543 | 6 | 41 m |
 | Chennai Lighthouse | 5,369 / 1,739 / 411 | 4 | 45.72 m (OSM tag) |
+| Shopping complex, Royapettah (generic, G-189) | 5,068 / 982 / 653 | 28 | 29.6 m (estimated) |
 
 **Measured** (this shared 4-core box, xvfb + llvmpipe, Compatibility, 915x412, `city_shot.gd
 --frames=180`, two runs each; `--no-landmarks` leaves the OSM buildings in place). Temple from
@@ -611,7 +612,7 @@ stayed at 0.2 ms (models load on the worker).
 - The committed world was not rebuilt with the landmark outlines (the game filters at run time).
 - Kapaleeshwarar's tank steps sit inside the water polygon above the 0.75 m sunk water; the bund
   and barrier still close the tank (no walking the steps yet, culture note §3 visit not built).
-- Mall kit not built; no interiors; no night lighting on landmarks; GLBs carry float vertex
+- The mall kit makes a generic block (one mall from the godot-areas shortlist so far; its shortlist file is not merged here, the spec copies the OSM id); no interiors; no night lighting on landmarks; GLBs carry float vertex
   colours (0.2–1.5 MB each, 4.6 MB in all).
 - `scene/test_city_streaming.gd::test_main_thread_budget_under_cpu_load` failed once in the full
   local run (wall-clock, load-sensitive on this shared machine; not touched).

@@ -161,3 +161,10 @@ def test_world_builder_leaves_out_buildings_under_a_landmark_model(small_feature
     assert w.stats["building:under-landmark-model"] == 1
     outlines = exclude_outlines()
     assert len(outlines) >= 5 and all(len(r) >= 4 for r in outlines)
+
+
+def test_withheld_names_stay_out_of_a_mall_spec():
+    spec = {"id": "m", "osm": {"main": "b", "withhold_names": True, "parts": {"b": {"osm": "way/1001"}}}, "height": {"value": 20}}
+    fill(spec, read_objects(OSM, ["way/1001"]))
+    tags = spec["osm"]["parts"]["b"]["tags"]
+    assert not any(k.startswith(("name", "wiki")) for k in tags) and tags["amenity"] == "place_of_worship"

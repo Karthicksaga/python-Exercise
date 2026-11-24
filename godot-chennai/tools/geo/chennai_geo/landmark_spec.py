@@ -29,6 +29,9 @@ KEEP_TAGS = ("name", "name:en", "name:ta", "alt_name", "old_name", "building", "
              "wikimedia_commons", "start_date", "layer")
 
 
+WITHHELD = ("name", "alt_name", "old_name", "official_name", "brand", "wikidata", "wikipedia", "wikimedia_commons")
+
+
 def _ref(osm: str) -> tuple[str, int]:
     kind, _, num = osm.partition("/")
     if kind not in ("way", "node") or not num.isdigit():
@@ -94,6 +97,9 @@ def fill(spec: dict[str, Any], objects: dict[str, dict[str, Any]]) -> dict[str, 
             raise KeyError(f"{spec['id']}: {part['osm']} ({name}) is not in the extract")
         pts = [(round(x, 2), round(z, 2)) for x, z in obj["points"]]
         part["tags"] = {k: obj["tags"][k] for k in KEEP_TAGS if k in obj["tags"]}
+        if osm.get("withhold_names"):
+            # A business (a mall): its name and links stay out of the spec (TD-18).
+            part["tags"] = {k: v for k, v in part["tags"].items() if not k.startswith(WITHHELD)}
         if part["osm"].startswith("way/"):
             ring = footprint(pts)
             part["footprint"] = [[x, z] for x, z in ring]
