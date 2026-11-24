@@ -43,8 +43,8 @@ Earlier wave, still running or stopped (check each branch's last commit before r
 |---|---|---|
 | agent/godot-perf | fix 4-28 FPS on POCO M6 Pro (bisect merges, CPU/GPU overlay, safe mode, presets, Compatibility-renderer A/B APK) | owner data: 28 FPS open daytime, 14 morning street, 13 night driving, 4 at 18:40 long street, random drops to 4-5; early move/jump build was smooth |
 | agent/godot-transit | bus stops, routes, stations, bus travel, passengers | owner also wants better bus entering |
-| agent/godot-fusion | fuse Overture, Microsoft, Google Open Buildings with OSM (OSM primary) | asked to save WIP and report |
-| agent/godot-homes | buy/enter/furnish/extend homes, integration | asked to save WIP and report |
+| agent/godot-fusion | fuse Overture, Microsoft, Google Open Buildings with OSM (OSM primary). Head 75bcb06, CI test job green; buildings 391k -> 1.78M, fusion.bin 23 MB (APK ~+20 MB); format 2.3, G-220..226 | HOLD, do not merge until perf fixes land: no screenshots, no main-thread measurement, no full-suite or APK yet; added buildings all 1-2 floors; ODbL decision G-225 |
+| agent/godot-homes | buy/enter/furnish/extend homes. Head ff9efac, slice done (G-230..238, docs/homes.md, screenshots in /tmp/claude-0/homes_shots) | full suite not finished, CI unconfirmed; merge after sizediet; economy x0.05 proposed |
 | agent/godot-sizediet | DONE, head 52b6720, CI green: APK 162.7 -> 115.1 MB, CI size budget 260 MB, docs/app-size.md | NOT merged yet: merge it with the first batch |
 Sizediet forecast: 173 MB (low) to 371 MB (high) with planned content; plan `.aab` + install-time/on-demand
 asset packs (docs/app-size.md section 6). Limits of Play need verifying.
