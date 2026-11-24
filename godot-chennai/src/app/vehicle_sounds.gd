@@ -23,6 +23,7 @@ static func wire(d: Driving, system: SoundSystem = null) -> VehicleSounds:
 	d.horn.connect(s._on_horn)
 	d.boarding_event.connect(s._on_boarding)
 	d.crashed.connect(s._on_crashed)
+	d.bumped.connect(s._on_crashed)
 	d.mode_changed.connect(s._on_mode)
 	return s
 
@@ -81,3 +82,9 @@ func _on_boarding(v: Vehicle, event: StringName) -> void:
 func _on_crashed(_v: Vehicle, outcome: CrashRules.Outcome) -> void:
 	if sound != null:
 		sound.crash(outcome.impact_kmh / 3.6)
+
+
+## Someone the player hit honks back (`DrivingWiring.reaction`): a horn of the kind hit.
+func on_reaction(kind: StringName, _at: Vector3) -> void:
+	if sound != null and sound.active:
+		sound.horn(String(kind))

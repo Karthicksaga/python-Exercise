@@ -8,7 +8,10 @@ extends SceneTree
 ## Shots: `lineup` (every variant parked, seen from the side), `drive` (the variant driven along
 ## the road at speed with the chase camera and the touch controls), `crash` (the motorbike into
 ## the wall: the rider mid-air), `windscreen` (the hatchback into the wall at full speed), `door`
-## (getting into the variant, the door open). Everything waits in game time.
+## (getting into the variant, the door open), `bump` (a motorbike taps a traffic motorbike at
+## 20 km/h: sparks, a wobble, still riding), `fall` (into a parked motorbike at 55 km/h: the rider
+## slides off, the bike falls), `wreck` (the hatchback into the wall at 78 km/h, a second later:
+## glass on the ground, darker dented paint, smoke), `burst` (the same 0.1 s after the hit). Everything waits in game time.
 
 
 func _initialize() -> void:
@@ -70,6 +73,44 @@ func _run() -> void:
 			yard.add_child(cam)
 			var at := yard.rider.position()
 			cam.look_at_from_position(at + Vector3(5.0, 1.4, 3.2), at + Vector3(0, 0.3, 0))
+			cam.current = true
+		"bump", "fall":
+			var at := Vector3(40, 0, -60)
+			var v := yard.spawn(&"motorbike", at + Vector3(0, 0, 8.0), 0.0, &"ride")
+			if shot == "fall":
+				yard.spawn(&"motorbike", at, PI / 2.0, &"parked")
+			else:
+				var tv := TrafficVehicleView.make(&"motorbike", 0.3)
+				yard.add_child(tv)
+				tv.set_pose(at, PI / 2.0, 0.0, 1.0 / 60.0, 5.0)
+			await _frames(30)
+			yard.rider.place(v.ground_point(v.type.entry.point + Vector2(float(v.type.entry.side) * 0.4, 0.0)), 0.0)
+			await physics_frame
+			yard.driving.enter(v)
+			await _until(func() -> bool: return yard.driving.mode() == &"driving", 600)
+			v.set_speed((20.0 if shot == "bump" else 55.0) / 3.6)
+			await _until(func() -> bool: return yard.driving.last_hit != null, 240)
+			await _until(func() -> bool: return false, 6 if shot == "bump" else 16)
+			print("hit: %s at %.1f km/h" % [yard.driving.last_hit.type if yard.driving.last_hit != null else &"-", yard.driving.last_hit.impact_kmh if yard.driving.last_hit != null else 0.0])
+			yard.rig.camera.camera.current = false
+			var cam := Camera3D.new()
+			yard.add_child(cam)
+			cam.look_at_from_position(at + Vector3(5.5, 2.0, 5.5), at + Vector3(0, 0.5, 2.0))
+			cam.current = true
+		"wreck", "burst":
+			var v := yard.spawn(&"hatchback", Vector3(0, 0, VehicleYard.WALL_Z + 8.0), 0.0, &"ride")
+			await _frames(30)
+			yard.rider.place(v.ground_point(v.type.entry.point + Vector2(float(v.type.entry.side) * 0.4, 0.0)), 0.0)
+			await physics_frame
+			yard.driving.enter(v)
+			await _until(func() -> bool: return yard.driving.mode() == &"driving", 600)
+			v.set_speed(78.0 / 3.6)
+			await _until(func() -> bool: return yard.driving.last_crash != null, 240)
+			await _until(func() -> bool: return false, 70 if shot == "wreck" else 7)
+			yard.rig.camera.camera.current = false
+			var cam := Camera3D.new()
+			yard.add_child(cam)
+			cam.look_at_from_position(v.global_position + Vector3(5.0, 2.2, 4.5), v.global_position + Vector3(0, 0.6, -0.5))
 			cam.current = true
 		"door":
 			var v := yard.spawn(StringName(variant), Vector3(0, 0, 40), 0.0, &"ride")

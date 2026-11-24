@@ -19,6 +19,7 @@ var rider: PlayerRiderLink
 var controls: DrivingControls
 var vehicles: Dictionary = {}
 var wall: StaticBody3D
+var wiring: DrivingWiring
 
 
 func _ready() -> void:
@@ -37,7 +38,8 @@ func _ready() -> void:
 	driving.name = "Driving"
 	driving.rider = rider
 	add_child(driving)
-	add_child(DrivingWiring.wire(driving, controls, rig))
+	wiring = DrivingWiring.wire(driving, controls, rig)
+	add_child(wiring)
 
 
 ## The player's camera (the rig's `FollowCamera`).

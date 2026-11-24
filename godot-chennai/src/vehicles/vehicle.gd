@@ -14,9 +14,24 @@ const CRASH_KEEP := 0.65
 const MAX_LEAN := 0.5
 ## A toppled motorbike slides to a stop at this rate (m/s²).
 const TOPPLE_SCRAPE := 6.0
+## A wobble after a hit rocks the body at this rate (rad/s), this far at most (radians: a
+## two-wheeler; four wheels rock a third of it), dying away at this rate per second (G-271).
+const WOBBLE_RATE := 14.0
+const WOBBLE_MAX := 0.16
+const WOBBLE_DECAY := 3.5
+## Damage (0..100) from which the body shows dents (stage 1: darker paint, a slight sag) and
+## from which it smokes (stage 2) (G-272).
+const DENTED_FROM := 15.0
+const WRECKED_FROM := 55.0
+## Damage the body takes per km/h of a hit's severity above `CrashRules.BUMP_FROM`.
+const DAMAGE_PER_KMH := 0.9
+## Contacts reported while driven (the hit's other body, point and normal).
+const CONTACTS := 4
 const GROUP := &"vehicles"
 
 signal crashed(impact: float)
+## The body's damage stage changed (0 clean, 1 dented, 2 wrecked and smoking).
+signal damage_changed(stage: int)
 
 var id: StringName = &""
 var type: VehicleType
@@ -36,6 +51,12 @@ var _roll := 0.0
 var _toppled := 0
 var _topple_amount := 0.0
 var _driven := false
+## The last hit measured (consumed by `consume_hit`).
+var _hit: CrashRules.Impact = null
+## Body damage, 0..100 (dents and smoke; not the rider's health).
+var damage: float = 0.0
+var _wobble := 0.0
+var _wobble_clock := 0.0
 
 
 ## A vehicle of a variant (`vehicle_types.json`), parked, ready to add to the tree. `paint`
@@ -69,12 +90,19 @@ func place(where: Vector3, heading: float) -> void:
 ## Nobody at the controls: the handbrake holds it.
 func park() -> void:
 	_driven = false
+	contact_monitor = false
 	set_controls(0.0, 0.0, 0.4)
 
 
 ## Someone is driving: `set_controls` each step.
 func take_controls() -> void:
 	_driven = true
+	# Contacts tell a hit's other body (a traffic vehicle's mass, the world), point and normal.
+	max_contacts_reported = CONTACTS
+	contact_monitor = true
+	# A hit taken while parked is not this driver's crash.
+	_hit = null
+	_impact = 0.0
 	upright()
 
 
@@ -96,7 +124,47 @@ func approach_velocity() -> Vector2:
 func consume_impact() -> float:
 	var i := _impact
 	_impact = 0.0
+	_hit = null
 	return i
+
+
+## The last hit as measured (change of velocity, push, other body, contact), then null until
+## the next one. Masses and kinds are filled in for `CrashRules.judge_hit`.
+func consume_hit() -> CrashRules.Impact:
+	var h := _hit
+	_hit = null
+	_impact = 0.0
+	return h
+
+
+## Rock the body after a hit, 0..1 (drawn only; the rider rides with it).
+func wobble(amount: float) -> void:
+	_wobble = maxf(_wobble, clampf(amount, 0.0, 1.0))
+	_wobble_clock = 0.0
+
+
+## How much it is still rocking, 0..1.
+func wobbling() -> float:
+	return _wobble
+
+
+## Dents and smoke from a hit of `severity_kmh` (G-272).
+func add_damage(severity_kmh: float) -> void:
+	var before := damage_stage()
+	damage = minf(100.0, damage + maxf(0.0, severity_kmh - CrashRules.BUMP_FROM) * DAMAGE_PER_KMH)
+	var stage := damage_stage()
+	if stage != before:
+		model.set_damage(stage)
+		damage_changed.emit(stage)
+
+
+## 0 clean, 1 dented, 2 wrecked (smoking).
+func damage_stage() -> int:
+	if damage >= WRECKED_FROM:
+		return 2
+	if damage >= DENTED_FROM:
+		return 1
+	return 0
 
 
 ## Where the driver's hip joints go and the way they face, in scene space (follows the lean).
@@ -185,11 +253,52 @@ func _before_wheels(state: PhysicsDirectBodyState3D) -> void:
 			_impact = maxf(_impact, change)
 			state.linear_velocity = Vector3(v.x * CRASH_KEEP, state.linear_velocity.y, v.y * CRASH_KEEP)
 	_approach = _last_vel if hit else v
+	if hit:
+		_measure_hit(state, v)
 	_last_pos = p
 	_last_vel = Vector2(state.linear_velocity.x, state.linear_velocity.z)
 	_has_last = true
 	if hit:
 		crashed.emit.call_deferred(_impact)
+
+
+## What was hit, where and how hard (only on a hit, so the allocation is per crash, not per step).
+func _measure_hit(state: PhysicsDirectBodyState3D, after: Vector2) -> void:
+	var change := after - _last_vel
+	var h := _hit if _hit != null else CrashRules.Impact.new()
+	if change.length() >= h.measured:
+		h.measured = change.length()
+		h.push = change.normalized()
+		h.approach = _last_vel
+		var f := -state.transform.basis.z
+		h.forward = Vector2(f.x, f.z).normalized()
+		h.self_mass = mass
+		h.point = state.transform.origin
+		h.normal = Vector3(h.push.x, 0.0, h.push.y)
+		h.other = null
+		h.other_mass = INF
+		h.other_fixed = true
+		h.other_kind = &""
+		for c in state.get_contact_count():
+			var n := state.get_contact_local_normal(c)
+			if absf(n.y) > 0.6:
+				continue  # the ground under a scraping chassis
+			h.point = state.get_contact_collider_position(c)
+			h.normal = n if n.dot(h.normal) >= 0.0 else -n
+			h.other = state.get_contact_collider_object(c)
+			break
+		var traffic := h.other as TrafficVehicleView
+		var parked := h.other as Vehicle
+		if traffic != null:
+			# Kinematic: the solver treats it as a wall, so its real mass is applied by the rules.
+			h.other_mass = traffic.variant.type.spec.mass
+			h.other_kind = traffic.variant.type.kind
+		elif parked != null:
+			# A free rigid body: the solver already shared the change by mass.
+			h.other_mass = parked.mass
+			h.other_fixed = false
+			h.other_kind = parked.type.kind
+	_hit = h
 
 
 func _after_wheels(state: PhysicsDirectBodyState3D) -> void:
@@ -216,6 +325,12 @@ func _process(delta: float) -> void:
 		var wanted := clampf(steering() * absf(forward_speed()) * 0.16, -MAX_LEAN, MAX_LEAN)
 		_lean += (wanted - _lean) * minf(1.0, delta * 6.0)
 		roll = _lean
+	if _wobble > 0.001:
+		# A decaying rock about the forward axis (and a little pitch on four wheels).
+		_wobble_clock += delta
+		var reach := WOBBLE_MAX * (1.0 if type.leans else 0.35)
+		roll += sin(_wobble_clock * WOBBLE_RATE) * _wobble * reach
+		_wobble = maxf(0.0, _wobble - _wobble * WOBBLE_DECAY * delta - 0.02 * delta)
 	_topple_amount = move_toward(_topple_amount, 1.0 if _toppled != 0 else 0.0, delta * 3.0)
 	if _topple_amount > 0.0:
 		roll = lerpf(roll, -float(_toppled) * 1.45, Boarding.ease_in_out(_topple_amount))

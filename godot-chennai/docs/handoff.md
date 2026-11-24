@@ -731,3 +731,31 @@ C 10). Game code must read `sign` and `names`, never `research_name`. Storeys co
 where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.
 
 
+
+## Crashes: bands, effects, shake (agent/godot-crash, G-270…G-275), 24 Nov 2026
+**Done (yard and unit tests, desktop headless; not on a phone).** The owner's bug (hitting
+another bike threw the rider far) was AI traffic being kinematic: Jolt stopped the player dead as
+at a wall and the old rule judged that full change. `CrashRules` now judges a severity (the
+measured change, shared by mass against traffic) in bands bump / shaken / fall / thrown, with the
+contact angle (side hits topple bikes sooner, rear hits never throw); per-kind `fall_from` and
+`fall_base` in `vehicle_types.json`. Hits leave a wobble and body damage (darker paint, sag,
+smoke when wrecked); `DrivingWiring` adds sparks and glass (`src/vehicles/crash_effects/`),
+camera trauma (`FollowCamera.add_trauma`, off with reduced motion), haptics for bumps and falls,
+and a honk from a hit traffic vehicle (`DrivingWiring.reaction` → `VehicleSounds.on_reaction`).
+Numbers in G-270 and G-273.
+
+**For other agents.**
+- Listen to `Driving.bumped` for small hits (not a crash: missions ignore it); `crashed` now also
+  carries `&"fall"`. `Driving.last_hit` is the last judged hit including bumps.
+- `CrashRules.Outcome.hit` has the contact point, normal and the other body.
+- **agent/godot-anim:** `PlayerRiderLink` (this branch) calls `play_fall(launch)`,
+  `play_landed()`, `play_getup()` on the player's figure when it has them (`has_method`) and then
+  stops tipping the figure; the hooks fire on `CrashFlight`'s phases from `RiderLink`. If your
+  branch also edits `PlayerRiderLink` to call them, keep one of the two at the merge (the calls
+  are the same). `RISE_TIME` stays 0.75 s.
+
+**Weak.** Traffic does not react physically to being hit (no shove, its rider never falls; only
+the honk hook); people get no reaction hook (CityLife has none). Smoke is grey alpha spheres
+(cheap, reads as smoke at a distance, blobby up close). No dent geometry: damage is paint, sag and
+smoke. Effect cost measured on the desktop only (G-273). The player still stops dead against a
+light traffic vehicle (the solver's wall); only the judgement is shared by mass.

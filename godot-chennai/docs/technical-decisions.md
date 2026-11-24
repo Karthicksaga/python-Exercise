@@ -1710,3 +1710,62 @@ and no Commons reference is listed (their titles name the business). Heights are
 `tests/tools/city_shot.gd --no-landmarks` builds the same city without landmark models (OSM
 buildings in place); `--frames=N` prints average and worst frame time over N rendered frames.
 Numbers in `handoff.md`.
+
+## G-270: Crash bands by severity, mass share against traffic, contact angle
+Owner's phone bug (24 Nov): hitting another bike threw the rider far. Cause: AI traffic is an
+`AnimatableBody3D` (kinematic), so Jolt stops the player's vehicle dead as at a wall; the old rule
+judged the vehicle's own change of velocity, so a motorbike at 40 km/h into a traffic motorbike
+measured 40.7 km/h and was thrown (measured in the yard). Against a parked vehicle (a free rigid
+body) the solver already shares the change by mass (35 km/h in: 19 km/h). Now `Vehicle` reports
+the hit's other body through contacts (`contact_monitor` while driven, four contacts) and
+`CrashRules.severity` scales the measured change by `m_other / (m_self + m_other)` when the other
+body is fixed (traffic: the type's mass; the world: unscaled). Bands per kind: under 4 km/h
+nothing; under `hurt_from` a **bump** (a wobble, no damage, the `bumped` signal, not a crash for
+missions); under `fall_from` **shaken**; under `throw_from` a **fall** (open seats only: off to
+the side at 35 % of the speed, 1 m/s up, lies 0.6 s and more); then **thrown** (keeps 70 % of the
+speed, never more than the hit took). Bike: 18 / 27 / 35 km/h; auto: 18 / 24 / 38 (TD-29 threw
+from 30); closed bodies have no fall band. Contact angle from the push the vehicle got: a
+two-wheeler hit from the side falls from 75 % of `fall_from`; a hit from behind never throws.
+Measured after (yard, `test_crash_ejection`): bike into a parked bike at 20 km/h, bump 9.3; into a
+traffic bike at 20, bump 8.5; at 40, shaken 20.3 (was thrown 40.7); into a parked bike at 55,
+fall 31.4 (rider peak under 0.9 m, slides under 5 m); into a traffic bus at 55, thrown 56.9; walls
+unchanged (bike 24: shaken, 50: thrown; hatchback 50 shaken, 78 thrown).
+
+## G-271: A wobble, not a launch, for small hits
+Every felt hit rocks both vehicles (`Vehicle.wobble`): a decaying roll at 14 rad/s, up to 0.16 rad
+on two-wheelers and a third of it on four wheels, gone in about a second; drawn only (the model,
+and the rider who rides on it). The parked vehicle hit is shoved by the physics itself; traffic is
+moved by the AI and does not yield (weak: no AI reaction to being hit).
+
+## G-272: Crash effects are pooled multimeshes; damage stages on the body
+`CrashEffects` (one per `DrivingWiring`, in `WorldOrigin.GROUP`): sparks (48), glass shards (48)
+and smoke puffs (24) as three `MultiMeshInstance3D`s with fixed instance counts, moved on the CPU
+from preallocated packed arrays and uploaded with one `multimesh_set_buffer` per pool and frame;
+hidden while empty (no draw calls). No GPU particles: they compile a particle shader on first use,
+do not run headless (untestable) and cost a process material each. The materials are warmed by
+one hidden piece each for the first two frames. `DrivingWiring.burst_plan`: sparks 3 to 30 by
+severity, glass for cars, autos and buses (a quarter for a bike's lamp, half the other's glass
+when hitting a vehicle), none on a bump. Body damage (`Vehicle.damage`, 0.9 per km/h above 4):
+from 15 dented (paint 20 % darker through the shared per-colour materials, the body sags 0.025 rad
+and leans 0.015), from 55 wrecked (darker again, sags more, smokes from the engine).
+
+## G-273: Effect cost
+Measured headless on the desktop (bench, not committed): idle step 1 µs; all three pools full
+(103 pieces) 94 µs mean per frame, no static memory growth and no new objects over 600 frames.
+A real crash uses about 30 sparks and 36 shards for two seconds. On a phone (4 to 6 times slower
+GDScript) that is about 0.5 ms for two seconds after a crash, inside the 2.5 ms budget; not
+measured on a phone.
+
+## G-274: Camera shake by trauma
+`FollowCamera.add_trauma` (game-feel): offset ±0.16 m and roll ±0.04 rad scaled by trauma², three
+sines per axis (no Noise resource, no allocation), decay 1.6 per second; written to the
+`Camera3D`'s `h_offset`/`v_offset`/roll so the rig and the collision probe never move. Trauma by
+band: bump 0.18, shaken 0.45, fall 0.65, thrown 0.9. `shake_strength` 0 with reduced motion
+(`TitleMenu.platform_reduces_motion()` by default).
+
+## G-275: Knockdown poses through a thin interface, with a fallback
+`RiderLink` has hooks `_show_fall(velocity)`, `_show_landed()`, `_show_getup()` fired on
+`CrashFlight`'s phase changes; `PlayerRiderLink` calls the figure's `play_fall`, `play_landed`,
+`play_getup` (agent/godot-anim's API) when the figure has them (`has_method`), and then keeps the
+figure upright on its node. Without them the old tipped figure is drawn, now rolling onto one
+side while getting up. `CrashFlight.RISE_TIME` stays 0.75 s (the API's `GETUP_TIME`).

@@ -71,7 +71,38 @@ func _own_control(on: bool) -> void:
 
 
 func _show_knockdown(tip: float) -> void:
-	# Tipped onto its back about the feet, head away from the way it flew (so it never lies
-	# into the wall it hit; the body itself is the upright capsule the walls stop).
-	player.figure.rotation = Vector3(PI / 2.0 * tip, player.yaw - player.rotation.y, 0)
+	if _clips():
+		# The figure's own fall, crumple and get-up poses draw it (agent/godot-anim); it stays
+		# upright on its node.
+		player.figure.rotation = Vector3(0, player.yaw - player.rotation.y, 0)
+		player.figure.position = Vector3.ZERO
+		return
+	# Fallback (G-275): tipped onto its back about the feet, head away from the way it flew (so
+	# it never lies into the wall it hit; the body itself is the upright capsule the walls stop).
+	# Getting up rolls a little onto one side first, so it does not hinge up like a plank.
+	var roll := 0.0
+	if flight.phase == &"rising":
+		roll = 0.55 * sin(PI * clampf(1.0 - tip, 0.0, 1.0))
+	player.figure.rotation = Vector3(PI / 2.0 * tip, player.yaw - player.rotation.y, roll)
 	player.figure.position = Vector3(0, 0.2 * tip, 0)
+
+
+## The figure has the knockdown API (play_fall, play_landed, play_getup) of agent/godot-anim.
+## A thin, optional interface: until that lands, the tipped fallback above draws the throw.
+func _clips() -> bool:
+	return player.figure != null and player.figure.has_method(&"play_fall")
+
+
+func _show_fall(velocity: Vector3) -> void:
+	if _clips():
+		player.figure.call(&"play_fall", velocity)
+
+
+func _show_landed() -> void:
+	if _clips() and player.figure.has_method(&"play_landed"):
+		player.figure.call(&"play_landed")
+
+
+func _show_getup() -> void:
+	if _clips() and player.figure.has_method(&"play_getup"):
+		player.figure.call(&"play_getup")
