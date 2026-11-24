@@ -3,6 +3,7 @@
  "generated": "2026-11-24",
  "decision": "G-200",
  "licence_of_this_file": "Original compilation; facts only, text paraphrased. OSM-derived values: ODbL 1.0, © OpenStreetMap contributors (extract 2026-11-23). Wikimedia Commons titles and licences are listed by title only.",
+ "estimate_fields": "Fields that are not shaped as claims (tier.reason, style, tier.params, street.feel, roofs.mix[].variant, signage.mix, signage.categories, centre and boundary) are the researcher's modelling notes or derived geometry; read them as estimates, the claims carry the sources.",
  "claim_status": {
   "sourced": "a source URL states it (see 'source'); the URL was returned by a search and its summary read, the page itself was not always fetched (en.wikipedia.org and wikidata.org are not reachable from the build sandbox)",
   "osm": "read directly from the OpenStreetMap extract or the built world data",

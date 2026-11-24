@@ -535,3 +535,32 @@ G-58). A frame is the 2.5 ms budget plus at most one step by design (G-50). Full
 - Rule speed breakers (9,867) are invented and dense; tune `RULE_BUMP_SHARE` if play says so.
 - Kathipara hero model (Blender) not started (a later task, as asked).
 - Seen only on llvmpipe (Compatibility); not on a phone or the Mobile renderer.
+
+## Area atlas (areas agent), branch `agent/godot-areas`, 24 Nov 2026
+**Done.** Researched data for the landmark and building-detail work, no game code touched:
+`data/areas/areas.json`, `landmarks_shortlist.json`, `palettes.json`, `coverage.json` and their
+schemas; tools `area_lookup.py`, `area_coverage.py`, `area_palettes.py` in `tools/geo`; the atlas
+`docs/areas.md`. Decisions G-200…G-204.
+
+**For godot-osmdetail.** Read `data/areas/palettes.json` (schema in G-202 and
+`palettes.schema.json`): per area id `walls`, `roofs` (hex), `roof_types` (roof shape to weight,
+the world format's names), `storeys` (bins `1, 2, 3, 4-5, 6-9, 10+` to weight) and the area
+`boundary` (circle or corridor in world metres) to pick the area of a building; `default` for the
+rest. Everything is an estimate. OSM carries levels for 3.9 % of buildings in the areas and almost
+no roof, colour or material tags (`docs/areas.md` coverage table), so these weights are the
+palette's only source.
+
+**For godot-landmarks.** `landmarks_shortlist.json`: per landmark OSM id, footprint, tier and
+`tier.params` (kit name and numbers, mostly estimated), levels and height where tagged or sourced,
+features with sources, Commons file titles. Heights and kit parameters marked `estimated` are not
+measurements.
+
+**Weak or not done.**
+- `en.wikipedia.org`, Wikidata and most news hosts were not reachable; `sourced` claims rest on
+  search-result summaries of those pages. 114 claims are `unverified` (107 in areas.json, 7 in the shortlist).
+- No photo was viewed: the Commons image host answered 429 on the first request and fetching was
+  stopped, so the wall colours are written from descriptions.
+- Tamil names are OSM's, all need native review; T. Nagar has none.
+- Eighteen landmarks have no matching Commons file by search; the world keeps only 55 buildings in
+  Chengalpattu and 24 at Pulicat.
+- Nothing reads the data in the game yet.

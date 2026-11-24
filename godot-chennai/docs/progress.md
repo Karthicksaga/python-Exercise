@@ -225,3 +225,13 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Ground covers: lawn, meadow, scrub, forest, wetland/mangrove, farmland, pitch, cemetery, bare; kerbed parks (G-154) | Done | screenshots; `test_city_meshes.gd` unchanged and passing |
 | Zebras (mapped and at signal junctions), speed breakers with colliders, `RoadBumps`, medians (G-153) | Done | `test_infra.gd` (profile, crossing query on a mapped hump), screenshots |
 | Lowered roads and underpasses below ground, Kathipara hero model | Not done (see the handoff) | |
+
+## Area atlas (branch `agent/godot-areas`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| `data/areas/areas.json`: 31 areas with character, storeys, roofs, wall palettes, materials, streets, trees, street life, signage; claims with sources or marked (G-200) | Done (estimates marked; Tamil needs native review; no photos viewed) | `tools/geo/tests/test_areas_data.py` (schema, claim rules, weights, Tamil only from OSM, no brands) |
+| `landmarks_shortlist.json`: 83 landmarks, tiers A 18 / B 55 / C 10, all found in the extract by name, Commons titles and licences (G-203) | Done | same tests; `test_area_lookup.py` for the lookup |
+| `palettes.json` derived from areas.json for building detail (G-202) | Done | staleness test |
+| Area boundaries and coverage table (G-201, G-204) | Done | `test_area_coverage.py`; world total equals `world/REPORT.md` |
+| `docs/areas.md` atlas | Done (generated) | read through; numbers from `coverage.json` |
+| Used by the building and landmark code | Not done (other agents) | |

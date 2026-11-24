@@ -67,7 +67,7 @@
           "required": ["type", "summary"],
           "properties": {
             "type": {"enum": ["old-commercial", "temple-town", "colonial-institutional", "planned-residential", "dense-market", "IT-corridor", "coastal", "port-industrial", "airport", "suburban", "rural-edge"]},
-            "summary": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "string", "minLength": 20}}
+            "summary": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/claim"}}
           }
         },
         "storeys": {"type": "object", "required": ["min", "max", "typical", "weights", "status", "basis"], "properties": {"min": {"type": "integer", "minimum": 1}, "max": {"type": "integer", "maximum": 60}, "typical": {"type": "integer", "minimum": 1}, "weights": {"$ref": "#/$defs/weights6"}, "status": {"$ref": "#/$defs/status"}, "basis": {"type": "string", "minLength": 8}, "source": {"type": "array", "items": {"$ref": "#/$defs/url"}}}},

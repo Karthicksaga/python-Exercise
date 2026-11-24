@@ -198,3 +198,18 @@ def test_boundaries_are_inside_the_world(areas_doc: dict[str, Any]) -> None:
     for a in areas_doc["areas"]:
         c = a["centre"]
         assert w["minX"] <= c["x"] <= w["maxX"] and w["minZ"] <= c["z"] <= w["maxZ"], a["id"]
+
+
+def test_coverage_file_matches_the_areas(areas_doc: dict[str, Any]) -> None:
+    cov = load("coverage.json")["areas"]
+    ids = {a["id"] for a in areas_doc["areas"]}
+    assert set(cov) == ids | {"_outside"}
+    total = 0
+    for k, v in cov.items():
+        w = v["world"]
+        total += w["buildings"]
+        assert w["levels_mapped"] <= w["buildings"] and w["height_tagged"] <= w["buildings"]
+        assert sum(w["floors_hist"].values()) == w["buildings"], k
+        assert v["pbf"]["buildings"] >= w["buildings"] * 0.95, k  # the extract counts a little more (slivers, parts)
+    reported = int(re.search(r"Buildings: ([\d,]+)", (GODOT / "world" / "REPORT.md").read_text()).group(1).replace(",", ""))  # type: ignore[union-attr]
+    assert total == reported

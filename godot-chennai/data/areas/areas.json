@@ -3,6 +3,7 @@
  "generated": "2026-11-24",
  "decision": "G-200",
  "licence_of_this_file": "Original compilation; facts only, text paraphrased. OSM-derived values: ODbL 1.0, © OpenStreetMap contributors (extract 2026-11-23). Wikimedia Commons titles and licences are listed by title only.",
+ "estimate_fields": "Fields that are not shaped as claims (tier.reason, style, tier.params, street.feel, roofs.mix[].variant, signage.mix, signage.categories, centre and boundary) are the researcher's modelling notes or derived geometry; read them as estimates, the claims carry the sources.",
  "claim_status": {
   "sourced": "a source URL states it (see 'source'); the URL was returned by a search and its summary read, the page itself was not always fetched (en.wikipedia.org and wikidata.org are not reachable from the build sandbox)",
   "osm": "read directly from the OpenStreetMap extract or the built world data",
@@ -41,9 +42,29 @@
    "character": {
     "type": "old-commercial",
     "summary": [
-     "Tightly packed, narrow-laned wholesale and trading quarter that grew where the old walled 'Black Town' stood north of the fort.",
-     "Colonial and Indo-Saracenic institutions (court, churches, colleges) sit among multi-storey shop-houses, godowns and temples of the Armenian, Gujarati, Marwari and Tamil trading communities.",
-     "Streets are named by trade (Mint, Armenian, NSC Bose, Flower Bazaar); most of the day the lanes are full of handcarts, porters and delivery trucks."
+     {
+      "text": "Tightly packed, narrow-laned wholesale and trading quarter that grew where the old walled 'Black Town' stood north of the fort.",
+      "status": "sourced",
+      "source": [
+       "https://Www.Wikipedia.org/wiki/Black_Town"
+      ]
+     },
+     {
+      "text": "Colonial and Indo-Saracenic institutions (the High Court, the Armenian Church, a medical college) sit among crowded commercial blocks and temples.",
+      "status": "sourced",
+      "source": [
+       "https://Www.Wikipedia.org/wiki/Black_Town",
+       "https://en.wikipedia.org/wiki/Armenian_Street,_Chennai"
+      ]
+     },
+     {
+      "text": "Mint Street and Flower Bazaar (Badrian Street) are known for wholesale trade; the lanes are narrow and busy from early morning.",
+      "status": "sourced",
+      "source": [
+       "https://Www.Wikipedia.org/wiki/Black_Town",
+       "https://www.dtnext.in/city/2018/10/09/cmda-directed-to-close-all-wholesale-flower-shops-in-george-town"
+      ]
+     }
     ]
    },
    "storeys": {
@@ -280,9 +301,22 @@
    "character": {
     "type": "dense-market",
     "summary": [
-     "The busy junction at the south-east of George Town where the court, the old port road and the bus and rail links meet.",
-     "A hub for bus termini, bazaars and old commercial offices; heavy foot traffic all day.",
-     "Landmarks include the Armenian Church nearby and a ring of 4 to 6 storey commercial blocks."
+     {
+      "text": "The busy southern end of George Town, around the High Court and Armenian Street.",
+      "status": "sourced",
+      "source": [
+       "https://Www.Wikipedia.org/wiki/Black_Town"
+      ]
+     },
+     {
+      "text": "A hub for bus termini, bazaars and old commercial offices; heavy foot traffic all day.",
+      "status": "unverified"
+     },
+     {
+      "text": "Commercial blocks of 3 to 5 storeys stand around the Armenian Church.",
+      "status": "estimated",
+      "basis": "OSM levels are mapped for 478 of 548 buildings (87 %); the spread peaks at 3 to 5 storeys (coverage table)"
+     }
     ]
    },
    "storeys": {
@@ -481,9 +515,27 @@
    "character": {
     "type": "colonial-institutional",
     "summary": [
-     "A walled colonial fort of stone and lime-plastered brick with 20-foot walls, now the state secretariat, a museum and the oldest Anglican church east of Suez.",
-     "Beyond the moat lie open parade and exhibition grounds (Island Grounds) and the Napier Bridge to the Marina.",
-     "Low (1 to 3 storey) buildings, wide lawns and avenue trees; very different from the dense city around it."
+     {
+      "text": "A walled colonial fort with 20-foot walls, now holding the state secretariat, a museum and the oldest Anglican church east of Suez.",
+      "status": "sourced",
+      "source": [
+       "https://theculturetrip.com/asia/india/articles/the-most-impressive-architectural-landmarks-in-chennai",
+       "https://en.wikipedia.org/wiki/St._Mary%27s_Church,_Chennai"
+      ]
+     },
+     {
+      "text": "Beyond the walls lie the open Island Grounds and the Napier Bridge towards the Marina (both mapped in OSM).",
+      "status": "osm",
+      "source": [
+       "https://www.openstreetmap.org/node/247689931",
+       "https://www.openstreetmap.org/way/1080629434"
+      ]
+     },
+     {
+      "text": "Low (1 to 3 storey) buildings and open lawns; very different from the dense city around it.",
+      "status": "estimated",
+      "basis": "OSM levels in the fort polygon are 2 to 3 for the museum and secretariat; lawns and avenue trees are not sourced"
+     }
     ]
    },
    "storeys": {
@@ -709,9 +761,22 @@
    "character": {
     "type": "colonial-institutional",
     "summary": [
-     "The red-brick Gothic and Romanesque railway terminus (1873, clock tower by a later architect) anchors a district of hospitals, a Victorian town hall and market buildings.",
-     "Wide roads cut through old compounds; tall hospital blocks stand beside low colonial halls.",
-     "Station forecourt crowds, porters, autos, share-cabs and buses give constant noise and movement."
+     {
+      "text": "The red-brick Gothic and Romanesque railway terminus (1873, clock tower added later) anchors a district of hospitals and old halls.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Chennai_Central_railway_station",
+       "https://www.business-standard.com/article/beyond-business/chennai-central-112033100034_1.html"
+      ]
+     },
+     {
+      "text": "Wide roads cut through old compounds; tall hospital blocks stand beside low colonial halls.",
+      "status": "unverified"
+     },
+     {
+      "text": "Station forecourt crowds, porters, autos, share-cabs and buses give constant noise and movement.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -848,9 +913,7 @@
    "street_life": [
     {
      "text": "Heavy rail commuter and long-distance passenger flows",
-     "status": "sourced",
-     "source": "https://en.wikipedia.org/wiki/Chennai_Central_railway_station",
-     "note": "stated in general terms"
+     "status": "unverified"
     }
    ],
    "signage": {
@@ -909,9 +972,27 @@
    "character": {
     "type": "colonial-institutional",
     "summary": [
-     "Home of the Indo-Saracenic red-brick railway terminus (1906 to 1908) and the Government Museum complex with the Connemara library.",
-     "Around them are low residential streets, schools and hospitals.",
-     "The ring of institutions gives the area long red-brick and white-trimmed frontages with domes and arches."
+     {
+      "text": "Home of the Indo-Saracenic red-brick railway terminus (1906 to 1908) and the Government Museum complex with the Connemara library.",
+      "status": "sourced",
+      "source": [
+       "https://www.wikipedia.com/wiki/Madras_Egmore",
+       "https://en.wikipedia.com/wiki/Madras_Museum"
+      ]
+     },
+     {
+      "text": "Around the institutions are low residential streets, schools and hospitals.",
+      "status": "estimated",
+      "basis": "1,068 buildings in the data, mostly 2 storey by rule"
+     },
+     {
+      "text": "The institutions give long red-brick frontages with domes and arches.",
+      "status": "sourced",
+      "source": [
+       "https://onmanorama.com/travel/beyond-kerala/2018/10/05/chennais-colonial-marvels-will-take-you-back-in-time.html",
+       "https://www.wikipedia.com/wiki/Madras_Egmore"
+      ]
+     }
     ]
    },
    "storeys": {
@@ -1122,9 +1203,28 @@
    "character": {
     "type": "temple-town",
     "summary": [
-     "A dense old quarter beside the Marina where an ancient Vishnu temple and the Big Mosque (1795 per one source) stand a few lanes apart.",
-     "Narrow lanes, long rows of boarding houses (locally 'mansions') and tight old-fashioned flats.",
-     "Brahmin agraharam streets and Muslim neighbourhoods share the same congested grid."
+     {
+      "text": "A dense old quarter beside the Marina where an ancient Vishnu temple and the Big Mosque (1795 per one source) stand a few lanes apart.",
+      "status": "sourced",
+      "source": [
+       "https://www.dtnext.in/news/opinion/triplicane-charming-residential-locality-with-a-hoary-past",
+       "https://en.wikipedia.org/wiki/Triplicane"
+      ]
+     },
+     {
+      "text": "Narrow lanes and long rows of boarding houses (locally 'mansions').",
+      "status": "sourced",
+      "source": [
+       "https://www.dtnext.in/news/opinion/triplicane-charming-residential-locality-with-a-hoary-past"
+      ]
+     },
+     {
+      "text": "Iyengar Brahmin and Muslim families live side by side in the same congested lanes.",
+      "status": "sourced",
+      "source": [
+       "https://www.dtnext.in/news/opinion/triplicane-charming-residential-locality-with-a-hoary-past"
+      ]
+     }
     ]
    },
    "storeys": {
@@ -1280,9 +1380,13 @@
    ],
    "street_life": [
     {
-     "text": "Festival processions around the temple tank streets; lodgers and students ('Bachelors Paradise')",
+     "text": "The many boarding houses earned Triplicane the name 'Bachelors Paradise' of Chennai",
      "status": "sourced",
      "source": "https://www.dtnext.in/news/opinion/triplicane-charming-residential-locality-with-a-hoary-past"
+    },
+    {
+     "text": "Festival processions go round the temple streets",
+     "status": "unverified"
     },
     {
      "text": "Pedestrian dominance; autos and two-wheelers weaving through lanes",
@@ -1366,9 +1470,24 @@
    "character": {
     "type": "coastal",
     "summary": [
-     "A long straight beach promenade (conceived in 1884) with a wide road behind it, Indo-Saracenic university and college buildings on one side and memorial gardens and statues on the other.",
-     "South at Santhome the Gothic basilica and fishing hamlets sit behind the beach road.",
-     "The sea edge is open sand, with kiosks, boats and sunrise and evening crowds."
+     {
+      "text": "A long straight beach promenade (conceived in 1884) with a wide road behind it, Indo-Saracenic university and college buildings on one side and memorial gardens and statues on the other.",
+      "status": "sourced",
+      "source": [
+       "https://www.incredibleindia.gov.in/en/tamil-nadu/chennai/marina-beach",
+       "https://en.wikipedia.com/wiki/Marina_Beach",
+       "https://www.lonelyplanet.com/india/chennai-madras/attractions/marina-beach/a/poi-sig/460363/356488"
+      ]
+     },
+     {
+      "text": "To the south at Santhome the Gothic basilica stands behind the beach road.",
+      "status": "estimated",
+      "basis": "travel-guide wording: a Gothic church; position from OSM"
+     },
+     {
+      "text": "The sea edge is open sand, with kiosks, boats and sunrise and evening crowds.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -1529,12 +1648,17 @@
    ],
    "street_life": [
     {
-     "text": "Evening crowds, sunrise walkers, statue plazas, horse rides, fishermen with boats and nets",
+     "text": "Statues of Tamil literary and political figures line the promenade (Gandhi, Thiruvalluvar, Bharathiyar, Annie Besant and others)",
      "status": "sourced",
      "source": [
-      "https://www.incredibleindia.gov.in/en/tamil-nadu/chennai/marina-beach"
+      "https://www.incredibleindia.gov.in/en/tamil-nadu/chennai/marina-beach",
+      "https://www.lonelyplanet.com/india/chennai-madras/attractions/marina-beach/a/poi-sig/460363/356488"
      ],
-     "note": "partly from general descriptions"
+     "note": "statue lists differ between sources"
+    },
+    {
+     "text": "Evening crowds, sunrise walkers, horse rides, fishermen with boats and nets",
+     "status": "unverified"
     },
     {
      "text": "Funeral and procession routes use the beach road on big days",
@@ -1595,9 +1719,30 @@
    "character": {
     "type": "temple-town",
     "summary": [
-     "A temple town that grew around the Kapaleeshwarar Temple, its gopuram and its tank, with agraharam streets of pitched-roof houses facing the water.",
-     "Heritage homes mix Tamil courtyard houses, neo-classical and Art Deco villas, with Margazhi kolams on every doorstep in winter.",
-     "Car streets (the four Mada streets), flower and puja shops, music halls and old bookshops line the lanes."
+     {
+      "text": "A temple town that grew around the Kapaleeshwarar Temple, its gopuram and its tank, with agraharam streets of pitched-roof houses facing the water.",
+      "status": "sourced",
+      "source": [
+       "https://citizenmatters.in/private-heritage-homes-mylapore-chennai/",
+       "https://en.wikipedia.org/wiki/Kapaleeshwarar_Temple"
+      ]
+     },
+     {
+      "text": "Heritage homes mix Tamil agraharam houses, neo-classical and Art Deco villas, with Margazhi kolams at the doorsteps in winter.",
+      "status": "sourced",
+      "source": [
+       "https://citizenmatters.in/private-heritage-homes-mylapore-chennai/",
+       "https://thefederal.com/category/the-eighth-column/why-mylapore-is-getting-carpeted-with-kolams-164410"
+      ]
+     },
+     {
+      "text": "The temple's festival processions and the Margazhi music season fill the lanes.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Kapaleeshwarar_Temple",
+       "https://www.dtnext.in/news/chennai/sprightly-colours-of-culture-and-tradition-shine-at-mylapore-festival-in-chennai-819089"
+      ]
+     }
     ]
    },
    "storeys": {
@@ -1830,9 +1975,19 @@
    "character": {
     "type": "suburban",
     "summary": [
-     "A quiet residential grid south of Mylapore, close to the Adyar river, with the market streets around Mandaveli.",
-     "Low two to four storey houses, small apartment blocks and schools; the Mylapore atmosphere on a smaller scale.",
-     "Daily markets, coconut sellers and bicycle repair stalls."
+     {
+      "text": "A quiet residential grid south of Mylapore, close to the Adyar river, with the market streets around Mandaveli.",
+      "status": "unverified",
+      "note": "no source read for Mandaveli itself"
+     },
+     {
+      "text": "Low two to four storey houses, small apartment blocks and schools; the Mylapore atmosphere on a smaller scale.",
+      "status": "unverified"
+     },
+     {
+      "text": "Daily markets, coconut sellers and bicycle repair stalls.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -2023,9 +2178,21 @@
    "character": {
     "type": "old-commercial",
     "summary": [
-     "A central residential and commercial quarter with the large government hospital and a crowded main road.",
-     "Mix of old Muslim and Christian community streets, mid-rise apartments and large retail buildings.",
-     "Less formal than neighbouring Mylapore; busy day and night."
+     {
+      "text": "A central residential and commercial quarter with the city's largest peripheral government hospital and a crowded main road.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Royapettah"
+      ]
+     },
+     {
+      "text": "Mix of old Muslim and Christian community streets, mid-rise apartments and large retail buildings.",
+      "status": "unverified"
+     },
+     {
+      "text": "Less formal than neighbouring Mylapore; busy day and night.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -2189,7 +2356,7 @@
      "value": null,
      "status": "unverified",
      "source": "https://www.openstreetmap.org/node/12255801857",
-     "note": "OSM place node 'Thiyagaraya Nagar' carries no name:ta tag; Tamil left empty, needs native review; needs native review"
+     "note": "OSM place node 'Thiyagaraya Nagar' carries no name:ta tag; Tamil left empty, needs native review"
     }
    },
    "centre": {
@@ -2211,9 +2378,28 @@
    "character": {
     "type": "dense-market",
     "summary": [
-     "A retail district: Ranganathan Street and Pondy Bazaar are among the most crowded shopping streets in the city, with big jewellery, textile and utensil stores in multi-storey blocks.",
-     "Pavements are lined with hawkers (about 850 permanent street vendors were counted in a survey cited by a local magazine) and festival shopping fills the lanes.",
-     "Buildings are tightly packed, 3 to 7 storeys, covered in hoardings and awnings; residential grids lie on the edges."
+     {
+      "text": "A retail district: Ranganathan Street and Pondy Bazaar are among the most crowded shopping streets in the city, with big jewellery, textile and utensil stores in multi-storey blocks.",
+      "status": "sourced",
+      "source": [
+       "https://www.thenewsminute.com/article/chennais-ranganathan-street-sees-huge-crowds-ahead-deepavali-shopping-season-136252",
+       "https://en.wikipedia.org/wiki/Ranganathan_Street",
+       "https://tripoto.com/chennai/places-to-visit/t-nagar"
+      ]
+     },
+     {
+      "text": "Pavements are lined with hawkers (about 850 permanent street vendors were counted in a survey cited by a local magazine) and festival shopping fills the lanes.",
+      "status": "sourced",
+      "source": [
+       "https://madrasmusings.com/Vol%2024%20No%2023/making-tnagar-world-class.html",
+       "https://www.thenewsminute.com/article/chennais-ranganathan-street-sees-huge-crowds-ahead-deepavali-shopping-season-136252"
+      ]
+     },
+     {
+      "text": "Buildings are tightly packed, 3 to 7 storeys, covered in hoardings and awnings; residential grids lie on the edges.",
+      "status": "estimated",
+      "basis": "the written sources describe multi-storeyed stores without counts; OSM levels cover under 2 %"
+     }
     ]
    },
    "storeys": {
@@ -2362,7 +2548,7 @@
    ],
    "street_life": [
     {
-     "text": "Deepavali and wedding-season crowds; about 850 permanent street vendors on central pavements (a survey cited in a local magazine)",
+     "text": "Deepavali shopping crowds fill Ranganathan Street; about 850 permanent street vendors were counted on central pavements (a survey cited in a local magazine, probably dated)",
      "status": "sourced",
      "source": [
       "https://www.thenewsminute.com/article/chennais-ranganathan-street-sees-huge-crowds-ahead-deepavali-shopping-season-136252",
@@ -2432,9 +2618,25 @@
    "character": {
     "type": "colonial-institutional",
     "summary": [
-     "Central residential and institutional area: Loyola College's large campus, the chariot-shaped Valluvar Kottam monument, embassies and consulates.",
-     "Principal lanes (College Road, Haddows Road, Sterling Road) are more than a century old and appear on a 1909 map.",
-     "Quiet tree-lined streets with older bungalows and newer apartments, and busy commercial roads around them."
+     {
+      "text": "Central residential and institutional area with Loyola College's large campus and the Valluvar Kottam monument (both mapped in OSM).",
+      "status": "osm",
+      "source": [
+       "https://www.openstreetmap.org/way/24375417",
+       "https://www.openstreetmap.org/way/209535268"
+      ]
+     },
+     {
+      "text": "Principal lanes (College Road, Haddows Road, Sterling Road) are more than a century old and appear on a 1909 map.",
+      "status": "sourced",
+      "source": [
+       "https://Www.wikipedia.org/wiki/Nungambakkam"
+      ]
+     },
+     {
+      "text": "Quiet tree-lined streets with older bungalows and newer apartments, and busy commercial roads around them.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -2652,9 +2854,25 @@
    "character": {
     "type": "dense-market",
     "summary": [
-     "The centre of the Tamil film industry: studio compounds, film labs, theatres and dubbing houses in dense commercial and residential blocks.",
-     "The Vadapalani Murugan Temple draws constant pilgrim traffic along a wide commercial road with big retail buildings.",
-     "Busy bridges and 100 Feet Road junctions; bright cinema hoardings above flat-roofed blocks."
+     {
+      "text": "The centre of the Tamil film industry, with studio compounds and film services in dense blocks.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Kodambakkam",
+       "https://www.sahapedia.org/chennais-avm-studios-behind-scenes-silver-screen"
+      ]
+     },
+     {
+      "text": "The Vadapalani Murugan Temple is an important pilgrimage centre.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Vadapalani"
+      ]
+     },
+     {
+      "text": "Busy bridges and 100 Feet Road junctions; bright cinema hoardings above flat-roofed blocks.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -2862,9 +3080,29 @@
    "character": {
     "type": "planned-residential",
     "summary": [
-     "Chennai's first planned neighbourhood, laid out for the 1968 World Trade Fair with an alphabetical grid of blocks, roundabouts, no dead ends and parks on every street.",
-     "Rows of independent houses and low apartment blocks on wide streets, with a landmark 12-storey tower inside a park.",
-     "Greenest after Adyar among Chennai's tree surveys; quieter than the old city."
+     {
+      "text": "Chennai's first planned neighbourhood, laid out for the 1968 World Trade Fair with an alphabetical grid of blocks, roundabouts, no dead ends and parks on every street.",
+      "status": "sourced",
+      "source": [
+       "https://www.dtnext.in/news/chennai/those-were-the-days-a-sleepy-village-in-suburbs-that-became-the-1st-planned-neighbourhood",
+       "https://en.wikipedia.org/wiki/Anna_Nagar_Tower_Park"
+      ]
+     },
+     {
+      "text": "Rows of independent houses and low apartment blocks on wide streets, with a landmark 12-storey tower inside a park.",
+      "status": "sourced",
+      "source": [
+       "https://www.dtnext.in/news/chennai/those-were-the-days-a-sleepy-village-in-suburbs-that-became-the-1st-planned-neighbourhood",
+       "https://en.wikipedia.org/wiki/Anna_Nagar_Tower_Park"
+      ]
+     },
+     {
+      "text": "Rated the second greenest part of the city, after Adyar, in a tree survey.",
+      "status": "sourced",
+      "source": [
+       "https://www.dtnext.in/city/2018/04/24/adyar-greenest-part-of-the-city-anna-nagar-second-survey"
+      ]
+     }
     ]
    },
    "storeys": {
@@ -3086,9 +3324,24 @@
    "character": {
     "type": "colonial-institutional",
     "summary": [
-     "Once a garden-house suburb of British and wealthy Indian families; Rajah Sir Ramaswamy Mudaliar's estate became Kilpauk Garden.",
-     "Today a semi-residential area with a medical college campus and large old compounds.",
-     "Tree-lined roads, compound walls and mid-rise apartments replacing some of the old gardens."
+     {
+      "text": "Once a garden-house suburb of British and wealthy Indian families; Rajah Sir Ramaswamy Mudaliar's estate became Kilpauk Garden.",
+      "status": "sourced",
+      "source": [
+       "https://www.dtnext.in/news/chennai/kilpauk-from-the-woods"
+      ]
+     },
+     {
+      "text": "Today a semi-residential area with a medical college campus.",
+      "status": "sourced",
+      "source": [
+       "https://www.dtnext.in/news/chennai/kilpauk-from-the-woods"
+      ]
+     },
+     {
+      "text": "Tree-lined roads, compound walls and mid-rise apartments replacing some of the old gardens.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -3287,9 +3540,24 @@
    "character": {
     "type": "dense-market",
     "summary": [
-     "An ancient village (Chola era) that became a commercial hub: High Road shops, car traders and clock-tower junctions.",
-     "The first free-standing clock tower in Madras stood at the Doveton junction in the early 1900s.",
-     "Old family streets and church compounds sit behind the busy main road."
+     {
+      "text": "An ancient village (Chola era) that became a commercial hub, known especially for car traders.",
+      "status": "sourced",
+      "source": [
+       "https://www.dtnext.in/amp/story/news/chennai/purasawalkam-from-poor-shewak-to-thriving-commercial-hub"
+      ]
+     },
+     {
+      "text": "The first free-standing clock tower in Madras stood at the Doveton junction in the early 1900s.",
+      "status": "sourced",
+      "source": [
+       "https://sriramv.com/2026/04/29/etymology-of-some-place-names-in-chennai/"
+      ]
+     },
+     {
+      "text": "Old family streets and church compounds sit behind the busy main road.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -3490,9 +3758,27 @@
    "character": {
     "type": "suburban",
     "summary": [
-     "A working-class railway suburb: the carriage and locomotive workshops and the Integral Coach Factory are the anchors.",
-     "Railway colonies with rows of identical low quarters, Barracks Road, and a long main road of shops.",
-     "Perambur railway station is the oldest in the city after Royapuram."
+     {
+      "text": "A working-class railway suburb: the carriage and locomotive workshops and the Integral Coach Factory are the anchors.",
+      "status": "sourced",
+      "source": [
+       "https://en.Wikipedia.com/wiki/Perambur"
+      ]
+     },
+     {
+      "text": "Railway and labour colonies shaped the neighbourhood.",
+      "status": "sourced",
+      "source": [
+       "https://en.Wikipedia.com/wiki/Perambur"
+      ]
+     },
+     {
+      "text": "Perambur railway station is the oldest in the city after Royapuram.",
+      "status": "sourced",
+      "source": [
+       "https://en.Wikipedia.com/wiki/Perambur"
+      ]
+     }
     ]
    },
    "storeys": {
@@ -3687,9 +3973,26 @@
    "character": {
     "type": "suburban",
     "summary": [
-     "A leafy south-central suburb at the mouth of the Adyar river, with the 100-hectare Theosophical Society grounds and its huge banyan.",
-     "Old garden bungalows, schools and research institutes mixed with newer apartments.",
-     "Rated the greenest part of the city in a tree survey."
+     {
+      "text": "A leafy south-central suburb at the mouth of the Adyar river, with the 100-hectare Theosophical Society grounds and its huge banyan.",
+      "status": "sourced",
+      "source": [
+       "https://ts-adyar.org/banyan-tree",
+       "https://en.wikipedia.org/wiki/Theosophical_Society_Adyar",
+       "https://www.lonelyplanet.com/india/tamil-nadu/chennai-madras/attractions/theosophical-society/a/poi-sig/460373/356488"
+      ]
+     },
+     {
+      "text": "Old garden bungalows, schools and research institutes mixed with newer apartments.",
+      "status": "unverified"
+     },
+     {
+      "text": "Rated the greenest part of the city in a tree survey.",
+      "status": "sourced",
+      "source": [
+       "https://www.dtnext.in/city/2018/04/24/adyar-greenest-part-of-the-city-anna-nagar-second-survey"
+      ]
+     }
     ]
    },
    "storeys": {
@@ -3897,9 +4200,24 @@
    "character": {
     "type": "coastal",
     "summary": [
-     "A planned seaside neighbourhood with a wide beach (Elliot's), a multi-tier temple and a hilltop-style church-shrine near the shore.",
-     "Rows of two to four storey houses and apartment blocks behind promenades with cafes and food stalls.",
-     "Evening walks and sea breeze; salt-weathered paint."
+     {
+      "text": "A seaside neighbourhood with a wide beach (Elliot's Beach), the Ashtalakshmi Temple and a Marian shrine near the shore (all mapped in OSM).",
+      "status": "osm",
+      "source": [
+       "https://www.openstreetmap.org/relation/14304132",
+       "https://www.openstreetmap.org/way/29047216",
+       "https://www.openstreetmap.org/way/355724162"
+      ]
+     },
+     {
+      "text": "Rows of low houses and apartment blocks sit behind the beach road.",
+      "status": "estimated",
+      "basis": "1,100 buildings in the data, mostly 2 storey by rule"
+     },
+     {
+      "text": "Evening walks and sea breeze; salt-weathered paint.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -4103,9 +4421,25 @@
    "character": {
     "type": "colonial-institutional",
     "summary": [
-     "Guindy National Park, one of the few national parks inside a city, shares a fence with Raj Bhavan (the Governor's residence), IIT Madras and a memorial garden.",
-     "On the west the Kathipara interchange and the industrial estate (the first in independent India, 1958) make it a major junction.",
-     "Mix of wide forest edge, campus buildings, colonial residences and industrial sheds."
+     {
+      "text": "Guindy National Park, one of the few national parks inside a city, shares a fence with Raj Bhavan and IIT Madras.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Guindy_National_Park"
+      ]
+     },
+     {
+      "text": "To the west the Kathipara interchange and the industrial estate (the first in independent India, 1958) make it a major junction.",
+      "status": "sourced",
+      "source": [
+       "https://Www.Wikipedia.org/wiki/Flyovers_in_Chennai",
+       "https://en.wikipedia.org/wiki/Ambattur_Industrial_Estate"
+      ]
+     },
+     {
+      "text": "Mix of forest edge, campus buildings, colonial residences and industrial sheds.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -4260,9 +4594,7 @@
    "street_life": [
     {
      "text": "Deer and blackbuck in the park; students; heavy interchange traffic at Kathipara",
-     "status": "sourced",
-     "source": "https://en.wikipedia.org/wiki/Guindy_National_Park",
-     "note": "deer from general descriptions"
+     "status": "unverified"
     }
    ],
    "signage": {
@@ -4319,9 +4651,25 @@
    "character": {
     "type": "suburban",
     "summary": [
-     "A dense old southern gateway on the Adyar river crossed by a bridge first built in the 1720s and rebuilt in 1966.",
-     "Temple (Karaneeswarar), Little Mount shrine nearby, bazaar streets and busy bus bays.",
-     "Low and mid-rise concrete blocks, small shops and a river-edge market."
+     {
+      "text": "A dense old southern gateway on the Adyar river, crossed by a bridge first built in the 1720s and rebuilt in 1966.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Saidapet",
+       "https://en.wikipedia.org/wiki/Maraimalai_Adigal_Bridge"
+      ]
+     },
+     {
+      "text": "Its landmarks include the Karaneeswarar Temple and the Little Mount shrine.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Saidapet"
+      ]
+     },
+     {
+      "text": "Low and mid-rise concrete blocks, small shops and a river-edge market.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -4517,9 +4865,25 @@
    "character": {
     "type": "suburban",
     "summary": [
-     "A large southern residential suburb of apartment blocks and IT workers' housing next to the Pallikaranai marsh.",
-     "It floods almost every northeast-monsoon season because the marsh has shrunk to a fraction of its size.",
-     "Wide commercial roads, a rail terminus, malls and many mid-rise apartments."
+     {
+      "text": "A large southern suburb next to the Pallikaranai marsh.",
+      "status": "sourced",
+      "source": [
+       "https://citizenmatters.in/flood-threat-in-tansi-nagar-chennai-communitys-plea-to-save-canal-stop-beautification/"
+      ]
+     },
+     {
+      "text": "It floods almost every northeast-monsoon season because the marsh has shrunk to under a tenth of its size.",
+      "status": "sourced",
+      "source": [
+       "https://citizenmatters.in/flood-threat-in-tansi-nagar-chennai-communitys-plea-to-save-canal-stop-beautification/",
+       "https://www.deccanherald.com/india/tamil-nadu/floating-cars-submerged-localities-chennai-battles-floods-in-the-wake-of-cyclone-michuang-2796547"
+      ]
+     },
+     {
+      "text": "Wide commercial roads, a rail terminus, malls and many mid-rise apartments.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -4719,9 +5083,26 @@
    "character": {
     "type": "suburban",
     "summary": [
-     "A southern satellite town on the GST Road and suburban rail line, with the Madras Christian College campus (365 acres, deer and old trees) and an air force station.",
-     "Dense market streets near the station and a ring of apartment blocks and layouts around it.",
-     "Terminal station of the first electrified suburban line (1931)."
+     {
+      "text": "A southern satellite town with the Madras Christian College campus (deer and old trees) and an air force station nearby.",
+      "status": "sourced",
+      "source": [
+       "https://www.tnurbantree.tn.gov.in/tambaram/about-city-2/",
+       "https://en.Wikipedia.com/wiki/Tambaram",
+       "https://mcc.edu.in/?p=12688"
+      ]
+     },
+     {
+      "text": "Dense market streets near the station and a ring of apartment blocks and layouts around it.",
+      "status": "unverified"
+     },
+     {
+      "text": "Terminal station of the first electrified suburban line (1931).",
+      "status": "sourced",
+      "source": [
+       "https://en.Wikipedia.com/wiki/Tambaram"
+      ]
+     }
     ]
    },
    "storeys": {
@@ -4938,9 +5319,25 @@
    "character": {
     "type": "airport",
     "summary": [
-     "Chennai International Airport (aerodrome polygon 5.9 km2) sits between Meenambakkam and Tirusulam with terminals T1, T2 and T4, runways and taxiways.",
-     "Pallavaram is an old cantonment town with hills and a lake; both sides are dense low-rise housing under the flight path.",
-     "Passenger operations moved to the Tirusulam terminals in 1985 (domestic) and 1989 (international)."
+     {
+      "text": "Chennai International Airport (aerodrome polygon 5.9 km2) sits between Meenambakkam and Tirusulam with terminals T1, T2 and T4, runways and taxiways.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Chennai_International_Airport"
+      ]
+     },
+     {
+      "text": "Pallavaram is an old town with a hill and a lake; both sides have dense low-rise housing under the flight path.",
+      "status": "estimated",
+      "basis": "OSM maps Pallavaram Hill and Pallavaram Lake; low-rise housing is the default in the data"
+     },
+     {
+      "text": "Passenger operations moved to the Tirusulam terminals in 1985 (domestic) and 1989 (international).",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Chennai_International_Airport"
+      ]
+     }
     ]
    },
    "storeys": {
@@ -5167,9 +5564,25 @@
    "character": {
     "type": "IT-corridor",
     "summary": [
-     "Old Mahabalipuram Road (Rajiv Gandhi Salai) is the city's IT corridor: tech parks and SEZs from Taramani and Perungudi through Sholinganallur to Siruseri.",
-     "Glass and concrete office campuses stand behind high boundary walls; gated apartment towers fill the gaps.",
-     "Wide road, metro works and service roads; very different from the old city."
+     {
+      "text": "Old Mahabalipuram Road (Rajiv Gandhi Salai) is the city's IT corridor, with tech parks and SEZs from Perungudi and Thoraipakkam through Sholinganallur.",
+      "status": "sourced",
+      "source": [
+       "https://www.roofandfloor.com/chennai/blog/it-parks-in-omr",
+       "https://en.wikipedia.org/wiki/List_of_tech_parks_in_Chennai"
+      ]
+     },
+     {
+      "text": "Glass and concrete office campuses stand behind boundary walls; apartment towers fill the gaps.",
+      "status": "unverified"
+     },
+     {
+      "text": "A wide road with metro construction and service roads; very different from the old city.",
+      "status": "sourced",
+      "source": [
+       "https://www.roofandfloor.com/chennai/blog/it-parks-in-omr"
+      ]
+     }
     ]
    },
    "storeys": {
@@ -5394,9 +5807,27 @@
    "character": {
     "type": "port-industrial",
     "summary": [
-     "A thermal power, port and industrial belt around Ennore Creek: Kamarajar Port (commenced 22 June 2001), Ennore and North Chennai thermal stations, and the Kattupalli shipyard to the north.",
-     "Coal yards, tall chimneys, storage tanks, cranes and container stacks; salt marsh and old salt pans at the creek edges.",
-     "Fishing villages and low houses are squeezed between the plants."
+     {
+      "text": "A thermal power, port and industrial belt around Ennore Creek: Kamarajar Port (commenced 22 June 2001), thermal stations and the Kattupalli shipyard to the north.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Ennore",
+       "https://en.Wikipedia.com/wiki/Ennore_Creek",
+       "https://www.thenewsminute.com/article/chennai-s-kamarajar-port-illegally-expanding-and-destroying-ennore-creek-say-activists-42751"
+      ]
+     },
+     {
+      "text": "Coal yards, thermal stations and ports line the creek, with salt marsh and abandoned salt pans on its western edges.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Ennore",
+       "https://www.thenewsminute.com/article/chennai-s-kamarajar-port-illegally-expanding-and-destroying-ennore-creek-say-activists-42751"
+      ]
+     },
+     {
+      "text": "Fishing villages and low houses are squeezed between the plants.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -5602,9 +6033,24 @@
    "character": {
     "type": "port-industrial",
     "summary": [
-     "A large small-scale industrial estate (about 1.9 km2 in OSM) commissioned in the early 1960s, known for auto-ancillary and light engineering units.",
-     "Grid of numbered streets lined with one to three storey workshops, sheds and small factories with corrugated roofs.",
-     "The estate lies in an ex-farmland suburb that now holds dense housing as well."
+     {
+      "text": "A large small-scale industrial estate (about 1.9 km2 in OSM) commissioned in the early 1960s, known for auto-ancillary units.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Ambattur_Industrial_Estate"
+      ]
+     },
+     {
+      "text": "A grid of numbered streets lined with one to three storey workshops and sheds with sheet roofs.",
+      "status": "unverified"
+     },
+     {
+      "text": "The area moved from farmland and mango groves to manufacturing.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Ambattur_Industrial_Estate"
+      ]
+     }
     ]
    },
    "storeys": {
@@ -5799,9 +6245,25 @@
    "character": {
     "type": "coastal",
     "summary": [
-     "A largely residential south Chennai neighbourhood beside the sea, with the Marundeeswarar temple close to the beach.",
-     "A beach known as RTO Beach, a turtle-nesting shore, and a station opposite an IT park.",
-     "Low houses and apartments between the temple streets and the beach road."
+     {
+      "text": "A largely residential south Chennai neighbourhood beside the sea, with the Marundeeswarar temple close to the beach.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Thiruvanmiyur",
+       "https://en.wikipedia.org/wiki/Marundeeswarar_Temple"
+      ]
+     },
+     {
+      "text": "The beach is a turtle habitat and the railway station is opposite an IT park.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Thiruvanmiyur"
+      ]
+     },
+     {
+      "text": "Low houses and apartments between the temple streets and the beach road.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -5997,9 +6459,24 @@
    "character": {
     "type": "suburban",
     "summary": [
-     "A compact central residential area with a lake (Chetpet Lake and its eco park), a railway station and bungalow-style houses.",
-     "The name is disputed: either a marshy place (chetru pattu) or from a contractor who owned many houses.",
-     "Quiet roads with apartment blocks and schools."
+     {
+      "text": "A compact central residential area with Chetpet Lake and its eco park, mapped as a 3.4 ha lake in OSM.",
+      "status": "osm",
+      "source": [
+       "https://www.openstreetmap.org/relation/9149085"
+      ]
+     },
+     {
+      "text": "The name is disputed: either a marshy place (chetru pattu) or from a contractor who owned many houses.",
+      "status": "sourced",
+      "source": [
+       "https://sriramv.com/2026/04/29/etymology-of-some-place-names-in-chennai/"
+      ]
+     },
+     {
+      "text": "Quiet roads with apartment blocks and schools.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -6194,9 +6671,25 @@
    "character": {
     "type": "rural-edge",
     "summary": [
-     "The district headquarters town about 56 km from Chennai on the Palar river and the GST Road, with a Vijayanagara-era fort and the large Kolavai lake.",
-     "Low market-town buildings, temple streets and growing apartment edges; paddy and scrub land begins at the edge.",
-     "The world data keeps only 55 buildings here (ring 3 keeps roads, not houses)."
+     {
+      "text": "The district headquarters town about 56 km from Chennai on the Palar river and the GST Road, with a Vijayanagara-era fort and the large Kolavai lake.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Chengalpattu",
+       "https://www.britannica.com/place/Chengalpattu"
+      ]
+     },
+     {
+      "text": "Low market-town buildings, temple streets and growing apartment edges; paddy and scrub land begins at the edge.",
+      "status": "unverified"
+     },
+     {
+      "text": "The world data keeps only 55 buildings here (ring 3 keeps roads, not houses).",
+      "status": "osm",
+      "source": [
+       "https://www.openstreetmap.org/copyright"
+      ]
+     }
     ]
    },
    "storeys": {
@@ -6401,9 +6894,26 @@
    "character": {
     "type": "rural-edge",
     "summary": [
-     "A lagoon-edge fishing town with a Dutch fort ruin (Fort Geldria, Dutch Coromandel capital), a Dutch cemetery and an old church.",
-     "The Pulicat lake is a shallow lagoon with a bird sanctuary (flamingos in the cold months) and a 50 m lighthouse tagged in OSM.",
-     "Tiny settlement: low tiled and sheet-roof houses between mangroves and casuarina."
+     {
+      "text": "A lagoon-edge fishing town with a Dutch fort ruin (Fort Geldria, Dutch Coromandel capital), a Dutch cemetery and an old church.",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Pulicat",
+       "https://www.wikipedia.com/wiki/History_of_Pulicat"
+      ]
+     },
+     {
+      "text": "The Pulicat lake is a shallow lagoon with a bird sanctuary (flamingos in the cold months).",
+      "status": "sourced",
+      "source": [
+       "https://en.wikipedia.org/wiki/Pulicat",
+       "https://www.wikipedia.com/wiki/History_of_Pulicat"
+      ]
+     },
+     {
+      "text": "Tiny settlement: low tiled and sheet-roof houses between mangroves and casuarina.",
+      "status": "unverified"
+     }
     ]
    },
    "storeys": {
@@ -6545,10 +7055,17 @@
    ],
    "street_life": [
     {
-     "text": "Fishermen with nets and boats, Flamingo Festival season, boating on the lagoon",
+     "text": "Boating on the lagoon is offered by the local fishing villages, and a Flamingo Festival is held around December to January",
      "status": "sourced",
-     "source": "https://en.wikipedia.org/wiki/Pulicat",
+     "source": [
+      "https://en.wikipedia.org/wiki/Pulicat",
+      "https://www.wikipedia.com/wiki/History_of_Pulicat"
+     ],
      "note": "festival timing differs between sources"
+    },
+    {
+     "text": "Fishermen with nets and boats work the lagoon",
+     "status": "unverified"
     }
    ],
    "signage": {
@@ -6629,6 +7146,11 @@
   {
    "url": "https://en.wikipedia.com/wiki/Madras_Museum",
    "title": "Government Museum, Chennai (Wikipedia)",
+   "licence": "CC BY-SA 4.0"
+  },
+  {
+   "url": "https://en.wikipedia.com/wiki/Marina_Beach",
+   "title": "Marina Beach (Wikipedia)",
    "licence": "CC BY-SA 4.0"
   },
   {
@@ -6729,6 +7251,11 @@
   {
    "url": "https://en.wikipedia.org/wiki/Thiruvanmiyur",
    "title": "Thiruvanmiyur (Wikipedia)",
+   "licence": "CC BY-SA 4.0"
+  },
+  {
+   "url": "https://en.wikipedia.org/wiki/Triplicane",
+   "title": "Triplicane (Wikipedia)",
    "licence": "CC BY-SA 4.0"
   },
   {
@@ -6864,6 +7391,11 @@
   {
    "url": "https://www.lonelyplanet.com/india/chennai-madras/attractions/marina-beach/a/poi-sig/460363/356488",
    "title": "Marina Beach (Lonely Planet)",
+   "licence": "guide, facts only"
+  },
+  {
+   "url": "https://www.lonelyplanet.com/india/tamil-nadu/chennai-madras/attractions/theosophical-society/a/poi-sig/460373/356488",
+   "title": "Theosophical Society (Lonely Planet)",
    "licence": "guide, facts only"
   },
   {
@@ -7042,8 +7574,18 @@
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
+   "url": "https://www.openstreetmap.org/relation/9149085",
+   "title": "OpenStreetMap object relation/9149085",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
    "url": "https://www.openstreetmap.org/way/103450655",
    "title": "OpenStreetMap object way/103450655",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
+   "url": "https://www.openstreetmap.org/way/1080629434",
+   "title": "OpenStreetMap object way/1080629434",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
@@ -7054,6 +7596,11 @@
   {
    "url": "https://www.openstreetmap.org/way/209513246",
    "title": "OpenStreetMap object way/209513246",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
+   "url": "https://www.openstreetmap.org/way/209535268",
+   "title": "OpenStreetMap object way/209535268",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
@@ -7072,8 +7619,18 @@
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
+   "url": "https://www.openstreetmap.org/way/24375417",
+   "title": "OpenStreetMap object way/24375417",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
    "url": "https://www.openstreetmap.org/way/29047216",
    "title": "OpenStreetMap object way/29047216",
+   "licence": "ODbL 1.0, © OpenStreetMap contributors"
+  },
+  {
+   "url": "https://www.openstreetmap.org/way/355724162",
+   "title": "OpenStreetMap object way/355724162",
    "licence": "ODbL 1.0, © OpenStreetMap contributors"
   },
   {
