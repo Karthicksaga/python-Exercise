@@ -15,6 +15,9 @@ lettering or real numbers (TD-18 of the Three.js game; brief §11). Decisions G-
 | `vehicles/coupe` | original sports coupé, 2 doors, 6 paints | 4.58 × 1.93 × 1.25 | 9,018 / 2,090 | 410 KB |
 | `vehicles/formula` | original open-wheel race car, 4 invented team-less liveries | 5.60 × 2.36 × 1.19 | 6,834 / 1,638 | 353 KB |
 | `vehicles/legacy/hatchback`, `motorbike`, `auto_rickshaw`, `ambulance`, `bus` | the Three.js game's, synced byte for byte by `tools/sync_from_threejs.py` (G-36); manifests by `port_road_vehicles.py` | as before | 10,460 / 3,050 · 7,616 / 2,262 · 16,382 / 12,306 · 14,576 / 3,900 · 12,370 / 5,328 | 3.3 MB |
+| `vehicles/auto_rickshaw`, `share_auto`, `goods_carrier` | Tamil Nadu three-wheelers and the mini goods carrier (see "Tamil Nadu road vehicles" below) | 2.69 × 1.50 × 1.70 · 3.43 × 1.69 × 1.92 · 3.78 × 1.90 × 1.95 | 5,586 / 2,040 · 4,898 / 1,690 · 5,596 / 1,272 | 1.0 MB |
+| `vehicles/hatchback`, `sedan`, `taxi`, `ambulance` | Indian small hatchback, compact sedan, Chennai taxi, high-roof van ambulance | 3.68 × 1.71 × 1.54 · 4.06 × 1.80 × 1.49 · 4.06 × 1.80 × 1.73 · 5.38 × 2.42 × 2.57 | 9,206 / 1,902 · 9,484 / 2,054 · 9,648 / 2,058 · 7,624 / 1,564 | 1.7 MB |
+| `vehicles/bus_city`, `bus_lowfloor`, `bus_intercity`, `bus_mofussil`, `bus_school` | Tamil Nadu buses: city high-floor, low-floor, state-transport intercity, private mofussil, school | 9.5 to 12.2 × 2.56 (3.22 with mirrors) × 3.1 to 3.6 | 9,844 / 2,816 / 308 · 8,940 / 2,486 / 308 · 9,656 / 2,852 / 308 · 10,620 / 3,240 / 308 · 9,146 / 2,608 / 308 | 3.2 MB |
 | `aircraft/helicopter` | light utility helicopter: 3-blade main rotor, tail rotor, skids, 5 seats | 12.8 (rotor) × 9.4 × 2.9 | 5,580 / 2,162 / 322 | 392 KB |
 | `aircraft/airliner` | small narrow-body twin, about 150 seats, invented airline colours | 37.4 × 34.6 × 11.8 | 7,704 / 2,664 / 556 | 595 KB |
 | `aircraft/light_aircraft` | high-wing four-seat single-engine | 8.5 × 11.1 × 2.8 | 6,470 / 1,886 / 340 | 394 KB |
@@ -38,6 +41,8 @@ figures (broad gauge 1,676 mm), and each manifest says so.
 | light aircraft | ≤ 10,000 | ≤ 2,500 | ≤ 400 | as the helicopter |
 | train coach | body ≤ 3,000 + bogies ≤ 400 each (with their wheelsets) | ≤ 600 | ≤ 120 | research note (trains) |
 | cab, loco, VB nose car | body ≤ 6,000 + bogies ≤ 400 each (600 for a three-axle Co-Co bogie) | ≤ 1,000 | ≤ 150 | research note |
+| auto, share auto, goods carrier, Indian cars, van ambulance | ≤ 12,000 | ≤ 3,000 | (none) | brief (G-92) |
+| bus | ≤ 15,000 | ≤ 3,500 | ≤ 600 | brief (G-92) |
 | ported road vehicles | the old game's measured counts (the auto is 16.4k / 12.3k, over the car budget) | | | `chennai-open-world/docs/vehicles.md` |
 
 Textures are 512 px, or 1,024 px for the airliner's livery. Vehicle LODs switch at 28 m. The
@@ -66,6 +71,107 @@ and trains at 60, 300 and 900 m (research note). The game should drive these wit
 
 LOD1 and LOD2 keep the light wrapped shell with the windows painted in the livery, in the same
 places as the LOD0 openings: both read one window list, so they line up.
+
+## Tamil Nadu road vehicles (agent/godot-tn-vehicles)
+
+Scripts in `tools/blender/vehicles/road/`: `tnkit.py` (shared parts on top of `vkit.py`: steel
+disc wheels with duals, plates, mirrors on stalks, round lamps, rounded-section lofts, the bus
+livery projection, manifests), `autos.py` (auto-rickshaw, share auto, goods carrier),
+`cars_in.py` (hatchback, sedan, taxi, ambulance; bodies by `cars.py`'s `car_body`) and
+`buses.py` (five buses). `build_all.sh` runs them after `cars.py`. They replace the Three.js
+hatchback, auto, ambulance and bus in `assets/vehicles/` (the old ones stay in `legacy/`).
+
+| Model | Built as | Riding and moving parts |
+|---|---|---|
+| `auto_rickshaw` | Chennai auto: yellow tub (paint), black canvas hood with a yellow band over the windscreen, rear-quarter curtains and a small rear window, the front cowl with two indicator pods on stalks, a dark vent and the yellow plate, the round headlamp on the front mudguard; black waist stripe; windscreen with frame and wiper; mirrors on stalks; fare meter (red digits) on the dash; driver's seat, three-seat rear bench, passengers' bar on the seat back, safety bar across the right-hand opening, chrome rear-quarter posts; engine and silencer under the back | `steering` (handlebar, column, fork, front mudguard and headlamp turn together about the column axis), `wheel_front`, `wheel_rear_left/right`; seats (driver, 3 bench), grips (handlebar ends, seat-back bar, side bar), feet, cargo (bench, rear shelf), `exit_driver`. Wheel positions, hip points, pose and handling are the Three.js auto's |
+| `share_auto` | six-seat share auto (Ape-style): full-width cab with a raked windscreen, cab roof and visor, twin round headlamps, a canvas hood on posts with rolled side curtains, two facing benches of three, rear step and handles | handlebar `steering`, three wheels, `seat_driver`, `seat_left_1..3`, `seat_right_1..3`, roof-rail and rear-step grips, `exit_driver`, `exit_rear` |
+| `goods_carrier` | mini goods carrier (Ace-style): cab over the front axle, rectangular headlamps, plain intake slot, two hinged doors, drop-side steel deck with ribs, headboard and guard, mud flaps | `door_r`, `door_l`, steering wheel on the right, four wheels, two seats, `cargo_deck` (size in the manifest) |
+| `hatchback` | small tall-boy hatchback (redesign; same handling): five doors, swept headlamp clusters, slim grille slot, black intake, vertical tail lamps, spoiler lip with stop lamp, black mirrors, 13-inch steel wheels with covers | as the premium cars: four doors, steering, four seats, `cargo_boot`, `exit_driver` |
+| `sedan` | compact (sub-4 m) sedan with a short boot, chrome grille bar, fog lamps, wide tail lamps, body-colour mirrors, alloy wheels | as the hatchback |
+| `taxi` | the sedan as a Chennai taxi: plain yellow roof board with a black band (no lettering), yellow plates, steel wheels; paints white, taxi yellow, silver | as the sedan |
+| `ambulance` | high-roof van ambulance (redesign; same wheels and handling): white with a red waist band, red and white beacon bar, amber rear warning lamps, frosted patient-compartment windows, stretcher and attendant's bench inside | `door_cab`, `door_cab_l`, `door_back_l/r` (110°), steering, driver, cab and attendant seats, `cargo_stretcher`, `cargo_clear`, `exit_rear` |
+| `bus_city` | classic high-floor city bus: front engine, driver on the right, front door ahead of the front axle and rear door ahead of the rear axle (two leaves each, three steps), window rows with pillars and two guard bars, split windscreen, slatted grille, twin round lamps, rabbit-ear mirrors, roof hatches | `door_front_a/b`, `door_rear_a/b`, `steering`, dual rear wheels (one node per side), driver, conductor (by the rear door) and every passenger seat (`seat_rNN_l1…r2`), ceiling-rail and door-stanchion grips, `standing_area`, kerb points `stand_door_*`, destination boards `dest_front`, `dest_side`, `dest_rear` |
+| `bus_lowfloor` | low-floor city bus: rear engine, one step, a wide middle door, deep windows, flat front with strip lamps | as above (`door_front_*`, `door_mid_*`) |
+| `bus_intercity` | state-transport-style mofussil bus: one front door, 2 + 2 seats, roof luggage rails, rear ladder | as above |
+| `bus_mofussil` | private mofussil bus: invented painted sweeps, sun and stars, chrome bumper and grille slats, a visor with marker lamps, air horns, chrome hubs | as above |
+| `bus_school` | school bus: golden yellow with a brown band, barred windows, an emergency door at the back | as above (no destination names) |
+
+Bus LOD2 (308 triangles) is the shell with glass, lamp and bumper blocks and plain wheel
+cylinders, no wheel nodes (`lod_max: 1` on the manifest's wheels); buses switch at 40, 250 and
+900 m. Destination boards are black panels with a lit amber line (`led_amber`); the game draws one
+place name per board, Tamil above English, from the manifest's `destinations` (real place names,
+no route numbers or operators). Fleet numbers are invented and painted on the front and rear only
+(the sides share the texture, so text there would read backwards on the left).
+
+### Rules followed (G-90 to G-93)
+- Original geometry by script at real proportions. No downloaded mesh is in the game; no
+  reference picture is in the repository, used as a texture or traced.
+- No make, badge, maker's name, grille shape copied from a make, no operator name (MTC, TNSTC,
+  SETC or any private operator), emblem, route number, government mark, real registration, red
+  cross or star of life. Plates are blank (yellow for commercial vehicles, white for private
+  cars); the game draws invented numbers.
+- Liveries follow real colour families with invented layouts: Chennai city bus cream with maroon
+  bands; low-floor white over red-orange; state-transport intercity green with yellow bands;
+  private mofussil white with bright sweeps; school bus golden yellow with the brown band; autos
+  yellow with a black hood; taxis plain with a yellow and black roof board. The tests check each
+  livery's sampled colours against named colour families (`texture_samples[].family`,
+  `paint_family`).
+
+### References (looked at, not shipped)
+Pictures were kept in a scratch folder outside the repository. Titles below name real makes
+and operators because that is what the pictures show; the models carry none of it.
+
+Seen (Wikimedia Commons photographs):
+
+| File | Author | Licence | Used for |
+|---|---|---|---|
+| [Maruti Suzuki Alto rear.jpg](https://commons.wikimedia.org/wiki/File:Maruti_Suzuki_Alto_rear.jpg) | V Malik | CC BY-SA 2.0 | small hatchback proportions, tail lamps, plate and bumper |
+| [Chennai mtc bus inside.jpg](https://commons.wikimedia.org/wiki/File:Chennai_mtc_bus_inside.jpg) | PlaneMad | CC BY-SA 3.0 | city bus seat rows, rails and stanchions |
+
+Seen (Sketchfab model thumbnails, as 3D shape references; no model downloaded):
+
+| Model | Author | Licence | Used for |
+|---|---|---|---|
+| [Auto Rickshaw](https://sketchfab.com/3d-models/auto-rickshaw-44776bcb34e04c1a8b9c18a70376304e) | rSquare | CC BY | Chennai auto: cowl, hood, yellow and black |
+| [Indian chennai auto rikshaw](https://sketchfab.com/3d-models/indian-chennai-auto-rikshaw-ea9ee5878ca640b783b26f38193584c8) | roystoncinemo | none listed (viewed only) | auto: black waist stripe, bench, mudguard |
+| [Low Poly Autorickshaw aka TukTuk](https://sketchfab.com/3d-models/low-poly-autorickshaw-aka-tuktuk-c7c87455ad014b3f9fc8c9fb2d164a61) | Nirmal.Justin | CC BY | auto proportions |
+| [tnstc old bus](https://sketchfab.com/3d-models/tnstc-old-bus-3cad9be97ed74e19b3ffd2926fde3cee) | Meshmill | CC BY | city/intercity front: split windscreen, grille, twin round lamps; cream and maroon family |
+| [Tamilnadu TNSTC Bus 2009-2014](https://sketchfab.com/3d-models/tamilnadu-tnstc-bus-2009-2014-e6841dcaa4dd4cf8ba62170539179c7a) | Car Simulator 2-Preview | CC BY | intercity green with yellow bands |
+| [Tamilnadu SETC Bus 2017-2026](https://sketchfab.com/3d-models/tamilnadu-setc-bus-2017-2026-2d6367ce1a894af3bf7359df94ef9f96) | Car Simulator 2-Preview | CC BY | long-distance body proportions |
+| [Balaji Bus 3d model](https://sketchfab.com/3d-models/balaji-bus-3d-model-57e04a7aac6b4a62983bdf87dfa99608) | Meshmill | CC BY | private mofussil: bright painted sides, decorated front (art invented, no names) |
+| [TOWN BUS tamilnadu](https://sketchfab.com/3d-models/town-bus-tamilnadu-aa77676b12364b16ab474828554556b5) | Selvam | none listed (viewed only) | town bus front |
+| [2008 Ashok Leyland Viking Bus](https://sketchfab.com/3d-models/2008-ashok-leyland-viking-bus-4daaa992332f43419f85783a120cea44), [Indian Bus](https://sketchfab.com/3d-models/indian-bus-67b7998f0f3341a8a96655f96adc1a77), [Indian Bus 6](https://sketchfab.com/3d-models/indian-bus-6-c1061c2c13a24930a2e170d02b545655) | Kevin studio Ltd; Parth; Car Simulator 2-Preview | CC BY | high-floor body, window rows and door layout |
+| [Indian School Bus 3D Model](https://sketchfab.com/3d-models/indian-school-bus-3d-model-5e51d8b9265546c9af5f67da7e866a2b) | surya3997 | none listed (viewed only) | school bus yellow with a brown band, barred windows |
+| [TATA ACE](https://sketchfab.com/3d-models/tata-ace-a7d929f5c0c74838984fcfb6641c4612) | rmihir560 | CC BY | goods carrier cab and deck proportions |
+| [Piaggio Ape C](https://sketchfab.com/3d-models/piaggio-ape-c-e1fc80456fd54065ac8b3c94ca063af3) | Stenz Lannoo | none listed (viewed only) | share-auto cab |
+| [Suzuki Swift Dzire](https://sketchfab.com/3d-models/suzuki-swift-dzire-885c8f08674f48d7a54706fee791402f), [Hyundai Santro Xing](https://sketchfab.com/3d-models/hyundai-santro-xing-36b682c730644263b395ff9ab9e6c249) | r34maxpro; Prasad_bhushi | CC BY | compact sedan and tall-boy hatchback proportions |
+| [2024 Maruti Suzuki Eeco](https://sketchfab.com/3d-models/2024-maruti-suzuki-eeco-6d1931e262534c96a096b2d18bbc54b9), [Indian Ambulance Vehicle](https://sketchfab.com/3d-models/indian-ambulance-vehicle-3d-model-blender-59b61734dcb54c2991e84e7d41e7d5e4) | BHP3D; Sanjeet Kotarya | CC BY; none listed (viewed only) | van ambulance proportions (its tricolour bands and lettering not used) |
+
+Found but not seen: the Commons image servers answered every download with HTTP 429 (rate
+limited) on 23 Nov 2026, so these photographs were identified, with their licences, but not
+looked at: MTC Chennai 56N.jpg and MTC Chennai 56.jpg (VtTN, CC BY-SA 3.0), MTC Bus 21G.JPG (VtTN,
+CC BY 3.0), Chennai MTC's ordinary fare bus.jpg (Aravind Sivaraj, CC BY-SA 3.0), MTC BUS.jpg
+(Kalidasslegend, CC0), Ashok Leyland Low Floor Bus.jpg (Rithish RK, CC BY-SA 4.0), TNSTC Bus
+Departing Central Trichy Aug22 A7C 02323.jpg and Pvt Bus MGR Bus Stand Tirunelveli Apr22 A7C
+01851.jpg (Timothy A. Gonsalves, CC BY-SA 4.0), A TNSTC Mofussil bus.jpg (Vishwa Sundar, CC BY-SA
+4.0), TN private bus.jpg (VtTN, CC BY-SA 3.0), Bus Bay at TVS Matriculation Higher Secondary
+School.JPG (Saravanan K, CC BY-SA 3.0), 2013 Bajaj RE auto rickshaw.jpg (Oleg Yunakov, CC BY-SA
+4.0), India Chennai riksha (16574373141).jpg (floriamo, CC BY-SA 2.0), Piaggio Ape 01.jpg (Huhu
+Uet, CC BY 3.0), Maruti Suzuki Dzire VXi VVT.JPG (Biswarup Ganguly, CC BY 3.0), Santro
+BlackANdYellowTaxis.jpg (AroundMumbai, CC BY-SA 3.0), Indian Ambulance.jpg (CC BY 2.0). The city
+bus colour family (cream with maroon) rests on the 3D references and the interior photograph;
+checking it against these photographs is the first follow-up.
+
+### Not done, or weak (Tamil Nadu vehicles)
+- Not compared with real photographs of current Chennai city buses (see above); the city and
+  low-floor colour families are the least certain.
+- Bus door leaves are a pair of hinged leaves, not a folding mechanism; no wheelchair ramp on the
+  low-floor bus. Interiors are seat rows, rails and a dash only.
+- The auto's cowl is smoother and blunter than the real pressed panel; the hood has no seams or
+  straps. The share auto's cab is simplified (no doors, a plain dash).
+- Car fronts are generic small-car faces; the hatchback reads a little long.
+- The motorbike is still the Three.js one (`legacy/motorbike`); it was not restyled.
+- Nothing has been seen on a phone.
 
 ## Frames and nodes
 

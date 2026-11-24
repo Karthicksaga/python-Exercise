@@ -399,6 +399,57 @@ The premium cars are faster and grippier than the hatchback (saloon 40 m/s, SUV 
 car 70). The aircraft have speeds and masses close to real types of their class. All of them are
 estimates for Phase 2 and Phase 6b tuning, not measurements, and the manifests say so.
 
+## Tamil Nadu road vehicles (G-90 to G-99, agent/godot-tn-vehicles)
+
+### G-90 Real vehicles as references only: look, model by script, never ship the picture
+Photographs (Wikimedia Commons) and 3D model thumbnails (Sketchfab) of real Tamil Nadu vehicles
+are looked at for proportions, part layout and colour families. They stay in a scratch folder,
+are listed with their licences in `docs/vehicles.md`, are never committed, used as textures or
+traced. The geometry is original, by script (`tools/blender/vehicles/road/`). No downloaded
+mesh is imported: the CC-BY models found are 2k to 1.6M faces, carry real makers' badges and
+operators' names, and would need the same rebuilding to reach the phone budget.
+
+### G-91 No marks: makes, operators, emblems, route numbers and registrations stay out
+No make, badge, maker's name or a make's grille shape; no operator name (MTC, TNSTC, SETC,
+private operators), emblem, route number or government mark; no red cross or star of life on
+the ambulance (protected or registered marks); plates blank (yellow for commercial vehicles,
+white for private cars, as in India) for the game to draw invented numbers. Fleet numbers are
+invented and painted on bus fronts and rears only. Destination boards carry real place names
+(Tamil first, English below), drawn by the game from the manifest.
+
+### G-92 Budgets: Tamil Nadu vehicles as cars, buses 15k / 3.5k / 600
+Autos, the share auto, the goods carrier, the Indian cars and the van ambulance use the car
+budget (12k / 3k); buses 15k / 3.5k / 600 with a third LOD (40, 250, 900 m). The legacy
+Three.js auto, ambulance and bus keep their measured counts by name (`LEGACY_BUDGETS`). All the
+new models land well under: autos 4.9k to 5.6k, cars 7.6k to 9.7k, buses 8.9k to 10.6k at LOD0.
+
+### G-93 Liveries: real colour families with invented layouts, checked by the tests
+Each bus has one 512 px painted livery; the sides share its upper part (u along the bus), the
+front and rear the lower part, so art reads the same on both sides and text appears only on the
+front and rear. Colour families: Chennai city bus cream with maroon bands; low-floor white over
+red-orange; state-transport intercity green with yellow bands; private mofussil white with
+bright invented sweeps; school bus golden yellow with the brown band; autos yellow with a
+black hood. `texture_samples[].family` and `paint_family` in the manifests name the family and
+`ModelChecks.in_family` checks hue, saturation and value ranges.
+
+### G-94 The redesigned hatchback, auto, ambulance and bus keep the old riding data
+`assets/vehicles/hatchback`, `auto_rickshaw` and `ambulance` take the Three.js models' places
+with the same handling numbers, and the auto and ambulance with the same wheel positions, hip
+points and pose, so Phase 2 can port the old riding and physics tests unchanged. The old models
+stay in `assets/vehicles/legacy/` (G-36). The city bus replaces the old bus with real Tamil Nadu
+proportions (axles ±2.75 m, 1.08 m floor) and the old handling numbers.
+
+### G-95 Bus anchors: every seat, the conductor, rails, kerb points and boards are nodes
+Buses carry `seat_driver`, `seat_conductor` and one `seat_rNN_<side><n>` per passenger seat,
+`grip_rail_*` on the ceiling rails and `grip_door_*` on the stanchions, `standing_area`, and
+kerb points `stand_door_*` where passengers wait and alight. Exit and kerb points are listed under
+`exits` and checked to lie on the ground beside the vehicle. Destination boards are separate
+nodes (`dest_front`, `dest_side`, `dest_rear`) with size and facing in the manifest.
+
+### G-96 Handlebar steering turns the fork and mudguard too
+On the autos the `steering` node holds the handlebar, column, fork, front mudguard and (on the Chennai auto) the headlamp, turning
+about the column axis in the manifest; the game also turns `wheel_front` about Y. Grips are at the
+handlebar ends (the Three.js auto's hand points).
 ## Player: on foot, figure, camera, touch controls (G-60 to G-69)
 
 ## G-60: The player on foot is a kinematic cylinder at the fixed step (TD-6)

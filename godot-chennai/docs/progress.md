@@ -123,3 +123,20 @@ Not done / weak: see `handoff.md` "Data".
 - [x] Review renders (Compatibility renderer, xvfb) and board side-by-side sheets looked at.
 - [ ] Props (bags, helmet, baskets, stick, bicycle, cricket bat), the player model.
 - [ ] The game's use of them (pedestrians, drivers, crowds) is phase 3.
+
+## Tamil Nadu road vehicles (agent/godot-tn-vehicles, 23-24 Nov 2026)
+- [x] Chennai auto-rickshaw redesigned (5.5k / 2.0k triangles, under the car budget; same wheels,
+  hip points and handling as the Three.js auto), share auto (six seats), mini goods carrier.
+- [x] Indian cars: small hatchback (redesign, same handling), compact sedan, Chennai taxi (plain
+  roof board, yellow plates); six common Indian paints each.
+- [x] Van ambulance redesigned (plain white with a red band, beacons, no emblem or name).
+- [x] Buses with three LODs: city high-floor (cream and maroon family), low-floor, state-transport
+  intercity (green and yellow), private mofussil (invented bright art), school bus (yellow, brown
+  band); every seat, the conductor, grab rails, kerb points and destination boards as nodes.
+- [x] Model checks extended (budgets per kind with legacy counts by name, exit points on the
+  ground, livery and paint colour families): 3,226 checks on 34 models, all passing
+  (`./run_tests.sh --filter=vehicle_models`).
+- [x] Review screenshots (Compatibility renderer, 915×412 and 1830×824) and side-by-side
+  comparisons with the references, not committed.
+- [ ] Compared with photographs of current Chennai buses (Commons downloads were rate limited).
+- [ ] Used in the game (Phase 2 vehicles, Phase 3 traffic); seen on a phone.

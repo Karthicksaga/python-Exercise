@@ -228,3 +228,16 @@ renderer (only the Compatibility renderer could be judged here).
 - 70 people now (owner's answers in `docs/characters.md`); the cricket boy's `play` role means
   safe play areas only.
 
+## Tamil Nadu road vehicles (agent/godot-tn-vehicles)
+State: 12 models in `assets/vehicles/` (autos, cars, ambulance, five buses), replacing the
+Three.js hatchback, auto, ambulance and bus (those stay in `legacy/`). Details, references and
+rules: `docs/vehicles.md` "Tamil Nadu road vehicles"; decisions G-90 to G-96.
+
+To continue:
+- Rebuild: `tools/blender/vehicles/build_all.sh` runs `road/autos.py`, `road/cars_in.py` and
+  `road/buses.py` after `cars.py` (they import its body method). One script:
+  `blender -b --factory-startup --python godot-chennai/tools/blender/vehicles/road/buses.py -- --only bus_city`.
+- Check: `./run_tests.sh --filter=vehicle_models`.
+- First follow-ups: look at photographs of current Chennai city and low-floor buses and correct
+  their colour families if needed (the Commons downloads were rate limited, G-90); restyle the
+  legacy motorbike; draw destination names on the `dest_*` nodes in Phase 3.
