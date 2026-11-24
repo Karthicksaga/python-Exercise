@@ -1,0 +1,4 @@
+{
+ "default": {"walls": ["#F2E3C6"], "roofs": ["#9A9690"], "roof_types": {"flat": 1.0}, "storeys": null},
+ "test_pete": {"walls": ["#112233", "#445566"], "roofs": ["#778899"], "roof_types": {"dome": 0.5, "flat": 0.5}, "storeys": {"1": 0.5, "3": 0.5}}
+}

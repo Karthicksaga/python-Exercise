@@ -63,6 +63,7 @@ world/
   tiles/<tc>_<tr>/roads.bin        road pieces of the tile ("COWR" v2)
   tiles/<tc>_<tr>/areas.bin        whole areas of the tile, simplified ("COWA"), for map/far layer
   tiles/<tc>_<tr>/infra.bin        format 2.1 only: road heights, waterways, street spots ("COWI", §3.7)
+  tiles/<tc>_<tr>/detail.bin       format 2.2 only: building colours/parts, street objects, barriers, zones, sign categories ("COWD", §3.8)
 ```
 
 A reader loads `world.json`, then the tiles around the player (3 × 3 tiles covers 10 km in every
@@ -286,6 +287,54 @@ road through the node; none on decks. Rule spots (invented, flag 0): a zebra on 
 junction nearest a mapped traffic signal (within 25 m), set back half the widest road plus 2.5 m;
 a speed breaker 14 m from the main-road end of 40 % of residential, unclassified and living
 streets longer than 60 m (by a stable hash of the road id).
+
+### 3.8 `detail.bin` (format 2.2, decisions G-190…G-193)
+
+Added on 24 Nov 2026, the same way as `infra.bin`: one file per tile, `world.json` `minor` 2 and
+a `detail` key `{file, categories, note}`; every 2.0 and 2.1 file is byte for byte unchanged
+(`diff -r` of a rebuild). 0.6 MB for the 47 tiles. Reference implementation:
+`tools/geo/chennai_geo/detail.py` (tests `tests/test_detail.py`); GDScript reader `DetailTile`.
+Coverage per feature and tile: `world/DETAIL.md` (written with the world) and `docs/osm-detail.md`.
+
+```
+u32 magic 0x44574F43 ("COWD"), u16 format 2, u16 minor 2, i16 tc, i16 tr, u16 nSections
+section × nSections: u32 tag (four letters, little-endian), u32 length, length bytes (unknown tags are skipped)
+
+"BLDG"  u32 count; × { u32 id (the chunk record's game id), u8 flags, u8 material (MATERIALS),
+        u8 roofMaterial (ROOF_MATERIALS), u8 category (sign category id, 0 none),
+        u8 r, g, b wall, u8 r, g, b roof }
+        flags: 1 outline of its parts (draw the parts, not this), 2 wall colour mapped, 4 roof colour mapped.
+        Only buildings with something mapped; the tile of the building's centroid chunk.
+"PART"  u32 count; × { u32 gameId (0x20000000 | way id), u8 dataset, u64 sourceId, u8 flags (8 height mapped,
+        2 wall colour, 4 roof colour, 16 from a relation), u16 height × 10, u16 minHeight × 10, u8 floors,
+        u8 roofShape (ROOF_SHAPES), u8 roofLevels, u8 material, u8 roofMaterial, rgb wall, rgb roof,
+        u8 nRings, nRings × ring (as roads.bin: u16 n, i32 x0, i32 z0, (n-1) × {i16 dx, i16 dz}) }
+        `building:part` polygons. Height: `height`, else `building:levels` x 3.1 + 0.9, else the host's
+        (estimated). A part under a landmark footprint is left out.
+"OBJ_"  u32 count; × { u8 kind (OBJ_KINDS), u8 flags (1 mapped), i32 x × 20, i32 z × 20 }
+"LINE"  u32 count; × { u8 kind (LINE_KINDS), u8 flags (1 height mapped, 2 closed), u16 height × 100 (0 = not
+        mapped), ring }  cut at tile edges
+"ZONE"  u32 count; × { u8 kind (ZONE_KINDS), u8 sport (SPORTS), u8 dataset, u64 sourceId, ring }
+"SIGN"  u32 count; × { u8 category, u8 flags (1 node, 2 area, 4 public name), i32 x × 20, i32 z × 20,
+        [flags & 4: u8 len + name:ta UTF-8, u8 len + name:en UTF-8] }
+```
+
+| Table | Values (index order, append only) |
+|---|---|
+| OBJ_KINDS | bus_platform, bench, waste_basket, drinking_water, post_box, toilets, street_lamp, power_pole, power_tower, bollard, gate |
+| LINE_KINDS | wall, fence, hedge, retaining_wall, kerb, jersey_barrier, tree_row, platform, guard_rail, bus_platform |
+| ZONE_KINDS | pitch, playground, swimming_pool, track, allotments, platform, bus_platform |
+| SPORTS | (none), football, cricket, basketball, tennis, volleyball, badminton, kabaddi, athletics, hockey, other |
+| MATERIALS | (none), brick, concrete, stone, plaster, glass, metal, wood, other |
+| ROOF_MATERIALS | (none), tiles, metal, concrete, glass, thatch, other |
+
+**Sign categories** are in one data file, `assets/city/sign_categories.json` (id 1..47, Tamil word,
+English word, board colours, the OSM tags that map to it; append only), read by `detail.py` and by
+the game, which bakes the sign atlas from it. A shop, amenity, office or tourism node or area, and a
+building with such a tag, becomes a category; the OSM `name` is never stored. Only public places
+(a hospital, school, temple, station, police station, library, post office…) keep `name:ta` and
+`name:en`, for a name plate. Mapped bus stops stay in `tile.json busStops`; `bus_platform` adds the
+`public_transport=platform` nodes.
 
 ## 4. Ids and provenance
 

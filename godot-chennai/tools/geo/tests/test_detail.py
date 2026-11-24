@@ -132,7 +132,7 @@ def test_objects_lines_zones(built) -> None:
         assert kinds[k] == 1, k
     lines = {li.kind: li for li in d.lines}
     assert lines["wall"].height == 2.4 and lines["hedge"].height == 0.0 and "tree_row" in lines
-    assert any(li.kind == "platform" for li in d.lines)  # the open platform way
+    assert any(li.kind == "platform" for li in d.lines)  # the open railway platform way
     zones = {z.kind: z for z in d.zones}
     assert zones["pitch"].sport == "cricket" and "swimming_pool" in zones and "platform" in zones
 
@@ -186,8 +186,8 @@ def test_unknown_sections_are_skipped_and_trailing_bytes_fail() -> None:
 
 def test_enum_tables_are_pinned() -> None:
     assert OBJ_KINDS == ["bus_platform", "bench", "waste_basket", "drinking_water", "post_box", "toilets", "street_lamp", "power_pole", "power_tower", "bollard", "gate"]
-    assert LINE_KINDS == ["wall", "fence", "hedge", "retaining_wall", "kerb", "jersey_barrier", "tree_row", "platform", "guard_rail"]
-    assert ZONE_KINDS == ["pitch", "playground", "swimming_pool", "track", "allotments", "platform"]
+    assert LINE_KINDS == ["wall", "fence", "hedge", "retaining_wall", "kerb", "jersey_barrier", "tree_row", "platform", "guard_rail", "bus_platform"]
+    assert ZONE_KINDS == ["pitch", "playground", "swimming_pool", "track", "allotments", "platform", "bus_platform"]
     assert detail.MATERIALS[:3] == ["", "brick", "concrete"]
 
 

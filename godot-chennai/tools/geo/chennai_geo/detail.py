@@ -49,8 +49,8 @@ CATEGORIES_FILE = Path(__file__).resolve().parents[3] / "assets" / "city" / "sig
 
 # Enumerations (append only; docs/world-format.md 3.8 lists them).
 OBJ_KINDS = ["bus_platform", "bench", "waste_basket", "drinking_water", "post_box", "toilets", "street_lamp", "power_pole", "power_tower", "bollard", "gate"]
-LINE_KINDS = ["wall", "fence", "hedge", "retaining_wall", "kerb", "jersey_barrier", "tree_row", "platform", "guard_rail"]
-ZONE_KINDS = ["pitch", "playground", "swimming_pool", "track", "allotments", "platform"]
+LINE_KINDS = ["wall", "fence", "hedge", "retaining_wall", "kerb", "jersey_barrier", "tree_row", "platform", "guard_rail", "bus_platform"]
+ZONE_KINDS = ["pitch", "playground", "swimming_pool", "track", "allotments", "platform", "bus_platform"]
 SPORTS = ["", "football", "cricket", "basketball", "tennis", "volleyball", "badminton", "kabaddi", "athletics", "hockey", "other"]
 MATERIALS = ["", "brick", "concrete", "stone", "plaster", "glass", "metal", "wood", "other"]
 ROOF_MATERIALS = ["", "tiles", "metal", "concrete", "glass", "thatch", "other"]
@@ -235,8 +235,14 @@ def line_kind(tags: Tags) -> str | None:
     if tags.get("natural") == "tree_row":
         return "tree_row"
     if tags.get("railway") == "platform" or tags.get("public_transport") == "platform":
-        return "platform"
+        return _platform_kind(tags)
     return None
+
+
+def _platform_kind(tags: Tags) -> str:
+    """A railway platform (raised, with an edge line) or a bus platform (kerb height)."""
+    rail = tags.get("railway") == "platform" or tags.get("train") == "yes" or tags.get("subway") == "yes" or tags.get("light_rail") == "yes"
+    return "platform" if rail else "bus_platform"
 
 
 def zone_kind(tags: Tags) -> str | None:
@@ -245,7 +251,7 @@ def zone_kind(tags: Tags) -> str | None:
     if tags.get("landuse") == "allotments":
         return "allotments"
     if tags.get("railway") == "platform" or tags.get("public_transport") == "platform":
-        return "platform"
+        return _platform_kind(tags)
     return None
 
 
@@ -494,7 +500,7 @@ def build_detail(f: OsmFeatures, buildings: list[Building], playable: Any, under
         mapped = 0.2 <= h <= 30
         closed = line.points[0] == line.points[-1] and len(line.points) > 3
         pts = line.points[:-1] if closed else line.points
-        if kind == "platform" and closed:
+        if kind in ("platform", "bus_platform") and closed:
             continue  # a closed platform is a zone
         if len(pts) < 2:
             continue

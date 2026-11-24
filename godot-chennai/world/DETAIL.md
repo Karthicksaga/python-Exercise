@@ -46,8 +46,9 @@ Mapped bus stops (`highway=bus_stop`) are in `tile.json` `busStops` as before (s
 | kerb | 120 | 26.0 | 0 |
 | jersey_barrier | 157 | 31.9 | 3 |
 | tree_row | 130 | 51.7 | 0 |
-| platform | 24 | 6.8 | 0 |
+| platform | 19 | 6.6 | 0 |
 | guard_rail | 8 | 2.6 | 0 |
+| bus_platform | 5 | 0.2 | 0 |
 
 A drawn height of 0 in the file means not mapped: walls 1.9 m, fences 1.5 m, hedges 1.2 m, retaining walls 1.6 m, kerbs 0.15 m, jersey barriers 0.8 m (estimated).
 
@@ -60,7 +61,8 @@ A drawn height of 0 in the file means not mapped: walls 1.9 m, fences 1.5 m, hed
 | swimming_pool | 360 |
 | track | 14 |
 | allotments | 0 |
-| platform | 145 |
+| platform | 112 |
+| bus_platform | 33 |
 
 Pitches with the sport mapped: 297; without (drawn as a plain marked field, estimated): 55.
 

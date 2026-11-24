@@ -141,7 +141,7 @@ class _Handler(osmium.SimpleHandler):
         zk = zone_kind(tags)
         if closed and len(line) > 3 and (zk or ("building" not in tags and category_of(tags))) and "building:part" not in tags:
             self.f.detail_polys.append(OsmPolygon(wid, tags, line[:-1]))
-        elif lk and not (closed and lk == "platform"):
+        elif lk and not (closed and lk in ("platform", "bus_platform")):
             self.f.detail_lines.append(OsmLine(wid, tags, line))
 
     def area(self, a: osmium.osm.Area) -> None:

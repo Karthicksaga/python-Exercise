@@ -130,3 +130,19 @@ static func _fallback() -> Palette:
 	p.roof_names = [&"flat", &"hipped", &"gabled", &"pyramidal"]
 	p.roof_weights = PackedFloat32Array([0.66, 0.3, 0.03, 0.01])
 	return p
+
+
+## The district points of the whole world as the `DistrictIndex` wants them.
+static func districts_of(world: WorldSource) -> Array:
+	var out: Array = []
+	var regional := world as RegionalWorldSource
+	if regional != null:
+		for t: Vector2i in regional.tiles:
+			for d in regional.tiles[t].districts:
+				out.append({"name": d.name, "kind": d.kind, "x": d.position.x, "z": d.position.y})
+	else:
+		var index := world.index_at(world.get_bounds().get_center())
+		if index != null:
+			for d in index.districts:
+				out.append({"name": d.name, "kind": d.kind, "x": d.position.x, "z": d.position.y})
+	return out

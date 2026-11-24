@@ -25,13 +25,16 @@ const PLASTER := Vector2((TILE_WINDOW + 0.04) / FACADE_TILES, 0.14)
 const ROOF_PX := 128
 const ROOF_PLAIN := Vector2(8.5 / 128.0, 35.5 / 128.0)
 
-## Kit atlas (shop signs, shutters, interiors, railing), `kitAtlas.ts`.
+## Kit atlas (shop signs, shutters, interiors, railing), `kitAtlas.ts`, enlarged for the sign
+## categories (G-192): 2 columns x 24 rows of category signs 512 x 88 px, then the cells.
 const KIT_PX := 1024
-const SIGN_ROW := 112
-const WIDE_ROWS := 4
-const NARROW_ROWS := 3
-const CELL_Y := SIGN_ROW * (WIDE_ROWS + NARROW_ROWS)
-const CELL_H := KIT_PX - CELL_Y
+const KIT_H := 2368
+const SIGN_W := 512
+const SIGN_ROW := 88
+const SIGN_ROWS := 24
+const SIGN_CAPACITY := 48
+const CELL_Y := SIGN_ROW * SIGN_ROWS
+const CELL_H := KIT_H - CELL_Y
 const KIT_SHUTTER := Rect2i(0, CELL_Y, 256, CELL_H)
 const KIT_LIT := Rect2i(256, CELL_Y, 256, CELL_H)
 const KIT_DARK := Rect2i(512, CELL_Y, 256, CELL_H)
@@ -51,16 +54,12 @@ const GROUND_TILES := 8
 const GROUND_TILE_PX := 256
 
 
-## Pixel rectangle of a shop sign in the kit atlas.
-static func sign_rect(index: int) -> Rect2i:
-	var sign: Dictionary = ShopSigns.SIGNS[index]
-	if sign["wide"]:
-		var k := ShopSigns.wide().find(index)
-		return Rect2i(0, k * SIGN_ROW, KIT_PX, SIGN_ROW)
-	var n := ShopSigns.narrow().find(index)
-	return Rect2i((n % 2) * (KIT_PX / 2), (WIDE_ROWS + n / 2) * SIGN_ROW, KIT_PX / 2, SIGN_ROW)
+## Pixel rectangle of the sign of a category id (1-based).
+static func sign_rect(category: int) -> Rect2i:
+	var i := clampi(category - 1, 0, SIGN_CAPACITY - 1)
+	return Rect2i((i % 2) * SIGN_W, (i / 2) * SIGN_ROW, SIGN_W, SIGN_ROW)
 
 
 ## UVs of a kit rectangle inset 2 px against bleeding: x = u0, y = u1, z = v top, w = v bottom.
 static func kit_uv(r: Rect2i) -> Vector4:
-	return Vector4((r.position.x + 2.0) / KIT_PX, (r.end.x - 2.0) / KIT_PX, (r.position.y + 2.0) / KIT_PX, (r.end.y - 2.0) / KIT_PX)
+	return Vector4((r.position.x + 2.0) / KIT_PX, (r.end.x - 2.0) / KIT_PX, (r.position.y + 2.0) / KIT_H, (r.end.y - 2.0) / KIT_H)
