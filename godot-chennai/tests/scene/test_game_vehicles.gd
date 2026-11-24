@@ -13,12 +13,16 @@ const SETTINGS := "user://test_game_vehicles_save.json"
 var _old_hour: float
 var _old_weather: String
 var _old_sound: String
+var _old_origin: Vector2
 
 
 func before_each() -> void:
 	_old_hour = GameLoop.clock.hour
 	_old_weather = Weather.settings_path
 	_old_sound = Sound.settings_path
+	_old_origin = Vector2(WorldOrigin.origin_x, WorldOrigin.origin_z)
+	# The clock is a shared autoload that other tests advance: a new game starts at golden hour.
+	GameLoop.clock.hour = GameClock.GOLDEN_HOUR
 	Weather.settings_path = SETTINGS
 	Sound.settings_path = SETTINGS
 	Weather.set_raining(false, true, false)
@@ -26,6 +30,7 @@ func before_each() -> void:
 
 func _restore() -> void:
 	tree.paused = false
+	WorldOrigin.recentre(_old_origin.x, _old_origin.y)
 	GameLoop.clock.hour = _old_hour
 	Weather.set_raining(false, true, false)
 	Weather.settings_path = _old_weather
@@ -209,8 +214,13 @@ func test_parked_vehicles_follow_the_chunk_ring_and_origin() -> bool:
 	assert_true(await wait_until(func() -> bool: return spot.state == &"ready", 60 * 60), "T. Nagar's spot found its kerb")
 	# Step 25 m along the street from the spot, so the player does not stand on it.
 	main.rig.place(WorldOrigin.to_scene(spot.point + Vector2(-sin(spot.yaw), -cos(spot.yaw)) * 25.0, 0.5), spot.yaw)
-	var arrived := await wait_until(func() -> bool: return parked.at_spot(&"car-tnagar") != null and parked.at_spot(&"taxi-t-nagar") != null, 60 * 120)
-	assert_true(arrived, "T. Nagar's car and taxi are parked once its streets load (%s)" % [parked.stats])
+	var arrived := await wait_until(func() -> bool: return parked.at_spot(&"car-tnagar") != null, 60 * 120)
+	assert_true(arrived, "T. Nagar's car is parked once its streets load (%s)" % [parked.stats])
+	# The taxi's spot is further along (outside the spawn reach from here): walk there.
+	var taxi_spot := parked.spot(&"taxi-t-nagar")
+	assert_true(await wait_until(func() -> bool: return taxi_spot.state == &"ready", 60 * 60), "the taxi's spot found its kerb")
+	main.rig.place(WorldOrigin.to_scene(taxi_spot.point + Vector2(-sin(taxi_spot.yaw), -cos(taxi_spot.yaw)) * 25.0, 0.5), taxi_spot.yaw)
+	assert_true(await wait_until(func() -> bool: return parked.at_spot(&"taxi-t-nagar") != null, 60 * 120), "the taxi is parked when the player arrives (%s)" % [parked.stats])
 	for id: StringName in parked.vehicles:
 		var v := parked.at_spot(id)
 		if v == null:
