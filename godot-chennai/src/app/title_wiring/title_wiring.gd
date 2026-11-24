@@ -42,7 +42,7 @@ var life: CityLife = null
 var title: TitleMenu = null
 ## True: the camera tours a faraway spot. False: it drifts over the player.
 var tour: bool = DisplayServer.get_name() != "headless"
-var reduced_motion: bool = DisplayServer.accessibility_should_reduce_animation()
+var reduced_motion: bool = TitleMenu.platform_reduces_motion()
 ## Forced storm (lightning while it rains) or not; set by `prepare` from the seed otherwise.
 var storm: bool = false
 var spot: TitleSpots.Spot = null

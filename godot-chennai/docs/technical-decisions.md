@@ -1247,7 +1247,22 @@ clear or rain (G-87), "storm" is a title decoration and the chip says "Storm" on
 and why: splash rings and ripples on the road (at 25 m up they are a pixel or two and need a
 road-height decal pass), the drifting mist bands (the rain already thickens the haze and the
 road shine in `Lighting`), thunder and rain sound (sound is suspended on the title by design),
-the radial vignette. Reduced motion (`DisplayServer.accessibility_should_reduce_animation()`, on
-the title menu and the wiring, settable before they enter the tree): no slide, nudge, glow pulse,
+the radial vignette. Reduced motion (`DisplayServer.accessibility_should_reduce_animation() == 1`: Godot
+answers -1 when a platform cannot say, which must not count as on; read by the title menu and
+the wiring, settable before they enter the tree): no slide, nudge, glow pulse,
 camera drift or lightning; the chip says Rain. Nothing runs while loading: the wiring's `_process`
 is off until the title is shown.
+
+## G-166: The loading screen is restyled like the title
+`LoadingScreen` keeps its contract (real steps from `Main.STEPS` in order, `begin_step` / `finish_step` /
+`fail`, a frame between steps, TRY AGAIN and CLOSE, no percentage, nothing animated, no `_process`, no
+fade over the first frames) and takes the title's look: the dark backdrop with one faint warm
+gradient quad, சென்னை over CHENNAI over a spaced OPEN WORLD (the title's fonts), and on the right a
+row per step with a mark (waiting: hollow ring, current: amber ring, done: filled amber, failed:
+red), the English name and, where listed, the Tamil beneath. A thin bar moves by one share only in
+`finish_step`. One tip (`TIPS`: public facts and control hints) changes only in `begin_step`. If a step
+runs long `Main`'s existing 5 s heartbeat calls `show_slow(step, seconds)`: one dim line, no timer in
+the screen. The screen is two columns so the failure (text and two 48-unit buttons) fits at 412 high.
+Tamil lines (`LoadingScreen.TAMIL`): "சென்னை வரைபடத்தைப் படிக்கிறது", "தெருக்களைப் படிக்கிறது", "உங்களைச்
+சுற்றியுள்ள தெருக்களை உருவாக்குகிறது", "வாகனங்களை நிறுத்துகிறது" were written by the model and **need
+native review** before release; a step without an entry shows English alone.

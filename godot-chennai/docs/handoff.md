@@ -505,3 +505,9 @@ its own). No splash rings or ripples, no mist bands, no radial vignette, no thun
 to load after a tour (a loading screen of one step); NEW GAME has no confirmation (as before).
 Screenshots of the title at the three spots show the existing renderer's look, not a design pass
 on the world.
+
+**Loading screen (G-166).** Restyled with the title: `src/ui/loading_screen/loading_screen.gd`, tests
+`tests/scene/test_loading_screen.gd` and the loading cases in `test_ui_layout.gd`, screenshots with
+`tests/tools/loading_shots.gd -- --state=mid|failed|slow`. Tamil step lines need native review
+(listed in `LoadingScreen.TAMIL`). Not seen on a phone; it adds no animation, so the Adreno 613
+failure of the old animated screen should not return, but that is untested there.

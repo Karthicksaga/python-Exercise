@@ -144,6 +144,7 @@ func _background(i: int, work: Callable) -> String:
 		if Time.get_ticks_msec() - beat >= 5000:
 			beat = Time.get_ticks_msec()
 			print("[boot] step %d still running after %d s" % [i + 1, roundi((beat - started) / 1000.0)])
+			loading.show_slow(i, roundi((beat - started) / 1000.0))
 	var result: Variant = task.result()
 	if typeof(result) != TYPE_STRING:
 		return "Step %d stopped with an error (see the log)." % (i + 1)

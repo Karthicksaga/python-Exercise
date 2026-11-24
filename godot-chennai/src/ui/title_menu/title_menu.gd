@@ -38,7 +38,7 @@ const CHIP_DELAY := 0.9
 
 ## The platform's reduced-motion flag (read when the menu is made); tests and a settings screen
 ## may set it before the menu enters the tree.
-var reduced_motion: bool = DisplayServer.accessibility_should_reduce_animation()
+var reduced_motion: bool = platform_reduces_motion()
 var page: StringName = PAGE_MENU
 
 var _frame: VBoxContainer
@@ -106,6 +106,12 @@ func _ready() -> void:
 	_fit()
 	set_save({})
 	show_menu()
+
+
+## The platform's reduced-motion preference: Godot answers 1 (on), 0 (off) or -1 (it cannot say, as
+## on headless and many Linux desktops), and only 1 turns the motion off.
+static func platform_reduces_motion() -> bool:
+	return DisplayServer.accessibility_should_reduce_animation() == 1
 
 
 ## Desktop and Android apps can quit; a web page cannot.
