@@ -191,3 +191,5 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Budget at the densest views (Compatibility, all passes) | Met | spawn (Anna Nagar) 46 draw calls / 237k primitives; T. Nagar (Sir Thyagaraya Road) 39 / 157k; Anna Salai 30 / 104k; Marina 5 / 0.1k |
 | Screenshots at 915×412 and 1830×824: spawn, T. Nagar, Marina, Anna Salai | Done | `tests/tools/city_shot.gd` into a scratch folder (not committed) |
 | Day lighting | Minimal fallback only | a sun, sky, ambient colour and depth haze in `city_world.tscn` for the environment work to replace |
+
+| Integration (G-110…G-115): parked vehicles in the city, board / drive / exit with doors, crash ejection, day/night and weather in the game, pause menu with Back routing | Done on desktop (headless tests and Compatibility screenshots), not on a phone | `tests/scene/test_game_vehicles.gd`, `test_boot.gd` |

@@ -61,6 +61,9 @@ func _init(save_path: String = SaveStore.DEFAULT_PATH) -> void:
 static func for_main(main: Node) -> MissionsLayer:
 	var layer := MissionsLayer.new()
 	layer._main = main
+	# In the game `ParkedVehicles` (PlayWiring, G-110) parks the content's vehicles; this layer finds
+	# them through the vehicle group, so it must not spawn a second set.
+	layer.spawn_parking = false
 	return layer
 
 

@@ -377,3 +377,11 @@ Decisions G-50…G-59. Tests: `tests/unit/test_city_meshes.gd`, `test_city_layou
   and boarding belong to Integration: `MissionsLayer` spawns the content's parked vehicles itself
   (`spawn_parking`) and must be switched off if Integration parks them. Train stages (18-19) need
   the rail/train rider (not in this phase): see `by_train`.
+
+## Integration (agent/godot-integration), 24 Nov 2026
+Parked vehicles (`src/app/parked_vehicles/`), `PlayWiring` (driving, sounds, environment, parking),
+`EnvironmentWiring` (clock and weather into the lights and materials), the pause menu
+(`src/ui/pause_menu/`) and Back routing in `Main`. Decisions G-110…G-115. Tests: `test_game_vehicles`
+(board, drive 20 m, exit, bike ejection, day/night/rain, pause, chunk ring and origin shift).
+Open: the debug FPS badge sits under the pause panel's corner at 915x412; vehicles' headlamps do not
+light the road at night; screenshots are software-GL only (no phone run).

@@ -13,6 +13,8 @@ const RANGE := 15.0
 const HEAD_HEIGHT := 7.5
 
 var lamps: PackedVector3Array = PackedVector3Array()
+## Height of the lamp heads above the lamp points (the city's poles carry theirs higher).
+var head_height: float = HEAD_HEIGHT
 var night: float = 0.0
 var lights: Array[OmniLight3D] = []
 
@@ -75,7 +77,7 @@ func set_lamps(points: PackedVector3Array) -> void:
 	if _poles != null:
 		_poles.multimesh.instance_count = points.size()
 	for i in points.size():
-		_heads.multimesh.set_instance_transform(i, Transform3D(Basis(), points[i] + Vector3(0, HEAD_HEIGHT, 0)))
+		_heads.multimesh.set_instance_transform(i, Transform3D(Basis(), points[i] + Vector3(0, head_height, 0)))
 		if _poles != null:
 			_poles.multimesh.set_instance_transform(i, Transform3D(Basis(), points[i] + Vector3(0, HEAD_HEIGHT * 0.5, 0)))
 	_pick_timer = 0.0
@@ -103,7 +105,7 @@ func _pick(from: Vector3) -> void:
 	for k in lights.size():
 		var light := lights[k]
 		if k < order.size():
-			light.position = lamps[order[k]] + Vector3(0, HEAD_HEIGHT - 0.3, 0)
+			light.position = lamps[order[k]] + Vector3(0, head_height - 0.3, 0)
 			light.set_meta(&"lamp", order[k])
 		elif light.has_meta(&"lamp"):
 			light.remove_meta(&"lamp")
