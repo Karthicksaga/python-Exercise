@@ -9,13 +9,15 @@ from typing import Any
 
 from shapely.geometry import Polygon
 
-from . import codec_v1, codec_v2
+from . import codec_v1, codec_v2, infra
 from .codec_v2 import ChunkV2, StringTable
 from .geometry import Bounds, centroid
 from .model import DATASETS, Area
 from .projection import ANNA_NAGAR_ORIGIN, EARTH_RADIUS
 from .regions import CHUNK_SIZE, RINGS, TILE_CHUNKS, TILE_SIZE, Grid, tile_of
 from .world import World, named_poi
+
+INFRA_FILE = "infra.bin"
 
 ATTRIBUTION = "© OpenStreetMap contributors"
 
@@ -111,6 +113,12 @@ def write_world_v2(w: World, out: Path, source: dict[str, Any] | None = None, na
     pieces = codec_v2.road_pieces_by_tile(w.roads, tile_xz)
     for pkey in pieces:
         tile(*pkey)
+    infra_ways = infra.waterway_pieces_by_tile(w.infra.waterways, tile_xz) if w.infra else {}
+    infra_spots: dict[tuple[int, int], list[infra.Spot]] = {}
+    if w.infra:
+        for sp in w.infra.spots:
+            infra_spots.setdefault(tile_xz(sp.x, sp.z), []).append(sp)
+    infra_bytes = 0
     tile_rows = []
     tile_overhead: Counter[int] = Counter()
     for (tc, tr), t in sorted(tiles.items(), key=lambda kv: (kv[0][1], kv[0][0])):
@@ -125,6 +133,18 @@ def write_world_v2(w: World, out: Path, source: dict[str, Any] | None = None, na
         (d / "roads.bin").write_bytes(roads_bytes)
         areas_bytes = codec_v2.encode_areas((tc, tr), t["areas"])
         (d / "areas.bin").write_bytes(areas_bytes)
+        if w.infra is not None:
+            decks = []
+            for i, pc in enumerate(pieces.get((tc, tr), [])):
+                prof = w.infra.profiles.get(pc.road.id)
+                if prof is None:
+                    continue
+                hs = infra.piece_samples(prof, pc.offset, pc.road.points)
+                if max(hs) > 0.005:
+                    decks.append((i, hs))
+            blob = infra.encode_infra((tc, tr), decks, infra_ways.get((tc, tr), []), infra_spots.get((tc, tr), []))
+            (d / INFRA_FILE).write_bytes(blob)
+            infra_bytes += len(blob)
         min_x = g.min_x + tc * TILE_SIZE
         min_z = g.min_z + tr * TILE_SIZE
         rings_here = sorted({c[4] for c in t["chunks"]}) or [w.max_ring]
@@ -181,13 +201,14 @@ def write_world_v2(w: World, out: Path, source: dict[str, Any] | None = None, na
         "tiles": tile_rows,
         "landmarks": w.landmarks,
         **({"sea": w.sea} if w.sea else {}),
+        **({"minor": infra.MINOR, "infra": {"file": INFRA_FILE, "deckStep": infra.STEP, "note": "format 2.1: road heights (estimated), waterways, street spots; world-format.md 3.7"}} if w.infra else {}),
     }
     text = json.dumps(index, separators=(",", ":"), ensure_ascii=False)
     (out / "world.json").write_text(text)
     (out / "ATTRIBUTION.md").write_text(_attribution(source or {}, w.data_date))
     total = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
     return {"total": total, "chunk_bytes_by_ring": dict(sorted(ring_bytes.items())), "tile_files_by_first_ring": dict(sorted(tile_overhead.items())),
-            "world_json": len(text.encode()), "tiles": len(tile_rows), "files": sum(1 for f in out.rglob("*") if f.is_file())}
+            "world_json": len(text.encode()), "tiles": len(tile_rows), "infra_bytes": infra_bytes, "files": sum(1 for f in out.rglob("*") if f.is_file())}
 
 
 def write_world_v1(w: World, out: Path) -> dict[str, int]:

@@ -214,3 +214,14 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Carjacking runtime (TD-30, G-128) | Done | scene test: stand in front of a car, it stops, Get in offers it, the driver is pulled out (crime signalled once), the player drives it in its paint, the agent respawns elsewhere; walking away undoes the swap |
 | Frame cost measured (G-127) | Measured on the container, not on a phone | `tests/tools/traffic_shot.gd`; numbers in `handoff.md` |
 | Seen on a phone | Not done | — |
+
+## Infrastructure: decks, water, ground covers, road details (branch `agent/godot-infrastructure`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Format 2.1 `infra.bin`: road heights, waterway lines, crossings and speed breakers; 2.0 files byte for byte (G-150) | Done | `tools/geo/tests/test_infra.py` (solver cases: flyover over a road, grades and continuity, stacked deck, water bridge, tunnel, rail overbridge, footbridge stairs; spots; codec round trip; Kathipara stacked to 13 m, Anna flyover 6.5 m, Adyar/Cooum/Buckingham kept); `diff -r` of a rebuild against the committed world |
+| Decks, ramps, parapets, piers, underside; footbridges; rail overbridges; covered roads (G-151) | Done (estimated heights) | `tests/unit/test_infra.gd` (reader vs Python, heights, stacked surfaces at Kathipara, seamless spans at chunk edges, deck colliders and piers, nothing at ground level on decks); `tests/scene/test_decks_driving.gd` (a car up, over and down the Anna flyover at 70 km/h); screenshots |
+| `RoadHeights` (ground plus deck height for player, vehicles, traffic, pedestrians) (G-151) | Done; not yet called by the AI (traffic agent) | `test_infra.gd` |
+| Rivers, canals, streams, ponds, lakes, reservoirs: sunk water, banks, bunds, shader; blocked at the bank (G-152) | Done | screenshots (Adyar at Kotturpuram Bridge, Chetpet lake); bunds and gaps counted in `test_infra.gd` |
+| Ground covers: lawn, meadow, scrub, forest, wetland/mangrove, farmland, pitch, cemetery, bare; kerbed parks (G-154) | Done | screenshots; `test_city_meshes.gd` unchanged and passing |
+| Zebras (mapped and at signal junctions), speed breakers with colliders, `RoadBumps`, medians (G-153) | Done | `test_infra.gd` (profile, crossing query on a mapped hump), screenshots |
+| Lowered roads and underpasses below ground, Kathipara hero model | Not done (see the handoff) | |

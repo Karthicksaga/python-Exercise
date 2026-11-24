@@ -96,9 +96,19 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	view.name = "Chunk_%d_%d" % [cell.x, cell.y]
 	out.view = view
 
+	var water := WaterMeshes.new()
+	water.origin = out.centre
+	water.polygons = WaterMeshes.gather(chunk.areas, layout.water_in(cell), square)
 	var ground := GroundMeshes.new()
 	ground.origin = out.centre
-	ground.build(spans, chunk.areas, square, out.furniture.kerbs)
+	ground.build(spans, chunk.areas, square, out.furniture.kerbs, water.polygons, out.furniture.medians)
+	# Zebra crossings and speed breakers (G-153), on the road at its height.
+	var bump_faces := PackedVector3Array()
+	for sp: WorldSpot in layout.spots_in(cell):
+		if sp.is_zebra():
+			ground.zebra(sp, 0.0)
+		elif sp.is_bump():
+			bump_faces.append_array(ground.bump(RoadBumps.from_spot(sp), 0.0))
 	if not kit.sea.is_empty() and kit.sea_box.intersects(square):
 		ground.sea(kit.sea, square)
 	var near := Node3D.new()
@@ -109,6 +119,20 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	far.visible = false
 	view.add_child(far)
 	_add_mesh(out, view, "ground", ground.mesh, kit.materials.ground, false)
+	# Bridges, flyovers, ramps and covered roads (G-151): always drawn (seen from afar).
+	var decks := DeckMeshes.new()
+	decks.origin = out.centre
+	decks.layout = layout
+	for span: CityLayout.RoadSpan in spans:
+		decks.add_span(span)
+	water.build(square, decks, layout)
+	_add_mesh(out, view, "water", water.mesh, kit.materials.water, false)
+	_add_mesh(out, view, "decks", decks.mesh, kit.materials.decks, kit.shadows)
+	if not bump_faces.is_empty():
+		decks.solid_faces(bump_faces)
+	for piece in decks.faces:
+		if not piece.is_empty():
+			_body(out, "Decks", piece)
 
 	var meshes := BuildingMeshes.new()
 	meshes.origin = out.centre
@@ -133,8 +157,9 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 			CityModels.place(objects, model, _local3(p.position, out.centre), p.yaw)
 	_add_mesh(out, near, "objects", objects, kit.materials.objects, kit.shadows)
 
-	_add_trees(kit, out, chunk)
-	_add_colliders(out, chunk)
+	var trees := standing_trees(chunk.trees, water.polygons, layout)
+	_add_trees(kit, out, trees)
+	_add_colliders(out, chunk, trees)
 	out.usec = Time.get_ticks_usec() - started
 	return out
 
@@ -199,10 +224,35 @@ static func _fixtures(models: CityModels, into: MeshBuilder, b: Building, plan: 
 				CityModels.place(into, dish, _local3(at, centre, float(frame["roof_y"])), (CityHash.unit(b.id, 304) - 0.5) * 0.4)
 
 
-static func _add_trees(kit: Kit, out: Build, chunk: ChunkData) -> void:
+## Trees that can stand where they are (G-151, G-152): not in the water and not through a deck
+## (avenue trees were planted along roads that turn out to be flyovers and bridges).
+static func standing_trees(all: Array[WorldTree], water: Array[PackedVector2Array], layout: CityLayout) -> Array[WorldTree]:
+	var out: Array[WorldTree] = []
+	for t in all:
+		if not water.is_empty() and WaterMeshes.inside_any(t.position, water, -1):
+			continue
+		var blocked := [false]
+		layout.segments_near(t.position, 20.0, func(ri: int, i: int) -> bool:
+			var road := layout.roads[ri]
+			if not road.is_raised():
+				return false
+			var a := road.points[i]
+			var ab := road.points[i + 1] - a
+			var len2 := ab.length_squared()
+			var u := 0.0 if len2 < 1e-9 else clampf((t.position - a).dot(ab) / len2, 0.0, 1.0)
+			var reach := road.width / 2.0 + 2.5
+			if (a + ab * u).distance_squared_to(t.position) < reach * reach and road.height_at(i, u) > 1.0:
+				blocked[0] = true
+			return blocked[0])
+		if not blocked[0]:
+			out.append(t)
+	return out
+
+
+static func _add_trees(kit: Kit, out: Build, standing: Array[WorldTree]) -> void:
 	var palms: Array[WorldTree] = []
 	var trees: Array[WorldTree] = []
-	for t in chunk.trees:
+	for t in standing:
 		if CityHash.tree_unit(t.position, 51) < PALMS:
 			palms.append(t)
 		else:
@@ -245,7 +295,7 @@ static func _add_trees(kit: Kit, out: Build, chunk: ChunkData) -> void:
 
 ## Building walls (from 1 m below ground, so nothing slips under) as trimesh pieces, and closed
 ## boxes for trees, poles, shelters and props (`chunkSolids`, `furnitureSolids`, `propSolids`).
-static func _add_colliders(out: Build, chunk: ChunkData) -> void:
+static func _add_colliders(out: Build, chunk: ChunkData, trees: Array[WorldTree]) -> void:
 	var faces := PackedVector3Array()
 	var count := 0
 	for b in chunk.buildings:
@@ -266,7 +316,7 @@ static func _add_colliders(out: Build, chunk: ChunkData) -> void:
 	if not faces.is_empty():
 		_body(out, "Walls", faces)
 	var solids := PackedVector3Array()
-	for t in chunk.trees:
+	for t in trees:
 		solid_box(solids, Vector3(t.position.x - out.centre.x, 1.5, t.position.y - out.centre.y), Vector3(0.28 * t.scale, 1.5, 0.28 * t.scale), 0.0)
 	for p in out.furniture.poles:
 		var h := StreetFurniture.POLE_HEIGHT / 2.0

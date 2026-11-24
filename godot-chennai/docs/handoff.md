@@ -473,3 +473,65 @@ the figures Marina was 244. 03:00 at Marina: 66. Out at 18:30: 21–28 vehicles,
   doorway or wall where pavements are narrow.
 - Traffic views have no brake or indicator lights; doors never open.
 - Model merging is skipped headless (the dummy renderer's mesh store is not thread-safe).
+
+## Infrastructure (agent/godot-infrastructure), 24 Nov 2026
+Decks and ramps, water, ground covers and road details. Decisions G-150…G-155; format
+`docs/world-format.md` §3.7 (format 2.1, `infra.bin`).
+
+**Audit before the work (format-2 world, 23 Nov data).** 153,969 road pieces: 2,134 `bridge`
+(2,127 ways, 196 km), 360 `tunnel`/covered, 2,568 with `layer` ≠ 0 (+1: 2,339; −1: 189; +2: 30;
++3: 3; +4: 4; −2: 3). Ring 0: 20,857 pieces, 418 bridge, 113 tunnel, 458 layer > 0, 59 layer < 0.
+Kathipara (centre of its named roads, x −700, z 8620): 16 deck pieces within 400 m (7 primary
+layer 1, 5 primary_link layer 1, 2 primary layer 2, 2 footway layer 1). Gemini (Anna Flyover):
+6 (5 primary, 1 secondary, layer 1). All were drawn flat on the ground. Water: 1,644 water,
+30 reservoir and 177 wetland polygons (246 km²), but rivers had gaps (Adyar at Kotturpuram, Cooum
+at Chetpet had no polygon) because `waterway=river|canal|stream` **lines were dropped** by
+`osm_parse.py`. Parks, farmland, orchard, meadow, scrub, forest, cemetery, sport and mangrove were
+all the same grass tile; water, reservoir and wetland a flat blue tile at +2 cm; residential and
+industrial land bare earth. No crossings or traffic calming were read.
+
+**Now.** `infra.bin` per tile (1.3 MB): heights for 7,369 raised road pieces (1,803 bridge chains,
+525 crossing a road or railway; 12 of 1,027 checked crossings under 4.5 m clearance), 1,055
+waterway pieces (317 km river, 236 km canal, 136 km stream, drains and ditches kept but not
+drawn), 662 mapped spots (263 zebra, 12 signal crossing, 179 hump, 76 bump, 74 rumble strip, 58
+unmarked) and 11,028 rule spots (1,161 zebras at signal junctions, 9,867 speed breakers, invented).
+Rebuild: `tools/geo` `cli build --max-ring 3` (85 s); all 2.0 files come out unchanged.
+
+**For the traffic agent (AI heights).** `RoadHeights` (`src/game_world/infra/road_heights.gd`,
+node-free): `RoadHeights.on_road(road, segment, t)` for an agent on its lane (no search);
+`RoadHeights.create(layouts).height_at(point, near_y)` / `surfaces_at(point)` / `top_at(point)`
+for anything placed by position (where decks stack it picks the surface the body stands on).
+`Road.heights`, `height_along(d)`, `height_at(i, t)`, `is_raised()` are on every road piece.
+The composition root can build one from `CityWorld.layouts`. The player and vehicles need nothing:
+decks are colliders.
+**For the missions agent (fragile cargo).** `RoadBumps.create(layouts).crossed(prev, now)` each
+physics step returns the speed breaker driven over (kind, height, length) or null.
+
+**Measured (this box, 4 cores; same tool and world before and after, G-155).** Kathipara from
+above (−700, 8620, camera 140 m back, 110 m up, 915×412, Compatibility): before 50 draw calls,
+179.7k primitives; after 56 draw calls, 189.6k primitives (decks 14.8k triangles in the 9
+chunks, ground 23.7k → 39.6k, colliders 10.5k → 19.1k; objects 51.4k → 30.6k as poles and props
+leave the decks). Worst chunk build on a worker 686 → 844 ms. Main thread while streaming 800 m
+through Kathipara at 20 m/s (headless; runs at headings 0.6 and 2.17): before, max frame
+2.1–2.9 ms and max step (one collider body) 0.76–1.40 ms; after, max frame 2.4–3.4 ms and max
+step 0.83–1.30 ms, with deck collider pieces of at most 1,200 triangles (2,400 gave 1.65–1.85 ms
+steps). One after-run had a single 41 ms frame with every step under 1 ms (OS pre-emption, as in
+G-58). A frame is the 2.5 ms budget plus at most one step by design (G-50). Full scene after:
+57 draw calls, 175.7k primitives from above at Kathipara; Gemini road level 54 / 188.8k.
+
+**Weak or not done.**
+- Heights are estimated by rule; real flyovers differ (Kathipara's upper level is about 13 m
+  here). Where a ramp leaves a deck their carriageways overlap at slightly different heights
+  (up to about 0.5 m) for a few metres: a car feels a small step down.
+- Ramps have kinks at the top and foot (grade jumps from 0 to 1:20), no vertical curve.
+- Ramp spill: where OSM ends a bridge high and the next junction is close, the ramp continues
+  into the junction and lifts the side streets' first metres (seen on GST Road at Kathipara).
+- Underpasses are covered sections at ground level, not lowered roads (the ground is one
+  boundary plane, G-151). Pedestrian subways under roads are not drawn.
+- Causeways: a road crossing water without `bridge` stays at ground level over the sunk water,
+  with a gap in the bund; one can step off it onto the invisible ground over the water.
+- Water is not in the far/map layers; the sea is unchanged; intermittent streams look full.
+- Medians are visual only (as kerbs); the median does not stop traffic.
+- Rule speed breakers (9,867) are invented and dense; tune `RULE_BUMP_SHARE` if play says so.
+- Kathipara hero model (Blender) not started (a later task, as asked).
+- Seen only on llvmpipe (Compatibility); not on a phone or the Mobile renderer.

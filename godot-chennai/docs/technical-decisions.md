@@ -1171,3 +1171,91 @@ left (India keeps left) or away from someone already to one side, and back to th
 the player and vehicles are stepped round the same way; only someone right in front stops
 them. Traffic treats every walker as an obstacle, so it stops for people crossing a street at an
 unsignalled corner as well as on a zebra.
+
+## Infrastructure: decks, water, ground covers, road details (G-150…G-159, agent/godot-infrastructure)
+
+### G-150: Format 2.1 adds `infra.bin`; every 2.0 file stays byte for byte
+Bridges, waterways and street spots go into one new per-tile file, `tiles/<tc>_<tr>/infra.bin`
+(sections `DECK`, `WATR`, `SPOT`; `docs/world-format.md` §3.7), and `world.json` gains `minor: 1`
+and `infra`. Nothing else changes: rebuilding with the same PBF (sha256 in `data/MANIFEST.json`)
+gives every 2.0 file unchanged (checked with `diff -r`), so the chunk packs, roads and areas
+already committed and the readers of the other agents are untouched. The parser keeps waterway
+lines, railway lines and crossing/traffic-calming nodes in lists of their own for the same reason.
+1.3 MB for 47 tiles, committed. A 2.0 reader ignores the file; the GDScript reader
+(`InfraTile`) attaches heights to the road pieces when a tile's roads are read
+(`RegionalWorldSource.tile_infra`), before the network is shared between threads.
+
+### G-151: Decks and ramps from bridge + layer, heights estimated at build time
+OSM maps no heights. `chennai_geo/infra.py` raises bridge chains to clear what they cross
+(6.5 m per layer over roads and railways, 6 m footbridges, level 100 m either side of a
+crossing; 1.2–5 m over water or nothing mapped) and gives every other road the lowest heights that
+keep its grade within 1:20 (arterials), 1:14 (streets) or 1:3.3 (footway stairs) by a
+max-propagation over the whole region's road graph. Heights are sampled every 5 m along each road
+piece, so a ramp's foot inside a long segment is exact and both chunks at an edge read the same
+numbers (tested). Why at build time: the propagation needs the whole graph (a ramp often crosses
+tile edges), it is deterministic and testable with pytest, and the game only interpolates.
+- **Drawn:** `GroundMeshes` lays a raised road's surface and markings at its height in the same
+  ground surface; `DeckMeshes` adds slabs with fascia and underside, parapets 1 m (railings on
+  footbridges), retaining walls on ramps, piers every 30 m along the whole road (two under decks
+  12 m and wider) never on a lower carriageway, and covers over covered roads: one more
+  vertex-coloured, double-sided surface per chunk. Parapets open where another raised
+  carriageway at about the same height meets them (ramps leaving the deck).
+- **Solid:** the deck surface (flush with the ground at a ramp's foot), parapets, ramp walls and
+  piers are `ConcavePolygonShape3D` pieces of at most 1,200 triangles (2,400 cost 1.7–1.9 ms a step), added one per step like the
+  wall pieces (G-55). Measured: a car (the catalogue's ray-cast hatchback, unchanged handling)
+  drives the Anna flyover up, over and down at 70 km/h staying on the surface (`test_decks_driving`).
+- **Kept off decks:** kerbs, poles and props (raised stretches join the blocked stretches), trees
+  in the water or within 2.5 m of a deck above 1 m, mapped spots.
+- **Tunnels and underpasses are covered sections, not lowered roads:** the ground is one flat
+  `WorldBoundaryShape3D` (G-55) that cannot have holes, so a covered drivable road keeps its ground
+  level and gets side walls and a roof 5 m up, open where another road crosses at ground level
+  (the railway subways read as the line's bridge). Lowering roads needs a ground collider with
+  holes: listed as not done.
+
+### G-152: Water is sunk 0.75 m, drawn with one cheap shader, and blocked at the bank
+Water areas (`natural=water`, reservoirs, riverbanks) and the rivers, canals and streams of
+`infra.bin` (widened to OSM `width`, else river 30 m, canal 18 m, stream 6 m) are cut out of the
+earth and ground covers (simple polygons; a pond inside a piece is handled by splitting the piece
+through it) and drawn 0.75 m below the ground with a bank face, a shore band and `water.gdshader`
+(flat colour, shore tint in vertex alpha, a small moving ripple in colour and normal; no
+reflections, no refraction, cheap on Mobile and Compatibility). Drains and ditches are kept in the
+data but not drawn (most are covered or a metre wide). **The rule for people and vehicles:
+blocked, never in the water.** A stone bund 0.55 m high stands on every bank with an invisible
+collider up to 2.2 m, open only where a road or path crosses at ground level; bridges pass over
+it. Nobody can walk, jump or drive into water, so nobody drowns and no respawn rule is needed
+(children included, AGENTS.md). The sea keeps its coast wall (G-55).
+
+### G-153: Zebras, speed breakers, medians; `RoadBumps` for the cargo
+- **Zebras:** mapped crossings (`crossing=zebra|marked|uncontrolled|traffic_signals`, zebra
+  markings) and, by rule, every arm of the junction nearest each mapped traffic signal, set back
+  half the widest road plus 2.5 m: 3 m bars, 0.5 m wide, 1 m pitch, across the carriageway.
+- **Speed breakers:** mapped `traffic_calming=*` and, by rule (invented), one 14 m from the
+  main-road end of 40 % of side streets over 60 m long. Sizes are estimated: bump 1.2 m × 10 cm,
+  hump 3.7 m × 10 cm (IRC style), table 6 m × 8 cm, cushion 1.8 m × 7 cm, rumble strip
+  2.4 m × 2 cm; painted in the kerb's yellow and black; the hump surface is a trimesh in the
+  deck collider, so the suspension rides over it.
+- **`RoadBumps`** (`src/game_world/infra/road_bumps.gd`, node-free): `crossed(from, to)` returns
+  the breaker a step's move went over (or null), `surface_at(p)`, `near(p, r)`. The missions'
+  fragile cargo should call `crossed()` with the vehicle's previous and current positions each
+  physics step and judge by speed.
+- **Medians:** wide two-way arterials (primary, secondary, motorway; 14 m and wider, not
+  one-way) get a yellow-black median 0.9 m wide and 0.22 m high, broken round junctions and off
+  decks. Not solid, like the kerbs (G-55), so traffic and the player cross at junctions as before;
+  the Three.js centre line rule is unchanged under it (the marking test pins it).
+- **Footbridges and rail overbridges** are decks like any other (footway bridges over roads at
+  6 m with stairs at 1:3.3; road bridges over railway lines clear them at 6.5 m).
+
+### G-154: Ground covers are tinted layers of the ground shader with continuous noise
+Parks, meadows and orchards, scrub, forest, wetland and mangrove, farmland, pitches, cemeteries
+and bare ground or salt pans are layers 8–16 of `ground.gdshader`: the grass (or sand) tile tinted
+per cover with two octaves of value noise (patches of about 24 m and 6 m), still one draw call per
+chunk. The noise repeats every 16 texture repeats and `GroundMeshes` now counts repeats from a
+multiple of 16, so it continues across chunk edges (texture tiling is unchanged). Parks, pitches
+and cemeteries get a 12 cm paved kerb on their real edges (not on chunk clip edges). No new
+texture bake was needed.
+
+### G-155: Measuring the infrastructure
+`tests/tools/infra_measure.gd` fills the city round a point (Compatibility, xvfb: draw calls,
+primitives, objects; triangles per layer of the chunks in reach), then moves the focus 800 m
+through it at 20 m/s in game frames (headless: the streamer's main-thread maxima). Baseline is the
+same tool on the code before these changes with the same world files. Numbers in `handoff.md`.

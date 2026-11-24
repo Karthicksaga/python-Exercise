@@ -21,6 +21,9 @@ const POLE_PITCH := 38.0
 const POLE_ARM := 1.9
 const KERB_HEIGHT := 0.15
 const KERB_WIDTH := 0.25
+## Medians (G-153): half width and the narrowest two-way arterial that gets one.
+const MEDIAN_HALF := 0.45
+const MEDIAN_MIN_WIDTH := 14.0
 ## Nothing this close to a road's end (poles) or to a junction (poles and kerbs), metres.
 const END_CLEAR := 10.0
 const STOP_REACH := 30.0
@@ -56,6 +59,7 @@ class Result:
 	var shelters: Array[Shelter] = []
 	var poles: Array[Pole] = []
 	var kerbs: Array[KerbRun] = []
+	var medians: Array[KerbRun] = []
 
 
 ## Yaw that faces along v.
@@ -182,10 +186,47 @@ static func poles_along(layout: CityLayout, ri: int, start: int, end: int, stret
 
 ## Kerbs along both sides of one stretch of a main road, broken round junctions (`kerbsAlong`).
 static func kerbs_along(layout: CityLayout, ri: int, start: int, end: int, stretches: PackedVector2Array) -> Array[KerbRun]:
+	var half := layout.roads[ri].width / 2.0
+	var runs: Array[KerbRun] = []
+	for samples in _open_samples(layout, ri, start, end, stretches):
+		for side: float in [1.0, -1.0]:
+			var run := KerbRun.new()
+			for q: Dictionary in samples:
+				var p: Vector2 = q["p"]
+				var n: Vector2 = q["n"]
+				run.inner.append(p + n * side * half)
+				run.outer.append(p + n * side * (half + KERB_WIDTH))
+				run.along.append(float(q["d"]))
+			runs.append(run)
+	return runs
+
+
+## Whether a road gets a raised median (invented, G-153): wide two-way arterials. OSM maps most
+## divided roads as two one-way ways, which get none (their divider is the space between them).
+static func has_median(road: Road) -> bool:
+	return (road.kind == &"primary" or road.kind == &"secondary" or road.kind == &"motorway") and not road.oneway and road.width >= MEDIAN_MIN_WIDTH and not road.tunnel
+
+
+## The median along the centre of one stretch, broken round junctions and off decks.
+static func median_along(layout: CityLayout, ri: int, start: int, end: int, stretches: PackedVector2Array) -> Array[KerbRun]:
+	var runs: Array[KerbRun] = []
+	for samples in _open_samples(layout, ri, start, end, stretches):
+		var run := KerbRun.new()
+		for q: Dictionary in samples:
+			var p: Vector2 = q["p"]
+			var n: Vector2 = q["n"]
+			run.inner.append(p - n * MEDIAN_HALF)
+			run.outer.append(p + n * MEDIAN_HALF)
+			run.along.append(float(q["d"]))
+		runs.append(run)
+	return runs
+
+
+## Points (p, left normal n, distance d) along the open parts of a stretch, `stretches` removed.
+static func _open_samples(layout: CityLayout, ri: int, start: int, end: int, stretches: PackedVector2Array) -> Array[Array]:
 	var road := layout.roads[ri]
 	var pts := road.points
 	var dist: PackedFloat64Array = layout.along[ri]
-	var half := road.width / 2.0
 	var total := dist[dist.size() - 1]
 	var open: Array[Vector2] = [Vector2(dist[start], dist[end])]
 	for st in stretches:
@@ -199,7 +240,7 @@ static func kerbs_along(layout: CityLayout, ri: int, start: int, end: int, stret
 			if st.y < o.y:
 				next.append(Vector2(st.y, o.y))
 		open = next
-	var runs: Array[KerbRun] = []
+	var out: Array[Array] = []
 	for o in open:
 		if o.y - o.x < 1.0:
 			continue
@@ -214,16 +255,8 @@ static func kerbs_along(layout: CityLayout, ri: int, start: int, end: int, stret
 		var last := CityLayout.point_along(pts, dist, minf(o.y, total))
 		var ld: Vector2 = last["dir"]
 		samples.append({"p": last["p"], "n": Vector2(ld.y, -ld.x), "d": o.y})
-		for side: float in [1.0, -1.0]:
-			var run := KerbRun.new()
-			for q in samples:
-				var p: Vector2 = q["p"]
-				var n: Vector2 = q["n"]
-				run.inner.append(p + n * side * half)
-				run.outer.append(p + n * side * (half + KERB_WIDTH))
-				run.along.append(float(q["d"]))
-			runs.append(run)
-	return runs
+		out.append(samples)
+	return out
 
 
 ## Left normal at point i: the mitre of its two segments, clamped at sharp bends.
@@ -286,4 +319,6 @@ static func for_chunk(layout: CityLayout, chunk: ChunkData, cell: Vector2i) -> R
 			return layout.on_other_road(p, road_id, 0.6)
 		out.poles.append_array(poles_along(layout, span.index, span.start, span.end, layout.blocked_stretches(span.index, true), skip))
 		out.kerbs.append_array(kerbs_along(layout, span.index, span.start, span.end, layout.blocked_stretches(span.index, false)))
+		if has_median(span.road):
+			out.medians.append_array(median_along(layout, span.index, span.start, span.end, layout.blocked_stretches(span.index, false)))
 	return out

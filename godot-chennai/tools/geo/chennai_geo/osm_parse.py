@@ -19,6 +19,9 @@ from .util import round2
 WAY_KEYS = ("building", "highway", "leisure", "landuse", "natural", "waterway")
 NODE_KEYS = ("amenity", "shop", "tourism", "historic", "place", "man_made")
 AREA_KEYS_V1 = ("leisure", "natural", "landuse", "man_made", "historic", "tourism")
+# Format 2.1 additions (`infra.bin`, G-150), collected into their own lists.
+WATERWAY_LINES = ("river", "canal", "stream", "drain", "ditch")
+RAILWAY_LINES = ("rail", "light_rail", "subway", "narrow_gauge", "monorail", "construction")
 
 
 def node_label(tags: Tags) -> str | None:
@@ -33,6 +36,11 @@ def node_label(tags: Tags) -> str | None:
     if "aeroway" in tags:
         return "aeroway"
     return None
+
+
+def spot_selected(tags: Tags) -> bool:
+    """Street spots for `infra.bin`: pedestrian crossings and traffic calming (speed breakers)."""
+    return tags.get("highway") == "crossing" or "traffic_calming" in tags
 
 
 def way_selected(tags: Tags) -> bool:
@@ -68,6 +76,9 @@ class _Handler(osmium.SimpleHandler):
         if not n.tags:
             return
         tags = {t.k: t.v for t in n.tags}
+        if spot_selected(tags) and n.location.valid():
+            x, z = self._local(n.location.lat, n.location.lon)
+            self.f.spots.append(OsmPoint(n.id, tags, x, z))
         if node_label(tags) is None or not n.location.valid():
             return
         x, z = self._local(n.location.lat, n.location.lon)
@@ -75,6 +86,10 @@ class _Handler(osmium.SimpleHandler):
 
     def way(self, w: osmium.osm.Way) -> None:
         tags = {t.k: t.v for t in w.tags}
+        if tags.get("railway") in RAILWAY_LINES and (tags.get("railway") != "construction" or tags.get("construction") in RAILWAY_LINES):
+            rail = [self._local(nd.location.lat, nd.location.lon) for nd in w.nodes if nd.location.valid()]
+            if len(rail) >= 2:
+                self.f.railways.append(OsmLine(w.id, tags, rail))
         if not way_selected(tags):
             return
         refs = [nd.ref for nd in w.nodes]
@@ -88,6 +103,8 @@ class _Handler(osmium.SimpleHandler):
         if "aeroway" in tags and tags["aeroway"] in ("runway", "taxiway", "stopway", "holding_position", "parking_position") and not (len(refs) > 3 and refs[0] == refs[-1] and tags.get("area") == "yes"):
             self.f.aeroway_lines.append(OsmLine(w.id, tags, line))
             return
+        if tags.get("waterway") in WATERWAY_LINES and tags.get("area") != "yes":
+            self.f.waterways.append(OsmLine(w.id, tags, line))
         if "highway" in tags:
             self.f.highways.append(OsmLine(w.id, tags, line))
             return

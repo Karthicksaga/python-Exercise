@@ -15,6 +15,7 @@ from shapely.validation import make_valid
 
 from .coast import build_sea
 from .enums import AEROWAY_KINDS
+from .infra import Infra, build_spots, solve_heights, waterway_from_line
 from .geometry import Bounds, Point, SpatialGrid, bounds_of, centroid, clip_line, clip_polygon, signed_area
 from .landmarks import find_landmarks, inside_landmark
 from .model import DS_OSM_NODE, DS_OSM_WAY, Aeroway, Area, Building, OsmFeatures, OsmLine, OsmPolygon, Ref, Road, Tree
@@ -58,6 +59,8 @@ class World:
     stats: Counter[str]
     road_chunk_keys: set[tuple[int, int]] = field(default_factory=set)
     road_chunk_rings: dict[tuple[int, int], int] = field(default_factory=dict)
+    # Format 2.1 (`infra.bin`, G-150): road heights, waterways, street spots. None for v1 builds.
+    infra: Infra | None = None
 
 
 def building_game_id(poly: OsmPolygon) -> int:
@@ -311,8 +314,23 @@ def build_world(f: OsmFeatures, grid: Grid, playables: list[Playable], max_ring:
     sea = build_sea(coast_pieces, areas, playable.rect)
     stats["roads"] = len(roads)
     stats["buildings"] = len(buildings)
+    infra = build_infra(f, roads, signals, playable, stats) if v2 else None
     return World(grid, max_ring, playable, f.timestamp, roads, areas, chunks, pois, bus_stops, signals, districts, settlements,
-                 landmarks, _aeroways(f, playable) if v2 else [], sea, stats, road_keys, road_rings)
+                 landmarks, _aeroways(f, playable) if v2 else [], sea, stats, road_keys, road_rings, infra)
+
+
+def build_infra(f: OsmFeatures, roads: list[Road], signals: list[dict[str, Any]], playable: Playable, stats: Counter[str]) -> Infra:
+    """Road heights, waterways and street spots (format 2.1, `infra.py`)."""
+    profiles = solve_heights(roads, f.railways, stats)
+    waterways = []
+    for line in f.waterways:
+        for i, piece in enumerate(_clip_road(line.points, playable)):
+            ww = waterway_from_line(line, piece, i)
+            if ww is not None:
+                waterways.append(ww)
+    stats["waterways"] = len(waterways)
+    spots = build_spots(roads, profiles, f.spots, signals, stats)
+    return Infra(profiles, waterways, spots, Counter())
 
 
 def ring0_box_local() -> Bounds:
