@@ -148,6 +148,14 @@ static func has_tiled_roof(b: Building) -> bool:
 	return legacy_tiled_roof(b)
 
 
+## Mean of the footprint corners (world metres): where the building is, for the area lookup.
+static func centre_of(b: Building) -> Vector2:
+	var c := Vector2.ZERO
+	for p in b.outline:
+		c += p
+	return c / maxi(1, b.outline.size())
+
+
 static func _mapped_roof(shape: StringName) -> int:
 	match shape:
 		&"flat":

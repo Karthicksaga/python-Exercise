@@ -121,8 +121,7 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	var size := layout.chunk_size
 	var square := Rect2(kit.source.get_grid_origin() + Vector2(cell) * size, Vector2(size, size))
 	var detail := kit.source.detail_for(cell)
-	var palette: AreaPalettes.Palette = kit.palettes.at(out.centre) if kit.palettes != null else null
-	apply_detail(chunk, cell, detail, palette, kit.signs if kit.signs != null else SignCategories.shared())
+	apply_detail(chunk, cell, detail, kit.palettes, kit.signs if kit.signs != null else SignCategories.shared())
 	out.furniture = StreetFurniture.for_chunk(layout, chunk, cell)
 	var near_objects := _objects_near(kit.source, cell)
 	use_mapped_lamps(out.furniture, near_objects, layout, square)
@@ -190,12 +189,12 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 
 	var meshes := BuildingMeshes.new()
 	meshes.origin = out.centre
-	meshes.palette = palette
 	meshes.table = kit.signs if kit.signs != null else SignCategories.shared()
 	meshes.signs = _signs_near(kit.source, cell)
 	var boxes := StreetFurniture.building_boxes(chunk.buildings)
 	for b in chunk.buildings:
 		var plan := BuildingMeshes.plan_facade(b, spans)
+		meshes.palette = kit.palettes.at(BuildingMeshes.centre_of(b)) if kit.palettes != null else null
 		meshes.add(b, plan)
 		if b.min_height <= 0.0:
 			_fixtures(kit.models, objects, b, plan, chunk.buildings, boxes, out.centre)
@@ -437,10 +436,11 @@ static func _body(out: Build, label: String, faces: PackedVector3Array) -> void:
 ## materials, the sign category; hides a building that is only the outline of its parts and adds
 ## the parts (`building:part`, drawn from their `min_height` up). Where the area palette has
 ## storey weights, houses whose height OSM does not map take them (estimated).
-static func apply_detail(chunk: ChunkData, cell: Vector2i, detail: DetailTile, palette: AreaPalettes.Palette, table: SignCategories) -> void:
+static func apply_detail(chunk: ChunkData, cell: Vector2i, detail: DetailTile, palettes: AreaPalettes, table: SignCategories) -> void:
 	var kept: Array[Building] = []
 	for b in chunk.buildings:
-		if palette != null and not palette.storey_counts.is_empty() and b.kind == &"house" and b.height_from == &"estimated":
+		var palette: AreaPalettes.Palette = palettes.at(BuildingMeshes.centre_of(b)) if palettes != null else null
+		if palette != null and palette.id != "default" and palette.has_storeys() and b.kind == &"house" and b.height_from == &"estimated":
 			b.floors = palette.pick_storeys(CityHash.unit(b.id, 71))
 			b.height = b.floors * BuildingMeshes.FLOOR_HEIGHT + BuildingMeshes.PARAPET
 		if detail != null:
@@ -460,8 +460,9 @@ static func apply_detail(chunk: ChunkData, cell: Vector2i, detail: DetailTile, p
 		kept.append(b)
 	if detail != null:
 		for part in detail.parts_in(cell):
-			if not part.wall_mapped and palette != null and not palette.walls.is_empty():
-				part.color_hex = palette.walls[floori(CityHash.unit(part.id, 7) * palette.walls.size())]
+			var area: AreaPalettes.Palette = palettes.at(BuildingMeshes.centre_of(part)) if palettes != null else null
+			if not part.wall_mapped and area != null and area.id != "default" and not area.walls.is_empty():
+				part.color_hex = area.walls[floori(CityHash.unit(part.id, 7) * area.walls.size())]
 			kept.append(part)
 	chunk.buildings = kept
 

@@ -84,12 +84,11 @@ func setup(world: WorldSource) -> String:
 			lo = lo.min(p)
 			hi = hi.max(p)
 		kit.sea_box = Rect2(lo, hi - lo)
+	kit.signs = SignCategories.shared()
+	kit.palettes = AreaPalettes.load_file()
 	if show_landmarks:
 		landmarks = await BackgroundTask.start(func() -> Array[LandmarkSpec]: return LandmarkSpec.load_all()).finish(get_tree())
 	kit.landmarks = landmarks
-	kit.signs = SignCategories.shared()
-	kit.palettes = AreaPalettes.load_file()
-	kit.palettes.set_districts(DistrictIndex.new(AreaPalettes.districts_of(world)))
 	kit.tree_triangles = models.tree.triangle_count()
 	kit.palm_triangles = models.palm.triangle_count()
 	var fixed: Array = await BackgroundTask.start(_build_fixed).finish(get_tree())

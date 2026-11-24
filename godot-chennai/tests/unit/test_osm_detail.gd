@@ -367,22 +367,58 @@ func test_mapped_lamps_replace_nearby_generated_poles() -> bool:
 
 func test_area_palette_file_and_defaults() -> bool:
 	var p := AreaPalettes.load_file()
-	assert_eq(p.default.walls.size(), 12, "the default is today's 12 plaster colours")
-	assert_eq(p.default.walls[0], 0xF2E3C6, "first default wall colour")
-	assert_eq(p.at(Vector2(0, 0)).id, "default", "no area entry: the default")
-	assert_eq(AreaPalettes.slug("T. Nagar"), "t_nagar", "district slug")
-	assert_eq(AreaPalettes.slug("  Anna  Nagar West "), "anna_nagar_west", "district slug with spaces")
+	assert_true(p.areas.size() >= 20, "the real file has its areas (%d)" % p.areas.size())
+	assert_eq(p.at(Vector2(-20000, -20000)).id, "default", "a point far from every area gets the default")
+	# T. Nagar (the file's centre 2543, 5160) gets T. Nagar's palette, with its walls from the file.
+	var tn := p.at(Vector2(2543.0, 5160.0))
+	assert_eq(tn.id, "t-nagar", "a point in T. Nagar gets T. Nagar's palette")
+	assert_true(tn.walls.size() >= 6 and tn.has_storeys(), "T. Nagar has walls and storey bins")
+	assert_eq(p.at(Vector2(2543.0, 5160.0)).id, tn.id, "the lookup is deterministic")
+	return true
+
+
+func test_area_palette_boundaries_bins_and_weights() -> bool:
 	var custom := AreaPalettes.load_file("res://tests/fixtures/area_palettes_test.json")
-	custom.set_districts(DistrictIndex.new([{"name": "Test Pete", "kind": "suburb", "x": 100.0, "z": 100.0}]))
-	var area := custom.at(Vector2(120, 100))
-	assert_eq(area.id, "test_pete", "the area of the nearest district")
-	assert_eq(area.walls, [0x112233, 0x445566], "area walls")
+	assert_eq(custom.areas.size(), 3, "three areas in the fixture")
+	assert_eq(custom.at(Vector2(60, 100)).id, "test-pete", "inside a circle")
+	assert_eq(custom.at(Vector2(60, 100)).walls, [0x112233, 0x445566], "area walls")
+	assert_eq(custom.at(Vector2(400, 100)).id, "default", "outside the circle: default")
+	assert_eq(custom.at(Vector2(150, 100)).id, "test-inner", "of two circles the smaller distance over radius wins")
+	assert_eq(custom.at(Vector2(1030, 500)).id, "test-road", "inside a corridor")
+	assert_eq(custom.at(Vector2(1051, 500)).id, "default", "outside the corridor's half width")
+	assert_eq(custom.at(Vector2(1000, 1030)).id, "test-road", "near the end of the spine")
+	assert_eq(custom.at(Vector2(1000, 1100)).id, "default", "past the end of the spine")
+	var area := custom.at(Vector2(60, 100))
 	assert_eq(area.pick_roof(0.01), &"dome", "weighted roof pick")
 	assert_eq(area.pick_roof(0.99), &"flat", "weighted roof pick, the other end")
-	assert_eq(area.pick_storeys(0.2), 1, "weighted storeys")
-	# An area palette changes estimated roofs and storeys, but never a mapped roof shape.
+	assert_eq(area.pick_storeys(0.2), 1, "bin 1")
+	for u: float in [0.5, 0.6, 0.75, 0.99]:
+		var n := area.pick_storeys(u)
+		assert_true(n >= 4 and n <= 5, "bin 4-5 gives 4 or 5 storeys (%d at %.2f)" % [n, u])
+	assert_eq(area.pick_storeys(0.61), area.pick_storeys(0.61), "storey pick is deterministic")
+	assert_eq(AreaPalettes._bin("10+"), Vector2i(10, 12), "10+ bin")
+	assert_eq(AreaPalettes._bin("6-9"), Vector2i(6, 9), "6-9 bin")
+	# An area palette changes estimated roofs, but never a mapped roof shape.
 	var stats: Dictionary[String, int] = {}
 	var mapped := _house(950001, &"gabled", _rect(12, 8))
 	BuildingMeshes.assign_roof(mapped, area, stats)
 	assert_eq(mapped.roof_kind, BuildingMeshes.ROOF_GABLED, "OSM roof:shape wins over the palette")
+	# The default palette changes nothing: estimated houses keep their storeys and walls.
+	var house := _house(950002, &"unknown", _rect(12, 8))
+	house.height_from = &"estimated"
+	house.outline = PackedVector2Array([Vector2(5000, 5000), Vector2(5012, 5000), Vector2(5012, 4992), Vector2(5000, 4992)])
+	var chunk := ChunkData.new()
+	chunk.buildings = [house]
+	ChunkBuilder.apply_detail(chunk, Vector2i.ZERO, null, custom, SignCategories.shared())
+	assert_eq(house.floors, 2, "a house outside every area keeps its storeys")
+	house.outline = PackedVector2Array([Vector2(60, 100), Vector2(70, 100), Vector2(70, 92), Vector2(60, 92)])
+	chunk.buildings = [house]
+	ChunkBuilder.apply_detail(chunk, Vector2i.ZERO, null, custom, SignCategories.shared())
+	assert_true(house.floors == 1 or house.floors == 4 or house.floors == 5, "a house in an area takes its storey bins (%d)" % house.floors)
+	var mapped_height := _house(950003, &"unknown", house.outline)
+	mapped_height.height_from = &"height"
+	mapped_height.floors = 7
+	chunk.buildings = [mapped_height]
+	ChunkBuilder.apply_detail(chunk, Vector2i.ZERO, null, custom, SignCategories.shared())
+	assert_eq(mapped_height.floors, 7, "a mapped height wins over the area's storeys")
 	return true

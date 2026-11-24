@@ -1337,16 +1337,18 @@ are covers of the ground shader (`COVER_TRACK`, `COVER_PLAYGROUND`, `COVER_ALLOT
 pool is flat water on the ground with the water shader (clear aqua, `pool_water`, vertex red 0) and
 a paving rim. Nobody swims yet (the culture note's swimming is a later task).
 
-### G-194: One data file for area character: `data/areas/palettes.json`, one loader
-`AreaPalettes` (`src/game_world/city/area_palettes.gd`) is the only reader. Shape:
-`{"<area_id>": {"walls": ["#rrggbb"…], "roofs": ["#rrggbb"…], "roof_types": {"flat": 0.6, "gabled":
-0.3, "dome": 0.0, "hipped": 0.1}, "storeys": {"1": 0.1, "2": 0.4…} or null}, "default": {…}}`. An area
-id is the district name (OSM `place`, `name:en`) lower-cased with every other character turned into
-`_` (`AreaPalettes.slug`), looked up by the chunk centre through the existing `DistrictIndex`
-(nearest district within 1.5 km); no entry means `default`, today's palette (the committed file is
-a stub with only that). `storeys` applies only to houses whose height OSM does not map; a mapped
-`roof:shape`, `building:colour`, `roof:colour` or height always wins. The default entry changes
-nothing: the 12 plasters and the legacy roof rule give the same walls and roofs as before.
+### G-194: Area character comes from `data/areas/palettes.json`, one loader, by boundary
+`AreaPalettes` (`src/game_world/city/area_palettes.gd`) is the only reader of the godot-areas file
+(format 1, derived from `areas.json`, never hand-edited): `default` and `areas.<id>` with `walls`,
+`roofs`, `roof_types` (shape: weight), `storeys` (bins "1", "2", "3", "4-5", "6-9", "10+": weight)
+and a `boundary` (circle: centre, radius; corridor: spine, half width; world metres). The area of a
+building is the one whose boundary contains its footprint centre with the smallest distance over
+radius (or half width); none: `default`. A storey count is the bin by weight, then a count inside the
+bin (10+ is 10 to 12). The palette is applied only to what OSM does not map: houses with an
+estimated height (storeys), buildings without `roof:shape` (roof types, houses up to three
+storeys), without `building:colour` or `roof:colour` (walls, roofs); mapped tags always win. The
+`default` entry changes nothing: outside every area the 12 plasters, the legacy roof rule and the
+data's storeys apply as before G-190.
 
 ### G-195: Measuring the detail
 `tests/tools/city_shot.gd` (draw calls, primitives, objects, worst build and main-thread ms) at
@@ -1394,6 +1396,7 @@ as a polygon, the Egmore station building, the Mylapore tank water) is listed in
 material and roof tags from the extract (the world format keeps no colour or material). In the 31
 areas levels are mapped for 3.9 % of buildings (four fifths of them in George Town and Parry's
 Corner); height, roof shape, colour and material tags are each under 0.2 %.
+
 
 
 ## G-170: Control settings: one shared object, one save section, live
@@ -1501,6 +1504,14 @@ Kerb and speed-breaker ticks are not built. The D-pad is left to menu focus.
 driving on touch, pad or keyboard, following left-handed and toggle-run. The pause menu and the
 title's CONTROLS page can both read it (the title agent may stub the same name; reconcile at
 merge: this one is `src/ui/touch_controls/controls_guide.gd`).
+
+
+### G-205: Malls are generic entries with a research-only name field (TD-18)
+`landmarks_shortlist.json` holds 16 shopping complexes (kind `mall`, tier B), found by scanning the
+extract for `shop=mall` and for `building=retail|commercial` of 8,000 m2 or more or five levels or
+more. `names.en` is "Shopping complex, <area>", the sign is `sign` = `வணிக வளாகம் / SHOPPING COMPLEX`,
+`osm.osm_name` is null, and the OSM name sits only in `research_name` (marked research only; a test
+keeps it out of every other field). Also added: Sowcarpet and Flower Bazaar, Marina Beach Market.
 
 ## G-160: Title fonts: Barlow Condensed and Noto Sans Tamil (SIL OFL)
 The title uses Barlow Condensed Bold (menu rows, page names, the chip, spaced OPEN WORLD) and
@@ -1706,4 +1717,5 @@ extract for `shop=mall` and for `building=retail|commercial` of 8,000 m2 or more
 more. `names.en` is "Shopping complex, <area>", the sign is `sign` = `வணிக வளாகம் / SHOPPING COMPLEX`,
 `osm.osm_name` is null, and the OSM name sits only in `research_name` (marked research only; a test
 keeps it out of every other field). Also added: Sowcarpet and Flower Bazaar, Marina Beach Market.
+
 

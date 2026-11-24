@@ -250,6 +250,7 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Used by the building and landmark code | Not done (other agents) | |
 
 
+
 ## Controls redesign (G-170…G-179, branch `agent/godot-controls`, 24 Nov 2026)
 Built from the owner-approved proposal `suggestions/2026-11-24-godot-controls-redesign.md` and its
 interactive prototype (the Proposed on-foot layout and scheme A "wheel").

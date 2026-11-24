@@ -600,6 +600,7 @@ measurements.
 - Nothing reads the data in the game yet.
 
 
+
 ## Controls redesign (G-170…G-179), branch `agent/godot-controls`, 24 Nov 2026
 **Done** (spec: `suggestions/2026-11-24-godot-controls-redesign.md`; decisions in
 `technical-decisions.md`). Everything pure and shared is in `src/ui/touch_controls/`:
@@ -632,6 +633,11 @@ available: pad support is tested with synthetic events. The 640x320 worst case h
 buttons at 48 px; small is under that there.
 Screenshots: `tests/tools/controls_shots.gd` (shots foot, near, driving, reverse, lefty,
 lefty_drive, pad, settings) into a scratch folder.
+
+
+**Addendum (malls).** 16 shopping complexes and two market entries added (100 landmarks: A 18, B 72,
+C 10). Game code must read `sign` and `names`, never `research_name`. Storeys come from OSM levels
+where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.
 
 ## Title screen (G-160 to G-165, agent/godot-title), 24 Nov 2026
 **Where things are.** `src/ui/title_menu/` (`TitleMenu` the page and rows, `TitleRow`, `TitleFonts`,
@@ -724,4 +730,5 @@ stayed at 0.2 ms (models load on the worker).
 **Addendum (malls).** 16 shopping complexes and two market entries added (100 landmarks: A 18, B 72,
 C 10). Game code must read `sign` and `names`, never `research_name`. Storeys come from OSM levels
 where tagged (seven of sixteen); architecture notes are sourced for three only, the rest `unverified`.
+
 
