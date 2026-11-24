@@ -197,3 +197,20 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Day lighting | Minimal fallback only | a sun, sky, ambient colour and depth haze in `city_world.tscn` for the environment work to replace |
 
 | Integration (G-110…G-115): parked vehicles in the city, board / drive / exit with doors, crash ejection, day/night and weather in the game, pause menu with Back routing | Done on desktop (headless tests and Compatibility screenshots), not on a phone | `tests/scene/test_game_vehicles.gd`, `test_boot.gd` |
+
+## Phase 3: traffic, walkers, crowds, carjacking (branch `agent/godot-traffic`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Road graph from the area round the player (drive and walk graphs, one-ways, lanes from OSM), rebuilt on a worker thread (G-120, G-121) | Done | `tests/unit/test_ai_traffic.gd` (shared junctions, one-ways, two lanes each way used, one-way uses its whole carriageway) |
+| Road heights for decks and ramps carried by every agent (G-122) | Done, off until decks are drawn | `test_flyover_decks_and_ramps_have_heights`: deck at 6 m, ramp 1 in 20, a car over the deck at deck height |
+| Signals at main and mapped junctions, groups taking turns, stop lines and zebras; heads drawn (G-123) | Done | traffic waits at red and goes again, nobody runs a red at speed, someone on the zebra stops traffic; heads seen in screenshots |
+| Traffic: Tamil Nadu vehicles, rare premium cars, kinematic bodies, seated drivers (G-124) | Done | mix test (every look a buildable variant, premium ≤ 4 %); scene test: vehicles on roads and shown chunks, views where the agents are, a driver in the seat near the camera |
+| Junctions taken in turn, brakes for the player and obstacles, pull over for sirens | Done (ported) | `test_vehicles_take_turns_through_a_junction`, `test_traffic_brakes_for_the_player…` |
+| Walkers on pavements from the cast, stepping round each other and the player (G-129) | Done | head-on walkers never closer than 0.6 m and pass without stopping; a walker passes a standing player |
+| Traffic stops for people crossing (G-129) | Done | `test_traffic_stops_for_someone_crossing_the_street` |
+| Crowds by place and hour within the draw budget (TD-31, G-126) | Done | market vs lane, beach at sunset vs noon, station rushes, cap respected; population fills a market by day and empties at night; crowd spots carried over between areas |
+| Children only beside an adult at stations or on the sand (G-125) | Done | real manifest: walkers, drivers and general crowds are adults; every child spot has an adult within 2 m, at a station or beach, off every carriageway |
+| Gated on loaded chunks (brief §7) | Done | `test_the_ai_waits_for_the_ground` (city scene) and the unit gating test |
+| Carjacking runtime (TD-30, G-128) | Done | scene test: stand in front of a car, it stops, Get in offers it, the driver is pulled out (crime signalled once), the player drives it in its paint, the agent respawns elsewhere; walking away undoes the swap |
+| Frame cost measured (G-127) | Measured on the container, not on a phone | `tests/tools/traffic_shot.gd`; numbers in `handoff.md` |
+| Seen on a phone | Not done | — |

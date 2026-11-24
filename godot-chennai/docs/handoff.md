@@ -415,3 +415,61 @@ light the road at night; screenshots are software-GL only (no phone run).
 - **Tests:** `unit/rules/test_mission_systems.gd` (31 cases, numbers and edges), `test_content_v2.gd`, `test_mission_events.gd`, `scene/test_missions_v2.gd` (retry, choice, medals, meters, flood stalls an ambulance, STAGES tab). Screenshots: `tests/tools/missions_shots.gd`.
 - **Not done:** W7 and hazard re-planning (road graph from the traffic branch), W8 (seated passengers, trains), W9 (spawn_parking off at merge), red light wiring, wanted heat wiring, wave B (stealth, race). The minimap shots place synthetic zones near the spawn because the real missions are kilometres away and not streamed in the screenshot tool.
 - **Re-baking:** `godot --headless --audio-driver Dummy --path . --script res://tools/rules/bake_missions_v2.gd` then `python3 tools/rules/build_missions_v2.py`.
+
+## Traffic, walkers, crowds, carjacking (phase 3), branch `agent/godot-traffic`, 24 Nov 2026
+**Done.** `src/ai/` (pure): `AiArea` (roads round the player, built on a worker), `RoadGraph`
+(with node heights, G-122), `AgentSystem` (traffic and walkers; lanes, signals, junction turns,
+sidestepping, broad phase), `AgentPresets` (`chennai_mix`), `TrafficSignals`, `PlaceMap` and
+`CrowdField` (TD-31), `TrafficDensity`, `CastPicker`, `AiPopulation` (ties them together by place
+and hour). Views: `src/vehicles/traffic/` (`TrafficVehicleView`, `SignalHeads`),
+`src/player/people/` (`PersonView`, `PeoplePool`). Wiring: `src/app/city_life/` (`CityLife`,
+`Carjacking`); `main.gd` adds `CityLife` at the end of loading step 3. Decisions G-120…G-129.
+Tests: `tests/unit/test_ai_traffic.gd`, `test_ai_population.gd`, `tests/scene/test_city_life.gd`.
+Tool: `tests/tools/traffic_shot.gd` (screenshots and the frame-cost numbers).
+
+**For the integration agent (PlayWiring).** Add the carjacking where `Driving` exists:
+`var jack := Carjacking.make(main.life, play_wiring.driving); world.add_child(jack)` (set
+`jack.wanted` once Phase 5 has a `Wanted`; listen to `jack.carjacked` for the HUD). The Get-in
+button already offers the swapped vehicle (it is a `Vehicle` in the group). `Driving.enter`
+reads the meta `driver_aboard` (one additive line). `CityLife.focus_node` is the player's body;
+when the player drives, the driven `Vehicle` is an obstacle to the AI automatically. Change
+agents only from `CityLife.between_steps` (the AI thread runs between).
+**For the sound agent.** `CityLife` calls `Sound.set_traffic` every physics frame when
+`Sound.active` (kinds: motorbike, auto_rickshaw, bus, hatchback, saloon/suv/coupe).
+**For the world agent.** When flyover decks are drawn, build areas with `decks = true`
+(`AiArea.build`, G-122) and give the crowd field a `solid(Vector2)` test against buildings.
+**For Phase 5.** `AgentSystem.hold/let_go/scare/slow/place_at` are the hooks for knocked-down
+walkers and police stops; walkers are adults only.
+
+**Measured** (this 4-core container, Godot 4.7.2; `traffic_shot.gd`, 18:30, default pools 34
+vehicles / 34 walkers). Main thread, headless at a fixed 60 fps, CityLife's own work per physics
+frame (sync + wait): T. Nagar 0.73 + 0.42 ms, Marina 0.94 + 0.30 ms, Anna Salai 0.66 + 0.06 ms
+(all physics callbacks together at Marina: 1.26 ms; before: 0.00 ms; the world's streaming
+runs in `_process` and is unchanged). The AI step on its own thread, every second physics
+frame: 1.8–3.1 ms (traffic 1.0–1.5, walkers 0.5–1.3, crowd 0.05–0.5). Twice the pools (68/68)
+at T. Nagar: main 1.38 + 2.0 ms, AI step 7.8 ms: the default pools are what the budget allows.
+Draw calls (Compatibility, xvfb, all passes), city alone → with life: T. Nagar 40 → 121, Marina
+30 → 166, Anna Salai 32 → 159, Central 47 → 135; before merging the vehicle models and capping
+the figures Marina was 244. 03:00 at Marina: 66. Out at 18:30: 21–28 vehicles, 20–34 walkers,
+1–31 crowd people, at most 36 figures drawn plus drivers.
+
+**Weak or not done.**
+- Not seen on a phone; numbers are a desktop container's. On the Adreno 613 phone expect the
+  main-thread part 3–4× slower (about 3–5 ms) and the draw calls as measured; lower
+  `FIGURE_CAP` or the pools if the phone needs it.
+- `Performance.TIME_PHYSICS_PROCESS` read 3.5–14 ms here even for idle frames (noise from the
+  headless fixed-fps loop), so the physics engine's share was not isolated; the claim above is
+  the script callbacks only. Under xvfb the GPU (llvmpipe) dominates every frame.
+- Traffic still reads thin on most streets (a pool of 34 over a 170 m ring of many roads); a
+  rush hour in Chennai is denser than this. Jams form at some junctions (several vehicles at a
+  standstill seen at T. Nagar); the junction-turn rule is the Three.js one and was not tuned.
+- T. Nagar reads as "lane" by road length: OSM's shops there are sparse for the market rule
+  (9 within 90 m); TD-31's thresholds are unchanged.
+- No sitting on the sand (the cast's `sit` clip is on a seat): beach groups stand or talk.
+  Drivers use the seat `sit` clip; bike riders' legs are not on the footpegs.
+- The fleeing carjacked driver runs straight for 9 s and vanishes; not an AI agent, so traffic
+  does not stop for them. No HUD toast for the crime yet (integration/missions).
+- Crowd spots do not test buildings (`solid` not wired): a spot can stand in a building's
+  doorway or wall where pavements are narrow.
+- Traffic views have no brake or indicator lights; doors never open.
+- Model merging is skipped headless (the dummy renderer's mesh store is not thread-safe).

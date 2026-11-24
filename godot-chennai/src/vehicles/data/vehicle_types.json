@@ -186,6 +186,11 @@
   "saloon": {"kind": "saloon", "paint": "#1d2b3a"},
   "suv": {"kind": "suv", "paint": "#5b5f63"},
   "coupe": {"kind": "coupe", "paint": "#b23a2e"},
-  "race_car": {"kind": "race", "paint": "#2a9d8f"}
+  "race_car": {"kind": "race", "paint": "#2a9d8f"},
+  "sedan": {"kind": "car", "label": "Sedan", "model": "sedan", "paint": "#e7e7e4"},
+  "share_auto": {"kind": "auto", "label": "Share auto", "model": "share_auto", "paint": "#e5bf19"},
+  "goods_carrier": {"kind": "car", "label": "Goods carrier", "model": "goods_carrier", "paint": "#e7e7e4"},
+  "bus_lowfloor": {"kind": "bus", "label": "Low-floor bus", "model": "bus_lowfloor", "paint": "#3f7fbf"},
+  "bus_mofussil": {"kind": "bus", "label": "Mofussil bus", "model": "bus_mofussil", "paint": "#3f7fbf"}
  }
 }

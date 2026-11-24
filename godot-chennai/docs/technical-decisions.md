@@ -1068,3 +1068,106 @@ Stability: brake over 4.5 m/s^2 loses 3 per m/s^2 over per second; cornering ove
 `test_content_v2.gd`: every marker of the five missions (and their kerbs, tail points, parking) is within 20 m (tail 8 m) of a street and not inside a building; the existing 21 stages and 13 jobs are within 60 m (stops 20 m) and not inside a building, except a park and two railway stations.
 ### G-149: Not done on purpose
 W7 (the quarry on the live road graph and traffic signals) needs `RoadGraph` and `TrafficSignals` from the traffic branch, which is not in `feat/godot-chennai`: it is for `godot-complex` once merged; chases and tails play baked road polylines (new ones are real road routes). Hazard re-planning (routes around water) needs the same graph; the player re-routes by the minimap. A red-light run beside the tail target is in the rules (`red_light`) but not wired to signals. Police heat from a choice is only a signal (`heat_raised`) until combat is integrated. W8 and W9 are the coordinator's.
+
+## G-120: The AI reads an area round the player, built off the main thread; `ai` stays pure
+Traffic, walkers, signals and crowds (Phase 3, brief §5) run on an `AiArea`: the roads within
+1.2 km of a centre, read through `WorldSource` (G-6: roads, the index's POIs, mapped
+`traffic_signals` nodes and areas, landmarks, the sea, beaches from the regional world's chunks
+near the coast, the rail stations), turned into a drive graph and a walk graph (`RoadGraph`,
+port of `RoadGraph.ts`), spawn weights, signals and the kinds of place. It is built on a worker
+thread (`BackgroundTask`) whenever the player moves 500 m from the centre; `AgentSystem.rebase`
+moves everyone onto the new graphs where they are. Everything in `src/ai/` is `RefCounted` and
+node-free (`AiArea`, `AiPopulation`, `AgentSystem`, `RoadGraph`, `TrafficSignals`, `PlaceMap`,
+`CrowdField`, `CastPicker`, `TrafficDensity`, `AgentPresets`, `AiRandom`); the views are
+`src/vehicles/traffic/` and `src/player/people/`, wired by `src/app/city_life/` (`CityLife`,
+`Carjacking`). The game's agents are the Three.js `Agents.ts` rules, ported with their tests.
+
+## G-121: Lanes from the map
+A road's lanes each way come from OSM `lanes` (else the width, `CityLayout.lane_count`); each
+vehicle keeps its own lane by its variation (the kerb lane for slower ones), a one-way street
+uses its whole carriageway, a narrow two-way street is driven near its middle as in the
+Three.js game. India drives on the left: lanes are left of the centre line.
+
+## G-122: Road heights from day one
+`RoadGraph.node_y` holds the road surface height at every node and agents carry `y`
+(`height_on(edge, along)`), so traffic and walkers can use flyover decks and ramps (blueprint;
+the Three.js AI assumed y = 0). Built with `decks`, bridges with OSM `layer >= 1` are raised to
+`layer × 6 m` and the roads joining them ramp down at 1 in 20 (a highest-first search both ways
+along every edge). Off today: the world draws flyovers flat (World agent's weak list), and
+traffic must drive on what is drawn; switch it on in `AiArea.build(…, decks = true)` when decks
+exist. Estimated, not mapped: OSM has no heights.
+
+## G-123: Signals at main junctions, stop lines and heads drawn
+Port of `Signals.ts`: junctions of three or more roads with a main road, or near a mapped OSM
+`traffic_signals` node, clustered within 16 m; two groups of arms by direction take turns
+(12 s green, 3 s amber, 1 s all-red), each junction offset by its position. Traffic stops at the
+line on red, on amber when it can stop comfortably, and whenever someone is on the zebra.
+`SignalHeads` draws a pole and a three-lamp head at the kerb before each stop line within 140 m
+and the stop line itself, in three `MultiMesh`es (lamps unshaded with a colour per instance):
+three draw calls for every junction in view.
+
+## G-124: Chennai's traffic: the Tamil Nadu vehicles, rare premium cars, drawn as the drivable models
+`AgentPresets.chennai_mix()`: motorbikes 34 %, autos 15 % and share autos 4 %, hatchbacks 17 %,
+sedans 9 %, taxis 6 %, goods carriers 4 %, city, low-floor and mofussil buses 8 %, premium SUV,
+saloon and coupé 3 % in all (brief §11 "rare traffic"); estimates of an arterial, not counts.
+Each look is a vehicle variant (new: `sedan`, `share_auto`, `goods_carrier`, `bus_lowfloor`,
+`bus_mofussil` in `vehicle_types.json`, additive), so the view is the same `VehicleModel` the
+player drives, in a paint from the model's own Chennai colour list, with its footprint for the
+AI's gaps. A view is an `AnimatableBody3D` on the vehicles layer (G-76) with the chassis box:
+the player's vehicle hits it and the player cannot walk through it. Its driver (the cast's
+auto-driver, cab-driver, bus-driver; delivery and young commuters on bikes) sits in the seat
+from the manifest, within 45 m (95 m on open seats).
+
+## G-125: Children and teens only beside an adult, off the road
+`CastPicker` (brief §6, G-18): walkers (who can be hit) and drivers are adults; crowds anywhere
+are adults; children and teens appear only as crowd spots marked as a child, beside an adult at
+a station or on the sand, never on a carriageway; the cricket boy only at play on the sand.
+Tested on the real manifest and on generated spots (`test_ai_population.gd`).
+
+## G-126: People and traffic by place and hour (TD-31)
+Port of `Places.ts`/`Crowds.ts` (`agent/crowd-density`): each stretch of pavement is a beach,
+promenade, market (9 shops within 90 m), station (160 m), temple, main road, street or lane,
+read from the map; each kind has a curve of people per 100 m by hour (beaches fill at sunset,
+markets at noon and evening, stations at the rushes, lanes stay quiet). Every 2 s the place
+within 250 m and the hour set how many of the pools are out (`AiPopulation`): walkers by the
+people level, traffic by the hour's share and the roads' traffic share. Crowds are fixed spots
+per 32 m square (the same every visit), thinned by the hour, at most 90, nearer ones first.
+The spawn rings in the city are closer than the Three.js defaults (traffic 50–170 m, walkers
+18–85 m): with the phone's haze a wider ring left the street in front of the player empty.
+
+## G-127: The AI on its own thread at 30 Hz; what the frame pays
+- The AI steps on a thread of its own (`CityLife._run_steps`, semaphores) every second physics
+  frame (30 Hz); the main thread waits for the last step (usually done), copies positions into
+  a snapshot and starts the next; views move on from the snapshot along heading × speed in
+  between. A `WorkerThreadPool` task was tried first; the pool's threads are shared with the
+  physics engine's jobs and the chunk builds, so a dedicated thread is used.
+- Broad phase: obstacles and agents bucketed per 16 m square in `AgentSystem.update`
+  (walker step cost fell from 2.4 ms to 1.4 ms at T. Nagar).
+- Traffic models merged per look and paint into one mesh per material (`Lod0` keeps shadows,
+  far LODs none; wheels apart to turn): about four draw calls a vehicle instead of 7–18.
+- People: at most 36 walkers and crowd people drawn (the nearest), shadows only within 18 m,
+  animation every third frame beyond 30 m, none beyond 85 m; models loaded during loading,
+  views pooled per person (`PeoplePool`), a handful of the cast loaded (14 walkers, 10 more in
+  crowds, 4 children, 3 drivers per kind).
+- Measured on this container (4 cores, Godot 4.7.2; numbers in the traffic handoff): CityLife's
+  main-thread work 0.65–1.4 ms a physics frame, the AI step 1.8–3.1 ms on its thread every
+  other frame, draw calls +80…+136 over the city (121–166 in all at the reference places).
+  `Performance.TIME_PHYSICS_PROCESS` was not usable here (it reported 3.5 ms for an idle
+  headless frame); `tests/tools/traffic_shot.gd` measures the physics callbacks itself.
+
+## G-128: Carjacking (TD-30) in the game
+A traffic car, auto or bike that has all but stopped (< 1.2 m/s: in front of the player, at a
+light, in a jam) within reach of the Get-in button is swapped for a real `Vehicle` of the same
+variant and paint, with its driver seated; its agent is held. The vehicle carries the meta
+`driver_aboard`, which makes `Driving.enter` play the boarding's pull phase (one additive line
+in `driving.gd`). On "pulled" the crime is reported (`Wanted.report("carjacking")` when the game
+has a `Wanted`) and `Carjacking.carjacked` is emitted; the driver runs off and walkers near are
+scared; seated, the agent goes back to the pool out of sight. Walking away (5 m) undoes the
+swap. Buses and ambulances cannot be taken (`Carjack.KINDS`).
+
+## G-129: Walkers step aside; traffic stops for people crossing
+Walkers coming towards each other, or catching up with a slower one, step up to 1.3 m to their
+left (India keeps left) or away from someone already to one side, and back to their line after;
+the player and vehicles are stepped round the same way; only someone right in front stops
+them. Traffic treats every walker as an obstacle, so it stops for people crossing a street at an
+unsignalled corner as well as on a zebra.
