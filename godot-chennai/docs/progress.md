@@ -214,3 +214,16 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Carjacking runtime (TD-30, G-128) | Done | scene test: stand in front of a car, it stops, Get in offers it, the driver is pulled out (crime signalled once), the player drives it in its paint, the agent respawns elsewhere; walking away undoes the swap |
 | Frame cost measured (G-127) | Measured on the container, not on a phone | `tests/tools/traffic_shot.gd`; numbers in `handoff.md` |
 | Seen on a phone | Not done | — |
+
+## Title screen from the landing-page design (G-160 to G-165, branch `agent/godot-title`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Fonts: Barlow Condensed Bold/ExtraBold and Noto Sans Tamil Bold, licence rows (G-160) | Done | `test_fonts_draw_tamil_and_latin` (every glyph of சென்னை present, a width), screenshot shows the Tamil name |
+| Rows with subtitles, CONTINUE only with a save and the real stage/money/stages done, primary row amber bar and glow (G-161) | Done | `test_title_screen` (rows, first launch, buttons, D-pad order), `test_boot` (focus, CONTINUE iff a save) |
+| 48-unit rows, nothing clipped or overlapping at four screen sizes, no scrolling at 915x412 (G-161) | Done | `test_ui_layout` (title with and without a save, ABOUT, SETTINGS, CONTROLS) |
+| Rows slide in one by one, hover/focus nudge, reduced motion (G-161, G-165) | Done | `test_entrance_slides_rows_in_one_by_one`, `test_focus_nudges_the_row_when_motion_is_on`, `test_reduced_motion_has_no_slide_nudge_or_glow` |
+| SETTINGS (Time, Weather, Sound as in the pause menu), CONTROLS (read-only, from one list) (G-162, G-163) | Done | `test_settings_page_holds_the_real_settings`, `test_controls_page_lists_the_guide` |
+| Map credit with the extract date; chip with the real place, time and weather (G-164) | Done | `test_chip_and_credit`, `test_place_names_come_from_the_index`, `test_chip_follows_the_clock_and_the_weather` |
+| Camera drift over a seeded spot of the live city, handing the city back on CONTINUE (G-164) | Done | `test_seed_picks_the_same_spot`, `test_camera_drift_is_slow_and_bounded`, `test_camera_drifts_over_the_player_and_holds_still_with_reduced_motion`, `test_tour_streams_the_spot_and_continue_hands_the_city_back` |
+| Rain layers, lightning in a stormy title (G-165) | Done (rings, mist bands, thunder left out) | `test_rain_layers_one_draw_call_each_and_none_when_dry`, `test_lightning_only_in_a_storm_and_never_with_reduced_motion` |
+| Seen on a phone | Not done | — |

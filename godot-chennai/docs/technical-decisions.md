@@ -1171,3 +1171,83 @@ left (India keeps left) or away from someone already to one side, and back to th
 the player and vehicles are stepped round the same way; only someone right in front stops
 them. Traffic treats every walker as an obstacle, so it stops for people crossing a street at an
 unsignalled corner as well as on a zebra.
+
+## G-160: Title fonts: Barlow Condensed and Noto Sans Tamil (SIL OFL)
+The title uses Barlow Condensed Bold (menu rows, page names, the chip, spaced OPEN WORLD) and
+ExtraBold (the big CHENNAI), and Noto Sans Tamil Bold for சென்னை, as the landing-page design
+asks. Fetched from `raw.githubusercontent.com` (the google/fonts repository, `ofl/barlowcondensed`
+and `ofl/notosanstamil`; that host is allowed from this container). Barlow is stored unmodified
+(110 KB each). Noto Sans Tamil is a variable font (340 KB): it is frozen at weight 700 and cut to
+Tamil, Latin and a few punctuation marks with fontTools (56 KB). Files are in `assets/fonts/title/`
+(a folder of its own: the sync tool owns the `.woff2` files beside it), licence rows in
+`assets/LICENSES.md`, licence texts beside the fonts. `TitleFonts` loads them lazily; a missing
+file falls back to the theme font. The display face lists the Tamil face as its fallback, so one
+font draws a mixed line. A test checks that every glyph of சென்னை exists (`has_char`) and a
+screenshot shows them drawn.
+
+## G-161: The title menu follows the landing-page design
+Rows CONTINUE (only with a save; shows the real "Stage N · ₹money · D of T stages", or "Free
+roam" when every stage is done), NEW GAME (first launch: "Begin in Chennai: Stage 1, <first
+stage's title>"; with a save: "Start again from Stage 1"), SETTINGS, CONTROLS, ABOUT, QUIT (where an
+app can quit). The primary row (CONTINUE, else NEW GAME) has the amber bar and a soft pulsing glow
+and the focus. Every row is a `TitleRow` (a Button with a title and subtitle, ≥ 48 tall). Hover and
+focus show a pale plate, an amber bar and a 4-unit nudge; rows slide in one by one (0.35 s + 0.08
+s per row, 0.6 s tweens), the name parts rise, the chip comes last (0.9 s). The summary comes from
+`Main.title_summary()` (live `MissionSession` and the save file), so `ui` knows no game system.
+Layout budget: the screen is never shorter than 412 units, and six 48-unit rows are 288 of
+them, so the brand is cropped to the height of its letters (`_slot`: Tamil 1.2, CHENNAI 0.9, OPEN
+WORLD 1.15 times the font size) and the foot counts only the credit's 15 units (the chip rises
+from the corner on the right, away from the menu). At 915x412 nothing scrolls; the rows sit in a
+ScrollContainer for anything smaller. A test (`test_ui_layout`) checks every row is inside the
+screen, off the credit, and needs no scrolling, at four screen sizes with and without a save.
+The shade is one 192x96 texture (the prototype's left-to-right gradient plus the dark foot),
+one full-screen quad; the prototype's radial vignette was left out (a second full-screen layer).
+Node names changed: the first row is `Continue` or `NewGame` (was `Play`); `Main.title.primary_row()`
+is the row with the focus.
+
+## G-162: SETTINGS is the pause menu's settings, from one list
+`Main._add_pause_menu` adds Time, Weather and Sound to the pause menu and to the title's SETTINGS
+page in one loop (`add_setting(id, label, press)` on both), so they cannot drift apart. A press
+relabels the button and tells the title (`settings_changed`), whose chip shows the clock and the
+weather. Settings are plain buttons (≥ 48 tall) on dark plates so they read over a bright sky.
+
+## G-163: CONTROLS is read-only and data-driven from `ControlsGuide`
+The CONTROLS page draws `ControlsGuide.groups()` (ON FOOT, DRIVING, ANYWHERE; control and what it
+does) in three columns, and nothing else on the title knows a control. When the controls scheme
+is redesigned, change that one list (a test checks every row of it is on the page).
+
+## G-164: The title camera tours a seeded spot of the live city
+`TitleWiring` (`src/app/title_wiring/`) owns the title camera. At launch a seed (the clock, or
+`Main.title_seed`) picks Marina, T. Nagar or Central (`TitleSpots`: target point, heading,
+distance, height, a ±0.22 rad sine sweep over 64 s: the prototype's slow alternate drift, about
+1 m/s). With `tour` on (default whenever there is a display; headless runs, so every other suite,
+keep it off) the streaming focus moves to the spot during loading, behind the loading screen:
+`CityWorld.focus_node` and `CityLife.focus_node` become a marker there, so the traffic, people
+and parked vehicles are the real ones of that street. The player is frozen
+(`process_mode` DISABLED) so they cannot fall through ground that is no longer streamed. CONTINUE
+and NEW GAME call `release()`: focus goes back to the player, the loading screen shows its one
+honest step ("Building the streets around you") and the player is let go when the chunks within
+60 m of them are in (`world_ready_around`, game time). Coming back from play (QUIT TO TITLE) the
+camera just drifts over where the player is (no focus move: a driven vehicle must keep its
+ground). The chip's place name is the nearest landmark within 700 m, else the nearest district of
+the tile's index (`TitlePlace`, only names in the data: Marina Beach, T. Nagar, "Evening Bazaar"
+for the Central spot, because the data has no landmark at the station). The weather and light
+come from `GameLoop.clock` and `Weather` through `CityEnvironment`; the title adds no world.
+Cost of the tour: the wait on CONTINUE (a few seconds on a phone while the player's streets load).
+
+## G-165: Rain, lightning and reduced motion on the title
+The camera's own `CityEnvironment` rain (one box of 36 m round the camera) shows only as a few near
+streaks from a camera 25 m up, so the title adds two `RainView` layers in front of the camera
+(the prototype's middle and far drops): box 76x44x76 m, 32 m ahead, 900 drops; box 220x90x220 m,
+120 m ahead, 1100 drops, longer, wider streaks. Same shader and code as the existing rain
+(`RainView` got optional box, streak and width parameters); one draw call each, hidden when dry.
+Lightning is a full-screen additive flash (0.55, 0.75, 0.35 with a fade, 4.5–12 s apart, from
+a seed) only while it rains and the launch drew a storm (one launch in three): `Weather` stays
+clear or rain (G-87), "storm" is a title decoration and the chip says "Storm" only then. Left out
+and why: splash rings and ripples on the road (at 25 m up they are a pixel or two and need a
+road-height decal pass), the drifting mist bands (the rain already thickens the haze and the
+road shine in `Lighting`), thunder and rain sound (sound is suspended on the title by design),
+the radial vignette. Reduced motion (`DisplayServer.accessibility_should_reduce_animation()`, on
+the title menu and the wiring, settable before they enter the tree): no slide, nudge, glow pulse,
+camera drift or lightning; the chip says Rain. Nothing runs while loading: the wiring's `_process`
+is off until the title is shown.

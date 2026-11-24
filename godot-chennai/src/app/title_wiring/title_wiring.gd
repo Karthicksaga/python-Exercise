@@ -26,12 +26,14 @@ const FOV := 58.0
 ## Lightning: gaps between bolts in seconds, and the flash's colour.
 const BOLT_GAP := Vector2(4.5, 12.0)
 const FLASH := Color(0.87, 0.91, 1.0)
+## Exposure multiplier of the title camera at full night (1 by day).
+const NIGHT_LIFT := 2.6
 ## The rain beyond the camera's own box, as `RainView` layers in front of the camera (the prototype's
 ## far and middle drops): {distance ahead, box, drops, streak, width, opacity share}. The near
 ## layer is `CityEnvironment`'s rain, unchanged. One draw call each, none when dry.
 const RAIN_LAYERS: Array[Dictionary] = [
-	{"distance": 32.0, "box": Vector3(76.0, 44.0, 76.0), "drops": 900, "streak": 0.07, "width": 0.02, "share": 0.8},
-	{"distance": 120.0, "box": Vector3(220.0, 90.0, 220.0), "drops": 1100, "streak": 0.12, "width": 0.05, "share": 0.6},
+	{"distance": 32.0, "box": Vector3(76.0, 44.0, 76.0), "drops": 900, "streak": 0.07, "width": 0.014, "share": 0.8},
+	{"distance": 120.0, "box": Vector3(220.0, 90.0, 220.0), "drops": 1100, "streak": 0.12, "width": 0.03, "share": 0.6},
 ]
 
 var world: CityWorld
@@ -54,6 +56,7 @@ var rain_layers: Array[RainView] = []
 ## Main-thread script time of the title's own frame work (µs), for the report.
 var stats: Dictionary = {"steps": 0, "total_usec": 0, "max_usec": 0}
 var _marker: Node3D
+var _exposure: CameraAttributesPractical
 var _t: float = 0.0
 var _phase: float = 0.0
 var _chip_clock: float = 0.0
@@ -84,6 +87,10 @@ func _ready() -> void:
 	camera.fov = FOV
 	camera.near = 0.3
 	camera.far = 900.0
+	# The title is staged a little brighter than play at night (the prototype's night is a graded
+	# photo at 0.8 brightness, ours is near black): only this camera, never the world's light.
+	_exposure = CameraAttributesPractical.new()
+	camera.attributes = _exposure
 	world.add_child(camera)
 	_marker = Node3D.new()
 	_marker.name = "TitleFocus"
@@ -111,6 +118,7 @@ func _ready() -> void:
 		add_child(view)
 		rain_layers.append(view)
 	set_process(false)
+	set_physics_process(false)
 
 
 ## Loading work: chooses the spot from `seed_value` (or `forced`), and with `tour` moves the
@@ -153,6 +161,7 @@ func release() -> bool:
 		return false
 	active = false
 	set_process(false)
+	set_physics_process(false)
 	_flash.visible = false
 	for view in rain_layers:
 		view.visible = false
@@ -166,6 +175,11 @@ func release() -> bool:
 	_waiting = true
 	set_physics_process(true)
 	return true
+
+
+## Rewrites the chip now (the place and the clock and weather as they are).
+func refresh_chip() -> void:
+	_update_chip(true)
 
 
 func is_waiting() -> bool:
@@ -200,12 +214,14 @@ func step(dt: float) -> void:
 	stats["max_usec"] = maxi(int(stats["max_usec"]), spent)
 
 
-func _step(dt: float) -> void:
+func _step(frame_dt: float) -> void:
+	# A slow frame must not make the drift jump or swallow a flash (the prototype clamps too).
+	var dt := minf(frame_dt, 0.05)
 	if not reduced_motion:
 		_t += dt
 	_place_camera()
 	_rain(dt)
-	_chip_clock -= dt
+	_chip_clock -= frame_dt
 	if _chip_clock <= 0.0:
 		_update_chip(false)
 	_lightning(dt)
@@ -236,6 +252,9 @@ func _rain(dt: float) -> void:
 	var level := Weather.rain_level()
 	var night_value: Variant = RenderingServer.global_shader_parameter_get(WeatherService.NIGHT_PARAM)
 	var night: float = night_value if night_value is float else 0.0
+	var lift := lerpf(1.0, NIGHT_LIFT, night)
+	if absf(lift - _exposure.exposure_multiplier) > 0.005:
+		_exposure.exposure_multiplier = lift
 	var ahead := -camera.global_basis.z
 	var flat := Vector3(ahead.x, 0.0, ahead.z).normalized()
 	for i in rain_layers.size():

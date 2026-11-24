@@ -62,6 +62,7 @@ func _run() -> void:
 		(main.get("title") as Node).call("show_controls")
 	elif o["page"] == "about":
 		(main.get("title") as Node).call("show_about")
+	wiring.call("refresh_chip")
 	var start := Time.get_ticks_msec()
 	var frames := 0
 	var process_ms := 0.0
@@ -78,10 +79,11 @@ func _run() -> void:
 		process_ms += Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
 		calls_sum += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 		prims_sum += Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
-		if o["storm"] == "1" and not bolted and Time.get_ticks_msec() - start > int(float(o["wait"]) * 1000.0) - 250:
-			wiring.call("bolt")
-			bolted = true
-	for i in 6:
+	if o["storm"] == "1":
+		wiring.call("bolt")
+		bolted = true
+	wiring.call("refresh_chip")
+	for i in 3 if bolted else 6:
 		await process_frame
 	var image := root.get_texture().get_image()
 	var err := image.save_png(o["out"])
