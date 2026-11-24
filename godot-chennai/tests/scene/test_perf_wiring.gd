@@ -183,3 +183,22 @@ func test_both_menus_carry_the_graphics_and_overlay_rows() -> bool:
 	DebugSettings.reset_shared()
 	_restore()
 	return true
+
+
+func test_the_overlay_steps_aside_for_the_pause_menu() -> bool:
+	DebugSettings.reset_shared()
+	var main := await _boot()
+	DebugSettings.shared().set_perf_overlay(true)
+	await wait_frames(3)
+	assert_true(main.perf.overlay.visible, "the overlay shows in play")
+	main.pause_menu.open()
+	await wait_frames(3)
+	assert_false(main.perf.overlay.visible, "it is hidden while the pause menu is open (G-350)")
+	assert_true(main.pause_menu.layer > main.perf.overlay.layer, "and the menu draws above it anyway")
+	main.pause_menu.close()
+	await wait_frames(3)
+	assert_true(main.perf.overlay.visible, "it comes back when the menu closes")
+	DebugSettings.shared().set_perf_overlay(false)
+	DebugSettings.reset_shared()
+	_restore()
+	return true

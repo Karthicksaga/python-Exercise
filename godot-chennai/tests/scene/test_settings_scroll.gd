@@ -45,10 +45,8 @@ func test_pause_menu_settings_scroll_to_the_last_row() -> bool:
 		check(bar.visible and bar.get_combined_minimum_size().x >= 8.0, "%s: a visible scrollbar (%s wide)" % [size, bar.get_combined_minimum_size().x])
 		var last := menu.find_child("QuitToTitle", true, false) as Button
 		check(not sc.get_global_rect().encloses(last.get_global_rect()), "%s: the last row starts out of view" % size)
-		# Touch drag scrolling is the engine's (ScrollContainer, scroll_deadzone): a synthetic touch
-		# drag does not reach it in a headless SubViewport, so the setting that lets a drag that
-		# starts on a button scroll is what is checked here.
-		check(sc.scroll_deadzone > 0 and sc.follow_focus, "%s: a drag over the buttons scrolls, focus scrolls into view" % size)
+		# Real touch drags are tested in test_touch_scroll.gd (G-350).
+		check(sc is TouchScroll and sc.follow_focus, "%s: the list is a TouchScroll, focus scrolls into view" % size)
 		sc.scroll_vertical = int(bar.max_value)
 		await wait_frames(2)
 		check(sc.get_global_rect().grow(1.0).encloses(last.get_global_rect()), "%s: scrolled to the end, QUIT TO TITLE is in view %s in %s" % [size, last.get_global_rect(), sc.get_global_rect()])
@@ -84,7 +82,7 @@ func test_title_settings_scroll_to_the_last_row() -> bool:
 		sc.scroll_vertical = int(bar.max_value)
 		await wait_frames(2)
 		check(sc.get_global_rect().grow(1.0).encloses(last.get_global_rect()), "%s: scrolled to the end, the last row is in view %s in %s" % [size, last.get_global_rect(), sc.get_global_rect()])
-		check(sc.scroll_deadzone > 0, "%s: a drag over the buttons scrolls" % size)
+		check(sc is TouchScroll, "%s: the list is a TouchScroll" % size)
 		vp.queue_free()
 		await wait_frames(1)
 	return true
