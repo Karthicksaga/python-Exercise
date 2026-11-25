@@ -279,10 +279,13 @@ func _build_about_page() -> void:
 	var box := VBoxContainer.new()
 	_page(PAGE_ABOUT, box)
 	_about_back = _page_head(box, "ABOUT")
+	var scroll := UiTheme.touch_scroll()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(scroll)
 	_about_text = UiTheme.label("")
 	_about_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_about_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.add_child(_about_text)
+	_about_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_about_text)
 
 
 func _build_settings_page() -> void:
@@ -376,11 +379,13 @@ func _build_foot() -> void:
 # --- Data ------------------------------------------------------------------------------------
 
 ## The map credit: the index's attribution and its OSM data date, bottom left and on ABOUT.
-func set_credits(attribution: String, data_date: String) -> void:
+func set_credits(attribution: String, data_date: String, sounds: String = "") -> void:
 	var credit := attribution if attribution != "" else "© OpenStreetMap contributors"
 	var day := data_date.substr(0, 10)
 	_credit.text = "Map data %s%s" % [credit, " · %s" % day if day != "" else ""]
 	_about_text.text = "An original game set in real Chennai.\nMap: %s%s, ODbL 1.0. Building heights, colours and road widths are estimated where OpenStreetMap has none.\nFonts: Barlow Condensed and Noto Sans Tamil, SIL Open Font Licence 1.1." % [credit, " (map data %s)" % day if day != "" else ""]
+	if sounds != "":
+		_about_text.text += "\n\n" + sounds
 
 
 ## What the save says, from the composition root: {has_save, continue_line, new_game_line}. The

@@ -10,7 +10,7 @@ BLENDER="${BLENDER:-blender}"
 GODOT="${GODOT:-godot}"
 cd "$ROOT"
 build() {
-  for kit in gopuram_complex colonial_clocktower station tower lighthouse mall; do
+  for kit in gopuram_complex colonial_clocktower station tower lighthouse mall hero_station hero_flyover; do
     [ -f "$HERE/$kit.py" ] || continue
     "$BLENDER" -b --factory-startup --python "$HERE/$kit.py" -- "$@" 2>&1 | grep -E '^(MODEL|KIT)|Error|Traceback' || true
   done

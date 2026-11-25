@@ -7,7 +7,10 @@ extends RefCounted
 const DIR := "res://assets/landmarks"
 const INDEX := DIR + "/index.json"
 const FORMAT := 1
-const KINDS: Array[StringName] = [&"temple", &"civic", &"station", &"tower", &"lighthouse", &"church", &"mosque", &"museum", &"mall"]
+## Hero model budgets (G-390): triangles of LOD0 and LOD1.
+const HERO_LOD0_MAX := 6000
+const HERO_LOD1_MAX := 1500
+const KINDS: Array[StringName] = [&"temple", &"civic", &"station", &"tower", &"lighthouse", &"church", &"mosque", &"museum", &"mall", &"junction"]
 ## Part roles: `model` parts are drawn by the model (their outline is matched within 2 m),
 ## `area` parts lie under the model, `info` parts only lend names and links.
 ## `model_rect` parts are drawn on their minimum rectangle (where OSM's outline is not the
@@ -49,10 +52,21 @@ var exclude_box: Rect2 = Rect2()
 ## [{"ta", "en", "at", "height"}]: real public names only.
 var signs: Array[Dictionary] = []
 var data: Dictionary = {}
+## Hero models (G-390): detailed by a texture atlas, tighter triangle budgets.
+var hero: bool = false
+## Road decks detailed from the world's own road data instead of an OSM outline (Kathipara).
+var overlay: bool = false
+var atlas_file: String = ""
+## Entrances, peace zone and facts card (G-391), world metres.
+var hooks: Dictionary = {}
 
 
 func glb_path() -> String:
 	return "%s/%s/%s.glb" % [DIR, id, id]
+
+
+func atlas_path() -> String:
+	return "%s/%s/%s" % [DIR, id, atlas_file] if atlas_file != "" else ""
 
 
 func build_path() -> String:
@@ -80,6 +94,10 @@ static func from_dict(d: Dictionary) -> LandmarkSpec:
 	s.lod1_end = float(lod.get("lod1_end", 0.0))
 	s.lod2_end = float(lod.get("lod2_end", 0.0))
 	s.budget = d.get("budget", {})
+	s.hero = bool(d.get("hero", false))
+	s.overlay = bool((d.get("osm", {}) as Dictionary).get("overlay", false))
+	s.atlas_file = str((d.get("atlas", {}) as Dictionary).get("file", ""))
+	s.hooks = d.get("hooks", {})
 	var osm: Dictionary = d.get("osm", {})
 	var parts: Dictionary = osm.get("parts", {})
 	for name: String in parts:
@@ -175,7 +193,7 @@ func validate() -> PackedStringArray:
 			e.append("part %s: osm must be way/N or node/N" % name)
 		if not ROLES.has(roles.get(name, &"")):
 			e.append("part %s: role must be model, model_rect, area or info" % name)
-		if ref.begins_with("way/") and not footprints.has(name):
+		if ref.begins_with("way/") and not footprints.has(name) and not bool(part.get("road", false)):
 			e.append("part %s: footprint not filled from OSM (run cli landmark-osm)" % name)
 		var tags: Dictionary = part.get("tags", {})
 		if tags.has("brand") or tags.has("shop"):
@@ -184,7 +202,7 @@ func validate() -> PackedStringArray:
 			for k: String in tags:
 				if k.begins_with("name") or k.contains("_name") or k.begins_with("wiki") or k == "brand":
 					e.append("part %s: a mall's name and links are withheld (TD-18): %s" % [name, k])
-	if footprints.is_empty() or exclude.is_empty():
+	if not overlay and (footprints.is_empty() or exclude.is_empty()):
 		e.append("osm: at least one footprint and one exclude part")
 	var h: Dictionary = d.get("height", {})
 	if height <= 0.0 or str(h.get("source", "")) == "" or str(h.get("chosen_because", "")) == "":
@@ -216,7 +234,15 @@ func validate() -> PackedStringArray:
 		e.append("recipe.kit missing")
 	if not (lod0_end > 0.0 and lod0_end < lod1_end and lod1_end < lod2_end):
 		e.append("lod: lod0_end < lod1_end < lod2_end required")
-	if int(budget.get("lod0_min", 0)) < 5000 or int(budget.get("lod0_max", 0)) > 15000:
+	if hero:
+		if int(budget.get("lod0_min", 0)) < 1000 or int(budget.get("lod0_max", 0)) > HERO_LOD0_MAX or int(budget.get("lod1_max", 0)) > HERO_LOD1_MAX:
+			e.append("budget: a hero model has LOD0 under %d and LOD1 under %d triangles" % [HERO_LOD0_MAX, HERO_LOD1_MAX])
+		if atlas_file == "":
+			e.append("a hero model has one texture atlas (atlas.file)")
+		for k: String in ["entrances", "peace_zone", "facts_card"]:
+			if not hooks.has(k):
+				e.append("hooks.%s missing" % k)
+	elif int(budget.get("lod0_min", 0)) < 5000 or int(budget.get("lod0_max", 0)) > 15000:
 		e.append("budget: LOD0 within 5k..15k triangles")
 	for sign: Dictionary in signs:
 		if str(sign.get("ta", "")) != name_ta and str(sign.get("en", "")).to_lower() != name_en.to_lower():

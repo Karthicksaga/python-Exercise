@@ -1,0 +1,19 @@
+{
+ "id": "kathipara-junction",
+ "kit": "hero_flyover",
+ "script": "tools/blender/landmarks/hero_flyover.py",
+ "blender": "5.2.4 LTS",
+ "spec_sha256": "fc1530e20ce3dd1cef046e1e0f7ec6c99aa5673fff92f6676d38b84db233968a",
+ "glb_sha256": "defaa2f5db9cda7ece57a951e37115c299f10e7a3e251c25d6518ae0833ab5af",
+ "triangles": {
+  "lod0": 4180,
+  "lod1": 1465,
+  "lod2": 336
+ },
+ "collision_boxes": 75,
+ "atlas": {
+  "file": "kathipara-junction_atlas.png",
+  "png_bytes": 56642,
+  "sha256": "3e89e9439d356a10bf25f3090477c87de900b12c6afd289cc63912739ef8340e"
+ }
+}

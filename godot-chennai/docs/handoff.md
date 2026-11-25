@@ -355,7 +355,7 @@ Decisions G-50…G-59. Tests: `tests/unit/test_city_meshes.gd`, `test_city_layou
 - Night glow, wet look and street-light pools exist only as material hooks (no lamp glow yet).
 - The textures are painted stand-ins (ports of the Three.js canvases); tile seams show faintly
   on the earth layer, and the asphalt repeats visibly up close.
-- No LOD for landmarks, no occlusion; trees have no far LOD (MultiMesh, cheap so far).
+- No LOD for landmarks, no occlusion (trees have three LODs since G-385, `docs/trees.md`).
 - Seen only under the Compatibility renderer on llvmpipe; not on a phone or the Mobile renderer.
 - Physics interpolation off (G-59). Kerbs are not solid, so the player's step-up is not
   exercised by the city.
@@ -533,7 +533,7 @@ G-58). A frame is the 2.5 ms budget plus at most one step by design (G-50). Full
 - Water is not in the far/map layers; the sea is unchanged; intermittent streams look full.
 - Medians are visual only (as kerbs); the median does not stop traffic.
 - Rule speed breakers (9,867) are invented and dense; tune `RULE_BUMP_SHARE` if play says so.
-- Kathipara hero model (Blender) not started (a later task, as asked).
+- Kathipara hero model: done as a detail layer (G-390 to G-393 below).
 - Seen only on llvmpipe (Compatibility); not on a phone or the Mobile renderer.
 
 ## OSM detail (agent/godot-osmdetail), 24 Nov 2026
@@ -752,6 +752,56 @@ not visible. Decisions in `technical-decisions.md` G-280..G-283.
   llvmpipe screenshots, not on the phone. The full map's wide set is read on a worker thread the
   first time (a few seconds on a phone is not measured; "Drawing the map..." shows meanwhile).
 - **JOBS button:** was exactly under PAUSE since the pause menu landed; moved left of it.
+
+## Combat visuals: strike, carry, puffs, weapons in hand, motion blur (agent/godot-combat-visuals, G-430...G-439), 25 Nov 2026
+**Interfaces for the combat agent (names are stable; the code lands behind them on this branch).**
+Both figures of a person (`HumanFigure`: the player and fare passengers; `PersonView`: walkers,
+crowds, gangsters from `PeoplePool`) now extend `CombatFigure` (`src/player/combat_figure.gd`), so
+the calls are the same on everyone and `WeaponModels` takes either.
+
+```gdscript
+## Throw a blow. kind: &"jab", &"cross", &"hook" (fists) or &"bat" (swing). side: the striking
+## hand, 0 left, 1 right (the bat is always swung from the right, side is ignored for it).
+## Timings are the Three.js STRIKES: punches 0.12 s wind-up + 0.26 s recovery, bat 0.22 + 0.38.
+## Starting again while striking restarts the blow. Ignored while seated or knocked down.
+func play_strike(kind: StringName, side: int, windup: float = -1.0, recover: float = -1.0) -> void
+## (optional windup/recover seconds replace the standard timing, e.g. an enemy's 0.4 s telegraph)
+func is_striking() -> bool            # from play_strike until the recovery ends
+func cancel_strike() -> void          # drop it at once (hit, knocked out, got into a vehicle)
+## Emitted ONCE per blow, on the physics step where the hit frame is reached (fist fully out,
+## bat across the front): apply the damage, spawn the puff and play the sound here.
+signal strike_hit(kind: StringName, side: int)
+## Where the blow lands, scene space (fist, or the middle of the bat's blade) in the current pose.
+func strike_point() -> Vector3
+## Carry something in the hands: &"box" (both hands), &"shoulder" (small box on the right
+## shoulder), &"bag" (one hand), &"push" (both hands on a trolley bar). on=false puts it down.
+func carry(on: bool, kind: StringName = &"box") -> void
+func carrying() -> StringName         # &"" when empty-handed
+
+class_name HitPuffs   # src/app/combat_fx/hit_puffs.gd, one MultiMeshInstance3D, pooled (8 blows)
+## A blow lands at `position` (scene space), surface `normal` (unit, away from what was hit);
+## strength 1 a punch, ~1.6 a bat, 0.5 a small hit. The oldest puff is reused when all are busy.
+func spawn(position: Vector3, normal: Vector3, strength: float) -> void
+func advance(dt: float) -> void       # once per frame, by the owner (Main adds the node)
+
+class_name WeaponModels  # src/weapons_view/weapon_models.gd
+## ids: &"bat", &"stick", &"bottle", &"pistol", &"shotgun", &"smg" (the ids of src/combat/weapons.gd
+## plus stick and bottle; &"fists" and unknown ids detach). Replaces what the figure holds.
+static func attach(figure: CombatFigure, weapon_id: StringName) -> void
+static func detach(figure: CombatFigure) -> void
+static func held(figure: CombatFigure) -> StringName
+```
+Also on `CombatFigure`: `strike_kind()`, `strike_time()`, `play_flinch(from: Vector3, strength)`,
+`carry_prop()`. Tests: `tests/unit/test_strike_pose.gd`, `test_low_poly.gd`, `test_motion_blur.gd`,
+`tests/scene/test_combat_visuals.gd`, `test_hit_puffs.gd`. Screenshots: `tests/tools/combat_shots.gd`
+(scratch folder). Decisions G-430..G-435 in `technical-decisions.md`. `MotionBlur` (`src/game_engine/post/`)
+is not wired into `Main` and has no Settings row: off by default, High only, free while off (G-435).
+**Weak:** the legs do not step into a punch; poses seen only on llvmpipe, not on a phone; nothing calls
+`carry`/`WeaponModels`/`HitPuffs` in play yet; HitPuffs must be added to the scene by the caller.
+
+Wiring to do on the combat side: call `figure.play_strike` when a swing starts, apply damage on
+`strike_hit` (not on the button), `HitPuffs.spawn(figure.strike_point(), -facing, strength)`, and
+`WeaponModels.attach` on weapon change.
 
 ## Poses: seated, passengers, falls, arm swing (agent/godot-anim, G-260…G-269), 24 Nov 2026
 **Knockdown API (for `agent/godot-crash`; stable, committed first).** Both figures of a person
@@ -1014,9 +1064,18 @@ never knocked down).
 - Headless and xvfb (llvmpipe) only; not on a phone.
 - The end-to-end take-over test failed before the fix in 2 of 3 runs only (whether the sweep hits
   depends on the respawn direction); the yard test is the deterministic one.
-- One unexplained run of the take-over test after the fix: a later ride-off judged a 75 km/h
-  "thrown" against a building at half throttle (fastest reached not recorded then); not seen in
-  the eight runs since. If it comes back, look for another code-placed kinematic body.
+- The signal-11 crash in the full run on agent/godot-merge-12 was a data race (G-364): the
+  carjacking's scare of walkers ran from `Driving`'s physics step while the AI thread stepped the
+  same agents. It now runs between steps, and `CityLife` reports any change to agents made while
+  the step may run (`stats.off_step_changes`, asserted 0 in the city tests). The crash itself was
+  intermittent and was not seen in my own full run on that head, so the proof is the guard
+  (it reads 1 with the old code in both take-over tests) and the reasoning, not a reproduced crash.
+- The intermittent "thrown" in the take-over test's ride-off (75 km/h once here, 58.6 km/h
+  against `Solids4` in CI on 882baff) was a real crash, not a fling: half throttle takes a bike
+  to 16 m/s in 3 s, and the ride-off went straight ahead from wherever the taken bike stood, so
+  sometimes into a building. The test now turns the standing vehicle onto a run with nothing
+  solid for 40 m, rides 2 s at 30 % throttle, and fails a throw or fall only if no static solid
+  was hit first (15 runs in a row green). The crash rules are unchanged.
 - A crowd adult knocked down is drawn back at their spot when up (a pop of a metre or two); crowd
   people only turn to look, they do not flee. Children in crowds only step aside by the crowd's
   existing make-way rule (0.5 m round vehicles, at 30 Hz): no child is ever struck or knocked
@@ -1115,6 +1174,129 @@ crossings assumed square; OSM platform slabs from the detail layer can double th
 no foot-over-bridges or booking offices drawn; seated pose in the coach is the generic passenger
 pose; express trains cannot be boarded at Central's terminus platforms when they arrive (they
 terminate) and only leave once per two game hours; nothing checked on a phone.
+
+## Hero models (G-390 to G-393, agent/godot-hero), 25 Nov 2026
+**Done (tests run here, `./run_tests.sh --filter=landmarks`: 26 tests).** Chennai Egmore rebuilt as a textured hero
+model (3,676 / 770 / 124 triangles, atlas 140 KB PNG, towers with domes, kiosks and a clock, arcaded bays,
+three-span shed, entrances on the south porches) and Kathipara Junction added (4,180 / 1,465 / 336: coping,
+painted kerbs, pier guards, joints, lamps, six Tamil/English gantry boards on the chunk builder's own decks).
+Pipeline: atlas painter and UV projection in `tools/blender/landmarks/` (`atlas.py`, `lkit.py`), hooks
+(`entrances`, `peace_zone`, `facts_card`) in the spec, `LandmarkModels.atlas_material`, `_boards`.
+**Weak or not done.** Central, Ripon, Kapaleeshwarar, Santhome and the lighthouse were not upgraded (time). Egmore is not
+compared with a photo; the clock tower and heights are estimates. Kathipara's details are drawn within 200 m of
+the junction only (the long arms keep the plain decks); its deck heights are the world's estimate. The hero
+material is not switched to per-vertex lighting by the Low preset (`CityMaterials.set_flat` knows only the
+shared materials). Tamil place names on the boards need a native speaker. The peace zone has no consumer.
+Seen only on llvmpipe (Compatibility), not on a phone.
+
+## Roads (branch `agent/godot-roads`, 24 Nov 2026)
+**Done.** Class-based road detail, G-310 to G-313 (`docs/roads.md` has the research status, the
+class table, the numbers and the cost): worn asphalt, concrete lanes, slab footpaths, laterite
+verges, black-white and yellow-black kerbs, faded and yellow paint, zebra crossings and stop lines on
+junction nodes, manholes, patches and potholes, drains, planted street trees and poles, four tree
+silhouettes in two draw calls, overhead wires, median shrubs, tree guards. Tests:
+`unit/test_road_detail.gd` (classes, markings, crossings on junction nodes, trees off the carriageway,
+determinism, chunk cost). The ground atlas is 16 tiles now: re-bake with
+`tools/bake_city_textures.gd -- --only=ground` (xvfb), then re-import.
+
+**For other agents.** `GroundMeshes.build` takes a `RoadDetail.Plan` (null keeps the old look);
+`Kit.road_detail` and `CityWorld.road_detail` switch it off; `CityLayout.along` now holds every road
+that is not a footway; `GroundMeshes.lane_lines` returns `Vector3` (offset, dashed, yellow).
+
+**Weak or not done.** No reference photo was viewed: Commons refused the downloads (429 with a
+600 s retry, and `thumb` blocked by the network policy). The owner can supply photos. Footpaths
+have no collider; poles on residential streets do not light up at night; no hoardings, stalls,
+flyover pillars, median railings or road signs; llvmpipe only, not a phone.
+
+**Roads addendum (owner photographs).** Rural class (G-314) and road condition (G-315) added from ten
+owner-supplied photographs (`docs/roads.md`). Ground atlas is 21 tiles; re-bake with
+`tools/bake_city_textures.gd -- --only=ground`. `RoadStyle.feel(condition)` is the hook for vehicles (not wired).
+
+**Lamps addendum (G-316).** Pole kinds (`arm`, `twin`, `mast`, `rural`), `RoadLamps`, one additive glow mesh in
+`StreetLights` (replaces the sodium head box; `set_lamps(points, tints)` with the head height in y).
+Weak: halos are crossed quads, not billboards; masts and twins have no night-time stays; pools are one flat quad each.
+
+**Merged with the performance branch (roads into feat after G-340…G-346).** `StreetLights` keeps the roads glow
+mesh (halo and pool in one additive draw, tinted per lamp, at each lamp's head height) and the perf rules: `pool`
+(0 / 2 / 6 real lights by preset), the lights' cull mask without `ChunkBuilder.RENDER_LAYER`, the nearest-few scan,
+the glow hidden by day. The sodium pool MultiMesh is dropped (the glow mesh carries the pool). `city.road_extras`
+follows the preset through `PerfWiring.set_road_extras` (tested on Low in `test_perf_wiring.gd`). Weak: with no real
+light on the chunk meshes the road under a lamp is lit only by the pool quad (13 m under a 9 m head, scaled by
+head height, 0.22 m up so it clears a footpath; a high mast's pool is 34 m wide and 0.6 m up). Seen on llvmpipe only.
+
+## Trees (phase 7, branch `agent/godot-trees`, G-380 to G-388, 25 Nov 2026)
+**Done.** The owner's "trees need improvement": a real tree kit. Full description, photograph notes, tables and weak
+spots in `docs/trees.md`; decisions in `technical-decisions.md` (G-380…G-388).
+- `src/game_engine/trees/`: `TreeSpecies` (18 species: neem, rain tree, banyan, tamarind, gulmohar, coconut, palmyra,
+  mango, peepal, casuarina; oleander, bougainvillea, croton, grass tuft, scrub; bare, snag and dead-palm trees),
+  `TreeModels` (three LODs each, built in code on a worker), `TreeAtlas` + `assets/trees/` (one 1024x512 atlas, 0.7 MB
+  VRAM-compressed, CC0, painted by `tools/trees/bake_tree_atlas.py`), `trees.gdshader` (alpha cut, wind in the vertex
+  stage), `TreeKit`, `TreeBatch` (a MultiMesh per species per LOD per chunk, LOD sort by distance, hysteresis, shadows from
+  LOD 0 on High), `TreeLod`, `TreeQuality`. `src/game_world/city/`: `TreeStyle` (what grows where), `TreePlan` (what
+  stands where), `TreeSpot`.
+- Wired: `ChunkBuilder._add_trees` (`Build.tree_batch`), `Kit.trees/rail_index/focus/tree_species/under_species`,
+  `CityMaterials.trees` (replaces `foliage`), `CityWorld.set_rail_index` (called by `Railway.prepare`),
+  `QualitySettings.TABLE` (9 new keys), `PerfWiring.apply`, `export_presets.cfg` (include `assets/trees/*.json`).
+  The old tree and palm meshes and G-312's scale trick are gone; the roads work's species ids are kept.
+- Tests: `tests/unit/test_trees.gd` (12 tests): species and models, budgets per LOD, outlines, one atlas and the wind
+  data, atlas size and licence rows, the LOD rule, nothing inside buildings or on carriageways, species by area,
+  determinism, draw calls and LOD counts, quality caps, pruning near rails. `test_perf_wiring.gd` checks Low.
+  Tools: `tests/tools/tree_gallery.gd` (every species, three LODs, `--flat`), `city_shot.gd` gained `--snap`, `--flip`,
+  `--quality=`.
+
+**Measured** (llvmpipe, Compatibility, 915x412, camera 9 m behind and 2.8 m up; before = the roads merge `fb5f8de`,
+after = this branch; the box was at load 17-22 so only counts are exact):
+
+| Spot | Draws before / after (High) | Primitives before / after (High) | Medium, Low draws |
+|---|---|---|---|
+| T. Nagar, Sir Thyagaraya Road | 43 / 63 | 310,658 / 265,238 | |
+| Mylapore, park avenue (5834, 5371) | 37 / 70 | 161,514 / 106,669 | |
+| Anna Nagar avenue (806, 30) | 33 / 61 | 199,421 / 162,990 | 43, 37 (primitives 155,679, 152,043) |
+| Rural road, Tambaram side (-11779, 18997) | 40 / 83 | 216,721 / 158,293 | |
+| Hill road | none in the data (flat city, no height) | | |
+
+Tree draw calls are about 4.5 a chunk (a species draws one mesh a LOD in use, never more than two; a far chunk one per
+species), against two a chunk before. Primitives fall because the old trees had no far LOD. Main thread, walking at 8 m/s
+through the same spots (the `TreeBatch._process` calls only, 400 frames): average 42 to 216 microseconds a frame,
+95th percentile 68 to 240 microseconds, 99th 0.1 to 5 ms and a worst frame of 1 to 33 ms on the loaded box (3 ms on the
+quietest run); before, trees cost nothing per frame (static MultiMeshes). A sort goes one species a frame and the first
+sort of a chunk runs on the worker. The streaming test's main-thread budget holds.
+
+**Weak or not done.** Species are estimates (no species tag, no forest or hill height in the data). Draw calls are the
+cost: about +20 to +40 over the loaded chunks on High (+4 on Low). No impostors beyond LOD 2, no cross-fade, wind is a
+vertex sway only. Seen under Compatibility on llvmpipe only: not the Mobile renderer, not a phone. The painted atlas is
+stylised. The first sort after a preset change rebuilds every species of every chunk at once over a few frames.
+## Sounds, phase 6 leftovers (G-370 to G-379, agent/godot-sounds), 25 Nov 2026
+**Done (tests run here; no one has listened to any of it):**
+- `RailSounds` (`Sound.rail`) and its wiring in `src/app/railway/railway.gd`: EMU horn by distance,
+  the platform chime, door chime and doors (ridden, driven and cab doors), the rumble, wheel clatter
+  and brake squeal of the nearest train or of the one the player rides or drives, the crossing bell
+  (level by distance and boom position) and the booms' own sound. The old stand-ins (bus horn and door
+  for the train, the generic chime cue, the counted-only bell) are gone.
+- A `goods` sound kind (engine, horn); `share_auto`, `goods_carrier` and every `bus_*` variant now map to
+  their own sounds (the vehicles' variant ids used to fall back to the hatchback's).
+- `bed.market`, `bed.tea` and a far `bell.temple` follow the place kind that `CityLife` already
+  computes (`Sound.set_street`); `SoundProfiles.street_levels`, `temple_bell_wait`.
+- `SoundCredits` on the (now scrolling) ABOUT page: every CC-BY recording with its author.
+- Tools: `fetch_commons.py` (polite downloader), `import_recordings.py` (now normalises to -16 LUFS,
+  `speed`, `highpass`, measures), `synth_extras.py` (documented synthesis), `measure_manifest.py`,
+  `test_audio_files.py` (CI step, needs numpy). The manifest rows carry `metrics`.
+- Tests: `test_sound_recordings.gd` (every listed sound exists, loops do not click, loudness range,
+  no clipping, size budget, a licence row per file, credits), `test_rail_sounds.gd`, bus/train/street mix
+  limits in `test_sound_mix.gd`, `test_sound_system.gd` (rail loops, bell, booms, street beds, temple bell).
+
+**Real vs synthetic** is in `docs/sound-recordings.md`: only the temple bell is a new real recording.
+Wikimedia Commons rate-limited every download after the first three (HTTP 429, `Retry-After: 600`, still
+429 after an hour of ten-minute retries); the Internet Archive, Freesound and similar are blocked by the
+network policy. The candidates found are listed there, ready to import.
+
+**Weak or not done:** the thirteen rail and street sounds are synthetic and unheard; the auto, bike,
+thumper, bus, ambulance and goods engines, the bus horn and door are still the synthesised stand-ins;
+`bed.market` is a murmur with no words, `bed.tea` a guess; `crossing.bell` rings at a fixed
+rate whatever the crossing; no Doppler on passing trains; the train's own sounds are not muffled by
+the player's `enclosed` state. `tests/scene/test_city_streaming.gd::test_main_thread_budget_under_cpu_load`
+(a wall-clock test) fails on this machine (53 to 75 ms against 16) and also on the base commit
+(27 ms there, measured in a clean worktree): unrelated to sound.
 
 ## Benchmark mode (G-400…G-405, branch `agent/godot-bench`), 25 Nov 2026
 **What it is.** Settings → "Run benchmark" (title SETTINGS and pause menu) or `--benchmark` after

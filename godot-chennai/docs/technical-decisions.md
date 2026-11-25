@@ -2078,7 +2078,6 @@ it is inside the list and the screen. Every top-right button takes a real click 
 its padding (`test_hud_glass.gd`). Rows now in both menus: Time, Weather, Sound, (pause: the controls
 rows), Graphics (`PerfWiring`, QualitySettings Low/Medium/High, "(auto)" when detected), Performance overlay.
 
-## Performance, second round: the owner's phone (G-340…G-345, branch `agent/godot-perf`, 24 Nov 2026)
 ## Performance, second round: the owner's phone (G-340…G-346, branch `agent/godot-perf`, 24 Nov 2026)
 
 ### G-340: A frame timeline names what a slow frame was made of
@@ -2339,6 +2338,335 @@ session's balance (saved), BOARD THE TRAIN on the ACTION button, the crowd and c
 520/700/900 m, LOD distances ×0.6/0.8/1, track 450/520/600 m, overhead line off/160/220 m, crowd
 figures 8/12/16. `RailwayWiring` applies `QualitySettings.shared().preset` and follows its
 `changed` signal, so the level changes live with the rest of the game.
+
+
+## Hero landmark models (G-390 to G-393, agent/godot-hero), 25 Nov 2026
+
+### G-390: A hero model is textured by one atlas, not drawn in triangles
+Chennai Egmore and Kathipara Junction are `hero: true` specs. Their kit scripts (`hero_station.py`,
+`hero_flyover.py`) paint ONE 512 px atlas (`<id>_atlas.png`, numpy, seeded noise, PNG written by hand so
+the bytes repeat; `tools/blender/landmarks/atlas.py`) and give every face a `Tile` (region, tint, part of
+the region). `lkit.export` turns tiles into UVs: each face is laid flat on its own plane (walls: u to the
+right seen from outside, v up) and its bounding box is stretched over the tile; patterns that repeat along a
+wall or deck are painted for a fixed length and laid end to end (`Acc.strip`, last piece cropped, so the
+pattern is never stretched). Windows, arches, brick, balustrades, kerb stripes and clock faces are paint on
+bay quads: Egmore is 3,676 / 770 / 124 triangles (LOD0 / LOD1 / LOD2), Kathipara 4,180 / 1,465 / 336, against
+the budgets LOD0 < 6,000 and LOD1 < 1,500 (`LandmarkSpec.HERO_LOD0_MAX`, `HERO_LOD1_MAX`; other landmarks keep
+5k..15k). The PNG is imported VRAM compressed with mipmaps (the kit writes the `.import`); 140 KB PNG and
+about 350 KB in VRAM each. The GLB has UVs and vertex colour as a tint, no embedded image; `LandmarkModels`
+builds the material (`atlas_material`: albedo atlas x vertex colour, no specular) from `spec.atlas.file`.
+Non-hero landmarks are untouched (vertex colours, shared material).
+
+### G-391: Entrances, peace zone and facts card are spec data
+`spec.hooks` = `entrances` (id, world point, outward normal, width), `peace_zone` (centre, radius, reason) and
+`facts_card` (titles, `facts` = the spec's sourced facts). The spec had none of these, so they are new; no
+system reads the peace zone yet (data only, stated in its `reason`). Egmore's two entrances are the carriage
+portals on the south faces of the porch towers; the kit prints their points (`HOOK` lines) and the spec holds
+them; a test checks they stand on the building front and face the nearest drawn road (cos > 0.6).
+
+### G-392: Kathipara is a detail layer on the chunk builder's own decks
+`DeckMeshes` already draws slab, fascia, 1 m parapets and plain piers from `Road.heights` (G-150, G-151). The
+model repeats none of that. The spec keeps a copy of the 83 road pieces within 300 m (`decks`, written by
+`tools/landmarks/make_kathipara_spec.py` from `tools/landmarks/dump_decks.gd`); the kit ports DeckMeshes' rules
+(profile samples, mitred normals, piers every 30 m of the whole road, columns at a quarter of the width, none on
+a lower road, no parapet where a ramp leaves a deck) and adds, within 200 m of the junction: coping on both
+parapets, black-and-white painted kerb stripes (16 m tiles), steel expansion-joint plates over the piers, red
+and white painted guards round the pier feet, lamp posts every 30 m on alternate sides (collision boxes), and
+six gantry boards (`spec.boards`). The boards' Tamil and English lines are `Label3D` (the sign font), three
+approach boards with the junction's own name, three exit boards with place names (Guindy, Pallavaram, Ashok
+Nagar) whose direction comes from the road bearing, not from a sign; Tamil needs native review. A test compares
+the copied pieces with the live world, so a rebuilt world fails it until the spec is regenerated. Heights are
+the world's estimate (13 m upper deck); the model top (20 m) is the lamp heads over it.
+
+### G-393: Tests and what "no overlap with roads" means
+`tests/unit/test_hero_landmarks.gd`: budgets, one VRAM-compressed atlas under 1.5 MB in total, UVs inside the
+atlas, same hashes and same meshes twice, one shared material and nothing running per frame, footprint fit
+(Egmore ground geometry within 0.35 m of the OSM outlines), doors facing the road, no ground geometry on a
+drawn carriageway, Kathipara details on the live decks, boards Tamil and English, licence rows. OSM's own
+Egmore outline already touches the (estimated 14 m wide) Gandhi Irwin Road at the east porch, so only geometry
+more than 0.4 m outside the outlines is tested against carriageways. `test_landmarks.gd` skips the outline
+checks for `overlay` specs (no outline).
+
+## Road detail (G-310 to G-313)
+
+### G-310: Roads are styled by class, from data, not by hand
+`RoadStyle` maps a road to arterial, residential, lane or flyover (kind, width, raised) and holds
+the numbers (footpath width, verge, tree and pole pitch, species weights). Surface, wear, paint fade
+and kerb colour come from a hash of the way id (`id / 10`), so a road looks the same in every chunk
+and every piece. `RoadDetail` plans a chunk from it (plain data, worker thread); nothing is stored in
+the world files. Everything OSM does not map is estimated and said so (`docs/roads.md`).
+
+### G-311: One ground surface, sixteen atlas tiles
+The ground atlas grew from 8 to 16 tiles (worn asphalt, concrete, footpath slabs, laterite, black-white
+kerb, dark iron, yellow and faded paint), layers 20 to 27 (8 to 19 stay the covers). Paint pieces are
+chosen fresh or faded by hash, solid lines come in 6 m pieces with a few worn away, crossings and
+stop lines stand on junction nodes. All of it is flat geometry in the chunk's one ground surface; the
+shader adds one noise octave on the road surfaces only. Footpaths are 0.12 m (the kerb stays 0.15)
+and have no collider, like the kerbs.
+
+### G-312: Four tree silhouettes, two draw calls
+A MultiMesh holds one mesh, so the rain tree is the neem mesh stretched 1.55 wide and 0.82 high
+and the palmyra the coconut mesh stretched 0.72 wide and 1.3 high, with a tint per species; a chunk
+keeps its two tree draws. Streets that the world builder planted nothing along (residential, lane)
+get trees from `RoadDetail.trees_on`, kept 1.5 m clear of every carriageway and out of buildings.
+
+### G-313: Wires, shrubs and guards ride in the objects surface
+Overhead wires (two per span, four steps of sag), median shrubs and tree guards are appended to the
+chunk's objects mesh; poles of streets that had none join the colliders. No per-object light.
+
+### G-314: A rural class for open country
+A chunk with fewer than 30 buildings is open country: its arterials lose the kerb and footpath and gain a
+narrow dust shoulder, kerb blocks on the outside of bends, W-beam barriers and chevron boards on sharp bends,
+kilometre stones and palmyra rows (from the owner's photographs, `docs/roads.md`). All geometry merges into the
+chunk's ground and objects surfaces; barriers and chevrons have no colliders.
+
+### G-315: Road condition from class and a seeded area hash
+`RoadStyle.condition` gives good, worn, damaged or unpaved from the class shares, a hash of the way id and a hash
+of the 600 m square the road starts in. Five more ground tiles (stripped tar, mud, muddy water, brick, wet ruts)
+make the atlas 21 tiles; ruts, edge lips, stripped patches, puddles and rubble are flat ground geometry. Puddles
+are a shiny tile, not a reflection. `RoadStyle.feel` is the data the vehicles may read (speed, bump, grip); wiring
+it into `RaycastVehicle` is left to the driving owner.
+
+### G-316: Five lamp kinds by road, one glow draw call
+Poles are `StreetFurniture.Pole.kind`: `arm` (single-arm maroon steel 9 m, 2.5 m curved arm, cobra head, concrete
+base; arterials and residential streets), `twin` (10 m, two arms in opposite directions, every 30 m on medians),
+`mast` (25 m, ring platform with twelve flood panels, one per junction of four arms or a three-arm junction on a
+road of 12 m or more), `rural` (7.5 m thin pole with a sign plate; open country, lanes and unpaved roads). All
+are merged into the chunk's objects surface (no new draw call). At night `StreetLights` draws every lamp as one
+instance of one additive mesh (crossed halo quads and a ground pool quad, unshaded, tinted per lamp: cool white-blue,
+warmer on residential streets): one draw call whatever the count; the six real lights near the camera stay as in G-88.
+Lamp heads are `RoadLamps.heads` (`Build.lamp_points`, built on the worker); `set_lamps` takes the head height in y.
+With the performance work merged (G-259) the one glow mesh is also the ground's only street light: the real
+lights' cull mask leaves out `ChunkBuilder.RENDER_LAYER`, their number follows `pool` (0 / 2 / 6 by preset), and
+the glow node is hidden while the night level is under the threshold (no additive draw by day). The separate sodium
+pool MultiMesh of G-259 and its 140 m `visibility_range_end` are gone: one node spans every lamp of the city, so a
+node-level range could only hide all pools or none. The pool quad is 13 m across under a 9 m head (G-259's size; it
+was 9 m on the roads branch, where the real lights still lit the ground) and sits 0.2 m higher in the shared mesh so it
+clears the 0.15 m footpath a lamp stands on.
+
+### G-317: Optional road detail follows the quality preset
+`ChunkBuilder.Kit.road_extras` (0 Low, 1 Medium, 2 High, the same numbers as `QualitySettings` in agent/godot-perf) gates
+the optional detail: Low drops tree guards, median shrubs, overhead wires and rubble; Medium drops guards, shrubs and
+rubble but keeps wires; High keeps everything. Markings, kerbs, footpaths, ground tiles and lamps stay at every level.
+`CityWorld.road_extras` carries it (default 2, so tests and tools see High). The perf wiring should set it from the
+preset: `city.road_extras = QualitySettings.shared().preset`; this branch does not reference `QualitySettings` (not in
+`feat/godot-chennai` yet). Chunks already built keep the level they were built with.
+Merged with the performance branch: `PerfWiring.set_road_extras` sets `CityWorld.road_extras` and the streamer's kit from
+`QualitySettings.preset` when the city joins Main and on every apply. `test_perf_wiring.gd` checks it on Low and that a
+game started at Low builds chunks with no wires, shrubs, guards or rubble but with lamps and crossings;
+`test_road_detail.gd` checks the same per level on plans and builds.
+
+
+## Hero landmark models (G-390 to G-393, agent/godot-hero), 25 Nov 2026
+
+### G-364: Agents change only between the AI's steps (the signal-11 crash)
+Root cause of the segfault in the full run on agent/godot-merge-12 (in
+`test_taking_over_traffic_in_a_crowded_street_never_throws`, after "The caller thread can't call
+the function propagate_notification() on /root"). `Carjacking._on_boarding` scared the walkers
+(`AgentSystem.scare`, an insert into the `_fears` dictionary) on the "pulled" boarding event, which
+`Driving` emits from its physics step: while `CityLife`'s AI thread may be running
+`population.step`, which reads and erases the same dictionary. A concurrent insert and erase can
+rehash the dictionary under the reader and crash the AI thread; Godot's crash handler then sends
+`NOTIFICATION_CRASH` to the root from that thread, which is the thread-guard ERROR line printed just
+before "Program crashed with signal 11". It came from agent/godot-take; the take-over tests made
+it frequent (several pulls per run), and the AI step overlapping more frames since the
+performance round (areas adopted on the AI thread) widened the window. Fix: the scare is queued and
+done in `Carjacking._step` (between steps). Guard: every `AgentSystem` method that changes agents
+from outside the step calls `on_change`; `CityLife` counts and `push_error`s a call while its step
+may run (`stats.off_step_changes`), and the take-over, boarding-safety and street-reaction tests
+assert it stays 0 (with the old code both take-over tests read 1).
+## G-380 to G-389: The tree kit (phase 7, branch `agent/godot-trees`)
+Owner: "trees need improvement". Details, the photograph notes and the measurements are in `docs/trees.md`.
+
+### G-380: Models in code, one atlas painted by script; no Blender, no downloaded assets
+Eighteen species with three LODs each are built from leaf cards and tapered tubes by `TreeModels` (packed arrays,
+a worker thread, about 6 ms, deterministic), not exported from Blender: the brief allowed either, and code needs no
+GLB import, no version of Blender in CI and no third-party licence. The leaves, fronds, blossoms and bark are one
+1024 x 512 atlas painted by `tools/trees/bake_tree_atlas.py` (Pillow, drawn shapes): CC0, original, row in
+`assets/LICENSES.md`. Imported VRAM-compressed with mip maps: 0.7 MB in video memory against a 1.5 MB limit (tested).
+`assets/trees/atlas_layout.json` is the one source of the tile rectangles and is in the export include filter.
+
+### G-381: Species, silhouettes and triangle budgets per LOD
+neem, rain tree (wide flat crown, limbs), banyan (aerial roots, prop roots, huge crown), tamarind, gulmohar (red
+blossom cards), coconut (curved trunk, arched fronds), palmyra (tall slim trunk, fans, dry skirt), mango, peepal,
+casuarina (drooping needle tiers); oleander, bougainvillea, croton, grass tuft, dry scrub; three dead trees. Budgets
+(`TreeModels.BUDGET`): trees and palms 330 / 110 / 36, bushes 90 / 36 / 12, grass 30 / 14 / 6, dead wood 220 / 70 / 24;
+each LOD lighter than the one before (tested). The old two meshes (`CityModels.tree`, `.palm`, G-312's four silhouettes
+by scale) are replaced; the roads work's species names (`neem`, `rain`, `coconut`, `palmyra`) are kept.
+
+### G-382: One alpha-cut shader, wind in the vertex stage, wind level in UV.x
+`trees.gdshader`: alpha scissor (no sorting), both faces shaded from the crown's normals, the MultiMesh colour as the
+tint. Wind weight per vertex rides in the integer part of `UV.x / 2` (0..8), because vertex colours and UV2 did not
+reach shaders reliably under Compatibility (G-52). `sway` 0 turns the wind off (Low). `CityMaterials.trees` replaces
+`foliage` and follows `set_flat` (per-vertex lighting on Low), `set_wet` and `set_night`.
+
+### G-383: Species from the place, plants kept clear, a species cap per chunk
+`TreeStyle` (weights by district palette, park or beach under the tree, avenue beside it, mapped tree) and `TreePlan`
+(filters, size, lean, tint, rank, bushes and scrub, at most 7 tree and 3 understory species a chunk). The files carry no
+species tag and no landuse=forest, so the species is an estimate from a hash of the position; the palette's boundary
+circles give the district. Nothing stands in a building, on a carriageway, in water, through a deck or near a track:
+`Kit.rail_index` is set by the railway when it is built and `CityWorld.set_rail_index` prunes chunks already shown.
+The old `PALMS := 0.4` share and `SPECIES_SCALE`/`SPECIES_TINT` of G-312 are gone.
+
+### G-384: One `TreeBatch` a chunk, a MultiMesh per species and LOD
+`Build.tree_batch` (node `Trees`). `Build.surfaces` still counts only the merged geometry (the 8-draw test); tree
+draws are reported by `TreeBatch.draw_calls()`. Colliders are boxes for trees, palms and dead trunks only.
+`feature_switches` "trees" still hides the node; `PerfWiring.PROP_LAYERS` no longer lists trees (G-385).
+
+### G-385: LOD by distance without cross-fade, shadows from LOD 0 on High
+`TreeLod.pick` with a 3 m hysteresis, sorted about four times a second and only after the camera moved 1.5 m; the first
+sort runs on the worker with the camera's place from the streamer (`Kit.focus`), so adding a chunk sorts nothing on the
+main thread. At most two meshes per species per chunk: when all three LODs are in use the far instances take the middle
+mesh. Only LOD 0 casts a shadow, only when `tree_shadows` (High).
+
+### G-386: Tree caps in `QualitySettings.TABLE`
+`tree_density`, `scrub_density` (shares kept, by a per-plant hash rank so a preset change is live and the plants kept on
+Low are kept everywhere), `tree_lod0`, `tree_lod1`, `tree_far`, `tree_sway`, `tree_shadows` (table in `docs/trees.md`);
+`TreeQuality.apply` from `PerfWiring.apply`; the wind uniform follows it.
+
+### G-387: Budget
+No more than two draw calls per species per chunk; at most ten species a chunk, so about 20 draws in the chunk the camera
+stands in and about 8 in a far one; measured before and after in `docs/trees.md` and the handoff.
+
+### G-388: What the data cannot say
+No species or leaf-type tag, no landuse=forest or hill height in the chunk files: a hill road is only as leafy as its
+district's palette. Listed under weak spots; a data change (species tag in `build-world`, forest areas) would plug in at
+`TreeStyle.weights_for`.
+## Sounds, phase 6 leftovers (G-370 to G-379, agent/godot-sounds), 25 Nov 2026
+
+### G-370: Real recordings where a free one exists, documented synthesis where none does, 6 MB at most
+Sources allowed: CC0, public domain, CC-BY (never -SA, -NC, -ND, Sampling+, unknown). Searched:
+Wikimedia Commons (API and files; its servers answer HTTP 429 with `Retry-After: 600` after about
+three downloads from this network, so downloads are slow: `tools/audio/fetch_commons.py` waits
+politely, one file at a time, with a descriptive User-Agent that names no person), OpenGameArt
+(reachable, no limit). Blocked by the network policy (HTTP 403 from the proxy): archive.org,
+freesound.org, soundjay, the British Library. A sound with no acceptable recording is synthesised
+by `tools/audio/synth_extras.py` (deterministic, CC0, marked `"source": "synth"` in the manifest and
+"synthetic" in LICENSES.md) and listed in `docs/sound-recordings.md` as the first to replace with a
+phone recording. The new audio (Ogg Vorbis mono 22.05 kHz, engine loops WAV as before) is held to
+`AUDIO_BUDGET_BYTES` by a test (the folder was 2.9 MB; the budget adds 6 MB at most).
+
+### G-371: Every new sound is measured on the shipped file
+`tools/audio/audio_dsp.py::measure` decodes the file and stores `metrics` in the manifest:
+channels, sha256, bytes, RMS and peak dBFS, integrated loudness (BS.1770, ffmpeg `ebur128`) and
+`loop_jump` (the step across the loop point over an ordinary sample step; about 1 is clean, a click is
+tens). New sounds are normalised to -16 LUFS with the peak at most -2.2 dBFS before the Ogg encode
+(a peaky sound is limited by its peak and flagged `peak limited`); a recording that replaces a
+stand-in keeps the stand-in's RMS (the mix and its tests were tuned on it). The tests hold the
+stored numbers to limits (mono, peak at most -1 dBFS after the encode, loop jump at most 5, RMS
+-46 to -8 dBFS, LUFS within 3 LU of -16) and tie them to the shipped bytes by sha256;
+`tools/audio/test_audio_files.py` (CI, needs numpy and ffmpeg) measures the files again from scratch.
+WAV engine loops are also checked on their samples in GDScript.
+
+### G-372: What is synthetic
+`rail.announce`, `rail.squeal`, `rail.clatter`, `rail.rumble`, `bus.airbrake`, `bed.market` and
+`bed.tea` (and any sound the table in `docs/sound-recordings.md` marks synthetic). Loops are made
+periodic by construction (noise in the frequency domain, whole cycles per loop, hits added into a
+circular buffer), so the wrap is exact.
+
+### G-373: A goods carrier kind
+`SoundProfiles.KINDS` gains `goods` (two-cylinder diesel, its own horn, the engine loops and
+start/stop). Names map to kinds: `share_auto` to `auto`, `goods_carrier` and `truck` to `goods`,
+every `bus_*` variant to `bus` (they all sounded like a hatchback before: `kind_of` passes the vehicle
+variant id).
+
+### G-374: `RailSounds`, a child of the `Sound` autoload
+`Sound.rail`: `horn(distance)`, `announce()`, `door(open, chime)`, `boom(closing, distance)`,
+`set_motion(speed, brake, inside, distance)`, `set_bell(level)`. The levels are static functions
+(`motion_levels`, `bell_level`, `horn_level`, `reach`), unit-tested: rumble and clatter grow with
+speed and the clatter's pitch keeps time (the recording has a joint pair every 0.75 s at 20 m/s),
+the squeal comes only when braking below about 12 m/s, inside is louder than outside, a train is
+heard to 260 m, its horn to 480 m, a crossing bell to 170 m. The railway layer
+(`src/app/railway/railway.gd`) calls it; `src/rail` stays free of sound.
+
+### G-375: The railway's stand-ins are gone
+The bus horn that stood in for the train horn, the bus door for the train doors, the generic
+"chime" cue for the platform announcement and the counted-only crossing bell now play
+`rail.horn.emu`, `rail.door.*`, `rail.announce` and `crossing.bell`/`crossing.boom`. The nearest
+train outside the player's is heard from its distance and speed (brake from its falling speed);
+inside a ridden or driven train the motion is the train's own.
+
+### G-376: Street beds and the far temple bell follow the kind of street
+`CityLife` passes `PlaceMap`'s place kind to `Sound.set_street`; `SoundProfiles.street_levels`
+turns it into the market murmur (loudest in a market, a little in a station and a busy street) and the tea stall (shopfronts on
+streets and lanes, busier at the morning and evening rush), both by the day's crowd; a temple
+bell sounds 110 to 240 m away every 18 to 60 s near a temple (sooner at the 6 and 18 hour pooja).
+
+### G-377: Credits on the ABOUT page
+`SoundCredits.text` lists every CC-BY recording (original file, author, licence, site) and counts
+the CC0, public-domain and synthetic ones; `Main` passes it to `TitleMenu.set_credits`; the ABOUT
+page now scrolls. A test fails if a CC-BY author is missing from it.
+
+### G-378: Mix limits, written as tests
+Against the player's idling hatchback: the bus idles 0 to 6 dB over it, the goods carrier between
+it and the bus, bus and truck horns cut through their engines and are not the loudest horn by more
+than 6 dB, the air-brake hiss is under the bus horn, a train at full speed with the player inside is
+0 to 9 dB over, the squeal never drowns the train, the market sits under the idling car and about
+the rush's loudness (`tests/unit/test_sound_mix.gd`).
+
+### G-379: A licence row per file, in the file's own name
+`tests/unit/test_sound_recordings.gd`: every sound under `assets/audio/rec/` and `synthetic/` needs
+a row naming its exact path in LICENSES.md (the stand-ins keep their folder row), a manifest row,
+a source link for recordings, and CC-BY authors must be on the ABOUT page.
+### G-430: Fight poses are targets on the shared `PoseRig`; every person extends `CombatFigure`
+`HumanFigure` and `PersonView` extend `CombatFigure` (`src/player/combat_figure.gd`), which owns `play_strike`,
+`is_striking`, `cancel_strike`, `strike_point`, `play_flinch`, `carry`, the signal `strike_hit(kind, side)` and the
+`poser`, so the combat code calls the same methods on the player, a fare passenger, a walker or a gangster, and
+`WeaponModels` takes either. `StrikePose` (`src/player/poses/strike_pose.gd`) is a port of `strikePose.ts`: the key
+lists, the timings (punch 0.12 s wind-up + 0.26 s recovery, bat 0.22 + 0.38, the Three.js `STRIKES`; the hook has
+the punch's), the eased stretches with the blow itself accelerating as x squared, the fist closing and the flinch.
+Where the Three.js game stored arm bone directions judged by eye, the Godot poses store **targets**: the striking
+wrist goes to a point given in arm lengths from its shoulder (a jab 0.93 forwards and 0.18 inwards, so the fist
+ends on the centre line), the bat's hands move on a circle about the chest (yaw, radius, height keys) with the bat's
+own direction keyed too and the hands turned so the thumb side lies along it (`HandReach`). The two-bone solver
+(`PoseRig.reach`) puts the arm on the point, so a test can measure that the fist is out at the hit frame and the
+bat comes round in one sweep. The poses are laid on after the clip and the walk's swing, blended from the clip's
+own rotations (captured each step, so the fingers and arms return exactly when the blow ends). The hit frame
+(`strike_hit`) is signalled once, on the step that reaches the wind-up time, with the pose already on the skeleton;
+an unseen street person (`PersonView` outside the camera or beyond `animate_reach`) still runs the blow's clock so
+it lands on time. `play_strike(kind, side, windup, recover)` takes optional timings for an enemy's slower telegraphed
+swing (`Melee` wind-up 0.4 s). Kinds: `jab`, `cross`, `hook` (fists, `side` is the striking hand) and `bat`
+(always from the right). Seated or knocked-down figures drop their blow.
+
+### G-431: Carrying puts the palms on the prop's anchors
+`CarryPose` (`src/player/poses/carry_pose.gd`): `box` (both hands at the sides of a 36 x 26 x 28 cm carton in front
+of the waist, fingers forwards and under, palms inwards), `shoulder` (a 26 x 20 x 24 cm box on the right shoulder
+steadied by the right hand, the left arm still swings), `bag` (right hand by the hip) and `push` (both hands on a
+trolley bar). The carton is built by script (`LowPoly`, cardboard, a tape band and a label, one mesh) and follows
+the chest height. The palms are solved onto the anchors (`HandReach.place_palm`, `roll_palm`), so the walking arm
+swing is damped to nothing on the carrying arms (a hand moves under 8 cm, 47 cm free). The arms blend in over 0.3 s.
+
+### G-432: Hit puffs are one MultiMesh
+`HitPuffs` (`src/app/combat_fx/hit_puffs.gd`) is a port of `HitPuffs.ts` without sprites: a pool of puffs (the
+`hit_puffs` key of `QualitySettings`: 4 Low, 6 Medium, 8 High), each a dust ring (camera-facing, spreads
+0.22 to 0.77 m, drifts up 15 cm, 0.4 s) and a star flash (billboard, 0.12 s) as two instances of one
+`MultiMesh` of quads with one 128 x 64 generated atlas (ring and star) and one unshaded billboard shader whose
+per-instance custom data carries the age, the atlas cell, the billboard flag and the opacity. One draw call while a
+blow shows; none when nothing does (the node hides itself and stops processing). Nothing is allocated after
+`_ready`; the oldest puff is reused. No blood or marks: stylised dust and a star only.
+
+### G-433: Weapons are palette-textured low-poly meshes on the hand bone
+`WeaponModels` (`src/weapons_view/weapon_models.gd`): the Three.js bat, pistol, pump shotgun and SMG (the game
+did have firearms) plus a stick and a bottle, each a few boxes or prisms merged into one `ArrayMesh` (under 160
+triangles) coloured from one shared 16-colour palette image (`LowPoly`: one texture, one material for every weapon
+and carried box). `attach` makes a `BoneAttachment3D` on the right hand bone whose grip node is turned to the hand's
+own axes (`HandReach.axes`, read from the rest pose: fingers, thumb side, palm normal): a club lies across the palm
+with its blade beyond the thumb side, a gun's barrel runs along the fingers. A one-box silhouette takes over
+beyond 25 m. The hand closes round a held weapon every step.
+
+### G-434: Quality keys for the new effects
+`QualitySettings.TABLE` gains `hit_puffs` (4, 6, 8) and `motion_blur` (false, false, true: High may have it).
+
+### G-435: Motion blur is kept, as a cheap radial blur, off by default
+The Three.js `MotionBlur` blended each frame with the previous one through three full-resolution half-float render
+targets and two full-screen passes. On an Adreno 613 at 1080 x 2400 that is about 3 x 8 bytes per pixel of tile
+memory traffic for a nicety, so it is **not** ported as it was. The same effect (nothing below 16 m/s, full
+strength from 32 m/s, at most 0.42, following the speed at 4 per second) is a single five-tap radial blur of the
+screen texture (`src/game_engine/post/motion_blur.gd`, a `CanvasLayer` with a `hint_screen_texture` shader): no
+history buffer, no render target. It is **off by default** (`wanted` is false and nothing sets it), **never on
+Low or Medium** (the preset's `motion_blur` is false), and **free while off**: the layer and shader are only made
+when it is turned on, `update` returns at once and the node does not process (tested). No Settings row yet; it
+needs the owner's call and a measurement on the phone first.
 
 ## The benchmark mode (G-400 to G-405), branch `agent/godot-bench`, 25 Nov 2026
 

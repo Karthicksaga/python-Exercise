@@ -167,6 +167,21 @@
           "what": "Footstep on stone (right foot)"
         }
       ]
+    },
+    {
+      "title": "File:Bonsyou5599.ogg",
+      "note": "A large temple bell struck once, long ring (11 kHz source, a DC offset removed).",
+      "pieces": [
+        {
+          "id": "bell.temple",
+          "start": 1.6,
+          "length": 9.0,
+          "fade_out": 3.0,
+          "highpass": 60,
+          "category": "ambience",
+          "what": "A temple bell struck, far away"
+        }
+      ]
     }
   ]
 }

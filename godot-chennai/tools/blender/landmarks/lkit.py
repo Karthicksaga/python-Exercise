@@ -32,6 +32,8 @@ import bpy
 from mathutils import Vector
 from mathutils.geometry import tessellate_polygon
 
+from atlas import Tile  # noqa: E402
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))  # godot-chennai/
 SPECS = os.path.join(ROOT, "assets", "landmarks")
 
@@ -67,6 +69,30 @@ class Acc:
 
     def triangles(self):
         return sum(len(f) - 2 for f in self.faces)
+
+    def strip(self, a, b, z0a, z1a, z0b, z1b, tile, piece, out=None, flip=False):
+        """A wall-like strip from point a to b (Blender xy) with bottom/top heights at each end,
+        cut into pieces of `piece` metres so a pattern painted for that length repeats true: the
+        last piece shows only the matching part of the tile. `out` pushes it along its normal."""
+        a, b = Vector(a), Vector(b)
+        d = b - a
+        L = d.length
+        if L < 1e-6:
+            return
+        u = d / L
+        n = Vector((u.y, -u.x)) * (-1.0 if flip else 1.0)
+        off = n * out if out else Vector((0.0, 0.0))
+        k = max(1, math.ceil(L / piece - 1e-9))
+        for i in range(k):
+            t0 = i * piece / L
+            t1 = min(1.0, (i + 1) * piece / L)
+            p0, p1 = a + d * t0 + off, a + d * t1 + off
+            za0, zb0 = z0a + (z0b - z0a) * t0, z1a + (z1b - z1a) * t0
+            za1, zb1 = z0a + (z0b - z0a) * t1, z1a + (z1b - z1a) * t1
+            fu = (t1 - t0) * L / piece
+            tl = Tile(tile.name, tile.tint, (tile.u[0], tile.u[0] + (tile.u[1] - tile.u[0]) * fu), tile.v)
+            pts = [(p0.x, p0.y, za0), (p1.x, p1.y, za1), (p1.x, p1.y, zb1), (p0.x, p0.y, zb0)]
+            self.face(pts[::-1] if flip else pts, tl)
 
     # ------------------------------------------------------------------ primitives
 
@@ -276,17 +302,62 @@ def _material():
     return m
 
 
-def _object(name, acc, mat):
+def _plane_uv(pts, tile, sheet):
+    """UVs for one face: the face is laid flat on its own plane (walls: u along the wall to the
+    right seen from outside, v up; flat faces: along their first edge) and its bounding box is
+    stretched over the tile's part of the region (G-390)."""
+    P = [Vector(p) for p in pts]
+    n = Vector((0.0, 0.0, 0.0))
+    for i in range(len(P)):
+        a, b = P[i], P[(i + 1) % len(P)]
+        n += Vector(((a.y - b.y) * (a.z + b.z), (a.z - b.z) * (a.x + b.x), (a.x - b.x) * (a.y + b.y)))
+    if n.length < 1e-9:
+        n = Vector((0.0, 0.0, 1.0))
+    n.normalize()
+    up = Vector((0.0, 0.0, 1.0))
+    if abs(n.z) < 0.85:
+        u = up.cross(n)
+        u.normalize()
+        v = n.cross(u)
+    else:
+        e = P[1] - P[0]
+        e = e - n * e.dot(n)
+        u = e.normalized() if e.length > 1e-9 else Vector((1.0, 0.0, 0.0))
+        v = n.cross(u)
+    us = [p.dot(u) for p in P]
+    vs = [p.dot(v) for p in P]
+    u0, u1, v0, v1 = min(us), max(us), min(vs), max(vs)
+    du = max(u1 - u0, 1e-6)
+    dv = max(v1 - v0, 1e-6)
+    out = []
+    for a, b in zip(us, vs):
+        fu = tile.u[0] + (a - u0) / du * (tile.u[1] - tile.u[0])
+        fv = tile.v[0] + (b - v0) / dv * (tile.v[1] - tile.v[0])
+        out.append(sheet.uv(tile.name, fu, fv))
+    return out
+
+
+def _object(name, acc, mat, sheet=None):
     me = bpy.data.meshes.new(name)
     me.from_pydata(acc.verts, [], acc.faces)
     me.update()
     attr = me.color_attributes.new("Col", "FLOAT_COLOR", "CORNER")
     data = []
     for poly, col in zip(me.polygons, acc.colours):
+        tint = col.tint if isinstance(col, Tile) else col
         for _ in poly.loop_indices:
-            data.extend(col)
+            data.extend(tint)
     attr.data.foreach_set("color", data)
     me.color_attributes.active_color = attr
+    if sheet is not None:
+        uvl = me.uv_layers.new(name="UVMap")
+        flat = []
+        for poly, col in zip(me.polygons, acc.colours):
+            tile = col if isinstance(col, Tile) else Tile("white")
+            pts = [acc.verts[i] for i in acc.faces[poly.index]]
+            for uv in _plane_uv(pts, tile, sheet):
+                flat.extend(uv)
+        uvl.data.foreach_set("uv", flat)
     for p in me.polygons:
         p.use_smooth = False
     me.materials.append(mat)
@@ -295,13 +366,13 @@ def _object(name, acc, mat):
     return ob
 
 
-def export(spec, spec_sha, lods, collision, script):
+def export(spec, spec_sha, lods, collision, script, sheet=None, atlas_info=None):
     """lods: [Acc, Acc, Acc]; collision: [(centre xyz, size xyz, yaw)]. Writes the GLB and
     build.json next to the spec; returns the triangle counts."""
     _reset()
     mat = _material()
     for i, acc in enumerate(lods):
-        _object(f"LOD{i}", acc, mat)
+        _object(f"LOD{i}", acc, mat, sheet)
     for i, (c, s, yaw) in enumerate(collision):
         # An axis-aligned box mesh round the node's origin; position and yaw on the node, so
         # the game reads the box from the mesh's bounds and the node's transform.
@@ -314,7 +385,7 @@ def export(spec, spec_sha, lods, collision, script):
     path = os.path.join(SPECS, lid, f"{lid}.glb")
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_apply=True, export_yup=True,
-                              export_extras=False, export_animations=False, export_texcoords=False, export_normals=True,
+                              export_extras=False, export_animations=False, export_texcoords=sheet is not None, export_normals=True,
                               export_cameras=False, export_lights=False, export_tangents=False, export_materials="EXPORT",
                               export_vertex_color="ACTIVE")
     with open(path, "rb") as f:
@@ -325,6 +396,8 @@ def export(spec, spec_sha, lods, collision, script):
         "blender": bpy.app.version_string, "spec_sha256": spec_sha, "glb_sha256": glb_sha,
         "triangles": {"lod0": tris[0], "lod1": tris[1], "lod2": tris[2]}, "collision_boxes": len(collision),
     }
+    if atlas_info:
+        build["atlas"] = atlas_info
     with open(os.path.join(SPECS, lid, "build.json"), "w", encoding="utf-8") as f:
         json.dump(build, f, indent=1)
         f.write("\n")
@@ -332,7 +405,22 @@ def export(spec, spec_sha, lods, collision, script):
     return tris
 
 
-def run(kit_build, script):
+def _atlas_import(path, res):
+    """The import settings of an atlas: VRAM compressed with mipmaps (Godot fills in the rest)."""
+    text = (
+        '[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\n\n[deps]\n\n'
+        f'source_file="{res}"\n\n[params]\n\ncompress/mode=2\ncompress/high_quality=false\ncompress/lossy_quality=0.7\n'
+        'compress/uastc_level=0\ncompress/rdo_quality_loss=0.0\ncompress/hdr_compression=1\ncompress/normal_map=0\n'
+        'compress/channel_pack=0\nmipmaps/generate=true\nmipmaps/limit=-1\nroughness/mode=0\nroughness/src_normal=""\n'
+        'process/channel_remap/red=0\nprocess/channel_remap/green=1\nprocess/channel_remap/blue=2\nprocess/channel_remap/alpha=3\n'
+        'process/fix_alpha_border=true\nprocess/premult_alpha=false\nprocess/normal_map_invert_y=false\n'
+        'process/hdr_as_srgb=false\nprocess/hdr_clamp_exposure=false\nprocess/size_limit=0\ndetect_3d/compress_to=0\n')
+    if not os.path.exists(path + ".import"):
+        with open(path + ".import", "w", encoding="utf-8") as f:
+            f.write(text)
+
+
+def run(kit_build, script, atlas=None):
     """Entry point of a kit script: builds every spec whose recipe names this kit, or the ids
     given after `--`."""
     ids = args()
@@ -344,6 +432,18 @@ def run(kit_build, script):
         spec, sha = load_spec(lid)
         if spec["recipe"]["kit"] != kit:
             continue
+        sheet = None
+        atlas_info = None
+        if atlas is not None and spec.get("atlas"):
+            from atlas import Sheet  # noqa: PLC0415
+            layout_fn, paint_fn = atlas
+            sheet = Sheet(layout_fn(spec))
+            paint_fn(spec, sheet)
+            apath = os.path.join(SPECS, lid, spec["atlas"]["file"])
+            size = sheet.save(apath)
+            _atlas_import(apath, f"res://assets/landmarks/{lid}/{spec['atlas']['file']}")
+            with open(apath, "rb") as f:
+                atlas_info = {"file": spec["atlas"]["file"], "png_bytes": size, "sha256": hashlib.sha256(f.read()).hexdigest()}
         lods = []
         collision = []
         for lod in range(3):
@@ -353,7 +453,7 @@ def run(kit_build, script):
             lods.append(acc)
             if lod == 0:
                 collision = col
-        export(spec, sha, lods, collision, script)
+        export(spec, sha, lods, collision, script, sheet, atlas_info)
         done += 1
     print(f"KIT {kit}: {done} landmark(s)")
 

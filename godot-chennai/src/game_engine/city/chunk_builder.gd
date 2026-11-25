@@ -6,7 +6,7 @@ extends RefCounted
 ## thread a few at a time (`ChunkStreamer`), so the frame only pays for `add_child`.
 ##
 ## Layers (children of `view`, G-53): Ground (one surface: earth, parks, water, sand, verges,
-## tarmac, paint, kerbs) and Trees/Palms (MultiMesh) always; under `Near`, the walls, roofs,
+## tarmac, paint, kerbs) and Trees (one `TreeBatch` of MultiMeshes) always; under `Near`, the walls, roofs,
 ## kit and objects (poles, shelters, props, AC units, dishes); under `Far`, one quad per wall
 ## and flat roofs. The streamer shows Near or Far by the chunk's distance from the focus
 ## (`ChunkStreamer.near_distance`): per-node visibility ranges hid chunks 160 m from the camera
@@ -14,7 +14,6 @@ extends RefCounted
 ## Colliders: building walls as trimesh pieces of at most PIECE_BUILDINGS buildings, and one
 ## trimesh of closed boxes for trees, poles, shelters and props.
 
-const PALMS := 0.4
 ## Render layer of every merged chunk mesh (bit 2, value 2). Street lights leave it out of
 ## their cull mask (G-259): a merged chunk mesh spans 250 m, so on the Mobile renderer each lamp
 ## near it was evaluated for every pixel of the chunk's ground and walls.
@@ -32,12 +31,25 @@ class Kit:
 	var layouts: CityLayouts
 	var models: CityModels
 	var materials: CityMaterials
-	var tree_mesh: ArrayMesh
-	var palm_mesh: ArrayMesh
-	## Triangles of one tree and one palm (never ask the meshes on a worker: that waits on the
-	## render thread).
-	var tree_triangles: int = 0
-	var palm_triangles: int = 0
+	## The tree kit (G-381): eighteen species with three LODs each on the one atlas material.
+	## Null draws no trees (tools that do not need them).
+	var trees: TreeKit
+	## The railway's index once it is built (G-383): plants keep clear of tracks. Null until then
+	## (`CityWorld.set_rail_index` also removes what was planted too near in chunks already built).
+	var rail_index: RailIndex
+	## Where the camera is (world metres) when a build starts: the plants sort to a LOD for it
+	## on the worker, so adding the chunk costs the main thread no sorting.
+	var focus: Vector2 = Vector2.ZERO
+	## Draw-call caps (the preset's): distinct tree species and distinct understory species a chunk.
+	var tree_species: int = TreePlan.MAX_TREE_SPECIES
+	var under_species: int = TreePlan.MAX_UNDER_SPECIES
+	## Road detail (G-310 to G-313): off for a before and after comparison in tests and tools.
+	var road_detail: bool = true
+	## Quality of the optional road detail (G-317), the preset's number (`QualitySettings.LOW` 0,
+	## `MEDIUM` 1, `HIGH` 2): Low drops tree guards, median shrubs, wires and rubble; Medium drops
+	## guards, shrubs and rubble but keeps wires; High everything. Markings, kerbs, footpaths, the
+	## ground tiles and the lamps are kept at every level.
+	var road_extras: int = 2
 	## The sea's outline (world metres), cut to each chunk it covers and drawn as ground water;
 	## its bounding box for a quick reject. Empty when the map has no coast.
 	var sea := PackedVector2Array()
@@ -71,6 +83,13 @@ class Build:
 	## roof_estimated, sign_mapped, object:bench, zone:pitch, …
 	var detail: Dictionary[String, int] = {}
 	var surfaces: int = 0
+	## Lamp heads for the night glow (G-316): (x, height, z) in world metres and a tint each.
+	var lamp_points: PackedVector3Array = PackedVector3Array()
+	var lamp_tints: PackedColorArray = PackedColorArray()
+	## The road detail planned for this chunk (null when switched off).
+	var roads: RoadDetail.Plan
+	## The chunk's trees, bushes and grass (G-384); null when there are none.
+	var tree_batch: TreeBatch
 	var usec: int = 0
 	var error: String = ""
 
@@ -131,6 +150,13 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	use_mapped_lamps(out.furniture, near_objects, layout, square)
 	add_platform_shelters(out.furniture, near_objects, layout, chunk, square)
 	out.props = StreetProps.for_chunk(layout, chunk, cell, out.furniture)
+	if kit.road_detail:
+		out.roads = RoadDetail.for_chunk(layout, chunk, cell, square, out.furniture, kit.road_extras)
+		if out.roads.rural:
+			# Open country has no kerbs along the road: a dust shoulder instead (G-314).
+			out.furniture.kerbs.clear()
+			for pole in out.furniture.poles:
+				pole.kind = &"rural"
 
 	var view := Node3D.new()
 	view.name = "Chunk_%d_%d" % [cell.x, cell.y]
@@ -141,7 +167,7 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	water.polygons = WaterMeshes.gather(chunk.areas, layout.water_in(cell), square)
 	var ground := GroundMeshes.new()
 	ground.origin = out.centre
-	ground.build(spans, chunk.areas, square, out.furniture.kerbs, water.polygons, out.furniture.medians)
+	ground.build(spans, chunk.areas, square, out.furniture.kerbs, water.polygons, out.furniture.medians, out.roads)
 	# Zebra crossings and speed breakers (G-153), on the road at its height.
 	var bump_faces := PackedVector3Array()
 	for sp: WorldSpot in layout.spots_in(cell):
@@ -208,36 +234,87 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	_add_mesh(out, far, "far", meshes.far, kit.materials.objects, kit.shadows)
 
 	for pole in out.furniture.poles:
-		CityModels.place(objects, kit.models.pole, _local3(pole.position, out.centre), pole.yaw)
+		CityModels.place(objects, kit.models.pole_of(pole.kind), _local3(pole.position, out.centre), pole.yaw)
 	for s in out.furniture.shelters:
 		CityModels.place(objects, kit.models.shelter, _local3(s.position, out.centre), s.yaw)
 	for p in out.props:
 		var model: MeshBuilder = kit.models.props.get(p.kind)
 		if model != null:
 			CityModels.place(objects, model, _local3(p.position, out.centre), p.yaw)
+	if out.roads != null:
+		var all_poles: Array[StreetFurniture.Pole] = []
+		all_poles.append_array(out.furniture.poles)
+		for pole in out.roads.poles:
+			CityModels.place(objects, kit.models.pole_of(pole.kind), _local3(pole.position, out.centre), pole.yaw)
+			if pole.kind == &"arm" or pole.kind == &"rural":
+				all_poles.append(pole)
+		if kit.road_extras >= 1:
+			out.detail["wires"] = RoadObjects.wires(objects, all_poles, out.centre)
+		if kit.road_extras >= 2:
+			out.detail["median_shrubs"] = RoadObjects.shrubs(objects, kit.models, out.furniture.medians, out.centre)
+		out.detail["crossings"] = out.roads.crossings.size()
+		for post in out.roads.chevrons:
+			CityModels.place(objects, kit.models.chevron, _local3(post.position, out.centre), post.yaw)
+		for post in out.roads.stones:
+			CityModels.place(objects, kit.models.stone, _local3(post.position, out.centre), post.yaw)
+		out.detail["barrier_segments"] = RoadObjects.barriers(objects, out.roads.barriers, out.centre)
+		out.detail["chevrons"] = out.roads.chevrons.size()
 	if detail != null:
 		dm.add_objects(detail.objects_in(cell), water.polygons)
 		for s in out.furniture.shelters:
 			var across := Vector2(cos(s.yaw), -sin(s.yaw))
 			CityModels.place(objects, kit.models.detail.models[&"stop_pole"], _local3(s.position + across * (StreetFurniture.SHELTER_WIDTH / 2.0 + 0.7), out.centre), s.yaw)
 			dm.stats["stop_pole"] = dm.stats.get("stop_pole", 0) + 1
+	_collect_lamps(out)
+	var all_trees: Array[WorldTree] = chunk.trees.duplicate()
+	all_trees.append_array(line_trees)
+	if out.roads != null:
+		all_trees.append_array(out.roads.trees)
+	var trees := standing_trees(all_trees, water.polygons, layout)
+	if out.roads != null and kit.road_extras >= 2:
+		var caged := RoadDetail.guarded(layout, trees)
+		RoadObjects.guards(objects, kit.models, caged, out.centre)
+		out.detail["tree_guards"] = caged.size()
 	_add_mesh(out, near, "objects", objects, kit.materials.objects, kit.shadows)
 	for k in meshes.stats:
 		out.detail[k] = meshes.stats[k]
 	for k in dm.stats:
 		out.detail[k] = dm.stats[k]
 
-	var all_trees: Array[WorldTree] = chunk.trees.duplicate()
-	all_trees.append_array(line_trees)
-	var trees := standing_trees(all_trees, water.polygons, layout)
-	_add_trees(kit, out, trees)
-	_add_colliders(out, chunk, trees)
+	var plan := TreePlan.Context.new()
+	plan.layout = layout
+	plan.buildings = chunk.buildings
+	plan.boxes = boxes
+	plan.areas = chunk.areas
+	plan.water = water.polygons
+	plan.palettes = kit.palettes
+	plan.rail = kit.rail_index
+	plan.square = square
+	plan.max_species = kit.tree_species
+	plan.max_under = kit.under_species
+	plan.rural = out.roads.rural if out.roads != null else chunk.buildings.size() < RoadDetail.RURAL_BUILDINGS
+	var spots := TreePlan.for_chunk(plan, trees)
+	_add_trees(kit, out, spots)
+	_add_colliders(out, chunk, spots)
 	if not dm.solids.is_empty():
 		_body(out, "DetailSolids", dm.solids)
 	if not dm.slab_faces.is_empty():
 		_body(out, "Platforms", dm.slab_faces)
 	out.usec = Time.get_ticks_usec() - started
 	return out
+
+
+## Lamp heads of every pole of the chunk (G-316), for the night glow.
+static func _collect_lamps(out: Build) -> void:
+	var poles: Array[StreetFurniture.Pole] = []
+	poles.append_array(out.furniture.poles)
+	if out.roads != null:
+		poles.append_array(out.roads.poles)
+	for pole in poles:
+		var heads := RoadLamps.heads(pole)
+		for h in heads:
+			out.lamp_points.append(h)
+			out.lamp_tints.append(RoadLamps.tint_of(pole))
 
 
 static func _local3(p: Vector2, centre: Vector2, y: float = 0.0) -> Vector3:
@@ -326,54 +403,32 @@ static func standing_trees(all: Array[WorldTree], water: Array[PackedVector2Arra
 	return out
 
 
-static func _add_trees(kit: Kit, out: Build, standing: Array[WorldTree]) -> void:
-	var palms: Array[WorldTree] = []
-	var trees: Array[WorldTree] = []
-	for t in standing:
-		if CityHash.tree_unit(t.position, 51) < PALMS:
-			palms.append(t)
+## The chunk's plants as one `TreeBatch` (G-384): per species three MultiMeshes, sorted to a LOD by
+## distance. `triangles["trees"]` and `["palms"]` are the LOD 0 triangles of the chunk's trees and
+## palms (the budget of the nearest ring); `detail["tree_species"]` and `["tree_instances"]` count.
+static func _add_trees(kit: Kit, out: Build, spots: Array[TreeSpot]) -> void:
+	if kit.trees == null or spots.is_empty():
+		return
+	var batch := TreeBatch.build(kit.trees, spots, out.centre, kit.focus)
+	out.view.add_child(batch)
+	out.tree_batch = batch
+	var trees_tris := 0
+	var palm_tris := 0
+	for g in batch.groups:
+		var tris: PackedInt32Array = kit.trees.triangles[g.species]
+		if TreeSpecies.kind_of(g.species) == TreeSpecies.PALM:
+			palm_tris += tris[0] * g.count
 		else:
-			trees.append(t)
-	for kind in 2:
-		var list := palms if kind == 0 else trees
-		if list.is_empty():
-			continue
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_colors = true
-		mm.mesh = kit.palm_mesh if kind == 0 else kit.tree_mesh
-		mm.instance_count = list.size()
-		for i in list.size():
-			var t := list[i]
-			var angle: float
-			var size: float
-			var tint: Color
-			if kind == 0:
-				angle = CityHash.tree_unit(t.position, 52) * TAU
-				size = t.scale * (0.85 + CityHash.tree_unit(t.position, 53) * 0.35)
-				var v := 0.85 + CityHash.tree_unit(t.position, 54) * 0.3
-				tint = Color(v, v, v * 0.92)
-			else:
-				angle = fmod(t.position.x * 13.7 + t.position.y * 7.3, 6.28)
-				size = t.scale
-				var v := 0.85 + fposmod(t.position.x * 3.1 + t.position.y * 5.7, 1.0) * 0.3
-				tint = Color(v, v, v * 0.9)
-			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, angle).scaled(Vector3(size, size, size)), _local3(t.position, out.centre)))
-			mm.set_instance_color(i, tint)
-		var node := MultiMeshInstance3D.new()
-		node.name = "Palms" if kind == 0 else "Trees"
-		node.multimesh = mm
-		node.layers = RENDER_LAYER
-		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if kit.shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		out.view.add_child(node)
-		var per := kit.palm_triangles if kind == 0 else kit.tree_triangles
-		out.triangles["palms" if kind == 0 else "trees"] = per * list.size()
-		out.surfaces += 1
+			trees_tris += tris[0] * g.count
+	out.triangles["trees"] = trees_tris
+	out.triangles["palms"] = palm_tris
+	out.detail["tree_species"] = batch.groups.size()
+	out.detail["tree_instances"] = spots.size()
 
 
 ## Building walls (from 1 m below ground, so nothing slips under) as trimesh pieces, and closed
 ## boxes for trees, poles, shelters and props (`chunkSolids`, `furnitureSolids`, `propSolids`).
-static func _add_colliders(out: Build, chunk: ChunkData, trees: Array[WorldTree]) -> void:
+static func _add_colliders(out: Build, chunk: ChunkData, trees: Array[TreeSpot]) -> void:
 	var faces := PackedVector3Array()
 	var count := 0
 	for b in chunk.buildings:
@@ -396,8 +451,14 @@ static func _add_colliders(out: Build, chunk: ChunkData, trees: Array[WorldTree]
 		_body(out, "Walls", faces)
 	var solids := PackedVector3Array()
 	for t in trees:
-		solid_box(solids, Vector3(t.position.x - out.centre.x, 1.5, t.position.y - out.centre.y), Vector3(0.28 * t.scale, 1.5, 0.28 * t.scale), 0.0)
-	for p in out.furniture.poles:
+		if not TreeSpecies.solid(t.species):
+			continue
+		var r := maxf(0.22, TreeSpecies.number(t.species, "trunk") * t.scale * 0.9)
+		solid_box(solids, Vector3(t.position.x - out.centre.x, 1.5, t.position.y - out.centre.y), Vector3(r, 1.5, r), 0.0)
+	var all_poles: Array[StreetFurniture.Pole] = out.furniture.poles.duplicate()
+	if out.roads != null:
+		all_poles.append_array(out.roads.poles)
+	for p in all_poles:
 		var h := StreetFurniture.POLE_HEIGHT / 2.0
 		solid_box(solids, _local3(p.position, out.centre, h), Vector3(StreetFurniture.POLE_HALF + 0.02, h, StreetFurniture.POLE_HALF + 0.02), p.yaw)
 	for s in out.furniture.shelters:

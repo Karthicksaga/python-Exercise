@@ -20,6 +20,10 @@ signal ready_to_stream
 ## Landmark models from their specs (G-183); off leaves the OSM buildings in their place (for
 ## measuring the landmarks' cost).
 @export var show_landmarks: bool = true
+## Class-based road detail (G-310 to G-313); off only to measure before and after.
+@export var road_detail: bool = true
+## Optional road detail by quality preset, 0 Low, 1 Medium, 2 High (G-317); the performance wiring sets it.
+@export var road_extras: int = 2
 ## Recentre the floating origin on `focus_node` when it wanders far (G-7).
 @export var manage_origin: bool = false
 ## The Three.js game's spawn: the nearest road to this point (`content.ts`).
@@ -69,12 +73,14 @@ func setup(world: WorldSource) -> String:
 	# under the Compatibility renderer (G-52).
 	materials = CityMaterials.create()
 	var kit := ChunkBuilder.Kit.new()
+	kit.road_detail = road_detail
+	kit.road_extras = road_extras
 	kit.source = world
 	kit.layouts = layouts
 	kit.models = models
 	kit.materials = materials
-	kit.tree_mesh = models.tree.commit(materials.foliage)
-	kit.palm_mesh = models.palm.commit(materials.foliage)
+	var tree_models: TreeModels = await BackgroundTask.start(TreeKit.build_models).finish(get_tree())
+	kit.trees = TreeKit.commit(tree_models, materials.trees)
 	var sea := world.get_sea()
 	if sea != null:
 		kit.sea = sea.outline
@@ -89,8 +95,6 @@ func setup(world: WorldSource) -> String:
 	if show_landmarks:
 		landmarks = await BackgroundTask.start(func() -> Array[LandmarkSpec]: return LandmarkSpec.load_all()).finish(get_tree())
 	kit.landmarks = landmarks
-	kit.tree_triangles = models.tree.triangle_count()
-	kit.palm_triangles = models.palm.triangle_count()
 	var fixed: Array = await BackgroundTask.start(_build_fixed).finish(get_tree())
 	for node: Node3D in fixed:
 		_fixed.add_child(node)
@@ -101,6 +105,22 @@ func setup(world: WorldSource) -> String:
 	_place_preview_camera()
 	ready_to_stream.emit()
 	return ""
+
+
+## The railway's index arrived (G-383): chunks built from now on keep plants clear of the tracks,
+## and the ones already in the scene lose the plants within `TreePlan.RAIL_MARGIN` of a track.
+func set_rail_index(index: RailIndex) -> int:
+	if streamer == null or streamer.kit == null:
+		return 0
+	streamer.kit.rail_index = index
+	var removed := 0
+	for b in streamer.shown_builds():
+		if b.tree_batch == null:
+			continue
+		var centre := b.centre
+		removed += b.tree_batch.prune(func(p: Vector3) -> bool:
+			return index.track_distance(Vector2(p.x + centre.x, p.z + centre.y)) < TreePlan.RAIL_MARGIN)
+	return removed
 
 
 ## The nearest road point to SPAWN_NEAR and its heading (worker thread).

@@ -2,6 +2,30 @@
 
 What runs and how it was tested. "Emulator" and "phone" are different statements.
 
+## Phase status (parity agent, 25 Nov 2026)
+
+Phase list from `MIGRATION_PROMPT.md` section 5 (phases 0 to 7) and section 11 (phase 6b). Feature
+detail and the Three.js comparison are in `docs/parity.md`. "Done on desktop" means headless tests
+and Compatibility screenshots only. Nothing here has run on the owner's phone (POCO M6 Pro 5G,
+Adreno 613).
+
+| Phase | Status | Done | Not done | Evidence |
+|---|---|---|---|---|
+| 0 Foundation | Done | Skeleton, boot flow, world reader, test runner, CI with APK and emulator smoke | - | Table below; CI green on its branch (run 45185128445), not re-run here |
+| 1 Walk around Chennai | Done on desktop | Streamed city, buildings, roads, player, camera, touch, day lighting, shadows | Phone check | `test_city_streaming.gd`, `test_player.gd`, `test_city_environment.gd` |
+| 2 Vehicles and driving | Done on desktop | Five road kinds, premium and race models, boarding, crash ejection, seated poses, engine sound | Phone check; premium cars not in traffic | `test_vehicle_handling.gd`, `test_game_vehicles.gd`, `test_crash_ejection.gd` |
+| 3 Traffic and pedestrians | Done on desktop | Road graph, signals, traffic, walkers, crowds, carjacking (TAKE OVER) | AI does not call `RoadHeights`; phone check | `test_ai_traffic.gd`, `test_city_life.gd` (incl. carjacking) |
+| 4 Missions and jobs | Partial | 21 stages (data and runner), 13 city jobs, saving, job board, medals, stages 22 to 26 | Fight, chase and gun objectives in stages 7 to 15, 18 and 21 need combat and police in play; Mumbai Mail rider scene | `test_missions_layer.gd`, `test_missions_v2.gd`, `test_mission_systems.gd` |
+| 5 Police, combat, weapons, gangs | Partial (logic only) | Rules ported and tested (`src/combat/`) | Not wired into `Main`: no punch or gun input, no gang crews, no police, no wanted stars | `tests/unit/rules/test_combat.gd`, `test_wanted.gd`, `test_police_fleet.gd` (rules only) |
+| 6 Railway and the city | Partial | Beach to Tambaram and more, stations, trains, rail HUD, full map, weather, day and night, sound stand-ins | Train horn; recorded sounds; Hindi on station boards; train rider scene (stage 18) | `test_railway.gd`, `test_maps.gd`, `test_sound_system.gd` |
+| 6b Airport, helicopter, aeroplane, far-city | Not started | Helicopter, airliner and light aircraft models; airport in the world data | Flight code; airport in play; far-city layer | `tests/unit/test_vehicle_models.gd` (models only) |
+| 7 Visual upgrade and release quality | Partial | Performance presets, overlay, shader warm-up, OSM detail, shop signs, area atlas, parity checklist | Phone profiling; motion blur; HUD landmark labels; Overture fusion (not run, G-28) | `docs/performance.md`, `docs/parity.md` |
+
+Counts and the missing list: `docs/parity.md` (217 feature rows: 144 done, 33 partial, 26 replaced,
+8 missing, 6 unverified).
+
+<!-- Phase statuses above are the parity agent's. Agent sections below stay as written. -->
+
 ## Phase 0: Foundation (23 Nov 2026, branch `agent/godot-foundation`)
 | Item | State | How it was tested |
 |---|---|---|
@@ -176,6 +200,7 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Day/night: `Lighting` (port of `lighting.ts`), `CityEnvironment` (sun/moon, ambient, sky shader, ACES exposure, exponential haze hiding the streaming edge, shadows 40 m round the camera) on `GameLoop.clock` (G-86, G-89) | Done | `tests/unit/test_lighting.gd` (ported), `tests/scene/test_city_environment.gd`; screenshots golden hour, noon, night, rain at 915×412 and 1830×824 (Compatibility) |
 | Weather: `Weather` autoload (rain fades in 2.5 game s, saved `cow-weather-v1`), rain streaks one draw call, wet look (`city_wetness` global uniform, `register_wet`) (G-87) | Done | `tests/scene/test_city_environment.gd`; measured draw calls in the test world 12 dry → 13 raining (Compatibility, `tests/tools/look_screenshot.gd`) |
 | Sodium street lights: one MultiMesh of glowing heads, six nearest omni lights, no shadows (G-88) | Done (lamp positions come from the World agent) | `tests/scene/test_city_environment.gd` |
+| Phase 6 sounds (G-370…G-379): trains (EMU horn, rumble, clatter by speed, brake squeal, door chime and doors, platform announcement), level-crossing bell and booms, the goods carrier's engine and horn, bus air brake, the market, tea stall and far temple bell by kind of street, credits on ABOUT. Which are real and which synthetic: `docs/sound-recordings.md` | Done as far as free recordings could be had; most are synthetic (flagged) | `tests/unit/test_sound_recordings.gd`, `test_rail_sounds.gd`, `test_sound_mix.gd`, `tests/scene/test_sound_system.gd`, `tools/audio/test_audio_files.py` |
 | Helicopter and aeroplane sounds | Not done (later, with the vehicles) | |
 
 ## World: the streamed city (phase 1, branch `agent/godot-world`, 24 Nov 2026)
@@ -307,3 +332,15 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Compatibility-renderer A/B APK (G-255) | In CI | workflow artifact `godot-chennai-apk-compat` |
 | Traffic/figure/vehicle/street-light cost fixes (G-256…G-259) | Done; measured on llvmpipe | `docs/performance.md` before/after tables |
 | Seen on the owner's phone | Not done | — |
+
+## Trees (phase 7, G-380 to G-388, branch `agent/godot-trees`, 25 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Eighteen species (ten trees, five bushes and grass, three dead), three LODs each, own silhouettes (G-381) | Done | `test_trees.gd` (budgets per LOD, outlines differ), gallery screenshots |
+| One VRAM-compressed atlas under 1.5 MB, painted by script, CC0 (G-380) | Done (0.7 MB with mips) | `test_atlas_size_and_licence` |
+| Alpha-cut shader with vertex wind, off on Low (G-382) | Done (Compatibility); not on the Mobile renderer or a phone | `test_one_atlas_and_wind_data`, `test_perf_wiring` |
+| Species by district, park, beach, avenue, mapped tree; clear of buildings, carriageways, water, decks, rails (G-383) | Done; species are estimates (no tag in the data) | `test_plants_stand_clear_and_deterministic`, `test_species_mix_by_area`, `test_prune_removes_plants_near_a_line` |
+| MultiMesh per species per LOD per chunk, at most two draws a species (G-384, G-385) | Done | `test_chunk_budgets_and_lods`, `test_lod_rule` |
+| Quality caps: density, LOD distances, no sway on Low, shadows from LOD 0 on High (G-386) | Done | `test_quality_caps`, `test_perf_wiring` |
+| Before and after draws, primitives, main-thread ms, screenshots against the owner's photographs | Done on llvmpipe at 915x412 (`docs/trees.md`, handoff) | scratch harness (not committed) |
+| Seen on a phone | Not done | — |
