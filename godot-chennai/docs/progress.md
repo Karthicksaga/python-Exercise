@@ -331,3 +331,15 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Compatibility-renderer A/B APK (G-255) | In CI | workflow artifact `godot-chennai-apk-compat` |
 | Traffic/figure/vehicle/street-light cost fixes (G-256…G-259) | Done; measured on llvmpipe | `docs/performance.md` before/after tables |
 | Seen on the owner's phone | Not done | — |
+
+## Trees (phase 7, G-380 to G-388, branch `agent/godot-trees`, 25 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Eighteen species (ten trees, five bushes and grass, three dead), three LODs each, own silhouettes (G-381) | Done | `test_trees.gd` (budgets per LOD, outlines differ), gallery screenshots |
+| One VRAM-compressed atlas under 1.5 MB, painted by script, CC0 (G-380) | Done (0.7 MB with mips) | `test_atlas_size_and_licence` |
+| Alpha-cut shader with vertex wind, off on Low (G-382) | Done (Compatibility); not on the Mobile renderer or a phone | `test_one_atlas_and_wind_data`, `test_perf_wiring` |
+| Species by district, park, beach, avenue, mapped tree; clear of buildings, carriageways, water, decks, rails (G-383) | Done; species are estimates (no tag in the data) | `test_plants_stand_clear_and_deterministic`, `test_species_mix_by_area`, `test_prune_removes_plants_near_a_line` |
+| MultiMesh per species per LOD per chunk, at most two draws a species (G-384, G-385) | Done | `test_chunk_budgets_and_lods`, `test_lod_rule` |
+| Quality caps: density, LOD distances, no sway on Low, shadows from LOD 0 on High (G-386) | Done | `test_quality_caps`, `test_perf_wiring` |
+| Before and after draws, primitives, main-thread ms, screenshots against the owner's photographs | Done on llvmpipe at 915x412 (`docs/trees.md`, handoff) | scratch harness (not committed) |
+| Seen on a phone | Not done | — |

@@ -126,6 +126,7 @@ func prepare(city: CityWorld, player: PlayerRig) -> String:
 	var size := source.get_chunk_size()
 	var net := network
 	index = await BackgroundTask.start(func() -> RailIndex: return RailIndex.build(net, origin, size)).finish(get_tree())
+	city.set_rail_index(index)  # trees keep clear of the tracks (G-383)
 	platforms = await BackgroundTask.start(func() -> Array[StationLayout.Platform]: return StationLayout.platforms(net)).finish(get_tree())
 	models = await BackgroundTask.start(func() -> TrainModels: return TrainModels.load_all()).finish(get_tree())
 	if models.error != "":

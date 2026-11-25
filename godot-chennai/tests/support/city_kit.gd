@@ -25,10 +25,7 @@ static func kit() -> ChunkBuilder.Kit:
 	k.layouts = CityLayouts.create(k.source)
 	k.models = CityModels.create()
 	k.materials = CityMaterials.create()
-	k.tree_mesh = k.models.tree.commit(k.materials.foliage)
-	k.palm_mesh = k.models.palm.commit(k.materials.foliage)
-	k.tree_triangles = k.models.tree.triangle_count()
-	k.palm_triangles = k.models.palm.triangle_count()
+	k.trees = TreeKit.commit(TreeKit.build_models(), k.materials.trees)
 	_kit = k
 	return k
 
@@ -51,10 +48,7 @@ static func regional_kit() -> ChunkBuilder.Kit:
 	k.layouts = CityLayouts.create(k.source)
 	k.models = base.models
 	k.materials = base.materials
-	k.tree_mesh = base.tree_mesh
-	k.palm_mesh = base.palm_mesh
-	k.tree_triangles = base.tree_triangles
-	k.palm_triangles = base.palm_triangles
+	k.trees = base.trees
 	k.signs = SignCategories.shared()
 	k.palettes = AreaPalettes.load_file()
 	_regional_kit = k

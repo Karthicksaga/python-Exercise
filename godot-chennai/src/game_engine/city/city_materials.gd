@@ -17,8 +17,8 @@ var kit: StandardMaterial3D
 var ground: ShaderMaterial
 ## Vertex colours only: street furniture, props, far buildings.
 var objects: StandardMaterial3D
-## Trees and palms: vertex colours, both sides (fronds are seen from below).
-var foliage: StandardMaterial3D
+## Trees, palms, bushes and grass (G-382): `trees.gdshader` on the one atlas, wind in the vertex stage.
+var trees: ShaderMaterial
 var landmark: StandardMaterial3D
 ## Rivers, canals, ponds (G-152): `water.gdshader`.
 var water: ShaderMaterial
@@ -84,8 +84,7 @@ static func create() -> CityMaterials:
 	c.ground.set_shader_parameter("atlas", atlas)
 	c.ground.set_shader_parameter("tiles", float(CityAtlas.GROUND_TILES))
 	c.objects = _vertex_coloured(0.85)
-	c.foliage = _vertex_coloured(0.9)
-	c.foliage.cull_mode = BaseMaterial3D.CULL_DISABLED
+	c.trees = TreeKit.make_material()
 	c.landmark = _vertex_coloured(0.82)
 	c.decks = _vertex_coloured(0.9)
 	c.decks.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -117,10 +116,11 @@ func set_flat(on: bool) -> void:
 		return
 	flat = on
 	var mode := BaseMaterial3D.SHADING_MODE_PER_VERTEX if on else BaseMaterial3D.SHADING_MODE_PER_PIXEL
-	for m: StandardMaterial3D in [walls, roofs, kit, objects, foliage, landmark, decks]:
+	for m: StandardMaterial3D in [walls, roofs, kit, objects, landmark, decks]:
 		if m != null:
 			m.shading_mode = mode
 	ground.shader = vertex_lit(GROUND_SHADER) if on else GROUND_SHADER
+	trees.shader = vertex_lit(TreeKit.SHADER) if on else TreeKit.SHADER
 	water.shader = vertex_lit(WATER_SHADER) if on else WATER_SHADER
 
 
@@ -137,12 +137,14 @@ static func vertex_lit(shader: Shader) -> Shader:
 func set_night(night: float) -> void:
 	walls.emission_energy_multiplier = night * 1.15
 	kit.emission_energy_multiplier = night * 1.15
+	trees.set_shader_parameter(&"night", night)
 
 
 ## 0 dry, 1 soaked.
 func set_wet(wet: float) -> void:
 	ground.set_shader_parameter("wet", wet)
 	water.set_shader_parameter("wet", wet)
+	trees.set_shader_parameter(&"wet", wet)
 	var shade := 1.0 - 0.12 * wet
 	walls.albedo_color = Color(shade, shade, shade)
 	roofs.roughness = 1.0 - 0.45 * wet
