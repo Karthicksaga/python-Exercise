@@ -1014,9 +1014,12 @@ never knocked down).
 - Headless and xvfb (llvmpipe) only; not on a phone.
 - The end-to-end take-over test failed before the fix in 2 of 3 runs only (whether the sweep hits
   depends on the respawn direction); the yard test is the deterministic one.
-- One unexplained run of the take-over test after the fix: a later ride-off judged a 75 km/h
-  "thrown" against a building at half throttle (fastest reached not recorded then); not seen in
-  the eight runs since. If it comes back, look for another code-placed kinematic body.
+- The intermittent "thrown" in the take-over test's ride-off (75 km/h once here, 58.6 km/h
+  against `Solids4` in CI on 882baff) was a real crash, not a fling: half throttle takes a bike
+  to 16 m/s in 3 s, and the ride-off went straight ahead from wherever the taken bike stood, so
+  sometimes into a building. The test now turns the standing vehicle onto a run with nothing
+  solid for 40 m, rides 2 s at 30 % throttle, and fails a throw or fall only if no static solid
+  was hit first (15 runs in a row green). The crash rules are unchanged.
 - A crowd adult knocked down is drawn back at their spot when up (a pop of a metre or two); crowd
   people only turn to look, they do not flee. Children in crowds only step aside by the crowd's
   existing make-way rule (0.5 m round vehicles, at 30 Hz): no child is ever struck or knocked

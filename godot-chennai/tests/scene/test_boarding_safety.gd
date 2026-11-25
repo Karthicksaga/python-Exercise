@@ -61,35 +61,97 @@ func _play() -> Main:
 	return main
 
 
-## Watch the rider on `v` for `seconds` of game time: never thrown, never more than STAY metres
-## from the vehicle, no crash judged. `gas` rides off gently (half throttle) instead of standing.
+## Throttle and time of the ride-off: gentle, and short enough to stay inside the clear run.
+const RIDE_GAS := 0.3
+const RIDE_SECONDS := 2.0
+## The ride-off heads where nothing solid stands for this far (metres).
+const CLEAR_RUN := 40.0
+
+
+## Watch the rider on `v` for `seconds` of game time. Standing: never thrown, never more than
+## STAY metres from the vehicle, nothing felt, not shoved. `gas`: a gentle ride-off on a clear
+## run (`_face_clear_run`): no throw or fall, and still within STAY of the vehicle, unless the
+## vehicle touched something static first (then a throw is the crash rules' fair judgement of a
+## real crash, which these tests are not about; it is reported, and the ride-off is clear of
+## static solids for CLEAR_RUN metres, so it does not happen).
 func _watch(main: Main, v: Vehicle, label: String, seconds: float, gas: bool) -> void:
 	var d := main.play_wiring.driving
 	var worst := 0.0
 	var fastest := 0.0
 	var modes: Dictionary[StringName, bool] = {}
+	var static_contact := ""
+	var off_before_contact := false
 	d.gas = gas
-	d.gas_amount = 0.5
+	d.gas_amount = RIDE_GAS
 	for i in int(seconds * 60.0):
 		await wait_physics_frames(1)
-		modes[d.mode()] = true
 		if not is_instance_valid(v):
 			break
-		worst = maxf(worst, d.rider.position().distance_to(v.global_position))
+		# A judged hit against something static (a wall, a pole: not the ground, which the hit
+		# measure leaves out, and not traffic or a parked vehicle).
+		var hit := d.last_hit
+		if static_contact == "" and hit != null and hit.hit != null and hit.hit.other is StaticBody3D:
+			static_contact = (hit.hit.other as Node).name
+		modes[d.mode()] = true
+		if d.mode() != &"driving" and static_contact == "":
+			off_before_contact = true
+		if static_contact == "":
+			worst = maxf(worst, d.rider.position().distance_to(v.global_position))
 		fastest = maxf(fastest, v.linear_velocity.length())
 	d.gas = false
 	d.gas_amount = 1.0
 	assert_true(worst <= STAY, "%s: the rider stays on (farthest %.2f m from the vehicle)" % [label, worst])
-	assert_eq(modes.keys(), [&"driving"] as Array[StringName], "%s: riding the whole time" % label)
 	if not gas:
-		# Standing still nothing may even be felt. Riding off at half throttle in live traffic a
-		# real knock is fair (the street is the game's), but never a fall or a throw.
+		assert_eq(modes.keys(), [&"driving"] as Array[StringName], "%s: riding the whole time" % label)
+		# Standing still nothing may even be felt.
 		assert_true(d.last_crash == null, "%s: no crash judged (%s)" % [label, _describe(d.last_crash)])
 		assert_true(d.last_hit == null, "%s: no hit felt (%s)" % [label, _describe(d.last_hit)])
 		assert_true(fastest < 1.0, "%s: the vehicle is not shoved (%.1f m/s)" % [label, fastest])
+		return
+	assert_false(off_before_contact, "%s: never off the seat before touching anything static (%s; fastest %.1f m/s)" % [label, _describe(d.last_crash), fastest])
+	if static_contact != "":
+		print("    %s: touched %s on the clear run (%s, fastest %.1f m/s)" % [label, static_contact, _describe(d.last_crash), fastest])
 	else:
 		var off := d.last_crash != null and d.last_crash.type in [&"fall", &"thrown"]
 		assert_false(off, "%s: never off the seat (%s; fastest %.1f m/s)" % [label, _describe(d.last_crash), fastest])
+
+
+## Ride off gently along a clear run (turned onto one first; none clear: said and skipped).
+func _ride_off(main: Main, v: Vehicle, label: String) -> void:
+	if not _face_clear_run(v):
+		print("    %s: no clear run round it, no ride-off" % label)
+		return
+	await wait_physics_frames(10)
+	main.play_wiring.driving.last_crash = null
+	main.play_wiring.driving.last_hit = null
+	await _watch(main, v, "%s riding off" % label, RIDE_SECONDS, true)
+
+
+## Turn the standing vehicle in place (direct placement, no driving) to the first of 16 headings,
+## starting with its own, along which nothing static or parked stands for CLEAR_RUN metres (rays
+## at the wheels' and the rider's height from both sides of the body). False if none is clear.
+func _face_clear_run(v: Vehicle) -> bool:
+	var space := v.get_world_3d().direct_space_state
+	var h := v.type.spec.half_extents
+	var feet := v.ground_point(Vector2.ZERO)
+	var start := v.yaw()
+	for i in 16:
+		var heading := start + (float(floori((i + 1) / 2.0)) * TAU / 16.0) * (1.0 if i % 2 == 1 else -1.0)
+		var fwd := Vector3(-sin(heading), 0, -cos(heading))
+		var right := Vector3(cos(heading), 0, -sin(heading))
+		var clear := true
+		for side: float in [-1.0, 0.0, 1.0]:
+			for up: float in [0.4, 1.0]:
+				var from := feet + right * side * (h.x + 0.2) + Vector3(0, up, 0)
+				var q := PhysicsRayQueryParameters3D.create(from, from + fwd * CLEAR_RUN, PhysicsLayers.WORLD | PhysicsLayers.VEHICLES)
+				q.exclude = [v.get_rid()]
+				if not space.intersect_ray(q).is_empty():
+					clear = false
+		if clear:
+			if i > 0:
+				v.place(feet, heading)
+			return true
+	return false
 
 
 static func _describe(o: CrashRules.Outcome) -> String:
@@ -128,7 +190,7 @@ func _board_and_watch(main: Main, v: Vehicle, label: String) -> void:
 	var seated := await wait_until(func() -> bool: return d.mode() == &"driving" or d.mode() == &"thrown", 60 * 10)
 	assert_true(seated and d.mode() == &"driving", "%s: seated (%s)" % [label, d.mode()])
 	await _watch(main, v, "%s standing" % label, WATCH, false)
-	await _watch(main, v, "%s riding off" % label, 3.0, true)
+	await _ride_off(main, v, label)
 	d.brake = true
 	await wait_until(func() -> bool: return absf(v.forward_speed()) < 0.5, 60 * 6)
 	d.brake = false
@@ -206,7 +268,7 @@ func test_taking_over_traffic_in_a_crowded_street_never_throws() -> bool:
 		var seated := await wait_until(func() -> bool: return d.mode() == &"driving" or d.mode() == &"thrown", 60 * 15)
 		assert_true(seated and d.mode() == &"driving", "%s: seated (%s)" % [group, d.mode()])
 		await _watch(main, v, "taken %s standing" % group, WATCH, false)
-		await _watch(main, v, "taken %s riding off" % group, 3.0, true)
+		await _ride_off(main, v, "taken %s" % group)
 		d.brake = true
 		await wait_until(func() -> bool: return absf(v.forward_speed()) < 0.5, 60 * 6)
 		d.brake = false
