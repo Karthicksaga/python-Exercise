@@ -1,5 +1,5 @@
 extends YardTest
-## A peace zone keeps its rules in the systems that ask (G-471), in the vehicle yard: nobody gets
+## A peace zone keeps its rules in the systems that ask (G-481), in the vehicle yard: nobody gets
 ## into a vehicle inside the forecourt (told to leave it outside), the horn is quiet, a hit
 ## throws no sparks or camera shake, nobody is pulled out of a vehicle, no crime is reported.
 ## The same things happen normally outside the zone. Waits in game time.

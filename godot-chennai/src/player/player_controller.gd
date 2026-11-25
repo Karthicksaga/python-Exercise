@@ -14,7 +14,7 @@ extends CharacterBody3D
 ## For vehicles: `enter_vehicle(vehicle, seat)` takes the player off their feet (no collision,
 ## no movement, the body follows the seat) and `exit_vehicle(feet, yaw)` puts them back.
 ## For combat later: `knock(velocity)`, `facing()`, `figure`.
-## For swimming (culture, G-474): `begin_swim(at)` takes the body off the ground (no collision) and
+## For swimming (culture, G-484): `begin_swim(at)` takes the body off the ground (no collision) and
 ## `_swim_step` moves it on the water's surface by `swim_mover`, which decides where it may go;
 ## `end_swim(feet, yaw)` puts it back on its feet.
 

@@ -356,16 +356,16 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Layouts survive Tamil and Both at 915x412 and 1830x824 (G-445) | Done in the test; seen only in screenshots under software GL | `test_i18n_layout.gd` |
 | Read by a native speaker; seen on a phone | Not done | — |
 
-## Culture and life (G-470 to G-479, branch `agent/godot-culture`, 25 Nov 2026)
+## Culture and life (G-480 to G-489, branch `agent/godot-culture`, 25 Nov 2026)
 | Item | State | How it was tested |
 |---|---|---|
-| Culture data: nine places, the temple zone, the temple visit's places, swimming rules, from landmark specs and `world.json` (G-470) | Done | `test_culture.gd` (positions and names equal the specs'; keys in both catalogs) |
-| Peace zone as data; GET IN, horn, crash show, TAKE OVER, crime report keep its rules; walking pace; calm sound (G-471) | Done; **rule list is the owner's decision**; `violence` has no consumer until the combat runtime exists | `test_peace_zone.gd`, `test_culture_wiring.gd` |
-| Heritage journal: screen from the pause menu, fills in as places are visited, saved in `chennai-heritage-v1`, NEW GAME clears it (G-472) | Done | `test_culture.gd`, `test_culture_wiring.gd`, `test_culture_layout.gd` |
-| `SaveStore` keeps sections it did not set (settings, journal) when a mission save writes (G-472) | Done (fixes an existing loss of other sections) | `test_the_journal_has_its_own_section_and_the_mission_save_keeps_it` |
-| Kapaleeshwarar visit: leave sandals, walk in, light the lamp, walk round the shrines, journal "visit completed"; props, bell, calm (G-473) | Done; no deity image or model, no scoring | `test_temple_visit_*` (logic and ACTION button), `test_the_temple_in_the_real_city` (real body through the gopuram), `test_a_ring_of_free_ground_goes_round_the_shrines` |
-| Swimming: sea to a 30 m rope line, rivers and canals inside their banks, energy, tiring carries to shore, no drowning (G-474) | Done on desktop; no swim animation | `test_culture.gd` (limits, tiring, river), `test_swimming_*`, `test_swimming_at_the_marina_and_in_a_real_river` |
-| All text in `cul.*` keys, English and Tamil; Tamil `needs native review` (G-476) | Done; unread machine Tamil | `test_i18n.gd`, `docs/tamil-review.md` |
-| Layouts: journal, energy plate, pause row, ACTION labels in English, Tamil, both at 915x412 and 2460x1080 (G-477) | Done | `test_culture_layout.gd` |
-| Bicycle, boat, swim clip (G-478) | Not done | — |
+| Culture data: nine places, the temple zone, the temple visit's places, swimming rules, from landmark specs and `world.json` (G-480) | Done | `test_culture.gd` (positions and names equal the specs'; keys in both catalogs) |
+| Peace zone as data; GET IN, horn, crash show, TAKE OVER, crime report keep its rules; walking pace; calm sound (G-481) | Done; **rule list is the owner's decision**; `violence` has no consumer until the combat runtime exists | `test_peace_zone.gd`, `test_culture_wiring.gd` |
+| Heritage journal: screen from the pause menu, fills in as places are visited, saved in `chennai-heritage-v1`, NEW GAME clears it (G-482) | Done | `test_culture.gd`, `test_culture_wiring.gd`, `test_culture_layout.gd` |
+| `SaveStore` keeps sections it did not set (settings, journal) when a mission save writes (G-482) | Done (fixes an existing loss of other sections) | `test_the_journal_has_its_own_section_and_the_mission_save_keeps_it` |
+| Kapaleeshwarar visit: leave sandals, walk in, light the lamp, walk round the shrines, journal "visit completed"; props, bell, calm (G-483) | Done; no deity image or model, no scoring | `test_temple_visit_*` (logic and ACTION button), `test_the_temple_in_the_real_city` (real body through the gopuram), `test_a_ring_of_free_ground_goes_round_the_shrines` |
+| Swimming: sea to a 30 m rope line, rivers and canals inside their banks, energy, tiring carries to shore, no drowning (G-484) | Done on desktop; no swim animation | `test_culture.gd` (limits, tiring, river), `test_swimming_*`, `test_swimming_at_the_marina_and_in_a_real_river` |
+| All text in `cul.*` keys, English and Tamil; Tamil `needs native review` (G-486) | Done; unread machine Tamil | `test_i18n.gd`, `docs/tamil-review.md` |
+| Layouts: journal, energy plate, pause row, ACTION labels in English, Tamil, both at 915x412 and 2460x1080 (G-487) | Done | `test_culture_layout.gd` |
+| Bicycle, boat, swim clip (G-488) | Not done | — |
 | Seen on a phone; read by a native Tamil speaker | Not done | — |

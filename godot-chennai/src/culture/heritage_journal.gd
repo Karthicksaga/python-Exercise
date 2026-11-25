@@ -1,6 +1,6 @@
 class_name HeritageJournal
 extends RefCounted
-## The heritage journal's state (G-472): which stops the player has visited, in order, how often,
+## The heritage journal's state (G-482): which stops the player has visited, in order, how often,
 ## and whether the longer visit (the temple's lamp and walk round) was done. Saved in the save
 ## file in its own section `chennai-heritage-v1` (`SaveStore.HERITAGE`); a save without it is an
 ## empty journal. Pure logic; the screen is `HeritageJournalScreen`.

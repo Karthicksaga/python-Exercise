@@ -1,5 +1,5 @@
 extends TestCase
-## Culture in the real game (G-470…G-479): the streamed city with the real temple, coast and rivers.
+## Culture in the real game (G-480…G-489): the streamed city with the real temple, coast and rivers.
 ## The temple's sandal stand, gate and lamp can be walked to by the real player body through the
 ## gopuram's passage; a ring of free ground round the shrines exists for the walk round; the props
 ## stand on the ground; the temple's grounds keep the peace; the sea at the Marina and a real river
@@ -217,7 +217,7 @@ func test_swimming_at_the_marina_and_in_a_real_river() -> bool:
 	var land := shore - sample.inward * 3.0
 	assert_true(await _arrive(main, land, 0.0), "the beach loads")
 	assert_true(culture.swim.entry(_world(main)) != null, "the water is within reach from the beach")
-	# The entry look-up runs five times a second on the main thread: it must stay cheap (G-474).
+	# The entry look-up runs five times a second on the main thread: it must stay cheap (G-484).
 	var started := Time.get_ticks_usec()
 	for i in 200:
 		culture.swim.entry(_world(main) + Vector2(float(i % 7) * 40.0, 0.0))

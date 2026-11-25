@@ -73,7 +73,7 @@ leaves a run hanging).
   edits small and additive so branches merge cleanly.
 - The cast agent owns `tools/blender/` and `assets/people/` outside `legacy/`; the sync owns
   `assets/people/legacy/` and the rows between its markers in `assets/LICENSES.md`.
-- Decision numbers: G-1…G-9 foundation, G-10…G-19 cast, G-470…G-479 culture; later work continues after the highest.
+- Decision numbers: G-1…G-9 foundation, G-10…G-19 cast, G-480…G-489 culture; later work continues after the highest.
 - **Text:** never write a visible string in code. Add a key to `assets/i18n/en.csv` and `ta.csv` (Tamil row
   status `needs native review`), call `Tr.t("area.key", args)`, run `python3 tools/i18n/review_table.py`; a
   test fails on a missing key, a mismatched placeholder or a stale review table. Mission text stays English in

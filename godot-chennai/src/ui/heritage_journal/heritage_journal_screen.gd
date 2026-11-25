@@ -1,6 +1,6 @@
 class_name HeritageJournalScreen
 extends CanvasLayer
-## The heritage journal's screen (G-472), opened from the pause menu: every place of the culture data
+## The heritage journal's screen (G-482), opened from the pause menu: every place of the culture data
 ## with its name and one line, filling in as the player visits (visited places first, in the order
 ## visited; the rest wait as "a place to find"). A round glass CLOSE (or Back) leaves it. It runs
 ## while the tree is paused. All words are `cul.*` keys, rebuilt when the language changes; the

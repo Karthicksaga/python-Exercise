@@ -142,7 +142,7 @@ is not worn by anyone here).
 
 | `assets/i18n/en.csv`, `assets/i18n/ta.csv` | The game's text, one key per string: English and Tamil (G-440). Every Tamil row is marked `needs native review` until a native speaker has read it | Original, written for the project; the English is the game's own text, the Tamil is machine-written and unreviewed | **CC0 1.0**, original work for the project |
 
-## Culture and life (decisions G-470 to G-479)
+## Culture and life (decisions G-480 to G-489)
 | Files | What | Source | Licence |
 |---|---|---|---|
 | `assets/culture/culture.json` | The heritage journal's places, the peace zone, the temple visit's places and the swimming rules (data only; the texts are `cul.*` keys in `assets/i18n`) | Original. Positions are from the landmark specs and `world/world.json` (OpenStreetMap, ODbL 1.0, © OpenStreetMap contributors); the one-line facts are from the specs' sourced facts | Original work for the project; map positions ODbL 1.0 |

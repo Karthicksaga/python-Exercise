@@ -1,6 +1,6 @@
 class_name SwimState
 extends RefCounted
-## The swimming rules for one swimmer (G-474), pure logic. Safe by construction:
+## The swimming rules for one swimmer (G-484), pure logic. Safe by construction:
 ## - **where:** only shallow water inside its limits: the sea out to a rope line `sea_limit`
 ##   metres from the shore, a river or canal inside its banks. A move past a limit is slid back
 ##   to the limit, never blocked with a wall and never fatal;

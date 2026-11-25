@@ -60,7 +60,7 @@ var _traffic_level: float = 0.5
 var _enclosed: bool = false
 var _speed: float = 0.0
 var _street: StringName = &""
-## 0..1: how calm the place is (a temple's compound: the city fades, the bell is heard more, G-473).
+## 0..1: how calm the place is (a temple's compound: the city fades, the bell is heard more, G-483).
 var _calm: float = 0.0
 ## Footsteps are this loud: 1, less barefoot (the temple's sandal stand).
 var step_gain: float = 1.0

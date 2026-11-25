@@ -1,5 +1,5 @@
 extends TestCase
-## Culture in the game, on a flat ground with the real player (G-470…G-479): arriving at a place
+## Culture in the game, on a flat ground with the real player (G-480…G-489): arriving at a place
 ## writes the journal and saves it, the temple visit works through the ACTION button (sandals, lamp,
 ## the walk round), swimming starts at the water's edge and ends on the shore, the swimmer is held
 ## inside the rope line and stops swimming when tired. Waits in game time.

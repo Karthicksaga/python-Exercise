@@ -1,6 +1,6 @@
 class_name TempleVisit
 extends RefCounted
-## The temple visit as a small state machine (G-473), in the order a visitor does it: come into
+## The temple visit as a small state machine (G-483), in the order a visitor does it: come into
 ## the forecourt, leave the sandals at the stand, light the lamp, walk once round the shrines
 ## clockwise (pradakshina). No scoring of devotion, no timer and no penalty: nothing here fails.
 ## Sandals put back on when the visitor leaves the grounds; the lamp stays lit; the walk round

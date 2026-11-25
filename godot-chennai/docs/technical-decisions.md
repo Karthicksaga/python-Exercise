@@ -2741,13 +2741,13 @@ Developer-only text stays English: the performance overlay and its switches, the
 Place and station names come from the map data (OSM) with their own Tamil where it has one (`name_ta`); the
 sentences around them are translated.
 
-## Culture and life: heritage journal, temple visit, peace zones, swimming (G-470 to G-479, agent/godot-culture)
+## Culture and life: heritage journal, temple visit, peace zones, swimming (G-480 to G-489, agent/godot-culture)
 
 Owner's request "culture" (`suggestions/2026-11-24-chennai-culture-and-life.md`). Original content only: no
 brands, no real business names, no likenesses; children are nowhere in these features (nothing here can
-hurt anyone, and no person is added). What was NOT done is in G-478.
+hurt anyone, and no person is added). What was NOT done is in G-488.
 
-### G-470: A `culture` module, all its places and numbers as data
+### G-480: A `culture` module, all its places and numbers as data
 `src/culture/` is pure logic (no nodes, no text, same rule as `ai`, `missions`, `combat`): `CultureData`
 (reads `assets/culture/culture.json`), `PeaceZones`, `HeritageJournal`, `TempleVisit`, `SwimWater`,
 `SwimState`. The composition glue is `src/app/culture_wiring/` (`CultureWiring`, `TempleProps`, `PropMesh`),
@@ -2759,7 +2759,7 @@ stop against its landmark spec (position within 6 m, English and Tamil names equ
 and its tank, Ripon Building, Chennai Central, Chennai Egmore, the lighthouse, Marina Beach, Anna Nagar Tower,
 Kathipara Junction. The generic mall is left out (its name is withheld on purpose, G-189).
 
-### G-471: Peace zones are data; five systems keep their rules (OPEN DECISION FOR THE OWNER)
+### G-481: Peace zones are data; five systems keep their rules (OPEN DECISION FOR THE OWNER)
 A zone is a circle with `rules`: a map from rule name to "allowed inside". Rules: `violence`, `wanted`,
 `crash_effects`, `horn`, `boarding`, `take_over`, `run`, `swim`; an unlisted rule is allowed, so a second place
 of worship is one more JSON row. The Kapaleeshwarar zone (75 m round the compound's centre, 62 m for vehicles)
@@ -2769,14 +2769,14 @@ forbids all eight. Systems ask `peace.allows(rule, world point)`; none of them k
 - `DrivingWiring.feedback` skips sparks, glass and camera shake;
 - `Carjacking.offer` offers no TAKE OVER; `Carjacking` and `StreetReactions` report no crime to `Wanted`;
 - `CultureWiring` caps the player at walking pace (`run_scale`), fades the city's sound beds and brings the
-  temple bell close (`Sound.set_calm`, G-473), and refuses SWIM.
+  temple bell close (`Sound.set_calm`, G-483), and refuses SWIM.
 `violence` has no consumer yet: the combat runtime (phase 5) does not exist, so there is no blow, weapon or
 police to suppress. `CultureWiring.allow_violence(point)` is the hook it must ask first (tested). The peace
 zone is therefore a proposal the owner confirms: is the rule list right, are walking pace and "no horn" too
 strict for a street that passes the temple, should a vehicle be stopped at the zone's edge rather than only
 refused at the door? Nothing here fines or punishes: dress and footwear are shown, not enforced.
 
-### G-472: The heritage journal and its own save section
+### G-482: The heritage journal and its own save section
 `HeritageJournal` keeps the places visited in order with a count and "visit done"; it is saved as
 `chennai-heritage-v1` `{order, count, done}` (`SaveStore.HERITAGE`), a save without it is an empty journal
 (no version bump: an added section is read as empty by an older game). A place is written when the player is
@@ -2788,7 +2788,7 @@ its in-memory copy, so a mission save lost any other section saved since the fil
 the controls, now the journal). `write` now keeps every section on disk that is not progress (`PROGRESS_KEYS`)
 and was not set by that store (`set_section`); NEW GAME still clears the progress sections.
 
-### G-473: The temple visit at Kapaleeshwarar
+### G-483: The temple visit at Kapaleeshwarar
 Order, as a visitor does it (`TempleVisit`, a small state machine with no failure state): come into the grounds
 (a welcome toast), LEAVE SANDALS at the stand outside the east gopuram (ACTION; a rack with plain sandals, the
 player's pair appears; footsteps become barefoot, 0.45 of the loudness), walk in through the gopuram's passage,
@@ -2805,7 +2805,7 @@ vertex-coloured mesh each), hidden beyond 260 m, one `OmniLight3D` only while li
 fades the city, market and tea beds by up to 80 % and makes the temple bell come close and soft inside the zone;
 it uses the existing `bell.temple` recording, no new sound asset.
 
-### G-474: Swimming: shallow, roped, never fatal
+### G-484: Swimming: shallow, roped, never fatal
 Where: the sea out to a rope line 30 m from the coast (`WorldSea` coast and outline), rivers and canals inside
 their banks (`WorldWaterway` centre line and width, the ribbon the map draws); streams, drains, ditches and
 covered waterways are not swimming water; temple tanks are map water areas, not waterways, so they are never
@@ -2822,12 +2822,12 @@ in this data (the suggestion note had it wade-only because of its real currents)
 list of circles where swimming is refused, empty today, an owner decision. Never loads layouts on the main
 thread (`CityLayouts.has_tile`).
 
-### G-475: What the culture code never does
+### G-485: What the culture code never does
 It never changes `AgentSystem` state (G-364): it only reads where the player is. It never loads a tile, a
 chunk or a model: the props are made when the game is wired, the water comes from layouts already built. It
 adds no sound or art asset: the bell recording, the primitives and the existing UI theme only.
 
-### G-476: Text
+### G-486: Text
 Every visible string is a `cul.*` key (and `menu.pause.journal`) in both catalogs, Tamil `needs native review`
 (`docs/tamil-review.md`). The stops' keys are built from the id (`cul.stop.<id>.name` / `.line`), so `cul.stop.`
 joins `DYNAMIC_PREFIXES` in `test_i18n.gd` (the same way as `life.film.`); `test_culture.gd` checks each stop has
@@ -2835,13 +2835,13 @@ both keys, that its English and Tamil names are the landmark spec's, and that no
 Tamil word for LIGHT LAMP is two words (விளக்கை ஏற்று): one long word could not break and did not fit the round
 ACTION button (the layout test found it).
 
-### G-477: Layout rules kept
+### G-487: Layout rules kept
 The journal and the energy plate are tested in English, Tamil and both languages at 915x412 and 2460x1080
 (`test_culture_layout.gd`): the panel inside the screen, CLOSE a 48 px glass circle (a two-line title does not
 stretch it), no label cut off or overflowing, wrapped labels tall enough, the list scrolls to its last row, the
 JOURNAL pause row fits, and the four new ACTION labels fit the round ACTION button.
 
-### G-478: Not done, and why
+### G-488: Not done, and why
 - **Bicycle: not built.** A new vehicle kind needs a model (Blender script), a chassis and wheel spec with
   balance and lean handling tuned by the handling tests (a physics-tuning job, not glue), a rider seat pose with
   feet on pedals and a pedalling clip, a bell instead of a horn and no engine voice, plus traffic and parking
@@ -2852,10 +2852,10 @@ JOURNAL pause row fits, and the four new ACTION labels fit the round ACTION butt
 - **Not seen on a phone.** Screenshots are the real city under software GL.
 - Tamil is machine Tamil and unread (G-443).
 
-### G-479: Open owner decisions from this work
-1. The peace zone's rule list (G-471) and what a vehicle driven into the forecourt should do.
-2. Swimming at the Marina (G-474), and whether any beach or river is wade-only (`swim.no_swim_zones`).
+### G-489: Open owner decisions from this work
+1. The peace zone's rule list (G-481) and what a vehicle driven into the forecourt should do.
+2. Swimming at the Marina (G-484), and whether any beach or river is wade-only (`swim.no_swim_zones`).
 3. The second place after Kapaleeshwarar for a visit (Santhome Basilica, Fort St George, the Marina): each is a
    JSON zone, a stand and a lamp equivalent, and its own respectful interaction written with care.
 4. Who reads the Tamil (G-443): this work adds 48 more rows.
-5. Whether to schedule the bicycle for `godot-complex` (G-478).
+5. Whether to schedule the bicycle for `godot-complex` (G-488).

@@ -1,6 +1,6 @@
 class_name CultureData
 extends RefCounted
-## The data of the culture module (G-470): the heritage journal's stops, the peace zones, the
+## The data of the culture module (G-480): the heritage journal's stops, the peace zones, the
 ## temple visit and the swimming rules, read from `assets/culture/culture.json`. Pure data: no
 ## nodes, no text (every visible word is a `cul.*` key in `assets/i18n`).
 

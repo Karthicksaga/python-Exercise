@@ -1,5 +1,5 @@
 extends TestCase
-## Culture and life, the logic (G-470…G-479): the data is consistent with the landmark specs and the
+## Culture and life, the logic (G-480…G-489): the data is consistent with the landmark specs and the
 ## catalogs, the peace zones' rules, the heritage journal and its save section, the temple visit's
 ## steps, and the swimming limits (sea rope line, river banks, tiring is never fatal).
 

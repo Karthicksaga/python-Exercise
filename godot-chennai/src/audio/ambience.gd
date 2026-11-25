@@ -64,7 +64,7 @@ func level(name: String) -> float:
 
 
 ## Call every frame while playing. state: {hour, rain 0..1, coast m (INF inland), traffic 0..1, enclosed,
-## street (a `PlaceMap.KINDS` name, optional), calm 0..1 (a peace zone: the city's beds fade, G-473)}.
+## street (a `PlaceMap.KINDS` name, optional), calm 0..1 (a peace zone: the city's beds fade, G-483)}.
 func update(dt: float, state: Dictionary) -> void:
 	var hour: float = state.get("hour", 12.0)
 	var rain: float = state.get("rain", 0.0)

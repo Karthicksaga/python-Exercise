@@ -1,7 +1,7 @@
 class_name PropMesh
 extends RefCounted
 ## A small prop made of boxes and cylinders in one mesh with vertex colours (one draw call): the
-## temple's sandal stand and lamp (G-473). Original shapes, no textures. Collects the engine's
+## temple's sandal stand and lamp (G-483). Original shapes, no textures. Collects the engine's
 ## primitive meshes moved to where they go.
 
 var _positions := PackedVector3Array()

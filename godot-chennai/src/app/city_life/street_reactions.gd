@@ -43,7 +43,7 @@ var life: CityLife
 var driving: Driving
 ## The game's wanted level, when it has one (no instance exists yet): incidents are reported.
 var wanted: Wanted = null
-## Peace zones (G-471): no crime is reported inside one; null: none.
+## Peace zones (G-481): no crime is reported inside one; null: none.
 var peace: PeaceZones = null
 ## Counts for tests and the HUD.
 var stats: Dictionary = {"stagger": 0, "fall": 0, "rider": 0, "children_passed": 0, "tests": 0, "test_usec": 0, "test_usec_max": 0}

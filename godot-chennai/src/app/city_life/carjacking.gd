@@ -36,7 +36,7 @@ var life: CityLife
 var driving: Driving
 ## The game's wanted level (Phase 5 wires one); null: the crime is only signalled.
 var wanted: Wanted = null
-## Peace zones (G-471): nobody is pulled from a vehicle and no crime is reported inside one; null: none.
+## Peace zones (G-481): nobody is pulled from a vehicle and no crime is reported inside one; null: none.
 var peace: PeaceZones = null
 ## The swapped vehicle waiting to be taken, its agent and its seated driver.
 var vehicle: Vehicle = null

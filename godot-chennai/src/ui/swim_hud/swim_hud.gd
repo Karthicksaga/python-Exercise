@@ -1,6 +1,6 @@
 class_name SwimHud
 extends CanvasLayer
-## The swimmer's energy (G-474): a small glass plate at the bottom centre, shown only while swimming,
+## The swimmer's energy (G-484): a small glass plate at the bottom centre, shown only while swimming,
 ## with the word ENERGY and a bar (`MeterBar`, full is good). It is not a touch target. Nothing about
 ## breath or drowning: tiring only sends the swimmer back to the shore.
 

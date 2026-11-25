@@ -1,6 +1,6 @@
 class_name CultureWiring
 extends Node
-## Culture and life in the game (G-470…G-479), composition glue: the heritage journal, the temple
+## Culture and life in the game (G-480…G-489), composition glue: the heritage journal, the temple
 ## visit with its props and calm, the peace zones, and swimming. No rules live here; they are in
 ## `src/culture/` (`HeritageJournal`, `TempleVisit`, `PeaceZones`, `SwimState`). Each physics step,
 ## after the player has moved, it reads where the player is (world metres) and:

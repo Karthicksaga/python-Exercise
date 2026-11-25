@@ -38,7 +38,7 @@ var life: CityLife = null
 var railway: Railway = null
 ## Taking over traffic cars, autos and bikes on foot (G-300); the ACTION button's TAKE OVER.
 var carjacking: Carjacking = null
-## The heritage journal, the temple visit, the peace zones and swimming (G-470…G-479).
+## The heritage journal, the temple visit, the peace zones and swimming (G-480…G-489).
 var culture: CultureWiring = null
 ## People and traffic riders react to being hit by the player's vehicle (G-362, G-363).
 var street_reactions: StreetReactions = null
@@ -432,7 +432,7 @@ func _open_map() -> void:
 		layer.open_map()
 
 
-## The heritage journal, from the pause menu (G-472).
+## The heritage journal, from the pause menu (G-482).
 func _open_journal() -> void:
 	if culture != null:
 		culture.open_journal()

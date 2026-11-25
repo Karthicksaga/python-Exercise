@@ -1,6 +1,6 @@
 class_name SwimWater
 extends RefCounted
-## Where the water is, for swimming (G-474): the sea (coastline and outline of `WorldSea`) and the
+## Where the water is, for swimming (G-484): the sea (coastline and outline of `WorldSea`) and the
 ## rivers and canals (`WorldWaterway`, centre line and width, as the map draws them). Asked about a
 ## world point it says what water is there, how deep inside its banks the point is, and the way to
 ## the shore. Pure logic; the waterways come from a Callable so the wiring can read the city layout.

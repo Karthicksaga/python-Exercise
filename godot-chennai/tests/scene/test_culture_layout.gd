@@ -1,6 +1,6 @@
 extends TestCase
 ## The culture screens and buttons in English, Tamil and both languages at a 915x412 phone and a
-## 2460x1080 one (G-470…G-479, the HUD rules): the heritage journal fits (its round glass CLOSE is a
+## 2460x1080 one (G-480…G-489, the HUD rules): the heritage journal fits (its round glass CLOSE is a
 ## 48 px circle, no text cut off or overflowing, long rows scroll), the swimmer's energy plate fits,
 ## the pause menu's JOURNAL row fits, and every new ACTION label fits the round ACTION button.
 

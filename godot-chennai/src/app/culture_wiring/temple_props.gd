@@ -1,6 +1,6 @@
 class_name TempleProps
 extends Node3D
-## The two small things the temple visit puts on the ground (G-473): the sandal stand at the gate
+## The two small things the temple visit puts on the ground (G-483): the sandal stand at the gate
 ## and the standing brass lamp inside it. Original, simple shapes (a wooden stand with rows of
 ## plain sandals, a lamp on a stem with a bowl of flames); the sanctum is never modelled and no
 ## deity figure or image is made (the landmark rule, docs/landmarks.md). Each is one mesh; the

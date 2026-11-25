@@ -1345,9 +1345,9 @@ kept): pause menu, HUD, job board, driving controls, loading, title, in Tamil an
 - Tamil has no plural forms in the counted texts (`.one` and `.other` hold the same words); numbers are Latin
   digits everywhere.
 
-## Culture and life: heritage journal, temple visit, peace zone, swimming (G-470 to G-479, agent/godot-culture), 25 Nov 2026
+## Culture and life: heritage journal, temple visit, peace zone, swimming (G-480 to G-489, agent/godot-culture), 25 Nov 2026
 Decisions in `docs/technical-decisions.md` ("Culture and life"). Branch `agent/godot-culture` from `agent/godot-lang`
-(e297162), the Language system, which every text here uses. Open owner decisions: G-479 (peace-zone rule list, Marina
+(e297162), the Language system, which every text here uses. Open owner decisions: G-489 (peace-zone rule list, Marina
 swimming, second place, Tamil review, bicycle).
 
 **Where things are.**
@@ -1382,7 +1382,7 @@ visits (it holds one `TempleVisit`).
 - The swim entry look-up costs about 150 µs per call on the development machine (5 Hz while on foot).
 
 **Weak or not done.**
-- **No bicycle, no boat** (G-478: a vehicle kind with balance handling is `godot-complex` work).
+- **No bicycle, no boat** (G-488: a vehicle kind with balance handling is `godot-complex` work).
 - **No swim animation:** the walk clip, slowed, with the figure lowered and leaned; it looks like wading.
 - **`violence` and `wanted` are rules with no combat or police runtime to suppress** (phase 5 does not exist); the hook is
   `CultureWiring.allow_violence`. `Wanted` is still null in the game, so crimes reported by `Carjacking` and

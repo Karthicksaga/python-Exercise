@@ -21,7 +21,7 @@ var _followed: Node3D = null
 var _settings: ControlSettings = null
 ## Sparks, glass and smoke (one per wiring, in `WorldOrigin.GROUP`).
 var effects: CrashEffects = null
-## Peace zones: no crash effects or camera shake inside, no GET IN (G-471); null: none.
+## Peace zones: no crash effects or camera shake inside, no GET IN (G-481); null: none.
 var peace: PeaceZones = null
 ## No camera shake (the platform's reduced-motion flag by default).
 var reduced_motion: bool = TitleMenu.platform_reduces_motion()
@@ -41,7 +41,7 @@ func _get_in() -> Variant:
 	var v := driving.nearest_vehicle()
 	if v == null:
 		return null
-	# Vehicles stay outside a peace zone (G-471): nothing to get into there.
+	# Vehicles stay outside a peace zone (G-481): nothing to get into there.
 	if peace != null and not peace.allows("boarding", WorldOrigin.to_world(driving.rider.position())):
 		return null
 	var gap := v.global_position.distance_to(driving.rider.position())
@@ -56,7 +56,7 @@ func _on_crash(v: Vehicle, outcome: CrashRules.Outcome) -> void:
 
 ## The look and feel of a hit: effects, camera shake, smoke when wrecked, the other's reaction.
 func feedback(v: Vehicle, outcome: CrashRules.Outcome) -> void:
-	# A peace zone has no sparks, glass or shaking (G-471); the hit is still felt in the vehicle's wobble.
+	# A peace zone has no sparks, glass or shaking (G-481); the hit is still felt in the vehicle's wobble.
 	if peace != null and not peace.allows("crash_effects", WorldOrigin.to_world(v.global_position)):
 		return
 	if camera != null:

@@ -1,6 +1,6 @@
 class_name PeaceZones
 extends RefCounted
-## Places where some things are not allowed (G-471): the temple compound and forecourt. The rules
+## Places where some things are not allowed (G-481): the temple compound and forecourt. The rules
 ## are data (`CultureData.Zone.rules`), so a new place of worship is a row in `culture.json`, not code.
 ## Systems ask `allows(rule, point)` before they do something a peace zone forbids; none of them
 ## knows which zones exist. Pure logic.

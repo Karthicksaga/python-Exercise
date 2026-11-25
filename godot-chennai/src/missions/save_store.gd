@@ -6,7 +6,7 @@
 ##   "cow-districts-v1" [names]                                        (VisitedDistricts)
 ##   "cow-hour-v1"      game hour (number)                             (GameClock)
 ##   "cow-weather-v1"   "clear" | "rain"
-##   "chennai-heritage-v1" {order, count, done}                        (HeritageJournal, G-472)
+##   "chennai-heritage-v1" {order, count, done}                        (HeritageJournal, G-482)
 ## Writes go to a temporary file first and are then renamed, so a crash mid-write keeps the old
 ## save. A missing or damaged file loads as a new game. The path is injected (tests use their own).
 class_name SaveStore
@@ -19,7 +19,7 @@ const WEAPONS := "cow-weapons-v1"
 const DISTRICTS := "cow-districts-v1"
 const HOUR := "cow-hour-v1"
 const WEATHER := "cow-weather-v1"
-## The heritage journal's own section (culture, G-472): not a Three.js key.
+## The heritage journal's own section (culture, G-482): not a Three.js key.
 const HERITAGE := "chennai-heritage-v1"
 ## The sections the game's progress owns (NEW GAME clears them). Any other section on disk (the
 ## settings, the journal) is kept when this store writes, even if it was read before they were saved.
