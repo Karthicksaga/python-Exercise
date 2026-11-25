@@ -2,6 +2,30 @@
 
 What runs and how it was tested. "Emulator" and "phone" are different statements.
 
+## Phase status (parity agent, 25 Nov 2026)
+
+Phase list from `MIGRATION_PROMPT.md` section 5 (phases 0 to 7) and section 11 (phase 6b). Feature
+detail and the Three.js comparison are in `docs/parity.md`. "Done on desktop" means headless tests
+and Compatibility screenshots only. Nothing here has run on the owner's phone (POCO M6 Pro 5G,
+Adreno 613).
+
+| Phase | Status | Done | Not done | Evidence |
+|---|---|---|---|---|
+| 0 Foundation | Done | Skeleton, boot flow, world reader, test runner, CI with APK and emulator smoke | - | Table below; CI green on its branch (run 45185128445), not re-run here |
+| 1 Walk around Chennai | Done on desktop | Streamed city, buildings, roads, player, camera, touch, day lighting, shadows | Phone check | `test_city_streaming.gd`, `test_player.gd`, `test_city_environment.gd` |
+| 2 Vehicles and driving | Done on desktop | Five road kinds, premium and race models, boarding, crash ejection, seated poses, engine sound | Phone check; premium cars not in traffic | `test_vehicle_handling.gd`, `test_game_vehicles.gd`, `test_crash_ejection.gd` |
+| 3 Traffic and pedestrians | Done on desktop | Road graph, signals, traffic, walkers, crowds, carjacking (TAKE OVER) | AI does not call `RoadHeights`; phone check | `test_ai_traffic.gd`, `test_city_life.gd` (incl. carjacking) |
+| 4 Missions and jobs | Partial | 21 stages (data and runner), 13 city jobs, saving, job board, medals, stages 22 to 26 | Fight, chase and gun objectives in stages 7 to 15, 18 and 21 need combat and police in play; Mumbai Mail rider scene | `test_missions_layer.gd`, `test_missions_v2.gd`, `test_mission_systems.gd` |
+| 5 Police, combat, weapons, gangs | Partial (logic only) | Rules ported and tested (`src/combat/`) | Not wired into `Main`: no punch or gun input, no gang crews, no police, no wanted stars | `tests/unit/rules/test_combat.gd`, `test_wanted.gd`, `test_police_fleet.gd` (rules only) |
+| 6 Railway and the city | Partial | Beach to Tambaram and more, stations, trains, rail HUD, full map, weather, day and night, sound stand-ins | Train horn; recorded sounds; Hindi on station boards; train rider scene (stage 18) | `test_railway.gd`, `test_maps.gd`, `test_sound_system.gd` |
+| 6b Airport, helicopter, aeroplane, far-city | Not started | Helicopter, airliner and light aircraft models; airport in the world data | Flight code; airport in play; far-city layer | `tests/unit/test_vehicle_models.gd` (models only) |
+| 7 Visual upgrade and release quality | Partial | Performance presets, overlay, shader warm-up, OSM detail, shop signs, area atlas, parity checklist | Phone profiling; motion blur; HUD landmark labels; Overture fusion (not run, G-28) | `docs/performance.md`, `docs/parity.md` |
+
+Counts and the missing list: `docs/parity.md` (217 feature rows: 144 done, 33 partial, 26 replaced,
+8 missing, 6 unverified).
+
+<!-- Phase statuses above are the parity agent's. Agent sections below stay as written. -->
+
 ## Phase 0: Foundation (23 Nov 2026, branch `agent/godot-foundation`)
 | Item | State | How it was tested |
 |---|---|---|
