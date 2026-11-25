@@ -249,9 +249,43 @@ func drop_auto() -> bool:
 	return true
 
 
-## The overlay's level: "Low (auto)" or "High (chosen)".
+## The overlay's level: "Low (auto)", "High (chosen)" or "Medium (benchmark)".
 func overlay_label() -> String:
-	return "%s (%s)" % [preset_name(), "auto" if auto else "chosen"]
+	return "%s (%s)" % [preset_name(), "benchmark" if is_held() else ("auto" if auto else "chosen")]
+
+
+## The benchmark (G-402) runs each level in turn without touching the player's choice: the level is
+## held (applied live, never saved, Auto's drop is off because Auto is off) until `release_hold`
+## puts the player's level back. A save meanwhile writes the level as it was before the hold.
+var _hold: Dictionary = {}
+
+
+func hold_preset(p: int) -> void:
+	if _hold.is_empty():
+		_hold = to_dict()
+	preset = clampi(p, LOW, HIGH)
+	auto = false
+	changed.emit()
+
+
+func is_held() -> bool:
+	return not _hold.is_empty()
+
+
+func release_hold() -> void:
+	if _hold.is_empty():
+		return
+	var before := _held_dict()
+	_hold = {}
+	from_dict(before)
+
+
+## What is saved while a level is held: everything as it is now, the level as it was.
+func _held_dict() -> Dictionary:
+	var d := to_dict()
+	for k: String in ["preset", "auto", "auto_cap"]:
+		d[k] = _hold[k]
+	return d
 
 
 ## The Settings row: "Graphics: Auto (Low)".
@@ -344,7 +378,7 @@ func _detect() -> void:
 
 func save() -> void:
 	var store := SaveStore.new(path).read()
-	store.set_section(SECTION, to_dict())
+	store.set_section(SECTION, _held_dict() if is_held() else to_dict())
 	store.write()
 
 
