@@ -2746,3 +2746,11 @@ history buffer, no render target. It is **off by default** (`wanted` is false an
 Low or Medium** (the preset's `motion_blur` is false), and **free while off**: the layer and shader are only made
 when it is turned on, `update` returns at once and the node does not process (tested). No Settings row yet; it
 needs the owner's call and a measurement on the phone first.
+
+### G-421: Police sight ignores vehicles, and a car near the player always pulls up short
+Found by the take-over test (`test_boarding_safety`, four carjackings make three stars): the police sight ray used the
+vehicles layer, so the player's own vehicle blocked every look at a player sitting in one; never "seen", the cars
+searched, and a search goal next to the player let a car drive at 12 m/s to within 7 m of the taken car standing
+there (a felt bump in one full run). Sight now looks past vehicles (`PhysicsLayers.WORLD` only, as the Three.js
+`toClear` skipped the player's own box), and a car not ramming that is within 25 m of the player takes the player as
+its goal and stops 9 m short whatever it was doing. The take-over test passed twice in a row after it.

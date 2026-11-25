@@ -450,6 +450,11 @@ func _drive(r: Run, dt: float, graph: RoadGraph, at: Vector2, speed: float, on_f
 				r.search_for = 20.0
 			goal = r.search_goal
 			stop_short = 2.0
+		# Close to the player and not ramming: pull up short of them whatever the goal was (a search
+		# goal near them must not run them over, nor shove the vehicle they sit in).
+		if not ram and to_player < 25.0:
+			goal = at
+			stop_short = STOP_SHORT
 		car.update(dt, graph, goal, TOP_SPEED[stars], stop_short, func(a: Vector2, b: Vector2) -> bool: return _clear(a, b))
 		var stopped := on_foot or speed < 2.0
 		var living_on_foot := PoliceFleet.living_on_foot(combat)

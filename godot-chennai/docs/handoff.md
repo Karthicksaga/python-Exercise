@@ -1288,6 +1288,9 @@ budget; the enemy figures' animation is counted in the frame, not in this step. 
   boxes join `CityLife.extra_obstacles`), but a car can still overlap a vehicle it drives into.
 - The stage 11 courier chase still has no drawn quarry; the drive-by ride is teleported in its test.
 - Enemies stand at y 0 (the city is flat today); decks would need a ground ray per enemy.
+- Carjackings now bring the police (G-418): the take-over test gets two or three stars and cars
+  pull up beside it. G-421 stopped them shoving the taken vehicle; the bike "thrown from Solids"
+  flake seen before this branch's wiring (CI run 45533381041) is crash2's, not this branch's.
 - Sound: cues `punch`, `whiff`, `shot`, `hurt`, `fail` are counted but have no recordings yet.
 - Headless and xvfb only; nothing on a phone.
 ## Trees (phase 7, branch `agent/godot-trees`, G-380 to G-388, 25 Nov 2026)

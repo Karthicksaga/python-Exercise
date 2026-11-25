@@ -121,7 +121,8 @@ func prepare(reactions: StreetReactions = null, carjacking: Carjacking = null) -
 		return err
 	police.prepare()
 	police.graph_source = _graph
-	police.line_clear = _line_clear_2d
+	# The police see past vehicles (the player's own box would block every ray to them).
+	police.line_clear = func(a: Vector2, b: Vector2) -> bool: return _line_clear_2d(a, b, PhysicsLayers.WORLD)
 	police.stations = _stations()
 	police.busted.connect(_on_busted)
 	fighters.ground_y = func(_x: float, _z: float) -> float: return 0.0
@@ -165,24 +166,24 @@ func _combat_world() -> CombatWorld:
 
 
 ## Distance along a horizontal ray at chest height to the first building, tree or vehicle, or null.
-func _ray(from: Vector2, dir: Vector2, length: float) -> Variant:
+func _ray(from: Vector2, dir: Vector2, length: float, mask: int = PhysicsLayers.WORLD | PhysicsLayers.VEHICLES) -> Variant:
 	if _space == null or length <= 0.0:
 		return null
 	var a := WorldOrigin.to_scene_xz(from.x, from.y, CHEST)
 	var b := WorldOrigin.to_scene_xz(from.x + dir.x * length, from.y + dir.y * length, CHEST)
-	var q := PhysicsRayQueryParameters3D.create(a, b, PhysicsLayers.WORLD | PhysicsLayers.VEHICLES)
+	var q := PhysicsRayQueryParameters3D.create(a, b, mask)
 	var hit := _space.intersect_ray(q)
 	if hit.is_empty():
 		return null
 	return a.distance_to(hit["position"] as Vector3)
 
 
-func _line_clear_2d(a: Vector2, b: Vector2) -> bool:
+func _line_clear_2d(a: Vector2, b: Vector2, mask: int = PhysicsLayers.WORLD | PhysicsLayers.VEHICLES) -> bool:
 	var d := a.distance_to(b)
 	if d < 1.4:
 		return true
 	var dir := (b - a) / d
-	return _ray(a + dir * 0.6, dir, d - 1.2) == null
+	return _ray(a + dir * 0.6, dir, d - 1.2, mask) == null
 
 
 func _graph() -> RoadGraph:
