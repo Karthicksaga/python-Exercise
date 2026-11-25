@@ -77,12 +77,9 @@ func test_presets_apply_live() -> bool:
 	assert_eq(env.street_lights.pool, 0, "no real street lights on Low (the lamp heads still glow)")
 	assert_eq(main.life.figure_cap, 12, "fewer figures drawn")
 	assert_eq(main.life.ai_patience, 6, "the AI step may lag")
-	# Road detail by preset (agent/godot-roads, G-317): checked once that branch is merged.
-	if &"road_extras" in main.world:
-		assert_eq(int(main.world.get(&"road_extras")), QualitySettings.LOW, "Low road detail on the city")
-		assert_eq(int(main.world.streamer.kit.get(&"road_extras")), QualitySettings.LOW, "and on the chunks built from now on")
-	else:
-		print("    road_extras not on this build (agent/godot-roads not merged): not checked")
+	# Road detail by preset (G-317): on the city and on the chunks built from now on.
+	assert_eq(main.world.road_extras, QualitySettings.LOW, "Low road detail on the city")
+	assert_eq(main.world.streamer.kit.road_extras, QualitySettings.LOW, "and on the chunks built from now on")
 	assert_false(bool(main.world.materials.ground.get_shader_parameter(&"detail")), "light ground shader")
 	assert_eq(main.rig.camera.camera.far, 330.0, "camera far plane follows the view")
 	s.set_preset(QualitySettings.MEDIUM)
@@ -244,6 +241,26 @@ func test_an_adreno_613_boots_at_low() -> bool:
 	var text := main.perf.overlay_text()
 	assert_true(RegEx.create_from_string("\\nLow \\(auto\\) · 3D \\d+x\\d+ \\(65% bilinear\\) · MSAA off · shadows 18 m · max fps 30\\n").search(text) != null, "the overlay's level line: %s" % text)
 	assert_eq(main.pause_menu.setting_button(&"Quality").text.get_slice("\n", 0), "Graphics: Auto (Low)", "and the Settings row")
+	# The city was built at Low from the first chunk (G-317): no tree guards, median shrubs,
+	# overhead wires or rubble; the lamps and the crossings stay.
+	assert_eq(main.world.road_extras, QualitySettings.LOW, "the city built its roads at Low")
+	var cells: Array[Vector2i] = main.world.streamer.shown_cells()
+	assert_true(not cells.is_empty(), "chunks are shown")
+	var lamps := 0
+	var crossings := 0
+	for cell in cells:
+		var b := main.world.streamer.build_of(cell)
+		if b == null:
+			continue
+		for k: String in ["wires", "median_shrubs", "tree_guards"]:
+			assert_eq(int(b.detail.get(k, 0)), 0, "no %s in chunk %s on Low" % [k, cell])
+		if b.roads != null:
+			for m in b.roads.decals:
+				assert_true(m.kind != &"rubble", "no rubble in chunk %s on Low" % cell)
+		lamps += b.lamp_points.size()
+		crossings += int(b.detail.get("crossings", 0))
+	assert_true(lamps > 0, "the lamps stay (%d heads)" % lamps)
+	assert_true(crossings > 0, "and the crossings (%d)" % crossings)
 	_restore()
 	return true
 
