@@ -2456,7 +2456,6 @@ Merged with the performance branch: `PerfWiring.set_road_extras` sets `CityWorld
 game started at Low builds chunks with no wires, shrubs, guards or rubble but with lamps and crossings;
 `test_road_detail.gd` checks the same per level on plans and builds.
 
-<<<<<<< HEAD
 ### G-410: Combat is wired in one composition node, `CombatWiring`
 The rules in `src/combat/` (`Combat`, `Arsenal`, `WeaponPickups`, `Gangs`, `Wanted`, `PoliceFleet`) had no caller.
 `src/app/combat_wiring/` now holds the glue, made in loading step 4 after the carjacking (`Main._add_combat`):
@@ -2475,11 +2474,13 @@ TS lock rule switches to anyone within 2.2 m, which hit the man behind the one f
 enemies and figures hold still for 3 physics frames (`game-feel`: a few frames), never `Engine.time_scale`, so game
 time and the tests' waits are untouched. Camera trauma: punch 0.25, bat 0.4, a blow taken 0.45 (bat 0.6), a bullet 0.2.
 
-### G-412: Strike, carry poses, hit puffs, weapon models: the visuals agent's, behind `CombatFx`
-Owner's split (25 Nov): `agent/godot-combat-visuals` builds them. This branch only calls `play_strike(kind, side)`,
-`is_striking()`, `carry(on, kind)` on the figures, `HitPuffs.spawn(position, normal, strength)` and
-`WeaponModels.attach/detach`, found by `class_name` at run time; each call does nothing until it exists. The contract
-is in `docs/handoff.md` ("Combat in play").
+### G-412: Strike, carry poses, hit puffs, weapon models: the visuals agent's, called through `CombatFx`
+Owner's split (25 Nov): `agent/godot-combat-visuals` built them (G-430…G-435, merged). The combat wiring calls
+`CombatFigure.play_strike` (jab, cross, hook by the combo, or bat), `play_flinch`, `carry(on, &"box")` while a goods
+objective is carried on foot, `HitPuffs.spawn` on every landed blow and bullet, and `WeaponModels.attach/detach` when
+the shown weapon changes; pickups show `WeaponModels.mesh`. `CombatFx` only adds null checks (a figure not loaded, no
+puffs in headless rules tests). The damage still lands on the `SwingClock` (the same `STRIKES` timings as the pose's
+`strike_hit`), so the rules work with no figure loaded; the pose is drawn landing at that step.
 
 ### G-413: Health bar and wanted stars sit in the mission column, under the money line
 `CombatHud` (`src/ui/combat_hud/`): a 132 x 10 glass bar (green over half, amber, red under a quarter) and five drawn
@@ -2506,7 +2507,7 @@ one makes them stagger. The crime is `pedestrianAssaulted`; the fall's own `pede
 for a blow. Walkers near the player are read only in `CityLife.between_steps`.
 
 ### G-417: Weapons are the Three.js set; the arsenal has its own save file
-Pistol, shotgun, SMG and the cricket bat (the Three.js weapon table; no stick or bottle exist there, none added).
+Pistol, shotgun, SMG and the cricket bat (the Three.js weapon table). `WeaponModels` also draws a stick and a bottle (G-433); no weapon rule uses them, since the Three.js game had none.
 Pickups (content) are a ring and the weapon model turning above it; a new gun goes into the hand; stage rewards
 (`Mission.weapons`) are given on `stage_completed`. The arsenal is saved to `user://chennai-weapons-v1.json` in the
 `cow-weapons-v1` shape (owned, ammo, gun); busted confiscates. Gang crews: `Gangs.crews_to_field`, kept 150 m clear of
@@ -2534,7 +2535,6 @@ the fine (`Wanted.BUST_FINE`: ₹500 at one star, ₹1,000 at two), every weapon
 ### G-420: The fight's caps follow the quality preset
 `QualitySettings` keys `fighters` (figures drawn: 10 / 14 / 18), `crews` (1 / 2 / 2) and `police_cars` (2 / 3 / 3),
 applied by `PerfWiring.apply`. The rules keep every enemy; only drawing and fielding are capped.
-=======
 
 ## Hero landmark models (G-390 to G-393, agent/godot-hero), 25 Nov 2026
 
@@ -2746,4 +2746,3 @@ history buffer, no render target. It is **off by default** (`wanted` is false an
 Low or Medium** (the preset's `motion_blur` is false), and **free while off**: the layer and shader are only made
 when it is turned on, `update` returns at once and the node does not process (tested). No Settings row yet; it
 needs the owner's call and a measurement on the phone first.
->>>>>>> origin/feat/godot-chennai

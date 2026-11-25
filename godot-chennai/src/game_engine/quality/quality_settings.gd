@@ -47,12 +47,9 @@ const TABLE: Array[Dictionary] = [
 		"lod_threshold": 4.0, "landmark_range": 0.6, "aniso": 0,
 		"max_fps": 30, "physics_steps": 2, "workers": 1, "street_lights": 0, "ai_patience": 6,
 		"animate_reach": 25.0, "npc_shadow": 0.0, "parked_reach": 100.0, "prop_shadows": false,
-<<<<<<< HEAD
 		"fighters": 10, "crews": 1, "police_cars": 2,
-=======
 		"tree_density": 0.55, "scrub_density": 0.3, "tree_lod0": 22.0, "tree_lod1": 75.0, "tree_far": 180.0, "tree_sway": false, "tree_shadows": false, "tree_species": 4, "under_species": 1,
 		"hit_puffs": 4, "motion_blur": false,
->>>>>>> origin/feat/godot-chennai
 	},
 	{
 		"scale": 0.8, "scale_mode": FSR1, "msaa": 0,
@@ -64,12 +61,9 @@ const TABLE: Array[Dictionary] = [
 		"lod_threshold": 2.0, "landmark_range": 0.8, "aniso": 1,
 		"max_fps": 60, "physics_steps": 3, "workers": 2, "street_lights": 2, "ai_patience": 4,
 		"animate_reach": 35.0, "npc_shadow": 0.0, "parked_reach": 150.0, "prop_shadows": false,
-<<<<<<< HEAD
 		"fighters": 14, "crews": 2, "police_cars": 3,
-=======
 		"tree_density": 0.8, "scrub_density": 0.65, "tree_lod0": 32.0, "tree_lod1": 105.0, "tree_far": 250.0, "tree_sway": true, "tree_shadows": false, "tree_species": 5, "under_species": 2,
 		"hit_puffs": 6, "motion_blur": false,
->>>>>>> origin/feat/godot-chennai
 	},
 	{
 		"scale": 1.0, "scale_mode": BILINEAR, "msaa": 1,
@@ -81,12 +75,9 @@ const TABLE: Array[Dictionary] = [
 		"lod_threshold": 1.0, "landmark_range": 1.0, "aniso": 2,
 		"max_fps": 0, "physics_steps": 5, "workers": 3, "street_lights": 6, "ai_patience": 2,
 		"animate_reach": 45.0, "npc_shadow": 18.0, "parked_reach": 200.0, "prop_shadows": true,
-<<<<<<< HEAD
 		"fighters": 18, "crews": 2, "police_cars": 3,
-=======
 		"tree_density": 1.0, "scrub_density": 1.0, "tree_lod0": 45.0, "tree_lod1": 140.0, "tree_far": 340.0, "tree_sway": true, "tree_shadows": true, "tree_species": 7, "under_species": 3,
 		"hit_puffs": 8, "motion_blur": true,
->>>>>>> origin/feat/godot-chennai
 	},
 ]
 

@@ -63,7 +63,7 @@ func _ready() -> void:
 		pivot.name = "Weapon"
 		pivot.position.y = 0.85
 		v.add_child(pivot)
-		var model := CombatFx.weapon_mesh(StringName(str(spot["weapon"])))
+		var model := WeaponModels.mesh(StringName(str(spot["weapon"]))) if WeaponModels.is_weapon(StringName(str(spot["weapon"]))) else null
 		if model != null:
 			var mi := MeshInstance3D.new()
 			mi.mesh = model

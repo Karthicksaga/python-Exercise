@@ -117,13 +117,8 @@ Written 25 Nov 2026 by the parity-checklist agent (branch `agent/godot-parity`, 
 | People manifest, cast by role (`packages/player/src/people.ts`, `apps/game/src/peopleFiles.ts`) | done | `src/player/people_manifest.gd`, `src/player/people/people_pool.gd`, G-100 to G-105 | 70 people. Test: `tests/people/test_people.gd` |
 | Pedestrian figures and crowd figures (`packages/player/src/CrowdFigures.ts`, `apps/game/src/Population.ts`) | done | `src/player/people/person_view.gd`, `src/ai/crowd_field.gd`, G-126 | |
 | Player footsteps, landing, wet ground (`apps/game/src/Game.ts`) | done | `src/audio/player_sounds.gd` | Test: `test_player_sounds.gd` |
-<<<<<<< HEAD
 | Figures that fight and fall (`apps/game/src/Fighters.ts`) | done | `src/app/combat_wiring/fighters.gd`, G-416 | Enemy and officer figures from the cast (adults only), windup strike, fall when down, tracers, gang arm band. Drawn poses by the visuals branch |
-| Hit puffs on a punch (`apps/game/src/HitPuffs.ts`) | missing | - | No hit puff effect in Godot |
-=======
-| Figures that fight and fall (`apps/game/src/Fighters.ts`) | partial | `src/player/poses/knockdown.gd`, `src/player/poses/knockdown_poses.gd`, G-275 | Falls and get-up exist (`test_knockdown.gd`). Fights are not in play |
-| Hit puffs on a punch (`apps/game/src/HitPuffs.ts`) | done | `src/app/combat_fx/hit_puffs.gd`, G-432 | Dust ring and star flash, one pooled MultiMesh (4, 6 or 8 puffs by level). Test: `tests/scene/test_hit_puffs.gd`. Not added to `Main` yet |
->>>>>>> origin/feat/godot-chennai
+| Hit puffs on a punch (`apps/game/src/HitPuffs.ts`) | done | `src/app/combat_fx/hit_puffs.gd`, G-432 | Dust ring and star flash, one pooled MultiMesh (4, 6 or 8 puffs by level). Test: `tests/scene/test_hit_puffs.gd`. Added to the game by `CombatWiring` (G-412) |
 
 ## 5. Vehicles and physics
 
@@ -227,7 +222,6 @@ Written 25 Nov 2026 by the parity-checklist agent (branch `agent/godot-parity`, 
 
 | Three.js feature (file) | Godot status | Godot file / G-number | Note |
 |---|---|---|---|
-<<<<<<< HEAD
 | Combat rules: health, damage, enemies (`packages/combat/src/Combat.ts`) | done | `src/combat/combat.gd`, `src/app/combat_wiring/combat_wiring.gd`, G-410 | Wired in `Main` (loading step 4). Tests: rules, `scene/test_combat_play.gd` |
 | Punch combo and bat swing with wind-up and blow (`packages/combat/src/Strikes.ts`, TD-25) | done | `src/combat/strikes.gd`, `swing_clock.gd`, HIT on foot (G-411, G-414) | Damage lands at the wind-up's end. The drawn strike pose is the visuals branch (G-430s). Test: `unit/rules/test_strikes.gd`, `scene/test_combat_play.gd` |
 | Weapons: pistol, shotgun, SMG, rounds (`packages/combat/src/Weapons.ts`) | done | `src/combat/weapons.gd`, FIRE and the weapon pill, G-417 | Tracers; saved arsenal. Test: `scene/test_combat_play.gd` (shotgun, SMG vs pistol) |
@@ -237,21 +231,8 @@ Written 25 Nov 2026 by the parity-checklist agent (branch `agent/godot-parity`, 
 | Wanted level: heat and stars (`packages/combat/src/Wanted.ts`, TD-28) | done | `src/app/combat_wiring/police_wiring.gd`, G-418 | One Wanted; carjacking, hit-and-run, assault, gunfire, theft feed it. Test: `scene/test_combat_play.gd`, `test_combat_main.gd` |
 | Police response: units and pursuit (`packages/combat/src/Police.ts`, `apps/game/src/Police.ts`) | done | `src/app/combat_wiring/police_wiring.gd`, `src/ai/pursuer.gd`, G-419 | Road-graph pursuit, search, deploy, bust, roadblock from 4 stars. Test: `unit/test_pursuer.gd`, `scene/test_combat_play.gd` |
 | Killed officers stay dead, new units from out of sight (TD-28, `agent/police-tuning`) | done | `src/combat/police_fleet.gd` in `PoliceWiring`, G-419 | Rules tests plus play |
-| Combat animation: arms and fists in a fight (`apps/game/src/Arms.ts`, `Fighters.ts`) | partial | `src/player/human_figure.gd` | Arm and hand poses exist; no fight poses |
+| Combat animation: arms and fists in a fight (`apps/game/src/Arms.ts`, `Fighters.ts`) | done | `src/player/human_figure.gd`, `src/player/poses/strike_pose.gd` | Fight poses (G-430) played by the combat wiring on HIT and on enemy wind-ups (G-412) |
 | Combat and gang browser tests (`apps/game/tests/combat.spec.ts`, `gangs.spec.ts`, `weapons.spec.ts`, `police.spec.ts`) | done | `scene/test_combat_play.gd`, `tests/scene/test_combat_main.gd` | Draw-budget case of `gangs.spec` not ported (no figures headless) |
-=======
-| Combat rules: health, damage, enemies (`packages/combat/src/Combat.ts`) | partial | `src/combat/combat.gd`, `src/combat/combat_world.gd` | Rules done and tested. No combat runtime is wired into `Main` (grep: no caller) |
-| Punch combo and bat swing with wind-up and blow (`packages/combat/src/Strikes.ts`, TD-25) | partial | `src/combat/melee.gd`, `tests/unit/rules/test_melee.gd` | Logic only. No punch or bat input in `src/ui` or `src/app` |
-| Weapons: pistol, shotgun, SMG, rounds (`packages/combat/src/Weapons.ts`) | partial | `src/combat/weapons.gd`, `src/combat/arsenal.gd` | Logic only. Nothing fires |
-| Weapons lying in the world, pick up (`packages/combat/src/Pickups.ts`) | partial | `src/combat/weapon_pickups.gd` | Logic only |
-| Gangs, crews, turf (`packages/combat/src/Gangs.ts`, `apps/game/src/streetWar.ts`) | partial | `src/combat/gangs.gd`, `src/missions/content/content.json` (gangs, crews) | Data and logic exist. No gang crews spawned in play |
-| Pedestrians hit in a fight (`packages/combat/src/PedestrianHits.ts`) | partial | `src/combat/pedestrian_hits.gd` | Logic only. Vehicle hits on people are done (section 6) |
-| Wanted level: heat and stars (`packages/combat/src/Wanted.ts`, TD-28) | partial | `src/combat/wanted.gd`, `src/app/city_life/street_reactions.gd` | Logic done. No Wanted instance is created in `Main`; carjacking and street reactions call it only when present |
-| Police response: units and pursuit (`packages/combat/src/Police.ts`, `apps/game/src/Police.ts`) | partial | `src/combat/police_fleet.gd`, `src/combat/wanted.gd` | Crew rules done. Not in play |
-| Killed officers stay dead, new units from out of sight (TD-28, `agent/police-tuning`) | partial | `src/combat/police_fleet.gd` | Rules in `tests/unit/rules/test_police_fleet.gd` |
-| Combat animation: arms and fists in a fight (`apps/game/src/Arms.ts`, `Fighters.ts`) | partial | `src/player/human_figure.gd`, `src/player/poses/strike_pose.gd` | Fight poses exist (G-430), also on street people; no fight calls them in play yet |
-| Combat and gang browser tests (`apps/game/tests/combat.spec.ts`, `gangs.spec.ts`, `weapons.spec.ts`, `police.spec.ts`) | missing | - | No Godot scene test for these in play. Logic tests only |
->>>>>>> origin/feat/godot-chennai
 
 ## 9. Railway
 

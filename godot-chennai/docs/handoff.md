@@ -1224,13 +1224,13 @@ follows the preset through `PerfWiring.set_road_extras` (tested on Low in `test_
 light on the chunk meshes the road under a lamp is lit only by the pool quad (13 m under a 9 m head, scaled by
 head height, 0.22 m up so it clears a footpath; a high mast's pool is 34 m wide and 0.6 m up). Seen on llvmpipe only.
 
-<<<<<<< HEAD
 ## Combat in play (agent/godot-combat, G-410…G-429), 25 Nov 2026: interfaces with agent/godot-combat-visuals
 Written first, before the code, so the two branches meet. The combat agent wires health, melee,
 weapons and pickups, gangs, Wanted and police into the game; the visuals agent owns the strike
 and carry poses, hit puffs, weapon models in hand and motion blur. The combat side only calls
-the names below, through a null-safe lookup (`CombatFx`, `src/app/combat_wiring/combat_fx.gd`):
-until a method or class exists the call does nothing, so either branch merges first.
+the names below through `CombatFx` (`src/app/combat_wiring/combat_fx.gd`). Both branches are merged
+now: `CombatFx` calls the real `CombatFigure`, `HitPuffs` and `WeaponModels` (the run-time lookup
+stubs are gone).
 
 **On both figures** (`HumanFigure`, the player; `PersonView`, enemies and officers), visuals agent:
 ```gdscript
@@ -1290,7 +1290,6 @@ budget; the enemy figures' animation is counted in the frame, not in this step. 
 - Enemies stand at y 0 (the city is flat today); decks would need a ground ray per enemy.
 - Sound: cues `punch`, `whiff`, `shot`, `hurt`, `fail` are counted but have no recordings yet.
 - Headless and xvfb only; nothing on a phone.
-=======
 ## Trees (phase 7, branch `agent/godot-trees`, G-380 to G-388, 25 Nov 2026)
 **Done.** The owner's "trees need improvement": a real tree kit. Full description, photograph notes, tables and weak
 spots in `docs/trees.md`; decisions in `technical-decisions.md` (G-380…G-388).
@@ -1364,4 +1363,3 @@ rate whatever the crossing; no Doppler on passing trains; the train's own sounds
 the player's `enclosed` state. `tests/scene/test_city_streaming.gd::test_main_thread_budget_under_cpu_load`
 (a wall-clock test) fails on this machine (53 to 75 ms against 16) and also on the base commit
 (27 ms there, measured in a clean worktree): unrelated to sound.
->>>>>>> origin/feat/godot-chennai

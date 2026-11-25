@@ -48,7 +48,7 @@ var arms: ArmsWiring
 var fighters: Fighters
 var police: PoliceWiring
 var hud: CombatHud
-var puffs: Node3D = null
+var puffs: HitPuffs = null
 var swing := SwingClock.new()
 ## Enemy groups beaten during the current stage (the missions' `cleared`).
 var cleared: Dictionary = {}
@@ -125,10 +125,9 @@ func prepare(reactions: StreetReactions = null, carjacking: Carjacking = null) -
 	police.stations = _stations()
 	police.busted.connect(_on_busted)
 	fighters.ground_y = func(_x: float, _z: float) -> float: return 0.0
-	var fx := CombatFx.make(&"HitPuffs") as Node3D
-	if fx != null:
-		puffs = fx
-		holder.add_child(fx)
+	if load_models:
+		puffs = HitPuffs.new()
+		holder.add_child(puffs)
 	hud.attach(layer.hud)
 	layer.combat_status = _fill_status
 	layer.board_refusal = func() -> String: return police.job_refusal(layer.session.jobs.job() != null)
@@ -563,7 +562,6 @@ func _process(dt: float) -> void:
 	_hook_obstacles()
 	var at := _player_at()
 	arms.draw(dt, at)
-	CombatFx.advance(puffs, dt)
 	# A box carried on foot for a goods objective with no vehicle (`carryPose`).
 	var goods := layer.session.goods_scene()
 	var carry := not goods.is_empty() and str(goods.get("kind", "")) == "" and _on_foot()
