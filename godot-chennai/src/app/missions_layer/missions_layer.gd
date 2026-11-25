@@ -377,7 +377,7 @@ func _process(dt: float) -> void:
 	hud.set_stats(MissionSession.rupees(session.runner.balance()), session.runner.stages_done(), session.runner.stage_count(), session.jobs.reputation())
 	hud.set_mission(session.view(st.mode, distance), bearing)
 	var place := session.place_near(at, st.mode)
-	hud.set_place_prompt(str(place.get("name", "")) if not held else "")
+	hud.set_place_prompt(Tr.src_line(str(place.get("name", ""))) if not held else "")
 	figures.watch = (driven().global_position if driven() != null else rig.body.global_position)
 	figures.show_scene(dt, session.fare_scene(), session.goods_scene(), driven(), _ground_y(), session.upcoming_fare())
 	_update_minimap(dt, at, st)

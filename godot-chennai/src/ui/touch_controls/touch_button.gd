@@ -33,6 +33,8 @@ var icon: StringName = &"":
 		queue_redraw()
 ## The drawn glass circle's share of the node: the rest is padding that still takes a touch.
 const VISUAL := 0.8
+## The smallest letters the button draws.
+const MIN_FONT := 9
 
 
 func _init(label: String = "", diameter: float = 76.0) -> void:
@@ -49,18 +51,44 @@ func place(at: Vector2, side: float) -> void:
 	position = at
 
 
-## The largest size up to `font_size` at which every line fits the glass circle (a Tamil or two
-## language label is longer than the English one it replaces).
-func _fit(font: Font, lines: PackedStringArray, radius: float) -> int:
-	var fs := font_size
-	while fs > 9:
-		var widest := 0.0
-		for line in lines:
-			widest = maxf(widest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
-		if widest <= radius * 1.7 and fs * 1.1 * lines.size() <= radius * 1.8:
-			break
-		fs -= 1
-	return fs
+## The letters and lines that fit the glass circle (radius `radius`): the largest size up to
+## `font_size` at which the text fits as written, else with words moved to more lines (a Tamil or
+## two-language label is longer than the English one it replaces). {size, lines, fits}.
+func _fitted(font: Font, radius: float) -> Dictionary:
+	var written := text.split("\n")
+	var best_lines := written
+	for fs in range(font_size, MIN_FONT - 1, -1):
+		for lines: PackedStringArray in [written, _wrapped(font, written, fs, radius * 1.7)]:
+			var widest := 0.0
+			for line in lines:
+				widest = maxf(widest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+			if widest <= radius * 1.7 and fs * 1.1 * lines.size() <= radius * 1.8:
+				return {"size": fs, "lines": lines, "fits": true}
+		best_lines = written
+	return {"size": MIN_FONT, "lines": best_lines, "fits": false}
+
+
+## `lines` with each line broken at spaces to fit `width` at size `fs`.
+static func _wrapped(font: Font, lines: PackedStringArray, fs: int, width: float) -> PackedStringArray:
+	var out := PackedStringArray()
+	for line in lines:
+		var current := ""
+		for word in line.split(" "):
+			var tried := word if current == "" else current + " " + word
+			if current != "" and font.get_string_size(tried, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > width:
+				out.append(current)
+				current = word
+			else:
+				current = tried
+		out.append(current)
+	return out
+
+
+## Whether the text fits the glass circle at the smallest size the button will draw it (tests).
+func text_fits() -> bool:
+	if icon != &"" or text == "":
+		return true
+	return bool(_fitted(get_theme_default_font(), minf(size.x, size.y) * 0.5 * VISUAL)["fits"])
 
 
 ## True when `at` (canvas position) is on the button; `slop` UI units of forgiveness round it.
@@ -82,8 +110,9 @@ func _draw() -> void:
 	if icon != &"":
 		UiIcons.draw(self, icon, c, r)
 	else:
-		var lines := text.split("\n")
-		var fs := _fit(font, lines, r)
+		var fitted := _fitted(font, r)
+		var lines: PackedStringArray = fitted["lines"]
+		var fs: int = fitted["size"]
 		var y := c.y + fs * 0.35 - (lines.size() - 1) * fs * 0.55
 		for line in lines:
 			var w := font.get_string_size(line, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x

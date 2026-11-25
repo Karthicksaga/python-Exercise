@@ -81,7 +81,7 @@ func _ready() -> void:
 	name_label.add_theme_font_override("font", TitleFonts.display(true, 0.3))
 	left.add_child(name_label)
 	var sub := UiTheme.label("", 13, AMBER)
-	Tr.bind(sub, "loading.brand")
+	Tr.bind(sub, "loading.brand", null, true)
 	sub.add_theme_font_override("font", TitleFonts.display(false, 6.0))
 	left.add_child(sub)
 	_tip = UiTheme.label("", 13, MUTED)
@@ -198,7 +198,7 @@ func set_steps(names: PackedStringArray) -> void:
 		row.add_child(text)
 		var en := UiTheme.label(step_name, 16)
 		if STEP_KEYS.has(step_name):
-			Tr.bind(en, STEP_KEYS[step_name])
+			Tr.bind(en, STEP_KEYS[step_name], null, true, &"text", 15)
 		text.add_child(en)
 		_list.add_child(row)
 		_rows.append({"row": row, "mark": mark, "name": en})

@@ -59,6 +59,7 @@ var _settings_back: Button
 var _controls_back: Button
 var _credit: Label
 var _controls_columns: HBoxContainer
+var _foot: Control
 var _chip: Control
 var _chip_place: Label
 var _chip_status: Label
@@ -114,6 +115,7 @@ func _ready() -> void:
 ## The language changed: the texts that are built, not bound, are built again.
 func _on_language() -> void:
 	set_credits(str(_credit_args[0]), str(_credit_args[1]), _credit_args[2] as SoundLibrary)
+	set_save(_save)
 	refresh_settings()
 	_fill_controls()
 	_fit()
@@ -195,6 +197,8 @@ func _fit() -> void:
 	_chip_place.add_theme_font_override("font", TitleFonts.display(false, 2.0))
 	_chip_place.add_theme_font_size_override("font_size", clampi(roundi(h * 0.045), 15, 22))
 	_chip_status.add_theme_font_size_override("font_size", small)
+	# The foot is as tall as the credit's line: Tamil lines are taller than Latin ones.
+	_foot.custom_minimum_size.y = maxf(15.0, _credit.get_combined_minimum_size().y)
 
 
 ## A label in a box as tall as its letters need, not as its font's line (Tamil and Latin faces
@@ -244,7 +248,7 @@ func _build_menu_page() -> void:
 	_name.add_theme_constant_override("shadow_offset_y", 2)
 	_slots[_name] = _slot(_name)
 	_sub = UiTheme.label("", 14, AMBER)
-	Tr.bind(_sub, "title.name.open_world")
+	Tr.bind(_sub, "title.name.open_world", null, true)
 	_sub.name = "OpenWorld"
 	_slots[_sub] = _slot(_sub)
 	_scroll = UiTheme.touch_scroll()
@@ -364,6 +368,7 @@ func _build_foot() -> void:
 	# Only the credit's height counts in the layout: the chip rises from the bottom right corner
 	# (it never meets the menu column, which is on the left).
 	var foot := Control.new()
+	_foot = foot
 	foot.name = "Foot"
 	foot.custom_minimum_size = Vector2(0, 15)
 	foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -407,7 +412,7 @@ func set_credits(attribution: String, data_date: String, sounds: SoundLibrary = 
 	_credit_args = [attribution, data_date, sounds]
 	var credit := attribution if attribution != "" else "© OpenStreetMap contributors"
 	var day := data_date.substr(0, 10)
-	_credit.text = Tr.line("title.credit", [credit + (" · %s" % day if day != "" else "")])
+	_credit.text = "%s %s" % [Tr.line("title.credit_prefix"), credit + (" · %s" % day if day != "" else "")]
 	var text := "%s\n%s\n%s" % [Tr.t("about.intro"), Tr.t("about.map", [credit, Tr.t("about.map_date", [day]) if day != "" else ""]), Tr.t("about.fonts")]
 	if Tr.has_unreviewed():
 		text += "\n" + Tr.t("about.tamil_review")

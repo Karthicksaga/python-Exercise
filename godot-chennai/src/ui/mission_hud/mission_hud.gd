@@ -31,12 +31,15 @@ const JOBS_SIZE := Vector2(72, 48)
 const EXIT_ROOM := PauseMenu.PAUSE_RIGHT + 48.0 + 10.0
 ## The corner map never gets smaller than this (px); under it, it moves left of the buttons.
 const MIN_PLATE := 84.0
+## Room the minimap and the JOBS and PAUSE buttons take on the right, for the toast beside the column.
+const MAP_ROOM := 170.0
 const URGENT := 10.0
 ## A dialog row's height and what the rest of a dialog takes (title, buttons, gaps, margins).
 const ROW_HEIGHT := 56.0
 const DIALOG_CHROME := 128.0
 
 var _fit_toast := false
+var _toast_checks := 0
 
 var money_label: Label
 var stage_label: Label
@@ -116,6 +119,7 @@ func _ready() -> void:
 	jobs_button.anchor_right = 1.0
 	jobs_button.offset_left = -GUTTER - EXIT_ROOM - JOBS_SIZE.x
 	jobs_button.offset_right = -GUTTER - EXIT_ROOM
+	jobs_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	jobs_button.offset_top = GUTTER
 	jobs_button.offset_bottom = GUTTER + JOBS_SIZE.y
 	jobs_button.pressed.connect(func() -> void: jobs_pressed.emit())
@@ -368,6 +372,16 @@ func _process(delta: float) -> void:
 		# container keeps the tallest size it was ever given).
 		_fit_toast = false
 		toast_panel.size = Vector2(toast_panel.size.x, 0)
+		_toast_checks = 3
+	elif _toast_checks > 0 and toast_panel.visible:
+		# Tamil lines are taller than Latin ones: if the toast still runs off the bottom, smaller letters.
+		_toast_checks -= 1
+		var bottom := toast_panel.position.y + toast_panel.get_combined_minimum_size().y
+		var fs := toast_detail.get_theme_font_size("font_size")
+		if bottom > (size.y if size.y > 0.0 else 412.0) - 8.0 and fs > 9:
+			toast_detail.add_theme_font_size_override("font_size", fs - 1)
+			toast_panel.size = Vector2(toast_panel.size.x, 0)
+			_toast_checks = 3
 	if _toast_left > 0.0:
 		_toast_left -= delta
 		toast_panel.modulate.a = clampf(_toast_left / 0.3, 0.0, 1.0)
@@ -423,10 +437,28 @@ func toast(title: String, detail: String = "", seconds: float = 3.2) -> void:
 	toast_title.text = title
 	toast_detail.text = detail
 	toast_detail.visible = detail != ""
-	# Width: the text's, up to 60 % of the screen; the panel grows both ways from the centre.
-	var width := minf(size.x * 0.6 if size.x > 0.0 else 550.0, maxf(240.0, toast_title.get_theme_font("font").get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 48.0))
+	# Width: the text's, up to 60 % of the screen and never wider than the gap between the mission
+	# column (left) and the minimap (right): Tamil and both-language texts are long (G-445). The
+	# panel grows both ways from the middle of that gap.
+	var screen_w := size.x if size.x > 0.0 else 915.0
+	var gap_left := GUTTER + COLUMN_WIDTH + 12.0
+	var gap_right := screen_w - (GUTTER + MAP_ROOM)
+	var widest := minf(screen_w * 0.6, maxf(200.0, gap_right - gap_left))
+	var width := minf(widest, maxf(240.0, toast_title.get_theme_font("font").get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 48.0))
 	if detail != "":
-		width = minf(size.x * 0.6 if size.x > 0.0 else 550.0, maxf(width, toast_detail.get_theme_font("font").get_string_size(detail, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x * 0.5 + 48.0))
+		width = minf(widest, maxf(width, toast_detail.get_theme_font("font").get_string_size(detail, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x * 0.5 + 48.0))
+	var centre := (gap_left + gap_right) / 2.0 if gap_right - gap_left >= 200.0 else screen_w / 2.0
+	toast_panel.anchor_left = centre / screen_w
+	toast_panel.anchor_right = centre / screen_w
+	# Long Tamil or two-language text: smaller letters until the whole toast fits the screen.
+	var room := (size.y if size.y > 0.0 else 412.0) * 0.76 - 16.0
+	var title_h := _text_height(toast_title.get_theme_font("font"), title, width - 40.0, 16)
+	var fs := 13
+	if detail != "":
+		var detail_font := toast_detail.get_theme_font("font")
+		while fs > 9 and title_h + _text_height(detail_font, detail, width - 40.0, fs) + 28.0 > room:
+			fs -= 1
+	toast_detail.add_theme_font_size_override("font_size", fs)
 	# A fixed width for the labels to wrap at, and a height of what they need: a label wrapped
 	# at an earlier, narrower width must not keep its tall minimum size.
 	toast_title.custom_minimum_size = Vector2(width - 40.0, 0)
@@ -438,6 +470,12 @@ func toast(title: String, detail: String = "", seconds: float = 3.2) -> void:
 	toast_panel.visible = true
 	toast_panel.modulate.a = 1.0
 	_toast_left = seconds
+
+
+## The height a wrapped label takes: its lines at the font's height plus the label's line gap.
+static func _text_height(font: Font, text: String, width: float, fs: int) -> float:
+	var h := font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, width, fs).y
+	return h + roundf(h / maxf(font.get_height(fs), 1.0)) * 3.0
 
 
 func toast_showing() -> bool:
@@ -469,13 +507,15 @@ func show_dialog(title: String, message: String, rows: Array[Dictionary] = [], a
 	for r in rows:
 		var row := _row(r)
 		dialog_rows.add_child(row)
-		list_height += ROW_HEIGHT + 6.0
+		# A Tamil or two-language row is taller than the base 56: count what it needs.
+		list_height += maxf(ROW_HEIGHT, row.get_combined_minimum_size().y) + 6.0
 	var scroll := dialog_rows.get_parent() as ScrollContainer
 	# The header (title, message) and the buttons stay pinned; the rows scroll in what is left:
 	# four rows at the 915x412 base.
 	var room := (size.y if size.y > 0.0 else 412.0) - DIALOG_CHROME - (18.0 if message != "" else 0.0)
 	scroll.custom_minimum_size.y = minf(list_height, maxf(ROW_HEIGHT, room))
 	scroll.visible = not rows.is_empty()
+	_fit_dialog.call_deferred()
 	for a in actions:
 		var b := _button(str(a["label"]), "Action_%s" % str(a["id"]), 16, not bool(a.get("quiet", false)), true)
 		b.custom_minimum_size = Vector2(150, 48)
@@ -494,6 +534,21 @@ func show_dialog(title: String, message: String, rows: Array[Dictionary] = [], a
 		(func() -> void:
 			if is_instance_valid(b) and b.is_inside_tree() and b.is_visible_in_tree():
 				b.grab_focus()).call_deferred()
+
+
+## One frame after the dialog is built: if its header (a two-language title, a wrapped message)
+## makes the whole taller than the screen, the list of rows gives up the height (it scrolls).
+func _fit_dialog() -> void:
+	if not dialog.visible and not is_inside_tree():
+		return
+	await get_tree().process_frame
+	if not is_instance_valid(dialog) or not dialog.visible:
+		return
+	var body := dialog.find_child("Body", true, false) as Control
+	var scroll := dialog_rows.get_parent() as ScrollContainer
+	var over := body.get_combined_minimum_size().y - (size.y - 24.0)
+	if over > 0.5 and scroll.visible:
+		scroll.custom_minimum_size.y = maxf(ROW_HEIGHT, scroll.custom_minimum_size.y - over)
 
 
 func _row(r: Dictionary) -> Control:
@@ -518,6 +573,8 @@ func _row(r: Dictionary) -> Control:
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 10)
 	text.add_child(line)
+	# Tamil and two-language rows are longer: the meta goes on a line of its own under the detail.
+	var meta_line: Control = line if Tr.mode == Tr.Mode.ENGLISH else text
 	var detail := UiTheme.label(disabled if disabled != "" else str(r.get("detail", "")), 12, UiTheme.TEXT_DIM)
 	detail.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	detail.custom_minimum_size.x = 60
@@ -526,7 +583,7 @@ func _row(r: Dictionary) -> Control:
 	var meta := str(r.get("meta", ""))
 	if meta != "":
 		var m := UiTheme.label(meta, 12, Color("#ffd166"))
-		line.add_child(m)
+		meta_line.add_child(m)
 	var b := Button.new()
 	var id := str(r["id"])
 	b.name = "Take_%s" % id

@@ -33,7 +33,7 @@ class Bus:
 
 static var bus: Bus = Bus.new()
 static var mode: Mode = Mode.ENGLISH
-## Show only reviewed Tamil (a release choice). Changing it needs `reload()`.
+## Show only reviewed Tamil (a release choice). Changing it needs `reload_catalogs()`.
 static var hide_unreviewed: bool = false
 ## Keys asked for and not found, for the tests and the log.
 static var missing: PackedStringArray = PackedStringArray()
@@ -46,7 +46,7 @@ static var _bound: Array[WeakRef] = []
 
 
 ## Reads the CSV files again (after `hide_unreviewed` changed, or in a test).
-static func reload() -> void:
+static func reload_catalogs() -> void:
 	_loaded = false
 	_ensure()
 
@@ -231,7 +231,9 @@ static func has_unreviewed() -> bool:
 
 ## A font size for compact controls: two languages stacked on a small button need smaller letters.
 static func fit(base: int) -> int:
-	return maxi(9, roundi(base * 0.75)) if mode == Mode.BOTH else base
+	if mode == Mode.BOTH:
+		return maxi(9, roundi(base * 0.75))
+	return maxi(9, roundi(base * 0.9)) if mode == Mode.TAMIL else base
 
 
 ## Sets the display mode and tells every open screen (`Tr.bus.changed`) and the bound controls.
@@ -278,6 +280,9 @@ static func _apply(c: Control) -> void:
 	var base := int(c.get_meta(&"tr_size", 0))
 	if base > 0:
 		c.add_theme_font_size_override("font_size", fit(base))
+	# A control that shrinks its own letters to its box (a round button) does it with the new text.
+	if c.has_method(&"fit_text"):
+		c.call(&"fit_text")
 
 
 static func _prune() -> void:

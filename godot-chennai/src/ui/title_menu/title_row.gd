@@ -25,6 +25,7 @@ var subtitle_text: String = ""
 var title_label: Label
 var sub_label: Label
 var glow: StyleBoxFlat = null
+var _column: VBoxContainer
 var _content: MarginContainer
 var _nudge: Tween = null
 var _animate: bool = true
@@ -46,6 +47,8 @@ func _init(title: String = "", subtitle: String = "", is_primary: bool = false, 
 	_content.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_content)
 	var column := VBoxContainer.new()
+	_column = column
+	column.minimum_size_changed.connect(_sync_height)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_theme_constant_override("separation", 0)
@@ -57,7 +60,7 @@ func _init(title: String = "", subtitle: String = "", is_primary: bool = false, 
 	column.add_child(title_label)
 	sub_label = UiTheme.label(subtitle, 12, MUTED)
 	sub_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	sub_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	sub_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if subtitle == "" and sub_key != "":
 		Tr.bind(sub_label, sub_key, null, true)
 	sub_label.visible = sub_label.text != ""
@@ -70,6 +73,12 @@ func _init(title: String = "", subtitle: String = "", is_primary: bool = false, 
 	focus_entered.connect(_lift.bind(true))
 	focus_exited.connect(_lift.bind(false))
 	_place()
+
+
+## The row is at least 48 tall and as tall as its two lines need: a Tamil or two-language
+## subtitle wraps to a second line (G-445) instead of being cut short.
+func _sync_height() -> void:
+	custom_minimum_size = Vector2(0, maxf(UiTheme.MIN_TARGET, _column.get_combined_minimum_size().y + 1.0))
 
 
 func _plate(fill: Color, bar: Color) -> StyleBoxFlat:

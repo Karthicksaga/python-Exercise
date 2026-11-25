@@ -70,9 +70,11 @@ func _init() -> void:
 	brake_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	brake_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# Under the circle, in the strip below the pedals (DRIVE_BOTTOM), not inside it.
-	brake_hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	brake_hint.offset_left = -12.0
-	brake_hint.offset_right = 12.0
+	# Centred on the pedal and growing both ways, so a longer Tamil line stays under it.
+	brake_hint.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	brake_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	brake_hint.offset_left = 0.0
+	brake_hint.offset_right = 0.0
 	brake_hint.offset_top = 1.0
 	brake_hint.offset_bottom = 17.0
 	brake.add_child(brake_hint)
@@ -147,6 +149,8 @@ func _place() -> void:
 	steer_pad.queue_redraw()
 	for pair: Array in [[gas, 5.0], [brake, 4.0], [horn, 3.0], [exit_button, 4.0]]:
 		UiTheme.set_round(pair[0] as Button, pair[1] as float)
+	for b: HoldButton in [gas, brake, horn]:
+		b.fit_text()
 	_apply_opacity()
 
 

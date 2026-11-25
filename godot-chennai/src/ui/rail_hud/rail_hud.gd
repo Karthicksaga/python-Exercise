@@ -130,14 +130,20 @@ func _ready() -> void:
 	layer.add_child(dial)
 	score = RailHudStyle.label("", 14)
 	score.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	score.position = Vector2(-300, 70)
-	score.size = Vector2(140, 22)
+	score.offset_left = -300.0
+	score.offset_right = -160.0
+	score.offset_top = 70.0
+	score.offset_bottom = 92.0
+	score.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	layer.add_child(score)
 	signal_chip = RailHudStyle.label("", 14)
 	signal_chip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	signal_chip.position = Vector2(-300, 94)
-	signal_chip.size = Vector2(140, 22)
+	signal_chip.offset_left = -300.0
+	signal_chip.offset_right = -160.0
+	signal_chip.offset_top = 94.0
+	signal_chip.offset_bottom = 116.0
+	signal_chip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	signal_chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	layer.add_child(signal_chip)
 	var right := VBoxContainer.new()

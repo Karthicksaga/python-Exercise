@@ -34,7 +34,6 @@ ctl.gas,GAS
 ctl.hold_reverse,hold to reverse
 ctl.horn,HORN
 ctl.jump,JUMP
-ctl.pause_tip,Pause
 ctl.reverse,REVERSE
 ctl.run,RUN
 ctl.siren,SIREN
@@ -295,7 +294,6 @@ loading.tip.4,Marina Beach is one of the longest urban beaches in the world.
 map.close,CLOSE
 map.credit_estimated,"{0}, estimated heights and widths"
 map.drawing,Drawing the map...
-map.far,{0} {1}
 map.kind.dropoff,Drop off
 map.kind.fight,Fight
 map.kind.mission,Mission
@@ -331,7 +329,6 @@ msn.clock_detail,{0} for the whole job
 msn.clock_running,The clock is running
 msn.clothes,Change clothes
 msn.complete_detail,{0} · +₹{1}{2}{3}
-msn.dot_part,{0}
 msn.drive_to_end,"Drive on to {0}, the end of the route"
 msn.drive_to_start,Drive to the start; the clock starts there. {0}
 msn.drive_to_start_at,Drive to the start of the route at {0}; the clock starts there
@@ -491,7 +488,7 @@ time.night,Night
 time.noon,Noon
 title.back,BACK
 title.continue_line,{0} · ₹{1} · {2} of {3} stages
-title.credit,Map data {0}
+title.credit_prefix,Map data
 title.free_roam,Free roam
 title.name.open_world,OPEN WORLD
 title.row.about,ABOUT

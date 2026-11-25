@@ -31,10 +31,9 @@ ctl.brake,பிரேக்,needs native review
 ctl.exit,இறங்கு,needs native review
 ctl.exit_tip,இறங்கு,needs native review
 ctl.gas,வேகம்,needs native review
-ctl.hold_reverse,பின்னால் செல்ல அழுத்திப் பிடியுங்கள்,needs native review
+ctl.hold_reverse,பின்னால் செல்ல பிடியுங்கள்,needs native review
 ctl.horn,ஹாரன்,needs native review
 ctl.jump,குதி,needs native review
-ctl.pause_tip,இடைநிறுத்து,needs native review
 ctl.reverse,பின்னால்,needs native review
 ctl.run,ஓடு,needs native review
 ctl.siren,சைரன்,needs native review
@@ -295,7 +294,6 @@ loading.tip.4,உலகின் மிக நீளமான நகரக் �
 map.close,மூடு,needs native review
 map.credit_estimated,"{0}, உயரங்களும் அகலங்களும் மதிப்பீடு",needs native review
 map.drawing,வரைபடத்தை வரைகிறது...,needs native review
-map.far,{0} {1},needs native review
 map.kind.dropoff,இறக்கும் இடம்,needs native review
 map.kind.fight,சண்டை,needs native review
 map.kind.mission,பணி,needs native review
@@ -331,7 +329,6 @@ msn.clock_detail,வேலை முழுவதற்கும் {0},needs nat
 msn.clock_running,நேரம் ஓடிக்கொண்டிருக்கிறது,needs native review
 msn.clothes,உடை மாற்று,needs native review
 msn.complete_detail,{0} · +₹{1}{2}{3},needs native review
-msn.dot_part,{0},needs native review
 msn.drive_to_end,பாதையின் முடிவான {0} வரை தொடர்ந்து ஓட்டுங்கள்,needs native review
 msn.drive_to_start,தொடக்கத்துக்கு ஓட்டுங்கள்; நேரம் அங்கிருந்து தொடங்கும். {0},needs native review
 msn.drive_to_start_at,{0} என்ற இடத்தில் உள்ள பாதையின் தொடக்கத்துக்கு ஓட்டுங்கள்; நேரம் அங்கிருந்து தொடங்கும்,needs native review
@@ -491,7 +488,7 @@ time.night,இரவு,needs native review
 time.noon,மதியம்,needs native review
 title.back,பின் செல்,needs native review
 title.continue_line,{0} · ₹{1} · {3} நிலைகளில் {2} முடிந்தது,needs native review
-title.credit,வரைபடத் தரவு {0},needs native review
+title.credit_prefix,வரைபடத் தரவு,needs native review
 title.free_roam,சுதந்திரமாகச் சுற்றலாம்,needs native review
 title.name.open_world,திறந்த உலகம்,needs native review
 title.row.about,பற்றி,needs native review
