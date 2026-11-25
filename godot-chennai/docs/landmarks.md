@@ -199,6 +199,28 @@ references.
 - Height: 29.6 m, estimated (5 storeys of 5 m from the shortlist's estimate, plus a 4 m atrium roof light); OSM has no height or levels.
 - References: none listed: Commons photos of the building carry its business name in their titles. The kit is generic (podium, glass atrium front with mullions, canopy, rooftop parking, plaza strip).
 
+## Hero models (G-390 to G-393)
+
+Chennai Egmore and Kathipara Junction are hero models: the same spec, kit and test pipeline, but one 512 px
+texture atlas each and tighter budgets (LOD0 under 6,000 triangles, LOD1 under 1,500, LOD2 a painted box or
+ribbon). Build: `tools/blender/landmarks/build_all.sh` (kits `hero_station`, `hero_flyover`); Kathipara's
+road copy: `tools/landmarks/make_kathipara_spec.py`. Decisions in `docs/technical-decisions.md`.
+
+**What the Egmore model used.** The owner's own Egmore photos were not available and no reference photo was
+looked at in this pass. Basis: the OSM outlines (main block, west wing, train shed, the two south porches),
+the published facts in the spec, and general knowledge of Indo-Saracenic brick-and-stucco stations. Storey
+heights, tower sizes, the clock (on the east tower) and every colour are estimates. The reference photos
+listed under Chennai Egmore above remain the ones to compare against.
+
+**Kathipara Junction** (`assets/landmarks/kathipara-junction/spec.json`; kit `hero_flyover`): no OSM
+outline; the model is a detail layer on the world's own road decks. Facts: a cloverleaf grade separator of
+the NHDP at the junction of the Grand Southern Trunk Road, Inner Ring Road, Anna Salai and Mount-Poonamallee
+Road; main span opened 9 April 2008, the rest 26 October 2008; formerly a roundabout with a statue of
+Jawaharlal Nehru (https://en.wikipedia.org/wiki/Kathipara_Junction). No reference photo is listed: none was
+used. Board texts: the junction's name, and the place names Guindy, Pallavaram and Ashok Nagar (Tamil
+spellings in common usage, **need native review**). Everything not from OSM (deck heights by the G-150
+rule, lamp spacing and height, board sizes, colours) is estimated.
+
 ## Research sources and their limits
 
 Facts and heights were checked through web search summaries of the pages cited; the build
