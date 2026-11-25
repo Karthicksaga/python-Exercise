@@ -122,7 +122,12 @@ static func _make_nodes(batch: TreeBatch, g: Group) -> void:
 		g.nodes.append(node)
 
 
+## Group every batch in the scene joins: a preset change calls `apply_shadows` on all of them.
+const GROUP := &"tree_batches"
+
+
 func _enter_tree() -> void:
+	add_to_group(GROUP)
 	_clock = CHECK_EVERY * float(absi(hash(get_instance_id())) % 100) / 100.0
 	# Never sorted (built without a focus): sort now for the camera, or the chunk's middle.
 	if _gen == -1:
@@ -224,6 +229,12 @@ func _rebuild(g: Group) -> void:
 		mm.visible_instance_count = n
 		var casting := lod == 0 and TreeQuality.shadows
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casting else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+## The shadow setting of the quality preset, at once (the sort follows within a quarter second).
+func apply_shadows() -> void:
+	for g in groups:
+		g.nodes[0].cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if TreeQuality.shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 ## Meshes drawn now (each a draw call without shadows), and the most any one species draws.

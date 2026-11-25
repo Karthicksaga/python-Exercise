@@ -1150,3 +1150,46 @@ the glow hidden by day. The sodium pool MultiMesh is dropped (the glow mesh carr
 follows the preset through `PerfWiring.set_road_extras` (tested on Low in `test_perf_wiring.gd`). Weak: with no real
 light on the chunk meshes the road under a lamp is lit only by the pool quad (13 m under a 9 m head, scaled by
 head height, 0.22 m up so it clears a footpath; a high mast's pool is 34 m wide and 0.6 m up). Seen on llvmpipe only.
+
+## Trees (phase 7, branch `agent/godot-trees`, G-380 to G-388, 25 Nov 2026)
+**Done.** The owner's "trees need improvement": a real tree kit. Full description, photograph notes, tables and weak
+spots in `docs/trees.md`; decisions in `technical-decisions.md` (G-380…G-388).
+- `src/game_engine/trees/`: `TreeSpecies` (18 species: neem, rain tree, banyan, tamarind, gulmohar, coconut, palmyra,
+  mango, peepal, casuarina; oleander, bougainvillea, croton, grass tuft, scrub; bare, snag and dead-palm trees),
+  `TreeModels` (three LODs each, built in code on a worker), `TreeAtlas` + `assets/trees/` (one 1024x512 atlas, 0.7 MB
+  VRAM-compressed, CC0, painted by `tools/trees/bake_tree_atlas.py`), `trees.gdshader` (alpha cut, wind in the vertex
+  stage), `TreeKit`, `TreeBatch` (a MultiMesh per species per LOD per chunk, LOD sort by distance, hysteresis, shadows from
+  LOD 0 on High), `TreeLod`, `TreeQuality`. `src/game_world/city/`: `TreeStyle` (what grows where), `TreePlan` (what
+  stands where), `TreeSpot`.
+- Wired: `ChunkBuilder._add_trees` (`Build.tree_batch`), `Kit.trees/rail_index/focus/tree_species/under_species`,
+  `CityMaterials.trees` (replaces `foliage`), `CityWorld.set_rail_index` (called by `Railway.prepare`),
+  `QualitySettings.TABLE` (9 new keys), `PerfWiring.apply`, `export_presets.cfg` (include `assets/trees/*.json`).
+  The old tree and palm meshes and G-312's scale trick are gone; the roads work's species ids are kept.
+- Tests: `tests/unit/test_trees.gd` (12 tests): species and models, budgets per LOD, outlines, one atlas and the wind
+  data, atlas size and licence rows, the LOD rule, nothing inside buildings or on carriageways, species by area,
+  determinism, draw calls and LOD counts, quality caps, pruning near rails. `test_perf_wiring.gd` checks Low.
+  Tools: `tests/tools/tree_gallery.gd` (every species, three LODs, `--flat`), `city_shot.gd` gained `--snap`, `--flip`,
+  `--quality=`.
+
+**Measured** (llvmpipe, Compatibility, 915x412, camera 9 m behind and 2.8 m up; before = the roads merge `fb5f8de`,
+after = this branch; the box was at load 17-22 so only counts are exact):
+
+| Spot | Draws before / after (High) | Primitives before / after (High) | Medium, Low draws |
+|---|---|---|---|
+| T. Nagar, Sir Thyagaraya Road | 43 / 63 | 310,658 / 265,238 | |
+| Mylapore, park avenue (5834, 5371) | 37 / 70 | 161,514 / 106,669 | |
+| Anna Nagar avenue (806, 30) | 33 / 61 | 199,421 / 162,990 | 43, 37 (primitives 155,679, 152,043) |
+| Rural road, Tambaram side (-11779, 18997) | 40 / 83 | 216,721 / 158,293 | |
+| Hill road | none in the data (flat city, no height) | | |
+
+Tree draw calls are about 4.5 a chunk (a species draws one mesh a LOD in use, never more than two; a far chunk one per
+species), against two a chunk before. Primitives fall because the old trees had no far LOD. Main thread, walking at 8 m/s
+through the same spots (the `TreeBatch._process` calls only, 400 frames): average 42 to 216 microseconds a frame,
+95th percentile 68 to 240 microseconds, 99th 0.1 to 5 ms and a worst frame of 1 to 33 ms on the loaded box (3 ms on the
+quietest run); before, trees cost nothing per frame (static MultiMeshes). A sort goes one species a frame and the first
+sort of a chunk runs on the worker. The streaming test's main-thread budget holds.
+
+**Weak or not done.** Species are estimates (no species tag, no forest or hill height in the data). Draw calls are the
+cost: about +20 to +40 over the loaded chunks on High (+4 on Low). No impostors beyond LOD 2, no cross-fade, wind is a
+vertex sway only. Seen under Compatibility on llvmpipe only: not the Mobile renderer, not a phone. The painted atlas is
+stylised. The first sort after a preset change rebuilds every species of every chunk at once over a few frames.

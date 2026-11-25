@@ -214,6 +214,7 @@ func apply() -> void:
 	QualityApplier.apply_viewport(get_viewport(), v)
 	QualityApplier.apply_engine(v)
 	TreeQuality.apply(v)
+	get_tree().call_group(TreeBatch.GROUP, &"apply_shadows")
 	if main.world != null and main.world.streamer != null and main.world.streamer.kit != null:
 		# Chunks built from now on (draw-call caps are chosen when a chunk is planned).
 		main.world.streamer.kit.tree_species = int(v["tree_species"])
