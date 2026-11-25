@@ -1149,3 +1149,37 @@ the glow hidden by day. The sodium pool MultiMesh is dropped (the glow mesh carr
 follows the preset through `PerfWiring.set_road_extras` (tested on Low in `test_perf_wiring.gd`). Weak: with no real
 light on the chunk meshes the road under a lamp is lit only by the pool quad (13 m under a 9 m head, scaled by
 head height, 0.22 m up so it clears a footpath; a high mast's pool is 34 m wide and 0.6 m up). Seen on llvmpipe only.
+
+## Combat in play (agent/godot-combat, G-410…G-429), 25 Nov 2026: interfaces with agent/godot-combat-visuals
+Written first, before the code, so the two branches meet. The combat agent wires health, melee,
+weapons and pickups, gangs, Wanted and police into the game; the visuals agent owns the strike
+and carry poses, hit puffs, weapon models in hand and motion blur. The combat side only calls
+the names below, through a null-safe lookup (`CombatFx`, `src/app/combat_wiring/combat_fx.gd`):
+until a method or class exists the call does nothing, so either branch merges first.
+
+**On both figures** (`HumanFigure`, the player; `PersonView`, enemies and officers), visuals agent:
+```gdscript
+## Start a blow: kind &"punch" or &"bat"; side 1 right hand, 0 left. Timed by
+## Strikes.STRIKES[kind] (windup 0.12/0.22 s, recover 0.26/0.38 s): the blow must be drawn
+## landing at `windup` seconds, when the combat rules apply the damage.
+func play_strike(kind: StringName, side: int) -> void
+func is_striking() -> bool
+## Box held in both hands (kind &"box"; &"bag", &"push" as in carryPose.ts), or put down.
+func carry(on: bool, kind: StringName) -> void
+```
+**Effects**, visuals agent, pooled and allocation-free per frame:
+- `HitPuffs` (a Node3D the combat side adds under the world once): `spawn(position: Vector3,
+  normal: Vector3, strength: float)`; scene position of the contact, normal pointing back at
+  the striker, strength 1 a punch, 1.4 a bat, 0.6 a bullet.
+- `WeaponModels`: `static attach(figure: Node3D, weapon_id: StringName)` and `detach(figure)`.
+  Ids are the Three.js set that exists: &"bat", &"pistol", &"shotgun", &"smg" (no stick or
+  bottle exist in the Three.js weapon table; not added). The player shows the gun in hand when
+  loaded, else the bat if owned; enemies with a bat always, with a gun while aiming.
+
+**What the combat side provides** (for their tests and screenshots): `Strikes` (`src/combat/
+strikes.gd`: STRIKES, strike_kind, KNOCK_BACK, knock_back_room) and `SwingClock`; the combat
+wiring calls `play_strike` when HIT is pressed and on each `enemyWindup`, `HitPuffs.spawn` on each
+landed blow or bullet, `WeaponModels.attach/detach` when the shown weapon changes, `carry` while a
+goods objective is carried on foot. Flinches and falls of struck people use the existing
+knockdown API (`play_fall`, `play_landed`, `play_getup`). Classes are found by `class_name`
+(`ProjectSettings.get_global_class_list()`), so file paths are the visuals agent's choice.
