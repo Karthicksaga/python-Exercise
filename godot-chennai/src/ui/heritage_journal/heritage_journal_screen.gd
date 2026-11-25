@@ -37,7 +37,7 @@ func _init() -> void:
 	add_child(root)
 	var dim := ColorRect.new()
 	dim.name = "Dim"
-	dim.color = Color(0, 0, 0, 0.55)
+	dim.color = Color(0.03, 0.04, 0.06, 0.92)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(dim)
