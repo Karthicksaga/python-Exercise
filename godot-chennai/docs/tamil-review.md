@@ -15,7 +15,7 @@ A release build can leave the unreviewed rows out (the export feature tag `tamil
 or the project setting `chennai/i18n/hide_unreviewed`): the game then shows those texts in
 English only.
 
-**805 Tamil strings, 805 still need native review, 0 reviewed.**
+**853 Tamil strings, 853 still need native review, 0 reviewed.**
 
 | key | English | Tamil | status |
 |---|---|---|---|
@@ -57,6 +57,53 @@ English only.
 | `ctl.reverse` | REVERSE | பின்னால் | needs native review |
 | `ctl.run` | RUN | ஓடு | needs native review |
 | `ctl.siren` | SIREN | சைரன் | needs native review |
+| `cul.act.get_out` | GET OUT | வெளியேறு | needs native review |
+| `cul.act.leave_shoes` | LEAVE SANDALS | செருப்பை விடு | needs native review |
+| `cul.act.light_lamp` | LIGHT LAMP | விளக்கேற்று | needs native review |
+| `cul.act.swim` | SWIM | நீந்து | needs native review |
+| `cul.journal.close_tip` | Close the journal | குறிப்பேட்டை மூடு | needs native review |
+| `cul.journal.count` | {0} of {1} places visited | {1} இடங்களில் {0} இடங்களைப் பார்த்துள்ளீர்கள் | needs native review |
+| `cul.journal.done` | Visit completed | முழுமையாகப் பார்த்தீர்கள் | needs native review |
+| `cul.journal.empty` | Nothing is written here yet. Visit the places of the city and they fill in. | இங்கே இன்னும் எதுவும் எழுதப்படவில்லை. நகரின் இடங்களுக்குச் சென்றால் இது நிறையும். | needs native review |
+| `cul.journal.locked` | A place to find in Chennai | சென்னையில் கண்டுபிடிக்க வேண்டிய ஓர் இடம் | needs native review |
+| `cul.journal.locked_hint` | Visit it and it is written here. | அங்கே சென்றால் இங்கே எழுதப்படும். | needs native review |
+| `cul.journal.title` | HERITAGE JOURNAL | பாரம்பரியக் குறிப்பேடு | needs native review |
+| `cul.peace.no_violence` | Not here. This is a peaceful place. | இங்கே வேண்டாம். இது அமைதியான இடம். | needs native review |
+| `cul.stop.anna-nagar-tower.line` | Built for the 1968 World Trade Fair; about 41 m tall with 12 floors. | 1968 உலக வர்த்தகக் கண்காட்சிக்காகக் கட்டப்பட்டது; சுமார் 41 மீ உயரம், 12 தளங்கள். | needs native review |
+| `cul.stop.anna-nagar-tower.name` | Anna Nagar Tower | அண்ணா நகர் கோபுரம் | needs native review |
+| `cul.stop.chennai-central.line` | Opened in 1873; the clock tower in the middle of the building was added around 1900. | 1873-இல் திறக்கப்பட்டது; கட்டடத்தின் நடுவில் உள்ள கடிகாரக் கோபுரம் 1900 வாக்கில் சேர்க்கப்பட்டது. | needs native review |
+| `cul.stop.chennai-central.name` | Chennai Central | சென்னை சென்ட்ரல் | needs native review |
+| `cul.stop.chennai-egmore.line` | Opened in 1908 in the Indo-Saracenic style, with Dravidian motifs. | 1908-இல் இந்தோ-சாராசெனிக் பாணியில், திராவிட வடிவங்களுடன் திறக்கப்பட்டது. | needs native review |
+| `cul.stop.chennai-egmore.name` | Chennai Egmore | சென்னை எழும்பூர் | needs native review |
+| `cul.stop.chennai-lighthouse.line` | Lit in 1977: a triangular concrete tower, 45.7 m tall, on the Marina. | 1977-இல் ஒளியூட்டப்பட்டது: மெரினாவில் உள்ள 45.7 மீ உயர முக்கோணக் கான்கிரீட் கோபுரம். | needs native review |
+| `cul.stop.chennai-lighthouse.name` | Chennai Lighthouse | சென்னை மெரினா கலங்கரை விளக்கம் | needs native review |
+| `cul.stop.kapaleeshwarar-tank.line` | The temple's stepped water tank, west of the temple. People walk its steps and watch the water; nobody goes in. | கோயிலின் மேற்கே உள்ள படிக்கட்டுக் குளம். படிகளில் நடக்கலாம், தண்ணீரைப் பார்க்கலாம்; யாரும் உள்ளே இறங்குவதில்லை. | needs native review |
+| `cul.stop.kapaleeshwarar-tank.name` | Kapaleeshwarar Temple Tank | கபாலீசுவரர் கோயில் குளம் | needs native review |
+| `cul.stop.kapaleeshwarar-temple.line` | A Dravidian temple in Mylapore; its seven-tier east gateway tower, built in 1906, is about 37 m tall. | மயிலாப்பூரில் உள்ள திராவிடக் கோயில்; 1906-இல் கட்டப்பட்ட அதன் ஏழு அடுக்குக் கிழக்கு கோபுரம் சுமார் 37 மீ உயரம். | needs native review |
+| `cul.stop.kapaleeshwarar-temple.name` | Kapaleeshwarar Temple | கபாலீசுவரர் கோயில் | needs native review |
+| `cul.stop.kathipara-junction.line` | A cloverleaf junction where the Inner Ring Road meets the Grand Southern Trunk Road. | உள் வட்டச் சாலையும் கிராண்ட் சதர்ன் டிரங்க் சாலையும் சந்திக்கும் நான்கிதழ் சந்திப்பு. | needs native review |
+| `cul.stop.kathipara-junction.name` | Kathipara Junction | கத்திப்பாரா சந்திப்பு | needs native review |
+| `cul.stop.marina-beach.line` | A long city beach on the Bay of Bengal. Walk the sand, swim in the shallows and stay inside the rope line. | வங்காள விரிகுடாவில் உள்ள நீண்ட நகரக் கடற்கரை. மணலில் நடக்கலாம், கரையோரம் நீந்தலாம்; கயிற்றுக் கோட்டுக்குள் இருங்கள். | needs native review |
+| `cul.stop.marina-beach.name` | Marina Beach | மெரினா கடற்கரை | needs native review |
+| `cul.stop.ripon-building.line` | Home of the Greater Chennai Corporation; its foundation stone was laid in 1909. | பெருநகர சென்னை மாநகராட்சியின் தலைமையகம்; அதன் அடிக்கல் 1909-இல் நாட்டப்பட்டது. | needs native review |
+| `cul.stop.ripon-building.name` | Ripon Building | ரிப்பன் மாளிகை | needs native review |
+| `cul.swim.bank` | Stay between the banks. | கரைகளுக்கு இடையே இருங்கள். | needs native review |
+| `cul.swim.energy` | ENERGY | சக்தி | needs native review |
+| `cul.swim.hint` | Shallow water. Swim towards the shore to get out. | ஆழமில்லாத தண்ணீர். வெளியேற கரையை நோக்கி நீந்துங்கள். | needs native review |
+| `cul.swim.not_here` | Not here: this water is not for swimming. | இங்கே வேண்டாம்: இந்தத் தண்ணீர் நீந்துவதற்கு அல்ல. | needs native review |
+| `cul.swim.rope` | Stay inside the rope line. | கயிற்றுக் கோட்டுக்குள் இருங்கள். | needs native review |
+| `cul.swim.tired` | You are tired. The water carries you back to the shore. | களைப்பாக இருக்கிறது. தண்ணீர் உங்களைக் கரைக்குக் கொண்டு செல்கிறது. | needs native review |
+| `cul.temple.complete` | You have walked round the shrines | சன்னதிகளைச் சுற்றி வந்தீர்கள் | needs native review |
+| `cul.temple.complete_detail` | A quiet visit. It is written in your heritage journal. | அமைதியான வருகை. அது உங்கள் பாரம்பரியக் குறிப்பேட்டில் எழுதப்பட்டது. | needs native review |
+| `cul.temple.half` | Halfway round. | பாதி சுற்று முடிந்தது. | needs native review |
+| `cul.temple.lamp` | The lamp is lit | விளக்கு ஏற்றப்பட்டது | needs native review |
+| `cul.temple.lamp_detail` | Walk once round the shrines, keeping them on your right. | சன்னதிகளை வலப்பக்கம் வைத்து ஒரு முறை சுற்றி வாருங்கள். | needs native review |
+| `cul.temple.shoes_off` | Your sandals are on the stand. | உங்கள் செருப்புகள் அடுக்கில் உள்ளன. | needs native review |
+| `cul.temple.shoes_on` | You take your sandals back. Come again. | செருப்பை எடுத்துக்கொள்கிறீர்கள். மீண்டும் வாருங்கள். | needs native review |
+| `cul.temple.vehicle_outside` | Please leave your vehicle outside the temple. | உங்கள் வாகனத்தைக் கோயிலுக்கு வெளியே விடுங்கள். | needs native review |
+| `cul.temple.welcome` | Kapaleeshwarar Temple | கபாலீசுவரர் கோயில் | needs native review |
+| `cul.temple.welcome_detail` | A place of worship. Please walk quietly, and leave your sandals at the stand. | இது வழிபாட்டு இடம். அமைதியாக நடந்து செல்லுங்கள்; செருப்பை அடுக்கில் விடுங்கள். | needs native review |
+| `cul.toast.added` | Added to your heritage journal | பாரம்பரியக் குறிப்பேட்டில் சேர்க்கப்பட்டது | needs native review |
 | `dlg.choice_wait` | Nothing happens until you decide. | நீங்கள் முடிவு செய்யும் வரை எதுவும் நடக்காது. | needs native review |
 | `dlg.choose` | CHOOSE | தேர்ந்தெடு | needs native review |
 | `dlg.close` | CLOSE | மூடு | needs native review |
@@ -324,6 +371,7 @@ English only.
 | `map.me` | ME | நான் | needs native review |
 | `map.north` | N | வ | needs native review |
 | `map.title` | MAP | வரைபடம் | needs native review |
+| `menu.pause.journal` | HERITAGE JOURNAL | பாரம்பரியக் குறிப்பேடு | needs native review |
 | `menu.pause.map` | MAP | வரைபடம் | needs native review |
 | `menu.pause.quit` | QUIT TO TITLE | தலைப்புத் திரைக்குச் செல் | needs native review |
 | `menu.pause.resume` | RESUME | தொடர் | needs native review |

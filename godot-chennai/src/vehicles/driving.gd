@@ -71,6 +71,8 @@ var gearbox := Gearbox.new()
 var vehicle: Vehicle = null
 ## The vehicle being got into or out of, else null.
 var boarding_vehicle: Vehicle = null
+## Places where vehicles stay outside and the horn is quiet (a temple forecourt, G-471); null: none.
+var peace: PeaceZones = null
 var boarding: Boarding = null
 ## The last crash judged above a bump (tests, HUD).
 var last_crash: CrashRules.Outcome = null
@@ -125,6 +127,10 @@ func nearest_vehicle() -> Vehicle:
 ## Start getting into `v` (walk to the door, open, sit, shut). False if not possible now.
 func enter(v: Vehicle, pull: bool = false) -> bool:
 	if v == null or _mode != &"foot" or v.is_driven() or boarding != null:
+		return false
+	# A peace zone (a temple forecourt) keeps vehicles outside: nobody gets in inside it (G-471).
+	if peace != null and not peace.allows("boarding", WorldOrigin.to_world(rider.position())):
+		toast.emit(Tr.t("cul.temple.vehicle_outside"))
 		return false
 	# A traffic vehicle with its driver still at the wheel (carjacking, TD-30): pull them out.
 	pull = pull or bool(v.get_meta(&"driver_aboard", false))
@@ -184,6 +190,9 @@ func select_gear(g: String) -> void:
 
 func press_horn() -> void:
 	if vehicle == null:
+		return
+	# Quiet in a peace zone (G-471).
+	if peace != null and not peace.allows("horn", WorldOrigin.to_world(vehicle.global_position)):
 		return
 	if vehicle.has_siren():
 		vehicle.set_siren(not vehicle.siren())

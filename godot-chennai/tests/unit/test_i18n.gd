@@ -6,8 +6,9 @@ extends TestCase
 const SRC := "res://src"
 ## A key looks like `menu.pause.resume`: lower-case words joined by dots.
 const KEY_PATTERN := "\"([a-z][a-z0-9_]*(?:\\.[A-Za-z0-9_-]+)+)\""
-## Keys the code builds at run time from an id (a life item, a film): checked by the tests of their data.
-const DYNAMIC_PREFIXES: Array[String] = ["life.outfit.lower.", "life.film."]
+## Keys the code builds at run time from an id (a life item, a film, a heritage stop): checked by the tests of their data
+## (`tests/unit/test_culture.gd` for `cul.stop.`).
+const DYNAMIC_PREFIXES: Array[String] = ["life.outfit.lower.", "life.film.", "cul.stop."]
 ## Code whose key-shaped strings are not translation keys (sound ids such as `rail.door.open`).
 const NOT_TEXT_DIRS: Array[String] = ["res://src/audio/"]
 ## The audio files that do use translated text.

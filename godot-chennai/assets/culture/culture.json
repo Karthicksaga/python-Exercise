@@ -1,0 +1,75 @@
+{
+  "about": "Culture and life (G-470..G-479): the heritage journal's stops, the peace zones (what is not allowed inside a place of worship, as data), the Kapaleeshwarar temple visit and the swimming rules. Original content only: every position is from a landmark spec or world.json (OSM, ODbL), every text is a key in assets/i18n (cul.*). Positions are world metres (+X east, -Z north).",
+  "format": 1,
+  "stops": [
+    {
+      "id": "kapaleeshwarar-temple", "kind": "temple", "position": [6476.13, 5706.76], "radius": 75.0,
+      "landmark": "kapaleeshwarar-temple", "on_foot": true, "activity": "temple_visit",
+      "source": "assets/landmarks/kapaleeshwarar-temple/spec.json (OSM relation 21203725)"
+    },
+    {
+      "id": "kapaleeshwarar-tank", "kind": "water", "position": [6346.36, 5734.56], "radius": 70.0,
+      "source": "OSM way 24270420 (Kapaleeshwara Koil Kulam), centroid from the temple spec"
+    },
+    {
+      "id": "ripon-building", "kind": "civic", "position": [6654.07, 253.52], "radius": 55.0,
+      "landmark": "ripon-building", "source": "assets/landmarks/ripon-building/spec.json"
+    },
+    {
+      "id": "chennai-central", "kind": "station", "position": [7082.8, 299.33], "radius": 70.0,
+      "landmark": "chennai-central", "source": "assets/landmarks/chennai-central/spec.json"
+    },
+    {
+      "id": "chennai-egmore", "kind": "station", "position": [5563.65, 798.39], "radius": 60.0,
+      "landmark": "chennai-egmore", "source": "assets/landmarks/chennai-egmore/spec.json"
+    },
+    {
+      "id": "chennai-lighthouse", "kind": "lighthouse", "position": [7507.96, 5037.3], "radius": 55.0,
+      "landmark": "chennai-lighthouse", "source": "assets/landmarks/chennai-lighthouse/spec.json"
+    },
+    {
+      "id": "marina-beach", "kind": "beach", "position": [7991.69, 3422.49], "radius": 140.0,
+      "landmark": "marina-beach", "source": "world/world.json landmarks (OSM)"
+    },
+    {
+      "id": "anna-nagar-tower", "kind": "tower", "position": [402.41, -147.93], "radius": 45.0,
+      "landmark": "anna-nagar-tower", "source": "assets/landmarks/anna-nagar-tower/spec.json"
+    },
+    {
+      "id": "kathipara-junction", "kind": "junction", "position": [-700.0, 8620.0], "radius": 95.0,
+      "landmark": "kathipara-junction", "source": "assets/landmarks/kathipara-junction/spec.json"
+    }
+  ],
+  "peace_zones": [
+    {
+      "id": "kapaleeshwarar", "stop": "kapaleeshwarar-temple",
+      "about": "The temple compound and its forecourt. OPEN DECISION FOR THE OWNER (docs/handoff.md, Culture): the rule list below is a proposal. true = allowed inside the zone, false = not.",
+      "centre": [6476.13, 5706.76], "radius": 75.0, "walk_radius": 62.0,
+      "rules": {
+        "violence": false, "wanted": false, "crash_effects": false, "horn": false,
+        "boarding": false, "take_over": false, "run": false, "swim": false
+      }
+    }
+  ],
+  "temple_visit": {
+    "zone": "kapaleeshwarar",
+    "stand": [6523.3, 5726.2], "stand_reach": 4.5,
+    "lamp": [6501.6, 5716.6], "lamp_reach": 3.5,
+    "circle": {"centre": [6476.13, 5706.76], "r_min": 12.0, "r_max": 34.0, "turns": 0.9, "clockwise": true},
+    "barefoot_step_gain": 0.45
+  },
+  "swim": {
+    "kinds": ["sea", "river", "canal"],
+    "entry_reach": 4.5,
+    "sea_limit": 30.0,
+    "bank_margin": 0.45,
+    "speed": 1.7,
+    "stamina_seconds": 75.0,
+    "recover_seconds": 20.0,
+    "idle_drain": 0.3,
+    "tired_drift_speed": 1.3,
+    "sea_surface": 0.01,
+    "river_surface": -0.75,
+    "no_swim_zones": []
+  }
+}

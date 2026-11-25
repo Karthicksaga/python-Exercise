@@ -35,8 +35,9 @@ func _physics_process(dt: float) -> void:
 	if body.is_on_foot():
 		var weather := get_node_or_null(^"/root/Weather") as WeatherService
 		var wet := weather != null and weather.rain_level() > WET_FROM
-		sound.walk(dt, body.speed, body.is_on_floor(), wet)
-		if not body.is_on_floor():
+		# Swimming: the strokes splash like wet steps (G-474).
+		sound.walk(dt, body.speed, body.is_on_floor() or body.swimming, wet or body.swimming)
+		if not body.is_on_floor() and not body.swimming:
 			_fall_speed = maxf(0.0, -body.velocity.y)
 	var camera := get_viewport().get_camera_3d()
 	if camera != null:
