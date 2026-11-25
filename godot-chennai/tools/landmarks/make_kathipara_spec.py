@@ -77,6 +77,7 @@ def main(dump):
             continue
         decks.append({k: r[k] for k in ("id", "piece", "offset_along", "name", "highway", "width", "layer", "bridge", "oneway", "height_step", "heights", "points")})
     byid = {r["id"]: r for r in roads}
+    main_line = [list(p) for p in byid[280718090]["points"]]
     boards = []
     for rid in APPROACH + list(EXITS):
         r = byid[rid]
@@ -101,7 +102,9 @@ def main(dump):
                    "alternatives": [], "chosen_because": "OSM carries no heights; the model's top is the lamp heads over the 13 m upper deck."},
         "osm": {"main": "flyover", "overlay": True, "exclude": [], "wikidata": None, "wikipedia": "en:Kathipara Junction",
                 "data_date": "2026-11-23T00:28:57Z", "licence": "ODbL 1.0, © OpenStreetMap contributors",
-                "parts": {"flyover": {"osm": "way/280718090", "tags": {"highway": "primary", "bridge": "yes", "name": "Kathipara Interchange Flyover"}, "role": "info", "road": True}}},
+                "parts": {"flyover": {"osm": "way/280718090", "tags": {"highway": "primary", "bridge": "yes", "name": "Kathipara Interchange Flyover"}, "role": "info", "road": True,
+                                      "footprint": main_line, "centroid": list(ORIGIN),
+                                      "note": "a road: the footprint is the way's centre line (world metres), not an outline; the centroid is the junction's centre, the model's origin"}}},
         "origin": list(ORIGIN), "yaw_deg": 0.0,
         "recipe": {"kit": "hero_flyover", "params": {"radius": ZONE, "pier_spacing": 30.0, "lamp_spacing": 30.0, "decks_of": "decks"}},
         "colours": {"concrete": "#b9b6ad", "concrete_dark": "#8f8c84", "kerb_black": "#1f1f21", "kerb_white": "#ecebe6",

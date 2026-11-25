@@ -2338,6 +2338,55 @@ session's balance (saved), BOARD THE TRAIN on the ACTION button, the crowd and c
 520/700/900 m, LOD distances ×0.6/0.8/1, track 450/520/600 m, overhead line off/160/220 m, crowd
 figures 8/12/16. `RailwayWiring` applies `QualitySettings.shared().preset` and follows its
 `changed` signal, so the level changes live with the rest of the game.
+
+
+## Hero landmark models (G-390 to G-393, agent/godot-hero), 25 Nov 2026
+
+### G-390: A hero model is textured by one atlas, not drawn in triangles
+Chennai Egmore and Kathipara Junction are `hero: true` specs. Their kit scripts (`hero_station.py`,
+`hero_flyover.py`) paint ONE 512 px atlas (`<id>_atlas.png`, numpy, seeded noise, PNG written by hand so
+the bytes repeat; `tools/blender/landmarks/atlas.py`) and give every face a `Tile` (region, tint, part of
+the region). `lkit.export` turns tiles into UVs: each face is laid flat on its own plane (walls: u to the
+right seen from outside, v up) and its bounding box is stretched over the tile; patterns that repeat along a
+wall or deck are painted for a fixed length and laid end to end (`Acc.strip`, last piece cropped, so the
+pattern is never stretched). Windows, arches, brick, balustrades, kerb stripes and clock faces are paint on
+bay quads: Egmore is 3,676 / 770 / 124 triangles (LOD0 / LOD1 / LOD2), Kathipara 4,180 / 1,465 / 336, against
+the budgets LOD0 < 6,000 and LOD1 < 1,500 (`LandmarkSpec.HERO_LOD0_MAX`, `HERO_LOD1_MAX`; other landmarks keep
+5k..15k). The PNG is imported VRAM compressed with mipmaps (the kit writes the `.import`); 140 KB PNG and
+about 350 KB in VRAM each. The GLB has UVs and vertex colour as a tint, no embedded image; `LandmarkModels`
+builds the material (`atlas_material`: albedo atlas x vertex colour, no specular) from `spec.atlas.file`.
+Non-hero landmarks are untouched (vertex colours, shared material).
+
+### G-391: Entrances, peace zone and facts card are spec data
+`spec.hooks` = `entrances` (id, world point, outward normal, width), `peace_zone` (centre, radius, reason) and
+`facts_card` (titles, `facts` = the spec's sourced facts). The spec had none of these, so they are new; no
+system reads the peace zone yet (data only, stated in its `reason`). Egmore's two entrances are the carriage
+portals on the south faces of the porch towers; the kit prints their points (`HOOK` lines) and the spec holds
+them; a test checks they stand on the building front and face the nearest drawn road (cos > 0.6).
+
+### G-392: Kathipara is a detail layer on the chunk builder's own decks
+`DeckMeshes` already draws slab, fascia, 1 m parapets and plain piers from `Road.heights` (G-150, G-151). The
+model repeats none of that. The spec keeps a copy of the 83 road pieces within 300 m (`decks`, written by
+`tools/landmarks/make_kathipara_spec.py` from `tools/landmarks/dump_decks.gd`); the kit ports DeckMeshes' rules
+(profile samples, mitred normals, piers every 30 m of the whole road, columns at a quarter of the width, none on
+a lower road, no parapet where a ramp leaves a deck) and adds, within 200 m of the junction: coping on both
+parapets, black-and-white painted kerb stripes (16 m tiles), steel expansion-joint plates over the piers, red
+and white painted guards round the pier feet, lamp posts every 30 m on alternate sides (collision boxes), and
+six gantry boards (`spec.boards`). The boards' Tamil and English lines are `Label3D` (the sign font), three
+approach boards with the junction's own name, three exit boards with place names (Guindy, Pallavaram, Ashok
+Nagar) whose direction comes from the road bearing, not from a sign; Tamil needs native review. A test compares
+the copied pieces with the live world, so a rebuilt world fails it until the spec is regenerated. Heights are
+the world's estimate (13 m upper deck); the model top (20 m) is the lamp heads over it.
+
+### G-393: Tests and what "no overlap with roads" means
+`tests/unit/test_hero_landmarks.gd`: budgets, one VRAM-compressed atlas under 1.5 MB in total, UVs inside the
+atlas, same hashes and same meshes twice, one shared material and nothing running per frame, footprint fit
+(Egmore ground geometry within 0.35 m of the OSM outlines), doors facing the road, no ground geometry on a
+drawn carriageway, Kathipara details on the live decks, boards Tamil and English, licence rows. OSM's own
+Egmore outline already touches the (estimated 14 m wide) Gandhi Irwin Road at the east porch, so only geometry
+more than 0.4 m outside the outlines is tested against carriageways. `test_landmarks.gd` skips the outline
+checks for `overlay` specs (no outline).
+
 ## Road detail (G-310 to G-313)
 
 ### G-310: Roads are styled by class, from data, not by hand
