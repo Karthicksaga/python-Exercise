@@ -344,3 +344,13 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Quality caps: density, LOD distances, no sway on Low, shadows from LOD 0 on High (G-386) | Done | `test_quality_caps`, `test_perf_wiring` |
 | Before and after draws, primitives, main-thread ms, screenshots against the owner's photographs | Done on llvmpipe at 915x412 (`docs/trees.md`, handoff) | scratch harness (not committed) |
 | Seen on a phone | Not done | — |
+
+## Touch in menus, GET OUT, overlay default (G-490 to G-494, branch `agent/godot-fixui`, 25 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Taps in every scrolling menu at the phone's stretch (G-490) | Done (desktop, engine touch emulation) | `test_menu_touch.gd` (915x412, 2460x1080 stretched, 2460x1080 UI); fails 25 rows without the fix |
+| Full map pans once per finger, minimap opens once, list under the map leaves its drags (G-492) | Done | `test_menu_touch.gd` map pan check |
+| Performance overlay off in a release boot, no three-finger toggle there (G-491) | Done | `test_overlay_release.gd` |
+| Overlay text wraps inside the screen (G-493) | Done | `test_overlay_release.gd` (30 long lines, real text, 915x412 and phone) |
+| GET OUT pill while driving or riding, stop-then-exit while moving (G-494) | Done | `test_get_out.gd` (parked car, bike, taken-over bike, moving) |
+| Seen on the owner's phone | Not done | — |

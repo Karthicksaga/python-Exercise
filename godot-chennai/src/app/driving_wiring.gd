@@ -32,6 +32,23 @@ signal reaction(kind: StringName, at: Vector3)
 var _honk_in := -1.0
 var _honk_kind: StringName = &""
 var _honk_at := Vector3.ZERO
+## GET OUT was pressed while moving (G-494): BRAKE is held for the player until the vehicle is
+## slow enough to leave, then the rider gets out. GAS, a crash or leaving the seat cancels it.
+var stopping_to_exit := false
+
+
+## GET OUT: out now when slow enough, else stop first and get out then.
+func get_out() -> void:
+	var v := driving.vehicle
+	if driving.mode() != &"driving" or v == null:
+		return
+	if absf(v.forward_speed()) <= Driving.EXIT_SPEED:
+		stopping_to_exit = false
+		driving.exit()
+		return
+	stopping_to_exit = true
+	if controls != null:
+		controls.show_toast(UiStrings.text(&"stopping_to_get_out"))
 
 
 ## GET IN, offered to the ACTION button while a vehicle is within reach on foot.
@@ -105,7 +122,7 @@ static func wire(d: Driving, c: DrivingControls, player_rig: PlayerRig) -> Drivi
 	# Before `Driving` (-10) in each step, so the touch state is fresh; the camera runs last (100).
 	w.process_physics_priority = -20
 	if c != null:
-		c.exit_pressed.connect(func() -> void: d.exit())
+		c.exit_pressed.connect(w.get_out)
 		c.horn_pressed.connect(d.press_horn)
 		d.toast.connect(c.show_toast)
 	if player_rig != null and player_rig.controls != null:
@@ -127,6 +144,8 @@ func _on_bump(v: Vehicle, outcome: CrashRules.Outcome) -> void:
 
 
 func _on_mode(mode: StringName) -> void:
+	if mode != &"driving":
+		stopping_to_exit = false
 	var v := driving.vehicle
 	if controls != null:
 		controls.set_mode(mode, "SIREN" if v != null and v.has_siren() else "HORN")
@@ -144,6 +163,7 @@ func _physics_process(dt: float) -> void:
 		driving.touch_gas = controls.gas_held()
 		driving.touch_brake = controls.brake_held()
 		driving.touch_steer = controls.steer_value()
+	_stop_to_exit_step()
 	if camera == null:
 		return
 	var t := driving.camera_target()
@@ -155,6 +175,22 @@ func _physics_process(dt: float) -> void:
 	var driven := driving.vehicle
 	if driving.mode() == &"driving" and driven != null:
 		camera.chase(driven.linear_velocity, driven.yaw(), driven.forward_speed(), driven.type.spec.max_speed, dt)
+
+
+func _stop_to_exit_step() -> void:
+	if not stopping_to_exit:
+		return
+	var v := driving.vehicle
+	if driving.mode() != &"driving" or v == null or driving.touch_gas or driving.gas:
+		stopping_to_exit = false  # the player drives on
+		return
+	if absf(v.forward_speed()) <= Driving.EXIT_SPEED:
+		stopping_to_exit = false
+		driving.touch_brake = false
+		driving.exit()
+		return
+	# Holding BRAKE while reversing on hold drives backwards (G-175): let go first, then brake.
+	driving.touch_brake = not driving.reverse_hold.reversing
 
 
 func _process(_delta: float) -> void:

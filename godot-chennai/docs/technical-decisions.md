@@ -2843,3 +2843,56 @@ queue lock kept the main thread waiting. The main thread now only `try_lock`s: `
 backlog handed over at the next call or at the end of the frame (`flush`), `take_done` says "not yet",
 `pending` gives the last count. `wait`, `stop` and `fill_now` (start-up and shutdown) still block. Release
 jobs are pushed untracked (`push(job, false)`), so their tickets no longer pile up in `_done`.
+
+## Touch in menus, GET OUT, the overlay's default (G-490 to G-494, branch `agent/godot-fixui`, 25 Nov 2026)
+
+### G-490: TouchScroll replays a tap in the viewport's own coordinates
+Root cause of the owner's report "no button in the pause menu responds to touch" (POCO M6 Pro, every
+scrolling menu: pause, title SETTINGS, the controls rows, the Jobs list). `TouchScroll` (G-350) holds
+a press back and, on a release under the 10 px slop, replays a left click at that spot with
+`Viewport.push_input`. The spot came from the canvas transform, which is already in the viewport's
+UI units, but the click was pushed as window coordinates, so the viewport mapped it through the
+stretch transform a second time. On the phone (canvas_items stretch, 2460x1080 window over a
+938x412 UI, scale 2.62) every tap landed at 1/2.62 of the spot, on the dim behind the panel. The
+G-350 tests pushed events into unscaled SubViewports, where the two coordinate systems are the same,
+so they passed. Fix: `push_input(event, true)` (in local coordinates); the replay guard is shared by
+every list. Regression: `test_menu_touch.gd` taps through `Input.parse_input_event` (window pixels,
+the engine's own mouse-from-touch emulation, the window's stretch) in the real game at a 915x412
+window, a 2460x1080 window with the project's stretch (938x412 UI) and a 2460x1080 UI: every title,
+title SETTINGS, pause, map and Jobs-list button, with a few pixels of roll, presses once and only
+itself; a drag scrolls and presses nothing. With the old line it fails 25 rows at the phone setup.
+A list that fits does not intercept, which is why the buttons outside lists (PAUSE, JOBS, the
+title rows on a phone) kept working.
+
+### G-491: A release build starts with the performance overlay off
+The overlay showed on the owner's phone because an earlier build had saved it on (`chennai-debug-v1`),
+and the pause row that turns it off was one of the rows G-490 made untappable. In an exported release
+build (`DebugSettings.release_build`, `not OS.is_debug_build()`) the saved "on" is not restored and
+the perf overlay's three-finger tap is ignored (two thumbs and a finger on the view while driving are
+three fingers); the menu row and five taps on the top-left corner show it for the session. Debug
+runs (editor, tests, desktop) keep remembering it, so `test_hud_glass`'s saving check still holds.
+`test_overlay_release.gd` boots the real game as the APK would over a save that says "on".
+
+### G-492: One pointer counts once; covers above a list own their drags
+On a phone one finger is a touch and an emulated click (and with `emulate_touch_from_mouse` one
+mouse is both too). The full map panned twice the finger's distance and the minimap opened the map
+twice: both now ignore `InputEvent.DEVICE_ID_EMULATION` events. `TouchScroll` takes presses in
+`_input`, which runs by tree order, not by what is drawn on top: the pause list under the full map
+took the map's drags. Controls drawn over lists join `TouchScroll.COVER_GROUP` (the full map's view);
+a press on a visible cover is not a list gesture.
+
+### G-493: The overlay's text wraps inside the screen
+The hitch breakdown line was 2,600 px wide at the 915x412 base and ran off both sides. The numbers
+now wrap at the room inside the safe area (at most 760 px) and show as many whole lines as fit below
+the SWITCHES button (`PerfOverlay._fit_text`, on every resize).
+
+### G-494: GET OUT, a labelled pill, and stopping for the player
+The owner found no way out of a car or bike: the exit was a round X icon. It is now a "GET OUT" glass
+pill (104 x 48 hit area, 96 x 40 drawn, accent outline of the context action) in the top-right row
+beside PAUSE, shown whenever the player drives or rides (a parked vehicle or one taken over). It stays
+top-right in the left-handed layout (mirrored, it sat on the mission column); `PauseMenu.PAUSE_RIGHT`
+and `MissionHud.EXIT_ROOM` follow its width. Pressed while moving faster than `Driving.EXIT_SPEED`,
+`DrivingWiring.get_out` holds BRAKE for the player (letting go first if BRAKE is reversing) and gets
+out once slow enough; GAS, a crash or leaving the seat cancels it. The words come from `UiStrings`
+(`src/ui/ui_strings/`), a single table for the HUD words added since the Tamil work began: English
+now, the Tamil column empty until reviewed; the i18n branch converts it (`text()` to `tr()`).

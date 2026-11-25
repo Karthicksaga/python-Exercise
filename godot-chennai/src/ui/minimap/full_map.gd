@@ -58,6 +58,8 @@ func _init() -> void:
 	_view.name = "View"
 	_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_view.mouse_filter = Control.MOUSE_FILTER_STOP
+	# Over the pause menu's list: its drags are the map's (G-492).
+	_view.add_to_group(TouchScroll.COVER_GROUP)
 	_view.painter = _paint
 	_view.gui_input.connect(_on_input)
 	_view.resized.connect(_fit)
@@ -158,6 +160,11 @@ func _fit() -> void:
 
 
 func _on_input(event: InputEvent) -> void:
+	# One finger arrives as touch and as emulated mouse (phone), one mouse as mouse and emulated
+	# touch (`emulate_touch_from_mouse`): only the real one pans, else the map moved twice as far
+	# as the finger (G-492).
+	if event.device == InputEvent.DEVICE_ID_EMULATION:
+		return
 	if event is InputEventMouseButton:
 		var b := event as InputEventMouseButton
 		if b.button_index == MOUSE_BUTTON_LEFT:

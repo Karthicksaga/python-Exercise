@@ -21,8 +21,8 @@ signal map_requested
 ## The PAUSE button (G-290): a round glass icon, 40 to the eye, a 48 hit area.
 const PAUSE_VISUAL := 40.0
 const PAUSE_SIZE := Vector2(48, 48)
-## Right of the PAUSE button: the driving EXIT (a 48 round icon) and the gap beside it.
-const PAUSE_RIGHT := 56.0
+## Right of the PAUSE button: the driving GET OUT and the gap beside it.
+const PAUSE_RIGHT := ControlsLayout.EXIT_SIZE.x + 8.0
 const GUTTER := 16
 
 var pause_button: Button

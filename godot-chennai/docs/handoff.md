@@ -1428,3 +1428,45 @@ bookkeeping median 0.4 ms (was 2.4), max 2.6 ms (was 19). The test and its thres
   already does (G-51). The dummy renderer's RID errors ("Parameter m is null", `Condition "!F"`) that
   `test_city_life` prints appear on b19bacc as well.
 - Not measured on a phone or with the benchmark route; the overlay's hitch line (G-340) will show it.
+
+## Touch in menus, GET OUT, the overlay off in the APK (agent/godot-fixui, G-490…G-494), 25 Nov 2026
+**Owner bug report (POCO M6 Pro, touch only), fixed.**
+1. *No menu button answered a finger* (pause, title SETTINGS, the controls rows, the Jobs list; Sound
+   "anywhere"). Root cause: `TouchScroll` replayed a tap as a click in window coordinates, so the
+   phone's stretch (2460x1080 window over a 938x412 UI) moved every replayed tap to 1/2.62 of the spot,
+   onto the dim behind the panel. One line: `push_input(event, true)` (G-490). The G-350 tests used
+   unscaled SubViewports, where the bug cannot show. New `tests/scene/test_menu_touch.gd` taps through
+   `Input.parse_input_event` in window pixels (the engine's own touch-to-mouse emulation and stretch, as
+   on the phone) in the real game, at 915x412, 2460x1080 with the project's stretch, and a 2460x1080 UI:
+   every title row, title SETTINGS row, CONTROLS/BACK, every pause row, MAP and the map's buttons, RESUME,
+   JOBS and every Jobs-list button press once and only themselves with a 5 px roll; a drag scrolls and
+   presses nothing; SOUND really mutes and unmutes. With the old line it fails 25 rows at the phone setup.
+   Also fixed on the way (G-492): the full map panned twice the finger's distance (touch plus emulated
+   mouse), the minimap opened the map twice, and the pause list under the full map took the map's drags
+   (`TouchScroll.COVER_GROUP`).
+2. *No way out of a car or bike.* The round X became a "GET OUT" glass pill top-right beside PAUSE,
+   visible whenever the player drives or rides, parked or taken over; pressed while moving it brakes and
+   gets out when slow (G-494). `tests/scene/test_get_out.gd`: parked car, parked bike, a bike taken over
+   from traffic, and while moving: finger tap at the phone's stretch, player on foot within 3 m.
+   **Strings:** `src/i18n` is not on this base, so the new words are in `src/ui/ui_strings/ui_strings.gd`
+   (`UiStrings.text(key)`, English, Tamil column empty until reviewed). For the lang agent: move its two
+   keys (`get_out`, `stopping_to_get_out`) into the translation table and replace `UiStrings.text` with
+   `tr`.
+3. *The performance overlay was on.* Cause: a save from an earlier build said "on", and the row to turn
+   it off was untappable (item 1). Release builds now never restore it and ignore the three-finger tap;
+   five corner taps or the row show it for the session (G-491). Its text wraps inside the screen (G-493;
+   the hitch line was 2,600 px wide). `tests/scene/test_overlay_release.gd` boots the real game with
+   `DebugSettings.release_build` on over a save that says "on".
+**Test expectation changed on purpose:** `test_controls_layout.gd::test_left_handed_is_the_exact_mirror`
+no longer expects GET OUT mirrored (it stays in the top-right row; mirrored it sat on the mission column).
+**For the pause-menu agents (lang, polish):** `pause_menu.gd` changed in one line (`PAUSE_RIGHT` follows
+`ControlsLayout.EXIT_SIZE`); the fix itself is in `touch_scroll.gd`.
+**Not done / weak.**
+- Not run on a phone. The tests use the engine's own emulation path, which is what Android feeds, but
+  Android's event order and batching were not observed on the device.
+- On foot the top-right corner is now 112 px of empty space right of PAUSE (it was 56): PAUSE and JOBS
+  keep their place whether or not GET OUT shows.
+- Found, not changed: in title SETTINGS the two-line rows ("Graphics: Auto (Low)", "Run benchmark") are
+  wider than their 300 px button and their second line touches or passes the edge at 915x412.
+- A replayed tap still presses at release, so the pressed look of a row in a scrolling list shows only
+  then (unchanged from G-350).

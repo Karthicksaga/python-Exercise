@@ -24,6 +24,11 @@ const RUBBER := 0.45  ## how much of a finger move counts past an end
 const SPRING := 160.0
 const DAMPING := 22.0
 
+## Controls drawn over lists while they show (the full map over the pause menu) join this group:
+## a press on one of them is not this list's gesture. `_input` runs by tree order, not by what is
+## drawn on top, so without it the pause list under the map took every drag meant for the map (G-492).
+const COVER_GROUP := &"touch_scroll_cover"
+
 enum Mode { IDLE, PENDING, DRAG, BAR }
 enum Source { NONE, TOUCH, MOUSE }
 
@@ -37,7 +42,9 @@ var _vel: float = 0.0
 var _moved: float = 0.0  ## scroll units moved since the last step (for the velocity)
 var _momentum: bool = false
 var _swallow_up: Source = Source.NONE
-var _replaying: bool = false
+## True while any TouchScroll replays a tap: another visible list must not take the click as a
+## new gesture of its own (shared by every instance).
+static var _replaying: bool = false
 var _bar_grab: float = 0.0
 var _base_y: float = 0.0
 var _over_applied: float = 0.0
@@ -186,6 +193,8 @@ func _input(event: InputEvent) -> void:
 			return
 		if kind != 1 or not pressed or not _inside(local):
 			return
+		if _covered(pos):
+			return
 		if max_scroll() <= 0.0:
 			return  # nothing to scroll: let the rows take the press as usual
 		_begin(src, idx, local, event)
@@ -203,6 +212,19 @@ func _input(event: InputEvent) -> void:
 		_move(local)
 	elif not pressed:
 		_end(local, event)
+
+
+## True when a visible cover (`COVER_GROUP`) that is not this list's own ancestor is under `at`
+## (viewport coordinates).
+func _covered(at: Vector2) -> bool:
+	for n: Node in get_tree().get_nodes_in_group(COVER_GROUP):
+		var c := n as Control
+		if c == null or not c.is_visible_in_tree() or c.is_ancestor_of(self):
+			continue
+		var p := c.get_global_transform_with_canvas().affine_inverse() * at
+		if Rect2(Vector2.ZERO, c.size).has_point(p):
+			return true
+	return false
 
 
 func _begin(src: Source, idx: int, local: Vector2, _event: InputEvent) -> void:
@@ -287,20 +309,26 @@ func _cancel() -> void:
 
 
 ## A press and release at `local` that did not move: click what is under it.
+## The click is pushed in the viewport's own coordinates (`in_local_coords` true, G-490). The
+## position comes from the canvas transform, which is already in those units; pushed as window
+## coordinates, the viewport would map it through the stretch transform a second time. On a phone
+## (canvas_items stretch, 2460x1080 window over a 938x412 UI, scale 2.62) the click landed at
+## a third of the spot, on the dim behind the panel, so no row in any scrolling menu could be tapped.
+## Unscaled test viewports did not show it.
 func _tap(local: Vector2) -> void:
-	var global := get_global_transform_with_canvas() * local
+	var at := get_global_transform_with_canvas() * local
 	_replaying = true
 	var vp := get_viewport()
 	var motion := InputEventMouseMotion.new()
-	motion.position = global
-	motion.global_position = global
-	vp.push_input(motion)
+	motion.position = at
+	motion.global_position = at
+	vp.push_input(motion, true)
 	for down: bool in [true, false]:
 		var b := InputEventMouseButton.new()
 		b.button_index = MOUSE_BUTTON_LEFT
 		b.pressed = down
 		b.button_mask = MOUSE_BUTTON_MASK_LEFT if down else 0
-		b.position = global
-		b.global_position = global
-		vp.push_input(b)
+		b.position = at
+		b.global_position = at
+		vp.push_input(b, true)
 	_replaying = false
