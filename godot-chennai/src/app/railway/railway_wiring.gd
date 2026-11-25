@@ -21,6 +21,7 @@ static func wire(main: Main, railway: Railway) -> void:
 	railway.hour_of = func() -> float: return GameLoop.clock.hour
 	var missions := main.find_child("MissionsLayer", false, false) as MissionsLayer
 	if missions != null:
+		missions.rail_map = railway.map_rail
 		railway.money_of = func() -> int: return missions.session.runner.balance() if missions.session != null else 0
 		railway.charge = func(rupees: int) -> void:
 			if missions.session != null:

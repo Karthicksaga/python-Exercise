@@ -30,6 +30,11 @@ class Hit:
 var points: PackedVector2Array
 ## Distance along the line of each point.
 var lengths: PackedFloat64Array
+## Long lines (G-461: the regional lines run to 67 km): segment indices by GRID_CELL cell, so
+## `project_near` looks only at the segments round the point. Built once in `_init`, read-only.
+const GRID_CELL := 100.0
+const GRID_MIN_POINTS := 48
+var _grid: Dictionary[Vector2i, PackedInt32Array] = {}
 
 
 ## Yaw that faces along (dx, dz).
@@ -45,6 +50,18 @@ func _init(line: PackedVector2Array) -> void:
 	lengths[0] = 0.0
 	for i in range(1, line.size()):
 		lengths[i] = lengths[i - 1] + line[i - 1].distance_to(line[i])
+	if line.size() >= GRID_MIN_POINTS:
+		for i in line.size() - 1:
+			var a := line[i]
+			var b := line[i + 1]
+			var c0 := Vector2i(floori(minf(a.x, b.x) / GRID_CELL), floori(minf(a.y, b.y) / GRID_CELL))
+			var c1 := Vector2i(floori(maxf(a.x, b.x) / GRID_CELL), floori(maxf(a.y, b.y) / GRID_CELL))
+			for cx in range(c0.x, c1.x + 1):
+				for cz in range(c0.y, c1.y + 1):
+					var key := Vector2i(cx, cz)
+					if not _grid.has(key):
+						_grid[key] = PackedInt32Array()
+					_grid[key].append(i)
 
 
 ## From a flat [x0, z0, x1, z1, ...] list (the rail file's form).
@@ -90,6 +107,15 @@ func at(s: float) -> Pose:
 	return p
 
 
+## The point at distance `s` (no allocation; `at` also gives the heading).
+func point_at(s: float) -> Vector2:
+	var c := clampf(s, 0.0, length())
+	var i := segment(c)
+	var span := lengths[i + 1] - lengths[i]
+	var t := (c - lengths[i]) / span if span > 0.0 else 0.0
+	return points[i].lerp(points[i + 1], t)
+
+
 ## A point `lateral` metres to the left (negative: right) of the line at distance `s`.
 func beside(s: float, lateral: float) -> Vector2:
 	var p := at(s)
@@ -124,6 +150,15 @@ func project(p: Vector2) -> Hit:
 ## enough to call every frame for 20 km lines.
 func project_near(p: Vector2, reach: float) -> Hit:
 	var best := Hit.new()
+	if not _grid.is_empty():
+		var c0 := Vector2i(floori((p.x - reach) / GRID_CELL), floori((p.y - reach) / GRID_CELL))
+		var c1 := Vector2i(floori((p.x + reach) / GRID_CELL), floori((p.y + reach) / GRID_CELL))
+		for cx in range(c0.x, c1.x + 1):
+			for cz in range(c0.y, c1.y + 1):
+				var seg: PackedInt32Array = _grid.get(Vector2i(cx, cz), PackedInt32Array())
+				for i in seg:
+					_hit_segment(p, i, best)
+		return best
 	for i in points.size() - 1:
 		var a := points[i]
 		var b := points[i + 1]
@@ -144,3 +179,22 @@ func project_near(p: Vector2, reach: float) -> Hit:
 			best.s = lengths[i] + sqrt(span2) * t
 			best.distance = distance
 	return best
+
+
+func _hit_segment(p: Vector2, i: int, best: Hit) -> void:
+	var a := points[i]
+	var b := points[i + 1]
+	var dx := b.x - a.x
+	var dz := b.y - a.y
+	var span2 := dx * dx + dz * dz
+	var t := clampf(((p.x - a.x) * dx + (p.y - a.y) * dz) / span2, 0.0, 1.0) if span2 > 0.0 else 0.0
+	var fx := a.x + dx * t
+	var fz := a.y + dz * t
+	var distance := Vector2(p.x - fx, p.y - fz).length()
+	if distance < best.distance:
+		var span := sqrt(span2)
+		if span == 0.0:
+			span = 1.0
+		best.lateral = ((p.x - fx) * dz + (p.y - fz) * -dx) / span
+		best.s = lengths[i] + span * t
+		best.distance = distance

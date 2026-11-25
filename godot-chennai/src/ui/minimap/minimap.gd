@@ -20,6 +20,12 @@ signal pressed
 
 var projection := MapProjection.new()
 var roads: MapRoads = null
+## The railway round the player (G-465), drawn when `settings.rail_shown`; `cheap` (the Low
+## preset) draws it in one colour with no tunnels, outlines or names.
+var rail: MapRail = null
+var cheap := false
+## Station names drawn on the plate at most (the nearest).
+const RAIL_NAMES := 3
 ## [{x, z, radius, kind, depth (0..1), label}] in world metres.
 var zones: Array[Dictionary] = []
 ## Marker 0 is the mission's: [{x, z, kind, label, radius}] in world metres.
@@ -150,6 +156,9 @@ func _paint_content(l: Control) -> void:
 			l.draw_multiline(roads.minor, Color(1, 1, 1, 0.20), 1.0 / ppm)
 		if not roads.major.is_empty():
 			l.draw_multiline(roads.major, Color(1, 0.93, 0.78, 0.55), 2.2 / ppm)
+	if rail_drawn():
+		rail.draw_lines(l, ppm, 2.6, cheap)
+		rail.draw_stations(l, ppm, 5.0, cheap)
 	for z in zones:
 		_paint_zone(l, z)
 	if quarry != Vector2.INF:
@@ -185,10 +194,48 @@ func _paint_zone(l: Control, z: Dictionary) -> void:
 			l.draw_arc(c, r, 0.0, TAU, 24, UiTheme.AMBER, w)
 
 
+## True when the railway is drawn on the plate now.
+func rail_drawn() -> bool:
+	return rail != null and not rail.is_empty() and settings != null and settings.rail_shown
+
+
+## The station names written on the plate now (tests): the nearest RAIL_NAMES on it, not on Low.
+func rail_labels() -> PackedStringArray:
+	var out := PackedStringArray()
+	if not rail_drawn() or cheap:
+		return out
+	var radius := _radius()
+	var order: Array[int] = []
+	for i in rail.station_points.size():
+		if projection.offset_of(rail.station_points[i]).length() < radius - 14.0:
+			order.append(i)
+	order.sort_custom(func(a: int, b: int) -> bool: return rail.station_points[a].distance_squared_to(player) < rail.station_points[b].distance_squared_to(player))
+	var nearest: Array[int] = order.slice(0, RAIL_NAMES)
+	for i in nearest:
+		out.append(rail.station_names[i])
+	return out
+
+
+func _paint_rail_names(l: Control) -> void:
+	if not rail_drawn() or cheap:
+		return
+	var c := _centre()
+	var names := rail_labels()
+	for i in rail.station_points.size():
+		if not names.has(rail.station_names[i]):
+			continue
+		var at := c + projection.offset_of(rail.station_points[i])
+		var w := _font.get_string_size(rail.station_names[i], HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE - 1).x
+		var tp := Vector2(clampf(at.x - w / 2.0, 4.0, size.x - w - 4.0), at.y - 7.0)
+		l.draw_string_outline(_font, tp, rail.station_names[i], HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE - 1, 4, Color(0, 0, 0, 0.85))
+		l.draw_string(_font, tp, rail.station_names[i], HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE - 1, Color(1, 1, 1, 0.9))
+
+
 func _paint_overlay(l: Control) -> void:
 	var c := _centre()
 	var radius := _radius()
 	l.draw_arc(c, radius - 1.0, 0.0, TAU, 48, Color(1, 1, 1, 0.35), 2.0)
+	_paint_rail_names(l)
 	for i in markers.size():
 		var m := markers[i]
 		var kind := StringName(str(m.get("kind", "mission")))

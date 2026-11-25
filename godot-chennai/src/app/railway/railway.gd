@@ -53,6 +53,8 @@ var charge: Callable = func(_rupees: int) -> void: pass
 var hour_of: Callable = func() -> float: return 12.0
 var network: RailNetwork
 var index: RailIndex
+## The railway as the maps draw it (G-465; built on a worker thread in `prepare`).
+var map_rail: MapRail = null
 var models: TrainModels
 var platforms: Array[StationLayout.Platform] = []
 var materials: RailMaterials
@@ -131,6 +133,7 @@ func prepare(city: CityWorld, player: PlayerRig) -> String:
 	city.set_rail_index(index)  # trees keep clear of the tracks (G-383)
 	platforms = await BackgroundTask.start(func() -> Array[StationLayout.Platform]: return StationLayout.platforms(net)).finish(get_tree())
 	models = await BackgroundTask.start(func() -> TrainModels: return TrainModels.load_all()).finish(get_tree())
+	map_rail = await BackgroundTask.start(func() -> MapRail: return MapRailFeed.build(net)).finish(get_tree())
 	if models.error != "":
 		push_warning(models.error)
 	materials = RailMaterials.create()
@@ -182,6 +185,20 @@ var prepared: bool = false
 var _stop_points := PackedVector2Array()
 var _stop_lines: Array[RailLine] = []
 var _platform_points := PackedVector2Array()
+
+
+## The lines within `reach` of `at`, asked again only after the player moved LINES_REASK metres
+## (the answer is a superset for reach + LINES_REASK).
+const LINES_REASK := 60.0
+var _around: Dictionary[float, Array] = {}
+
+
+func _lines_around(at: Vector2, reach: float) -> Array[RailLine]:
+	var cached: Array = _around.get(reach, [])
+	if cached.is_empty() or (cached[0] as Vector2).distance_to(at) > LINES_REASK:
+		cached = [at, network.lines_near(at, reach + LINES_REASK)]
+		_around[reach] = cached
+	return cached[1] as Array[RailLine]
 
 
 func _near_lines(at: Vector2, reach: float = 100.0) -> Array[RailLine]:
@@ -366,8 +383,9 @@ static func _departure_of(id: String) -> int:
 func _draw_trains(focus: Vector2) -> void:
 	_draws.clear()
 	var range_m := trains_view.draw_range + 150.0
-	for line in network.lines:
-		for t in line.trains(clock):
+	# Only the lines that pass near (G-461: most of the 22 regional lines are kilometres away).
+	for line in _lines_around(focus, range_m):
+		for t in line.trains_near(clock, focus, range_m):
 			if taken.has(t.id):
 				continue
 			var p := line.path.at(t.state.s).point()
@@ -428,7 +446,8 @@ func offer() -> Variant:
 	var found := standing_train(at, rig.body.global_position.y)
 	if found.is_empty():
 		return null
-	return ActionCandidate.make("BOARD THE TRAIN", ActionContext.P_BOARD + 2, 1.0, board)
+	var metro := (found[0] as RailLine.TrainAt).line.is_metro()
+	return ActionCandidate.make(RailText.BOARD_METRO if metro else RailText.BOARD_TRAIN, ActionContext.P_BOARD + 2, 1.0, board)
 
 
 ## BOARD: the rules first (standing, doors, next stop on the map, a ticket), then the walk.
@@ -451,7 +470,11 @@ func board() -> bool:
 	ride_departure = train.departure
 	ride_id = train.id
 	var nxt := train.state.next_stop
-	_toast("Train to %s · ticket ₹%d · next: %s" % [ride_line.destination(), answer.fare, ride_line.stops[nxt].name if nxt >= 0 else "end of the line"])
+	var next_name := ride_line.stops[nxt].name if nxt >= 0 else "end of the line"
+	if ride_line.is_metro():
+		_toast(RailText.METRO_TICKET % [RailText.metro_colour_name(ride_line.metro_line), ride_line.destination(), answer.fare, next_name])
+	else:
+		_toast("Train to %s · ticket ₹%d · next: %s" % [ride_line.destination(), answer.fare, next_name])
 	_start_walk(true, train, stop_index)
 	Sound.rail.door(false)
 	return true
@@ -628,7 +651,10 @@ func _step_ride() -> void:
 	_anchor.global_transform = xf
 	if RailRules.ride_ends_at(tr):
 		var stop := ride_line.stops[tr.state.stopped_at]
-		_toast("%s: end of the ride. %s" % [stop.name, ("The line continues to %s beyond the map." % ride_line.to.name) if ride_line.to.beyond else ("This train terminates at %s." % stop.name)], 5.0)
+		var why := ("The line continues to %s beyond the map." % ride_line.to.name) if ride_line.to.beyond else ("This train terminates at %s." % stop.name)
+		if tr.state.next_stop >= 0 and RailRules.goes_underground(tr):
+			why = RailText.RIDE_UNDERGROUND
+		_toast("%s: end of the ride. %s" % [stop.name, why], 5.0)
 		step_off()
 
 
@@ -702,6 +728,9 @@ func cab_offer_train() -> RailLine.TrainAt:
 	if found.is_empty():
 		return null
 	var train := found[0] as RailLine.TrainAt
+	# The Metro runs under automatic train operation: no cab for the player (G-462).
+	if train.line.is_metro():
+		return null
 	var f := TrainModels.formation(train.line.train_type)
 	var t: TrainModels.CarType = models.types.get(str(f[0][0]), null)
 	if t == null or not t.has_cab or train.state.next_stop < 0:
@@ -876,8 +905,8 @@ func _listen(focus: Vector2) -> void:
 	var nearest_d := INF
 	var nearest_speed := 0.0
 	var nearest_brake := 0.0
-	for line in network.lines:
-		for t in line.trains(clock):
+	for line in _lines_around(focus, HORN_RANGE):
+		for t in line.trains_near(clock, focus, HORN_RANGE):
 			var d := line.path.at(t.state.s).point().distance_to(focus)
 			if d > HORN_RANGE:
 				continue
@@ -1020,11 +1049,29 @@ func crowd_people(camera: Vector3) -> Array[Array]:
 
 # --- level crossings ------------------------------------------------------------------------------------
 
+## Crossings are worked out and drawn only within CROSSING_RANGE of the player (G-461: the regional
+## network maps 409; the timetable says where a far one's barriers are when the player gets there),
+## and freed beyond CROSSING_FREE. At most CROSSING_ADDS views are made per check.
+const CROSSING_RANGE := 700.0
+const CROSSING_FREE := 900.0
+const CROSSING_ADDS := 2
+
+
 func _add_crossings() -> void:
-	for c in network.crossings:
-		var n := CrossingView.make(c, materials)
-		add_child(n)
-		_crossing_nodes.append(n)
+	_crossing_nodes.resize(network.crossings.size())
+
+
+func _crossing_view(i: int) -> CrossingView:
+	return _crossing_nodes[i] as CrossingView if i < _crossing_nodes.size() else null
+
+
+## How many crossing views exist now (tests).
+func crossing_views() -> int:
+	var n := 0
+	for v in _crossing_nodes:
+		if v != null:
+			n += 1
+	return n
 
 
 func _step_crossings(dt: float) -> void:
@@ -1035,8 +1082,24 @@ func _step_crossings(dt: float) -> void:
 	var bell := 0.0
 	if _crossing_closing.size() != network.crossings.size():
 		_crossing_closing.resize(network.crossings.size())
-	for i in network.crossings.size():
+	# Views beyond CROSSING_FREE go; their barriers count as up.
+	for i in _crossing_nodes.size():
+		var v := _crossing_view(i)
+		if v != null and focus.distance_to(Vector2(network.crossings[i].x, network.crossings[i].z)) > CROSSING_FREE:
+			v.queue_free()
+			_crossing_nodes[i] = null
+			crossing_amounts[i] = 0.0
+			_crossing_closing[i] = 0
+	var adds := 0
+	for i in network.crossings_near(focus, CROSSING_RANGE):
 		var c := network.crossings[i]
+		if _crossing_view(i) == null:
+			if adds >= CROSSING_ADDS:
+				continue
+			adds += 1
+			var made := CrossingView.make(c, materials)
+			add_child(made)
+			_crossing_nodes[i] = made
 		var want := LevelCrossing.closed_amount(network, c, clock, extra)
 		var now := crossing_amounts[i]
 		# The booms move at their own pace (SWING seconds end to end).
@@ -1052,7 +1115,7 @@ func _step_crossings(dt: float) -> void:
 		_crossing_closing[i] = closing
 		bell = maxf(bell, RailSounds.bell_level(heard, amount))
 		crossing_amounts[i] = amount
-		(_crossing_nodes[i] as CrossingView).set_amount(amount, clock)
+		_crossing_view(i).set_amount(amount, clock)
 	Sound.rail.set_bell(bell)
 
 
@@ -1061,9 +1124,9 @@ func _step_crossings(dt: float) -> void:
 func crossing_obstacles() -> PackedVector3Array:
 	var out := PackedVector3Array()
 	for i in network.crossings.size():
-		if crossing_amounts[i] <= 0.0:
+		if crossing_amounts[i] <= 0.0 or _crossing_view(i) == null:
 			continue
-		out.append_array((_crossing_nodes[i] as CrossingView).obstacles())
+		out.append_array(_crossing_view(i).obstacles())
 	return out
 
 

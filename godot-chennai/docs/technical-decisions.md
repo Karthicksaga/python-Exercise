@@ -2764,3 +2764,109 @@ the interior camera takes over once inside. The bus holds its doors until the pl
 (and while they get off). The driver is CityLife's seated driver (G-265); the conductor and four
 seated passengers are cast adults with the passenger seat pose (G-266). The fare is still paid on
 BOARD (refusals are checked there); the toast comes from the conductor.
+
+## Rail extras: rail on the maps, the Metro, trains past the old edge (G-460 to G-468, agent/godot-rail2), 25 Nov 2026
+
+### G-460: The railway is built from the regional extract
+`tools/rail/extract_rail.py` (pyosmium, run where `data/raw/world.osm.pbf` exists) writes the railway
+part of the world's OSM extract as a small Overpass-style file, committed: `data/rail/regional-rail.osm.json.gz`
+(258 KB; route relations `train|subway|light_rail` not under construction, every rail/subway way and
+the ways the relations list, their nodes, stations and halts, level crossings; station areas with no
+node become a node at the ring's mean point with the negative way id; tags cut to what the builder
+reads). `build_rail.py` builds `world/rail/rail.json` from it over the world's box (`world/world.json`
+bounds minus 200 m). `--threejs` still rebuilds the Three.js file from the Three.js extract value for
+value. Regional relations list their ways out of order, with ways missing beyond the edge and often
+both tracks: the line is the shortest path through the graph of the relation's ways between the two
+stops of its first stretch in the world farthest apart along the track (a pair counts only where
+the track is at most 2.5 times their straight distance; crossover edges of 400 m cost let a path
+change track, eased over 40 m), extended at both ends to the vertex farthest from the other end,
+never back over itself. Each end in the world is a terminus: the nearest station within 400 m is
+added as a stop if needed and the track past the platform is cut 60 m beyond it. Suburban lines call
+at every mapped station within 40 m of their track (Chennai's EMUs stop at all stations).
+
+### G-461: Trains past the old map edge, with return services and keep-left
+The Beach line now runs Chennai Beach - Tambaram (both termini, 18 stops), the MRTS Beach - St.
+Thomas Mount (20), Central - beyond Sevvapet Road (to Arakkonam), Beach - beyond Arambakkam (to
+Sullurpeta, through Ennore, Ponneri, Gummidipoondi), Perungalattur - Chengalpattu Junction, the
+expresses to the world's edge. OSM maps the Chengalpattu, Arakkonam and Sullurpeta services one way;
+their return services are estimated: the same relation backwards, calling at the forward line's
+stations. A line running head-on on the same centre line as an earlier line (the return services,
+and OSM relations that list one track for both directions) moves onto the drawn track 3.4 to 7.5 m to
+its left (Indian double lines run on the left); where none is mapped (the north line is one way in
+OSM) it runs 4.8 m to the left on an estimated second track, which is added to the drawn tracks
+(`"estimated": true`; 113 runs). "Shared track" for the timetable's conflict check is now within 2 m,
+running along it (|cos| of the heading difference at least 0.9) and at its height (3 m): Metro
+viaducts over suburban lines and junction crossings are not shared track; offsets are searched at
+4 s steps (as the test checks). Headways of the Central, Chengalpattu, Arakkonam and Sullurpeta lines
+are the transit data's 15 minutes. Changed expectations (the Three.js lines no longer stop at the old
+box) are marked CHANGED in `test_build_rail.py`, `test_rail_file.gd` and `test_railway.gd`: inside the
+old box the lines retrace the Three.js lines within 2.5 m with the same stops, spacing, headway and
+offset, and every old track is still drawn within 2 m.
+Run time: the game asks by place. `RailNetwork.lines_near` / `crossings_near` (500 m cells),
+`RailLine.trains_near` (a train's position without allocating a state, `RunProfile.s_at`,
+`RailPath.point_at`), `RailPath.project_near` on a 100 m segment grid for long lines, platform
+centres cached in `StationView`, track boxes in `StationLayout.platforms`; level crossings (409 in the
+world) are worked out and built only within 700 m of the player (at most two new boom views per
+check, freed beyond 900 m).
+
+### G-462: Chennai Metro Blue and Green lines
+From OSM `route=subway` (relations 7845610, 8037595, 7845612, 8037605; ODbL, credit as for the rest):
+Airport - Wimco Nagar Depot (26 stops) and St. Thomas Mount - Central Metro (17), both ways. Heights
+from the ways' tags (estimated): viaduct rail top 12 m, tunnel -16 m, ramps 1 in 30, platforms level
+(on the viaduct if any of the platform is, else in the tunnel, else on the ground); where a viaduct
+meets a tunnel the profile is walked until no step is steeper than the grade. Behaviour: Metro trains
+(`metro`, four cars, 1.0/1.0 m/s², 80 km/h, 20 s at a station), a flat ₹20 ticket (estimated; the
+real fare is by distance), BOARD THE METRO, no cab (automatic train operation). Tunnels are in the
+timetable but nothing below the ground is drawn: tunnel track, cars in a tunnel and platforms of
+stations in a tunnel are left out; a ride ends at the last station before a tunnel ("The line goes
+underground here") and boarding where the next run goes underground is refused. Station names OSM
+gives in Tamil only have their English names added (`METRO_NAMES`, marked + in `RAIL.md`).
+
+### G-463: Line colours by kind
+Suburban amber, MRTS violet, express red, Metro Blue blue, Metro Green green: plain colours, the Metro
+ones by the lines' public names; no operator mark. Each line carries `metroLine` ("blue"/"green").
+
+### G-464: The Metro set, an original model
+`tools/blender/vehicles/trains.py` gains `metro_cab` and `metro_car` (standard gauge 1,435 mm, 2.9 m
+wide, 21.0-21.6 m, four 1.4 m doors a side, floor 1.08 m, roof units): stainless with a dark window
+band and an invented teal waist line, yellow cab front band; no logo, lettering or real livery.
+3,134 / 528 / 40 triangles (cab, LOD 0/1/2), 2,534 / 432 / 40 (car). Rake `metro`: cab, car, car,
+cab reversed (real Chennai Metro sets are four cars).
+
+### G-465: Rail lines on the minimap and the full map, toggled by the legend
+`MapRailFeed` (app) turns the network into `MapRail` (ui) once, on a worker thread: per kind one
+`draw_multiline` (tunnels apart, fainter), each track once (a line that retraces a drawn one within
+40 m is skipped: return services, expresses on suburban track), a named dot per station called at,
+filed by 1 km cell. The minimap takes the part within 600 m when it moves out of cover (cell lookup,
+no full scan), draws the lines and dots and names the nearest three stations on the plate; the full
+map draws everything and writes station names from the 2.6 km zoom in. The full map's legend lists
+the kinds with their colours above RAIL ON / RAIL OFF, which toggles the rail on both maps
+(`MapSettings.rail_shown`, saved). Low preset: one colour, no tunnels, no outlines, no names on the
+minimap.
+
+### G-466: The full map covers the whole city and labels it, decluttered by zoom
+Owner (phone screenshots): the full map stopped at a box round the player and named little.
+`MapCityFeed` reads every tile's main roads (points 40 m apart, 90 m on Low; uncached reads,
+`RegionalWorldSource.read_tile_roads`) and every name the tile indexes hold into `MapCity`: suburbs,
+neighbourhoods and localities, main road names every 1.8 km, hospitals and police stations as the
+generic words "Hospital" and "Police" with a cross or shield (TD-18: no business's own name), bus
+stands, named bus stops; and the world's edge, its land drawn a shade lighter. It is built once a game
+on a worker thread (3.1 s on this 4-core container for 66,867 road segments and 3,593 labels; started
+20 game seconds into play, or when the map is opened). Labels are written in priority order (suburb,
+station, primary road, neighbourhood, bus stand, hospital, police, other road, bus stop), each kind
+from its zoom on (suburbs always; bus stops only at the closest), none over another or over the map's
+buttons and panels. Two wider zoom steps (12 and 26 km from centre to top) show the whole city; a pan
+that leaves the streets read so far reads the streets round the new centre on a worker. Found on the
+way: `MapRoadFeed.wide_task` filled a copy of its near set (packed arrays are values), so the full
+map never had side streets; fixed.
+
+### G-467: Measured main-thread cost of the regional railway
+See handoff (Rail extras): `Railway` per frame at Egmore before (base) 0.40 ms, after 1.0 ms with
+the first regional network and all lines' trains computed each frame; with `lines_near` and
+`trains_near` the drawing part fell about 5.6 times. Numbers per run in the handoff.
+
+### G-468: Player-visible words in one place until the i18n system is merged
+Every word this work added or touched (boarding refusals, BOARD THE METRO, the Metro ticket, the ride
+ending underground, the map legend and toggle, the map's generic labels) is a constant in
+`src/rail/rail_text.gd` (`RailText`), English only; station and area names come from the data. When
+agent/godot-lang is merged each becomes a `Tr` key in `assets/i18n/en.csv` and `ta.csv`.

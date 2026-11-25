@@ -128,6 +128,9 @@ func update(draws: Array[Draw], camera: Vector3, focus: Vector3) -> void:
 			if t == null:
 				continue
 			var xf := car_transform(d.line, d.s, i)
+			# A Metro car in its tunnel is not drawn (nor solid): nothing below the ground is (G-462).
+			if d.line.underground_at(d.s + models.car_offsets(d.line.train_type)[i]):
+				continue
 			var dist := xf.origin.distance_to(camera)
 			var lod := t.lods.size() - 1
 			for l in t.lods.size():
