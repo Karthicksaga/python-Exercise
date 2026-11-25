@@ -325,3 +325,47 @@ after loading (so chunks are built at High in both), one run each; frame times o
 More lamps (twin arms and high masts carry their own heads); the primitives are the road detail (G-310…G-316).
 A game started at Low builds its chunks without guards, shrubs, wires or rubble (G-317), which this probe does not show.
 
+
+## Streaming hitches: what grew, and the fix (25 Nov 2026, G-470, G-471)
+
+`test_main_thread_budget_under_cpu_load` (`scene/test_city_streaming.gd`) failed on the combat merge
+(b19bacc). Its "bookkeeping" is the streamer's work outside the time-sliced steps: prefetch, dropping far
+chunks, collecting finished builds, starting builds. Five runs per merge on this 4-core VM (load 2-4),
+`STREAM_DEBUG=1` naming the part. Bookkeeping and free are median / max over the runs, in ms; "drop" is the
+largest drop-far time printed:
+
+| Commit (merge) | Failed | Bookkeeping | Free step | Drop | Largest body step |
+|---|---|---|---|---|---|
+| a054c6b (perf round 2) | 0 of 5 | 0.5 / 4.1 | 0.7 / 1.9 | 1.2 | 4.6 |
+| 882baff (+ roads 65b6e23, parity) | 0 of 5 | 3.1 / 8.4 | 0.7 / 1.6 | 8.2 | 10.4 |
+| 33f8b8c (+ railway HUD, same streaming code) | 3 of 5 | 12.7 / 100.7 | 4.4 / 21.9 | 20.0 | 7.7 |
+| 7827995 (+ hero models) | 3 of 5 | 6.3 / 18.0 | 0.4 / 3.9 | 17.5 | 7.3 |
+| faa5290 (+ trees: a TreeBatch per chunk) | 2 of 5 | 12.7 / 19.7 | 1.2 / 11.2 | 16.0 | 7.2 |
+| 761b448 (+ combat visuals) | 1 of 5 | 6.4 / 84.7 | 3.1 / 11.6 | 84.4 | 11.0 |
+| 4f93f7a (+ benchmark) | 1 of 5 | 5.7 / 11.7 | 3.0 / 7.7 | 7.7 | 23.6 |
+| b19bacc (+ combat) | 3 of 5 | 15.4 / 28.4 | 6.5 / 10.3 | 28.2 | 8.4 |
+
+- **The cost came with the roads merge**, not with combat: 882baff and 33f8b8c run the same streaming code
+  and failed 0 and 3 times in five, so after the roads merge pass or fail is the machine's noise around a
+  cost that was already there. Combat changed nothing the test runs.
+- **Bookkeeping was the drop.** `_drop_far` erased a dropped chunk's slot on the main thread; that freed its
+  build, and with it the road plan (`RoadDetail.Plan`: kerb runs, posts, crossings, marks, poles; G-310…G-317),
+  thousands of small objects: 1-28 ms (84 ms once). G-51 already moved the decoded chunk to a worker; the
+  road plan arrived later and was missed.
+- **The free step was a whole chunk view at once**: about 40 nodes, whose meshes and (since the trees merge)
+  three MultiMeshes per species were released with them: 2-22 ms in one step. Removing a chunk's collider
+  root took 3 ms (every body leaving the physics space in the same step).
+
+After G-470 (the build is released on a worker; nodes are freed one piece a step; meshes, MultiMeshes and
+shapes are released on a worker) and G-471 (the main thread never waits for the worker queue's lock), 15 runs
+in a row each, the same machine, an hour apart (b19bacc load 1.5-2, the fix load 1.2-1.5):
+
+| 15 runs | Failed | Frame median / max | Bookkeeping median / max | Step median / max | Free median / max |
+|---|---|---|---|---|---|
+| b19bacc | 2 | 6.0 / 19.5 | 2.4 / 19.0 | 3.1 / 8.3 | 0.9 / 2.7 |
+| the fix | 0 | 3.5 / 7.9 | 0.4 / 2.6 | 2.1 / 7.2 | 0.4 / 1.8 |
+
+What is left: single steps of 2-7 ms in work that is small and the same every time (a 384-triangle body
+joining the space, an empty `Node3D` being added). The thread made no context switch in them (counted in
+`/proc/thread-self/status`), so on this VM they are the host's time, not ours; a phone can still pay for a
+Jolt mesh shape being built when its body joins the space (G-55), which is not moved off the main thread yet.

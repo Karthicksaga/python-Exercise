@@ -2824,3 +2824,22 @@ searched, and a search goal next to the player let a car drive at 12 m/s to with
 there (a felt bump in one full run). Sight now looks past vehicles (`PhysicsLayers.WORLD` only, as the Three.js
 `toClear` skipped the player's own box), and a car not ramming that is within 25 m of the player takes the player as
 its goal and stops 9 m short whatever it was doing. The take-over test passed twice in a row after it.
+
+## Streaming hitches (G-470, G-471, branch `agent/godot-streamfix`, 25 Nov 2026)
+
+### G-470: A dropped chunk is released on a worker and freed one piece a step
+A dropped chunk's build (the decoded chunk, props, furniture **and the road plan**) goes to a worker in one
+box; the main thread only moves references (it freed the road plan itself since the roads merge: 1-28 ms).
+Its node roots are freed by `_free_piece`, one piece a step within the 2.5 ms budget: a collider root in
+the scene loses one body a step; a view leaves the scene whole (cheap, so nothing half-freed is ever seen and
+no script under it runs again); a root out of the scene is freed one leaf a step, deepest first, and the
+leaf's mesh, MultiMesh or collision shape is held and its last reference dropped on a worker at the end of
+the frame (a shared kit mesh only loses a reference). An orphaned build (dropped while building) goes the
+same way. Measured in `docs/performance.md`: bookkeeping median 2.4 → 0.4 ms, max 19 → 2.6 ms over 15 runs.
+
+### G-471: The main thread never waits for the worker queue's lock
+`ChunkWorkers` threads run at low priority beside other busy threads; one pre-empted while holding the
+queue lock kept the main thread waiting. The main thread now only `try_lock`s: `push` keeps the job in a
+backlog handed over at the next call or at the end of the frame (`flush`), `take_done` says "not yet",
+`pending` gives the last count. `wait`, `stop` and `fill_now` (start-up and shutdown) still block. Release
+jobs are pushed untracked (`push(job, false)`), so their tickets no longer pile up in `_done`.
