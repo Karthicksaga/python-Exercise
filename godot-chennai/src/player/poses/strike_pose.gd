@@ -148,12 +148,14 @@ func _init() -> void:
 	_pb.resize(9)
 
 
-func start(new_kind: StringName, new_side: int) -> void:
+## `new_windup` and `new_recover` (seconds) replace the standard timing when above zero: an
+## enemy's telegraphed swing (`Melee` wind-up 0.4 s) is slower than the player's quick jab.
+func start(new_kind: StringName, new_side: int, new_windup: float = -1.0, new_recover: float = -1.0) -> void:
 	kind = new_kind
 	side = clampi(new_side, 0, 1)
 	move = move_of(new_kind)
-	windup = BAT_WINDUP if move == BAT else PUNCH_WINDUP
-	recover = BAT_RECOVER if move == BAT else PUNCH_RECOVER
+	windup = new_windup if new_windup > 0.0 else (BAT_WINDUP if move == BAT else PUNCH_WINDUP)
+	recover = new_recover if new_recover > 0.0 else (BAT_RECOVER if move == BAT else PUNCH_RECOVER)
 	t = 0.0
 	hit_fired = false
 	active = true

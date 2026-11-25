@@ -49,7 +49,9 @@ func test_the_puff_is_where_the_blow_landed_and_leans_on_the_surface() -> bool:
 	puffs.spawn(at, Vector3.RIGHT, 1.0)
 	var t := puffs.ring_transform(0)
 	check(t.origin.distance_to(at) < 0.1, "ring at the contact point (%.3f m)" % t.origin.distance_to(at))
-	check(absf(t.basis.z.normalized().dot(Vector3.RIGHT)) > 0.99, "the ring lies on the surface (its face along the normal)")
+	_run(0.2)
+	var drift := puffs.ring_transform(0).origin - at
+	check(drift.dot(Vector3.RIGHT) > 0.03, "the dust drifts out along the surface normal (%.2f m)" % drift.dot(Vector3.RIGHT))
 	var f := puffs.flash_transform(0)
 	check(f.origin.distance_to(at) < 0.12, "flash at the contact point")
 	return true

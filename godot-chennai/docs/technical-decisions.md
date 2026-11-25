@@ -2406,3 +2406,63 @@ Merged with the performance branch: `PerfWiring.set_road_extras` sets `CityWorld
 `QualitySettings.preset` when the city joins Main and on every apply. `test_perf_wiring.gd` checks it on Low and that a
 game started at Low builds chunks with no wires, shrubs, guards or rubble but with lamps and crossings;
 `test_road_detail.gd` checks the same per level on plans and builds.
+
+### G-430: Fight poses are targets on the shared `PoseRig`; every person extends `CombatFigure`
+`HumanFigure` and `PersonView` extend `CombatFigure` (`src/player/combat_figure.gd`), which owns `play_strike`,
+`is_striking`, `cancel_strike`, `strike_point`, `play_flinch`, `carry`, the signal `strike_hit(kind, side)` and the
+`poser`, so the combat code calls the same methods on the player, a fare passenger, a walker or a gangster, and
+`WeaponModels` takes either. `StrikePose` (`src/player/poses/strike_pose.gd`) is a port of `strikePose.ts`: the key
+lists, the timings (punch 0.12 s wind-up + 0.26 s recovery, bat 0.22 + 0.38, the Three.js `STRIKES`; the hook has
+the punch's), the eased stretches with the blow itself accelerating as x squared, the fist closing and the flinch.
+Where the Three.js game stored arm bone directions judged by eye, the Godot poses store **targets**: the striking
+wrist goes to a point given in arm lengths from its shoulder (a jab 0.93 forwards and 0.18 inwards, so the fist
+ends on the centre line), the bat's hands move on a circle about the chest (yaw, radius, height keys) with the bat's
+own direction keyed too and the hands turned so the thumb side lies along it (`HandReach`). The two-bone solver
+(`PoseRig.reach`) puts the arm on the point, so a test can measure that the fist is out at the hit frame and the
+bat comes round in one sweep. The poses are laid on after the clip and the walk's swing, blended from the clip's
+own rotations (captured each step, so the fingers and arms return exactly when the blow ends). The hit frame
+(`strike_hit`) is signalled once, on the step that reaches the wind-up time, with the pose already on the skeleton;
+an unseen street person (`PersonView` outside the camera or beyond `animate_reach`) still runs the blow's clock so
+it lands on time. `play_strike(kind, side, windup, recover)` takes optional timings for an enemy's slower telegraphed
+swing (`Melee` wind-up 0.4 s). Kinds: `jab`, `cross`, `hook` (fists, `side` is the striking hand) and `bat`
+(always from the right). Seated or knocked-down figures drop their blow.
+
+### G-431: Carrying puts the palms on the prop's anchors
+`CarryPose` (`src/player/poses/carry_pose.gd`): `box` (both hands at the sides of a 36 x 26 x 28 cm carton in front
+of the waist, fingers forwards and under, palms inwards), `shoulder` (a 26 x 20 x 24 cm box on the right shoulder
+steadied by the right hand, the left arm still swings), `bag` (right hand by the hip) and `push` (both hands on a
+trolley bar). The carton is built by script (`LowPoly`, cardboard, a tape band and a label, one mesh) and follows
+the chest height. The palms are solved onto the anchors (`HandReach.place_palm`, `roll_palm`), so the walking arm
+swing is damped to nothing on the carrying arms (a hand moves under 8 cm, 47 cm free). The arms blend in over 0.3 s.
+
+### G-432: Hit puffs are one MultiMesh
+`HitPuffs` (`src/app/combat_fx/hit_puffs.gd`) is a port of `HitPuffs.ts` without sprites: a pool of puffs (the
+`hit_puffs` key of `QualitySettings`: 4 Low, 6 Medium, 8 High), each a dust ring (camera-facing, spreads
+0.22 to 0.77 m, drifts up 15 cm, 0.4 s) and a star flash (billboard, 0.12 s) as two instances of one
+`MultiMesh` of quads with one 128 x 64 generated atlas (ring and star) and one unshaded billboard shader whose
+per-instance custom data carries the age, the atlas cell, the billboard flag and the opacity. One draw call while a
+blow shows; none when nothing does (the node hides itself and stops processing). Nothing is allocated after
+`_ready`; the oldest puff is reused. No blood or marks: stylised dust and a star only.
+
+### G-433: Weapons are palette-textured low-poly meshes on the hand bone
+`WeaponModels` (`src/weapons_view/weapon_models.gd`): the Three.js bat, pistol, pump shotgun and SMG (the game
+did have firearms) plus a stick and a bottle, each a few boxes or prisms merged into one `ArrayMesh` (under 160
+triangles) coloured from one shared 16-colour palette image (`LowPoly`: one texture, one material for every weapon
+and carried box). `attach` makes a `BoneAttachment3D` on the right hand bone whose grip node is turned to the hand's
+own axes (`HandReach.axes`, read from the rest pose: fingers, thumb side, palm normal): a club lies across the palm
+with its blade beyond the thumb side, a gun's barrel runs along the fingers. A one-box silhouette takes over
+beyond 25 m. The hand closes round a held weapon every step.
+
+### G-434: Quality keys for the new effects
+`QualitySettings.TABLE` gains `hit_puffs` (4, 6, 8) and `motion_blur` (false, false, true: High may have it).
+
+### G-435: Motion blur is kept, as a cheap radial blur, off by default
+The Three.js `MotionBlur` blended each frame with the previous one through three full-resolution half-float render
+targets and two full-screen passes. On an Adreno 613 at 1080 x 2400 that is about 3 x 8 bytes per pixel of tile
+memory traffic for a nicety, so it is **not** ported as it was. The same effect (nothing below 16 m/s, full
+strength from 32 m/s, at most 0.42, following the speed at 4 per second) is a single five-tap radial blur of the
+screen texture (`src/game_engine/post/motion_blur.gd`, a `CanvasLayer` with a `hint_screen_texture` shader): no
+history buffer, no render target. It is **off by default** (`wanted` is false and nothing sets it), **never on
+Low or Medium** (the preset's `motion_blur` is false), and **free while off**: the layer and shader are only made
+when it is turned on, `update` returns at once and the node does not process (tested). No Settings row yet; it
+needs the owner's call and a measurement on the phone first.

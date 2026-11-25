@@ -225,7 +225,7 @@ func flash_alpha(i: int) -> float:
 	return _alpha[i * 2 + 1]
 
 
-## Writes puff `i`'s two quads: the dust ring (lies on the surface, spreads, drifts up) and the
+## Writes puff `i`'s two quads: the dust ring (a camera-facing ring that spreads and drifts up and out) and the
 ## star flash (faces the camera, grows, fades in 0.12 s).
 func _place(i: int) -> void:
 	var age := _age[i]
@@ -233,13 +233,12 @@ func _place(i: int) -> void:
 	var dust := clampf(age / DUST_TIME, 0.0, 1.0)
 	var flash := clampf(age / FLASH_TIME, 0.0, 1.0)
 	var at := _pos[i]
-	# Dust ring: its quad faces along the surface normal.
+	# Dust ring: a soft ring that faces the camera, spreading and drifting up and out along the
+	# surface normal.
 	var n := _normal[i]
-	var side := n.cross(Vector3.UP if absf(n.y) < 0.95 else Vector3.RIGHT).normalized()
-	var up := n.cross(side)
 	var d := (0.22 + 0.55 * sqrt(dust)) * size
-	var ring_at := at + Vector3(0.0, 0.15 * dust * size, 0.0) + n * 0.03
-	_write(i * 2, Transform3D(Basis(side * d, up * d, n * d), ring_at), Color(dust, 0.0, 0.0, 0.55 * (1.0 - dust) * (1.0 - dust)))
+	var ring_at := at + Vector3(0.0, 0.15 * dust * size, 0.0) + n * (0.03 + 0.2 * dust * size)
+	_write(i * 2, Transform3D(Basis.from_scale(Vector3(d, d, d)), ring_at), Color(dust, 0.0, 1.0, 0.8 * (1.0 - dust) * (1.0 - dust)))
 	# Flash: a billboard.
 	var f := (0.18 + 0.32 * flash) * size
 	if flash < 1.0:

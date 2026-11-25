@@ -764,7 +764,8 @@ the calls are the same on everyone and `WeaponModels` takes either.
 ## hand, 0 left, 1 right (the bat is always swung from the right, side is ignored for it).
 ## Timings are the Three.js STRIKES: punches 0.12 s wind-up + 0.26 s recovery, bat 0.22 + 0.38.
 ## Starting again while striking restarts the blow. Ignored while seated or knocked down.
-func play_strike(kind: StringName, side: int) -> void
+func play_strike(kind: StringName, side: int, windup: float = -1.0, recover: float = -1.0) -> void
+## (optional windup/recover seconds replace the standard timing, e.g. an enemy's 0.4 s telegraph)
 func is_striking() -> bool            # from play_strike until the recovery ends
 func cancel_strike() -> void          # drop it at once (hit, knocked out, got into a vehicle)
 ## Emitted ONCE per blow, on the physics step where the hit frame is reached (fist fully out,
@@ -790,6 +791,14 @@ static func attach(figure: CombatFigure, weapon_id: StringName) -> void
 static func detach(figure: CombatFigure) -> void
 static func held(figure: CombatFigure) -> StringName
 ```
+Also on `CombatFigure`: `strike_kind()`, `strike_time()`, `play_flinch(from: Vector3, strength)`,
+`carry_prop()`. Tests: `tests/unit/test_strike_pose.gd`, `test_low_poly.gd`, `test_motion_blur.gd`,
+`tests/scene/test_combat_visuals.gd`, `test_hit_puffs.gd`. Screenshots: `tests/tools/combat_shots.gd`
+(scratch folder). Decisions G-430..G-435 in `technical-decisions.md`. `MotionBlur` (`src/game_engine/post/`)
+is not wired into `Main` and has no Settings row: off by default, High only, free while off (G-435).
+**Weak:** the legs do not step into a punch; poses seen only on llvmpipe, not on a phone; nothing calls
+`carry`/`WeaponModels`/`HitPuffs` in play yet; HitPuffs must be added to the scene by the caller.
+
 Wiring to do on the combat side: call `figure.play_strike` when a swing starts, apply damage on
 `strike_hit` (not on the button), `HitPuffs.spawn(figure.strike_point(), -facing, strength)`, and
 `WeaponModels.attach` on weapon change.
