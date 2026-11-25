@@ -2407,3 +2407,61 @@ Merged with the performance branch: `PerfWiring.set_road_extras` sets `CityWorld
 `QualitySettings.preset` when the city joins Main and on every apply. `test_perf_wiring.gd` checks it on Low and that a
 game started at Low builds chunks with no wires, shrubs, guards or rubble but with lamps and crossings;
 `test_road_detail.gd` checks the same per level on plans and builds.
+
+## G-380 to G-389: The tree kit (phase 7, branch `agent/godot-trees`)
+Owner: "trees need improvement". Details, the photograph notes and the measurements are in `docs/trees.md`.
+
+### G-380: Models in code, one atlas painted by script; no Blender, no downloaded assets
+Eighteen species with three LODs each are built from leaf cards and tapered tubes by `TreeModels` (packed arrays,
+a worker thread, about 6 ms, deterministic), not exported from Blender: the brief allowed either, and code needs no
+GLB import, no version of Blender in CI and no third-party licence. The leaves, fronds, blossoms and bark are one
+1024 x 512 atlas painted by `tools/trees/bake_tree_atlas.py` (Pillow, drawn shapes): CC0, original, row in
+`assets/LICENSES.md`. Imported VRAM-compressed with mip maps: 0.7 MB in video memory against a 1.5 MB limit (tested).
+`assets/trees/atlas_layout.json` is the one source of the tile rectangles and is in the export include filter.
+
+### G-381: Species, silhouettes and triangle budgets per LOD
+neem, rain tree (wide flat crown, limbs), banyan (aerial roots, prop roots, huge crown), tamarind, gulmohar (red
+blossom cards), coconut (curved trunk, arched fronds), palmyra (tall slim trunk, fans, dry skirt), mango, peepal,
+casuarina (drooping needle tiers); oleander, bougainvillea, croton, grass tuft, dry scrub; three dead trees. Budgets
+(`TreeModels.BUDGET`): trees and palms 330 / 110 / 36, bushes 90 / 36 / 12, grass 30 / 14 / 6, dead wood 220 / 70 / 24;
+each LOD lighter than the one before (tested). The old two meshes (`CityModels.tree`, `.palm`, G-312's four silhouettes
+by scale) are replaced; the roads work's species names (`neem`, `rain`, `coconut`, `palmyra`) are kept.
+
+### G-382: One alpha-cut shader, wind in the vertex stage, wind level in UV.x
+`trees.gdshader`: alpha scissor (no sorting), both faces shaded from the crown's normals, the MultiMesh colour as the
+tint. Wind weight per vertex rides in the integer part of `UV.x / 2` (0..8), because vertex colours and UV2 did not
+reach shaders reliably under Compatibility (G-52). `sway` 0 turns the wind off (Low). `CityMaterials.trees` replaces
+`foliage` and follows `set_flat` (per-vertex lighting on Low), `set_wet` and `set_night`.
+
+### G-383: Species from the place, plants kept clear, a species cap per chunk
+`TreeStyle` (weights by district palette, park or beach under the tree, avenue beside it, mapped tree) and `TreePlan`
+(filters, size, lean, tint, rank, bushes and scrub, at most 7 tree and 3 understory species a chunk). The files carry no
+species tag and no landuse=forest, so the species is an estimate from a hash of the position; the palette's boundary
+circles give the district. Nothing stands in a building, on a carriageway, in water, through a deck or near a track:
+`Kit.rail_index` is set by the railway when it is built and `CityWorld.set_rail_index` prunes chunks already shown.
+The old `PALMS := 0.4` share and `SPECIES_SCALE`/`SPECIES_TINT` of G-312 are gone.
+
+### G-384: One `TreeBatch` a chunk, a MultiMesh per species and LOD
+`Build.tree_batch` (node `Trees`). `Build.surfaces` still counts only the merged geometry (the 8-draw test); tree
+draws are reported by `TreeBatch.draw_calls()`. Colliders are boxes for trees, palms and dead trunks only.
+`feature_switches` "trees" still hides the node; `PerfWiring.PROP_LAYERS` no longer lists trees (G-385).
+
+### G-385: LOD by distance without cross-fade, shadows from LOD 0 on High
+`TreeLod.pick` with a 3 m hysteresis, sorted about four times a second and only after the camera moved 1.5 m; the first
+sort runs on the worker with the camera's place from the streamer (`Kit.focus`), so adding a chunk sorts nothing on the
+main thread. At most two meshes per species per chunk: when all three LODs are in use the far instances take the middle
+mesh. Only LOD 0 casts a shadow, only when `tree_shadows` (High).
+
+### G-386: Tree caps in `QualitySettings.TABLE`
+`tree_density`, `scrub_density` (shares kept, by a per-plant hash rank so a preset change is live and the plants kept on
+Low are kept everywhere), `tree_lod0`, `tree_lod1`, `tree_far`, `tree_sway`, `tree_shadows` (table in `docs/trees.md`);
+`TreeQuality.apply` from `PerfWiring.apply`; the wind uniform follows it.
+
+### G-387: Budget
+No more than two draw calls per species per chunk; at most ten species a chunk, so about 20 draws in the chunk the camera
+stands in and about 8 in a far one; measured before and after in `docs/trees.md` and the handoff.
+
+### G-388: What the data cannot say
+No species or leaf-type tag, no landuse=forest or hill height in the chunk files: a hill road is only as leafy as its
+district's palette. Listed under weak spots; a data change (species tag in `build-world`, forest areas) would plug in at
+`TreeStyle.weights_for`.

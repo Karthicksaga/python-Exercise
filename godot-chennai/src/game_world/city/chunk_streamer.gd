@@ -270,6 +270,7 @@ func _start_builds() -> void:
 		var slot := Slot.new()
 		slot.cell = cell
 		var k := kit
+		k.focus = focus  # the trees sort themselves to a LOD for it on the worker (G-385)
 		slot.task = _workers.push(func() -> void: slot.build = ChunkBuilder.build(k, cell))
 		_slots[cell] = slot
 		running += 1
@@ -408,6 +409,15 @@ func shown_cells() -> Array[Vector2i]:
 func slot_state(cell: Vector2i) -> StringName:
 	var slot: Slot = _slots.get(cell)
 	return slot.state if slot != null else &""
+
+
+## Builds of the chunks that are in the scene (shown), for passes over all of them.
+func shown_builds() -> Array[ChunkBuilder.Build]:
+	var out: Array[ChunkBuilder.Build] = []
+	for slot: Slot in _slots.values():
+		if slot.state == &"shown" and slot.build != null:
+			out.append(slot.build)
+	return out
 
 
 func build_of(cell: Vector2i) -> ChunkBuilder.Build:

@@ -213,6 +213,7 @@ func apply() -> void:
 	var v := settings.current()
 	QualityApplier.apply_viewport(get_viewport(), v)
 	QualityApplier.apply_engine(v)
+	TreeQuality.apply(v)
 	var world := main.world
 	if world != null:
 		set_road_extras(world, settings.preset)
@@ -221,6 +222,7 @@ func apply() -> void:
 			world.materials.ground.set_shader_parameter(&"detail", bool(v["ground_detail"]) and settings.is_on("ground_detail"))
 			world.materials.water.set_shader_parameter(&"animated", bool(v["water_detail"]) and settings.is_on("water_detail"))
 			QualityApplier.apply_materials(world.materials, v)
+			world.materials.trees.set_shader_parameter(&"sway", 1.0 if TreeQuality.sway else 0.0)
 		_scale_landmarks(world, float(v["landmark_range"]))
 		if _world_hooked != world and world.streamer != null:
 			_world_hooked = world
@@ -269,10 +271,10 @@ static func set_road_extras(world: CityWorld, level: int) -> void:
 		world.streamer.kit.set(&"road_extras", level)
 
 
-## Trees, palms and street objects cast shadows only on High (G-258): each is one mesh or
-## MultiMesh per chunk, so any of it inside the shadow's reach drew the whole chunk's worth into
-## the shadow map.
-const PROP_LAYERS: PackedStringArray = ["Trees", "Palms", "Objects"]
+## Street objects cast shadows only on High (G-258): each is one mesh per chunk, so any of it
+## inside the shadow's reach drew the whole chunk's worth into the shadow map. Trees are not here:
+## only the LOD 0 trees near the player cast, and only on High (`TreeQuality`, G-385).
+const PROP_LAYERS: PackedStringArray = ["Objects"]
 
 
 func _on_chunk_shown(cell: Vector2i) -> void:

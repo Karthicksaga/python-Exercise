@@ -128,8 +128,7 @@ func test_streams_beyond_todays_box() -> bool:
 	kit.layouts = CityLayouts.create(kit.source)
 	kit.models = base.models
 	kit.materials = base.materials
-	kit.tree_mesh = base.tree_mesh
-	kit.palm_mesh = base.palm_mesh
+	kit.trees = base.trees
 	var cell := Vector2i(163, 165)
 	var b := ChunkBuilder.build(kit, cell)
 	assert_eq(b.error, "", "builds")
