@@ -142,7 +142,8 @@ func test_changing_a_setting_relays_the_controls_out_live() -> bool:
 	check(is_equal_approx((c.get_node("Root/Safe/Layer") as Control).modulate.a, 0.5), "and to the walking ones")
 	s.set_run_toggle(true)
 	await wait_frames(1)
-	check(c.buttons().size() == 3, "RUN shows only in toggle-run mode")
+	# ACTION, JUMP, HIT (on foot since G-414) and RUN.
+	check(c.buttons().size() == 4 and c.buttons().any(func(b: TouchButton) -> bool: return b.name == "Run"), "RUN shows only in toggle-run mode")
 	vp.queue_free()
 	vp2.queue_free()
 	return true

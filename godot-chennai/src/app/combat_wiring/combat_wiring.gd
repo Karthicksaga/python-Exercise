@@ -71,6 +71,10 @@ var _space: PhysicsDirectSpaceState3D = null
 var _move := ""
 var _since_move := 99.0
 var _carrying := false
+var _obstacles_hooked := false
+const SAMPLES := 300
+var _samples := PackedInt32Array()
+var _sample_at := 0
 var _runner: MissionRunner = null
 
 
@@ -357,6 +361,26 @@ func _physics_process(dt: float) -> void:
 	stats["usec_max"] = maxi(int(stats["usec_max"]), spent)
 	stats["usec_total"] = int(stats["usec_total"]) + spent
 	stats["steps"] = int(stats["steps"]) + 1
+	if _samples.size() < SAMPLES:
+		_samples.append(spent)
+	else:
+		_samples[_sample_at] = spent
+		_sample_at = (_sample_at + 1) % SAMPLES
+
+
+## The step's cost over the last SAMPLES steps, µs: {median, p95, max} (a single spike from a busy
+## machine does not hide what the step usually costs).
+func cost_summary() -> Dictionary:
+	var sorted := Array(_samples)
+	sorted.sort()
+	if sorted.is_empty():
+		return {"median": 0, "p95": 0, "max": 0}
+	return {"median": sorted[sorted.size() / 2], "p95": sorted[mini(sorted.size() - 1, int(sorted.size() * 0.95))], "max": sorted[sorted.size() - 1]}
+
+
+func reset_cost() -> void:
+	_samples.clear()
+	_sample_at = 0
 
 
 func _age_shots(dt: float) -> void:
@@ -536,6 +560,7 @@ func new_game() -> void:
 func _process(dt: float) -> void:
 	if rig == null:
 		return
+	_hook_obstacles()
 	var at := _player_at()
 	arms.draw(dt, at)
 	CombatFx.advance(puffs, dt)
@@ -556,6 +581,19 @@ func _process(dt: float) -> void:
 		_shown = show
 		CombatFx.hold(rig.body.figure, StringName(show))
 	fighters.frozen = _hitstop > 0
+
+
+## Traffic stops for the police cars: they join the street life's extra obstacles (after the
+## railway has set its level crossings there, so both count).
+func _hook_obstacles() -> void:
+	if _obstacles_hooked or life == null:
+		return
+	_obstacles_hooked = true
+	var before := life.extra_obstacles
+	life.extra_obstacles = func() -> PackedVector3Array:
+		var out := (before.call() as PackedVector3Array) if before.is_valid() else PackedVector3Array()
+		out.append_array(police.obstacles())
+		return out
 
 
 ## For tests and the debug panel: the fight as the Three.js snapshot showed it.

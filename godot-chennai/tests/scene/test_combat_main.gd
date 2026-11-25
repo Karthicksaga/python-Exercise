@@ -47,13 +47,11 @@ func test_combat_in_the_real_game() -> bool:
 	assert_true(cw.hud.bar.is_visible_in_tree(), "the health bar shows in play")
 	assert_true(main.rig.controls.fight_button(&"hit").is_visible_in_tree(), "HIT shows on foot")
 	# The main-thread cost of the fight's step with nobody to fight.
-	cw.stats["usec_max"] = 0
-	cw.stats["usec_total"] = 0
-	cw.stats["steps"] = 0
-	await wait_physics_frames(120)
-	var idle := float(cw.stats["usec_total"]) / maxf(1.0, float(cw.stats["steps"]))
-	print("combat idle step: mean %.0f us, max %d us" % [idle, int(cw.stats["usec_max"])])
-	assert_true(idle < 1000.0, "the idle step is cheap (%.0f us)" % idle)
+	cw.reset_cost()
+	await wait_physics_frames(240)
+	var idle := cw.cost_summary()
+	print("combat idle step: median %d us, p95 %d us, max %d us" % [idle["median"], idle["p95"], idle["max"]])
+	assert_true(int(idle["median"]) < 500, "the idle step is cheap (median %d us)" % idle["median"])
 	# The bat near home.
 	var bat: Dictionary = {}
 	for p: Dictionary in layer.session.content.pickups:

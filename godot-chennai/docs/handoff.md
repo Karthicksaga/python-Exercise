@@ -1245,8 +1245,8 @@ fight's cost: `tests/tools/combat_shots.gd` (header has the command).
 
 **Weak or not done.**
 - No colliders on enemies: the player can walk through them (the Three.js game had kinematic boxes).
-- Police cars are kinematic views: they drive through traffic (traffic gives way only through the
-  AI's obstacles, which this branch does not feed yet: `PoliceWiring.obstacles()` exists, unused).
+- Police cars are kinematic views that do not steer round traffic; traffic stops for them (their
+  boxes join `CityLife.extra_obstacles`), but a car can still overlap a vehicle it drives into.
 - The stage 11 courier chase still has no drawn quarry; the drive-by ride is teleported in its test.
 - Enemies stand at y 0 (the city is flat today); decks would need a ground ray per enemy.
 - Sound: cues `punch`, `whiff`, `shot`, `hurt`, `fail` are counted but have no recordings yet.
