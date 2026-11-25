@@ -138,6 +138,8 @@ static func _dist_to_ring(p: Vector2, ring: PackedVector2Array) -> float:
 
 func test_footprint_aligned_with_osm_within_2_m() -> bool:
 	for s in specs():
+		if s.overlay:
+			continue  # road decks, no outline: `test_hero_landmarks` fits them to the road data
 		var g := ground(s)
 		var under: Array[PackedVector2Array] = []
 		var edges: Array[PackedVector2Array] = []

@@ -533,7 +533,7 @@ G-58). A frame is the 2.5 ms budget plus at most one step by design (G-50). Full
 - Water is not in the far/map layers; the sea is unchanged; intermittent streams look full.
 - Medians are visual only (as kerbs); the median does not stop traffic.
 - Rule speed breakers (9,867) are invented and dense; tune `RULE_BUMP_SHARE` if play says so.
-- Kathipara hero model (Blender) not started (a later task, as asked).
+- Kathipara hero model: done as a detail layer (G-390 to G-393 below).
 - Seen only on llvmpipe (Compatibility); not on a phone or the Mobile renderer.
 
 ## OSM detail (agent/godot-osmdetail), 24 Nov 2026
@@ -1115,3 +1115,17 @@ crossings assumed square; OSM platform slabs from the detail layer can double th
 no foot-over-bridges or booking offices drawn; seated pose in the coach is the generic passenger
 pose; express trains cannot be boarded at Central's terminus platforms when they arrive (they
 terminate) and only leave once per two game hours; nothing checked on a phone.
+
+## Hero models (G-390 to G-393, agent/godot-hero), 25 Nov 2026
+**Done (tests run here, `./run_tests.sh --filter=landmarks`: 26 tests).** Chennai Egmore rebuilt as a textured hero
+model (3,676 / 770 / 124 triangles, atlas 140 KB PNG, towers with domes, kiosks and a clock, arcaded bays,
+three-span shed, entrances on the south porches) and Kathipara Junction added (4,180 / 1,465 / 336: coping,
+painted kerbs, pier guards, joints, lamps, six Tamil/English gantry boards on the chunk builder's own decks).
+Pipeline: atlas painter and UV projection in `tools/blender/landmarks/` (`atlas.py`, `lkit.py`), hooks
+(`entrances`, `peace_zone`, `facts_card`) in the spec, `LandmarkModels.atlas_material`, `_boards`.
+**Weak or not done.** Central, Ripon, Kapaleeshwarar, Santhome and the lighthouse were not upgraded (time). Egmore is not
+compared with a photo; the clock tower and heights are estimates. Kathipara's details are drawn within 200 m of
+the junction only (the long arms keep the plain decks); its deck heights are the world's estimate. The hero
+material is not switched to per-vertex lighting by the Low preset (`CityMaterials.set_flat` knows only the
+shared materials). Tamil place names on the boards need a native speaker. The peace zone has no consumer.
+Seen only on llvmpipe (Compatibility), not on a phone.

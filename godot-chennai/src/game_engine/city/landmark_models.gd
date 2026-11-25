@@ -25,6 +25,8 @@ class Built:
 	var boxes: int = 0
 	var triangles: PackedInt32Array = PackedInt32Array()
 	var error: String = ""
+	## The hero atlas material (null for vertex-coloured landmarks).
+	var material: StandardMaterial3D
 
 
 ## Holds a landmark at its world point and follows the floating origin.
@@ -50,6 +52,18 @@ static func triangle_count(mesh: Mesh) -> int:
 	return n
 
 
+## The hero model's material (G-390): its one atlas, tinted by vertex colour. Worker thread.
+static func atlas_material(spec: LandmarkSpec) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	var tex := ResourceLoader.load(spec.atlas_path(), "Texture2D") as Texture2D
+	m.albedo_texture = tex
+	m.vertex_color_use_as_albedo = true
+	m.roughness = 0.88
+	m.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	return m
+
+
 ## Worker thread. `material` overrides the GLB's material (null keeps it, for tools).
 static func build(spec: LandmarkSpec, material: Material) -> Built:
 	var out := Built.new()
@@ -62,6 +76,9 @@ static func build(spec: LandmarkSpec, material: Material) -> Built:
 	holder.name = "Landmark_" + spec.id
 	holder.world = spec.origin
 	holder.spec_id = spec.id
+	if spec.atlas_file != "":
+		material = atlas_material(spec)
+		out.material = material as StandardMaterial3D
 	var ends: Array[float] = [spec.lod0_end, spec.lod1_end, spec.lod2_end]
 	var body := StaticBody3D.new()
 	body.name = "Collision"
@@ -103,6 +120,7 @@ static func build(spec: LandmarkSpec, material: Material) -> Built:
 	scene.free()
 	holder.add_child(body)
 	_signs(spec, holder)
+	_boards(spec, holder, font_for_signs())
 	out.node = holder
 	return out
 
@@ -123,6 +141,40 @@ static func _global_in(root: Node3D, n: Node3D) -> Transform3D:
 			t = (p as Node3D).transform * t
 		p = p.get_parent()
 	return t
+
+
+static func font_for_signs() -> Font:
+	return load(SIGN_FONT) as Font if ResourceLoader.exists(SIGN_FONT) else null
+
+
+## Gantry boards (G-390, `spec.boards`): Tamil above English on the green boards the kit draws over
+## the carriageways, facing the traffic that comes at them. World positions are in the spec.
+static func _boards(spec: LandmarkSpec, holder: Node3D, font: Font) -> void:
+	for b: Dictionary in spec.data.get("boards", []):
+		var world := Vector2(float(b["world"][0]), float(b["world"][1]))
+		var face := Vector2(float(b["facing"][0]), float(b["facing"][1]))
+		var z: Array = b["board_z"]
+		var base := float(b["deck_height"]) + 0.06
+		var mid := base + (float(z[0]) + float(z[1])) / 2.0
+		var local := world - spec.origin + face * 0.3
+		var i := 0
+		for line: String in [str(b.get("ta", "")), str(b.get("en", ""))]:
+			var label := Label3D.new()
+			label.name = "Board_%s_%d" % [str(b["road"]), i]
+			label.text = line
+			if font != null:
+				label.font = font
+			label.font_size = 96
+			label.pixel_size = 0.9 / 96.0
+			label.modulate = Color(0.95, 0.96, 0.93)
+			label.outline_size = 0
+			label.double_sided = false
+			label.shaded = false
+			label.visibility_range_end = spec.lod0_end + 120.0
+			label.position = Vector3(local.x, mid + 0.55 - 1.05 * i, local.y)
+			label.rotation.y = atan2(face.x, face.y)
+			holder.add_child(label)
+			i += 1
 
 
 static func _signs(spec: LandmarkSpec, holder: Node3D) -> void:
