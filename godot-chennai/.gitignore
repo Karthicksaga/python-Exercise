@@ -8,3 +8,5 @@ android/
 export_credentials.cfg
 # Test and run logs.
 tests/out/
+__pycache__/
+*.pyc
