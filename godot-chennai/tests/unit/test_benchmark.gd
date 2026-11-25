@@ -140,6 +140,10 @@ func test_files_have_their_shape() -> bool:
 	var levels: Array[Dictionary] = [_level(QualitySettings.LOW, 33.4, 40.0, true), _level(QualitySettings.HIGH, 56.0, 70.0)]
 	var device := {"model": "Test phone", "os": "Android 14", "cpu": "x8", "memory_gib": 5.6, "screen": "2460x1080", "godot": "4.7.2", "version": "", "commit": "abc1234", "renderer": "Mobile (Vulkan)"}
 	var renderer := {"method": "mobile", "driver": "vulkan", "gpu": "Adreno (TM) 613", "vendor": "Qualcomm", "api": "1.3", "type": "integrated"}
+	(levels[0]["segments"] as Array)[0]["ab"] = {
+		"all_on": {"frames": 40, "gpu_ms": 30.0, "cpu_ms": 5.0},
+		"shadows": {"gpu_change": -6.5, "cpu_change": -0.2, "avg_change": -6.0, "draws_change": -20, "primitives_change": -50000},
+	}
 	var result := BenchmarkReport.make(device, renderer, "Low (auto)", levels, 1.0, 400.0, {}, {})
 	var parsed: Variant = JSON.parse_string(BenchmarkReport.to_json(result))
 	assert_true(parsed is Dictionary, "the JSON parses")
@@ -150,7 +154,7 @@ func test_files_have_their_shape() -> bool:
 	assert_eq((d["levels"] as Array).size(), 2, "a block per level")
 	assert_true(((d["levels"] as Array)[0] as Dictionary).has("judge"), "each judged")
 	var text := BenchmarkReport.to_text(result)
-	for part: String in ["Recommendation: Use Low", "Mobile (Vulkan)", "Adreno (TM) 613", "abc1234", "== Low (the level you had)", "== High", "Morning", "18:40", "Compare renderers"]:
+	for part: String in ["Recommendation: Use Low", "Mobile (Vulkan)", "Adreno (TM) 613", "abc1234", "== Low (the level you had)", "== High", "Morning", "18:40", "Compare renderers", "A/B Morning (all on: GPU 30.0", "shadows off: GPU -6.5"]:
 		assert_contains(text, part, "benchmark.txt shows %s" % part)
 	return true
 

@@ -9,6 +9,8 @@ extends RefCounted
 ##     --benchmark-levels=low,high   only these levels, in this order (default: yours, then the others)
 ##     --benchmark-off=traffic,shadows   these feature switches off for the run (measuring what a
 ##                               feature costs, docs/performance.md); switched back on after
+##     --benchmark-ab=shadows,traffic    interleaved A/B: each measured segment cycles all-on and
+##                               each of these off, in 40-step phases (G-406)
 ##
 ## Only the rows and one check of the flags exist until it is started.
 
@@ -70,6 +72,11 @@ static func _on_state(main: Main, s: StringName, args: PackedStringArray) -> voi
 					main.perf.switches.toggle(id)
 					off.append(id)
 	var runner := BenchmarkRunner.start(main, scale, levels, args.has("--benchmark-quit"))
+	for a in args:
+		if a.begins_with("--benchmark-ab="):
+			for id in a.trim_prefix("--benchmark-ab=").split(",", false):
+				if FeatureSwitches.ids().has(id):
+					runner.ab_ids.append(id)
 	if not off.is_empty():
 		print("[bench] switched off for this run: %s" % ", ".join(off))
 		runner.switched_off = off

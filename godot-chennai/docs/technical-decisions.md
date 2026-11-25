@@ -2401,3 +2401,12 @@ bound side in amber), the counts under each, RUN AGAIN and CLOSE; text 12 at the
 The CI job `benchmark` runs it on the Compatibility renderer under xvfb (software GL, scale 0.1)
 and uploads `benchmark.json`/`.txt`; it fails only if the benchmark does not finish or writes no
 results.
+
+### G-406: Feature costs by interleaved A/B, not by separate runs
+Separate runs with one feature switched off were useless on the shared build machine: the same
+configuration measured 542 ms and 121 ms of software-GPU time a frame an hour apart. With
+`--benchmark-ab=shadows,traffic,…` each measured segment cycles 40-step phases: everything on,
+then each listed feature switch off in turn (2 frames skipped after each change, the GPU timer
+reports late); each phase has its own numbers and the change against the all-on phase is written
+per segment (`"ab"` in benchmark.json, "A/B" lines in benchmark.txt). Drift of the machine (or a
+phone warming up) falls on every phase alike. Draw calls and primitives are exact either way.

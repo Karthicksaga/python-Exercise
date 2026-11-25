@@ -46,6 +46,8 @@ func test_benchmark_runs_only_when_started_and_gives_everything_back() -> bool:
 	main.pause()
 	var runner := BenchmarkRunner.start(main, SCALE)
 	runner.settle_steps = 30
+	# Interleaved A/B of one feature (G-406): its phases recorded, the switch on again after.
+	runner.ab_ids = PackedStringArray(["trees"])
 	main.resume()
 	assert_true(runner != null and BenchmarkRunner.started == runs_before + 1, "started")
 	assert_true(await wait_until(func() -> bool: return runner.running and runner.camera != null, 600), "it takes the camera")
@@ -83,6 +85,8 @@ func test_benchmark_runs_only_when_started_and_gives_everything_back() -> bool:
 			check(int(row["frames"]) > 0 and float(row["avg_ms"]) > 0.0, "%s %s: measured frames" % [level["level"], row["id"]])
 			for k in BenchmarkReport.SEGMENT_KEYS:
 				check(row.has(k), "%s %s: has %s" % [level["level"], row["id"], k])
+			var ab: Dictionary = row.get("ab", {})
+			check(ab.has("all_on") and ab.has("trees"), "%s %s: the A/B phases recorded (%s)" % [level["level"], row["id"], ab.keys()])
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(BenchmarkReport.JSON_PATH))
 	assert_true(parsed is Dictionary and str((parsed as Dictionary).get("format", "")) == BenchmarkReport.FORMAT, "benchmark.json written")
 	assert_eq(((parsed as Dictionary).get("levels", []) as Array).size(), 3, "with the three levels")
@@ -93,6 +97,7 @@ func test_benchmark_runs_only_when_started_and_gives_everything_back() -> bool:
 	assert_eq(runner.card.tables.size(), 3, "with a table per level")
 
 	# Everything given back.
+	assert_true(s.is_on("trees"), "the A/B feature switched on again")
 	assert_false(s.is_held(), "the level released")
 	assert_eq(s.preset, saved_level, "the player's level back")
 	assert_true(s.auto, "still Auto")

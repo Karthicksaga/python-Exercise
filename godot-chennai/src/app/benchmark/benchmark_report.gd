@@ -131,6 +131,20 @@ static func to_text(result: Dictionary) -> String:
 				float(row.get("fps", 0.0)), int(row.get("hitches", 0)), _ms(row.get("gpu_ms", 0.0)), _ms(row.get("cpu_ms", 0.0)),
 				str(row.get("verdict", "")).left(10), int(row.get("draws", 0)), int(row.get("primitives", 0)) / 1000, float(row.get("video_mb", 0.0)),
 				int(row.get("chunks_built", 0)), _ms(row.get("chunk_build_ms_max", 0.0)), int(row.get("traffic", 0))])
+		for s: Variant in level.get("segments", []):
+			var row := s as Dictionary
+			if not row.has("ab"):
+				continue
+			var ab: Dictionary = row["ab"]
+			var parts := PackedStringArray()
+			var ids: Array = ab.keys()
+			ids.erase("all_on")
+			ids.sort_custom(func(a: Variant, b: Variant) -> bool: return float((ab[a] as Dictionary)["gpu_change"]) < float((ab[b] as Dictionary)["gpu_change"]))
+			for id: Variant in ids:
+				var e := ab[id] as Dictionary
+				parts.append("%s off: GPU %+.1f, CPU %+.1f, frame %+.1f ms, draws %+d, prims %+dk" % [id, float(e["gpu_change"]), float(e["cpu_change"]), float(e["avg_change"]), int(e["draws_change"]), int(e["primitives_change"]) / 1000])
+			var on := ab["all_on"] as Dictionary
+			lines.append("A/B %s (all on: GPU %.1f, CPU %.1f ms, %d frames): %s" % [row.get("short", "?"), float(on["gpu_ms"]), float(on["cpu_ms"]), int(on["frames"]), "; ".join(parts)])
 	lines.append("")
 	lines.append("Columns: frame time avg/p95/p99 in ms; >50 = frames over 50 ms; gpu and cpu ms a frame (cpu = scripts + the renderer's CPU, as the overlay); draws and primitives a frame; vram = most video memory; chunk = chunks built; build = slowest chunk build on a worker (ms); cars = traffic at the end.")
 	return "\n".join(lines) + "\n"

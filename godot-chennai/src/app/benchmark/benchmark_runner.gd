@@ -36,6 +36,16 @@ var main: Main
 var scale: float = 1.0
 ## The levels to run, in order; empty: the level the player had, then the others Low → High.
 var levels: Array[int] = []
+## Interleaved A/B (`--benchmark-ab=`, G-406): while a segment measures, the run cycles through
+## phases of AB_STEPS physics steps: everything on, then each of these feature switches off in
+## turn; each phase's frames go to their own numbers, so a feature's cost is read inside the same
+## seconds as the baseline and a busy machine's drift cancels out.
+var ab_ids := PackedStringArray()
+const AB_STEPS := 40
+## Frames skipped after a phase change (the GPU timer reports a frame or two late).
+const AB_SKIP := 2
+var _ab_stats: Array[BenchmarkStats] = []
+var _ab_phase: int = -1
 ## Feature switches the launch turned off for this run (printed in the result).
 var switched_off := PackedStringArray()
 ## Quit the game when done (CI).
@@ -129,7 +139,10 @@ func run() -> void:
 			if cancelled:
 				_give_back()
 				return
-			rows.append(_stats.result(segs[si]))
+			var row := _stats.result(segs[si])
+			if not ab_ids.is_empty():
+				row["ab"] = _ab_result()
+			rows.append(row)
 			_level_stats.build_max_usec = maxi(_level_stats.build_max_usec, _stats.build_max_usec)
 			_level_build_usec += _stats.build_usec_end - _stats.build_usec_start
 			_level_stats.steps += _stats.steps
@@ -251,11 +264,16 @@ func _run_segment(seg: BenchmarkRoute.Segment, level_index: int, level_count: in
 	_steps = 0
 	_target = BenchmarkRoute.steps(seg, scale)
 	_skip_frame = true
+	_ab_stats.clear()
+	for i in ab_ids.size() + 1:
+		_ab_stats.append(BenchmarkStats.new())
+	_ab_phase = -1
 	_mode = &"run"
 	await _step_reached
 	if cancelled:
 		return
 	_stats.steps = _steps
+	_set_ab_phase(-1)
 	_stats.built_end = _built()
 	_stats.build_usec_end = _build_usec()
 	_stats.build_max_usec = int(main.world.streamer.stats.get("max_build_usec", 0))
@@ -308,6 +326,8 @@ func _physics_process(_delta: float) -> void:
 	if _mode == &"idle" or _segment == null:
 		return
 	_place(BenchmarkRoute.pose(_segment, _steps / float(BenchmarkRoute.STEPS_A_SECOND) if _mode == &"run" else 0.0, scale))
+	if _mode == &"run" and not ab_ids.is_empty():
+		_set_ab_phase((_steps / AB_STEPS) % (ab_ids.size() + 1))
 	_steps += 1
 	if _steps >= _target:
 		_mode = &"idle"
@@ -324,6 +344,9 @@ func _process(_delta: float) -> void:
 		# The first frame of a segment, and the first after a pause, began before it.
 		_skip_frame = false
 		return
+	if _ab_skip > 0:
+		_ab_skip -= 1
+		return
 	var perf := main.perf
 	var r := perf.render_times()
 	var tl := perf.timeline
@@ -333,8 +356,41 @@ func _process(_delta: float) -> void:
 	var prims := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)
 	var video := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED)
 	var stream := int(main.world.streamer.stats.get("last_frame_usec", 0))
-	for s: BenchmarkStats in [_stats, _level_stats]:
+	var into: Array[BenchmarkStats] = [_stats, _level_stats]
+	if _ab_phase >= 0 and _ab_phase < _ab_stats.size():
+		into.append(_ab_stats[_ab_phase])
+	for s: BenchmarkStats in into:
 		s.add(ms, r.y, scripts + r.x, busy, draws, prims, video, stream)
+
+
+var _ab_skip: int = 0
+
+
+## Phase 0: every switch of `ab_ids` on; phase i: the i-th off. -1: all back on (the end).
+func _set_ab_phase(phase: int) -> void:
+	if phase == _ab_phase:
+		return
+	for i in ab_ids.size():
+		var want_on := phase != i + 1
+		if main.perf.settings.is_on(ab_ids[i]) != want_on:
+			main.perf.switches.toggle(ab_ids[i])
+	_ab_phase = phase
+	_ab_skip = AB_SKIP
+
+
+## Each phase's GPU, CPU and frame time, and its change against the all-on phase (ms; a negative
+## change is what switching the feature off saved).
+func _ab_result() -> Dictionary:
+	var out := {}
+	var base := _ab_stats[0].result()
+	for i in _ab_stats.size():
+		var r := _ab_stats[i].result()
+		var id := "all_on" if i == 0 else ab_ids[i - 1]
+		out[id] = {"frames": r["frames"], "avg_ms": r["avg_ms"], "gpu_ms": r["gpu_ms"], "cpu_ms": r["cpu_ms"], "draws": r["draws"], "primitives": r["primitives"],
+			"gpu_change": snappedf(float(r["gpu_ms"]) - float(base["gpu_ms"]), 0.01), "avg_change": snappedf(float(r["avg_ms"]) - float(base["avg_ms"]), 0.01),
+			"cpu_change": snappedf(float(r["cpu_ms"]) - float(base["cpu_ms"]), 0.01), "draws_change": int(r["draws"]) - int(base["draws"]),
+			"primitives_change": int(r["primitives"]) - int(base["primitives"])}
+	return out
 
 
 func _notification(what: int) -> void:
