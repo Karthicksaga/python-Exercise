@@ -15,8 +15,10 @@ static func method() -> String:
 static func apply_viewport(vp: Viewport, v: Dictionary) -> void:
 	var scale := clampf(float(v["scale"]), 0.25, 1.0)
 	vp.scaling_3d_scale = scale
-	# FSR 1 needs the RenderingDevice renderers; Compatibility only scales bilinearly.
-	var fsr := int(v["scale_mode"]) == QualitySettings.FSR1 and method() != "gl_compatibility" and scale < 0.999
+	# FSR 1 is Forward+ only on 4.7.2 ("FSR1 3D scaling is only available when using the Forward+
+	# renderer"): the Mobile renderer (the phones) and Compatibility scale bilinearly, and the overlay
+	# says so (found by the benchmark, G-405).
+	var fsr := int(v["scale_mode"]) == QualitySettings.FSR1 and method() == "forward_plus" and scale < 0.999
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if fsr else Viewport.SCALING_3D_MODE_BILINEAR
 	vp.msaa_3d = Viewport.MSAA_2X if int(v["msaa"]) >= 1 else Viewport.MSAA_DISABLED
 	vp.anisotropic_filtering_level = [Viewport.ANISOTROPY_DISABLED, Viewport.ANISOTROPY_2X, Viewport.ANISOTROPY_4X][clampi(int(v["aniso"]), 0, 2)]

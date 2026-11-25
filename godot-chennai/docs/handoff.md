@@ -1115,3 +1115,35 @@ crossings assumed square; OSM platform slabs from the detail layer can double th
 no foot-over-bridges or booking offices drawn; seated pose in the coach is the generic passenger
 pose; express trains cannot be boarded at Central's terminus platforms when they arrive (they
 terminate) and only leave once per two game hours; nothing checked on a phone.
+
+## Benchmark mode (G-400…G-405, branch `agent/godot-bench`), 25 Nov 2026
+**What it is.** Settings → "Run benchmark" (title SETTINGS and pause menu) or `--benchmark` after
+`--` runs a fixed 90 s route in game time (morning Anna Salai, 18:40 Kamarajar Salai, night EVR
+Periyar Salai, Egmore platform with a train, Ranganathan Street market, Anna flyover deck, a 360 m
+drive into new chunks) at the player's level and then the other two, and shows a one-screen card
+(recommendation, renderer, device, build, a table per level). The same goes to
+`user://benchmark.json` and `user://benchmark.txt`. Owner instructions: `docs/performance.md`
+("The benchmark: one tap, one screenshot").
+
+**Where things are.** `src/app/benchmark/` (`BenchmarkRoute` the route and camera poses,
+`BenchmarkStats` a segment's numbers, `BenchmarkReport` recommendation and files, `BenchmarkDevice`
+device, commit and thermal, `BenchmarkRunner` the run, `BenchmarkWiring` rows and flags),
+`src/ui/benchmark/` (`BenchmarkCard`, `BenchmarkBanner`), `QualitySettings.hold_preset/release_hold`,
+`tools/stamp_build.py` (CI stamps the commit), `tests/tools/bench_route_finder.gd` (regenerates the
+route from the data), `tests/tools/benchmark_shot.gd` (card pictures from a json). CI job
+`benchmark`: Compatibility under xvfb, scale 0.1, uploads `godot-chennai-benchmark`; fails only if
+the run does not finish. Flags: `--benchmark-quit`, `--benchmark-scale=`, `--benchmark-levels=`,
+`--benchmark-off=` (feature switches off for the run, to measure their cost).
+Tests: `tests/unit/test_benchmark.gd`, `tests/scene/test_benchmark_card.gd`,
+`tests/scene/test_benchmark_run.gd`.
+
+**Weak or not done.**
+- Nothing here ran on a phone. The thermal readings (PowerManager, battery broadcast through
+  `AndroidRuntime`, the kernel's battery file) are untested on Android; any of them may say "n/a".
+- The traffic AI is seeded but not reset per segment or level: the same streets, not the same cars.
+- Frames are counted as played: Low's 30 fps cap and the physics catch-up cap (2 steps on Low)
+  stay on, so on a slow phone a level takes longer in real time than 90 s.
+- The phone estimate in `docs/performance.md` is a single-number calibration of software
+  rendering against one overlay reading; treat it as a ranking, not a prediction.
+- Found and fixed on the way: Medium asked for FSR 1, which 4.7.2 only has on Forward+; the
+  Mobile renderer printed a warning and scaled bilinearly while the overlay said "FSR".

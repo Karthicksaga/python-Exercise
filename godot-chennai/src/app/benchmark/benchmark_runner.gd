@@ -36,6 +36,8 @@ var main: Main
 var scale: float = 1.0
 ## The levels to run, in order; empty: the level the player had, then the others Low → High.
 var levels: Array[int] = []
+## Feature switches the launch turned off for this run (printed in the result).
+var switched_off := PackedStringArray()
 ## Quit the game when done (CI).
 var quit_after: bool = false
 ## The last result (also in the files).
@@ -144,6 +146,7 @@ func run() -> void:
 		print("[bench] %s: %.1f fps, avg %.1f ms, p95 %.1f, p99 %.1f, hitches %d, gpu %.1f, cpu %.1f" % [level["level"], float(level["overall"]["fps"]), float(level["overall"]["avg_ms"]), float(level["overall"]["p95_ms"]), float(level["overall"]["p99_ms"]), int(level["overall"]["hitches"]), float(level["overall"]["gpu_ms"]), float(level["overall"]["cpu_ms"])])
 	_give_back()
 	result = BenchmarkReport.make(BenchmarkDevice.info(), BenchmarkDevice.renderer(), started_label, runs, scale, (Time.get_ticks_msec() - wall_start) / 1000.0, thermal_start, BenchmarkDevice.thermal())
+	result["switched_off"] = Array(switched_off)
 	var error := BenchmarkReport.write(result)
 	if error != "":
 		push_warning("[bench] %s" % error)

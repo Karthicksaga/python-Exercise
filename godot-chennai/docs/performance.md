@@ -24,6 +24,27 @@ the owner does on the phone. Decisions G-250…G-259 (`technical-decisions.md`).
    Auto picks from the GPU name, the memory and the screen (an Adreno 613 starts at Low), and
    drops one level by itself if play stays under 24 fps for 10 s (a message says so).
 
+## The benchmark: one tap, one screenshot (G-400…G-405)
+
+1. Install the APK from the latest green CI run (and the "(GL)" one, see above). Start it, then
+   **Settings → "Run benchmark"** (on the title's SETTINGS or the pause menu). Put the phone down,
+   plugged in or not, but write down which. It takes about 7 minutes: the same 90-second route
+   (morning street, 18:40 long street, night street, the Egmore platform, the T. Nagar market,
+   over the Anna flyover, a fast drive into new streets) at your level, then at the other two.
+   The line at the top says where it is; Back pauses it.
+2. At the end a results card fills the screen: **take one screenshot** and send it. It says in
+   one line what to use ("Use Low", "Medium is fine"), which renderer ran, the phone, the GPU and
+   the build, and a table per level.
+3. Do the same on the other APK ("Chennai Open World (GL)", the Compatibility renderer) and send
+   that screenshot too: the card names the renderer, so the two can be compared.
+4. If you can, also send the text file: the same numbers are saved in the app's data as
+   `benchmark.txt` (readable) and `benchmark.json`.
+
+The card's columns: avg, p95 and p99 frame time in ms (p95: one frame in 20 is slower than this),
+frames over 50 ms (a visible stutter), and the GPU and CPU time of a frame; the side that limits
+the frame is in amber. Under each table: draw calls, triangles, video memory and the chunks built
+while driving.
+
 ## How it is measured here (and what that is worth)
 
 - **Harness:** a scratch script boots the real `Main` (`--start=play`), moves the player to a
@@ -86,7 +107,7 @@ mode (xvfb counts):
 
 | | Low | Medium | High (as before) |
 |---|---|---|---|
-| 3D resolution | 65 %, bilinear | 80 %, FSR 1 | 100 % |
+| 3D resolution | 65 %, bilinear | 80 %, bilinear (FSR 1 is Forward+ only; G-405) | 100 % |
 | City lighting | per vertex, no glint | per pixel | per pixel |
 | MSAA | off | off | 2x |
 | Sun shadows | 1024, 18 m, hard | 1024, 28 m, hard | 2048, 40 m, soft |

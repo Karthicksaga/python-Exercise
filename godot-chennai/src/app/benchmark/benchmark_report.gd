@@ -113,6 +113,8 @@ static func to_text(result: Dictionary) -> String:
 	lines.append("Device: %s · %s · CPU %s · %.1f GiB · screen %s" % [d.get("model", "?"), d.get("os", "?"), d.get("cpu", "?"), float(d.get("memory_gib", 0.0)), d.get("screen", "?")])
 	lines.append("Build: commit %s · version %s · %s" % [d.get("commit", "?"), d.get("version", "") if str(d.get("version", "")) != "" else "-", d.get("godot", "?")])
 	lines.append("Started at %s · route %.0f s of game time a level (scale %.2f) · took %.0f s · %s → %s" % [result.get("started_at", "?"), float(result.get("route_seconds", 0.0)), float(result.get("scale", 1.0)), float(result.get("wall_seconds", 0.0)), BenchmarkDevice.thermal_line(result.get("thermal_start", {})), BenchmarkDevice.thermal_line(result.get("thermal_end", {}))])
+	if not (result.get("switched_off", []) as Array).is_empty():
+		lines.append("Feature switches off for this run: %s" % ", ".join(PackedStringArray(result["switched_off"] as Array)))
 	lines.append("Compare renderers: run this on both APKs (Mobile = Vulkan, \"(GL)\" = Compatibility) and send both.")
 	for l: Variant in result.get("levels", []):
 		var level := l as Dictionary

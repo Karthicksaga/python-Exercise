@@ -7,6 +7,8 @@ extends RefCounted
 ##     --benchmark-quit          quit when the files are written (CI); exit 1 if it could not run
 ##     --benchmark-scale=0.25    each segment's game seconds times this (CI; the owner's run is 1)
 ##     --benchmark-levels=low,high   only these levels, in this order (default: yours, then the others)
+##     --benchmark-off=traffic,shadows   these feature switches off for the run (measuring what a
+##                               feature costs, docs/performance.md); switched back on after
 ##
 ## Only the rows and one check of the flags exist until it is started.
 
@@ -60,4 +62,17 @@ static func _on_state(main: Main, s: StringName, args: PackedStringArray) -> voi
 				var i := QualitySettings.NAMES.find(n.strip_edges().capitalize())
 				if i >= 0:
 					levels.append(i)
-	BenchmarkRunner.start(main, scale, levels, args.has("--benchmark-quit"))
+	var off := PackedStringArray()
+	for a in args:
+		if a.begins_with("--benchmark-off="):
+			for id in a.trim_prefix("--benchmark-off=").split(",", false):
+				if FeatureSwitches.ids().has(id) and main.perf.settings.is_on(id):
+					main.perf.switches.toggle(id)
+					off.append(id)
+	var runner := BenchmarkRunner.start(main, scale, levels, args.has("--benchmark-quit"))
+	if not off.is_empty():
+		print("[bench] switched off for this run: %s" % ", ".join(off))
+		runner.switched_off = off
+		runner.finished.connect(func(_r: Dictionary) -> void:
+			for id in off:
+				main.perf.switches.toggle(id), CONNECT_ONE_SHOT)

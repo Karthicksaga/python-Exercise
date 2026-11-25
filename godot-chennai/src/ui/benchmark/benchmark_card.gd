@@ -51,7 +51,7 @@ func _init() -> void:
 	root.add_child(margin)
 	var column := VBoxContainer.new()
 	column.name = "Column"
-	column.add_theme_constant_override("separation", 6)
+	column.add_theme_constant_override("separation", 3)
 	margin.add_child(column)
 
 	var head := HBoxContainer.new()
@@ -70,8 +70,8 @@ func _init() -> void:
 	var pill_box := UiTheme.glass_box(Color(UiTheme.AMBER, 0.22), Color(UiTheme.AMBER, 0.95), 14)
 	pill_box.content_margin_left = 14
 	pill_box.content_margin_right = 14
-	pill_box.content_margin_top = 2
-	pill_box.content_margin_bottom = 2
+	pill_box.content_margin_top = 0
+	pill_box.content_margin_bottom = 0
 	pill.add_theme_stylebox_override("panel", pill_box)
 	pill.add_child(recommendation)
 	head.add_child(pill)
@@ -159,11 +159,11 @@ func _level_panel(level: Dictionary, recommended: int) -> PanelContainer:
 		box.set_border_width_all(2)
 	box.content_margin_left = 8
 	box.content_margin_right = 8
-	box.content_margin_top = 4
-	box.content_margin_bottom = 4
+	box.content_margin_top = 2
+	box.content_margin_bottom = 2
 	panel.add_theme_stylebox_override("panel", box)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 2)
+	v.add_theme_constant_override("separation", 0)
 	panel.add_child(v)
 	var all: Dictionary = level.get("overall", {})
 	var judged: Dictionary = level.get("judge", {})
@@ -207,6 +207,18 @@ func _level_panel(level: Dictionary, recommended: int) -> PanelContainer:
 	counts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(counts)
 	return panel
+
+
+## Android Back (and Escape) closes the card first.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST and visible:
+		close_requested.emit()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if visible and event.is_action_pressed(&"ui_cancel"):
+		get_viewport().set_input_as_handled()
+		close_requested.emit()
 
 
 ## The UI size the project's stretch (canvas_items, expand, base 915x412) gives a window.

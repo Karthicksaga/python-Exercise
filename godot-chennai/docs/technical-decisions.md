@@ -2339,3 +2339,65 @@ session's balance (saved), BOARD THE TRAIN on the ACTION button, the crowd and c
 520/700/900 m, LOD distances ×0.6/0.8/1, track 450/520/600 m, overhead line off/160/220 m, crowd
 figures 8/12/16. `RailwayWiring` applies `QualitySettings.shared().preset` and follows its
 `changed` signal, so the level changes live with the rest of the game.
+
+## The benchmark mode (G-400 to G-405), branch `agent/godot-bench`, 25 Nov 2026
+
+### G-400: A fixed route in game time, the same camera at every level
+The owner can only install CI APKs and send screenshots, so the game measures itself. Settings →
+"Run benchmark" (pause menu and title) or `--benchmark` after `--` runs `BenchmarkRoute`: seven
+segments, 90 s of game time a level: morning on Anna Salai (08:30, 6 m/s), 18:40 on Kamarajar
+Salai, night on EVR Periyar Salai (22:00), the Chennai Egmore platform with a train standing
+(17:30, walking), Ranganathan Street in T. Nagar (11:00, walking), over the Anna flyover deck
+(12 m/s) and 360 m of Anna Salai at 20 m/s into chunks that are not loaded. The paths are world
+metres taken from the regional data by `tests/tools/bench_route_finder.gd` (heights are the data's
+estimates); `test_benchmark` checks each point still lies on its named road. The camera and the
+player's body (the streaming and traffic focus) are a pure function of the segment and the physics
+step count (`BenchmarkRoute.pose`), so every level and every run draws from the same viewpoints.
+Before measuring, each segment waits in game time for its streets (`wait_ready_around`) and holds
+150 steps so the AI adopts the new area and the figures are placed. During the run the rig is off,
+the touch controls hidden, the rain off and the clock stopped at the segment's hour; Back pauses it
+(the runner is pausable), going to the title cancels it, and everything is given back after.
+The traffic AI keeps its fixed seed (1) but is not reset between segments or levels, so the cars
+are not the same cars every run; the counts are recorded per segment.
+
+### G-401: What a segment records
+Per drawn frame: its whole time (edge to edge), the GPU time (`viewport_get_measured_render_time_gpu`;
+0 = not measured), the CPU time as the overlay counts it (the timeline's physics and process script
+parts + the renderer's CPU time), the main thread's busy time (the timeline minus "between
+frames"), draw calls, primitives, video memory and the streamer's main-thread time. Per segment:
+average, p95 and p99 (nearest rank), max, fps from the average, frames over 50 ms, the verdict
+(`FrameStats.verdict` on the averages), chunks built and their worker build time (average,
+slowest) inside the measured window only, traffic, walkers, crowd and figures at the end, and the
+thermal reading at its start and end. The whole route's row is every frame of every segment.
+
+### G-402: The player's level first, then the others; held, never saved
+The run starts at the level the player had (cold, as played), then the other two from Low up; no
+level runs twice. Each level is held with `QualitySettings.hold_preset`: applied live, Auto off (so
+Auto cannot drop it mid-run), never saved (a save meanwhile writes the player's level with the
+other changes), released at the end. Frame caps stay as the level plays (Low 30 fps): the card
+shows the experience; the GPU and CPU columns show the headroom under a cap.
+
+### G-403: The recommendation rule
+A level is smooth when, over the route, it averages at least 27 fps, its p95 frame is at most
+50 ms, no segment averages under 22 fps and frames over 50 ms come at most twice a game minute.
+The card says "High is fine" or "Medium is fine" for the highest smooth level, else "Use Low"
+(with what Medium missed), and when even Low fails, "Use Low" with what is still slow and where.
+
+### G-404: Device, build and thermal lines
+The card, `user://benchmark.json` and `user://benchmark.txt` carry the model, OS, CPU, memory,
+screen, Godot version, renderer ("Mobile (Vulkan)" / "Compatibility (OpenGL)", so the owner can
+send one from each APK), GPU name, vendor and API, and the build's commit: CI stamps it into the
+project setting `application/config/build_commit` before the export (`tools/stamp_build.py`).
+Godot has no thermal API: on Android the benchmark asks PowerManager (thermal status, headroom)
+and the sticky battery broadcast (temperature) through the `AndroidRuntime` singleton, then the
+kernel's battery file; "n/a" where the phone refuses. Not yet run on a phone.
+
+### G-405: One screenshot; CI runs it without gating speed
+`BenchmarkCard` (ui module, data only) is full screen at 915x412 UI units (every landscape phone,
+the POCO's 2460x1080 included, lays out in at least that): the recommendation, the device lines, a
+table per level side by side (avg, p95, p99, >50 ms, GPU, CPU per segment and for the route, the
+bound side in amber), the counts under each, RUN AGAIN and CLOSE; text 12 at the base size.
+`test_benchmark_card` checks it inside and unclipped at 915x412, 1830x824, 2460x1080 and 640x320.
+The CI job `benchmark` runs it on the Compatibility renderer under xvfb (software GL, scale 0.1)
+and uploads `benchmark.json`/`.txt`; it fails only if the benchmark does not finish or writes no
+results.

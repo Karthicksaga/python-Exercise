@@ -48,6 +48,9 @@ func test_card_fits_one_screen_at_phone_sizes() -> bool:
 			for j in range(i + 1, parts.size()):
 				check(not parts[i].get_global_rect().grow(-0.5).intersects(parts[j].get_global_rect().grow(-0.5)), "%s: %s and %s do not overlap" % [window, parts[i].name, parts[j].name])
 		assert_eq(card.tables.size(), 3, "a table per level")
+		# Room for a notch or punch-hole camera: the content still fits with 60 units of insets.
+		var need := (card.root.get_node(^"Safe/Column") as Control).get_combined_minimum_size()
+		check(need.x <= units.x - 24.0 - 60.0 and need.y <= units.y - 24.0, "%s: the content needs %s, fits beside a 60-unit notch" % [window, need])
 		for t in card.tables:
 			assert_eq(t.get_child_count(), BenchmarkCard.COLUMNS.size() * (BenchmarkRoute.segments().size() + 2), "%s: header, seven segments and the whole route" % window)
 			# Each table's cells stay inside its panel (none cut at the right).
