@@ -336,6 +336,13 @@ building with such a tag, becomes a category; the OSM `name` is never stored. On
 `name:en`, for a name plate. Mapped bus stops stay in `tile.json busStops`; `bus_platform` adds the
 `public_transport=platform` nodes.
 
+### 3.9 `transit/` (transit version 1, decisions G-210…G-213)
+
+`world/transit/transit.json` and `world/transit/routes.bin` ("COWT"), plus `world/TRANSIT.md`:
+stops, stations, lines and bus routes snapped to the road points of `roads.bin`. Written by
+`cli transit` from the extract and the built world; no 2.x file or `world.json` key changes, the
+files carry their own version. Layout in `docs/transit.md` §1.
+
 ## 4. Ids and provenance
 
 - **Game id** (`u32`, as today, feeds colour and estimated-floor variety via the TS `hash`):

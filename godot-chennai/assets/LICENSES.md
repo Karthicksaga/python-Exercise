@@ -138,3 +138,11 @@ is not worn by anyone here).
 | Files | What | Source | Licence |
 |---|---|---|---|
 | `assets/trees/tree_atlas.png`, `assets/trees/atlas_layout.json` | The tree kit's one atlas, 1024x512: leaf cards (broad, neem, feathery, gulmohar blossom), coconut frond, palmyra fan (green and dry), casuarina needles, grass blades, bougainvillea, oleander, croton, twigs, bark. VRAM-compressed on import (about 0.7 MB with mip maps) | Original, painted by `tools/trees/bake_tree_atlas.py` (Pillow, drawn shapes only: no photographs and no third-party textures). The meshes that use it are built in code (`src/game_engine/trees/tree_models.gd`) | **CC0 1.0**, original work for the project |
+
+
+## Transit (decision G-219)
+
+| Files | What | Source | Licence |
+|---|---|---|---|
+| `assets/transit/noto-sans-tamil-ui-600.woff2` | Noto Sans Tamil SemiBold, the whole Tamil block (15 KB): the Tamil fallback for bus destination signs, stop names and announcements on the HUD (any OSM stop name, so not a cut to known glyphs) | `@fontsource/noto-sans-tamil` 5.3.0 from the npm registry, file `files/noto-sans-tamil-tamil-600-normal.woff2` (sha256 `c8829e71…3a61bf5`), unchanged | SIL Open Font Licence 1.1, © The Noto Project Authors (`assets/fonts/OFL.txt`) |
+| `world/transit/transit.json`, `world/transit/routes.bin`, `world/TRANSIT.md` | Bus stops, bus stations, railway stations and platforms, rail lines, bus routes snapped to the roads (`docs/transit.md`) | Built from OpenStreetMap by `tools/geo` `cli transit`; headways, hours and fares are estimates | **ODbL 1.0**, © OpenStreetMap contributors |

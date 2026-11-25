@@ -1297,3 +1297,67 @@ rate whatever the crossing; no Doppler on passing trains; the train's own sounds
 the player's `enclosed` state. `tests/scene/test_city_streaming.gd::test_main_thread_budget_under_cpu_load`
 (a wall-clock test) fails on this machine (53 to 75 ms against 16) and also on the base commit
 (27 ms there, measured in a clean worktree): unrelated to sound.
+
+
+## Transit (G-210…G-219), branch `agent/godot-transit`, 24 Nov 2026
+**Done.** Data: `tools/geo/chennai_geo/transit.py` (`cli transit`) → `world/transit/` and
+`world/TRANSIT.md` (OSM only). Runtime: `src/transit/` (`TransitNetwork`, `TransitTimetable`,
+`TransitFare`, `RouteBuses`, `BusRide`, `TrainService` stub, `StationPlace`, `BusJobRoutes`),
+`src/ai/agent_routes.gd` (hook) with small guarded changes in `AgentSystem` and `RoadGraph`
+(heights from the roads' deck samples), views `RouteSign` and doors in `TrafficVehicleView`, wiring
+`src/app/transit_layer/` (added by `Main._add_transit` after `PlayWiring`), HUD
+`src/ui/transit_hint/`. Docs: `docs/transit.md` (format, coverage, plan for trains, weak list).
+Tests: `tools/geo/tests/test_transit.py`, `tests/unit/test_transit.gd`,
+`tests/scene/test_transit_ride.gd`. Tool: `tests/tools/transit_shots.gd` (screenshots and
+`--measure`).
+**For others.**
+- *osmdetail*: stop shelters and poles stay yours (`tile.json busStops`); transit reads the same
+  OSM stops by position and draws only bus signs and doors. Platforms: `transit.json` stations
+  carry OSM platform refs and positions for the station place; your platform meshes are the
+  visuals.
+- *landmarks*: Central and Egmore are `StationPlace`s by their OSM station point (entry area 70 m).
+- *Phase 5*: set `main.transit.wanted_level` to the `Wanted` level (boarding is refused while > 0).
+- *Phase 6 (trains)*: extend `TrainService` (`has_trains`, `train_at`, `board`); plan in
+  `docs/transit.md` §4.
+- *Missions*: on load the three baked bus jobs move onto mapped stops and a real-route job is added
+  to `session.content.jobs` (`TransitLayer._adapt_jobs`); `content.json` is unchanged.
+**Weak.** See `docs/transit.md` §5: OSM has only 77 bus relations here; most stops have no route;
+interior seen only on llvmpipe; no grip pose for the player; bicycles not built.
+
+### Transit, 25 Nov: getting on a bus on foot (G-220); for agent/godot-railway
+- BOARD now walks the player in through the front door, up the step, past the seated conductor
+  (ticket) to a free seat or standing place (`src/transit/bus_boarding.gd`, `TransitLayer`);
+  ALIGHT walks them out to the pavement. Tests: `test_transit.gd`
+  (`test_bus_boarding_walks_in_…`), `test_transit_ride.gd` (the real game).
+- **Railway (agent/godot-railway), station boards.** Transit does not build trains. What exists
+  for you: `world/transit/transit.json` stations (OSM position, `name`/`nameTa`, system, lines,
+  platforms with refs and positions, entrances) and lines (stations in order, estimated headways),
+  read by `TransitNetwork`; `StationPlace` (entry area, platform list); `TrainService` (the
+  interface: `departures(station, hour)` works from `TransitTimetable`; `has_trains`, `train_at`,
+  `board` are the stub). Extend `TrainService` for real trains and give it to
+  `TransitLayer.trains`; the station hint then stops saying "no trains yet" by itself
+  (`has_trains`). A station departure board can read `trains.departures(...)`. If you change the
+  station or line data, keep `transit.json`'s keys or bump its `transit` version.
+**Transit status (paused 25 Nov at the coordinator's request):** done and pushed: OSM stops/stations/routes data, route buses, riding, fast travel, stations, bus job on real stops, walked boarding past the conductor to a seat (G-210…G-220); filtered tests green, last CI green.
+Remaining: the final full run with TEST_TIMEOUT=3000 on the latest merge, rush-hour (standing) and 1830 boarding screenshots, approach path avoiding shelters, interior roof wedges, pre-instancing passengers (4 ms boarding frame).
+
+### Transit merged into the integration branch (agent/godot-merge-transit), 25 Nov 2026
+- Conflicts resolved, both sides kept: export include filter (transit's `world/transit/*` plus
+  the trees' `assets/trees/*.json`, the size diet's excludes unchanged); `Main` keeps the five
+  loading steps (transit is wired inside step 4 after `PlayWiring`, the railway is step 5);
+  `TrafficVehicleView` keeps the G-360 jump guard (`set_shown`, `set_pose`, box back a step later)
+  and transit's doors and destination sign; docs and licences carry both sides.
+- Fixed at the merge: `TransitNetwork`'s inner class `RailLine` clashed with the railway's global
+  `RailLine` (parse error); it is now `TransitNetwork.TrainLine`. With the railway wired,
+  `TransitLayer.stations_by_railway` keeps the stub station hint ("no trains yet") off and
+  `railway_busy` keeps the bus hint and BOARD off while the player is on a train or in the cab
+  (G-217 note; `test_transit_ride.gd`). Route buses' near model is merged around the doors (42 to
+  34 draw calls per bus, `docs/transit.md` §5). `LandmarkModels.triangle_count` no longer throws
+  on the empty arrays the headless dummy renderer can return to a worker thread (seen once in
+  `test_city_life`, a SCRIPT ERROR that failed the run).
+- G-364 holds: every transit change to the traffic (request, doors, carrying, fast travel) is
+  queued and run in `CityLife.between_steps`; `test_transit_ride` now asserts
+  `off_step_changes == 0`.
+- Weak: in a station's forecourt nothing shows now (the railway's panel shows on the platforms
+  only); bus stop hints while the railway owns stations were checked only in the scene test.
+
