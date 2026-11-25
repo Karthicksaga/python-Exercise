@@ -126,6 +126,9 @@ jobs:
           sed -i 's/^ *//' ~/.config/godot/editor_settings-4.7.tres
       - name: Import
         run: timeout 900 godot --headless --audio-driver Dummy --path . --import > import.log 2>&1 || (cat import.log; exit 1)
+      # The commit the benchmark card prints (G-404); both APKs carry it.
+      - name: Stamp the build's commit
+        run: python3 tools/stamp_build.py "$GITHUB_SHA"
       - name: Export the APKs
         run: |
           mkdir -p build/android
@@ -196,6 +199,70 @@ jobs:
             echo "::error::The APK is $mb MB, over the $APK_BUDGET_MB MB budget (APK_BUDGET_MB in .github/workflows/godot-chennai.yml). Run tools/apk_size_report.sh on the artifact; see docs/app-size.md."
             exit 1
           fi
+
+  benchmark:
+    # The benchmark mode (G-400..G-405) run on the build machine: the Compatibility renderer on
+    # software OpenGL under xvfb, a short route (scale 0.1), every level. It fails only if the
+    # benchmark itself does not finish (a crash, a script that stops it, no results file); its
+    # speed is not gated (software rendering is not a phone). benchmark.json is the artifact.
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot-${{ env.GODOT_VERSION }}
+          key: godot-${{ env.GODOT_VERSION }}-linux-v1
+      - name: Install Godot
+        run: tools/ci_install_godot.sh
+      - name: Install xvfb and software OpenGL
+        run: sudo apt-get update -q && sudo apt-get install -y -q xvfb libgl1-mesa-dri
+      - name: Cache the import
+        uses: actions/cache@v4
+        with:
+          path: godot-chennai/.godot
+          key: godot-import-${{ env.GODOT_VERSION }}-${{ hashFiles('godot-chennai/assets/**', 'godot-chennai/project.godot') }}
+      - name: Import
+        run: timeout 900 godot --headless --audio-driver Dummy --path . --import > import.log 2>&1 || (cat import.log; exit 1)
+      - name: Run the benchmark (Compatibility, software GL)
+        env:
+          CHENNAI_BUILD_COMMIT: ${{ github.sha }}
+        run: |
+          export XDG_DATA_HOME="$RUNNER_TEMP/bench-data"
+          mkdir -p "$XDG_DATA_HOME" bench-out
+          set +e
+          timeout 1800 xvfb-run -a -s "-screen 0 1830x824x24" godot --path . \
+            --rendering-method gl_compatibility --rendering-driver opengl3 --audio-driver Dummy \
+            --resolution 915x412 -- --start=play --benchmark --benchmark-quit --benchmark-scale=0.1 \
+            > bench-out/benchmark.log 2>&1
+          status=$?
+          set -e
+          dir="$XDG_DATA_HOME/godot/app_userdata/Chennai Open World"
+          cp "$dir"/benchmark.json "$dir"/benchmark.txt bench-out/ 2>/dev/null || true
+          grep -E "^\[bench\]" bench-out/benchmark.log || true
+          {
+            echo "### Benchmark (Compatibility renderer, software GL, scale 0.1; not a phone)"
+            echo
+            echo '```'
+            cat bench-out/benchmark.txt 2>/dev/null || echo "no benchmark.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" -ne 0 ]; then
+            tail -60 bench-out/benchmark.log
+            echo "::error::The benchmark exited with $status (crash, timeout or it could not run)."
+            exit 1
+          fi
+          python3 -c "import json,sys; d=json.load(open('bench-out/benchmark.json')); assert d['format']=='chennai-benchmark-1' and len(d['levels'])==3, d.keys(); print('benchmark.json:', d['recommendation']['text'])"
+      - name: Upload the benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-chennai-benchmark
+          path: godot-chennai/bench-out/
+          if-no-files-found: ignore
+          retention-days: 30
 
   android-smoke:
     # Installs the smoke APK on an emulator and checks the game reaches the test world and keeps
