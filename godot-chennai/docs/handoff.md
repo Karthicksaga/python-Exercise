@@ -1408,3 +1408,23 @@ Tests: `tests/unit/test_benchmark.gd`, `tests/scene/test_benchmark_card.gd`,
   failed once in CI (a taken bike thrown at 72 km/h from a solid) and passed on the rerun.
 - Found and fixed on the way: Medium asked for FSR 1, which 4.7.2 only has on Forward+; the
   Mobile renderer printed a warning and scaled bilinearly while the overlay said "FSR".
+
+## Streaming hitches (agent/godot-streamfix, G-470, G-471), 25 Nov 2026
+**Done.** `test_main_thread_budget_under_cpu_load` failed on b19bacc (3 of 5 runs, 2 of 15). Bisect over
+eight merges (five runs each, `docs/performance.md`): the cost came with the roads merge (65b6e23): the
+streamer freed a dropped chunk's road plan on the main thread inside `_drop_far` (1-28 ms "bookkeeping"),
+and since the trees merge a whole chunk view with its MultiMeshes was freed in one step (2-22 ms). Combat
+changed nothing the test runs; pass or fail after the roads merge was noise around that cost. Fix: the
+build is released on a worker, nodes are freed one piece a step, their meshes and shapes are released on a
+worker (G-470), and the main thread never waits for the worker queue's lock (G-471). 15 runs in a row green;
+bookkeeping median 0.4 ms (was 2.4), max 2.6 ms (was 19). The test and its thresholds are unchanged.
+
+**Weak or not done.**
+- Single steps of 2-7 ms remain in small, fixed work (a small body joining the space, a view entering the
+  scene) with no context switch of the main thread: the VM's host time here; on a phone the Jolt mesh shape
+  built when a body joins the space (G-55) is still main-thread work. Building it on a worker needs a
+  private physics space and was not tried.
+- Releasing meshes and shapes on a worker relies on the servers' thread safety, as building them there
+  already does (G-51). The dummy renderer's RID errors ("Parameter m is null", `Condition "!F"`) that
+  `test_city_life` prints appear on b19bacc as well.
+- Not measured on a phone or with the benchmark route; the overlay's hitch line (G-340) will show it.

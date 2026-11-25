@@ -10,7 +10,8 @@ extends Node
 ##   could be starved by other background work.
 ## - **Time-sliced on the main thread:** finished builds are added in small steps (one collider
 ##   body, or the chunk's visual node) while the frame's budget lasts, at least one step a frame;
-##   unloads are freed the same way. A chunk's meshes join the scene in one step, once its
+##   unloads are freed one piece a step, their data released on a worker (G-470). A chunk's
+##   meshes join the scene in one step, once its
 ##   colliders are in, so nothing half-built is ever seen.
 ## - **Gating (§7 lesson):** `world_ready_around(point)` is true only when every chunk within
 ##   reach of the point is in the scene **and** a physics step has run since its last collider was
@@ -59,8 +60,11 @@ var _slots: Dictionary[Vector2i, Slot] = {}
 var _workers := ChunkWorkers.new()
 ## Builds whose chunk went out of range while building: freed once their task finishes.
 var _orphans: Array[Slot] = []
-## Roots to free, a few a frame.
+## Roots to take apart and free, one small piece a step (G-470).
 var _doomed: Array[Node] = []
+## Meshes, MultiMeshes and shapes of nodes freed this frame: their last reference is dropped on a
+## worker, so the main thread never pays for releasing their buffers (G-470).
+var _held: Array[Resource] = []
 var _waiters: Array[Array] = []  # [point, radius]
 var _physics_frames: int = 0
 ## Statistics for tests, the HUD and the report.
@@ -128,6 +132,8 @@ func step() -> void:
 		if Time.get_ticks_usec() - started >= budget_usec:
 			break
 	_settle()
+	_release_held()
+	_workers.flush()
 	var spent := Time.get_ticks_usec() - started
 	stats["last_frame_usec"] = spent
 	stats["max_frame_usec"] = maxi(stats["max_frame_usec"], spent)
@@ -179,7 +185,6 @@ func _drop_far() -> void:
 			continue
 		var slot: Slot = _slots[cell]
 		_slots.erase(cell)
-		_release_later(slot)
 		if slot.state == &"building":
 			_orphans.append(slot)
 			continue
@@ -191,29 +196,43 @@ func _drop_far() -> void:
 			chunk_hidden.emit(cell)
 		else:
 			_discard_unadded(slot)
+		_release_later(slot)
 
 
-## Lets go of a dropped chunk's decoded data on a worker thread: freeing a dense chunk's
-## thousands of buildings, trees and props took 5–14 ms on the main thread in a test (G-51).
+## Lets go of a dropped chunk's build on a worker thread, once its nodes are queued for freeing:
+## freeing a dense chunk's thousands of buildings, trees and props took 5–14 ms on the main thread
+## in a test (G-51), and since the road detail (G-310…G-317) its road plan (kerb runs, posts,
+## crossings, marks) 1–19 ms more (G-470). The main thread only moves references.
 func _release_later(slot: Slot) -> void:
 	var b := slot.build
-	if b == null or b.chunk == null:
+	if b == null:
 		return
-	var chunk := b.chunk
-	var props := b.props
-	var furniture := b.furniture
+	slot.build = null
+	# Its nodes are freed in steps (`_doomed`); the build forgets them here, on the main thread.
+	b.view = null
+	b.tree_batch = null
+	b.bodies = []
+	# One box holds the last references, so clearing it frees everything on the worker.
+	var box: Array = [b, b.chunk, b.props, b.furniture, b.roads]
 	b.chunk = null
 	b.props = []
 	b.furniture = null
+	b.roads = null
+	b = null
 	_workers.push(func() -> void:
-		chunk.buildings.clear()
-		chunk.trees.clear()
-		chunk.areas.clear()
-		props.clear()
+		var chunk := box[1] as ChunkData
+		var furniture := box[3] as StreetFurniture.Result
+		if chunk != null:
+			chunk.buildings.clear()
+			chunk.trees.clear()
+			chunk.areas.clear()
 		if furniture != null:
 			furniture.poles.clear()
 			furniture.shelters.clear()
-			furniture.kerbs.clear())
+			furniture.kerbs.clear()
+		chunk = null
+		furniture = null
+		box.clear(), false)
 
 
 ## Queues the parts of a build that never entered the tree for freeing, a few a frame (freeing
@@ -235,6 +254,7 @@ func _collect() -> void:
 		var o := _orphans[i]
 		if _workers.take_done(o.task):
 			_discard_unadded(o)
+			_release_later(o)
 			_orphans.remove_at(i)
 
 
@@ -276,16 +296,12 @@ func _start_builds() -> void:
 		running += 1
 
 
-## One unit of main-thread work: free a root, add a collider body, or show a chunk's meshes.
-## False when there was nothing to do.
+## One unit of main-thread work: one piece of a root to free, add a collider body, or show a
+## chunk's meshes. False when there was nothing to do.
 func _one_main_step() -> bool:
 	if not _doomed.is_empty():
-		var node: Node = _doomed.pop_back()
 		var t := Time.get_ticks_usec()
-		if node.is_inside_tree():
-			node.get_parent().remove_child(node)
-		node.free()
-		stats["freed"] += 1
+		_free_piece()
 		_note(&"free", t)
 		return true
 	var next: Slot = null
@@ -327,6 +343,64 @@ func _one_main_step() -> bool:
 	next.shown_frame = _physics_frames
 	chunk_shown.emit(next.cell)
 	return true
+
+
+## Takes one piece off the last doomed root (G-470). Freeing a whole chunk view in one go took
+## 2–19 ms here (40 nodes, their meshes and MultiMesh buffers), removing a chunk's bodies from the
+## physics space 3 ms. So:
+## - a root in the scene with collider bodies loses one body a step (each leaves the space alone);
+## - any other root in the scene leaves it whole (cheap: its meshes stop drawing at once, nothing
+##   half-freed is ever seen, and no script under it runs again);
+## - a root out of the scene is freed one leaf a step, deepest first; the leaf's mesh, MultiMesh
+##   or shape is held and released on a worker at the end of the frame.
+func _free_piece() -> void:
+	var root: Node = _doomed.back()
+	if not is_instance_valid(root):
+		_doomed.pop_back()
+		return
+	if root.is_inside_tree():
+		var last := root.get_child(root.get_child_count() - 1) if root.get_child_count() > 0 else null
+		if last is CollisionObject3D:
+			root.remove_child(last)
+			_doomed.append(last)
+		else:
+			root.get_parent().remove_child(root)
+		return
+	var leaf := root
+	while leaf.get_child_count() > 0:
+		leaf = leaf.get_child(leaf.get_child_count() - 1)
+	var whole := leaf == root
+	_hold(leaf)
+	var parent := leaf.get_parent()
+	if parent != null:
+		parent.remove_child(leaf)
+	leaf.free()
+	if whole:
+		_doomed.pop_back()
+		stats["freed"] += 1
+
+
+## Keeps the heavy resource of a node about to be freed, for `_release_held`.
+func _hold(node: Node) -> void:
+	var res: Resource = null
+	if node is MeshInstance3D:
+		res = (node as MeshInstance3D).mesh
+	elif node is MultiMeshInstance3D:
+		res = (node as MultiMeshInstance3D).multimesh
+	elif node is CollisionShape3D:
+		res = (node as CollisionShape3D).shape
+	if res != null:
+		_held.append(res)
+
+
+## Drops this frame's held resources on a worker: a shared one (a kit mesh) only loses a
+## reference, a chunk's own is freed there (its server RID with it).
+func _release_held() -> void:
+	if _held.is_empty():
+		return
+	var batch := _held
+	_held = []
+	_workers.push(func() -> void: batch.clear(), false)
 
 
 func _note(kind: StringName, since: int) -> void:
@@ -380,13 +454,14 @@ func fill_now() -> void:
 		for slot: Slot in _slots.values():
 			if slot.state == &"building":
 				_workers.wait(slot.task)
-				_workers.take_done(slot.task)
+				_workers.take_done(slot.task, true)
 				_finish(slot)
 		while _one_main_step():
 			pass
 		if _running() == 0 and _all_shown():
 			break
 	_settle()
+	_release_held()
 
 
 func _all_shown() -> bool:
@@ -465,9 +540,14 @@ func clear() -> void:
 	_orphans.clear()
 	_slots.clear()
 	for node in _doomed:
-		if is_instance_valid(node) and not node.is_inside_tree():
+		if not is_instance_valid(node):
+			continue
+		if node.is_inside_tree():
+			node.queue_free()
+		else:
 			node.free()
 	_doomed.clear()
+	_held.clear()
 
 
 func _exit_tree() -> void:
