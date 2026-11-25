@@ -48,6 +48,9 @@ func run(out: String) -> void:
 	await _stats(cw, "idle", 300)
 	cw.combat.hurt(55.0)
 	await _shot(out + "_health.png")
+	if OS.get_cmdline_user_args().has("--only=wanted"):
+		await _wanted(main, cw, out)
+		return
 	# Stage 7 at Tower Park: the three thugs.
 	var layer := main.find_child("MissionsLayer", false, false) as MissionsLayer
 	var s := layer.session
@@ -78,20 +81,39 @@ func run(out: String) -> void:
 	main.rig.controls.press_hit()
 	await _wait(8)
 	await _shot(out + "_fight.png")
-	# Two stars and a police car on its way.
+	await _wanted(main, cw, out)
+
+
+func _wanted(main: Main, cw: CombatWiring, out: String) -> void:
+	var layer := main.find_child("MissionsLayer", false, false) as MissionsLayer
+	var s := layer.session
+	# Two stars and a police car on its way, back on the street at the start.
+	var start: Vector2 = main.world.spawn["point"]
+	main.rig.place(WorldOrigin.to_scene_xz(start.x, start.y, 0.05), float(main.world.spawn["heading"]))
+	for i in 60 * 60:
+		if main.world.world_ready_around(start):
+			break
+		await get_tree().physics_frame
 	s.store.set_section(SaveStore.PROGRESS, {"completed": [], "money": 3000})
 	s.store.write()
 	s.reload()
 	await _wait(10)
 	cw.police.set_stars(2)
-	for i in 60 * 40:
-		var cars := cw.police.cars()
-		if not cars.is_empty():
-			var c: Dictionary = cars[0]
-			var me := WorldOrigin.to_world(main.rig.body.global_position)
+	var near := {}
+	for i in 60 * 120:
+		var me := WorldOrigin.to_world(main.rig.body.global_position)
+		for c: Dictionary in cw.police.cars():
 			if Vector2(float(c["x"]), float(c["z"])).distance_to(me) < 30.0:
-				break
+				near = c
+		if not near.is_empty():
+			break
 		await get_tree().physics_frame
+	# Look at the car (the camera turns; the player stands still).
+	if not near.is_empty():
+		var me := WorldOrigin.to_world(main.rig.body.global_position)
+		var to := Vector2(float(near["x"]), float(near["z"])) - me
+		main.rig.camera.yaw = atan2(-to.x, -to.y) + 0.35
+		await _wait(20)
 	await _stats(cw, "pursuit (two stars)", 120)
 	await _shot(out + "_wanted.png")
 	print("police cars %s" % [cw.police.cars()])
