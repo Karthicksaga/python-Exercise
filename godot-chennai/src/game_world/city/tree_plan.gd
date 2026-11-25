@@ -16,6 +16,8 @@ const LEAN_REACH := 8.5
 ## Draw-call caps: distinct tree species and distinct understory species per chunk.
 const MAX_TREE_SPECIES := 7
 const MAX_UNDER_SPECIES := 3
+## A species with fewer plants than this in a chunk is folded into a commoner one.
+const MIN_COUNT := 3
 ## Plants added around the trees, at most per chunk.
 const MAX_EXTRAS := 260
 ## Scrub scattered over open country: one cell every so many metres.
@@ -48,6 +50,9 @@ class Context:
 	var square: Rect2 = Rect2()
 	## A chunk with few buildings: open country (RoadDetail.RURAL_BUILDINGS).
 	var rural: bool = false
+	## Draw-call caps for this build (the preset's, `QualitySettings` "tree_species", "under_species").
+	var max_species: int = MAX_TREE_SPECIES
+	var max_under: int = MAX_UNDER_SPECIES
 
 
 static func for_chunk(ctx: Context, trees: Array[WorldTree]) -> Array[TreeSpot]:
@@ -63,7 +68,7 @@ static func for_chunk(ctx: Context, trees: Array[WorldTree]) -> Array[TreeSpot]:
 	if extras.size() > MAX_EXTRAS:
 		extras.resize(MAX_EXTRAS)
 	out.append_array(extras)
-	_cap_species(out)
+	_cap_species(out, ctx.max_species, ctx.max_under)
 	return out
 
 
@@ -244,9 +249,10 @@ static func _scrub(ctx: Context, _trees: Array[TreeSpot]) -> Array[TreeSpot]:
 	return out
 
 
-## At most MAX_TREE_SPECIES tree species and MAX_UNDER_SPECIES understory species in a chunk
-## (draw calls): the rare ones take the species of a commoner one of the same kind, by hash.
-static func _cap_species(spots: Array[TreeSpot]) -> void:
+## At most `max_trees` tree species and `max_under` understory species in a chunk (draw calls), and
+## none with fewer than MIN_COUNT plants: the rare ones take the species of a commoner one of the
+## same kind, by hash.
+static func _cap_species(spots: Array[TreeSpot], max_trees: int, max_under: int) -> void:
 	var counts: Dictionary[StringName, int] = {}
 	for s in spots:
 		counts[s.species] = int(counts.get(s.species, 0)) + 1
@@ -255,14 +261,17 @@ static func _cap_species(spots: Array[TreeSpot]) -> void:
 		for k in counts:
 			if TreeSpecies.is_understory(k) == under:
 				ids.append(k)
-		var cap := MAX_UNDER_SPECIES if under else MAX_TREE_SPECIES
-		if ids.size() <= cap:
-			continue
+		var cap := max_under if under else max_trees
 		ids.sort_custom(func(a: StringName, b: StringName) -> bool:
 			return counts[a] > counts[b] or (counts[a] == counts[b] and String(a) < String(b)))
 		var keep: Array[StringName] = []
-		for i in cap:
+		for i in mini(cap, ids.size()):
+			# A species with only a plant or two is not worth its draw calls (unless it is the only one).
+			if i > 0 and counts[ids[i]] < MIN_COUNT:
+				break
 			keep.append(ids[i])
+		if keep.size() == ids.size():
+			continue
 		for s in spots:
 			if TreeSpecies.is_understory(s.species) == under and not keep.has(s.species):
 				# A dead tree stays dead and a palm stays a palm where the kit has one of the kind.

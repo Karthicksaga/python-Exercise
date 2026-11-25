@@ -214,6 +214,10 @@ func apply() -> void:
 	QualityApplier.apply_viewport(get_viewport(), v)
 	QualityApplier.apply_engine(v)
 	TreeQuality.apply(v)
+	if main.world != null and main.world.streamer != null and main.world.streamer.kit != null:
+		# Chunks built from now on (draw-call caps are chosen when a chunk is planned).
+		main.world.streamer.kit.tree_species = int(v["tree_species"])
+		main.world.streamer.kit.under_species = int(v["under_species"])
 	var world := main.world
 	if world != null:
 		set_road_extras(world, settings.preset)

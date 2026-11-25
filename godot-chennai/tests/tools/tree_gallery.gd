@@ -20,6 +20,8 @@ func _run() -> void:
 	var out := "user://gallery"
 	var only := PackedStringArray()
 	var wind := 0.0
+	## --flat: the per-vertex lit variant of the shader (the Low preset).
+	var flat := false
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--out="):
 			out = arg.trim_prefix("--out=")
@@ -27,9 +29,13 @@ func _run() -> void:
 			only = arg.trim_prefix("--species=").split(",")
 		elif arg.begins_with("--wind="):
 			wind = float(arg.trim_prefix("--wind="))
+		elif arg == "--flat":
+			flat = true
 	await process_frame
 	var mat := TreeKit.make_material()
 	mat.set_shader_parameter(&"sway", wind)
+	if flat:
+		mat.shader = CityMaterials.vertex_lit(TreeKit.SHADER)
 	var kit := TreeKit.commit(TreeKit.build_models(), mat)
 	var world := Node3D.new()
 	root.add_child(world)

@@ -203,7 +203,7 @@ func _build(b: MeshBuilder, id: StringName, lod: int) -> void:
 				"limbs": 3, "reach": 2.6, "rise": 1.8, "bark": _tint(0.82, 0.78, 0.74)})
 		TreeSpecies.RAIN:
 			_broadleaf(b, lod, {"tiles": [&"leaf_feather"], "alt": 0.0, "h": 14.0, "trunk_h": 4.4, "r0": 0.5, "r1": 0.34, "lean": Vector3(1.0, 0, -0.4),
-				"cy": 10.2, "radii": Vector3(9.5, 3.2, 9.5), "cards": [54, 20, 8], "size": [3.2, 4.8, 7.0], "tint": _tint(0.8, 0.98, 0.58), "lower_cut": -0.1,
+				"cy": 10.2, "radii": Vector3(9.5, 3.2, 9.5), "cards": [54, 20, 8], "size": [3.2, 4.8, 7.0], "tint": _tint(0.8, 0.98, 0.58), "lower_cut": 0.12,
 				"limbs": 5, "reach": 6.0, "rise": 4.4, "bark": _tint(0.74, 0.7, 0.66), "aspect": 1.15})
 		TreeSpecies.BANYAN:
 			_banyan(b, lod)
@@ -213,7 +213,7 @@ func _build(b: MeshBuilder, id: StringName, lod: int) -> void:
 				"limbs": 3, "reach": 2.8, "rise": 2.6, "bark": _tint(0.6, 0.55, 0.5)})
 		TreeSpecies.GULMOHAR:
 			_broadleaf(b, lod, {"tiles": [&"leaf_feather", &"flower_red"], "alt": 0.6, "h": 8.5, "trunk_h": 3.2, "r0": 0.32, "r1": 0.22, "lean": Vector3(0.7, 0, 0.3),
-				"cy": 6.3, "radii": Vector3(5.6, 2.3, 5.6), "cards": [44, 16, 8], "size": [2.6, 4.0, 5.6], "tint": _tint(0.78, 0.98, 0.62), "lower_cut": -0.2,
+				"cy": 6.3, "radii": Vector3(5.6, 2.3, 5.6), "cards": [44, 16, 8], "size": [2.6, 4.0, 5.6], "tint": _tint(0.78, 0.98, 0.62), "lower_cut": 0.0,
 				"limbs": 4, "reach": 3.6, "rise": 2.2, "bark": _tint(0.78, 0.74, 0.7), "aspect": 1.1})
 		TreeSpecies.COCONUT:
 			_coconut(b, lod)

@@ -70,6 +70,15 @@ func test_presets_apply_live() -> bool:
 	var cell: Vector2i = main.world.streamer.shown_cells()[0]
 	var trees := main.world.streamer.build_of(cell).view.get_node_or_null(^"Trees") as GeometryInstance3D
 	assert_true(trees == null or trees.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "trees cast no shadow on Low")
+	# The tree kit (G-386): no wind, no tree shadows, fewer plants on Low.
+	assert_false(TreeQuality.sway, "no tree sway on Low")
+	assert_false(TreeQuality.shadows, "no tree shadows on Low")
+	assert_eq(float(main.world.materials.trees.get_shader_parameter(&"sway")), 0.0, "the wind uniform is off")
+	assert_true(TreeQuality.density < 1.0 and TreeQuality.understory < TreeQuality.density, "fewer trees, even fewer bushes")
+	var batch := main.world.streamer.build_of(cell).tree_batch
+	if batch != null:
+		for g in batch.groups:
+			assert_eq(g.nodes[0].cast_shadow, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "LOD 0 casts no shadow on Low (%s)" % g.species)
 	assert_eq(main.world.streamer.load_distance, 200.0, "a shorter view")
 	assert_eq(main.world.streamer.in_flight, 1, "one chunk build at a time")
 	assert_eq(env.fog_far, 240.0, "the haze pulled in with it")

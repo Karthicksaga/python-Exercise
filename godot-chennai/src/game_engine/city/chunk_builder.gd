@@ -40,6 +40,9 @@ class Kit:
 	## Where the camera is (world metres) when a build starts: the plants sort to a LOD for it
 	## on the worker, so adding the chunk costs the main thread no sorting.
 	var focus: Vector2 = Vector2.ZERO
+	## Draw-call caps (the preset's): distinct tree species and distinct understory species a chunk.
+	var tree_species: int = TreePlan.MAX_TREE_SPECIES
+	var under_species: int = TreePlan.MAX_UNDER_SPECIES
 	## Road detail (G-310 to G-313): off for a before and after comparison in tests and tools.
 	var road_detail: bool = true
 	## Quality of the optional road detail (G-317), the preset's number (`QualitySettings.LOW` 0,
@@ -287,6 +290,8 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	plan.palettes = kit.palettes
 	plan.rail = kit.rail_index
 	plan.square = square
+	plan.max_species = kit.tree_species
+	plan.max_under = kit.under_species
 	plan.rural = out.roads.rural if out.roads != null else chunk.buildings.size() < RoadDetail.RURAL_BUILDINGS
 	var spots := TreePlan.for_chunk(plan, trees)
 	_add_trees(kit, out, spots)

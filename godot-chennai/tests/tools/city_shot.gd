@@ -55,13 +55,20 @@ func _run() -> void:
 	if OS.get_cmdline_user_args().has("--no-landmarks"):
 		city.set("show_landmarks", false)
 	# --quality=low|medium|high: the tree caps of that preset (G-386); default High.
+	var quality := -1
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--quality="):
-			TreeQuality.apply(QualitySettings.values(["low", "medium", "high"].find(arg.trim_prefix("--quality="))))
+			quality = ["low", "medium", "high"].find(arg.trim_prefix("--quality="))
+			TreeQuality.apply(QualitySettings.values(quality))
 	if OS.get_cmdline_user_args().has("--no-roads"):
 		city.set("road_detail", false)
 	root.add_child(city)
 	err = await city.call("setup", source)
+	if quality >= 0:
+		var qv := QualitySettings.values(quality)
+		var kit_obj: Object = (city.get("streamer") as Object).get("kit")
+		kit_obj.set("tree_species", int(qv["tree_species"]))
+		kit_obj.set("under_species", int(qv["under_species"]))
 	var spawn: Dictionary = city.get("spawn")
 	var point: Vector2 = spawn["point"]
 	var heading: float = spawn["heading"]

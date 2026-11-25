@@ -325,7 +325,27 @@ func test_quality_caps() -> bool:
 		for lod in 3:
 			mid_instances += g.shown[lod]
 	assert_true(mid_instances >= low_instances and mid_instances <= high_instances, "Medium sits between (%d)" % mid_instances)
-	for key: String in ["tree_density", "scrub_density", "tree_lod0", "tree_lod1", "tree_far"]:
+	# Draw-call caps follow the preset (the plan is made when a chunk is built): Low keeps fewer species.
+	var low_kit := ChunkBuilder.Kit.new()
+	low_kit.source = kit.source
+	low_kit.layouts = kit.layouts
+	low_kit.models = kit.models
+	low_kit.materials = kit.materials
+	low_kit.trees = kit.trees
+	low_kit.tree_species = int(QualitySettings.values(QualitySettings.LOW)["tree_species"])
+	low_kit.under_species = int(QualitySettings.values(QualitySettings.LOW)["under_species"])
+	var lb := ChunkBuilder.build(low_kit, DENSE)
+	var trees_n := 0
+	var under_n := 0
+	for g in lb.tree_batch.groups:
+		if TreeSpecies.is_understory(g.species):
+			under_n += 1
+		else:
+			trees_n += 1
+	assert_true(trees_n <= low_kit.tree_species and under_n <= low_kit.under_species, "Low: %d tree species, %d understory (caps %d, %d)" % [trees_n, under_n, low_kit.tree_species, low_kit.under_species])
+	assert_true(lb.tree_batch.groups.size() <= b.tree_batch.groups.size(), "and no more species than High (%d vs %d)" % [lb.tree_batch.groups.size(), b.tree_batch.groups.size()])
+	CityTestKit.free_build(lb)
+	for key: String in ["tree_density", "scrub_density", "tree_lod0", "tree_lod1", "tree_far", "tree_species", "under_species"]:
 		var lo := float(QualitySettings.values(QualitySettings.LOW)[key])
 		var mi := float(QualitySettings.values(QualitySettings.MEDIUM)[key])
 		var hi := float(QualitySettings.values(QualitySettings.HIGH)[key])

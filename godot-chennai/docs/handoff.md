@@ -355,7 +355,7 @@ Decisions G-50…G-59. Tests: `tests/unit/test_city_meshes.gd`, `test_city_layou
 - Night glow, wet look and street-light pools exist only as material hooks (no lamp glow yet).
 - The textures are painted stand-ins (ports of the Three.js canvases); tile seams show faintly
   on the earth layer, and the asphalt repeats visibly up close.
-- No LOD for landmarks, no occlusion; trees have no far LOD (MultiMesh, cheap so far).
+- No LOD for landmarks, no occlusion (trees have three LODs since G-385, `docs/trees.md`).
 - Seen only under the Compatibility renderer on llvmpipe; not on a phone or the Mobile renderer.
 - Physics interpolation off (G-59). Kerbs are not solid, so the player's step-up is not
   exercised by the city.
