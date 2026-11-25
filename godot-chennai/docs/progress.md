@@ -200,6 +200,7 @@ Details and measurements in `docs/driving.md`; decisions G-70…G-79.
 | Day/night: `Lighting` (port of `lighting.ts`), `CityEnvironment` (sun/moon, ambient, sky shader, ACES exposure, exponential haze hiding the streaming edge, shadows 40 m round the camera) on `GameLoop.clock` (G-86, G-89) | Done | `tests/unit/test_lighting.gd` (ported), `tests/scene/test_city_environment.gd`; screenshots golden hour, noon, night, rain at 915×412 and 1830×824 (Compatibility) |
 | Weather: `Weather` autoload (rain fades in 2.5 game s, saved `cow-weather-v1`), rain streaks one draw call, wet look (`city_wetness` global uniform, `register_wet`) (G-87) | Done | `tests/scene/test_city_environment.gd`; measured draw calls in the test world 12 dry → 13 raining (Compatibility, `tests/tools/look_screenshot.gd`) |
 | Sodium street lights: one MultiMesh of glowing heads, six nearest omni lights, no shadows (G-88) | Done (lamp positions come from the World agent) | `tests/scene/test_city_environment.gd` |
+| Phase 6 sounds (G-370…G-379): trains (EMU horn, rumble, clatter by speed, brake squeal, door chime and doors, platform announcement), level-crossing bell and booms, the goods carrier's engine and horn, bus air brake, the market, tea stall and far temple bell by kind of street, credits on ABOUT. Which are real and which synthetic: `docs/sound-recordings.md` | Done as far as free recordings could be had; most are synthetic (flagged) | `tests/unit/test_sound_recordings.gd`, `test_rail_sounds.gd`, `test_sound_mix.gd`, `tests/scene/test_sound_system.gd`, `tools/audio/test_audio_files.py` |
 | Helicopter and aeroplane sounds | Not done (later, with the vehicles) | |
 
 ## World: the streamed city (phase 1, branch `agent/godot-world`, 24 Nov 2026)
@@ -331,3 +332,15 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Compatibility-renderer A/B APK (G-255) | In CI | workflow artifact `godot-chennai-apk-compat` |
 | Traffic/figure/vehicle/street-light cost fixes (G-256…G-259) | Done; measured on llvmpipe | `docs/performance.md` before/after tables |
 | Seen on the owner's phone | Not done | — |
+
+## Trees (phase 7, G-380 to G-388, branch `agent/godot-trees`, 25 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Eighteen species (ten trees, five bushes and grass, three dead), three LODs each, own silhouettes (G-381) | Done | `test_trees.gd` (budgets per LOD, outlines differ), gallery screenshots |
+| One VRAM-compressed atlas under 1.5 MB, painted by script, CC0 (G-380) | Done (0.7 MB with mips) | `test_atlas_size_and_licence` |
+| Alpha-cut shader with vertex wind, off on Low (G-382) | Done (Compatibility); not on the Mobile renderer or a phone | `test_one_atlas_and_wind_data`, `test_perf_wiring` |
+| Species by district, park, beach, avenue, mapped tree; clear of buildings, carriageways, water, decks, rails (G-383) | Done; species are estimates (no tag in the data) | `test_plants_stand_clear_and_deterministic`, `test_species_mix_by_area`, `test_prune_removes_plants_near_a_line` |
+| MultiMesh per species per LOD per chunk, at most two draws a species (G-384, G-385) | Done | `test_chunk_budgets_and_lods`, `test_lod_rule` |
+| Quality caps: density, LOD distances, no sway on Low, shadows from LOD 0 on High (G-386) | Done | `test_quality_caps`, `test_perf_wiring` |
+| Before and after draws, primitives, main-thread ms, screenshots against the owner's photographs | Done on llvmpipe at 915x412 (`docs/trees.md`, handoff) | scratch harness (not committed) |
+| Seen on a phone | Not done | — |

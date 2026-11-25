@@ -1,6 +1,7 @@
 """Small DSP helpers for the recording pipeline (decision G-85): decode with ffmpeg, measure an
 engine's firing frequency over time, cut loops on whole firing periods with a crossfaded wrap,
 and match loudness. numpy only."""
+import os
 import subprocess
 
 import numpy as np
@@ -113,3 +114,47 @@ def write_ogg(path, x, rate=RATE, quality=3):
     pcm = np.asarray(x, dtype="<f4").tobytes()
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "f32le", "-ar", str(rate), "-ac", "1", "-i", "-",
                     "-c:a", "libvorbis", "-q:a", str(quality), path], input=pcm, check=True)
+
+
+def resample(x, factor):
+    """Plays `x` at `factor` x speed (factor < 1: slower and lower), linear interpolation."""
+    n = int(len(x) / factor)
+    pos = np.arange(n) * factor
+    return np.interp(pos, np.arange(len(x)), x).astype(np.float32)
+
+
+def lufs(path):
+    """Integrated loudness (ITU BS.1770, ffmpeg's ebur128) of a file, LUFS; -70 for silence."""
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", path, "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True)
+    last = [ln for ln in r.stderr.splitlines() if ln.strip().startswith("I:")]
+    return float(last[-1].split()[1]) if last else -70.0
+
+
+def loop_jump(x):
+    """How big the step across the loop point is against an ordinary step: |x[0] - x[-1]| over the
+    RMS of the sample-to-sample differences (about 1 for a clean wrap, tens for a click)."""
+    d = np.diff(np.asarray(x, dtype=np.float64))
+    typical = float(np.sqrt(np.mean(d ** 2)))
+    return float(abs(x[0] - x[-1]) / max(1e-9, typical))
+
+
+def measure(path):
+    """What the tests and the manifest record about a shipped file, measured on the decoded file:
+    {rms_db, peak_db, lufs, loop_jump}."""
+    import hashlib
+    x = decode(path)
+    peak = float(np.max(np.abs(x))) if len(x) else 0.0
+    ch = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=channels", "-of", "csv=p=0", path],
+                        capture_output=True, text=True).stdout.strip()
+    with open(path, "rb") as fh:
+        sha = hashlib.sha256(fh.read()).hexdigest()
+    return {"channels": int(ch or 0), "sha256": sha, "bytes": os.path.getsize(path), "rms_db": round(20 * float(np.log10(max(1e-9, rms(x)))), 2), "peak_db": round(20 * float(np.log10(max(1e-9, peak))), 2),
+            "lufs": round(lufs(path), 2), "loop_jump": round(loop_jump(x), 2)}
+
+
+def highpass(x, hz, rate=RATE):
+    """Removes everything under `hz` (a DC offset and rumble) by FFT, with a short ramp up."""
+    spec = np.fft.rfft(np.asarray(x, dtype=np.float64))
+    bins = np.fft.rfftfreq(len(x), 1 / rate)
+    gain = np.clip((bins - hz * 0.5) / (hz * 0.5), 0.0, 1.0)
+    return np.fft.irfft(spec * gain, len(x)).astype(np.float32)

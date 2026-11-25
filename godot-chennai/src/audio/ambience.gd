@@ -11,12 +11,12 @@ extends Node
 ## 6 dB under the player's idle hatchback, rain on the roofs about as loud as the rush, the sea a
 ## little under it and crickets well under (checked in tests/unit/test_sound_mix.gd). Retune
 ## when recordings replace the stand-ins (they are loudness-normalised per category).
-const BED_GAIN: Dictionary = {"city": 0.09, "rain": 0.05, "sea": 0.1, "crickets": 0.03}
+const BED_GAIN: Dictionary = {"city": 0.09, "rain": 0.05, "sea": 0.1, "crickets": 0.03, "market": 0.12, "tea": 0.07}
 const QUIET_STOP := 4.0
 const SMOOTH := 0.6
 
 ## One-shots played so far, by name (tests and the debug snapshot).
-var played: Dictionary = {"crow": 0, "koel": 0, "honk": 0}
+var played: Dictionary = {"crow": 0, "koel": 0, "honk": 0, "temple": 0}
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## Where the listener is (one-shots are placed round it).
 var listener: Vector3 = Vector3.ZERO
@@ -27,6 +27,7 @@ var _levels: Dictionary = {}
 var _quiet: Dictionary = {}
 var _next_bird: float = 4.0
 var _next_honk: float = 3.0
+var _next_bell: float = 12.0
 var _shots: Array[AudioStreamPlayer3D] = []
 var _muffle: AudioEffectLowPassFilter = null
 
@@ -62,7 +63,8 @@ func level(name: String) -> float:
 	return float(_levels.get(name, 0.0))
 
 
-## Call every frame while playing. state: {hour, rain 0..1, coast m (INF inland), traffic 0..1, enclosed}.
+## Call every frame while playing. state: {hour, rain 0..1, coast m (INF inland), traffic 0..1, enclosed,
+## street (a `PlaceMap.KINDS` name, optional)}.
 func update(dt: float, state: Dictionary) -> void:
 	var hour: float = state.get("hour", 12.0)
 	var rain: float = state.get("rain", 0.0)
@@ -70,7 +72,8 @@ func update(dt: float, state: Dictionary) -> void:
 	if _muffle != null:
 		var want := 1400.0 if enclosed else 18000.0
 		_muffle.cutoff_hz = lerpf(_muffle.cutoff_hz, want, 1.0 - exp(-dt / 0.3))
-	var targets := SoundProfiles.ambience_levels(hour, rain, float(state.get("coast", INF)), float(state.get("traffic", 0.5)))
+	var street: StringName = state.get("street", &"")
+	var targets := SoundProfiles.ambience_levels(hour, rain, float(state.get("coast", INF)), float(state.get("traffic", 0.5)), street)
 	for name: String in targets:
 		_bed(name, dt, float(targets[name]))
 	if enclosed:
@@ -87,6 +90,12 @@ func update(dt: float, state: Dictionary) -> void:
 		elif crows > 0.0 and rng.randf() < crows * (1.0 - rain):
 			_shot("bird.crow.", 25.0, 70.0, 1.0)
 			played["crow"] = int(played["crow"]) + 1
+	_next_bell -= dt
+	if _next_bell <= 0.0:
+		_next_bell = SoundProfiles.temple_bell_wait(hour) * (0.7 + rng.randf() * 0.6)
+		if street == &"temple" and rain < 0.6:
+			_shot("bell.temple", 110.0, 240.0, 1.0)
+			played["temple"] = int(played["temple"]) + 1
 	_next_honk -= dt
 	if _next_honk <= 0.0:
 		var city := SoundProfiles.city_level(hour)

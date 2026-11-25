@@ -23,7 +23,9 @@ func _check(vp: SubViewport, hud: RailHud, what: String) -> void:
 		if not c.is_visible_in_tree() or c == hud.look_area or c is SafeAreaMargin:
 			continue
 		var rect := c.get_global_rect()
-		if rect.size == Vector2.ZERO:
+		# Only hidden controls are skipped: everything shown must have a real size (an empty
+		# container left visible would be a zero-height box nobody sees).
+		if not check(rect.size.x >= 1.0 and rect.size.y >= 1.0, "%s at %s: %s is visible with size %s" % [what, vp.size, c.name, rect.size]):
 			continue
 		check(screen.encloses(rect.grow(-0.5)), "%s at %s: %s off-screen %s" % [what, vp.size, c.name, rect])
 		if c is Button:

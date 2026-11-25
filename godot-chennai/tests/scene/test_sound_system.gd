@@ -178,3 +178,80 @@ func test_suspend_silences_everything_sustained() -> bool:
 	assert_eq((s.state()["traffic"] as Array).size(), 0, "no traffic")
 	assert_eq(s.ambience.active().size(), 0, "no beds")
 	return true
+
+
+func test_train_loops_start_and_stop_with_the_motion() -> bool:
+	s.rail.set_motion(0.0, 0.0, true, 0.0)
+	for i in 120:
+		s.rail.update(DT)
+	assert_eq(s.rail.playing().size(), 0, "a standing train is silent")
+	s.rail.set_motion(25.0, 0.0, true, 0.0)
+	for i in 120:
+		s.rail.update(DT)
+	var loops := s.rail.playing()
+	assert_true("rail.rumble" in loops and "rail.clatter" in loops, "running: rumble and clatter play (%s)" % [loops])
+	assert_false("rail.squeal" in loops, "no squeal without the brake")
+	s.rail.set_motion(4.0, 1.0, true, 0.0)
+	for i in 120:
+		s.rail.update(DT)
+	assert_true("rail.squeal" in s.rail.playing(), "braking in: the squeal")
+	s.rail.set_motion(0.0, 0.0, false, INF)
+	for i in 240:
+		s.rail.update(DT)
+	assert_eq(s.rail.playing().size(), 0, "gone: every loop stops (a phone mixes what plays)")
+	return true
+
+
+func test_crossing_bell_and_booms_horn_chime_doors() -> bool:
+	s.rail.set_bell(1.0)
+	for i in 90:
+		s.rail.update(DT)
+	assert_true("crossing.bell" in s.rail.playing(), "the bell rings")
+	s.rail.set_bell(0.0)
+	for i in 240:
+		s.rail.update(DT)
+	assert_false("crossing.bell" in s.rail.playing(), "and stops")
+	s.rail.boom(true, 5.0)
+	s.rail.boom(false, 5.0)
+	s.rail.horn(20.0)
+	s.rail.horn(2000.0)
+	s.rail.announce()
+	s.rail.door(false, true)
+	s.rail.door(true)
+	var played: Dictionary = s.state()["played"]
+	assert_eq(played["crossing_boom"], 2, "booms down and up")
+	assert_eq(played["rail_horn"], 2, "horns (one too far to hear is still counted)")
+	assert_eq(played["rail_announce"], 1, "the station chime")
+	assert_eq(played["rail_door"], 2, "doors")
+	assert_eq(played["rail_chime"], 1, "the door-closing chime")
+	for id: String in ["rail.horn.emu", "rail.announce", "rail.door.open", "rail.door.close", "rail.door.chime", "crossing.boom"]:
+		assert_true(s.library.stream(id) != null, "%s loads" % id)
+	return true
+
+
+func test_street_beds_temple_bell_and_the_goods_carrier() -> bool:
+	var market := SoundProfiles.ambience_levels(11.0, 0.0, INF, 0.8, &"market")
+	var lane := SoundProfiles.ambience_levels(11.0, 0.0, INF, 0.8, &"lane")
+	var night := SoundProfiles.ambience_levels(2.0, 0.0, INF, 0.2, &"market")
+	assert_true(float(market["market"]) > 0.5 and float(lane["market"]) < 0.05, "the market murmur is the market's")
+	assert_true(float(market["tea"]) > 0.0 and float(lane["tea"]) > 0.0, "tea stalls on the market and the lanes")
+	assert_true(float(night["market"]) < float(market["market"]) * 0.3, "the market is quiet at 2 am")
+	s.set_street(&"market")
+	s.active = true
+	for i in 600:
+		s.ambience.update(0.1, {"hour": 11.0, "rain": 0.0, "coast": INF, "traffic": 0.8, "enclosed": false, "street": &"market"})
+	assert_true("market" in s.ambience.active() and "tea" in s.ambience.active(), "market and tea beds play (%s)" % [s.ambience.active()])
+	for i in 2400:
+		s.ambience.update(0.1, {"hour": 18.0, "rain": 0.0, "coast": INF, "traffic": 0.5, "enclosed": false, "street": &"temple"})
+	assert_true(int(s.ambience.played["temple"]) >= 2, "a far temple bell at the evening pooja (%d)" % int(s.ambience.played["temple"]))
+	var before := int(s.ambience.played["temple"])
+	for i in 2400:
+		s.ambience.update(0.1, {"hour": 18.0, "rain": 0.0, "coast": INF, "traffic": 0.5, "enclosed": false, "street": &"street"})
+	assert_eq(int(s.ambience.played["temple"]), before, "no temple bell away from a temple")
+	assert_eq(SoundProfiles.sound_kind("goods_carrier"), "goods", "the goods carrier has its own engine")
+	assert_eq(SoundProfiles.sound_kind("share_auto"), "auto", "the share auto sounds like an auto")
+	assert_eq(SoundProfiles.sound_kind("bus_mofussil"), "bus", "every bus variant sounds like the bus")
+	s.set_engine("goods_carrier", 6.0, 0.5, DT)
+	assert_eq((s.state()["engine"] as Dictionary)["kind"], "goods", "driving the goods carrier")
+	s.active = false
+	return true

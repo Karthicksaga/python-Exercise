@@ -91,6 +91,11 @@ var graph: RoadGraph
 var bounds: Rect2
 var signals: TrafficSignals = null
 var ground_ready: Callable = Callable()
+## Optional: called (with the method's name) by every method that changes agents from outside the
+## step (hold, let_go, move_agent, place_at, slow, scare). The owner that steps this system on
+## another thread checks there that no step is running (`CityLife`, G-364): a change made while
+## the step iterates the same agents and dictionaries crashes that thread.
+var on_change: Callable = Callable()
 var rng: AiRandom
 var _weights: PackedFloat32Array = PackedFloat32Array()
 var _cells: Dictionary[Vector2i, PackedInt32Array] = {}
@@ -329,7 +334,13 @@ func _place(a: Agent, focus: Vector2, any_distance: bool) -> bool:
 
 ## Hold an agent still where it is (someone knocked down, a vehicle being taken): not steered,
 ## moved, recycled or put away until let go. It stays in everyone's way.
+func _changing(what: StringName) -> void:
+	if on_change.is_valid():
+		on_change.call(what)
+
+
 func hold(a: Agent) -> void:
+	_changing(&"hold")
 	_held[a.id] = true
 	_release_all(a)
 	a.speed = 0.0
@@ -344,6 +355,7 @@ func is_held(a: Agent) -> bool:
 ## Let a held agent go: it carries on from where it is, or with `respawn` is moved to a new
 ## place out of sight round `near`.
 func let_go(a: Agent, respawn: bool = false, near: Vector2 = Vector2.ZERO) -> void:
+	_changing(&"let_go")
 	_held.erase(a.id)
 	if respawn and a.active and graph.edge_count() > 0:
 		_place(a, near, false)
@@ -351,6 +363,7 @@ func let_go(a: Agent, respawn: bool = false, near: Vector2 = Vector2.ZERO) -> vo
 
 ## Put an agent at a point at once (its road stays the same).
 func move_agent(a: Agent, p: Vector2, heading: float) -> void:
+	_changing(&"move_agent")
 	a.pos = p
 	a.heading = heading
 	a.generation += 1
@@ -359,6 +372,7 @@ func move_agent(a: Agent, p: Vector2, heading: float) -> void:
 ## Put an agent at a point on the nearest stretch of road (within ~100 m), going the way of
 ## that stretch closest to `heading` (a driver pulled out of a taken car). Lets go of a held agent.
 func place_at(a: Agent, p: Vector2, heading: float) -> void:
+	_changing(&"place_at")
 	if graph.edge_count() == 0:
 		return
 	var f := Vector2(-sin(heading), -cos(heading))
@@ -389,6 +403,7 @@ func place_at(a: Agent, p: Vector2, heading: float) -> void:
 
 ## Keep an agent below `speed` m/s for `seconds` (limping).
 func slow(a: Agent, speed: float, seconds: float) -> void:
+	_changing(&"slow")
 	_slowed[a.id] = Vector2(speed, seconds)
 
 
@@ -399,6 +414,7 @@ func speed_limit(a: Agent) -> float:
 ## Something frightening at `at`: agents within `radius` react for `seconds`. Those walking
 ## towards it stop and step back; the others run off along their way.
 func scare(at: Vector2, radius: float, seconds: float) -> void:
+	_changing(&"scare")
 	for a in agents:
 		if not a.active or _held.has(a.id):
 			continue

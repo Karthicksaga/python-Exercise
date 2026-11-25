@@ -54,10 +54,21 @@ func _run() -> void:
 	var city: Node = (load(CITY_PATH) as PackedScene).instantiate()
 	if OS.get_cmdline_user_args().has("--no-landmarks"):
 		city.set("show_landmarks", false)
+	# --quality=low|medium|high: the tree caps of that preset (G-386); default High.
+	var quality := -1
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--quality="):
+			quality = ["low", "medium", "high"].find(arg.trim_prefix("--quality="))
+			TreeQuality.apply(QualitySettings.values(quality))
 	if OS.get_cmdline_user_args().has("--no-roads"):
 		city.set("road_detail", false)
 	root.add_child(city)
 	err = await city.call("setup", source)
+	if quality >= 0:
+		var qv := QualitySettings.values(quality)
+		var kit_obj: Object = (city.get("streamer") as Object).get("kit")
+		kit_obj.set("tree_species", int(qv["tree_species"]))
+		kit_obj.set("under_species", int(qv["under_species"]))
 	var spawn: Dictionary = city.get("spawn")
 	var point: Vector2 = spawn["point"]
 	var heading: float = spawn["heading"]
@@ -65,6 +76,12 @@ func _run() -> void:
 		var p := at.split(",")
 		point = Vector2(float(p[0]), float(p[1]))
 		heading = float(p[2]) if p.size() > 2 else 0.0
+		# --snap: stand on the nearest road, facing along it (add `flip` to face the other way).
+		if OS.get_cmdline_user_args().has("--snap"):
+			var near_hit: Dictionary = city.call("nearest_road_point", point)
+			if not near_hit.is_empty():
+				point = near_hit["point"]
+				heading = float(near_hit["heading"]) + (PI if OS.get_cmdline_user_args().has("--flip") else 0.0)
 	elif PLACES.has(place):
 		var spec: Dictionary = PLACES[place]
 		var best := INF

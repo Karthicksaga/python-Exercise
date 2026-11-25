@@ -111,8 +111,10 @@ lanes, unpaved). Cool white-blue glow with a halo and a pool of light on the roa
   `tools/bake_city_textures.gd --only=ground`; VRAM compressed like the rest). Layers 20 to 27.
   The shader (`ground.gdshader`) adds one octave of continuous noise to the road surfaces.
 - Everything flat stays in the chunk's one ground surface; wires, shrubs and guards go into the one
-  objects surface; trees stay two MultiMeshes: the rain tree is the neem mesh stretched wide and flat,
-  the palmyra is the coconut mesh stretched tall and slim (`ChunkBuilder.SPECIES_SCALE`).
+  objects surface; trees were two MultiMeshes (the rain tree the neem mesh stretched wide and flat, the
+  palmyra the coconut mesh stretched tall and slim). Since the tree kit (G-380..G-388, `docs/trees.md`) every
+  species has its own model with three LODs; this module still chooses the species of the trees it plants
+  (`WorldTree.species`, the weights in `RoadStyle`).
 - All of it is built in `ChunkBuilder.build` on the worker thread. `RoadDetail` (plain data) plans a
   chunk; `GroundMeshes`, `RoadObjects` and `RoadModels` draw it.
 

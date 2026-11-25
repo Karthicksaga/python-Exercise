@@ -252,7 +252,7 @@
  ],
  "yaw_deg": 8.91,
  "recipe": {
-  "kit": "station",
+  "kit": "hero_station",
   "params": {
    "part": "building",
    "extra_parts": [
@@ -261,28 +261,23 @@
    "front": "south",
    "storeys": 2,
    "storey_height": 6.4,
-   "arcade_floor": 1,
    "bay": 4.2,
-   "roof_pitch": 0.0,
-   "style": "indo_saracenic",
-   "pavilions": [],
-   "porch_parts": true,
    "towers": [
     {
      "at": -0.393,
      "size": 7.0,
      "eaves": 17.0,
-     "cap": 7.0,
-     "cap_style": "dome",
-     "chhatris": true
+     "cap": 7.0
     },
     {
      "at": 0.443,
      "size": 7.0,
      "eaves": 17.0,
      "cap": 7.0,
-     "cap_style": "dome",
-     "chhatris": true
+     "clock": {
+      "z": 13.2,
+      "diameter": 3.4
+     }
     }
    ],
    "skyline_chhatris": 9,
@@ -372,9 +367,9 @@
   }
  ],
  "budget": {
-  "lod0_min": 5000,
-  "lod0_max": 15000,
-  "lod1_max": 6000,
+  "lod0_min": 2500,
+  "lod0_max": 6000,
+  "lod1_max": 1500,
   "lod2_max": 2000
  },
  "lod": {
@@ -389,6 +384,64 @@
  "estimated": [
   "all heights (no published figure)",
   "positions of the domed towers (on the two porches OSM maps on the south front)",
-  "shed height"
- ]
+  "shed height",
+  "the clock tower (which tower carries the clock, its size and position)",
+  "bay width, arcade and window proportions, the atlas colours"
+ ],
+ "signs": [
+  {
+   "ta": "சென்னை எழும்பூர்",
+   "en": "CHENNAI EGMORE",
+   "at": 0.0,
+   "height": 1.5
+  }
+ ],
+ "hero": true,
+ "atlas": {
+  "file": "chennai-egmore_atlas.png",
+  "size": 512,
+  "vram": "compress/mode=2 (VRAM compressed, mipmaps)"
+ },
+ "hooks": {
+  "entrances": [
+   {
+    "id": "porch_west",
+    "world": [
+     5546.49,
+     819.33
+    ],
+    "normal": [
+     0.155,
+     0.988
+    ],
+    "width": 5.4
+   },
+   {
+    "id": "porch_east",
+    "world": [
+     5594.17,
+     811.85
+    ],
+    "normal": [
+     0.155,
+     0.988
+    ],
+    "width": 5.4
+   }
+  ],
+  "peace_zone": {
+   "centre": [
+    5570.4,
+    815.9
+   ],
+   "radius": 45.0,
+   "reason": "station forecourt and concourse: crowds, passengers and children; no weapons drawn (data only, no system reads it yet)"
+  },
+  "facts_card": {
+   "title_en": "Chennai Egmore",
+   "title_ta": "சென்னை எழும்பூர்",
+   "facts": "facts"
+  }
+ },
+ "model_basis": "The owner's own Egmore photos were not available in this pass and no reference photo was looked at. Used: the OSM outlines (ways 209558519 main block, 209558528 west wing, 209558533 train shed; the two porches on the south front), the published facts in `facts` (Henry Irwin, Indo-Saracenic with Dravidian motifs, three-span shed, 1905-1908), and general knowledge of the style: red brick, cream stucco bands and arched arcades, domed porch towers with corner kiosks, a clock on one tower. Storey heights, tower sizes, the clock and every colour are estimates."
 }

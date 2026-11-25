@@ -1,5 +1,5 @@
 extends Node
-## The work of `combat_shots.gd`, loaded once the autoloads exist (a SceneTree script is compiled
+## The work of `combat_play_shots.gd`, loaded once the autoloads exist (a SceneTree script is compiled
 ## before them, so it cannot name `WorldOrigin`, `Main` or the combat classes). Not a test.
 
 const MAIN := "res://src/app/main.tscn"

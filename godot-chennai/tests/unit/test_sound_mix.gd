@@ -73,3 +73,58 @@ func test_beds_sit_under_the_engine_and_horns_cut_through() -> bool:
 	assert_true(horn > engine * 2.0, "a horn cuts through the engine")
 	assert_true(_rms(lib, "horn.bus") < 0.5, "no sound file near full scale")
 	return true
+
+
+func _db(x: float) -> float:
+	return 20.0 * log(x) / log(10.0)
+
+
+## Phase 6 mix limits (G-378): every new sound against the player's idling hatchback, as the
+## buses and the code's gains play it (bus level x gain x the file's RMS).
+func test_bus_train_crossing_and_street_sounds_sit_in_the_mix() -> bool:
+	var lib := SoundLibrary.new()
+	var vehicles := _db_to_linear(AudioServer.get_bus_volume_db(_bus(&"Vehicles")))
+	var world := _db_to_linear(AudioServer.get_bus_volume_db(_bus(&"World")))
+	var ambience := _db_to_linear(AudioServer.get_bus_volume_db(_bus(&"Ambience")))
+	var car := _rms(lib, "engine.car.loop.0.off") * float(SoundProfiles.engine("car")["volume"]) * 0.75 * vehicles
+	# The bus: the loudest engine at idle, but not by more than 6 dB over the hatchback.
+	var bus := _rms(lib, "engine.bus.loop.0.off") * float(SoundProfiles.engine("bus")["volume"]) * 0.75 * vehicles
+	var gap := _db(bus) - _db(car)
+	assert_true(gap > 0.0 and gap < 6.0, "the bus idles 0-6 dB over the hatchback (%.1f dB)" % gap)
+	var goods := _rms(lib, "engine.goods.loop.0.off") * float(SoundProfiles.engine("goods")["volume"]) * 0.75 * vehicles
+	assert_true(_db(goods) < _db(bus) and _db(goods) > _db(car) - 8.0, "the goods carrier sits between the car and the bus (%.1f dB)" % (_db(goods) - _db(car)))
+	# Horns: the bus and truck horns are heard over their engines and no louder than the loudest car horn + 6 dB.
+	var loudest_horn := 0.0
+	for kind in SoundProfiles.KINDS:
+		loudest_horn = maxf(loudest_horn, _rms(lib, "horn.%s" % kind))
+	for kind: String in ["bus", "goods"]:
+		var horn := _rms(lib, "horn.%s" % kind) * vehicles
+		assert_true(horn > _rms(lib, "engine.%s.loop.0.off" % kind) * vehicles * 1.2, "the %s horn cuts through its engine" % kind)
+		assert_true(_db(horn) < _db(loudest_horn * vehicles) + 6.0, "the %s horn is not the loudest by more than 6 dB" % kind)
+	var brake := _rms(lib, "bus.airbrake") * vehicles * 0.6
+	assert_true(brake < _rms(lib, "horn.bus") * vehicles, "the air brake's hiss is quieter than the bus horn")
+	# A train at full speed, the player inside: rumble and clatter together 0-9 dB over the idling hatchback.
+	var run := RailSounds.motion_levels(RailSounds.FULL_SPEED, 0.0, true, 0.0)
+	var rumble := _rms(lib, "rail.rumble") * float(run["rumble"]) * float(RailSounds.LOOP_GAIN["rumble"]) * world
+	var clatter := _rms(lib, "rail.clatter") * float(run["clatter"]) * float(RailSounds.LOOP_GAIN["clatter"]) * world
+	var train := sqrt(rumble * rumble + clatter * clatter)
+	var over := _db(train) - _db(car)
+	assert_true(over > 0.0 and over < 9.0, "a train at full speed, inside: %.1f dB over the idling hatchback" % over)
+	var beside := RailSounds.motion_levels(RailSounds.FULL_SPEED, 0.0, false, 15.0)
+	assert_true(float(beside["rumble"]) * _rms(lib, "rail.rumble") < float(run["rumble"]) * _rms(lib, "rail.rumble"), "a train passing outside is not louder than inside")
+	# The squeal and the crossing bell are noticed but never louder than the train's own noise.
+	var squeal := _rms(lib, "rail.squeal") * float(RailSounds.LOOP_GAIN["squeal"]) * world
+	assert_true(_db(squeal) < _db(train) + 3.0, "the brake squeal does not drown the train")
+	var bell := _rms(lib, "crossing.bell") * float(RailSounds.LOOP_GAIN["bell"]) * world
+	assert_true(_db(bell) > _db(car) - 6.0 and _db(bell) < _db(car) + 9.0, "the crossing bell is heard over the street, not over a train (%.1f dB vs the hatchback)" % (_db(bell) - _db(car)))
+	var emu := _rms(lib, "rail.horn.emu") * RailSounds.HORN_GAIN * vehicles
+	assert_true(_db(emu) < _db(loudest_horn * vehicles) + 6.0 and _db(emu) > _db(car) + 3.0, "the EMU horn cuts through the street")
+	# The market and the tea stall under the city's rush hum.
+	var rush := SoundProfiles.ambience_levels(19.0, 0.0, INF, 0.5)
+	var city := _rms(lib, "bed.city") * float(rush["city"]) * float(Ambience.BED_GAIN["city"]) * ambience
+	var market := _rms(lib, "bed.market") * float(Ambience.BED_GAIN["market"]) * ambience
+	var tea := _rms(lib, "bed.tea") * float(Ambience.BED_GAIN["tea"]) * ambience
+	assert_true(_db(market) < _db(city) + 3.0 and _db(market) > _db(city) - 9.0, "the market murmur is about the rush's loudness (%.1f dB)" % (_db(market) - _db(city)))
+	assert_true(tea < market, "the tea stall is quieter than the market")
+	assert_true(_db(car) - _db(market) > 2.0, "the market sits under the idling hatchback")
+	return true

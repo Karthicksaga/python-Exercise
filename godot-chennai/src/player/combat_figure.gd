@@ -29,12 +29,14 @@ const GRIP := 0.9
 
 ## Throw a blow: kind &"jab", &"cross", &"hook" or &"bat"; side 0 left hand, 1 right (the bat is
 ## swung from the right). Restarts a blow in progress. No-op without a body or for another kind.
-func play_strike(kind: StringName, side: int) -> void:
+## `windup` and `recover` (seconds, above zero) replace the standard 0.12 + 0.26 (punches) or
+## 0.22 + 0.38 (bat), e.g. for an enemy's slower, telegraphed swing.
+func play_strike(kind: StringName, side: int, windup: float = -1.0, recover: float = -1.0) -> void:
 	if poser == null or not StrikePose.is_kind(kind):
 		return
 	if _strike == null:
 		_strike = StrikePose.new()
-	_strike.start(kind, side)
+	_strike.start(kind, side, windup, recover)
 
 
 func is_striking() -> bool:

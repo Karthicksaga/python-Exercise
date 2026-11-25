@@ -93,7 +93,7 @@ Written 25 Nov 2026 by the parity-checklist agent (branch `agent/godot-parity`, 
 | Sky, haze, shadows near the player (`packages/game-engine/src/SceneRenderer.ts`) | done | `src/game_engine/environment/city_environment.gd`, `sky.gdshader`, G-89 | Test: `test_city_environment.gd` |
 | Rain (`packages/game-engine/src/RainView.ts`) | done | `src/game_engine/environment/rain_view.gd`, `rain.gdshader`, G-87 | One draw call |
 | Weather state, saved (`packages/game-engine/src/RainView.ts`, `apps/game/src/Game.ts`) | done | `src/game_engine/environment/weather.gd` | Saved as `cow-weather-v1` |
-| Motion blur (`packages/game-engine/src/MotionBlur.ts`, `SceneRenderer.ts`) | missing | - | No motion blur in `src`. Not decided whether it should come back |
+| Motion blur (`packages/game-engine/src/MotionBlur.ts`, `SceneRenderer.ts`) | replaced | `src/game_engine/post/motion_blur.gd`, G-435 | Same speed curve (16 to 32 m/s, 0.42 at most), but one full-screen radial-blur pass instead of three half-float render targets. Off by default, never on Low or Medium, free while off (not created). Test: `tests/unit/test_motion_blur.gd`. Not wired into `Main`; no Settings row yet |
 | Place markers in the world (`packages/game-engine/src/PlaceMarkers.ts`) | partial | `src/game_engine/beacon/mission_beacon.gd` | Mission beacon exists. Named place markers not checked |
 | Mission beacon and objective marker (`packages/game-engine/src/Beacon.ts`) | done | `src/game_engine/beacon/mission_beacon.gd` | |
 | Motion helpers (`packages/game-engine/src/Motion.ts`) | unverified | - | No obvious Godot counterpart; the helper's job was not identified |
@@ -109,16 +109,21 @@ Written 25 Nov 2026 by the parity-checklist agent (branch `agent/godot-parity`, 
 | Rigged human figure, idle, walk, run (`packages/player/src/HumanFigure.ts`) | done | `src/player/human_figure.gd`, `locomotion_clips.gd`, G-62, G-63 | Test: `test_human_figure.gd` |
 | Retargeting clips to the MakeHuman rig (`packages/player/src/retarget.ts`) | replaced | `src/player/retarget.gd`, G-61; CC0 clips from Quaternius (G-105) | Mixamo clips replaced by CC0 clips. Test: `test_retarget.gd` |
 | Arm settle and natural hands (`packages/player/src/armSettle.ts`, `apps/game/src/Arms.ts`) | done | `src/player/human_figure.gd` (arm settle), G-62 | Test: `test_human_figure.gd` |
-| Carrying pose: box in both hands (`packages/player/src/carryPose.ts`) | missing | - | No carry pose in `src/player`. Goods are handed over without a carry pose |
+| Carrying pose: box in both hands (`packages/player/src/carryPose.ts`) | done | `src/player/poses/carry_pose.gd`, G-431 | Box, small box on the shoulder, bag, trolley bar; palms solved onto the prop's anchors. `figure.carry(on, kind)`. Test: `tests/scene/test_combat_visuals.gd`. No caller in play yet (missions do not call it) |
 | Riding pose in vehicles and trains (`packages/player/src/ridingPose.ts`) | done | `src/player/poses/seat_pose.gd`, `src/app/ride_poses.gd`, G-260 to G-269 | Test: `test_poses.gd` |
-| Strike pose for punch and bat (`packages/player/src/strikePose.ts`) | missing | - | No strike pose in Godot. Melee not wired |
-| Weapon models in hand (`packages/player/src/weaponModels.ts`) | missing | - | No weapon models. Weapons logic only |
+| Strike pose for punch and bat (`packages/player/src/strikePose.ts`) | done | `src/player/poses/strike_pose.gd`, `combat_figure.gd`, G-430 | Jab, cross, hook, bat on the shared `PoseRig`, Three.js timings, `strike_hit` at the hit frame, player and street people. Test: `tests/scene/test_combat_visuals.gd`. Melee not wired to it yet (combat agent) |
+| Weapon models in hand (`packages/player/src/weaponModels.ts`) | done | `src/weapons_view/weapon_models.gd`, G-433 | Bat, stick, bottle, pistol, shotgun, SMG built by script, on the right hand bone, LOD, one shared palette texture. Test: `tests/scene/test_combat_visuals.gd`, `tests/unit/test_low_poly.gd`. No caller in play yet |
 | LOD simplification of models (`packages/player/src/simplify.ts`) | unverified | `src/app/perf/feature_switches.gd` (probable) | Not checked which mesh step this replaces |
 | People manifest, cast by role (`packages/player/src/people.ts`, `apps/game/src/peopleFiles.ts`) | done | `src/player/people_manifest.gd`, `src/player/people/people_pool.gd`, G-100 to G-105 | 70 people. Test: `tests/people/test_people.gd` |
 | Pedestrian figures and crowd figures (`packages/player/src/CrowdFigures.ts`, `apps/game/src/Population.ts`) | done | `src/player/people/person_view.gd`, `src/ai/crowd_field.gd`, G-126 | |
 | Player footsteps, landing, wet ground (`apps/game/src/Game.ts`) | done | `src/audio/player_sounds.gd` | Test: `test_player_sounds.gd` |
+<<<<<<< HEAD
 | Figures that fight and fall (`apps/game/src/Fighters.ts`) | done | `src/app/combat_wiring/fighters.gd`, G-416 | Enemy and officer figures from the cast (adults only), windup strike, fall when down, tracers, gang arm band. Drawn poses by the visuals branch |
 | Hit puffs on a punch (`apps/game/src/HitPuffs.ts`) | missing | - | No hit puff effect in Godot |
+=======
+| Figures that fight and fall (`apps/game/src/Fighters.ts`) | partial | `src/player/poses/knockdown.gd`, `src/player/poses/knockdown_poses.gd`, G-275 | Falls and get-up exist (`test_knockdown.gd`). Fights are not in play |
+| Hit puffs on a punch (`apps/game/src/HitPuffs.ts`) | done | `src/app/combat_fx/hit_puffs.gd`, G-432 | Dust ring and star flash, one pooled MultiMesh (4, 6 or 8 puffs by level). Test: `tests/scene/test_hit_puffs.gd`. Not added to `Main` yet |
+>>>>>>> origin/feat/godot-chennai
 
 ## 5. Vehicles and physics
 
@@ -222,6 +227,7 @@ Written 25 Nov 2026 by the parity-checklist agent (branch `agent/godot-parity`, 
 
 | Three.js feature (file) | Godot status | Godot file / G-number | Note |
 |---|---|---|---|
+<<<<<<< HEAD
 | Combat rules: health, damage, enemies (`packages/combat/src/Combat.ts`) | done | `src/combat/combat.gd`, `src/app/combat_wiring/combat_wiring.gd`, G-410 | Wired in `Main` (loading step 4). Tests: rules, `scene/test_combat_play.gd` |
 | Punch combo and bat swing with wind-up and blow (`packages/combat/src/Strikes.ts`, TD-25) | done | `src/combat/strikes.gd`, `swing_clock.gd`, HIT on foot (G-411, G-414) | Damage lands at the wind-up's end. The drawn strike pose is the visuals branch (G-430s). Test: `unit/rules/test_strikes.gd`, `scene/test_combat_play.gd` |
 | Weapons: pistol, shotgun, SMG, rounds (`packages/combat/src/Weapons.ts`) | done | `src/combat/weapons.gd`, FIRE and the weapon pill, G-417 | Tracers; saved arsenal. Test: `scene/test_combat_play.gd` (shotgun, SMG vs pistol) |
@@ -233,6 +239,19 @@ Written 25 Nov 2026 by the parity-checklist agent (branch `agent/godot-parity`, 
 | Killed officers stay dead, new units from out of sight (TD-28, `agent/police-tuning`) | done | `src/combat/police_fleet.gd` in `PoliceWiring`, G-419 | Rules tests plus play |
 | Combat animation: arms and fists in a fight (`apps/game/src/Arms.ts`, `Fighters.ts`) | partial | `src/player/human_figure.gd` | Arm and hand poses exist; no fight poses |
 | Combat and gang browser tests (`apps/game/tests/combat.spec.ts`, `gangs.spec.ts`, `weapons.spec.ts`, `police.spec.ts`) | done | `scene/test_combat_play.gd`, `tests/scene/test_combat_main.gd` | Draw-budget case of `gangs.spec` not ported (no figures headless) |
+=======
+| Combat rules: health, damage, enemies (`packages/combat/src/Combat.ts`) | partial | `src/combat/combat.gd`, `src/combat/combat_world.gd` | Rules done and tested. No combat runtime is wired into `Main` (grep: no caller) |
+| Punch combo and bat swing with wind-up and blow (`packages/combat/src/Strikes.ts`, TD-25) | partial | `src/combat/melee.gd`, `tests/unit/rules/test_melee.gd` | Logic only. No punch or bat input in `src/ui` or `src/app` |
+| Weapons: pistol, shotgun, SMG, rounds (`packages/combat/src/Weapons.ts`) | partial | `src/combat/weapons.gd`, `src/combat/arsenal.gd` | Logic only. Nothing fires |
+| Weapons lying in the world, pick up (`packages/combat/src/Pickups.ts`) | partial | `src/combat/weapon_pickups.gd` | Logic only |
+| Gangs, crews, turf (`packages/combat/src/Gangs.ts`, `apps/game/src/streetWar.ts`) | partial | `src/combat/gangs.gd`, `src/missions/content/content.json` (gangs, crews) | Data and logic exist. No gang crews spawned in play |
+| Pedestrians hit in a fight (`packages/combat/src/PedestrianHits.ts`) | partial | `src/combat/pedestrian_hits.gd` | Logic only. Vehicle hits on people are done (section 6) |
+| Wanted level: heat and stars (`packages/combat/src/Wanted.ts`, TD-28) | partial | `src/combat/wanted.gd`, `src/app/city_life/street_reactions.gd` | Logic done. No Wanted instance is created in `Main`; carjacking and street reactions call it only when present |
+| Police response: units and pursuit (`packages/combat/src/Police.ts`, `apps/game/src/Police.ts`) | partial | `src/combat/police_fleet.gd`, `src/combat/wanted.gd` | Crew rules done. Not in play |
+| Killed officers stay dead, new units from out of sight (TD-28, `agent/police-tuning`) | partial | `src/combat/police_fleet.gd` | Rules in `tests/unit/rules/test_police_fleet.gd` |
+| Combat animation: arms and fists in a fight (`apps/game/src/Arms.ts`, `Fighters.ts`) | partial | `src/player/human_figure.gd`, `src/player/poses/strike_pose.gd` | Fight poses exist (G-430), also on street people; no fight calls them in play yet |
+| Combat and gang browser tests (`apps/game/tests/combat.spec.ts`, `gangs.spec.ts`, `weapons.spec.ts`, `police.spec.ts`) | missing | - | No Godot scene test for these in play. Logic tests only |
+>>>>>>> origin/feat/godot-chennai
 
 ## 9. Railway
 
@@ -351,7 +370,7 @@ Count of test calls per file is not checked. Status describes the Godot test tha
 | `packages/player/src/armSettle.test.ts` | done | `tests/scene/test_human_figure.gd` | |
 | `packages/player/src/people.test.ts` | done | `tests/people/test_people.gd` | |
 | `packages/player/src/retarget.test.ts` | done | `tests/unit/test_retarget.gd` | |
-| `packages/player/src/strikePose.test.ts` | missing | - | No strike pose in Godot |
+| `packages/player/src/strikePose.test.ts` | done | `tests/unit/test_strike_pose.gd` | Ported case by case (punch, bat, fist, flinch) plus hook and the hit-frame signal |
 | `packages/rail/src/doors.test.ts` | done | `tests/unit/test_rail.gd` | |
 | `packages/rail/src/rail.test.ts` | done | `tests/unit/test_rail.gd` | |
 | `packages/rail/src/station.test.ts` | done | `tests/unit/test_rail_station.gd` | |
@@ -441,16 +460,16 @@ Counts are over sections 1 to 13 (Three.js features and tests). Section 14 is no
 
 | Status | Feature rows (sections 1 to 11) | Test rows (sections 12 and 13) | All counted rows |
 |---|---:|---:|---:|
-| done | 144 | 57 | 201 |
+| done | 148 | 58 | 206 |
 | partial | 33 | 17 | 50 |
-| replaced | 26 | 2 | 28 |
-| missing | 8 | 5 | 13 |
+| replaced | 27 | 2 | 29 |
+| missing | 3 | 4 | 7 |
 | unverified | 6 | 3 | 9 |
 | **Total** | **217** | **84** | **301** |
 
 Section 14 (Godot-only work, 34 rows: 26 done, 5 partial, 3 missing) is not in these counts.
 
-Counts were taken from this file with `awk` over the status column. "Done" means code and a test
+Counts were taken from this file with `awk` over the status column (updated 25 Nov by `agent/godot-combat-visuals`: strike, carry, weapons and puffs done, motion blur replaced, strike test ported). "Done" means code and a test
 or documented check exist. It does not mean a phone has run it. Nothing here was run on a phone.
 
 What is verified in play, and what is only in the logic layer:
@@ -502,15 +521,15 @@ These are the missing rows, ranked by how much they block. Items 1 to 8 are all 
 rows in sections 1 to 11. Items 9 and 10 are missing test rows.
 
 1. Player health bar with the six-second heal (`apps/game/src/Game.ts`, `Combat.ts`): no HUD in `src/ui`.
-2. Strike pose for punch and bat (`packages/player/src/strikePose.ts`): no pose in `src/player`.
-3. Hit puffs on a punch (`apps/game/src/HitPuffs.ts`): no effect in Godot.
-4. Weapon models in hand (`packages/player/src/weaponModels.ts`): no models in play.
+2. ~~Strike pose for punch and bat~~ done on `agent/godot-combat-visuals` (G-430): `src/player/poses/strike_pose.gd`.
+3. ~~Hit puffs on a punch~~ done on `agent/godot-combat-visuals` (G-432): `src/app/combat_fx/hit_puffs.gd`.
+4. ~~Weapon models in hand~~ done on `agent/godot-combat-visuals` (G-433): `src/weapons_view/weapon_models.gd`.
 5. Wanted stars HUD (`packages/ui/src/WantedStars.ts`): no stars display in `src/ui`.
-6. Carrying pose, box in both hands (`packages/player/src/carryPose.ts`): no pose in `src/player`.
+6. ~~Carrying pose, box in both hands~~ done on `agent/godot-combat-visuals` (G-431): `src/player/poses/carry_pose.gd`.
 7. Combat and gang browser tests (`apps/game/tests/combat.spec.ts`, `gangs.spec.ts`, `weapons.spec.ts`):
    no scene test, because combat is not in play.
-8. Motion blur (`packages/game-engine/src/MotionBlur.ts`): no code. Not decided whether it should return.
-9. Strike pose unit test (`packages/player/src/strikePose.test.ts`): nothing to test until the pose exists.
+8. ~~Motion blur~~ decided (G-435): kept as a cheap radial pass, off by default and off on Low and Medium: `src/game_engine/post/motion_blur.gd`.
+9. ~~Strike pose unit test~~ ported: `tests/unit/test_strike_pose.gd`.
 10. Police browser test (`apps/game/tests/police.spec.ts`): no scene test, because police is not in play.
 
 **Update, 25 Nov 2026 (agent/godot-combat, G-410…G-420).** Items 1 (health bar), 5 (wanted stars), 7 (combat,
