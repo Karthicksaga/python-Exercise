@@ -2690,3 +2690,11 @@ of `CrashEffects` (`splash`). Measured in the yard (same bike, same controls, 6 
 of height wander), a damaged one wanders 2.3 cm and tops out at 21.3 against 25.0 m/s, mud wanders 4.2 cm at 16.3 m/s
 (65 %); a hatchback in mud keeps 79 % of its speed (the bike 65 %) and wanders 6 cm. Not done: wheels do not take the puddle one by
 one (the vehicle's centre decides), no sound for the splash, and the bump is a smooth wobble, not holes at the holes.
+
+### G-451: Motion blur has a Settings row, High only
+`QualitySettings.motion_blur` is the player's choice (default off, saved with the preset in the same section, key
+`motion_blur`); `motion_blur_available()` is the preset's table key (High only) and `motion_blur_active()` both.
+`PerfWiring` adds a `MotionBlur` node to Main only while it is active, frees it (and its layer) the moment it is not,
+and calls `update(speed, dt)` once a frame with the driven vehicle's speed. The row ("Motion blur: Off") is in the pause
+menu and the title's Settings and is hidden on Low and Medium. Tests: off by default means no node and no layer in
+Main, High and chosen means one, Medium frees it although chosen.

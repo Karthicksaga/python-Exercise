@@ -207,3 +207,34 @@ func test_a_fresh_install_and_an_old_save_start_at_low_on_an_adreno_613() -> boo
 	assert_eq(back.overlay_label(), "High (chosen)", "and the overlay says it was chosen")
 	_clean()
 	return true
+
+
+func test_motion_blur_choice_is_off_by_default_saved_and_needs_high() -> bool:
+	var path := "user://test-quality-blur.json"
+	for p: String in [path, path + ".tmp"]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(p)
+	var s := QualitySettings.new()
+	s.path = path
+	s.load_saved()
+	assert_false(s.motion_blur, "off by default")
+	assert_eq(s.motion_blur_label(), "Motion blur: Off", "the row says so")
+	s.set_preset(QualitySettings.HIGH)
+	assert_true(s.motion_blur_available() and not s.motion_blur_active(), "High allows it, nothing draws until it is chosen")
+	s.set_motion_blur(true)
+	assert_true(s.motion_blur_active(), "chosen on High: active")
+	assert_eq(s.motion_blur_label(), "Motion blur: On", "label follows")
+	var back := QualitySettings.new()
+	back.path = path
+	back.load_saved()
+	assert_true(back.motion_blur, "the choice is saved")
+	for level: int in [QualitySettings.LOW, QualitySettings.MEDIUM]:
+		s.set_preset(level)
+		assert_false(s.motion_blur_available() or s.motion_blur_active(), "%s: not available, never active even when chosen" % QualitySettings.NAMES[level])
+	var junk := QualitySettings.new()
+	junk.from_dict({"motion_blur": "yes"})
+	assert_false(junk.motion_blur, "a wrong-typed value keeps the default")
+	for p: String in [path, path + ".tmp"]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(p)
+	return true
