@@ -318,6 +318,7 @@ func test_action_labels_fit_their_button() -> bool:
 		Tr.set_mode(mode)
 		for key: String in ["act.get_in", "act.take_over", "act.board_train", "ctl.action"]:
 			var b := TouchButton.new(Tr.t(key), ControlsLayout.ACTION_SIZE)
+			b.theme = UiTheme.get_theme()
 			root.add_child(b)
 			b.font_size = 16 if b.text.length() <= 6 else 13
 			check(b.text_fits(), "%s in %s fits the ACTION button (%s)" % [key, _label(mode), b.text])
