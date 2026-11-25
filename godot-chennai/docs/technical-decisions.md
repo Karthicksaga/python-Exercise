@@ -2756,3 +2756,23 @@ data's licence, so it is moved, not dropped: `PauseMenu` carries its own credit 
 data's attribution by `Main`), and the HUD's plate hides while the menu is open (`PauseMenu.opened` and `closed`,
 `DebugHud.set_credit_shown`). Test: `test_ui_layout.gd` builds the pause menu with the real rows plus a long one at
 the five UI sizes (938 x 412 among them), `test_perf_wiring.gd` checks it in the booted game.
+
+### G-456: What every run leaked at exit: found, and the cheap ones fixed
+Every Godot run ended with "146 ObjectDB instances were leaked at exit", Main-booting tests with "2 resources still in
+use at exit" and a couple of mesh RIDs. Found with `godot --headless --verbose` on small tests and by taking the
+autoloads out one at a time (an empty script in the project: 146; with the `Sound` autoload removed: none):
+- **146 = the sound manifest's files.** `SoundLibrary.request_all` starts a threaded load of every file; whatever nothing
+  ever asked for stays in the loader to the end of the process. `SoundLibrary.drain` takes the pending loads
+  (`_pending`, separate from `_requested`) and `Sound._exit_tree` calls it **only in a headless run** (tests, tools, CI):
+  on a phone the process just ends and nothing waits. A tiny script that used to leak 146 now leaks nothing.
+- **"2 resources still in use" (`quality_settings.gd`, `railway_wiring.gd`)** was a reference cycle:
+  `RailwayWiring.wire` connected a lambda that captured the shared `QualitySettings` to that settings object's own
+  `changed` signal, so neither could be freed. It is now `Railway.apply_shared_quality`, a method of the (freed) railway.
+- **Node3D leaks:** `PlayerRiderLink` makes its ride anchor in a field initialiser and adds it to the tree on the first
+  ride; a link that never rode (every test, and a game where the player never got in) left it behind when freed.
+  `NOTIFICATION_PREDELETE` frees it when it has no parent.
+A Main-booting test went from 231 leaked objects, 2 resources and 2 RIDs to 82 objects and 2 RIDs.
+**Not found:** the remaining ~82 `RefCounted` instances (their class is not printed) and 1 to 4 `DummyMesh` RIDs after
+the game boots (68 to 210 in the other Main-booting tests); they are not the statics (clearing every `static var` cache
+changed nothing) and not the sound loads; my guess, not checked, is builds still in flight on worker threads when the process
+ends (chunks, layouts, models). Phones are not affected (the OS ends the process); CI only prints the warning.

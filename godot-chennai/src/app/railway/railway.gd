@@ -209,6 +209,11 @@ func apply_quality(level: int) -> void:
 		tracks_view.set_overhead(bool(p["ohe"]), float(p["ohe_distance"]))
 
 
+## The shared graphics level, applied (the settings' `changed` signal calls this).
+func apply_shared_quality() -> void:
+	apply_quality(QualitySettings.shared().preset)
+
+
 func set_hud(h: RailHud) -> void:
 	hud = h
 	hud.set_tamil_font(font)
