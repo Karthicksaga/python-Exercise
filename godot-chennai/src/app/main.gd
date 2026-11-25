@@ -118,7 +118,7 @@ func _load() -> void:
 	var roads := source.loaded_roads()
 	hud.set_world_text("%s roads · %s chunks" % [_thousands(roads.size()), _thousands(source.chunk_count())])
 	hud.set_credit(source.get_attribution())
-	title.set_credits(source.get_attribution(), source.get_data_date())
+	title.set_credits(source.get_attribution(), source.get_data_date(), SoundCredits.text(Sound.library))
 	if OS.get_cmdline_user_args().has("--start=play"):
 		play()
 	else:

@@ -1216,3 +1216,34 @@ sort of a chunk runs on the worker. The streaming test's main-thread budget hold
 cost: about +20 to +40 over the loaded chunks on High (+4 on Low). No impostors beyond LOD 2, no cross-fade, wind is a
 vertex sway only. Seen under Compatibility on llvmpipe only: not the Mobile renderer, not a phone. The painted atlas is
 stylised. The first sort after a preset change rebuilds every species of every chunk at once over a few frames.
+## Sounds, phase 6 leftovers (G-370 to G-379, agent/godot-sounds), 25 Nov 2026
+**Done (tests run here; no one has listened to any of it):**
+- `RailSounds` (`Sound.rail`) and its wiring in `src/app/railway/railway.gd`: EMU horn by distance,
+  the platform chime, door chime and doors (ridden, driven and cab doors), the rumble, wheel clatter
+  and brake squeal of the nearest train or of the one the player rides or drives, the crossing bell
+  (level by distance and boom position) and the booms' own sound. The old stand-ins (bus horn and door
+  for the train, the generic chime cue, the counted-only bell) are gone.
+- A `goods` sound kind (engine, horn); `share_auto`, `goods_carrier` and every `bus_*` variant now map to
+  their own sounds (the vehicles' variant ids used to fall back to the hatchback's).
+- `bed.market`, `bed.tea` and a far `bell.temple` follow the place kind that `CityLife` already
+  computes (`Sound.set_street`); `SoundProfiles.street_levels`, `temple_bell_wait`.
+- `SoundCredits` on the (now scrolling) ABOUT page: every CC-BY recording with its author.
+- Tools: `fetch_commons.py` (polite downloader), `import_recordings.py` (now normalises to -16 LUFS,
+  `speed`, `highpass`, measures), `synth_extras.py` (documented synthesis), `measure_manifest.py`,
+  `test_audio_files.py` (CI step, needs numpy). The manifest rows carry `metrics`.
+- Tests: `test_sound_recordings.gd` (every listed sound exists, loops do not click, loudness range,
+  no clipping, size budget, a licence row per file, credits), `test_rail_sounds.gd`, bus/train/street mix
+  limits in `test_sound_mix.gd`, `test_sound_system.gd` (rail loops, bell, booms, street beds, temple bell).
+
+**Real vs synthetic** is in `docs/sound-recordings.md`: only the temple bell is a new real recording.
+Wikimedia Commons rate-limited every download after the first three (HTTP 429, `Retry-After: 600`, still
+429 after an hour of ten-minute retries); the Internet Archive, Freesound and similar are blocked by the
+network policy. The candidates found are listed there, ready to import.
+
+**Weak or not done:** the thirteen rail and street sounds are synthetic and unheard; the auto, bike,
+thumper, bus, ambulance and goods engines, the bus horn and door are still the synthesised stand-ins;
+`bed.market` is a murmur with no words, `bed.tea` a guess; `crossing.bell` rings at a fixed
+rate whatever the crossing; no Doppler on passing trains; the train's own sounds are not muffled by
+the player's `enclosed` state. `tests/scene/test_city_streaming.gd::test_main_thread_budget_under_cpu_load`
+(a wall-clock test) fails on this machine (53 to 75 ms against 16) and also on the base commit
+(27 ms there, measured in a clean worktree): unrelated to sound.

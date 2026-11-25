@@ -579,6 +579,7 @@ func _sync(dt: float, focus: Vector2) -> void:
 	heads.refresh(focus)
 	if Sound.active:
 		Sound.set_traffic(sounds, dt, hour())
+		Sound.set_street(population.levels.get("place", &"") as StringName)
 	_parts += Vector4i(tv - _sync_start, tw - tv, tc - tw, Time.get_ticks_usec() - tc)
 
 

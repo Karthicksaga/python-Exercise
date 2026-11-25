@@ -29,6 +29,7 @@ const STEP_POOL := 3
 
 var library: SoundLibrary
 var ambience: Ambience
+var rail: RailSounds
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## Ambience plays while true (set by the game flow when play starts).
 var active: bool = false
@@ -58,6 +59,7 @@ var _coast: float = INF
 var _traffic_level: float = 0.5
 var _enclosed: bool = false
 var _speed: float = 0.0
+var _street: StringName = &""
 
 
 func _ready() -> void:
@@ -70,6 +72,10 @@ func _ready() -> void:
 	ambience.name = "Ambience"
 	add_child(ambience)
 	ambience.setup(library)
+	rail = RailSounds.new()
+	rail.name = "RailSounds"
+	add_child(rail)
+	rail.setup(library)
 	_wind = _loop_player("vehicle.wind", &"Vehicles")
 	_skid = _loop_player("vehicle.skid", &"Vehicles")
 	_siren = _loop_player("siren.ambulance", &"Vehicles")
@@ -319,6 +325,12 @@ func _honks(traffic: Array[Dictionary], dt: float, hour: float) -> void:
 			_stood.erase(id)
 
 
+## The kind of street round the player (`PlaceMap.KINDS`, "" unknown): the market murmur, the tea
+## stall and the far temple bell follow it.
+func set_street(kind: StringName) -> void:
+	_street = kind
+
+
 ## The place round the player, for the ambience: metres to the sea (INF inland), how busy the
 ## roads are (0..1), and whether the player sits inside a closed vehicle.
 func set_place(coast_metres: float, traffic_level: float, enclosed: bool) -> void:
@@ -335,6 +347,7 @@ func suspend() -> void:
 	set_skid(0.0)
 	set_traffic([], 0.0, 12.0)
 	ambience.stop_all()
+	rail.stop_all()
 	active = false
 
 
@@ -345,9 +358,10 @@ func _process(dt: float) -> void:
 			v.queue_free()
 		else:
 			v.drive(dt, 0.0, 0.0)
+	rail.update(dt)
 	if active:
 		var clock: GameClock = GameLoop.clock
-		ambience.update(dt, {"hour": clock.hour, "rain": Weather.rain_level(), "coast": _coast, "traffic": _traffic_level, "enclosed": _enclosed})
+		ambience.update(dt, {"hour": clock.hour, "rain": Weather.rain_level(), "coast": _coast, "traffic": _traffic_level, "enclosed": _enclosed, "street": _street})
 
 
 # --- players ----------------------------------------------------------------------------
@@ -391,6 +405,7 @@ func state() -> Dictionary:
 		"engine": null if engine == null else {"kind": engine.kind, "rpm": roundi(engine.rpm), "gear": engine.gear},
 		"traffic": traffic,
 		"ambience": ambience.active(),
-		"played": _counts.merged(ambience.played),
+		"rail": rail.playing(),
+		"played": _counts.merged(ambience.played).merged(rail.played),
 		"synth_engines": library.synth_engine_kinds(),
 	}

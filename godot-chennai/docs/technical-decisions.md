@@ -2532,3 +2532,79 @@ stands in and about 8 in a far one; measured before and after in `docs/trees.md`
 No species or leaf-type tag, no landuse=forest or hill height in the chunk files: a hill road is only as leafy as its
 district's palette. Listed under weak spots; a data change (species tag in `build-world`, forest areas) would plug in at
 `TreeStyle.weights_for`.
+## Sounds, phase 6 leftovers (G-370 to G-379, agent/godot-sounds), 25 Nov 2026
+
+### G-370: Real recordings where a free one exists, documented synthesis where none does, 6 MB at most
+Sources allowed: CC0, public domain, CC-BY (never -SA, -NC, -ND, Sampling+, unknown). Searched:
+Wikimedia Commons (API and files; its servers answer HTTP 429 with `Retry-After: 600` after about
+three downloads from this network, so downloads are slow: `tools/audio/fetch_commons.py` waits
+politely, one file at a time, with a descriptive User-Agent that names no person), OpenGameArt
+(reachable, no limit). Blocked by the network policy (HTTP 403 from the proxy): archive.org,
+freesound.org, soundjay, the British Library. A sound with no acceptable recording is synthesised
+by `tools/audio/synth_extras.py` (deterministic, CC0, marked `"source": "synth"` in the manifest and
+"synthetic" in LICENSES.md) and listed in `docs/sound-recordings.md` as the first to replace with a
+phone recording. The new audio (Ogg Vorbis mono 22.05 kHz, engine loops WAV as before) is held to
+`AUDIO_BUDGET_BYTES` by a test (the folder was 2.9 MB; the budget adds 6 MB at most).
+
+### G-371: Every new sound is measured on the shipped file
+`tools/audio/audio_dsp.py::measure` decodes the file and stores `metrics` in the manifest:
+channels, sha256, bytes, RMS and peak dBFS, integrated loudness (BS.1770, ffmpeg `ebur128`) and
+`loop_jump` (the step across the loop point over an ordinary sample step; about 1 is clean, a click is
+tens). New sounds are normalised to -16 LUFS with the peak at most -2.2 dBFS before the Ogg encode
+(a peaky sound is limited by its peak and flagged `peak limited`); a recording that replaces a
+stand-in keeps the stand-in's RMS (the mix and its tests were tuned on it). The tests hold the
+stored numbers to limits (mono, peak at most -1 dBFS after the encode, loop jump at most 5, RMS
+-46 to -8 dBFS, LUFS within 3 LU of -16) and tie them to the shipped bytes by sha256;
+`tools/audio/test_audio_files.py` (CI, needs numpy and ffmpeg) measures the files again from scratch.
+WAV engine loops are also checked on their samples in GDScript.
+
+### G-372: What is synthetic
+`rail.announce`, `rail.squeal`, `rail.clatter`, `rail.rumble`, `bus.airbrake`, `bed.market` and
+`bed.tea` (and any sound the table in `docs/sound-recordings.md` marks synthetic). Loops are made
+periodic by construction (noise in the frequency domain, whole cycles per loop, hits added into a
+circular buffer), so the wrap is exact.
+
+### G-373: A goods carrier kind
+`SoundProfiles.KINDS` gains `goods` (two-cylinder diesel, its own horn, the engine loops and
+start/stop). Names map to kinds: `share_auto` to `auto`, `goods_carrier` and `truck` to `goods`,
+every `bus_*` variant to `bus` (they all sounded like a hatchback before: `kind_of` passes the vehicle
+variant id).
+
+### G-374: `RailSounds`, a child of the `Sound` autoload
+`Sound.rail`: `horn(distance)`, `announce()`, `door(open, chime)`, `boom(closing, distance)`,
+`set_motion(speed, brake, inside, distance)`, `set_bell(level)`. The levels are static functions
+(`motion_levels`, `bell_level`, `horn_level`, `reach`), unit-tested: rumble and clatter grow with
+speed and the clatter's pitch keeps time (the recording has a joint pair every 0.75 s at 20 m/s),
+the squeal comes only when braking below about 12 m/s, inside is louder than outside, a train is
+heard to 260 m, its horn to 480 m, a crossing bell to 170 m. The railway layer
+(`src/app/railway/railway.gd`) calls it; `src/rail` stays free of sound.
+
+### G-375: The railway's stand-ins are gone
+The bus horn that stood in for the train horn, the bus door for the train doors, the generic
+"chime" cue for the platform announcement and the counted-only crossing bell now play
+`rail.horn.emu`, `rail.door.*`, `rail.announce` and `crossing.bell`/`crossing.boom`. The nearest
+train outside the player's is heard from its distance and speed (brake from its falling speed);
+inside a ridden or driven train the motion is the train's own.
+
+### G-376: Street beds and the far temple bell follow the kind of street
+`CityLife` passes `PlaceMap`'s place kind to `Sound.set_street`; `SoundProfiles.street_levels`
+turns it into the market murmur (loudest in a market, a little in a station and a busy street) and the tea stall (shopfronts on
+streets and lanes, busier at the morning and evening rush), both by the day's crowd; a temple
+bell sounds 110 to 240 m away every 18 to 60 s near a temple (sooner at the 6 and 18 hour pooja).
+
+### G-377: Credits on the ABOUT page
+`SoundCredits.text` lists every CC-BY recording (original file, author, licence, site) and counts
+the CC0, public-domain and synthetic ones; `Main` passes it to `TitleMenu.set_credits`; the ABOUT
+page now scrolls. A test fails if a CC-BY author is missing from it.
+
+### G-378: Mix limits, written as tests
+Against the player's idling hatchback: the bus idles 0 to 6 dB over it, the goods carrier between
+it and the bus, bus and truck horns cut through their engines and are not the loudest horn by more
+than 6 dB, the air-brake hiss is under the bus horn, a train at full speed with the player inside is
+0 to 9 dB over, the squeal never drowns the train, the market sits under the idling car and about
+the rush's loudness (`tests/unit/test_sound_mix.gd`).
+
+### G-379: A licence row per file, in the file's own name
+`tests/unit/test_sound_recordings.gd`: every sound under `assets/audio/rec/` and `synthetic/` needs
+a row naming its exact path in LICENSES.md (the stand-ins keep their folder row), a manifest row,
+a source link for recordings, and CC-BY authors must be on the ABOUT page.
