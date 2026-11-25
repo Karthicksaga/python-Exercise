@@ -43,6 +43,9 @@ var life: CityLife
 var driving: Driving
 ## The game's wanted level, when it has one (no instance exists yet): incidents are reported.
 var wanted: Wanted = null
+## The game's crime report (the police: G-418), used instead of `wanted` when set:
+## report_crime(crime: String). Through it a crime counts as witnessed only when a unit sees.
+var report_crime: Callable = Callable()
 ## Counts for tests and the HUD.
 var stats: Dictionary = {"stagger": 0, "fall": 0, "rider": 0, "children_passed": 0, "tests": 0, "test_usec": 0, "test_usec_max": 0}
 ## Touch tests that found nobody (their cost is the per-step price of driving near people).
@@ -74,6 +77,8 @@ var _spare: Dictionary[String, Array] = {}
 var _minors: Dictionary[String, bool] = {}
 ## Rider falls judged by `Driving` (a node signal), applied at the next step: [view, launch].
 var _riders: Array[Array] = []
+## Blows from the player on foot (G-416), applied at the next step: [id, from, heavy].
+var _strikes: Array[Array] = []
 var _honk_in := -1.0
 var _honk_kind: StringName = &""
 var _honk_at := Vector3.ZERO
@@ -137,7 +142,41 @@ func _on_vehicle_hit(v: Vehicle, outcome: CrashRules.Outcome) -> void:
 
 
 ## Between the AI's steps: hand back people who are up, start rider falls, test the touch.
+## The player struck someone on foot (`Combat`'s civilianHit): walker agent `id` (>= 0) or crowd
+## spot key `-1 - id`, from world point `from`; heavy blows knock an adult down, light ones make
+## them stagger. Applied between the AI's steps; never a child (checked again there).
+func strike_person(id: int, from: Vector2, heavy: bool) -> void:
+	_strikes.append([id, from, heavy])
+
+
+func _apply_strikes() -> void:
+	if life.population == null:
+		_strikes.clear()
+		return
+	var walkers := life.population.walkers
+	for s in _strikes:
+		var id: int = s[0]
+		var from: Vector2 = s[1]
+		var band: StringName = &"fall" if bool(s[2]) else &"stagger"
+		if id >= 0:
+			if id >= walkers.agents.size():
+				continue
+			var a := walkers.agents[id]
+			if not a.active or walkers.is_held(a) or life.downed.has(a.id):
+				continue
+			var push := (a.pos - from).normalized() * 3.0
+			_walker_hit(a, band, from, push, null)
+		else:
+			for p in life.population.people:
+				if p.key == -1 - id and StreetHits.can_be_hit(p.child, p.play) and not life.downed_crowd.has(p.key):
+					_crowd_hit(p, band, from, (p.pos - from).normalized() * 3.0, null)
+					break
+	_strikes.clear()
+
+
 func _step(dt: float) -> void:
+	if not _strikes.is_empty():
+		_apply_strikes()
 	for d in _downs:
 		_settle(d)
 	for i in range(_downs.size() - 1, -1, -1):
@@ -200,7 +239,7 @@ func _walker_hit(a: AgentSystem.Agent, band: StringName, centre: Vector2, vel: V
 		# Rocked back, looking at the vehicle (fear: step back if facing it, else hurry on).
 		walkers.scare(centre, a.pos.distance_to(centre) + 0.3, 2.0)
 		life.stagger[a.id] = StreetHits.STAGGER_TIME
-		_incident(&"stagger", &"walker", a.pos)
+		_incident(&"stagger", &"walker", a.pos, v != null)
 		return
 	var fig := _take_fig(who)
 	if fig == null:
@@ -216,14 +255,15 @@ func _walker_hit(a: AgentSystem.Agent, band: StringName, centre: Vector2, vel: V
 	d.ground = at.y
 	fig.global_transform = Transform3D(Basis(Vector3.UP, a.heading), at)
 	_fall(d, StreetHits.launch(vel, a.pos - centre))
-	v.knock(0.9)
-	_incident(&"fall", &"walker", a.pos)
+	if v != null:
+		v.knock(0.9)
+	_incident(&"fall", &"walker", a.pos, v != null)
 
 
 func _crowd_hit(p: CrowdField.Person, band: StringName, centre: Vector2, vel: Vector2, v: Vehicle) -> void:
 	var who := life.cast.crowd_person(p.look, p.child, p.play)
 	if band == &"stagger" or who == "" or is_minor(who):
-		_incident(&"stagger", &"crowd", p.pos)
+		_incident(&"stagger", &"crowd", p.pos, v != null)
 		return
 	var fig := _take_fig(who)
 	if fig == null:
@@ -238,8 +278,9 @@ func _crowd_hit(p: CrowdField.Person, band: StringName, centre: Vector2, vel: Ve
 	d.ground = at.y
 	fig.global_transform = Transform3D(Basis(Vector3.UP, p.yaw), at)
 	_fall(d, StreetHits.launch(vel, p.pos - centre))
-	v.knock(0.9)
-	_incident(&"fall", &"crowd", p.pos)
+	if v != null:
+		v.knock(0.9)
+	_incident(&"fall", &"crowd", p.pos, v != null)
 
 
 func _knock_rider(view: TrafficVehicleView, launch: Vector3) -> void:
@@ -288,7 +329,7 @@ func _fall(d: Down, launch: Vector3) -> void:
 
 
 ## The reaction around an incident: counted, bystanders, the crowd looks, a honk, the crime.
-func _incident(band: StringName, who: StringName, at: Vector2) -> void:
+func _incident(band: StringName, who: StringName, at: Vector2, v_crime: bool = true) -> void:
 	var key: StringName = &"rider" if who == &"rider" else band
 	stats[key] = int(stats[key]) + 1
 	reacted.emit(band, who, at)
@@ -296,8 +337,11 @@ func _incident(band: StringName, who: StringName, at: Vector2) -> void:
 	life.report_incident(&"rider_down" if who == &"rider" else (&"person_down" if band == &"fall" else &"stagger"), at)
 	if band == &"fall":
 		_honk_from_near(at)
-		if wanted != null:
-			wanted.report("pedestrianInjured", true)
+		if v_crime:
+			if report_crime.is_valid():
+				report_crime.call("pedestrianInjured")
+			elif wanted != null:
+				wanted.report("pedestrianInjured", true)
 
 
 func _honk_from_near(at: Vector2) -> void:

@@ -18,6 +18,11 @@ const MIN_TARGET := 48.0
 const ACTION_SIZE := 88.0
 const JUMP_SIZE := 70.0
 const RUN_SIZE := 70.0
+## The fight's buttons (G-414): HIT on the thumb's arc left of ACTION, FIRE above it (only with a
+## loaded gun), the weapon pill left of FIRE (only with more than one gun).
+const HIT_SIZE := 70.0
+const FIRE_SIZE := 64.0
+const WEAPON_SIZE := 56.0
 const FOOT_RIGHT := 20.0
 const FOOT_BOTTOM := 36.0
 const FOOT_GAP := 10.0
@@ -58,7 +63,7 @@ static func _handed(rects: Dictionary, area: Vector2, s: ControlSettings) -> Dic
 
 
 ## On foot. Keys: &"action", &"jump", &"run" (the toggle-run button, only shown when the setting
-## is on), &"stick" (the stick's ring at rest), &"move_zone", &"look_zone".
+## is on), &"hit", &"fire", &"weapon" (the fight's buttons), &"stick" (the stick's ring at rest), &"move_zone", &"look_zone".
 static func foot(area: Vector2, s: ControlSettings) -> Dictionary:
 	var k := s.button_scale()
 	var a := _px(ACTION_SIZE, k)
@@ -66,13 +71,22 @@ static func foot(area: Vector2, s: ControlSettings) -> Dictionary:
 	var r := _px(RUN_SIZE, k)
 	var action := Rect2(area.x - FOOT_RIGHT - a, area.y - FOOT_BOTTOM - a, a, a)
 	var jump := Rect2(action.position.x + (a - j) * 0.5, action.position.y - FOOT_GAP - j, j, j)
-	# The toggle-run button sits on the thumb's arc, to ACTION's left.
-	var run := Rect2(action.position.x - FOOT_GAP - r, area.y - FOOT_BOTTOM - r, r, r)
+	var hs := _px(HIT_SIZE, k)
+	var fs := _px(FIRE_SIZE, k)
+	var ws := _px(WEAPON_SIZE, k)
+	var hit := Rect2(action.position.x - FOOT_GAP - hs, area.y - FOOT_BOTTOM - hs, hs, hs)
+	var fire := Rect2(hit.position.x + (hs - fs) * 0.5, hit.position.y - FOOT_GAP - fs, fs, fs)
+	var weapon := Rect2(fire.position.x - FOOT_GAP - ws, fire.position.y + (fs - ws) * 0.5, ws, ws)
+	# The toggle-run button sits on the thumb's arc, left of HIT.
+	var run := Rect2(hit.position.x - FOOT_GAP - r, area.y - FOOT_BOTTOM - r, r, r)
 	var ring := Vector2.ONE * STICK_RADIUS * 2.0
 	var rects := {
 		&"action": action,
 		&"jump": jump,
 		&"run": run,
+		&"hit": hit,
+		&"fire": fire,
+		&"weapon": weapon,
 		&"stick": Rect2(Vector2(STICK_REST, area.y - STICK_REST - ring.y), ring),
 		&"move_zone": Rect2(0.0, 0.0, area.x * MOVE_SHARE, area.y),
 		&"look_zone": Rect2(area.x * MOVE_SHARE, 0.0, area.x * (1.0 - MOVE_SHARE), area.y),
@@ -108,6 +122,6 @@ static func driving(area: Vector2, s: ControlSettings) -> Dictionary:
 static func buttons_of(rects: Dictionary) -> Dictionary:
 	var out := {}
 	for key: Variant in rects:
-		if key in [&"action", &"jump", &"run", &"gas", &"brake", &"horn", &"exit"]:
+		if key in [&"action", &"jump", &"run", &"hit", &"fire", &"weapon", &"gas", &"brake", &"horn", &"exit"]:
 			out[key] = rects[key]
 	return out

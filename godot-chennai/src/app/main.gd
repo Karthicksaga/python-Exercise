@@ -40,6 +40,8 @@ var railway: Railway = null
 var carjacking: Carjacking = null
 ## People and traffic riders react to being hit by the player's vehicle (G-362, G-363).
 var street_reactions: StreetReactions = null
+## Health, fights, weapons, gangs, the wanted level and the police (G-410…G-429).
+var combat: CombatWiring = null
 ## The live city behind the title: camera drift, chip, lightning (G-164). Made at the end of loading.
 var title_wiring: TitleWiring = null
 ## The title camera tours a faraway spot (needs a display; headless runs stay with the player).
@@ -237,6 +239,21 @@ func _add_play() -> String:
 	var error := await play_wiring.prepare(world.spawn["point"])
 	if error == "":
 		_add_carjacking()
+		error = await _add_combat()
+	return error
+
+
+## Fights, weapons, gangs, Wanted and the police (G-410…G-429), on the missions layer's session.
+func _add_combat() -> String:
+	var layer := find_child("MissionsLayer", false, false) as MissionsLayer
+	if combat != null or layer == null:
+		return ""
+	combat = CombatWiring.make(world, rig, play_wiring.driving, layer, life)
+	world.add_child(combat)
+	var error := await combat.prepare(street_reactions, carjacking)
+	title.new_game_requested.connect(combat.new_game)
+	if perf != null:
+		perf.apply()
 	return error
 
 

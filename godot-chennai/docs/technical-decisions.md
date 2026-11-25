@@ -2456,6 +2456,85 @@ Merged with the performance branch: `PerfWiring.set_road_extras` sets `CityWorld
 game started at Low builds chunks with no wires, shrubs, guards or rubble but with lamps and crossings;
 `test_road_detail.gd` checks the same per level on plans and builds.
 
+### G-410: Combat is wired in one composition node, `CombatWiring`
+The rules in `src/combat/` (`Combat`, `Arsenal`, `WeaponPickups`, `Gangs`, `Wanted`, `PoliceFleet`) had no caller.
+`src/app/combat_wiring/` now holds the glue, made in loading step 4 after the carjacking (`Main._add_combat`):
+`CombatWiring` (the fixed step: objective groups, input, the swing, the enemies' turn, events to visuals, HUD, sound,
+shake, the missions' `cleared`/`wanted`/`down`), `Fighters` (enemy and officer figures), `ArmsWiring` (pickups, crews,
+rewards, the saved arsenal), `PoliceWiring` (cars, sight, dispatch, bust), `CombatFx` (the door to the visuals
+agent's work). It runs at physics priority 5: after the player and `Driving`, before `MissionsLayer` reads `cleared`.
+Enemies exist only while their objective is current (as `Game.fight`), nothing fights or is placed while the chunks
+round the player are not loaded (brief §7), and a city job or a story holds stage fights back.
+
+### G-411: The player's blow lands at the end of its wind-up (`Strikes`, `SwingClock`)
+Port of `Strikes.ts`: HIT starts a punch (0.12 s wind-up) or a bat swing (0.22 s); `Combat.punch` is called when the
+`SwingClock` says the blow lands, the moment the strike pose (visuals agent) is drawn landing. A blow turns the player
+to the locked enemy (`Melee.choose_lock`) unless someone is already in reach in front (they are hit as they stand: the
+TS lock rule switches to anyone within 2.2 m, which hit the man behind the one faced). Hit-stop is local: the struck
+enemies and figures hold still for 3 physics frames (`game-feel`: a few frames), never `Engine.time_scale`, so game
+time and the tests' waits are untouched. Camera trauma: punch 0.25, bat 0.4, a blow taken 0.45 (bat 0.6), a bullet 0.2.
+
+### G-412: Strike, carry poses, hit puffs, weapon models: the visuals agent's, called through `CombatFx`
+Owner's split (25 Nov): `agent/godot-combat-visuals` built them (G-430…G-435, merged). The combat wiring calls
+`CombatFigure.play_strike` (jab, cross, hook by the combo, or bat), `play_flinch`, `carry(on, &"box")` while a goods
+objective is carried on foot, `HitPuffs.spawn` on every landed blow and bullet, and `WeaponModels.attach/detach` when
+the shown weapon changes; pickups show `WeaponModels.mesh`. `CombatFx` only adds null checks (a figure not loaded, no
+puffs in headless rules tests). The damage still lands on the `SwingClock` (the same `STRIKES` timings as the pose's
+`strike_hit`), so the rules work with no figure loaded; the pose is drawn landing at that step.
+
+### G-413: Health bar and wanted stars sit in the mission column, under the money line
+`CombatHud` (`src/ui/combat_hud/`): a 132 x 10 glass bar (green over half, amber, red under a quarter) and five drawn
+stars (hidden at 0, flashing red/blue at 4 Hz while seen), one row inserted by `MissionHud.add_column_row` at index 1.
+Top-right (PAUSE, JOBS, the minimap) is never touched. The hurt flash is four red gradient strips at the screen edge
+(alpha 0.35, 0.45 s), not a full-screen fill (overdraw on the Adreno 613). Drawing happens only when a value changes.
+
+### G-414: HIT, FIRE and the weapon pill on foot
+`ControlsLayout.foot` gains `hit` (70, left of ACTION on the thumb's arc), `fire` (64, above HIT, only with a loaded
+gun), `weapon` (56, left of FIRE, only with two or more guns); RUN moves left of HIT. The minimap's placement already
+avoids every foot button. Keys F / R / Q, pad B / RB / Y (`ControlActions`). HIT reads SWING once the bat is owned.
+
+### G-415: Children are never in a fight (`FightSafety`)
+Rules: only adults are civilians the combat rules may hit (`adults_only` drops any manifest minor, and the crowd's
+children and players are never collected); wherever a fight is on (an enemy not calm, a shot in the last 8 s) no child
+of a crowd is drawn within 45 m (`CityLife.fight_points`, read on the main thread in the crowd sync). Walkers, drivers
+and enemies are adults by `CastPicker` and `Fighters` (enemy cast: grown men of the street cast; officers the police
+people). Tested in `unit/rules/test_strikes.gd` and `scene/test_combat_main.gd`.
+
+### G-416: Melee on street people goes through `StreetReactions`
+A `civilianHit` from the rules is queued with `StreetReactions.strike_person(id, from, heavy)` and applied between the
+AI's steps (the walkers are the AI thread's): a heavy blow knocks an adult down (the crash2 fall, lie, get up), a light
+one makes them stagger. The crime is `pedestrianAssaulted`; the fall's own `pedestrianInjured` is not reported again
+for a blow. Walkers near the player are read only in `CityLife.between_steps`.
+
+### G-417: Weapons are the Three.js set; the arsenal has its own save file
+Pistol, shotgun, SMG and the cricket bat (the Three.js weapon table). `WeaponModels` also draws a stick and a bottle (G-433); no weapon rule uses them, since the Three.js game had none.
+Pickups (content) are a ring and the weapon model turning above it; a new gun goes into the hand; stage rewards
+(`Mission.weapons`) are given on `stage_completed`. The arsenal is saved to `user://chennai-weapons-v1.json` in the
+`cow-weapons-v1` shape (owned, ammo, gun); busted confiscates. Gang crews: `Gangs.crews_to_field`, kept 150 m clear of
+the current objective, at most 2 out (1 on Low).
+
+### G-418: One `Wanted`, owned by `PoliceWiring`; crimes reach it through the police
+`PoliceWiring.wanted` is the game's only Wanted. The carjacking's hook points at it; the street reactions report
+hit-and-runs through `PoliceWiring.report`, so a crime is "witnessed" only when a unit sees the player (the hook used
+to pass `true` always). Crimes: gunfire (not inside a story fight's 60 m), vehicle theft (any vehicle not the player's
+own and not of the kind a job or objective asks for), carjacking, pedestrian injured / assaulted, police car shot or
+rammed, officer assaulted / down. An `evade` objective and a choice's heat raise the level. At 2 stars the job board
+refuses new jobs (`MissionsLayer.board_refusal`). The level only fades once the first car reached the reported spot
+(or 45 s passed).
+
+### G-419: Police cars drive the AI's road graph with `Pursuer`
+`src/ai/pursuer.gd` (pure): A* over the drive graph (bounded at 4000 nodes, a binary heap), followed at a speed that
+slows for bends and for stopping 9 m short; straight at the goal within 40 m when the line is clear. The graph is the
+AI area's, taken in `between_steps` (it is never changed after it is built, so reading it later is safe). Cars are
+`TrafficVehicleView`s of the police variant (`own_paint`: white), made at loading, shown with their box off for a step
+(G-360). Spawn: a graph node 80–140 m from where the police look, 70 m clear of the player, out of sight when one is.
+From four stars, while a driving player is seen, a car is put across the road at the road node 70 m ahead (a roadblock, one at a time; not in the Three.js game,
+asked for by the owner's brief). Busted: officers within 3.2 m of a player standing still for 2 s at up to 2 stars:
+the fine (`Wanted.BUST_FINE`: ₹500 at one star, ₹1,000 at two), every weapon taken, released outside the nearest OSM police station.
+
+### G-420: The fight's caps follow the quality preset
+`QualitySettings` keys `fighters` (figures drawn: 10 / 14 / 18), `crews` (1 / 2 / 2) and `police_cars` (2 / 3 / 3),
+applied by `PerfWiring.apply`. The rules keep every enemy; only drawing and fielding are capped.
 
 ## Hero landmark models (G-390 to G-393, agent/godot-hero), 25 Nov 2026
 
@@ -2738,3 +2817,10 @@ then each listed feature switch off in turn (2 frames skipped after each change,
 reports late); each phase has its own numbers and the change against the all-on phase is written
 per segment (`"ab"` in benchmark.json, "A/B" lines in benchmark.txt). Drift of the machine (or a
 phone warming up) falls on every phase alike. Draw calls and primitives are exact either way.
+### G-421: Police sight ignores vehicles, and a car near the player always pulls up short
+Found by the take-over test (`test_boarding_safety`, four carjackings make three stars): the police sight ray used the
+vehicles layer, so the player's own vehicle blocked every look at a player sitting in one; never "seen", the cars
+searched, and a search goal next to the player let a car drive at 12 m/s to within 7 m of the taken car standing
+there (a felt bump in one full run). Sight now looks past vehicles (`PhysicsLayers.WORLD` only, as the Three.js
+`toClear` skipped the player's own box), and a car not ramming that is within 25 m of the player takes the player as
+its goal and stops 9 m short whatever it was doing. The take-over test passed twice in a row after it.

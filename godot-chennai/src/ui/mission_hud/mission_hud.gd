@@ -71,6 +71,8 @@ var medal_badge: MedalBadge
 var medal_goals: VBoxContainer
 
 var _toast_left := 0.0
+## The top-left column (stats, the combat row, the objective).
+var column: VBoxContainer
 ## Buttons in the open dialog, by id (tests press them).
 var buttons: Dictionary[String, Button] = {}
 
@@ -143,6 +145,12 @@ func _ready() -> void:
 	set_mission({}, NAN)
 
 
+## Another system's row (the combat HUD's health and stars, G-413) right under the stats line.
+func add_column_row(row: Control) -> void:
+	column.add_child(row)
+	column.move_child(row, 1)
+
+
 func _button(text: String, node_name: String, font: int, accent: bool) -> Button:
 	var b := Button.new()
 	b.name = node_name
@@ -170,7 +178,7 @@ static func _pill(accent: bool) -> StyleBoxFlat:
 
 
 func _build_column() -> void:
-	var column := VBoxContainer.new()
+	column = VBoxContainer.new()
 	column.name = "Column"
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.position = Vector2(GUTTER, COLUMN_TOP)

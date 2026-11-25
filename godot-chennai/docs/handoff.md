@@ -1224,6 +1224,75 @@ follows the preset through `PerfWiring.set_road_extras` (tested on Low in `test_
 light on the chunk meshes the road under a lamp is lit only by the pool quad (13 m under a 9 m head, scaled by
 head height, 0.22 m up so it clears a footpath; a high mast's pool is 34 m wide and 0.6 m up). Seen on llvmpipe only.
 
+## Combat in play (agent/godot-combat, G-410…G-429), 25 Nov 2026: interfaces with agent/godot-combat-visuals
+Written first, before the code, so the two branches meet. The combat agent wires health, melee,
+weapons and pickups, gangs, Wanted and police into the game; the visuals agent owns the strike
+and carry poses, hit puffs, weapon models in hand and motion blur. The combat side only calls
+the names below through `CombatFx` (`src/app/combat_wiring/combat_fx.gd`). Both branches are merged
+now: `CombatFx` calls the real `CombatFigure`, `HitPuffs` and `WeaponModels` (the run-time lookup
+stubs are gone).
+
+**On both figures** (`HumanFigure`, the player; `PersonView`, enemies and officers), visuals agent:
+```gdscript
+## Start a blow: kind &"punch" or &"bat"; side 1 right hand, 0 left. Timed by
+## Strikes.STRIKES[kind] (windup 0.12/0.22 s, recover 0.26/0.38 s): the blow must be drawn
+## landing at `windup` seconds, when the combat rules apply the damage.
+func play_strike(kind: StringName, side: int) -> void
+func is_striking() -> bool
+## Box held in both hands (kind &"box"; &"bag", &"push" as in carryPose.ts), or put down.
+func carry(on: bool, kind: StringName) -> void
+```
+**Effects**, visuals agent, pooled and allocation-free per frame:
+- `HitPuffs` (a Node3D the combat side adds under the world once): `spawn(position: Vector3,
+  normal: Vector3, strength: float)`; scene position of the contact, normal pointing back at
+  the striker, strength 1 a punch, 1.4 a bat, 0.6 a bullet.
+- `WeaponModels`: `static attach(figure: Node3D, weapon_id: StringName)` and `detach(figure)`.
+  Ids are the Three.js set that exists: &"bat", &"pistol", &"shotgun", &"smg" (no stick or
+  bottle exist in the Three.js weapon table; not added). The player shows the gun in hand when
+  loaded, else the bat if owned; enemies with a bat always, with a gun while aiming.
+
+**What the combat side provides** (for their tests and screenshots): `Strikes` (`src/combat/
+strikes.gd`: STRIKES, strike_kind, KNOCK_BACK, knock_back_room) and `SwingClock`; the combat
+wiring calls `play_strike` when HIT is pressed and on each `enemyWindup`, `HitPuffs.spawn` on each
+landed blow or bullet, `WeaponModels.attach/detach` when the shown weapon changes, `carry` while a
+goods objective is carried on foot. Flinches and falls of struck people use the existing
+knockdown API (`play_fall`, `play_landed`, `play_getup`). Classes are found by `class_name`
+(`ProjectSettings.get_global_class_list()`), so file paths are the visuals agent's choice.
+
+## Combat in play: what was built (agent/godot-combat, G-410…G-420), 25 Nov 2026
+**Done.** Combat, weapons, gangs, pickups, the wanted level and the police are in the running game
+(`src/app/combat_wiring/`, made in loading step 4 by `Main._add_combat`). Health heals after six
+seconds unhurt; the HUD row (bar and stars) sits under the money line; HIT, FIRE and the weapon pill
+are on the foot controls (F / R / Q, pad B / RB / Y). Stage fight groups appear when their objective
+starts and `cleared` reaches the mission runner, so stages 7 to 10, 12 to 15 and the beach-road brawl
+(Godot 20) finish and pay; stage rewards hand over their guns. Knocked out: ₹100, the stage restarts
+at the start. Busted: the fine, weapons taken, released outside the nearest OSM police station.
+One `Wanted` (`PoliceWiring.wanted`): the carjacking and the street reactions report to it.
+Police cars drive the AI's road graph (`Pursuer`), deploy officers, search, stand down; a roadblock
+from four stars. Children never: civilians the rules may hit are adults only, and a crowd's children
+are not drawn within 45 m of a fight (`FightSafety`, `CityLife.fight_points`).
+
+**How to use.** `main.combat` (`CombatWiring`): `combat` (the rules), `arms`, `police`, `fighters`,
+`hud`, `snapshot()` for tests. Tests on a flat 40 km ground: `tests/support/combat_ground.gd`
+(`CombatGround.make_fight(save, weapons_save)`, then `await ready_fight()`). Screenshots and the
+fight's cost: `tests/tools/combat_shots.gd` (header has the command).
+
+**Measured (desktop, xvfb llvmpipe, `tests/tools/combat_shots.gd`).** The combat step on the main
+thread: idle median 0.23 ms (p95 0.41), stage 7 fight with three thugs median 0.30 ms (p95 0.76,
+max 2.7), a two-star pursuit median 0.25 ms (p95 0.40 to 1.2: route planning). Inside the 2.5 ms
+budget; the enemy figures' animation is counted in the frame, not in this step. Not on a phone.
+
+**Weak or not done.**
+- No colliders on enemies: the player can walk through them (the Three.js game had kinematic boxes).
+- Police cars are kinematic views that do not steer round traffic; traffic stops for them (their
+  boxes join `CityLife.extra_obstacles`), but a car can still overlap a vehicle it drives into.
+- The stage 11 courier chase still has no drawn quarry; the drive-by ride is teleported in its test.
+- Enemies stand at y 0 (the city is flat today); decks would need a ground ray per enemy.
+- Carjackings now bring the police (G-418): the take-over test gets two or three stars and cars
+  pull up beside it. G-421 stopped them shoving the taken vehicle; the bike "thrown from Solids"
+  flake seen before this branch's wiring (CI run 45533381041) is crash2's, not this branch's.
+- Sound: cues `punch`, `whiff`, `shot`, `hurt`, `fail` are counted but have no recordings yet.
+- Headless and xvfb only; nothing on a phone.
 ## Trees (phase 7, branch `agent/godot-trees`, G-380 to G-388, 25 Nov 2026)
 **Done.** The owner's "trees need improvement": a real tree kit. Full description, photograph notes, tables and weak
 spots in `docs/trees.md`; decisions in `technical-decisions.md` (G-380…G-388).

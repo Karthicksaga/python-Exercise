@@ -256,6 +256,12 @@ func apply() -> void:
 		life.walker_cap = int(v["walkers"])
 		life.ai_patience = int(v["ai_patience"])
 		life.refresh_caps()
+	# The fight's caps (G-420): figures drawn, gang crews out, police cars on the street.
+	var cw := main.combat
+	if cw != null:
+		cw.fighters.cap = int(v["fighters"])
+		cw.arms.max_crews = int(v["crews"])
+		cw.police.car_cap = int(v["police_cars"])
 	var tw := main.title_wiring
 	if tw != null:
 		for i in tw.rain_layers.size():

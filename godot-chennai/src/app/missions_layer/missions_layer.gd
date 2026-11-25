@@ -24,6 +24,11 @@ var driving: Driving = null
 var hud: MissionHud
 var beacon: MissionBeacon
 var figures: FareFigures
+## The fight's part of the player's status (G-418): fills `cleared`, `wanted` and `down` of the
+## rules' `PlayerStatus` each step; (PlayerStatus) -> void. Unset: nobody fights.
+var combat_status: Callable = Callable()
+## Why the job board takes no new job now ("" when it does): () -> String (the police, G-418).
+var board_refusal: Callable = Callable()
 ## False: no parked vehicles are spawned (another system parks them).
 var spawn_parking := true
 ## Only steps and shows while true (play, not the title).
@@ -186,6 +191,8 @@ func status() -> MissionData.PlayerStatus:
 	p.crash = clampf(_impact, 0.0, 1.0)
 	p.horn = _horned
 	p.rain = Weather.rain_level()
+	if combat_status.is_valid():
+		combat_status.call(p)
 	return p
 
 
@@ -412,6 +419,10 @@ func _release() -> void:
 
 func open_board() -> void:
 	if not active:
+		return
+	var refusal := str(board_refusal.call()) if board_refusal.is_valid() else ""
+	if refusal != "":
+		hud.toast("Job board closed", refusal, 3.0)
 		return
 	_hold()
 	_dialog = "board"
