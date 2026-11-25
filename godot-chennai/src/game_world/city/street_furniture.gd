@@ -43,6 +43,11 @@ class Pole:
 	var position: Vector2
 	var yaw: float
 	var road_id: int
+	## Lamp kind (G-316): &"arm" single-arm (arterials and streets), &"twin" on a median, &"mast" a
+	## high mast at a big junction, &"rural" the thin pole of country and unpaved roads.
+	var kind: StringName = &"arm"
+	## Lit a little warmer (residential streets, G-316).
+	var warm: bool = false
 
 
 ## One unbroken stretch of kerb along one side of a road: carriageway edge, back edge, and the
@@ -52,6 +57,8 @@ class KerbRun:
 	var inner := PackedVector2Array()
 	var outer := PackedVector2Array()
 	var along := PackedFloat64Array()
+	## Ground layer of the kerb paint (`CityAtlas.GROUND_*`), or -1 for the default yellow-black (G-311).
+	var paint: int = -1
 
 
 class Result:
@@ -188,9 +195,11 @@ static func poles_along(layout: CityLayout, ri: int, start: int, end: int, stret
 static func kerbs_along(layout: CityLayout, ri: int, start: int, end: int, stretches: PackedVector2Array) -> Array[KerbRun]:
 	var half := layout.roads[ri].width / 2.0
 	var runs: Array[KerbRun] = []
+	var paint := RoadStyle.kerb_paint(layout.roads[ri])
 	for samples in _open_samples(layout, ri, start, end, stretches):
 		for side: float in [1.0, -1.0]:
 			var run := KerbRun.new()
+			run.paint = paint
 			for q: Dictionary in samples:
 				var p: Vector2 = q["p"]
 				var n: Vector2 = q["n"]
@@ -219,6 +228,23 @@ static func median_along(layout: CityLayout, ri: int, start: int, end: int, stre
 			run.outer.append(p + n * MEDIAN_HALF)
 			run.along.append(float(q["d"]))
 		runs.append(run)
+	return runs
+
+
+## Strips along both (or `sides`) edges of one stretch, from `from_off` to `to_off` metres out of
+## the road's centre line, broken round junctions: footpaths, verges, drains (G-311).
+static func offset_runs(layout: CityLayout, ri: int, start: int, end: int, stretches: PackedVector2Array, from_off: float, to_off: float, sides: Array[float]) -> Array[KerbRun]:
+	var runs: Array[KerbRun] = []
+	for samples in _open_samples(layout, ri, start, end, stretches):
+		for side: float in sides:
+			var run := KerbRun.new()
+			for q: Dictionary in samples:
+				var p: Vector2 = q["p"]
+				var n: Vector2 = q["n"]
+				run.inner.append(p + n * side * from_off)
+				run.outer.append(p + n * side * to_off)
+				run.along.append(float(q["d"]))
+			runs.append(run)
 	return runs
 
 

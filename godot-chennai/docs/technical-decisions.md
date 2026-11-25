@@ -2078,7 +2078,6 @@ it is inside the list and the screen. Every top-right button takes a real click 
 its padding (`test_hud_glass.gd`). Rows now in both menus: Time, Weather, Sound, (pause: the controls
 rows), Graphics (`PerfWiring`, QualitySettings Low/Medium/High, "(auto)" when detected), Performance overlay.
 
-## Performance, second round: the owner's phone (G-340…G-345, branch `agent/godot-perf`, 24 Nov 2026)
 ## Performance, second round: the owner's phone (G-340…G-346, branch `agent/godot-perf`, 24 Nov 2026)
 
 ### G-340: A frame timeline names what a slow frame was made of
@@ -2216,3 +2215,72 @@ within 30 m honk 0.6 s later (`honk` → `VehicleSounds.on_reaction`) and report
 test 44–48 µs per AI step when nobody is touched (desktop, headless), only while driving faster
 than 1 m/s; a knockdown costs 1.1–1.8 ms once (the first figure of a person is instantiated; it
 is kept for the next incident).
+
+## Road detail (G-310 to G-313)
+
+### G-310: Roads are styled by class, from data, not by hand
+`RoadStyle` maps a road to arterial, residential, lane or flyover (kind, width, raised) and holds
+the numbers (footpath width, verge, tree and pole pitch, species weights). Surface, wear, paint fade
+and kerb colour come from a hash of the way id (`id / 10`), so a road looks the same in every chunk
+and every piece. `RoadDetail` plans a chunk from it (plain data, worker thread); nothing is stored in
+the world files. Everything OSM does not map is estimated and said so (`docs/roads.md`).
+
+### G-311: One ground surface, sixteen atlas tiles
+The ground atlas grew from 8 to 16 tiles (worn asphalt, concrete, footpath slabs, laterite, black-white
+kerb, dark iron, yellow and faded paint), layers 20 to 27 (8 to 19 stay the covers). Paint pieces are
+chosen fresh or faded by hash, solid lines come in 6 m pieces with a few worn away, crossings and
+stop lines stand on junction nodes. All of it is flat geometry in the chunk's one ground surface; the
+shader adds one noise octave on the road surfaces only. Footpaths are 0.12 m (the kerb stays 0.15)
+and have no collider, like the kerbs.
+
+### G-312: Four tree silhouettes, two draw calls
+A MultiMesh holds one mesh, so the rain tree is the neem mesh stretched 1.55 wide and 0.82 high
+and the palmyra the coconut mesh stretched 0.72 wide and 1.3 high, with a tint per species; a chunk
+keeps its two tree draws. Streets that the world builder planted nothing along (residential, lane)
+get trees from `RoadDetail.trees_on`, kept 1.5 m clear of every carriageway and out of buildings.
+
+### G-313: Wires, shrubs and guards ride in the objects surface
+Overhead wires (two per span, four steps of sag), median shrubs and tree guards are appended to the
+chunk's objects mesh; poles of streets that had none join the colliders. No per-object light.
+
+### G-314: A rural class for open country
+A chunk with fewer than 30 buildings is open country: its arterials lose the kerb and footpath and gain a
+narrow dust shoulder, kerb blocks on the outside of bends, W-beam barriers and chevron boards on sharp bends,
+kilometre stones and palmyra rows (from the owner's photographs, `docs/roads.md`). All geometry merges into the
+chunk's ground and objects surfaces; barriers and chevrons have no colliders.
+
+### G-315: Road condition from class and a seeded area hash
+`RoadStyle.condition` gives good, worn, damaged or unpaved from the class shares, a hash of the way id and a hash
+of the 600 m square the road starts in. Five more ground tiles (stripped tar, mud, muddy water, brick, wet ruts)
+make the atlas 21 tiles; ruts, edge lips, stripped patches, puddles and rubble are flat ground geometry. Puddles
+are a shiny tile, not a reflection. `RoadStyle.feel` is the data the vehicles may read (speed, bump, grip); wiring
+it into `RaycastVehicle` is left to the driving owner.
+
+### G-316: Five lamp kinds by road, one glow draw call
+Poles are `StreetFurniture.Pole.kind`: `arm` (single-arm maroon steel 9 m, 2.5 m curved arm, cobra head, concrete
+base; arterials and residential streets), `twin` (10 m, two arms in opposite directions, every 30 m on medians),
+`mast` (25 m, ring platform with twelve flood panels, one per junction of four arms or a three-arm junction on a
+road of 12 m or more), `rural` (7.5 m thin pole with a sign plate; open country, lanes and unpaved roads). All
+are merged into the chunk's objects surface (no new draw call). At night `StreetLights` draws every lamp as one
+instance of one additive mesh (crossed halo quads and a ground pool quad, unshaded, tinted per lamp: cool white-blue,
+warmer on residential streets): one draw call whatever the count; the six real lights near the camera stay as in G-88.
+Lamp heads are `RoadLamps.heads` (`Build.lamp_points`, built on the worker); `set_lamps` takes the head height in y.
+With the performance work merged (G-259) the one glow mesh is also the ground's only street light: the real
+lights' cull mask leaves out `ChunkBuilder.RENDER_LAYER`, their number follows `pool` (0 / 2 / 6 by preset), and
+the glow node is hidden while the night level is under the threshold (no additive draw by day). The separate sodium
+pool MultiMesh of G-259 and its 140 m `visibility_range_end` are gone: one node spans every lamp of the city, so a
+node-level range could only hide all pools or none. The pool quad is 13 m across under a 9 m head (G-259's size; it
+was 9 m on the roads branch, where the real lights still lit the ground) and sits 0.2 m higher in the shared mesh so it
+clears the 0.15 m footpath a lamp stands on.
+
+### G-317: Optional road detail follows the quality preset
+`ChunkBuilder.Kit.road_extras` (0 Low, 1 Medium, 2 High, the same numbers as `QualitySettings` in agent/godot-perf) gates
+the optional detail: Low drops tree guards, median shrubs, overhead wires and rubble; Medium drops guards, shrubs and
+rubble but keeps wires; High keeps everything. Markings, kerbs, footpaths, ground tiles and lamps stay at every level.
+`CityWorld.road_extras` carries it (default 2, so tests and tools see High). The perf wiring should set it from the
+preset: `city.road_extras = QualitySettings.shared().preset`; this branch does not reference `QualitySettings` (not in
+`feat/godot-chennai` yet). Chunks already built keep the level they were built with.
+Merged with the performance branch: `PerfWiring.set_road_extras` sets `CityWorld.road_extras` and the streamer's kit from
+`QualitySettings.preset` when the city joins Main and on every apply. `test_perf_wiring.gd` checks it on Low and that a
+game started at Low builds chunks with no wires, shrubs, guards or rubble but with lamps and crossings;
+`test_road_detail.gd` checks the same per level on plans and builds.

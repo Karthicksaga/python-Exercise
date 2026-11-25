@@ -1078,3 +1078,38 @@ code sets `overlay.visible` from it and `_modal_open()`.
 **Not done / weak.** Not run on a phone: the tap replays a mouse click at release, so a pressed look shows
 only at release; at 2460x1080 raw the pause list fits without scrolling (the phone's real viewport is
 938x412); the mouse wheel still uses the engine; horizontal scrolling is not handled (none is used).
+
+## Roads (branch `agent/godot-roads`, 24 Nov 2026)
+**Done.** Class-based road detail, G-310 to G-313 (`docs/roads.md` has the research status, the
+class table, the numbers and the cost): worn asphalt, concrete lanes, slab footpaths, laterite
+verges, black-white and yellow-black kerbs, faded and yellow paint, zebra crossings and stop lines on
+junction nodes, manholes, patches and potholes, drains, planted street trees and poles, four tree
+silhouettes in two draw calls, overhead wires, median shrubs, tree guards. Tests:
+`unit/test_road_detail.gd` (classes, markings, crossings on junction nodes, trees off the carriageway,
+determinism, chunk cost). The ground atlas is 16 tiles now: re-bake with
+`tools/bake_city_textures.gd -- --only=ground` (xvfb), then re-import.
+
+**For other agents.** `GroundMeshes.build` takes a `RoadDetail.Plan` (null keeps the old look);
+`Kit.road_detail` and `CityWorld.road_detail` switch it off; `CityLayout.along` now holds every road
+that is not a footway; `GroundMeshes.lane_lines` returns `Vector3` (offset, dashed, yellow).
+
+**Weak or not done.** No reference photo was viewed: Commons refused the downloads (429 with a
+600 s retry, and `thumb` blocked by the network policy). The owner can supply photos. Footpaths
+have no collider; poles on residential streets do not light up at night; no hoardings, stalls,
+flyover pillars, median railings or road signs; llvmpipe only, not a phone.
+
+**Roads addendum (owner photographs).** Rural class (G-314) and road condition (G-315) added from ten
+owner-supplied photographs (`docs/roads.md`). Ground atlas is 21 tiles; re-bake with
+`tools/bake_city_textures.gd -- --only=ground`. `RoadStyle.feel(condition)` is the hook for vehicles (not wired).
+
+**Lamps addendum (G-316).** Pole kinds (`arm`, `twin`, `mast`, `rural`), `RoadLamps`, one additive glow mesh in
+`StreetLights` (replaces the sodium head box; `set_lamps(points, tints)` with the head height in y).
+Weak: halos are crossed quads, not billboards; masts and twins have no night-time stays; pools are one flat quad each.
+
+**Merged with the performance branch (roads into feat after G-340…G-346).** `StreetLights` keeps the roads glow
+mesh (halo and pool in one additive draw, tinted per lamp, at each lamp's head height) and the perf rules: `pool`
+(0 / 2 / 6 real lights by preset), the lights' cull mask without `ChunkBuilder.RENDER_LAYER`, the nearest-few scan,
+the glow hidden by day. The sodium pool MultiMesh is dropped (the glow mesh carries the pool). `city.road_extras`
+follows the preset through `PerfWiring.set_road_extras` (tested on Low in `test_perf_wiring.gd`). Weak: with no real
+light on the chunk meshes the road under a lamp is lit only by the pool quad (13 m under a 9 m head, scaled by
+head height, 0.22 m up so it clears a footpath; a high mast's pool is 34 m wide and 0.6 m up). Seen on llvmpipe only.

@@ -32,6 +32,9 @@ const ZEBRA_PITCH := 1.0
 ## Zebras painted (tests).
 var zebras := 0
 var bumps := 0
+## Stop lines, decals, footpath runs (tests).
+var stop_lines := 0
+var decals := 0
 
 var mesh := MeshBuilder.new()
 var origin := Vector2.ZERO
@@ -121,25 +124,32 @@ func _v(p: Vector2, y: float, uv_scale: float) -> int:
 	return mesh.vertex(Vector3(p.x, y, p.y), Vector3.UP, _uv(p + origin, uv_scale))
 
 
-## Lines painted on a road: offsets from the centre line and whether each is dashed (`laneLines`).
-static func lane_lines(road: Road) -> Array[Vector2]:
-	var out: Array[Vector2] = []  # x = offset, y = 1 when dashed
+## Lines painted on a road: x = offset from the centre line, y = 1 when dashed, z = 1 when yellow
+## (`laneLines`, extended by road class in G-311: faded edge lines on every two-way arterial of 6.5 m
+## or more, double yellow centre lines on some undivided secondary and tertiary roads).
+static func lane_lines(road: Road) -> Array[Vector3]:
+	var out: Array[Vector3] = []
 	if not road.is_main():
 		return out
 	var lanes := CityLayout.lane_count(road)
 	var lane_width := road.width / lanes
 	if road.oneway:
 		for k in range(1, lanes):
-			out.append(Vector2(-road.width / 2.0 + k * lane_width, 1.0))
+			out.append(Vector3(-road.width / 2.0 + k * lane_width, 1.0, 0.0))
 	else:
-		# The centre line stays under a median (G-153): the Three.js marking rule is kept as is.
-		out.append(Vector2(0.0, 1.0))
+		var double_yellow := road.kind != &"primary" and road.width >= 8.0 and not StreetFurniture.has_median(road) and CityHash.unit(RoadStyle.way(road), 104) < 0.35
+		if double_yellow:
+			out.append(Vector3(0.14, 0.0, 1.0))
+			out.append(Vector3(-0.14, 0.0, 1.0))
+		else:
+			# The centre line stays under a median (G-153): the Three.js marking rule is kept as is.
+			out.append(Vector3(0.0, 1.0, 0.0))
 		for k in range(1, lanes / 2):
-			out.append(Vector2(k * lane_width, 1.0))
-			out.append(Vector2(-k * lane_width, 1.0))
-	if road.kind == &"primary" and road.width >= 7.0:
-		out.append(Vector2(road.width / 2.0 - 0.35, 0.0))
-		out.append(Vector2(-road.width / 2.0 + 0.35, 0.0))
+			out.append(Vector3(k * lane_width, 1.0, 0.0))
+			out.append(Vector3(-k * lane_width, 1.0, 0.0))
+	if (road.kind == &"primary" and road.width >= 7.0) or (road.kind != &"primary" and not road.oneway and road.width >= 6.5):
+		out.append(Vector3(road.width / 2.0 - 0.35, 0.0, 0.0))
+		out.append(Vector3(-road.width / 2.0 + 0.35, 0.0, 0.0))
 	return out
 
 
@@ -165,6 +175,19 @@ func _stripe(centre: Vector2, dir: Vector2, along: float, h0: float = 0.0, h1: f
 	stripes += 1
 
 
+## Paint layer of one dash or piece: white most of the time, a greyer faded white for about a
+## third, yellow lines stay yellow (G-311).
+static func paint_layer(road: Road, line: Vector3, key: int) -> int:
+	if line.z > 0.5:
+		return CityAtlas.GROUND_PAINT_YELLOW
+	return CityAtlas.GROUND_PAINT_FADED if CityHash.unit(RoadStyle.way(road) * 7 + key, 105) < 0.35 else CityAtlas.GROUND_PAINT
+
+
+## Solid pieces are about this long; a few have worn away altogether.
+const PIECE := 6.0
+const WORN_AWAY := 0.12
+
+
 ## Dashes at fixed distances along the whole road, so chunks line up (`addStripes`).
 func add_stripes(span: CityLayout.RoadSpan) -> void:
 	var lines := lane_lines(span.road)
@@ -187,7 +210,7 @@ func add_stripes(span: CityLayout.RoadSpan) -> void:
 				var next := maxf(DASH_PITCH, ceilf(travelled / DASH_PITCH) * DASH_PITCH)
 				while next < travelled + length:
 					if next >= END_CLEAR and next <= span.total - END_CLEAR:
-						_stripe(a + u * (next - travelled) + side, u, DASH, road.height_along(next - DASH / 2.0 - local), road.height_along(next + DASH / 2.0 - local))
+						_stripe(a + u * (next - travelled) + side, u, DASH, road.height_along(next - DASH / 2.0 - local), road.height_along(next + DASH / 2.0 - local), PAINT_WIDTH, paint_layer(road, line, floori(next / DASH_PITCH)))
 					next += DASH_PITCH
 			else:
 				var from := maxf(0.0, END_CLEAR - travelled)
@@ -199,9 +222,19 @@ func add_stripes(span: CityLayout.RoadSpan) -> void:
 						for k in pieces:
 							var f0 := from + (to - from) * k / pieces
 							var f1 := from + (to - from) * (k + 1) / pieces
-							_stripe(a + u * ((f0 + f1) / 2.0) + side, u, f1 - f0, road.height_along(travelled + f0 - local), road.height_along(travelled + f1 - local))
+							_stripe(a + u * ((f0 + f1) / 2.0) + side, u, f1 - f0, road.height_along(travelled + f0 - local), road.height_along(travelled + f1 - local), PAINT_WIDTH, paint_layer(road, line, floori((travelled + f0) / PIECE)))
 					else:
-						_stripe(a + u * ((from + to) / 2.0) + side, u, to - from)
+						# Pieces at fixed distances along the road: some faded, a few gone.
+						var k0 := floori((travelled + from) / PIECE)
+						var k1 := floori((travelled + to) / PIECE)
+						for k in range(k0, k1 + 1):
+							var f0 := maxf(from, k * PIECE - travelled)
+							var f1 := minf(to, (k + 1) * PIECE - travelled)
+							if f1 - f0 < 0.05:
+								continue
+							if CityHash.unit(RoadStyle.way(road) * 11 + k, 106 + int(line.x * 10.0)) < WORN_AWAY and line.z < 0.5:
+								continue
+							_stripe(a + u * ((f0 + f1) / 2.0) + side, u, f1 - f0, 0.0, 0.0, PAINT_WIDTH, paint_layer(road, line, k))
 		travelled += length
 
 
@@ -309,10 +342,19 @@ func _raised(span: CityLayout.RoadSpan) -> void:
 	add_stripes(span)
 
 
-## Kerbs: a low edge along the carriageway, painted in 1 m yellow and black bands.
-func kerbs(runs: Array[StreetFurniture.KerbRun], layer: int = CityAtlas.GROUND_KERB, h: float = StreetFurniture.KERB_HEIGHT) -> void:
-	_layer(layer)
+## Footpath height: a little under the kerb, so the kerb stone shows as a lip (G-311).
+const FOOT_H := 0.12
+## Side of one footpath slab picture, metres (the baked tile holds 4 x 4 slabs).
+const SLAB_TILE := 2.4
+
+
+## Kerbs: a low edge along the carriageway, painted in 1 m bands (yellow-black or black-white, per
+## run). With `top_layer` >= 0 the top face takes that layer instead and repeats every `top_tile`
+## metres both ways (footpath slabs, median soil); the sides stay in `layer`.
+func kerbs(runs: Array[StreetFurniture.KerbRun], layer: int = CityAtlas.GROUND_KERB, h: float = StreetFurniture.KERB_HEIGHT, top_layer: int = -1, top_tile: float = 2.0) -> void:
 	for run in runs:
+		_layer(run.paint if run.paint >= 0 else layer)
+		var side_layer := _layer_index
 		var n := run.inner.size()
 		var run_base := floorf(run.along[0] / 2.0)
 		for i in n - 1:
@@ -328,7 +370,16 @@ func kerbs(runs: Array[StreetFurniture.KerbRun], layer: int = CityAtlas.GROUND_K
 				Vector3(a0.x, 0.0, a0.y), Vector3(a1.x, 0.0, a1.y), Vector3(b1.x, 0.0, b1.y), Vector3(b0.x, 0.0, b0.y)]
 			var us := [u0 - run_base, u1 - run_base, u1 - run_base, u0 - run_base, u0 - run_base, u1 - run_base, u1 - run_base, u0 - run_base]
 			var d := a1 - a0
-			_kerb_face(verts, us, [0, 1, 2, 3], Vector3.UP)
+			if top_layer >= 0:
+				var wa := a0.distance_to(b0) / top_tile
+				var wb := a1.distance_to(b1) / top_tile
+				var t0 := fmod(run.along[i], 240.0) / top_tile
+				var t1 := t0 + (run.along[i + 1] - run.along[i]) / top_tile
+				_layer(top_layer)
+				_kerb_face(verts, [t0, t1, t1, t0, 0, 0, 0, 0], [0, 1, 2, 3], Vector3.UP, [0.0, 0.0, wb, wa])
+				_layer(side_layer)
+			else:
+				_kerb_face(verts, us, [0, 1, 2, 3], Vector3.UP)
 			_kerb_face(verts, us, [4, 5, 1, 0], Vector3(f.x, 0.0, f.y))
 			_kerb_face(verts, us, [7, 6, 2, 3], Vector3(-f.x, 0.0, -f.y))
 			if i == 0:
@@ -337,10 +388,12 @@ func kerbs(runs: Array[StreetFurniture.KerbRun], layer: int = CityAtlas.GROUND_K
 				_kerb_face(verts, us, [5, 1, 2, 6], Vector3(d.x, 0.0, d.y).normalized())
 
 
-func _kerb_face(verts: Array[Vector3], us: Array, k: Array, normal: Vector3) -> void:
+func _kerb_face(verts: Array[Vector3], us: Array, k: Array, normal: Vector3, vs: Array = []) -> void:
 	var ids: Array[int] = []
-	for j: int in k:
-		ids.append(mesh.vertex(verts[j], normal, Vector2(float(us[j]) + _layer_index * LAYER_U, 0.5)))
+	for q in k.size():
+		var j: int = k[q]
+		var v := float(vs[q]) if not vs.is_empty() else 0.5
+		ids.append(mesh.vertex(verts[j], normal, Vector2(float(us[j]) + _layer_index * LAYER_U, v)))
 	var p := verts[k[0]]
 	if (verts[k[1]] - p).cross(verts[k[3]] - p).dot(normal) >= 0.0:
 		mesh.quad(ids[0], ids[1], ids[2], ids[3])
@@ -348,10 +401,63 @@ func _kerb_face(verts: Array[Vector3], us: Array, k: Array, normal: Vector3) -> 
 		mesh.quad(ids[0], ids[3], ids[2], ids[1])
 
 
+## Flat strips (open drains) just above the earth, in one layer.
+func flat_runs(runs: Array[StreetFurniture.KerbRun], layer: int, y: float) -> void:
+	for run in runs:
+		_layer(run.paint if run.paint >= 0 else layer)
+		for i in run.inner.size() - 1:
+			var a0 := run.inner[i] - origin
+			var a1 := run.inner[i + 1] - origin
+			var b0 := run.outer[i] - origin
+			var b1 := run.outer[i + 1] - origin
+			var ids := [
+				mesh.vertex(Vector3(a0.x, y, a0.y), Vector3.UP, Vector2(_layer_index * LAYER_U + 0.5, 0.5)),
+				mesh.vertex(Vector3(a1.x, y, a1.y), Vector3.UP, Vector2(_layer_index * LAYER_U + 0.5, 0.5)),
+				mesh.vertex(Vector3(b1.x, y, b1.y), Vector3.UP, Vector2(_layer_index * LAYER_U + 0.5, 0.5)),
+				mesh.vertex(Vector3(b0.x, y, b0.y), Vector3.UP, Vector2(_layer_index * LAYER_U + 0.5, 0.5))]
+			var p0 := mesh.positions[ids[0]]
+			if (mesh.positions[ids[1]] - p0).cross(mesh.positions[ids[2]] - p0).y >= 0.0:
+				mesh.quad(ids[0], ids[1], ids[2], ids[3])
+			else:
+				mesh.quad(ids[0], ids[3], ids[2], ids[1])
+
+
+## A manhole cover, repair patch or pothole lying on the road (G-311).
+func decal(d: RoadDetail.Mark) -> void:
+	_layer(d.layer)
+	var c := d.position - origin
+	var across := Vector2(-d.dir.y, d.dir.x)
+	var uv := Vector2(_layer_index * LAYER_U + 0.5, 0.5)
+	var y := Y_ROAD + 0.008
+	if d.kind == &"patch" or d.kind == &"stripped":
+		var a := d.dir * (d.length / 2.0)
+		var s := across * (d.width / 2.0)
+		var ids := [mesh.vertex(Vector3(c.x - a.x - s.x, y, c.y - a.y - s.y), Vector3.UP, uv), mesh.vertex(Vector3(c.x + a.x - s.x, y, c.y + a.y - s.y), Vector3.UP, uv), mesh.vertex(Vector3(c.x + a.x + s.x, y, c.y + a.y + s.y), Vector3.UP, uv), mesh.vertex(Vector3(c.x - a.x + s.x, y, c.y - a.y + s.y), Vector3.UP, uv)]
+		var p0 := mesh.positions[ids[0]]
+		if (mesh.positions[ids[1]] - p0).cross(mesh.positions[ids[2]] - p0).y >= 0.0:
+			mesh.quad(ids[0], ids[1], ids[2], ids[3])
+		else:
+			mesh.quad(ids[0], ids[3], ids[2], ids[1])
+		decals += 1
+		return
+	# Manholes are octagons, potholes lopsided hexagons, both fans round the middle.
+	var sides := 8 if d.kind == &"manhole" else (10 if d.kind == &"puddle" else 6)
+	var centre := mesh.vertex(Vector3(c.x, y, c.y), Vector3.UP, uv)
+	var rim: Array[int] = []
+	for k in sides:
+		var angle := TAU * k / sides
+		var wobble := 1.0 if d.kind == &"manhole" else (0.85 + 0.25 * fposmod(sin(float(k) * 12.9898 + d.position.x), 1.0) if d.kind == &"puddle" else 0.7 + 0.5 * fposmod(sin(float(k) * 12.9898 + d.position.x), 1.0))
+		var q := d.dir * cos(angle) * (d.length / 2.0) * wobble + across * sin(angle) * (d.width / 2.0) * wobble
+		rim.append(mesh.vertex(Vector3(c.x + q.x, y, c.y + q.y), Vector3.UP, uv))
+	for k in sides:
+		mesh.triangle(centre, rim[k], rim[(k + 1) % sides])
+	decals += 1
+
+
 ## Everything flat in one chunk (`buildGround`), roads first-come in the span order. `water` are
 ## the chunk's water polygons (`WaterMeshes.polygons`): the earth and the covers are cut round
 ## them, so the sunk water shows through.
-func build(spans: Array, areas: Array[WorldArea], square: Rect2, kerb_runs: Array[StreetFurniture.KerbRun], water: Array[PackedVector2Array] = [], medians: Array[StreetFurniture.KerbRun] = []) -> void:
+func build(spans: Array, areas: Array[WorldArea], square: Rect2, kerb_runs: Array[StreetFurniture.KerbRun], water: Array[PackedVector2Array] = [], medians: Array[StreetFurniture.KerbRun] = [], plan: RoadDetail.Plan = null) -> void:
 	if water.is_empty():
 		earth(square)
 	else:
@@ -378,13 +484,32 @@ func build(spans: Array, areas: Array[WorldArea], square: Rect2, kerb_runs: Arra
 		if road.kind == &"footway":
 			ribbon(pts, road.width, Y_VERGE, 3.0, CityAtlas.GROUND_PAVING)
 			continue
-		if road.is_main():
+		var style := RoadStyle.of(road)
+		if plan != null:
+			# Dust (laterite) beside every street, wider where a footpath will cover most of it.
+			var verge := RoadStyle.rural(road).verge if (plan.rural and style.klass == RoadStyle.ARTERIAL) else style.verge
+			ribbon(pts, road.width + 2.0 * verge, Y_VERGE, 4.0, CityAtlas.GROUND_LATERITE)
+		elif road.is_main():
 			ribbon(pts, road.width + 5.0, Y_VERGE, 3.0, CityAtlas.GROUND_PAVING)
-		ribbon(pts, road.width, Y_ROAD, 9.0, CityAtlas.GROUND_ASPHALT)
+		var surface := RoadStyle.surface(road, plan.rural) if plan != null else CityAtlas.GROUND_ASPHALT
+		ribbon(pts, road.width, Y_ROAD, 6.0 if surface == CityAtlas.GROUND_CONCRETE else 9.0, surface)
 		add_stripes(span)
 	kerbs(kerb_runs)
 	kerbs(edges, CityAtlas.GROUND_PAVING, PARK_KERB)
-	kerbs(medians, CityAtlas.GROUND_KERB, MEDIAN_HEIGHT)
+	if plan != null:
+		kerbs(plan.blocks, CityAtlas.GROUND_KERB_BW, 0.22)
+		kerbs(plan.footpaths, CityAtlas.GROUND_SLAB, FOOT_H, CityAtlas.GROUND_SLAB, SLAB_TILE)
+		flat_runs(plan.drains, CityAtlas.GROUND_DARK, Y_ROAD - 0.01)
+		var wear_layer := CityAtlas.GROUND_RUT
+		flat_runs(plan.lips, CityAtlas.GROUND_MUD, Y_ROAD + 0.004)
+		flat_runs(plan.ruts, wear_layer, Y_ROAD + 0.006)
+		for d in plan.decals:
+			decal(d)
+		for c in plan.crossings:
+			crossing(c)
+		kerbs(medians, CityAtlas.GROUND_KERB_BW, MEDIAN_HEIGHT, CityAtlas.GROUND_LATERITE, 3.0)
+	else:
+		kerbs(medians, CityAtlas.GROUND_KERB, MEDIAN_HEIGHT)
 
 
 static func _square(square: Rect2) -> PackedVector2Array:
@@ -494,6 +619,24 @@ func zebra(sp: WorldSpot, h: float) -> void:
 	for k in bars:
 		_stripe(sp.position + across * (first + k * ZEBRA_PITCH), dir, ZEBRA_LENGTH, h, h, ZEBRA_BAR)
 	zebras += 1
+
+
+## A zebra crossing and, on the approach side, a stop line before it (G-312). The bars lie along
+## the road; the stop line spans the lane of the traffic that stops here (all of a one-way road).
+func crossing(c: RoadDetail.Crossing) -> void:
+	var sp := WorldSpot.new()
+	sp.kind = &"zebra"
+	sp.position = c.position
+	sp.yaw = atan2(c.dir.x, c.dir.y)
+	sp.width = c.width
+	zebra(sp, 0.0)
+	var across := Vector2(-c.dir.y, c.dir.x)
+	var left := Vector2(c.travel.y, -c.travel.x)
+	var line_at := c.position - c.travel * (ZEBRA_LENGTH / 2.0 + 0.9)
+	var span_len := c.width - 0.7 if c.oneway else c.width / 2.0 - 0.45
+	var shift := 0.0 if c.oneway else c.width / 4.0 + 0.05
+	_stripe(line_at + left * shift, across, span_len, 0.0, 0.0, 0.4, CityAtlas.GROUND_PAINT)
+	stop_lines += 1
 
 
 ## A speed breaker's surface, painted in the kerb's yellow and black bands across the road; returns

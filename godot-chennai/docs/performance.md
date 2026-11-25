@@ -73,7 +73,7 @@ mode (xvfb counts):
 | Traffic and walkers | +21-28 | +9-11k | +0.7-1.6 ms (largest) | 18 vehicles, 14 walkers, 12 figures drawn, frozen pose beyond 25 m and out of view, no walker shadows, AI step may lag 6 frames |
 | Crowds | +0-3 | +2k | +0.3-1.1 ms | inside the 12-figure cap |
 | Parked vehicles | +5-6 | +1-5k | +0.3-1.3 ms | only within 100 m, shadows only from LOD 0 |
-| Street lights (night) | 0 | 0 | — | no real lights (High 6, now never on the merged chunks); ground glow pools instead |
+| Street lights (night) | 0 | 0 | — | no real lights on Low (High 6, never on the merged chunks); one additive glow mesh (halo and ground pool per lamp) |
 | Landmarks | +1-11 | +10-15k | +0.6 ms | LOD ranges at 0.6 |
 | Trees and palms | +5-7 | +9-16k | ~0.3 ms | no tree shadows (whole chunk MultiMesh in the shadow map) |
 | Street objects (gates, towers, poles, props) | +1-6 | +7-17k | ~0.2 ms | no shadows |
@@ -197,3 +197,21 @@ or uploaded in it, and whether the phone's main thread was working, waiting for 
   minute at the same settings instead.
 - Godot's thread priorities do not reach Android's scheduler; the worker cap (one chunk build at
   a time on Low) is the lever left for the two fast cores.
+
+## Roads merged with the street-light rules (G-259, G-316, G-317)
+
+The roads branch's one glow mesh (halo and ground pool per lamp, tinted) replaced the lamp head boxes and the
+sodium pool MultiMesh: at night the street lights draw one MultiMesh instead of two. Same scene before (feat at
+a6d299f) and after the merge: the game's spawn at 21:00, Compatibility on llvmpipe under xvfb, 915x412, preset set
+after loading (so chunks are built at High in both), one run each; frame times on this shared box are noise.
+
+| Preset | Build | Draw calls | Primitives | Lamps | Real lights lit | Glow MultiMeshes |
+|---|---|---|---|---|---|---|
+| High | before | 243 | 314k | 31 | 6 | 2 |
+| High | after | 242-261 (two runs, traffic differs) | 366-367k | 48 | 6 | 1 |
+| Low | before | 217 | 139k | 31 | 0 | 2 |
+| Low | after | 216 | 166k | 48 | 0 | 1 |
+
+More lamps (twin arms and high masts carry their own heads); the primitives are the road detail (G-310…G-316).
+A game started at Low builds its chunks without guards, shrubs, wires or rubble (G-317), which this probe does not show.
+

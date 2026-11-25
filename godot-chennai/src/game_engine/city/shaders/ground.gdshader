@@ -63,6 +63,9 @@ void fragment() {
 	float tile = l;
 	if (cover >= 0 && cover < COVERS) {
 		tile = COVER_BASE[cover];
+	} else if (l > 19.5) {
+		// Road detail layers 20 and up (CityAtlas.GROUND_ASPHALT_WORN...) live in tiles 8 and up.
+		tile = l - 12.0;
 	}
 	vec2 inner = fract(uv);
 	// A few texels in from the tile's edges, so neighbouring tiles never bleed in at a distance.
@@ -87,9 +90,20 @@ void fragment() {
 		}
 		rgb *= COVER_TINT[cover] * (1.0 + (n - 0.5) * 2.0 * COVER_NOISE[cover]);
 	}
-	float paved = (l < 1.5) ? 1.0 : 0.0;
+	// Road surfaces drift in tone over nine metres or so (wear, dust, old patching): one octave of
+	// the continuous noise, only on asphalt, worn asphalt and concrete (road detail, G-311).
+	if (l < 0.5 || (l > 19.5 && l < 21.5)) {
+		rgb *= 0.88 + 0.24 * vnoise(uv);
+	}
+	float paved = (l < 1.5 || l > 19.5) ? 1.0 : 0.0;
 	ALBEDO = rgb * (1.0 - 0.35 * wet * paved);
 	// Water is smooth, asphalt and stone rough.
 	ROUGHNESS = (l > 3.5 && l < 4.5) ? 0.2 : mix(0.95, 0.35, wet * paved);
+	// Muddy puddles (road condition, G-315): shiny, shinier still after rain, no reflection pass.
+	if (l > 29.5 && l < 30.5) {
+		ROUGHNESS = mix(0.3, 0.05, wet);
+		rgb *= 1.0 - 0.25 * wet;
+		ALBEDO = rgb;
+	}
 	SPECULAR = 0.3;
 }
