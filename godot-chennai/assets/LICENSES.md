@@ -138,3 +138,9 @@ is not worn by anyone here).
 | Files | What | Source | Licence |
 |---|---|---|---|
 | `assets/trees/tree_atlas.png`, `assets/trees/atlas_layout.json` | The tree kit's one atlas, 1024x512: leaf cards (broad, neem, feathery, gulmohar blossom), coconut frond, palmyra fan (green and dry), casuarina needles, grass blades, bougainvillea, oleander, croton, twigs, bark. VRAM-compressed on import (about 0.7 MB with mip maps) | Original, painted by `tools/trees/bake_tree_atlas.py` (Pillow, drawn shapes only: no photographs and no third-party textures). The meshes that use it are built in code (`src/game_engine/trees/tree_models.gd`) | **CC0 1.0**, original work for the project |
+
+## Street reference data (decision G-510)
+| Files | What | Source | Licence |
+|---|---|---|---|
+| `assets/street_ref/facade_categories.json`, `manifest.json`, `observations/*.json`, `*.schema.json` | Facade category parameter ranges (all estimated from general knowledge), the (currently empty) list of referenced imagery ids and the hand-reviewed observations | Original data written for the project. No photograph or pixel from Mapillary, KartaView or Google is stored; any image later cited by id is CC BY-SA 4.0 under its provider's terms and is credited in the manifest | **CC0 1.0**, original work for the project |
+

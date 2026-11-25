@@ -344,3 +344,11 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Quality caps: density, LOD distances, no sway on Low, shadows from LOD 0 on High (G-386) | Done | `test_quality_caps`, `test_perf_wiring` |
 | Before and after draws, primitives, main-thread ms, screenshots against the owner's photographs | Done on llvmpipe at 915x412 (`docs/trees.md`, handoff) | scratch harness (not committed) |
 | Seen on a phone | Not done | — |
+
+## Street imagery reference prototype (G-510 to G-513, branch `agent/godot-streetref`, 25 Nov 2026)
+- Built and tested (39 pytest, mypy clean): Mapillary and KartaView discovery tool, SQLite store, chunk mapping,
+  coverage report, source manifest and observation/facade validators, facade category data, comparison page
+  (rendered with Chromium). Plan, licence analysis and extension guide in `docs/street-imagery.md`.
+- NOT done: any real API call succeeded (egress blocked, no token), so no coverage numbers, observations or
+  observed facade values exist; nothing is wired into the game.
+

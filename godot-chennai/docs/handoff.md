@@ -1428,3 +1428,12 @@ bookkeeping median 0.4 ms (was 2.4), max 2.6 ms (was 19). The test and its thres
   already does (G-51). The dummy renderer's RID errors ("Parameter m is null", `Condition "!F"`) that
   `test_city_life` prints appear on b19bacc as well.
 - Not measured on a phone or with the benchmark route; the overlay's hitch line (G-340) will show it.
+
+## Street imagery reference (agent/godot-streetref, G-510 to G-513), 25 Nov 2026
+Prototype of "real Chennai streets from street-level imagery", observation-only and licence-safe. New files only:
+`tools/imagery/` (tool, tests, prototype page), `assets/street_ref/` (manifest, schemas, observations,
+`facade_categories.json`), `docs/street-imagery.md`. Run `tools/imagery/run_tests.sh` (geo venv).
+Blocker for the owner: a free `MAPILLARY_TOKEN` and egress to `graph.mapillary.com` and `api.openstreetcam.org`;
+until then no coverage report is real and all facade fields are estimates. Next: run discover and report, review
+images by hand, fill observations, then a game change that reads the categories in `BuildingMeshes`.
+
