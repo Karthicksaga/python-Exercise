@@ -20,6 +20,8 @@ const CLOCK_START := 2.0 * 3600.0
 const DOOR_WALK_SPEED := 1.5
 const DOOR_WALK_TIME := 4.0
 const HORN_RANGE := 350.0
+## Seconds between two listens (`_listen` runs every sixth physics step).
+const LISTEN_DT := 0.1
 ## The chime sounds this many seconds before a train reaches the player's platform.
 const ANNOUNCE_AHEAD := 50.0
 const CROWD_RANGE := 170.0
@@ -264,6 +266,10 @@ func _physics_step(dt: float) -> void:
 
 
 var _slow_step: int = 0
+## Each crossing's last want (1 closing or closed, 0 open), for the booms' sound.
+var _crossing_closing: PackedByteArray = PackedByteArray()
+## Train id -> its speed at the last listen, for the brake squeal (speed falling).
+var _last_speed: Dictionary[String, float] = {}
 var _hud_tick: int = 0
 ## Standing trains' doorways per platform, in its frame: they do not move while a train stands.
 var _door_cache: Dictionary[String, PackedVector2Array] = {}
@@ -310,10 +316,33 @@ func _frame(dt: float) -> void:
 	if _board_tick <= 0.0:
 		_board_tick = 1.0
 		stations_view.refresh(clock, float(hour_of.call()), _standing_keys())
+	_inside_sound()
 	_hud_tick += 1
 	# The HUD's words change slowly: a third of the frames is enough (the cab's dial every frame).
 	if _hud_tick % 3 == 0 or state == &"cab":
 		_update_hud(focus)
+
+
+## The id of the train the player drives ("" when not driving).
+func cab_id() -> String:
+	return "%s#%d" % [cab.line.id, cab_departure] if cab != null else ""
+
+
+## 0..1: how hard the train `id` is slowing (1 at 1 m/s²), from its speed `dt` seconds ago.
+func _braking(id: String, speed: float, dt: float) -> float:
+	var before: float = _last_speed.get(id, speed)
+	_last_speed[id] = speed
+	return clampf((before - speed) / maxf(dt, 0.001), 0.0, 1.0)
+
+
+## The running sound inside the train the player rides or drives (every frame).
+func _inside_sound() -> void:
+	if state == &"cab" and cab != null:
+		Sound.rail.set_motion(cab.v, clampf(-cab.effort / 1.2, 0.0, 1.0), true, 0.0)
+	elif state == &"ride" and ride_line != null:
+		var tr := ride_line.train(ride_departure, clock)
+		if tr != null:
+			Sound.rail.set_motion(tr.state.speed, _braking(tr.id, tr.state.speed, get_process_delta_time()), true, 0.0)
 
 
 func _standing_keys() -> Dictionary[String, bool]:
@@ -423,7 +452,7 @@ func board() -> bool:
 	var nxt := train.state.next_stop
 	_toast("Train to %s · ticket ₹%d · next: %s" % [ride_line.destination(), answer.fare, ride_line.stops[nxt].name if nxt >= 0 else "end of the line"])
 	_start_walk(true, train, stop_index)
-	Sound.door("bus")
+	Sound.rail.door(false)
 	return true
 
 
@@ -617,7 +646,7 @@ func step_off() -> bool:
 	ride_line = null
 	ride_id = ""
 	_interior.visible = false
-	Sound.door("bus")
+	Sound.rail.door(true)
 	return true
 
 
@@ -696,7 +725,7 @@ func take_cab() -> bool:
 	cab.scored.connect(func(points: int, why: String) -> void: _toast("%s%d %s" % ["+" if points >= 0 else "", points, why]))
 	cab.message.connect(func(text: String) -> void: _toast(text))
 	cab.finished.connect(func(_score: int) -> void: _cab_finished())
-	cab.doors_changed.connect(func(_open: bool) -> void: Sound.door("bus"))
+	cab.doors_changed.connect(func(open: bool) -> void: Sound.rail.door(open, not open))
 	taken[train.id] = true
 	var body := rig.body
 	_anchor.global_transform = body.global_transform
@@ -725,7 +754,7 @@ func _step_cab(dt: float) -> void:
 	if _horn_down and _horn_cool <= 0.0:
 		_horn_cool = 0.9
 		horns += 1
-		Sound.horn("bus")
+		Sound.rail.horn(0.0)
 	if state != &"cab":
 		return
 	var f := TrainModels.formation(cab.line.train_type)
@@ -843,6 +872,9 @@ func _place_inside() -> void:
 ## The horn of a train pulling away near the player, and the chime before a train reaches the platform the player is at.
 func _listen(focus: Vector2) -> void:
 	var seen: Dictionary[String, bool] = {}
+	var nearest_d := INF
+	var nearest_speed := 0.0
+	var nearest_brake := 0.0
 	for line in network.lines:
 		for t in line.trains(clock):
 			var d := line.path.at(t.state.s).point().distance_to(focus)
@@ -852,11 +884,19 @@ func _listen(focus: Vector2) -> void:
 			var stands := t.state.stopped_at >= 0
 			if _standing.get(t.id, false) == true and not stands:
 				horns += 1
-				Sound.horn("bus")
+				Sound.rail.horn(d)
 			_standing[t.id] = stands
+			if d < nearest_d and not (t.id == cab_id() or (state == &"ride" and t.id == ride_id)):
+				nearest_d = d
+				nearest_speed = t.state.speed
+				nearest_brake = _braking(t.id, t.state.speed, LISTEN_DT)
 	for id: String in _standing.keys():
 		if not seen.has(id):
 			_standing.erase(id)
+			_last_speed.erase(id)
+	# The running sound of the nearest train outside the one the player rides or drives.
+	if state != &"ride" and state != &"cab":
+		Sound.rail.set_motion(nearest_speed, nearest_brake, false, nearest_d)
 	if state != &"foot":
 		return
 	var height := rig.body.global_position.y if rig != null else 0.0
@@ -869,7 +909,7 @@ func _listen(focus: Vector2) -> void:
 		var before: float = _last_wait.get(key, -1.0)
 		if before > ANNOUNCE_AHEAD and wait <= ANNOUNCE_AHEAD and wait > 1.0:
 			announcements += 1
-			Sound.cue("chime")
+			Sound.rail.announce()
 		_last_wait[key] = wait
 
 
@@ -990,16 +1030,29 @@ func _step_crossings(dt: float) -> void:
 	var extra: Dictionary[String, float] = {}
 	if cab != null:
 		extra[cab.line.id] = cab.s
+	var focus := _focus()
+	var bell := 0.0
+	if _crossing_closing.size() != network.crossings.size():
+		_crossing_closing.resize(network.crossings.size())
 	for i in network.crossings.size():
 		var c := network.crossings[i]
 		var want := LevelCrossing.closed_amount(network, c, clock, extra)
 		var now := crossing_amounts[i]
 		# The booms move at their own pace (SWING seconds end to end).
 		var amount := move_toward(now, 1.0 if want > 0.0 else 0.0, dt / LevelCrossing.SWING)
+		var at := Vector2(c.x, c.z)
+		var heard := focus.distance_to(at)
 		if want > 0.0 and now == 0.0:
 			bells += 1
+		# The booms' own sound as they start to go down and to come up again.
+		var closing := 1 if want > 0.0 else 0
+		if closing != _crossing_closing[i] and (closing == 1 or now > 0.0):
+			Sound.rail.boom(closing == 1, heard)
+		_crossing_closing[i] = closing
+		bell = maxf(bell, RailSounds.bell_level(heard, amount))
 		crossing_amounts[i] = amount
 		(_crossing_nodes[i] as CrossingView).set_amount(amount, clock)
+	Sound.rail.set_bell(bell)
 
 
 ## Road traffic stops at closed crossings: Vector3(x, z, radius) points across the road at each boom

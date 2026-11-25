@@ -55,6 +55,10 @@ jobs:
         run: python3 tools/sync_from_threejs.py --check
       - name: Railway file rebuilt from the Three.js extract (G-320)
         run: python3 tools/rail/test_build_rail.py
+      - name: Sound files measured again against the manifest (G-371)
+        run: |
+          python3 -m pip install --quiet numpy
+          python3 tools/audio/test_audio_files.py
       # The import cache (.godot/imported) is rebuilt from scratch only when an asset or its
       # import settings change.
       - name: Cache the import

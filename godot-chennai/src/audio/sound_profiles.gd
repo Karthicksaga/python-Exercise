@@ -7,11 +7,12 @@ extends RefCounted
 ##
 ## Engines are modelled on Chennai's streets (estimated, not measured):
 ## car: 1.2 L four-cylinder petrol hatchback; premium: a V8 saloon/SUV; race: a high-revving
-## four; auto: single-cylinder four-stroke three-wheeler; bike: a 150 cc single; thumper: a 350 cc
-## long-stroke single; bus: six-cylinder diesel with a turbo; ambulance: four-cylinder diesel van.
+## four; auto: single-cylinder four-stroke three-wheeler (the share auto too); bike: a 150 cc single;
+## thumper: a 350 cc long-stroke single; bus: six-cylinder diesel with a turbo; ambulance:
+## four-cylinder diesel van; goods: the small goods carrier, a two-cylinder diesel (G-373).
 ## The pitch that matters is the firing frequency: rpm / 60 × cylinders / 2 for a four-stroke.
 
-const KINDS: PackedStringArray = ["car", "premium", "race", "auto", "bike", "thumper", "bus", "ambulance"]
+const KINDS: PackedStringArray = ["car", "premium", "race", "auto", "bike", "thumper", "bus", "ambulance", "goods"]
 
 ## Engine profiles. Keys as in `profiles.ts` (snake_case), plus the new kinds.
 ## wave: "saw" (buzzy, full) or "square" (hollow, putt-like). cutoff: [idle, full] low-pass Hz.
@@ -40,6 +41,9 @@ const ENGINES: Dictionary = {
 	"ambulance": {"cylinders": 4, "strokes": 4, "idle_rpm": 680.0, "shift_rpm": 2600.0, "free_rev": 0.55, "gears": 5, "top_speed": 25.0,
 		"wave": "saw", "sub": 0.45, "exhaust_hz": 140.0, "exhaust_q": 1.3, "cutoff": [330.0, 1300.0],
 		"roughness": 0.2, "rough_hz": 1500.0, "lope": 0.01, "turbo": 0.25, "wind": 0.4, "volume": 0.95},
+	"goods": {"cylinders": 2, "strokes": 4, "idle_rpm": 900.0, "shift_rpm": 3200.0, "free_rev": 0.5, "gears": 5, "top_speed": 19.0,
+		"wave": "saw", "sub": 0.5, "exhaust_hz": 130.0, "exhaust_q": 1.4, "cutoff": [350.0, 1200.0],
+		"roughness": 0.35, "rough_hz": 1000.0, "lope": 0.12, "turbo": 0.0, "wind": 0.5, "volume": 1.0},
 }
 
 ## Horns: notes {hz, at (s from the press), length (s)}; wave; band-pass colour; diaphragm buzz Hz;
@@ -61,6 +65,8 @@ const HORNS: Dictionary = {
 	"bus": {"notes": [[233.0, 0.0, 0.85], [294.0, 0.0, 0.85], [349.0, 0.0, 0.85]], "wave": "saw", "colour_hz": 1100.0, "colour_q": 0.9, "buzz": 0.0, "attack": 0.06, "scoop": 0.9, "volume": 0.11},
 	# The ambulance's plain horn (the siren is separate).
 	"ambulance": {"notes": [[392.0, 0.0, 0.4], [494.0, 0.0, 0.4]], "wave": "square", "colour_hz": 1500.0, "colour_q": 1.1, "buzz": 0.0, "attack": 0.012, "scoop": 1.0, "volume": 0.13},
+	# A truck's air horn, a fourth lower than the bus's and shorter (G-373).
+	"goods": {"notes": [[174.0, 0.0, 0.7], [220.0, 0.0, 0.7]], "wave": "saw", "colour_hz": 900.0, "colour_q": 0.9, "buzz": 0.0, "attack": 0.05, "scoop": 0.92, "volume": 0.12},
 }
 
 ## The engine's rpm sample points, as shares of the way from idle to the change point (1.05 is
@@ -79,8 +85,13 @@ static func sound_kind(name: String) -> String:
 			return "bike"
 		"bullet", "enfield", "bike350":
 			return "thumper"
-		"autorickshaw", "auto_rickshaw":
+		"autorickshaw", "auto_rickshaw", "share_auto":
 			return "auto"
+		"goods_carrier", "truck":
+			return "goods"
+	# Every bus variant (bus_city, bus_lowfloor, bus_intercity, bus_mofussil, bus_school) sounds like the bus.
+	if name.begins_with("bus_"):
+		return "bus"
 	return name if KINDS.has(name) else "car"
 
 
@@ -182,13 +193,55 @@ static func honk_chance(hour: float, stopped_seconds: float) -> float:
 
 
 ## How loud each ambience bed should be (0..1 of its own full level) for a place and hour.
-## coast: metres to the sea (INF inland); traffic 0..1 nearby; rain 0..1.
-static func ambience_levels(hour: float, rain: float, coast: float, traffic: float) -> Dictionary:
+## coast: metres to the sea (INF inland); traffic 0..1 nearby; rain 0..1; street: the kind of
+## street (`PlaceMap.KINDS`, "" when unknown) for the market murmur and the tea stall (G-376).
+static func ambience_levels(hour: float, rain: float, coast: float, traffic: float, street: StringName = &"") -> Dictionary:
 	var birds := wildlife(hour)
 	var sea := 0.0 if is_inf(coast) else maxf(0.0, 1.0 - coast / 450.0)
-	return {
+	var dry := 1.0 - clampf(rain, 0.0, 1.0)
+	var out := {
 		"city": city_level(hour) * (0.5 + 0.5 * clampf(traffic, 0.0, 1.0)),
 		"rain": clampf(rain, 0.0, 1.0),
 		"sea": sea,
-		"crickets": float(birds["crickets"]) * (1.0 - clampf(rain, 0.0, 1.0)),
+		"crickets": float(birds["crickets"]) * dry,
 	}
+	var shops := street_levels(street, hour)
+	out["market"] = float(shops["market"]) * (0.6 + 0.4 * dry)
+	out["tea"] = float(shops["tea"]) * (0.5 + 0.5 * dry)
+	return out
+
+
+## The people-made beds of a street kind at an hour: the market murmur (loudest in the market
+## itself, a little in a station and a busy street), the tea stall (a shopfront on streets and lanes,
+## busiest at the morning and the evening rush), by the day's crowd (`city_level`).
+static func street_levels(street: StringName, hour: float) -> Dictionary:
+	var crowd := clampf(city_level(hour) * 1.4, 0.0, 1.0)
+	var market := 0.0
+	var tea := 0.0
+	match street:
+		&"market":
+			market = 1.0 * crowd
+			tea = 0.5 * crowd
+		&"station":
+			market = 0.35 * crowd
+			tea = 0.3 * crowd
+		&"street":
+			market = 0.12 * crowd
+			tea = 0.4 * crowd
+		&"lane":
+			tea = 0.3 * crowd
+		&"temple":
+			market = 0.15 * crowd
+		&"main_road":
+			market = 0.1 * crowd
+	var morning := _bump(fposmod(hour, 24.0), 7.5, 1.8) + _bump(fposmod(hour, 24.0), 17.0, 2.0)
+	return {"market": market, "tea": tea * clampf(0.5 + morning, 0.0, 1.0)}
+
+
+## Seconds until the next far-off temple bell near a temple: sooner at the morning and evening
+## pooja (about 6 and 18 hours), rarely in the small hours.
+static func temple_bell_wait(hour: float) -> float:
+	var h := fposmod(hour, 24.0)
+	var pooja := clampf(_bump(h, 6.0, 1.0) + _bump(h, 18.0, 1.2), 0.0, 1.0)
+	var asleep := 1.0 if h < 4.5 or h > 22.5 else 0.0
+	return lerpf(60.0, 18.0, pooja) * (3.0 if asleep > 0.5 else 1.0)
