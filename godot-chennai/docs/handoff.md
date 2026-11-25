@@ -1243,6 +1243,11 @@ are not drawn within 45 m of a fight (`FightSafety`, `CityLife.fight_points`).
 (`CombatGround.make_fight(save, weapons_save)`, then `await ready_fight()`). Screenshots and the
 fight's cost: `tests/tools/combat_shots.gd` (header has the command).
 
+**Measured (desktop, xvfb llvmpipe, `tests/tools/combat_shots.gd`).** The combat step on the main
+thread: idle median 0.23 ms (p95 0.41), stage 7 fight with three thugs median 0.30 ms (p95 0.76,
+max 2.7), a two-star pursuit median 0.25 ms (p95 0.40 to 1.2: route planning). Inside the 2.5 ms
+budget; the enemy figures' animation is counted in the frame, not in this step. Not on a phone.
+
 **Weak or not done.**
 - No colliders on enemies: the player can walk through them (the Three.js game had kinematic boxes).
 - Police cars are kinematic views that do not steer round traffic; traffic stops for them (their
