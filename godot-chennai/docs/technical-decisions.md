@@ -2748,3 +2748,11 @@ shows "HOLD!" while the warning sounds and "BRAKING" while tripped. `Railway` re
 (polling, so a HUD that hides while held cannot leave it stuck). The times are estimates. The cab starts with the handle
 not held: the first toast says to keep HOLD pressed while moving. Not done: no keyboard or pad key for the handle, no
 separate alarm sound, no vigilance on the passengers' ride (the timetable's trains).
+
+### G-455: The map credit steps aside for the pause menu
+On a 2460 x 1080 screen (938 x 412 UI units) the pause panel, as wide as its longest row (the perf summary, the graphics
+row), reached the "(c) OpenStreetMap contributors" plate at the bottom right (owner's screenshot). The credit is the
+data's licence, so it is moved, not dropped: `PauseMenu` carries its own credit line inside its panel (fed with the
+data's attribution by `Main`), and the HUD's plate hides while the menu is open (`PauseMenu.opened` and `closed`,
+`DebugHud.set_credit_shown`). Test: `test_ui_layout.gd` builds the pause menu with the real rows plus a long one at
+the five UI sizes (938 x 412 among them), `test_perf_wiring.gd` checks it in the booted game.

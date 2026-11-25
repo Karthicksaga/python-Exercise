@@ -17,6 +17,9 @@ signal resume_requested
 signal title_requested
 signal pause_requested
 signal map_requested
+## The menu opened or closed (the map credit on the HUD steps aside while it is open, G-455).
+signal opened
+signal closed
 
 ## The PAUSE button (G-290): a round glass icon, 40 to the eye, a 48 hit area.
 const PAUSE_VISUAL := 40.0
@@ -32,6 +35,7 @@ var _list: VBoxContainer
 var _resume: Button
 var _settings: Dictionary[StringName, Array] = {}  # id → [button, label: Callable, press: Callable]
 var _margin: SafeAreaMargin
+var _credit: Label
 
 
 func _init() -> void:
@@ -90,6 +94,11 @@ func _init() -> void:
 	column.add_child(UiTheme.label("PAUSED", UiTheme.BUTTON_SIZE + 6, UiTheme.AMBER))
 	_scroll = UiTheme.touch_scroll()
 	column.add_child(_scroll)
+	# The map credit while the HUD's own is hidden: inside the panel, so nothing can overlap it.
+	_credit = UiTheme.label("© OpenStreetMap contributors", 12, UiTheme.TEXT_DIM)
+	_credit.name = "Credit"
+	_credit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_credit)
 	_list = VBoxContainer.new()
 	_list.name = "List"
 	_list.add_theme_constant_override("separation", 10)
@@ -145,6 +154,12 @@ func show_pause_button(on: bool) -> void:
 	pause_button.visible = on and not is_open()
 
 
+## The map credit line the panel carries (the data's attribution).
+func set_credit(text: String) -> void:
+	if text != "":
+		_credit.text = text
+
+
 func open() -> void:
 	refresh()
 	_panel.visible = true
@@ -152,11 +167,13 @@ func open() -> void:
 	pause_button.visible = false
 	_fit.call_deferred()
 	_resume.grab_focus()
+	opened.emit()
 
 
 func close() -> void:
 	_panel.visible = false
 	(get_node(^"Root/Dim") as Control).visible = false
+	closed.emit()
 
 
 func is_open() -> bool:
@@ -170,7 +187,7 @@ func _fit() -> void:
 	var screen := get_viewport().get_visible_rect().size
 	var room := screen.y - float(_margin.get_theme_constant("margin_top") + _margin.get_theme_constant("margin_bottom"))
 	# The panel's own margins and the PAUSED title above the list.
-	var chrome := 20.0 + 8.0 + 32.0 + 4.0
+	var chrome := 20.0 + 8.0 + 32.0 + 4.0 + 8.0 + _credit.get_combined_minimum_size().y
 	var want := _list.get_combined_minimum_size().y
 	_scroll.custom_minimum_size = Vector2(_list.get_combined_minimum_size().x, clampf(want, UiTheme.MIN_TARGET, maxf(UiTheme.MIN_TARGET, room - chrome)))
 	_panel.reset_size()

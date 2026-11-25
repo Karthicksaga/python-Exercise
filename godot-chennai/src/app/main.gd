@@ -118,6 +118,7 @@ func _load() -> void:
 	var roads := source.loaded_roads()
 	hud.set_world_text("%s roads · %s chunks" % [_thousands(roads.size()), _thousands(source.chunk_count())])
 	hud.set_credit(source.get_attribution())
+	pause_menu.set_credit(source.get_attribution())
 	title.set_credits(source.get_attribution(), source.get_data_date(), SoundCredits.text(Sound.library))
 	if OS.get_cmdline_user_args().has("--start=play"):
 		play()
@@ -274,6 +275,9 @@ func _add_pause_menu() -> void:
 		host.call(&"add_setting", &"Weather", Weather.label, Weather.toggle)
 		host.call(&"add_setting", &"Sound", Sound.label, Sound.toggle)
 	ControlSettingsRows.add_to(pause_menu, ControlSettings.shared())
+	# The HUD's map credit sits bottom-right and met the panel's corner on a wide phone: the menu has its own (G-455).
+	pause_menu.opened.connect(func() -> void: hud.set_credit_shown(false))
+	pause_menu.closed.connect(func() -> void: hud.set_credit_shown(true))
 	pause_menu.pause_requested.connect(pause)
 	pause_menu.resume_requested.connect(resume)
 	pause_menu.title_requested.connect(show_title)

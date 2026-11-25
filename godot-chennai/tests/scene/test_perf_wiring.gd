@@ -331,3 +331,22 @@ func _blur_layers(main: Main) -> int:
 			n += 1
 	return n
 
+
+## The map credit (G-455): the HUD's steps aside while the pause menu is open, the menu's own
+## line stays, and both come back as they were.
+func test_the_map_credit_steps_aside_for_the_pause_menu() -> bool:
+	DebugSettings.reset_shared()
+	var main := await _boot()
+	var plate := main.hud.find_child("Credit", true, false).get_parent() as Control
+	assert_true(plate.is_visible_in_tree(), "the credit shows in play")
+	main.pause()
+	await wait_frames(3)
+	assert_false(plate.is_visible_in_tree(), "hidden while paused")
+	var own := main.pause_menu.find_child("Credit", true, false) as Label
+	assert_true(own.is_visible_in_tree() and own.text.contains("OpenStreetMap"), "the menu's own credit line shows: %s" % own.text)
+	main.resume()
+	await wait_frames(3)
+	assert_true(plate.is_visible_in_tree(), "back after resuming")
+	DebugSettings.reset_shared()
+	_restore()
+	return true
