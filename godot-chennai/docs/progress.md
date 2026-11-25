@@ -344,3 +344,14 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Quality caps: density, LOD distances, no sway on Low, shadows from LOD 0 on High (G-386) | Done | `test_quality_caps`, `test_perf_wiring` |
 | Before and after draws, primitives, main-thread ms, screenshots against the owner's photographs | Done on llvmpipe at 915x412 (`docs/trees.md`, handoff) | scratch harness (not committed) |
 | Seen on a phone | Not done | — |
+
+## Language: English and Tamil (G-440 to G-446, branch `agent/godot-lang`, 25 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| `Tr.t(key, args)` over CSV catalogs read into `Translation` objects on the `TranslationServer`; keys, `{0}` / `{name}` placeholders, counted texts, three display modes (G-440) | Done | `test_i18n.gd` (same keys in both files, no duplicates, placeholders match, modes, fallbacks, missing keys listed) |
+| Language setting (English, தமிழ், both) in the pause menu and the title's SETTINGS, saved, live (G-441) | Done | `test_language_setting_saves_and_switches_live`, `test_pause_menu_and_title_follow_the_language` |
+| UI, HUD, toasts, controls guide, map legend, railway HUD and texts, About, loading steps and tips, 21 stages, 13 jobs, 5 new missions, 3 stories as keys (G-440, G-442) | Done; developer-only text stays English (G-446) | static scan of every key in `src` (both languages, none unused), content scan (`ContentKeys`) |
+| Tamil written for all of it; every row `needs native review`; `docs/tamil-review.md`; release flag; About says so (G-443) | Done; **no native speaker has read any of it** | `test_unreviewed_tamil_can_be_left_out_of_a_release`, `test_review_table_matches_the_catalog` |
+| Noto Sans Tamil behind the UI font; no tofu (G-444) | Done | every Tamil string shaped at six sizes, no `.notdef` glyph |
+| Layouts survive Tamil and Both at 915x412 and 1830x824 (G-445) | Done in the test; seen only in screenshots under software GL | `test_i18n_layout.gd` |
+| Read by a native speaker; seen on a phone | Not done | — |
