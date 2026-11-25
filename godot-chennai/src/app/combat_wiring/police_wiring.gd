@@ -270,6 +270,7 @@ func step(dt: float, p: Dictionary) -> void:
 	var graph: RoadGraph = graph_source.call() if graph_source.is_valid() else null
 	if stars > 0:
 		_dispatch(graph, at)
+		_roadblock(graph, at, speed, on_foot, p)
 	for id: int in _runs.keys():
 		var r := _runs[id]
 		if r.unit.active:
@@ -353,6 +354,46 @@ func _dispatch(graph: RoadGraph, at: Vector2) -> void:
 	_spawn_in = SPAWN_EVERY
 
 
+## From four stars, while the player drives fast and is seen: a car is put across the road
+## `ROADBLOCK_AHEAD` m ahead of them (on the nearest road node there), standing, until the player is
+## past and away or lost. One at a time; it counts as one of the level's cars.
+func _roadblock(graph: RoadGraph, at: Vector2, speed: float, on_foot: bool, p: Dictionary) -> void:
+	if wanted.stars < ROADBLOCK_FROM or on_foot or speed < 6.0 or not seen_now:
+		return
+	for id: int in _runs:
+		if _runs[id].unit.active and _runs[id].roadblock:
+			return
+	if fleet.counted() >= mini(car_cap, int(Wanted.police_units(wanted.stars)["cars"])):
+		return
+	var dir := Vector2(float(p.get("vx", 0.0)), float(p.get("vz", 0.0))).normalized()
+	var spot := at + dir * ROADBLOCK_AHEAD
+	var road_dir := dir
+	if graph != null and graph.node_count() > 1:
+		var n := Pursuer.nearest_node(graph, spot)
+		if n >= 0 and graph.node_pos[n].distance_to(spot) < 40.0:
+			spot = graph.node_pos[n]
+			if not graph.node_out[n].is_empty():
+				road_dir = graph.edge_dir[graph.node_out[n][0]]
+	if (spot - at).dot(dir) < 30.0:
+		return
+	var u := fleet.dispatch(wanted.stars, func(_u: PoliceFleet.Unit) -> bool: return false)
+	if u == null:
+		return
+	var r: Run = _runs.get(u.id)
+	if r == null:
+		r = Run.new()
+		r.unit = u
+		_runs[u.id] = r
+	# Across the road: turned a quarter from the way the road runs.
+	r.pursuer = Pursuer.new(spot.x, spot.y, atan2(-road_dir.x, -road_dir.y) + PI / 2.0)
+	r.roadblock = true
+	r.standing_down = 0.0
+	if load_models:
+		r.view = _spare.pop_back() if not _spare.is_empty() else _new_view()
+		r.view.set_shown(true)
+		r.view.set_pose(WorldOrigin.to_scene_xz(spot.x, spot.y, 0.0), r.pursuer.heading, 0.0, 0.0, 999.0)
+
+
 func _drive(r: Run, dt: float, graph: RoadGraph, at: Vector2, speed: float, on_foot: bool, p: Dictionary) -> void:
 	var stars := wanted.stars
 	var car := r.pursuer
@@ -383,7 +424,8 @@ func _drive(r: Run, dt: float, graph: RoadGraph, at: Vector2, speed: float, on_f
 			return
 	elif r.roadblock:
 		car.speed = 0.0
-		if since_seen > 10.0 or to_player > 200.0:
+		var past := (car.position() - at).dot(Vector2(float(p.get("vx", 0.0)), float(p.get("vz", 0.0)))) < 0.0
+		if since_seen > 10.0 or (past and to_player > 120.0):
 			r.roadblock = false
 	else:
 		var units := Wanted.police_units(stars)
@@ -408,14 +450,6 @@ func _drive(r: Run, dt: float, graph: RoadGraph, at: Vector2, speed: float, on_f
 				r.search_for = 20.0
 			goal = r.search_goal
 			stop_short = 2.0
-		# A roadblock: from four stars one car takes a spot ahead of a driving player and waits.
-		if stars >= ROADBLOCK_FROM and not on_foot and speed > 6.0 and since_seen < 1.0 and r.unit.id % 2 == 0 and to_player > 60.0:
-			var v := Vector2(float(p.get("vx", 0.0)), float(p.get("vz", 0.0)))
-			goal = at + v.normalized() * ROADBLOCK_AHEAD
-			stop_short = 0.5
-			if car.position().distance_to(goal) < 4.0:
-				r.roadblock = true
-				car.heading = atan2(-v.y, v.x)
 		car.update(dt, graph, goal, TOP_SPEED[stars], stop_short, func(a: Vector2, b: Vector2) -> bool: return _clear(a, b))
 		var stopped := on_foot or speed < 2.0
 		var living_on_foot := PoliceFleet.living_on_foot(combat)

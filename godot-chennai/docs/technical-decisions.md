@@ -2528,7 +2528,7 @@ slows for bends and for stopping 9 m short; straight at the goal within 40 m whe
 AI area's, taken in `between_steps` (it is never changed after it is built, so reading it later is safe). Cars are
 `TrafficVehicleView`s of the police variant (`own_paint`: white), made at loading, shown with their box off for a step
 (G-360). Spawn: a graph node 80–140 m from where the police look, 70 m clear of the player, out of sight when one is.
-From four stars a car parks across the road 70 m ahead of a driving player (a roadblock; not in the Three.js game,
+From four stars, while a driving player is seen, a car is put across the road at the road node 70 m ahead (a roadblock, one at a time; not in the Three.js game,
 asked for by the owner's brief). Busted: officers within 3.2 m of a player standing still for 2 s at up to 2 stars:
 the fine (`Wanted.BUST_FINE`: ₹500 at one star, ₹1,000 at two), every weapon taken, released outside the nearest OSM police station.
 
