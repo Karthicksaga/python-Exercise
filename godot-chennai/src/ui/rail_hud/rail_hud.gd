@@ -55,6 +55,10 @@ var map: RouteMap
 var close_sheet: Button
 var _toast_left: float = 0.0
 var _centre: VBoxContainer
+## The bottom-right column and the cab's HORN/EMG row: hidden when nothing in them shows, so no
+## empty container is laid out (an empty one had a zero height, G-330).
+var _buttons: VBoxContainer
+var _cab_row: HBoxContainer
 var _dragging: bool = false
 
 
@@ -138,6 +142,7 @@ func _ready() -> void:
 	layer.add_child(signal_chip)
 	var right := VBoxContainer.new()
 	right.name = "Buttons"
+	_buttons = right
 	right.alignment = BoxContainer.ALIGNMENT_END
 	right.add_theme_constant_override("separation", 10)
 	right.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -161,6 +166,8 @@ func _ready() -> void:
 	view.pressed.connect(func() -> void: view_pressed.emit())
 	right.add_child(view)
 	var row := HBoxContainer.new()
+	row.name = "CabRow"
+	_cab_row = row
 	row.add_theme_constant_override("separation", 10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right.add_child(row)
@@ -252,6 +259,17 @@ func set_mode(next: StringName) -> void:
 	timetable.visible = next != OFF
 	if next == OFF:
 		sheet.visible = false
+	_tidy()
+
+
+## Shows a container only while one of its children shows.
+func _tidy() -> void:
+	_cab_row.visible = horn.visible or emg.visible
+	var any := false
+	for c: Node in _buttons.get_children():
+		if c != _cab_row and (c as Control).visible:
+			any = true
+	_buttons.visible = any or _cab_row.visible
 
 
 func set_info(title: String, tamil: String, line: String) -> void:
@@ -271,6 +289,7 @@ func set_offers(can_step_off: bool, can_leave_cab: bool, can_drive: bool) -> voi
 	step_off.visible = mode == RIDE and can_step_off
 	leave.visible = mode == CAB and can_leave_cab
 	drive.visible = mode == STATION and can_drive
+	_tidy()
 
 
 func set_seated(seated: bool) -> void:
