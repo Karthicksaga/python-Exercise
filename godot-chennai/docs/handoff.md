@@ -1145,5 +1145,5 @@ thumper, bus, ambulance and goods engines, the bus horn and door are still the s
 `bed.market` is a murmur with no words, `bed.tea` a guess; `crossing.bell` rings at a fixed
 rate whatever the crossing; no Doppler on passing trains; the train's own sounds are not muffled by
 the player's `enclosed` state. `tests/scene/test_city_streaming.gd::test_main_thread_budget_under_cpu_load`
-(a wall-clock test) fails on this machine (53 to 75 ms against 16) with or without these changes' load;
-unrelated to sound.
+(a wall-clock test) fails on this machine (53 to 75 ms against 16) and also on the base commit
+(27 ms there, measured in a clean worktree): unrelated to sound.
