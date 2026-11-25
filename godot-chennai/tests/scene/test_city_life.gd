@@ -272,6 +272,8 @@ func _ride_off(jack: Carjacking, taken: Vehicle, crimes: Array[StringName]) -> v
 	assert_eq(int(jack.stats["taken"]), 1, "taken")
 	assert_false(life.taken.has(id), "its agent is back in the pool")
 	assert_true(taken.is_in_group(Vehicle.GROUP), "an ordinary vehicle of the game")
+	# Every change to the agents came between the AI's steps (G-364: the pull's scare did not).
+	assert_eq(int(life.stats.get("off_step_changes", 0)), 0, "no agent changed while the AI step may run")
 
 
 func test_take_over_a_moving_car_from_the_action_button() -> bool:

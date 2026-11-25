@@ -1014,6 +1014,12 @@ never knocked down).
 - Headless and xvfb (llvmpipe) only; not on a phone.
 - The end-to-end take-over test failed before the fix in 2 of 3 runs only (whether the sweep hits
   depends on the respawn direction); the yard test is the deterministic one.
+- The signal-11 crash in the full run on agent/godot-merge-12 was a data race (G-364): the
+  carjacking's scare of walkers ran from `Driving`'s physics step while the AI thread stepped the
+  same agents. It now runs between steps, and `CityLife` reports any change to agents made while
+  the step may run (`stats.off_step_changes`, asserted 0 in the city tests). The crash itself was
+  intermittent and was not seen in my own full run on that head, so the proof is the guard
+  (it reads 1 with the old code in both take-over tests) and the reasoning, not a reproduced crash.
 - The intermittent "thrown" in the take-over test's ride-off (75 km/h once here, 58.6 km/h
   against `Solids4` in CI on 882baff) was a real crash, not a fling: half throttle takes a bike
   to 16 m/s in 3 s, and the ride-off went straight ahead from wherever the taken bike stood, so

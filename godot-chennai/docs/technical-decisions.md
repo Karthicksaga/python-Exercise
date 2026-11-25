@@ -2454,3 +2454,20 @@ drawn carriageway, Kathipara details on the live decks, boards Tamil and English
 Egmore outline already touches the (estimated 14 m wide) Gandhi Irwin Road at the east porch, so only geometry
 more than 0.4 m outside the outlines is tested against carriageways. `test_landmarks.gd` skips the outline
 checks for `overlay` specs (no outline).
+
+### G-364: Agents change only between the AI's steps (the signal-11 crash)
+Root cause of the segfault in the full run on agent/godot-merge-12 (in
+`test_taking_over_traffic_in_a_crowded_street_never_throws`, after "The caller thread can't call
+the function propagate_notification() on /root"). `Carjacking._on_boarding` scared the walkers
+(`AgentSystem.scare`, an insert into the `_fears` dictionary) on the "pulled" boarding event, which
+`Driving` emits from its physics step: while `CityLife`'s AI thread may be running
+`population.step`, which reads and erases the same dictionary. A concurrent insert and erase can
+rehash the dictionary under the reader and crash the AI thread; Godot's crash handler then sends
+`NOTIFICATION_CRASH` to the root from that thread, which is the thread-guard ERROR line printed just
+before "Program crashed with signal 11". It came from agent/godot-take; the take-over tests made
+it frequent (several pulls per run), and the AI step overlapping more frames since the
+performance round (areas adopted on the AI thread) widened the window. Fix: the scare is queued and
+done in `Carjacking._step` (between steps). Guard: every `AgentSystem` method that changes agents
+from outside the step calls `on_change`; `CityLife` counts and `push_error`s a call while its step
+may run (`stats.off_step_changes`), and the take-over, boarding-safety and street-reaction tests
+assert it stays 0 (with the old code both take-over tests read 1).

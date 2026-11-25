@@ -275,5 +275,6 @@ func test_taking_over_traffic_in_a_crowded_street_never_throws() -> bool:
 		if d.exit():
 			await wait_until(func() -> bool: return d.mode() == &"foot" and d.boarding == null, 60 * 8)
 	assert_true(taken >= 3, "took over at least three traffic vehicles (%d)" % taken)
+	assert_eq(int(main.life.stats.get("off_step_changes", 0)), 0, "no agent changed while the AI step may run (G-364)")
 	_restore()
 	return true

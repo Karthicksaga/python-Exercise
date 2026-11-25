@@ -221,6 +221,8 @@ func prepare(start: Vector2) -> String:
 		k.half_length = t.spec.half_extents.z
 	_ready_cells = _ready_next.duplicate()
 	population.adopt(area, start)
+	population.traffic.on_change = _changing_agents
+	population.walkers.on_change = _changing_agents
 	for a in population.traffic.agents:
 		var v := TrafficVehicleView.make(population.traffic.kinds[a.kind].name, a.variation)
 		v.agent_id = a.id
@@ -282,6 +284,16 @@ func _load_vehicle_models() -> String:
 		if ResourceLoader.load_threaded_get(f) == null:
 			return "Could not load %s." % f
 	return ""
+
+
+## Every change to the agents from game code (hold, let go, scare…) must come between the AI's
+## steps (`between_steps`): the step runs on the AI thread and iterates the same agents and
+## dictionaries, and a change in the middle of it crashed that thread (signal 11; Carjacking's
+## scare from a boarding event, G-364). Counted and reported if it happens anyway.
+func _changing_agents(what: StringName) -> void:
+	if _busy:
+		stats["off_step_changes"] = int(stats.get("off_step_changes", 0)) + 1
+		push_error("CityLife: AgentSystem.%s called while the AI step may be running; call it from between_steps" % what)
 
 
 ## Worker-thread side of the gate: only the snapshot taken between steps is read.
