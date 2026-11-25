@@ -190,9 +190,9 @@ func note() -> String:
 				into = true
 	var many := fare.board + fare.alight > 1
 	if fare.patient:
-		return "The patient is being taken in" if out else "The patient is being loaded"
+		return Tr.line("fare.patient_out") if out else Tr.line("fare.patient_in")
 	if out and into:
-		return "People getting off and on"
+		return Tr.line("fare.both")
 	if out:
-		return "Passengers getting out" if many else "Passenger getting out"
-	return "Passengers getting in" if many else "Passenger getting in"
+		return Tr.line("fare.out.other" if many else "fare.out.one")
+	return Tr.line("fare.in.other" if many else "fare.in.one")

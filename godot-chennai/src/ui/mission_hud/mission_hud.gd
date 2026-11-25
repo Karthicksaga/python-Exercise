@@ -111,7 +111,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_column()
-	jobs_button = _button("JOBS", "Jobs", 15, false)
+	jobs_button = _button("hud.jobs", "Jobs", 15, false)
 	jobs_button.anchor_left = 1.0
 	jobs_button.anchor_right = 1.0
 	jobs_button.offset_left = -GUTTER - EXIT_ROOM - JOBS_SIZE.x
@@ -127,7 +127,7 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_place_minimap)
 	ControlSettings.shared().changed.connect(_place_minimap)
 	_build_toast()
-	inside_button = _button("GO INSIDE", "Inside", 16, true)
+	inside_button = _button("hud.go_inside", "Inside", 16, true)
 	inside_button.anchor_left = 0.5
 	inside_button.anchor_right = 0.5
 	inside_button.anchor_top = 1.0
@@ -143,13 +143,17 @@ func _ready() -> void:
 	set_mission({}, NAN)
 
 
-func _button(text: String, node_name: String, font: int, accent: bool) -> Button:
+## A glass pill; `text` is a translation key (it follows the language) unless `literal`.
+func _button(text: String, node_name: String, font: int, accent: bool, literal: bool = false) -> Button:
 	var b := Button.new()
 	b.name = node_name
-	b.text = text
+	if literal:
+		b.text = text
+		b.add_theme_font_size_override("font_size", font)
+	else:
+		Tr.bind(b, text, null, false, &"text", font)
 	b.custom_minimum_size = Vector2(0, UiTheme.MIN_TARGET)
 	b.focus_mode = Control.FOCUS_ALL
-	b.add_theme_font_size_override("font_size", font)
 	# Glass pills; only the primary action carries the accent outline (G-290).
 	UiTheme.style_glass(b, accent, 0.0)
 	b.add_theme_stylebox_override("normal", _pill(accent))
@@ -190,7 +194,7 @@ func _build_column() -> void:
 	money_label = UiTheme.label("₹0", 16, Color("#ffd166"))
 	money_label.name = "Money"
 	stats.add_child(money_label)
-	stage_label = UiTheme.label("Stages 0/21", 14)
+	stage_label = UiTheme.label(Tr.line("hud.stages", [0, 21]), 14)
 	stage_label.name = "Stages"
 	stats.add_child(stage_label)
 	reputation_label = UiTheme.label("★ 50", 14)
@@ -227,7 +231,7 @@ func _build_column() -> void:
 	stability_row = HBoxContainer.new()
 	stability_row.name = "StabilityRow"
 	stability_row.add_theme_constant_override("separation", 8)
-	stability_label = UiTheme.label("Cargo", 12, UiTheme.TEXT_DIM)
+	stability_label = UiTheme.label(Tr.line("hud.cargo"), 12, UiTheme.TEXT_DIM)
 	stability_label.custom_minimum_size.x = 54
 	stability_row.add_child(stability_label)
 	stability_bar = MeterBar.new()
@@ -240,7 +244,7 @@ func _build_column() -> void:
 	suspicion_row = HBoxContainer.new()
 	suspicion_row.name = "SuspicionRow"
 	suspicion_row.add_theme_constant_override("separation", 8)
-	var sl := UiTheme.label("Noticed", 12, UiTheme.TEXT_DIM)
+	var sl := UiTheme.label(Tr.line("hud.noticed"), 12, UiTheme.TEXT_DIM)
 	sl.custom_minimum_size.x = 54
 	suspicion_row.add_child(sl)
 	suspicion_bar = MeterBar.new()
@@ -344,7 +348,7 @@ func _build_dialog() -> void:
 	needle_bar = NeedleBar.new()
 	needle_bar.custom_minimum_size = Vector2(600, 28)
 	needle_box.add_child(needle_bar)
-	lift_button = _button("LIFT", "Lift", 18, true)
+	lift_button = _button("hud.lift", "Lift", 18, true)
 	lift_button.custom_minimum_size = Vector2(160, 56)
 	lift_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	lift_button.pressed.connect(func() -> void: lift_pressed.emit())
@@ -373,7 +377,7 @@ func _process(delta: float) -> void:
 
 func set_stats(rupees: String, done: int, count: int, reputation: int) -> void:
 	_text(money_label, "₹%s" % rupees)
-	_text(stage_label, "Stages %d/%d" % [done, count])
+	_text(stage_label, Tr.line("hud.stages", [done, count]))
 	_text(reputation_label, "★ %d" % reputation)
 
 
@@ -393,7 +397,7 @@ func set_mission(view: Dictionary, bearing: float) -> void:
 	var parts := PackedStringArray()
 	var distance: float = view["distance"]
 	if distance >= 0.0:
-		parts.append(("%.1f km" % (distance / 1000.0)) if distance >= 1000.0 else "%d m" % roundi(distance))
+		parts.append(Tr.line("hud.km", ["%.1f" % (distance / 1000.0)]) if distance >= 1000.0 else Tr.line("hud.m", [roundi(distance)]))
 	var seconds: float = view["seconds_left"]
 	if seconds >= 0.0:
 		var s := maxi(0, ceili(seconds))
@@ -404,7 +408,7 @@ func set_mission(view: Dictionary, bearing: float) -> void:
 	stability_row.visible = stab >= 0.0
 	if stab >= 0.0:
 		stability_bar.set_value(stab)
-		_text(stability_label, str(view.get("stability_label", "Cargo")))
+		_text(stability_label, str(view.get("stability_label", Tr.line("hud.cargo"))))
 	var susp: float = float(view.get("suspicion", -1.0))
 	suspicion_row.visible = susp >= 0.0
 	if susp >= 0.0:
@@ -473,7 +477,7 @@ func show_dialog(title: String, message: String, rows: Array[Dictionary] = [], a
 	scroll.custom_minimum_size.y = minf(list_height, maxf(ROW_HEIGHT, room))
 	scroll.visible = not rows.is_empty()
 	for a in actions:
-		var b := _button(str(a["label"]), "Action_%s" % str(a["id"]), 16, not bool(a.get("quiet", false)))
+		var b := _button(str(a["label"]), "Action_%s" % str(a["id"]), 16, not bool(a.get("quiet", false)), true)
 		b.custom_minimum_size = Vector2(150, 48)
 		var id := str(a["id"])
 		b.pressed.connect(func() -> void: action_chosen.emit(id))
@@ -526,7 +530,7 @@ func _row(r: Dictionary) -> Control:
 	var b := Button.new()
 	var id := str(r["id"])
 	b.name = "Take_%s" % id
-	b.text = str(r.get("button", "TAKE"))
+	b.text = str(r.get("button", Tr.t("hud.take")))
 	b.custom_minimum_size = Vector2(110, UiTheme.MIN_TARGET)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b.disabled = disabled != ""
@@ -580,9 +584,9 @@ func show_medals(title: String, medal: String, goals: Array, paid: int, replay: 
 	var met := 0
 	for g: Dictionary in goals:
 		met += 1 if bool(g["met"]) else 0
-	var message := "+₹%s%s" % [_thousands(paid), " (replay)" if replay else ""]
+	var message := "+₹%s%s" % [_thousands(paid), " " + Tr.line("hud.replay") if replay else ""]
 	if medal != "":
-		message += "  ·  %s medal  ·  %d of %d goals" % [medal.capitalize(), met, goals.size()]
+		message += "  ·  %s  ·  %s" % [Tr.line("hud.medal_line", [Tr.ref(Medals.KEYS.get(medal, "hud.medal.bronze"))]), Tr.line("hud.goals_met", [met, goals.size()])]
 	show_dialog(title, message, [] as Array[Dictionary], actions)
 	medal_badge.set_medal(medal)
 	for g: Dictionary in goals:

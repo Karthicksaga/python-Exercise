@@ -1,6 +1,6 @@
 extends TestCase
 ## The restyled loading screen (G-166): the real steps in order with a state each, a bar that moves
-## only when a real step finishes, a tip that changes only between steps, Tamil only where listed,
+## only when a real step finishes, a tip that changes only between steps, Tamil only where translated,
 ## the slow-load line, the failure with TRY AGAIN and CLOSE, and nothing that runs on its own.
 
 const LOADING := preload("res://src/ui/loading_screen/loading_screen.tscn")
@@ -53,15 +53,16 @@ func test_tip_changes_only_between_steps() -> bool:
 	return true
 
 
-func test_tamil_only_where_listed() -> bool:
+func test_tamil_only_where_translated() -> bool:
 	var l := _make()
 	for i in Main.STEPS.size():
-		assert_eq(l.tamil_text(i), String(LoadingScreen.TAMIL.get(Main.STEPS[i], "")), "step %d" % i)
+		assert_eq(l.tamil_text(i), Tr.raw(String(LoadingScreen.STEP_KEYS[Main.STEPS[i]]), "ta"), "step %d" % i)
+		assert_true(l.tamil_text(i) != "", "step %d has Tamil" % i)
 	l.set_steps(PackedStringArray(["Some step without Tamil"]))
-	assert_eq(l.tamil_text(0), "", "unlisted: English alone")
-	for tamil: String in LoadingScreen.TAMIL.values():
-		var font := TitleFonts.tamil()
-		for c in tamil:
+	assert_eq(l.tamil_text(0), "", "no key: English alone")
+	var font := TitleFonts.tamil()
+	for key: String in LoadingScreen.STEP_KEYS.values():
+		for c in Tr.raw(key, "ta"):
 			assert_true(c == " " or font.has_char(c.unicode_at(0)), "Tamil glyph U+%04X is in the font" % c.unicode_at(0))
 	return true
 

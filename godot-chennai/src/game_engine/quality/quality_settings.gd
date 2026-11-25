@@ -20,6 +20,9 @@ const LOW := 0
 const MEDIUM := 1
 const HIGH := 2
 const NAMES: Array[String] = ["Low", "Medium", "High"]
+## The keys of `NAMES` and `EXPLAIN`, for what the player reads.
+const NAME_KEYS: Array[String] = ["quality.low", "quality.medium", "quality.high"]
+const EXPLAIN_KEYS: Array[String] = ["quality.explain.low", "quality.explain.medium", "quality.explain.high"]
 ## One line per level for the Settings row (what the level trades).
 const EXPLAIN: Array[String] = [
 	"65% resolution, flat lighting, less traffic",
@@ -133,6 +136,11 @@ func current() -> Dictionary:
 
 func preset_name() -> String:
 	return NAMES[clampi(preset, LOW, HIGH)]
+
+
+## The level's name in the chosen language.
+func preset_text() -> String:
+	return Tr.line(NAME_KEYS[clampi(preset, LOW, HIGH)])
 
 
 ## Picks a default from what the device says (pure; the auto-detect table, G-251). Returns
@@ -262,12 +270,12 @@ func overlay_label() -> String:
 
 ## The Settings row: "Graphics: Auto (Low)".
 func row_label() -> String:
-	return "Graphics: %s" % ("Auto (%s)" % preset_name() if auto else preset_name())
+	return Tr.t("set.graphics", [Tr.ref("set.graphics.auto", [Tr.ref(NAME_KEYS[clampi(preset, LOW, HIGH)])]) if auto else Tr.ref(NAME_KEYS[clampi(preset, LOW, HIGH)])])
 
 
 ## What the current level changes, one line.
 func explain() -> String:
-	return EXPLAIN[clampi(preset, LOW, HIGH)]
+	return Tr.t(EXPLAIN_KEYS[clampi(preset, LOW, HIGH)])
 
 
 func set_overlay(on: bool) -> void:

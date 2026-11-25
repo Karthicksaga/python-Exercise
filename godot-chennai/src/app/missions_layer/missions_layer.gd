@@ -112,7 +112,7 @@ func _ready() -> void:
 	session.stage_result.connect(_on_stage_result)
 	session.event_started.connect(_on_event_started)
 	session.event_ended.connect(_on_event_ended)
-	session.heat_raised.connect(func(stars: int) -> void: hud.toast("Police heat +%d" % stars, "They may remember this", 3.0))
+	session.heat_raised.connect(func(stars: int) -> void: hud.toast(Tr.t("toast.heat_raised", [stars]), Tr.t("toast.heat_detail"), 3.0))
 	session.meter_warning.connect(_on_meter_warning)
 	if _main != null:
 		_attach_main()
@@ -421,20 +421,20 @@ func open_board() -> void:
 func _show_board() -> void:
 	var actions: Array[Dictionary] = []
 	var stages := _board_tab == "stages"
-	actions.append({"id": "tab", "label": "JOBS" if stages else "STAGES", "quiet": true})
+	actions.append({"id": "tab", "label": Tr.t("dlg.jobs" if stages else "dlg.stages"), "quiet": true})
 	if session.jobs.job() != null:
-		actions.append({"id": "quit", "label": "QUIT JOB", "quiet": true})
-	actions.append({"id": "close", "label": "CLOSE", "quiet": true})
+		actions.append({"id": "quit", "label": Tr.t("dlg.quit_job"), "quiet": true})
+	actions.append({"id": "close", "label": Tr.t("dlg.close"), "quiet": true})
 	if stages:
 		var rows := session.stage_rows()
 		for r in rows:
-			r["button"] = "PLAY"
-		hud.show_dialog("Stages", "Missions and finished stages, for the medal. A replay pays a quarter.", rows, actions)
+			r["button"] = Tr.t("dlg.play")
+		hud.show_dialog(Tr.t("dlg.stages_title"), Tr.t("dlg.stages_message"), rows, actions)
 	else:
 		var rows := session.board_rows(GameLoop.clock.hour)
 		for r in rows:
-			r["button"] = "TAKE JOB"
-		hud.show_dialog("Job board", session.board_message(), rows, actions)
+			r["button"] = Tr.t("dlg.take_job")
+		hud.show_dialog(Tr.t("dlg.job_board"), session.board_message(), rows, actions)
 
 
 func close_dialog() -> void:
@@ -447,9 +447,9 @@ func close_dialog() -> void:
 func _on_result(title: String, message: String, board: bool) -> void:
 	_hold()
 	_dialog = "result"
-	var actions: Array[Dictionary] = [{"id": "continue", "label": "CONTINUE"}]
+	var actions: Array[Dictionary] = [{"id": "continue", "label": Tr.t("dlg.continue")}]
 	if board:
-		actions.append({"id": "board", "label": "JOB BOARD", "quiet": true})
+		actions.append({"id": "board", "label": Tr.t("dlg.job_board_btn"), "quiet": true})
 	hud.show_dialog(title, message, [], actions)
 
 
@@ -457,12 +457,12 @@ func _on_result(title: String, message: String, board: bool) -> void:
 func _on_retry_offered(reason: String, _reason_id: String, checkpoint: int) -> void:
 	_hold()
 	_dialog = "retry"
-	var actions: Array[Dictionary] = [{"id": "retry", "label": "RETRY"}]
+	var actions: Array[Dictionary] = [{"id": "retry", "label": Tr.t("dlg.retry")}]
 	if checkpoint > 0:
-		actions.append({"id": "start_over", "label": "START OVER", "quiet": true})
+		actions.append({"id": "start_over", "label": Tr.t("dlg.start_over"), "quiet": true})
 	var m := session.runner.mission()
-	var where := "from the checkpoint" if checkpoint > 0 else "from the start"
-	hud.show_dialog(reason, "%s: try again %s." % [m.title if m != null else "The stage", where], [] as Array[Dictionary], actions)
+	var where := Tr.ref("dlg.from_checkpoint") if checkpoint > 0 else Tr.ref("dlg.from_start")
+	hud.show_dialog(reason, Tr.t("dlg.try_again", [Tr.srcref(m.title) if m != null else Tr.ref("dlg.the_stage"), where]), [] as Array[Dictionary], actions)
 
 
 ## The retry itself: the player and their vehicle go back to where the checkpoint was reached.
@@ -492,16 +492,16 @@ func _on_choice_asked(title: String, options: Array) -> void:
 		if int(o.get("reputation", 0)) > 0:
 			meta.append("★ +%d" % int(o["reputation"]))
 		if int(o.get("wanted", 0)) > 0:
-			meta.append("police heat")
-		rows.append({"id": str(o["id"]), "title": str(o["label"]), "detail": str(o.get("detail", "")), "meta": " · ".join(meta), "button": "CHOOSE"})
-	hud.show_dialog(title, "Nothing happens until you decide.", rows, [] as Array[Dictionary])
+			meta.append(Tr.line("dlg.heat"))
+		rows.append({"id": str(o["id"]), "title": Tr.src(str(o["label"])), "detail": Tr.src(str(o.get("detail", ""))), "meta": " · ".join(meta), "button": Tr.t("dlg.choose")})
+	hud.show_dialog(title, Tr.t("dlg.choice_wait"), rows, [] as Array[Dictionary])
 
 
 ## The medals screen after a stage with goals (G-142).
 func _on_stage_result(title: String, medal: String, goals: Array, paid: int, replay: bool) -> void:
 	_hold()
 	_dialog = "medals"
-	var actions: Array[Dictionary] = [{"id": "continue", "label": "CONTINUE"}, {"id": "stages", "label": "STAGES", "quiet": true}]
+	var actions: Array[Dictionary] = [{"id": "continue", "label": Tr.t("dlg.continue")}, {"id": "stages", "label": Tr.t("dlg.stages"), "quiet": true}]
 	hud.show_medals(title, medal, goals, paid, replay, actions)
 
 
@@ -564,8 +564,8 @@ func _show_place(message: String) -> void:
 	var rows := session.place_actions(_place_id, GameLoop.clock.hour)
 	for r in rows:
 		r["title"] = r["label"]
-		r["button"] = "GO"
-	hud.show_dialog(str(place.get("name", "")), message if message != "" else "%s · %s · ₹%s" % [GameLoop.clock.text(), "health %d" % roundi(session.health), MissionSession.rupees(session.runner.balance())], rows, [{"id": "close", "label": "LEAVE", "quiet": true}])
+		r["button"] = Tr.t("dlg.go")
+	hud.show_dialog(Tr.src(str(place.get("name", ""))), message if message != "" else "%s · %s · ₹%s" % [GameLoop.clock.text(), Tr.line("dlg.health_line", [roundi(session.health)]), MissionSession.rupees(session.runner.balance())], rows, [{"id": "close", "label": Tr.t("dlg.leave"), "quiet": true}])
 
 
 func _do_place(id: String) -> void:
@@ -575,7 +575,7 @@ func _do_place(id: String) -> void:
 		_needle_t = 0.0
 		_lifts = 0
 		_good = 0
-		hud.show_dialog("Workout", "Tap LIFT while the needle is in the green: %d reps." % Life.WORKOUT_REPS, [], [{"id": "close", "label": "STOP", "quiet": true}])
+		hud.show_dialog(Tr.t("dlg.workout"), Tr.t("dlg.workout_message", [Life.WORKOUT_REPS]), [], [{"id": "close", "label": Tr.t("dlg.stop"), "quiet": true}])
 		hud.show_needle(true, 0.0, Vector2(Life.WORKOUT_ZONE[0], Life.WORKOUT_ZONE[1]))
 		return
 	_apply_place(id, 0)
@@ -615,10 +615,10 @@ func _on_cue(cue_name: StringName) -> void:
 
 func _on_meter_warning(meter: String) -> void:
 	if meter == "stability":
-		hud.toast("Careful", "The load is shaking: smooth and slow", 2.2)
+		hud.toast(Tr.t("toast.careful"), Tr.t("toast.load_shaking"), 2.2)
 		Sound.cue("hurt")
 	else:
-		hud.toast("He is noticing you", "Drop back", 2.2)
+		hud.toast(Tr.t("toast.noticing"), Tr.t("toast.drop_back"), 2.2)
 		Sound.cue("click")
 
 
@@ -678,7 +678,7 @@ func map_markers(at: Vector2, reach: float) -> Array[Dictionary]:
 	for p in session.content.places:
 		var where := Vector2(float(p["x"]), float(p["z"]))
 		if reach == INF or where.distance_to(at) <= reach:
-			out.append({"x": where.x, "z": where.y, "radius": 0.0, "kind": MarkerKind.PLACE, "label": str(p["name"]), "primary": false})
+			out.append({"x": where.x, "z": where.y, "radius": 0.0, "kind": MarkerKind.PLACE, "label": Tr.src_line(str(p["name"])), "primary": false})
 	return out
 
 
@@ -689,7 +689,7 @@ func open_map() -> void:
 		return
 	if full_map == null:
 		full_map = FullMap.new()
-		full_map.credit = "%s, estimated heights and widths" % (world.source.get_attribution() if world != null and world.source != null else "© OpenStreetMap contributors")
+		full_map.credit = Tr.line("map.credit_estimated", [world.source.get_attribution() if world != null and world.source != null else "© OpenStreetMap contributors"])
 		full_map.closed.connect(_on_map_closed)
 		add_child(full_map)
 	var at := Vector2(status().x, status().z)

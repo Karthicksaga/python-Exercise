@@ -428,7 +428,7 @@ func offer() -> Variant:
 	var found := standing_train(at, rig.body.global_position.y)
 	if found.is_empty():
 		return null
-	return ActionCandidate.make("BOARD THE TRAIN", ActionContext.P_BOARD + 2, 1.0, board)
+	return ActionCandidate.make(Tr.t("act.board_train"), ActionContext.P_BOARD + 2, 1.0, board)
 
 
 ## BOARD: the rules first (standing, doors, next stop on the map, a ticket), then the walk.
@@ -443,7 +443,7 @@ func board() -> bool:
 	var stop_index := int(found[1])
 	var answer := RailRules.boarding(train, stop_index, int(money_of.call()))
 	if not answer.ok:
-		_toast("Can't board: %s" % answer.reason)
+		_toast(Tr.t("rail.cant_board", [answer.reason]))
 		return true
 	charge.call(answer.fare)
 	fares += answer.fare
@@ -451,7 +451,7 @@ func board() -> bool:
 	ride_departure = train.departure
 	ride_id = train.id
 	var nxt := train.state.next_stop
-	_toast("Train to %s · ticket ₹%d · next: %s" % [ride_line.destination(), answer.fare, ride_line.stops[nxt].name if nxt >= 0 else "end of the line"])
+	_toast(Tr.t("rail.board_toast", [ride_line.destination(), answer.fare, ride_line.stops[nxt].name if nxt >= 0 else Tr.ref("rail.end_of_line")]))
 	_start_walk(true, train, stop_index)
 	Sound.rail.door(false)
 	return true
@@ -628,7 +628,7 @@ func _step_ride() -> void:
 	_anchor.global_transform = xf
 	if RailRules.ride_ends_at(tr):
 		var stop := ride_line.stops[tr.state.stopped_at]
-		_toast("%s: end of the ride. %s" % [stop.name, ("The line continues to %s beyond the map." % ride_line.to.name) if ride_line.to.beyond else ("This train terminates at %s." % stop.name)], 5.0)
+		_toast(Tr.t("rail.ride_end", [stop.name, Tr.ref("rail.continues", [ride_line.to.name]) if ride_line.to.beyond else Tr.ref("rail.terminates_at", [stop.name])]), 5.0)
 		step_off()
 
 
@@ -641,7 +641,7 @@ func step_off() -> bool:
 		end_ride(true)
 		return true
 	if not RailRules.can_step_off(tr):
-		_toast("Wait for the next station: you can step off when the train stops.")
+		_toast(Tr.t("rail.wait_next"))
 		return true
 	_start_walk(false, tr, tr.state.stopped_at)
 	ride_line = null
@@ -723,7 +723,7 @@ func take_cab() -> bool:
 	cab.dwell = minf(CabDrive.DOOR_DWELL, maxf(3.0, train.state.dwell_left))
 	cab.next = train.state.stopped_at
 	cab.served[train.state.stopped_at] = true
-	cab.scored.connect(func(points: int, why: String) -> void: _toast("%s%d %s" % ["+" if points >= 0 else "", points, why]))
+	cab.scored.connect(func(points: int, why: String) -> void: _toast(Tr.t("rail.score_line", ["+" if points >= 0 else "", points, why])))
 	cab.message.connect(func(text: String) -> void: _toast(text))
 	cab.finished.connect(func(_score: int) -> void: _cab_finished())
 	cab.doors_changed.connect(func(open: bool) -> void: Sound.rail.door(open, not open))
@@ -737,7 +737,7 @@ func take_cab() -> bool:
 		_seat_pose = SeatPose.passenger(PlayerRiderLink.HIP_HEIGHT, 0.47)
 	body.figure.set_seat(_seat_pose)
 	inside_view = true
-	_toast("You are driving to %s. Raise the lever when the doors close; stop at the red STOP board." % cab.line.destination(), 5.0)
+	_toast(Tr.t("rail.driving_to", [cab.line.destination()]), 5.0)
 	_set_state(&"cab")
 	return true
 
@@ -775,7 +775,7 @@ func leave_cab() -> bool:
 	if cab == null:
 		return false
 	if not can_leave_cab():
-		_toast("Stop at a platform and open the doors to leave the cab.")
+		_toast(Tr.t("rail.leave_cab_hint"))
 		return true
 	var line := cab.line
 	var stop := line.stops[mini(cab.next, line.stops.size() - 1)]
@@ -785,7 +785,7 @@ func leave_cab() -> bool:
 	var near := line.path.project_near(WorldOrigin.to_world(front), 30.0)
 	var spot := line.path.beside(clampf(near.s, stop.s - RailRules.PLATFORM_LENGTH / 2.0 + 4.0, stop.s + RailRules.PLATFORM_LENGTH / 2.0 - 4.0), stop.side * RailRules.platform_offset(stop))
 	var feet := WorldOrigin.to_scene(spot, p.base + RailRules.PLATFORM_HEIGHT + 0.05)
-	_toast("Score %d for this run." % cab.score, 4.0)
+	_toast(Tr.t("rail.run_score", [cab.score]), 4.0)
 	cab = null
 	var body := rig.body
 	body.exit_vehicle(feet, p.yaw + PI / 2.0 * stop.side)
@@ -1079,8 +1079,8 @@ func _update_hud(focus: Vector2) -> void:
 			if tr != null:
 				var nxt := tr.state.stopped_at if tr.state.stopped_at >= 0 else tr.state.next_stop
 				var stop := ride_line.stops[nxt] if nxt >= 0 else null
-				var status := ("At %s" % stop.name) if tr.state.stopped_at >= 0 and stop != null else ("Next: %s" % (stop.name if stop != null else "end of the line"))
-				hud.set_info("Train to %s" % ride_line.destination(), stop.name_ta if stop != null else "", status)
+				var status := Tr.t("rail.at", [stop.name]) if tr.state.stopped_at >= 0 and stop != null else Tr.t("rail.next", [stop.name if stop != null else Tr.ref("rail.end_of_line")])
+				hud.set_info(Tr.t("rail.train_to", [ride_line.destination()]), stop.name_ta if stop != null else "", status)
 				hud.set_offers(RailRules.can_step_off(tr) and state == &"ride", false, false)
 			else:
 				hud.set_offers(false, false, false)
@@ -1089,7 +1089,7 @@ func _update_hud(focus: Vector2) -> void:
 			var nxt := mini(cab.next, cab.line.stops.size() - 1)
 			var stop := cab.line.stops[nxt]
 			var mark := cab.to_mark()
-			hud.set_info("%s · to %s" % [stop.name, cab.line.destination()], stop.name_ta, ("%d m to the stop mark" % roundi(mark)) if is_finite(mark) and mark > 0.0 else cab.state_text())
+			hud.set_info(Tr.t("rail.cab_title", [stop.name, cab.line.destination()]), stop.name_ta, Tr.t("rail.to_mark", [roundi(mark)]) if is_finite(mark) and mark > 0.0 else cab.state_text())
 			var sig := cab.next_signal()
 			hud.set_cab(cab.kmh(), cab.limit(), cab.notch, cab.doors_open, String(cab.aspect(sig)) if sig >= 0 else "green", cab.score)
 			hud.set_offers(false, can_leave_cab(), false)
@@ -1100,8 +1100,8 @@ func _update_hud(focus: Vector2) -> void:
 				return
 			hud.set_mode(RailHud.STATION)
 			var rows := StationLayout.departure_rows(here, clock, 1)
-			var line := ("Next train: %s, %s" % [rows[0].destination, rows[0].status.to_lower()]) if not rows.is_empty() else "No trains"
-			hud.set_info("%s station" % here.station.name, here.station.name_ta, line)
+			var line := Tr.t("rail.next_train", [rows[0].destination, rows[0].status.to_lower()]) if not rows.is_empty() else Tr.t("rail.no_trains")
+			hud.set_info(Tr.t("rail.station", [here.station.name]), here.station.name_ta, line)
 			hud.set_offers(false, false, cab_offer_train() != null)
 
 
@@ -1133,7 +1133,7 @@ func show_timetable() -> void:
 		if best == null or p.line.path.at(p.stop.s).point().distance_to(focus) < best.line.path.at(best.stop.s).point().distance_to(focus):
 			best = p
 	var rows := PackedStringArray()
-	var title := "Timetable"
+	var title := Tr.t("rail.timetable")
 	if best != null:
 		title = "%s  ·  %s" % [best.station.name_ta, best.station.name]
 		var hour := float(hour_of.call())
@@ -1142,11 +1142,11 @@ func show_timetable() -> void:
 				continue
 			for r in StationLayout.departure_rows(p, clock, 6):
 				var at := StationLayout.clock_text(hour + r.wait / 3600.0)
-				rows.append("%s   PF %d   %s   %s" % [at, r.platform, r.destination, r.status])
+				rows.append(Tr.line("rail.row", [at, r.platform, r.destination, r.status]))
 	rows.append("")
-	rows.append("Lines (headways estimated, not the real timetable):")
+	rows.append(Tr.t("rail.lines_note"))
 	for line in network.lines:
-		rows.append("%s · every %d min" % [line.name, roundi(line.headway / 60.0)])
+		rows.append(Tr.line("rail.every", [line.name, roundi(line.headway / 60.0)]))
 	var map_lines: Array[Array] = []
 	for line in network.lines:
 		var c := Color(0.95, 0.55, 0.2) if line.system == "suburban" else (Color(0.4, 0.75, 1.0) if line.system == "mrts" else Color(0.85, 0.35, 0.35))

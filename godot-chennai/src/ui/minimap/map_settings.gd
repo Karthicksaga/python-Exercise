@@ -33,7 +33,7 @@ func set_rotating(on: bool) -> void:
 
 
 func label() -> String:
-	return "Minimap: %s" % ("turns with you" if rotating else "north up")
+	return Tr.t("set.minimap", [&"set.minimap.turns" if rotating else &"set.minimap.north"])
 
 
 func _load() -> void:

@@ -49,6 +49,20 @@ func place(at: Vector2, side: float) -> void:
 	position = at
 
 
+## The largest size up to `font_size` at which every line fits the glass circle (a Tamil or two
+## language label is longer than the English one it replaces).
+func _fit(font: Font, lines: PackedStringArray, radius: float) -> int:
+	var fs := font_size
+	while fs > 9:
+		var widest := 0.0
+		for line in lines:
+			widest = maxf(widest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+		if widest <= radius * 1.7 and fs * 1.1 * lines.size() <= radius * 1.8:
+			break
+		fs -= 1
+	return fs
+
+
 ## True when `at` (canvas position) is on the button; `slop` UI units of forgiveness round it.
 func hit(at: Vector2, slop: float = 6.0) -> bool:
 	if not is_visible_in_tree() or dim:
@@ -68,8 +82,8 @@ func _draw() -> void:
 	if icon != &"":
 		UiIcons.draw(self, icon, c, r)
 	else:
-		var fs := font_size
 		var lines := text.split("\n")
+		var fs := _fit(font, lines, r)
 		var y := c.y + fs * 0.35 - (lines.size() - 1) * fs * 0.55
 		for line in lines:
 			var w := font.get_string_size(line, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x

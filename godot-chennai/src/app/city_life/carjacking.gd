@@ -115,7 +115,7 @@ func _step(dt: float) -> void:
 	if pick.is_empty():
 		if asked >= 0:
 			# Gone, out of reach or too fast by now: never a silent press.
-			driving.toast.emit("Too far to take over")
+			driving.toast.emit(Tr.t("toast.too_far_take"))
 		return
 	var id := int(pick["id"])
 	if absf(float(pick["speed"])) < Carjack.MAX_SPEED or id == asked:
@@ -135,13 +135,13 @@ func offer() -> Variant:
 		if _pulled:
 			return null
 		var gap := vehicle.global_position.distance_to(driving.rider.position())
-		return ActionCandidate.make("TAKE OVER", ActionContext.P_TAKE_OVER, gap, func() -> void: driving.enter(vehicle))
+		return ActionCandidate.make(Tr.t("act.take_over"), ActionContext.P_TAKE_OVER, gap, func() -> void: driving.enter(vehicle))
 	if _offered.is_empty():
 		return null
 	var id := int(_offered["id"])
 	var feet := WorldOrigin.to_world(driving.rider.position())
 	var gap := Carjack.distance_to_footprint(feet.x, feet.y, _offered)
-	return ActionCandidate.make("TAKE OVER", ActionContext.P_TAKE_OVER, gap, func() -> void: request(id))
+	return ActionCandidate.make(Tr.t("act.take_over"), ActionContext.P_TAKE_OVER, gap, func() -> void: request(id))
 
 
 ## How many pulled-out drivers are still running off.

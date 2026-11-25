@@ -14,6 +14,8 @@ const AMBER_TEXT := Color("#ffb400")
 const AMBER_SOFT := Color(1.0, 0.706, 0.012, 0.16)
 
 var primary: bool = false
+## The row's English title: what `TitleMenu.row` looks for, whatever the language.
+var id: String = ""
 ## Text offset to the right, in UI units: the slide-in and the focus nudge animate it.
 var slide_x: float = 0.0:
 	set(value):
@@ -28,7 +30,10 @@ var _nudge: Tween = null
 var _animate: bool = true
 
 
-func _init(title: String = "", subtitle: String = "", is_primary: bool = false) -> void:
+## `title` is the English id of the row (its node name); `title_key` and `sub_key` make the two
+## labels follow the language. A `subtitle` given as text wins over `sub_key`.
+func _init(title: String = "", subtitle: String = "", is_primary: bool = false, title_key: String = "", sub_key: String = "") -> void:
+	id = title
 	primary = is_primary
 	subtitle_text = subtitle
 	text = ""
@@ -47,11 +52,15 @@ func _init(title: String = "", subtitle: String = "", is_primary: bool = false) 
 	_content.add_child(column)
 	title_label = UiTheme.label(title, 20, AMBER_TEXT if primary else PAPER)
 	title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if title_key != "":
+		Tr.bind(title_label, title_key, null, true)
 	column.add_child(title_label)
 	sub_label = UiTheme.label(subtitle, 12, MUTED)
 	sub_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sub_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	sub_label.visible = subtitle != ""
+	if subtitle == "" and sub_key != "":
+		Tr.bind(sub_label, sub_key, null, true)
+	sub_label.visible = sub_label.text != ""
 	column.add_child(sub_label)
 	_styles()
 	name = title.capitalize().replace(" ", "")

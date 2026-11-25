@@ -38,6 +38,13 @@ static func button(text: String, primary: bool = false) -> Button:
 	return b
 
 
+## A button that follows the language (`key` is a translation key).
+static func button_key(key: String, primary: bool = false) -> Button:
+	var b := button("", primary)
+	Tr.bind(b, key, null, false, &"text", 15)
+	return b
+
+
 static func label(text: String, size: int = 14, colour: Color = TEXT) -> Label:
 	var l := Label.new()
 	l.text = text

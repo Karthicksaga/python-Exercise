@@ -33,7 +33,7 @@ var _root: Control
 var _view: _View
 var _pan := Vector2.ZERO
 var _dragging := false
-var _font := ThemeDB.fallback_font
+var _font: Font = UiTheme.font()
 
 
 class _View extends Control:
@@ -73,7 +73,9 @@ func _init() -> void:
 	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	margin.add_child(bar)
-	bar.add_child(UiTheme.label("MAP", UiTheme.BUTTON_SIZE + 4, UiTheme.AMBER))
+	var map_title := UiTheme.label("", UiTheme.BUTTON_SIZE + 4, UiTheme.AMBER)
+	Tr.bind(map_title, "map.title")
+	bar.add_child(map_title)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -82,8 +84,10 @@ func _init() -> void:
 	zoom_out_button = _button(bar, "-", "ZoomOut", func() -> void: set_zoom(zoom + 1))
 	for b: Button in [zoom_in_button, zoom_out_button]:
 		b.add_theme_font_size_override("font_size", 26)
-	recentre_button = _button(bar, "ME", "Recentre", recentre)
-	close_button = _button(bar, "CLOSE", "Close", close)
+	recentre_button = _button(bar, "", "Recentre", recentre)
+	Tr.bind(recentre_button, "map.me")
+	close_button = _button(bar, "", "Close", close)
+	Tr.bind(close_button, "map.close")
 	close_button.custom_minimum_size.x = 96.0
 
 
@@ -194,7 +198,7 @@ func _paint(v: Control) -> void:
 			v.draw_multiline(roads.major, Color(1, 0.93, 0.78, 0.6), (2.4 if zoom <= 1 else 1.4) / ppm)
 		v.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if loading:
-		v.draw_string(_font, Vector2(c.x - 60.0, 62.0), "Drawing the map...", HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT, Color(1, 1, 1, 0.7))
+		v.draw_string(_font, Vector2(c.x - 60.0, 62.0), Tr.line("map.drawing"), HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT, Color(1, 1, 1, 0.7))
 	var half := size / 2.0
 	# Places and the mission's marker, with their words; the mission's is pinned when off screen.
 	for i in markers.size():
@@ -229,7 +233,7 @@ func _paint(v: Control) -> void:
 	_paint_legend(v, size)
 	_paint_scale(v, size)
 	v.draw_string(_font, Vector2(GUTTER, size.y - 8.0), credit, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.6))
-	v.draw_string(_font, Vector2(size.x - GUTTER - 12.0, 92.0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT, Color(1, 1, 1, 0.7))
+	v.draw_string(_font, Vector2(size.x - GUTTER - 12.0, 92.0), Tr.line("map.north"), HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT, Color(1, 1, 1, 0.7))
 	v.draw_line(Vector2(size.x - GUTTER - 6.0, 124.0), Vector2(size.x - GUTTER - 6.0, 98.0), Color(1, 1, 1, 0.7), 2.0)
 
 
@@ -262,5 +266,5 @@ func _paint_scale(v: Control, size: Vector2) -> void:
 	v.draw_line(from, from + Vector2(px, 0), Color(1, 1, 1, 0.85), 2.0)
 	v.draw_line(from, from + Vector2(0, -6), Color(1, 1, 1, 0.85), 2.0)
 	v.draw_line(from + Vector2(px, 0), from + Vector2(px, -6), Color(1, 1, 1, 0.85), 2.0)
-	var text := "%d m" % int(length) if length < 1000.0 else "%d km" % int(length / 1000.0)
+	var text := Tr.line("hud.m", [int(length)]) if length < 1000.0 else Tr.line("hud.km", [int(length / 1000.0)])
 	v.draw_string(_font, from + Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.85))

@@ -55,7 +55,7 @@ func toggle() -> void:
 
 ## "Weather: Clear" / "Weather: Rain" for the pause menu.
 func label() -> String:
-	return "Weather: %s" % ("Rain" if raining else "Clear")
+	return Tr.t("set.weather", [&"weather.rain" if raining else &"weather.clear"])
 
 
 func advance(dt: float) -> void:

@@ -58,10 +58,12 @@ var _settings: Dictionary[StringName, Array] = {}
 var _settings_back: Button
 var _controls_back: Button
 var _credit: Label
+var _controls_columns: HBoxContainer
 var _chip: Control
 var _chip_place: Label
 var _chip_status: Label
 var _save: Dictionary = {}
+var _credit_args: Array = ["", "", null]
 var _entrance: Array[Tween] = []
 var _body: Control
 var _shade: TextureRect
@@ -102,10 +104,19 @@ func _ready() -> void:
 	_build_controls_page()
 	_build_foot()
 	set_credits("", "")
+	Tr.bus.changed.connect(_on_language)
 	get_viewport().size_changed.connect(_fit)
 	_fit()
 	set_save({})
 	show_menu()
+
+
+## The language changed: the texts that are built, not bound, are built again.
+func _on_language() -> void:
+	set_credits(str(_credit_args[0]), str(_credit_args[1]), _credit_args[2] as SoundLibrary)
+	refresh_settings()
+	_fill_controls()
+	_fit()
 
 
 ## The platform's reduced-motion preference: Godot answers 1 (on), 0 (off) or -1 (it cannot say, as
@@ -232,7 +243,8 @@ func _build_menu_page() -> void:
 	_name.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.45))
 	_name.add_theme_constant_override("shadow_offset_y", 2)
 	_slots[_name] = _slot(_name)
-	_sub = UiTheme.label("OPEN WORLD", 14, AMBER)
+	_sub = UiTheme.label("", 14, AMBER)
+	Tr.bind(_sub, "title.name.open_world")
 	_sub.name = "OpenWorld"
 	_slots[_sub] = _slot(_sub)
 	_scroll = UiTheme.touch_scroll()
@@ -256,17 +268,19 @@ static func _plate_box() -> StyleBoxFlat:
 
 
 ## The header of a page: its name, and BACK at the right end (at least 48 tall).
-func _page_head(box: VBoxContainer, text: String) -> Button:
+func _page_head(box: VBoxContainer, key: String) -> Button:
 	var head := HBoxContainer.new()
 	head.name = "Head"
 	head.add_theme_constant_override("separation", 12)
 	box.add_child(head)
-	var t := UiTheme.label(text, 28, AMBER)
+	var t := UiTheme.label("", 28, AMBER)
+	Tr.bind(t, key)
 	t.add_theme_font_override("font", TitleFonts.display(true, 3.0))
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	head.add_child(t)
-	var b := UiTheme.button("BACK")
+	var b := UiTheme.button("")
+	Tr.bind(b, "title.back")
 	b.name = "Back"
 	b.custom_minimum_size = Vector2(120, UiTheme.MIN_TARGET)
 	b.add_theme_stylebox_override("normal", _plate_box())
@@ -278,7 +292,7 @@ func _page_head(box: VBoxContainer, text: String) -> Button:
 func _build_about_page() -> void:
 	var box := VBoxContainer.new()
 	_page(PAGE_ABOUT, box)
-	_about_back = _page_head(box, "ABOUT")
+	_about_back = _page_head(box, "title.row.about")
 	var scroll := UiTheme.touch_scroll()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(scroll)
@@ -291,7 +305,7 @@ func _build_about_page() -> void:
 func _build_settings_page() -> void:
 	var box := VBoxContainer.new()
 	_page(PAGE_SETTINGS, box)
-	_settings_back = _page_head(box, "SETTINGS")
+	_settings_back = _page_head(box, "title.row.settings")
 	var scroll := UiTheme.touch_scroll()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(scroll)
@@ -306,7 +320,7 @@ func _build_settings_page() -> void:
 func _build_controls_page() -> void:
 	var box := VBoxContainer.new()
 	_page(PAGE_CONTROLS, box)
-	_controls_back = _page_head(box, "CONTROLS")
+	_controls_back = _page_head(box, "title.row.controls")
 	var plate := PanelContainer.new()
 	plate.name = "Plate"
 	plate.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -318,6 +332,16 @@ func _build_controls_page() -> void:
 	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation", 18)
 	scroll.add_child(columns)
+	_controls_columns = columns
+	_fill_controls()
+
+
+## The guide's columns in the chosen language (again on every language change).
+func _fill_controls() -> void:
+	var columns := _controls_columns
+	for old in columns.get_children():
+		columns.remove_child(old)
+		old.queue_free()
 	for group: Dictionary in ControlsGuide.groups():
 		var column := VBoxContainer.new()
 		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -379,13 +403,17 @@ func _build_foot() -> void:
 # --- Data ------------------------------------------------------------------------------------
 
 ## The map credit: the index's attribution and its OSM data date, bottom left and on ABOUT.
-func set_credits(attribution: String, data_date: String, sounds: String = "") -> void:
+func set_credits(attribution: String, data_date: String, sounds: SoundLibrary = null) -> void:
+	_credit_args = [attribution, data_date, sounds]
 	var credit := attribution if attribution != "" else "© OpenStreetMap contributors"
 	var day := data_date.substr(0, 10)
-	_credit.text = "Map data %s%s" % [credit, " · %s" % day if day != "" else ""]
-	_about_text.text = "An original game set in real Chennai.\nMap: %s%s, ODbL 1.0. Building heights, colours and road widths are estimated where OpenStreetMap has none.\nFonts: Barlow Condensed and Noto Sans Tamil, SIL Open Font Licence 1.1." % [credit, " (map data %s)" % day if day != "" else ""]
-	if sounds != "":
-		_about_text.text += "\n\n" + sounds
+	_credit.text = Tr.line("title.credit", [credit + (" · %s" % day if day != "" else "")])
+	var text := "%s\n%s\n%s" % [Tr.t("about.intro"), Tr.t("about.map", [credit, Tr.t("about.map_date", [day]) if day != "" else ""]), Tr.t("about.fonts")]
+	if Tr.has_unreviewed():
+		text += "\n" + Tr.t("about.tamil_review")
+	if sounds != null:
+		text += "\n\n" + SoundCredits.text(sounds)
+	_about_text.text = text
 
 
 ## What the save says, from the composition root: {has_save, continue_line, new_game_line}. The
@@ -401,15 +429,15 @@ func _build_rows() -> void:
 	_rows.clear()
 	var has_save: bool = bool(_save.get("has_save", false))
 	if has_save:
-		_add_row("CONTINUE", str(_save.get("continue_line", "")), true, func() -> void: play_requested.emit())
-	_add_row("NEW GAME", str(_save.get("new_game_line", "Begin in Chennai: Stage 1")) if not has_save else "Start again from Stage 1", not has_save, func() -> void:
+		_add_row("CONTINUE", "title.row.continue", str(_save.get("continue_line", "")), "", true, func() -> void: play_requested.emit())
+	_add_row("NEW GAME", "title.row.new_game", str(_save.get("new_game_line", "")) if not has_save else "", "title.sub.new_game" if not has_save else "title.sub.start_again", not has_save, func() -> void:
 		new_game_requested.emit()
 		play_requested.emit())
-	_add_row("SETTINGS", "Time of day, weather and sound", false, show_settings)
-	_add_row("CONTROLS", "Touch controls on foot and driving", false, show_controls)
-	_add_row("ABOUT", "Credits and map data", false, show_about)
+	_add_row("SETTINGS", "title.row.settings", "", "title.sub.settings", false, show_settings)
+	_add_row("CONTROLS", "title.row.controls", "", "title.sub.controls", false, show_controls)
+	_add_row("ABOUT", "title.row.about", "", "title.sub.about", false, show_about)
 	if can_quit():
-		_add_row("QUIT", "", false, func() -> void: quit_requested.emit())
+		_add_row("QUIT", "title.row.quit", "", "", false, func() -> void: quit_requested.emit())
 	_fit()
 	if is_inside_tree():
 		_focus_primary.call_deferred()
@@ -420,8 +448,10 @@ func _focus_primary() -> void:
 		primary_row().grab_focus()
 
 
-func _add_row(title: String, subtitle: String, primary: bool, action: Callable) -> void:
-	var row := TitleRow.new(title, subtitle, primary)
+## `title` is the row's English id (`row(title)` finds it); `title_key` and `sub_key` are what it
+## shows, in the chosen language. A subtitle given as text (the save's line) is shown as it is.
+func _add_row(title: String, title_key: String, subtitle: String, sub_key: String, primary: bool, action: Callable) -> void:
+	var row := TitleRow.new(title, subtitle, primary, title_key, sub_key)
 	row.set_animated(not reduced_motion)
 	row.pressed.connect(action)
 	_rows_box.add_child(row)
@@ -487,7 +517,7 @@ func rows() -> Array[TitleRow]:
 
 func row(title: String) -> TitleRow:
 	for r in _rows:
-		if r.title_label.text == title:
+		if r.id == title:
 			return r
 	return null
 

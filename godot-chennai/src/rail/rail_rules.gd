@@ -87,13 +87,13 @@ static func boarding(train: RailLine.TrainAt, index: int, money: int) -> Answer:
 	var state := train.state
 	var line := train.line
 	if state.stopped_at != index:
-		a.reason = "The train is not standing here."
+		a.reason = Tr.t("rail.reason.not_standing")
 	elif state.dwell_left < 1.5:
-		a.reason = "The doors are closing."
+		a.reason = Tr.t("rail.reason.doors_closing")
 	elif state.next_stop < 0:
-		a.reason = ("This train's next stop is beyond the map (towards %s)." % line.to.name) if line.to.beyond else "This train terminates here."
+		a.reason = Tr.t("rail.reason.beyond", [line.to.name]) if line.to.beyond else Tr.t("rail.reason.terminates")
 	elif money < FARE:
-		a.reason = "A ticket costs ₹%d." % FARE
+		a.reason = Tr.t("rail.reason.ticket", [FARE])
 	else:
 		a.ok = true
 		a.fare = FARE
