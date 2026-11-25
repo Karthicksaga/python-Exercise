@@ -97,6 +97,11 @@ var stagger: Dictionary[int, float] = {}
 ## Crowd people within `StreetHits.BYSTANDER_REACH` of this world point turn to look at it.
 var _watch_at := Vector2.ZERO
 var _watch_left := 0.0
+## Where a fight is on now (world metres, `FightSafety.fight_points`), set by the combat wiring:
+## no child of a crowd is drawn within `FightSafety.CHILD_CLEAR` of any (G-415).
+var fight_points := PackedVector2Array()
+## Children kept out of a fight's ring in the last sync (tests).
+var children_kept_out: int = 0
 ## The hour of the day for the density curves (the game clock unless a test sets it).
 var hour_override: float = -1.0
 ## Other systems' extra stop points for traffic (the railway's closed level crossings):
@@ -519,8 +524,12 @@ func _sync(dt: float, focus: Vector2) -> void:
 	var watching := _watch_left > 0.0
 	if watching:
 		_watch_left -= dt
+	children_kept_out = 0
 	for p in _people:
 		if downed_crowd.has(p.key):
+			continue
+		if (p.child or p.play) and not fight_points.is_empty() and not FightSafety.child_allowed(p.pos, fight_points):
+			children_kept_out += 1
 			continue
 		var who := cast.crowd_person(p.look, p.child, p.play)
 		if who == "":

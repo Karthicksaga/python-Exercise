@@ -36,8 +36,9 @@ var _shown: bool = true
 var _jump_frame: int = -1
 
 
-## A view of `variant_id` in a paint picked by `variation` (0..1) from the model's paints.
-static func make(variant_id: StringName, variation: float) -> TrafficVehicleView:
+## A view of `variant_id` in a paint picked by `variation` (0..1) from the model's paints;
+## `own_paint` keeps the variant's own paint (a police car stays white, G-419).
+static func make(variant_id: StringName, variation: float, own_paint: bool = false) -> TrafficVehicleView:
 	var v := TrafficVehicleView.new()
 	var base := VehicleCatalog.variant(variant_id)
 	var own := VehicleCatalog.VariantInfo.new()
@@ -51,7 +52,7 @@ static func make(variant_id: StringName, variation: float) -> TrafficVehicleView
 	var manifest := VehicleCatalog.manifest_for(base.type)
 	if manifest != null:
 		var paints: Array = manifest.data.get("paints", [])
-		if not paints.is_empty():
+		if not paints.is_empty() and not own_paint:
 			var p: Dictionary = paints[mini(paints.size() - 1, floori(variation * paints.size()))]
 			var c: Array = p.get("srgb", [1, 1, 1])
 			own.paint = Color(float(c[0]), float(c[1]), float(c[2]))

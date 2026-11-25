@@ -117,6 +117,9 @@ func _plan(graph: RoadGraph, here: Vector2, goal: Vector2) -> void:
 		route.append(graph.node_pos[n])
 	if not route.is_empty():
 		route.append(goal)
+	# Already past the first node (it is behind, the car between it and the next): skip it.
+	if route.size() >= 2 and here.distance_to(route[1]) <= route[0].distance_to(route[1]):
+		_next = 1
 
 
 ## The node nearest `p`, or -1 for an empty graph (a linear scan; called a few times a second).
