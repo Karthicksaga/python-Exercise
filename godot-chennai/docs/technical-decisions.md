@@ -2704,3 +2704,32 @@ Main, High and chosen means one, Medium frees it although chosen.
 (`LandmarkModels.atlas_material`, G-390), so Low (`vertex_lighting`) left them lit per pixel. `CityMaterials.add_hero`
 registers them (`CityWorld.setup` hands over every `Built.material` after the fixed nodes join the tree) and they take
 the lighting mode in force when they arrive and each change after.
+
+### G-453: The city jobs, the life places and the stories are spread over the districts
+Owner's phone report (G-280 left it open): 10 of the 13 city jobs, the five life places and the three stories were
+still in the Anna Nagar test box, so a job offered from the board started a few streets from the last one.
+`tools/rules/respace_stages.gd -- jobs` moves them like the stages (its core is now `_cluster`: first point to the
+nearest main road of the chosen district, the others at their original distances, bearing searched in 15 degree
+steps, slid until the marker, its kerb and the parked vehicle are outside buildings) but each job is a cluster of its
+own, 0.5 to 3 km across, in a district of its own, and raised roads and anything named flyover, bridge or subway are
+skipped (nobody is dropped on a flyover). The two bus jobs keep their stops on one main road (`_line`: the stops of a
+bus cannot be on streets that only look near each other; a first try that snapped each stop separately made a
+route 3.3 times as long by road). Output `tools/rules/job_sites.json`; `tools/rules/apply_job_sites.py` folds it into
+`content.json`: new stops and kerbs (hints dropped, `FareSpots` reproduces them), labels that no longer name Anna
+Nagar streets (the street the stop stands on, where the map names it, and its district), `startRadius` 300 m (the clock
+waits until the vehicle is at the start, as for the three far jobs), a vehicle parked behind each first stop
+(`ambulance-adyar`, `bus-guindy`, ...), and the clock scaled by how much longer the new road run is than the old one
+(the bake measures both by road, shortest drive over the layout; never shortened). Nine jobs moved to Adyar,
+Choolaimedu, Ayanavaram, Guindy, Mahalinga Puram (Nungambakkam), Mylapore, Purasawalkam, Teynampet and Koyambedu
+(the first stop's nearest district is what the test reads); `share-auto` stays on 2nd Avenue (its route is a recorded
+Anna Nagar road line) and the three jobs that were already far stay. Life places: hospital (Kellys), gym (West
+Mambalam), mall (Velachery) and cinema (Saligramam) moved with what the stories need beside them (the juice shop 120 m
+from the gym, Ravi 160 m from the cinema); home stays (the game starts there). Place points are on the pavement (the
+kerb spot), vehicle reaches on the road. Paati's way home from the hospital is 734 s (was 139 s for 300 m). New test
+`test_job_spread.gd`: jobs start in at least 8 districts (all different but share-auto), no gap between two stops of
+a job is over 3 km, everything is on loaded streets outside buildings, every moved job has its vehicle parked at the
+start, places are in four districts more than 2 km from home, the stories follow their places. `test_stage_spread.gd`
+and `test_content_on_map.gd` stay (one count in the latter changed: the kerb hints, below).
+Weak: the road clock is by shortest drive, not by the traffic and the signals; `share-auto` and home are still
+Anna Nagar; a job offered from the board far away means a drive to its start (the clock waits for it); the labels use
+the street the snap found, some of which have no name in the data ("Bus stop 2 of 4" alone).
