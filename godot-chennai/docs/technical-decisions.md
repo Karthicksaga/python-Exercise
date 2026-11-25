@@ -2698,3 +2698,9 @@ one (the vehicle's centre decides), no sound for the splash, and the bump is a s
 and calls `update(speed, dt)` once a frame with the driven vehicle's speed. The row ("Motion blur: Off") is in the pause
 menu and the title's Settings and is hidden on Low and Medium. Tests: off by default means no node and no layer in
 Main, High and chosen means one, Medium frees it although chosen.
+
+### G-452: Hero landmark materials follow the Low lighting like the shared ones
+`CityMaterials.set_flat` only knew the shared materials; each hero landmark builds its own atlas material on a worker
+(`LandmarkModels.atlas_material`, G-390), so Low (`vertex_lighting`) left them lit per pixel. `CityMaterials.add_hero`
+registers them (`CityWorld.setup` hands over every `Built.material` after the fixed nodes join the tree) and they take
+the lighting mode in force when they arrive and each change after.
