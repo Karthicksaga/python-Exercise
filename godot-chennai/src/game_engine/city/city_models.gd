@@ -23,6 +23,16 @@ var pole := MeshBuilder.new()
 var shelter := MeshBuilder.new()
 var tree := MeshBuilder.new()
 var palm := MeshBuilder.new()
+## Road detail (G-312): median shrubs and the tree guard.
+var shrub := MeshBuilder.new()
+var bloom := MeshBuilder.new()
+var guard := MeshBuilder.new()
+var chevron := MeshBuilder.new()
+## Lamp poles by kind (G-316): `pole` is the single-arm one.
+var pole_rural := MeshBuilder.new()
+var pole_twin := MeshBuilder.new()
+var pole_mast := MeshBuilder.new()
+var stone := MeshBuilder.new()
 ## Prop name -> MeshBuilder (empty when its GLB is missing).
 var props: Dictionary[StringName, MeshBuilder] = {}
 ## Mapped street objects (G-191).
@@ -40,6 +50,14 @@ static func create(with_props: bool = true) -> CityModels:
 	m._build_shelter()
 	m._build_tree()
 	m._build_palm()
+	RoadModels.shrub(m.shrub, 0x3d7d3a)
+	RoadModels.shrub(m.bloom, 0xc2557f)
+	RoadModels.guard(m.guard)
+	RoadModels.chevron(m.chevron)
+	RoadModels.rural_pole(m.pole_rural)
+	RoadModels.twin_pole(m.pole_twin)
+	RoadModels.high_mast(m.pole_mast)
+	RoadModels.stone(m.stone)
 	m.detail = DetailModels.create()
 	if with_props:
 		for name in PROP_FILES:
@@ -78,18 +96,21 @@ static func box(b: MeshBuilder, lo: Vector3, hi: Vector3, hex: int, taper: float
 	face.call([Vector3(x0, y0, z0), Vector3(x0, y0, z1), Vector3(x0, y1, z1), Vector3(x0, y1, z0)], Vector3.LEFT, 0.85)
 
 
-## A concrete street-light pole: tapered shaft, cross-arm with insulators, lamp over the road (-Z).
+## The single-arm street-light pole (`RoadModels.arm_pole`); the others stand beside it by kind.
 func _build_pole() -> void:
-	var s := StreetFurniture.POLE_HALF
-	var top := StreetFurniture.POLE_HEIGHT
-	var arm := StreetFurniture.POLE_ARM
-	box(pole, Vector3(-s, 0, -s), Vector3(s, top, s), 0xa8a59b, s * 0.4)
-	box(pole, Vector3(-0.7, top - 0.9, -0.06), Vector3(0.7, top - 0.78, 0.06), 0x8a877e)
-	for x: float in [-0.6, 0.0, 0.6]:
-		box(pole, Vector3(x - 0.04, top - 0.78, -0.04), Vector3(x + 0.04, top - 0.62, 0.04), 0xd8d4c8)
-	box(pole, Vector3(-0.04, top - 0.45, -arm), Vector3(0.04, top - 0.37, 0), 0x6c7074)
-	box(pole, Vector3(-0.17, top - 0.56, -arm - 0.7), Vector3(0.17, top - 0.4, -arm + 0.1), 0x505458)
-	box(pole, Vector3(-0.15, top - 0.6, -arm - 0.66), Vector3(0.15, top - 0.56, -arm + 0.06), 0xfff1d0)
+	RoadModels.arm_pole(pole)
+
+
+## The pole model of a lamp kind.
+func pole_of(kind: StringName) -> MeshBuilder:
+	match kind:
+		&"twin":
+			return pole_twin
+		&"mast":
+			return pole_mast
+		&"rural":
+			return pole_rural
+	return pole
 
 
 ## A simple bus shelter: four posts, roof slab, back panel, bench, blank route board; open
@@ -115,26 +136,28 @@ static func _tri(b: MeshBuilder, p0: Vector3, p1: Vector3, p2: Vector3, c: Color
 	b.triangle(b.vertex(p0, n, uv, c), b.vertex(p1, n, uv, c), b.vertex(p2, n, uv, c))
 
 
-## A leafy tree about 7 m tall: a six-sided trunk and a flat-shaded icosphere crown.
+## The neem: a short trunk and a dense, rounded crown (`RoadModels.neem`).
 func _build_tree() -> void:
-	var bark := _lin(0x6b4a2f)
-	const SIDES := 6
-	for s in SIDES:
-		var a0 := TAU * s / SIDES
-		var a1 := TAU * (s + 1) / SIDES
-		var b0 := Vector3(cos(a0) * 0.26, 0, sin(a0) * 0.26)
-		var b1 := Vector3(cos(a1) * 0.26, 0, sin(a1) * 0.26)
-		var t0 := Vector3(cos(a0) * 0.16, 4, sin(a0) * 0.16)
-		var t1 := Vector3(cos(a1) * 0.16, 4, sin(a1) * 0.16)
-		_tri(tree, b0, t0, t1, bark)
-		_tri(tree, b0, t1, b1, bark)
-	var leaf := _lin(0x3f8f4a)
-	for f: Array in _icosphere():
-		var p0: Vector3 = f[0] * 2.3
-		var p1: Vector3 = f[1] * 2.3
-		var p2: Vector3 = f[2] * 2.3
-		var lift := Vector3(0, 5.1, 0)
-		_tri(tree, Vector3(p0.x, p0.y * 0.75, p0.z) + lift, Vector3(p1.x, p1.y * 0.75, p1.z) + lift, Vector3(p2.x, p2.y * 0.75, p2.z) + lift, leaf)
+	RoadModels.neem(tree)
+
+
+## The twenty faces of the unit icosahedron, each counter-clockwise seen from outside.
+static func _icosahedron() -> Array:
+	var t := (1.0 + sqrt(5.0)) / 2.0
+	var v: Array[Vector3] = []
+	for p: Vector3 in [Vector3(-1, t, 0), Vector3(1, t, 0), Vector3(-1, -t, 0), Vector3(1, -t, 0), Vector3(0, -1, t), Vector3(0, 1, t), Vector3(0, -1, -t), Vector3(0, 1, -t), Vector3(t, 0, -1), Vector3(t, 0, 1), Vector3(-t, 0, -1), Vector3(-t, 0, 1)]:
+		v.append(p.normalized())
+	var faces := [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]]
+	var out := []
+	for f: Array in faces:
+		var a := v[f[0]]
+		var b := v[f[1]]
+		var c := v[f[2]]
+		if (b - a).cross(c - a).dot(a) < 0.0:
+			out.append([a, c, b])
+		else:
+			out.append([a, b, c])
+	return out
 
 
 ## Unit icosahedron subdivided once (80 faces), each face counter-clockwise seen from outside.

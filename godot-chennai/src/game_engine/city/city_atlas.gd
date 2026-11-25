@@ -50,8 +50,32 @@ const GROUND_WATER := 4
 const GROUND_PAINT := 5
 const GROUND_KERB := 6
 const GROUND_EARTH := 7
-const GROUND_TILES := 8
+## Road detail tiles (G-310). Layers 8 to 19 are the ground covers (`ground.gdshader`), so these
+## are layers 20 and up and sit in atlas tiles 8 and up (`tile_of_layer`).
+const GROUND_ASPHALT_WORN := 20
+const GROUND_CONCRETE := 21
+const GROUND_SLAB := 22
+const GROUND_LATERITE := 23
+const GROUND_KERB_BW := 24
+const GROUND_DARK := 25
+const GROUND_PAINT_YELLOW := 26
+const GROUND_PAINT_FADED := 27
+## Road condition tiles (G-315): stripped tar showing the grey base course, laterite mud,
+## muddy water, brick rubble, dark wet ruts.
+const GROUND_STRIPPED := 28
+const GROUND_MUD := 29
+const GROUND_PUDDLE := 30
+const GROUND_BRICK := 31
+const GROUND_RUT := 32
+const ROAD_LAYER_BASE := 20
+const GROUND_TILES := 21
 const GROUND_TILE_PX := 256
+
+
+## Atlas tile (column) of a ground layer: the first eight are their own tile, the road detail
+## layers (20 and up) follow them from tile 8; the covers (8 to 19) reuse a base tile.
+static func tile_of_layer(layer: int) -> int:
+	return layer - (ROAD_LAYER_BASE - 8) if layer >= ROAD_LAYER_BASE else layer
 
 
 ## Pixel rectangle of the sign of a category id (1-based).

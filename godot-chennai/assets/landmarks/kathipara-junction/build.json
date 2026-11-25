@@ -3,7 +3,7 @@
  "kit": "hero_flyover",
  "script": "tools/blender/landmarks/hero_flyover.py",
  "blender": "5.2.4 LTS",
- "spec_sha256": "87a0a44fb4945cc2956339dcd52817a23bcef96f00ecaef08007d597d8b528fc",
+ "spec_sha256": "fc1530e20ce3dd1cef046e1e0f7ec6c99aa5673fff92f6676d38b84db233968a",
  "glb_sha256": "defaa2f5db9cda7ece57a951e37115c299f10e7a3e251c25d6518ae0833ab5af",
  "triangles": {
   "lod0": 4180,
