@@ -2667,3 +2667,26 @@ history buffer, no render target. It is **off by default** (`wanted` is false an
 Low or Medium** (the preset's `motion_blur` is false), and **free while off**: the layer and shader are only made
 when it is turned on, `update` returns at once and the node does not process (tested). No Settings row yet; it
 needs the owner's call and a measurement on the phone first.
+
+## Polish (G-450 to G-459, agent/godot-polish), 25 Nov 2026
+
+### G-450: The condition of a road is felt: slower, bumpier, less grip, splashes
+`RoadStyle.feel(condition)` (G-315, was data only) now drives the vehicle. `RoadSurface`
+(`src/game_world/infra/road_surface.gd`, node-free, next to `RoadHeights` and `RoadBumps`) answers "what is under this
+world point": the nearest segment of the street layout's grid within the carriageway and 0.4 m, its way's condition
+(`RoadStyle.condition`, cached per road), and the puddle rectangles of that chunk. Chunks tell it what they drew: the
+chunk builder calls `note_chunk(cell, rural, marks)` on its worker thread (the open-country flag changes how arterials
+are judged, the puddles are the plan's own `RoadDetail.Mark`s), so the main thread only reads and never plans or builds;
+a tile whose layout is not built yet is plain tar (`has_tile`, never blocks). `Driving` asks it every 0.1 s for the
+driven vehicle (`ground_source`, set by `PlayWiring` from `CityWorld.surface`), `Vehicle.apply_road` scales the numbers
+by the kind (`ROAD_SENSITIVITY`: bike and auto 1.0, car 0.6, saloon 0.55, race 0.7, ambulance 0.4, SUV 0.35, bus 0.3)
+and `RaycastVehicle.set_ground(GroundFeel)` eases them in over about a second. What it changes: the engine's top speed
+(`spec.max_speed * top_speed`; faster than that and the surface drags at 3 m/s²: a crash is 1.6 m/s in one step),
+both tyre limits (`grip`) and a smooth vertical wobble along the distance rolled (`bump`, amplitude times
+`BUMP_GAIN`, scaled by speed). The speed readout is the real speed and a rough road is never a crash (the planar
+velocity is untouched, tested: no step changes speed by `Vehicle.IMPACT`). Puddles: 0.92 of the speed and 0.9 of the grip
+on top of the road's, and `Driving.splashed` (a puddle entered above 2.5 m/s) throws pale droplets from the glass pool
+of `CrashEffects` (`splash`). Measured in the yard (same bike, same controls, 6 s flat out): a good road leaves the body level (under 0.1 mm
+of height wander), a damaged one wanders 2.3 cm and tops out at 21.3 against 25.0 m/s, mud wanders 4.2 cm at 16.3 m/s
+(65 %); a hatchback in mud keeps 79 % of its speed (the bike 65 %) and wanders 6 cm. Not done: wheels do not take the puddle one by
+one (the vehicle's centre decides), no sound for the splash, and the bump is a smooth wobble, not holes at the holes.

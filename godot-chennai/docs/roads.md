@@ -24,8 +24,8 @@ kilometre stones, rows of palmyra palms every 9 m; and a **condition** per road 
 from the class, a hash of the way id and a hash of the 600 m square: damaged roads get large stripped-tar
 patches, water-filled holes, wheel ruts, a soil lip along the edges and rubble; unpaved lanes are laterite mud with
 ruts, puddles, brick and stone scatter and no kerb. Puddles are flat shiny ground polygons (one tile, shinier
-after rain), not a reflection pass. The conditions' effect on vehicles is data only (`RoadStyle.feel`: top speed,
-bump, grip); it is not wired into the vehicle physics yet.
+after rain), not a reflection pass. The conditions' effect on vehicles (`RoadStyle.feel`: top speed,
+bump, grip) is wired into the driven vehicle since G-450 (`RoadSurface`, `GroundFeel`, puddles splash).
 
 ## Reference research (honest status)
 
@@ -140,7 +140,7 @@ guards, shrubs and wires; the 300k frame budget is touched at T. Nagar (304k, wa
 
 - Only the owner's ten photographs were viewed (Commons blocked): everything else is from knowledge.
 - Hill bends have no terrain: kerb blocks, barriers and chevrons follow the road's own curvature, rural chunks only. No whitewashed retaining wall, no forest canopy (trees are the two meshes), no motorbike riders on the road.
-- Surface feel (`RoadStyle.feel`) is data and tested, not wired into the vehicles; no barrier or chevron collider.
+- Surface feel (`RoadStyle.feel`) drives the player's vehicle (G-450); traffic and parked vehicles ignore it; no barrier or chevron collider.
 - Footpaths are 0.12 m high but have no collider: the player's feet sink into them as they do into the
   kerbs. Concrete panels' joints follow the world axes, not the road's direction.
 - No flyover pillars beyond what decks already draw, no hoardings, stalls, bus bays or Tamil road

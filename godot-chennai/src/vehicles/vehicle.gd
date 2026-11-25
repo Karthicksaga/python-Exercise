@@ -28,6 +28,14 @@ const DAMAGE_PER_KMH := 0.9
 ## Contacts reported while driven (the hit's other body, point and normal).
 const CONTACTS := 4
 const GROUP := &"vehicles"
+## How much a road's bad condition costs each kind (G-450): 1 for the cheap ones (a bike, an auto
+## rickshaw), less for cars, the least for heavy ones. Scales the surface's loss of top speed and grip.
+const ROAD_SENSITIVITY := {
+	&"bike": 1.0, &"auto": 1.0, &"car": 0.6, &"saloon": 0.55, &"coupe": 0.55, &"race": 0.7,
+	&"suv": 0.35, &"ambulance": 0.4, &"bus": 0.3,
+}
+## The bump of a surface felt by the body: two-wheelers feel all of it, heavy ones half.
+const ROAD_BUMP_MIN := 0.5
 
 signal crashed(impact: float)
 ## The body's damage stage changed (0 clean, 1 dented, 2 wrecked and smoking).
@@ -77,6 +85,20 @@ static func create(variant_id: StringName, vehicle_id: StringName = &"", paint: 
 	return v
 
 
+## What the road under this vehicle does to it (`RoadStyle.feel` numbers plus `wet`): its kind
+## decides how much of it counts (`ROAD_SENSITIVITY`). An empty dictionary is good tar.
+func apply_road(feel: Dictionary) -> void:
+	if feel.is_empty():
+		set_ground(null)
+		return
+	var s: float = float(ROAD_SENSITIVITY.get(type.kind, 0.6))
+	set_ground(GroundFeel.make(
+		1.0 - (1.0 - float(feel.get("top_speed", 1.0))) * s,
+		1.0 - (1.0 - float(feel.get("grip", 1.0))) * s,
+		float(feel.get("bump", 0.0)) * lerpf(ROAD_BUMP_MIN, 1.0, s),
+		bool(feel.get("wet", false))))
+
+
 ## Place it parked on the ground at a scene position (x, z of `where`; y is the ground height).
 func place(where: Vector3, heading: float) -> void:
 	var at := Vector3(where.x, where.y + type.ride_height + 0.1, where.z)
@@ -90,6 +112,7 @@ func place(where: Vector3, heading: float) -> void:
 ## Nobody at the controls: the handbrake holds it.
 func park() -> void:
 	_driven = false
+	set_ground(null)
 	contact_monitor = false
 	set_controls(0.0, 0.0, 0.4)
 

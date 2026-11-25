@@ -31,6 +31,8 @@ const SPAWN_NEAR := Vector2(40.0, 60.0)
 
 var source: WorldSource
 var layouts: CityLayouts
+## What the roads do to vehicles on them (G-450), filled in as chunks are built.
+var surface: RoadSurface
 var models: CityModels
 var materials: CityMaterials
 var streamer: ChunkStreamer
@@ -77,6 +79,8 @@ func setup(world: WorldSource) -> String:
 	kit.road_extras = road_extras
 	kit.source = world
 	kit.layouts = layouts
+	surface = RoadSurface.create(layouts)
+	kit.surface = surface
 	kit.models = models
 	kit.materials = materials
 	var tree_models: TreeModels = await BackgroundTask.start(TreeKit.build_models).finish(get_tree())

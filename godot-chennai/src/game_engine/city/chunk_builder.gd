@@ -29,6 +29,9 @@ class Kit:
 	extends RefCounted
 	var source: WorldSource
 	var layouts: CityLayouts
+	## What the chunks' roads do to vehicles (G-450): each build reports its open-country flag and
+	## puddles. Null: nobody asks.
+	var surface: RoadSurface
 	var models: CityModels
 	var materials: CityMaterials
 	## The tree kit (G-381): eighteen species with three LODs each on the one atlas material.
@@ -152,6 +155,8 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	out.props = StreetProps.for_chunk(layout, chunk, cell, out.furniture)
 	if kit.road_detail:
 		out.roads = RoadDetail.for_chunk(layout, chunk, cell, square, out.furniture, kit.road_extras)
+		if kit.surface != null:
+			kit.surface.note_chunk(cell, out.roads.rural, out.roads.decals)
 		if out.roads.rural:
 			# Open country has no kerbs along the road: a dust shoulder instead (G-314).
 			out.furniture.kerbs.clear()
