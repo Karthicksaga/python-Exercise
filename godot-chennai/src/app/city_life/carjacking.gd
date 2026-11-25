@@ -45,6 +45,9 @@ var _pulled := false
 var _request: int = -1
 ## The takeable moving vehicle offered by the last step ({} when none), read by `offer`.
 var _offered: Dictionary = {}
+## Walkers to scare at the next step (world point), else NAN: the pull is a boarding event, which
+## comes from `Driving`'s physics step while the AI may be stepping (G-364).
+var _scare_at := Vector2(NAN, NAN)
 ## Drivers running away: [view, seconds left, direction (scene)].
 var _fleeing: Array[Array] = []
 ## Vehicles taken so far that still exist.
@@ -78,6 +81,9 @@ func _traffic_list() -> Array:
 
 
 func _step(dt: float) -> void:
+	if not is_nan(_scare_at.x):
+		life.population.walkers.scare(_scare_at, 14.0, 5.0)
+		_scare_at = Vector2(NAN, NAN)
 	_run_away(dt)
 	_forget_far()
 	_offered = {}
@@ -210,7 +216,7 @@ func _on_boarding(v: Vehicle, event: StringName) -> void:
 	if wanted != null:
 		wanted.report("carjacking")
 	carjacked.emit(look, at)
-	life.population.walkers.scare(at, 14.0, 5.0)
+	_scare_at = at
 	if _driver != null:
 		# Out of the seat on the far side from the player, and away.
 		var side := v.global_basis.x

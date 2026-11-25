@@ -129,6 +129,7 @@ func test_a_walker_struck_fast_falls_lies_gets_up_and_walks_on() -> bool:
 	assert_false(life.population.walkers.is_held(life.population.walkers.agents[id]), "walking on")
 	assert_eq(reactions.downed_count(), 0, "nobody down")
 	assert_true(int(reactions.stats["fall"]) == 1, "counted (%s)" % [reactions.stats])
+	assert_eq(int(life.stats.get("off_step_changes", 0)), 0, "no agent changed while the AI step may run (G-364)")
 	print("    touch test: %d runs, %.1f us when nobody is touched, max %d us (with a knockdown)" % [int(reactions.stats["tests"]), reactions.quiet_test_usec(), int(reactions.stats["test_usec_max"])])
 	return true
 
@@ -187,6 +188,7 @@ func test_a_traffic_rider_hit_hard_falls_off_and_the_bike_waits() -> bool:
 	var back := await wait_until(func() -> bool: return not life.taken.has(id), 60 * 14)
 	assert_true(back, "the rider got up, walked back and rides on")
 	assert_near(view.model.rotation.z, 0.0, 0.01, "the bike is upright again")
+	assert_eq(int(life.stats.get("off_step_changes", 0)), 0, "no agent changed while the AI step may run (G-364)")
 	return true
 
 
