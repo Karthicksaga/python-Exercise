@@ -217,6 +217,13 @@ func test_swimming_at_the_marina_and_in_a_real_river() -> bool:
 	var land := shore - sample.inward * 3.0
 	assert_true(await _arrive(main, land, 0.0), "the beach loads")
 	assert_true(culture.swim.entry(_world(main)) != null, "the water is within reach from the beach")
+	# The entry look-up runs five times a second on the main thread: it must stay cheap (G-474).
+	var started := Time.get_ticks_usec()
+	for i in 200:
+		culture.swim.entry(_world(main) + Vector2(float(i % 7) * 40.0, 0.0))
+	var per_call := float(Time.get_ticks_usec() - started) / 200.0
+	print("    swim entry look-up at the Marina: %.0f us per call" % per_call)
+	assert_true(per_call < 1500.0, "the entry look-up is cheap (%.0f us)" % per_call)
 	assert_eq(main.rig.controls.action_context.label(), "SWIM", "SWIM is offered")
 	main.rig.controls.action_context.trigger()
 	assert_true(main.rig.body.swimming, "swimming in the sea")

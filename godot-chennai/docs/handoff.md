@@ -1344,3 +1344,53 @@ kept): pause menu, HUD, job board, driving controls, loading, title, in Tamil an
   console lines, rail file errors, the `km/h` readout and the notch names.
 - Tamil has no plural forms in the counted texts (`.one` and `.other` hold the same words); numbers are Latin
   digits everywhere.
+
+## Culture and life: heritage journal, temple visit, peace zone, swimming (G-470 to G-479, agent/godot-culture), 25 Nov 2026
+Decisions in `docs/technical-decisions.md` ("Culture and life"). Branch `agent/godot-culture` from `agent/godot-lang`
+(e297162), the Language system, which every text here uses. Open owner decisions: G-479 (peace-zone rule list, Marina
+swimming, second place, Tamil review, bicycle).
+
+**Where things are.**
+- Logic (pure, `src/culture/`): `CultureData` (reads `assets/culture/culture.json`), `PeaceZones`, `HeritageJournal`,
+  `TempleVisit`, `SwimWater` (sea and river probe), `SwimState` (limits, energy, tiring).
+- Glue (`src/app/culture_wiring/`): `CultureWiring` (added by `Main._add_culture` at the end of the Play loading step;
+  `main.culture`), `TempleProps` (sandal stand and lamp meshes), `PropMesh` (boxes and cylinders merged into one mesh).
+- UI: `src/ui/heritage_journal/heritage_journal_screen.gd` (from the pause menu's HERITAGE JOURNAL row; Back closes it
+  first, `Main.go_back`), `src/ui/swim_hud/swim_hud.gd` (the energy plate).
+- Hooks added to existing code, all additive and null-safe (`peace: PeaceZones = null`): `Driving` (enter, horn),
+  `DrivingWiring` (GET IN offer, crash effects and shake), `Carjacking` (TAKE OVER, crime report), `StreetReactions`
+  (crime report); `PlayerController.begin_swim / end_swim / swim_mover`; `Sound.set_calm / step_gain / bell`,
+  `Ambience.ring`; `PlayerSounds` (wet strokes); `SaveStore.HERITAGE` and the "keep other sections" write.
+- Data: `assets/culture/culture.json` (stops, peace zones, temple places, swim numbers) and the `cul.*` keys in
+  `assets/i18n/*.csv` (48 rows; the rows are in `docs/tamil-review.md`). Export presets include `assets/culture/*.json`.
+
+**How to add a place to the journal.** A row under `stops` (id, kind, position from its landmark spec or `world.json`,
+radius, source), the two keys `cul.stop.<id>.name` and `.line` in `en.csv` and `ta.csv`, `python3
+tools/i18n/review_table.py`. `test_culture.gd` checks the position and the names against the landmark spec.
+**How to add a place of worship.** A zone under `peace_zones`, a stop with `on_foot`, and (for a visit like the
+temple's) a `temple_visit`-like block: today there is one visit; a second needs `CultureWiring` to hold a list of
+visits (it holds one `TempleVisit`).
+
+**Measured / tested here (Godot 4.7.2, headless; screenshots under software GL).**
+- The real player body walks from the sandal stand through the east gopuram's passage to the lamp (tested through
+  the ACTION button); the free ground in the 12 to 34 m ring round the compound's centre is one connected stretch
+  reaching all 36 sectors (`test_culture_game.gd`).
+- The Marina can be swum (SWIM at the beach, on the surface at 0.01 m, GET OUT onto the beach) and a real river or canal
+  of the middle tiles can be swum at its water level (-0.75 m) and left onto the bank, in the real streamed city.
+- Peace zone rules in the vehicle yard (`test_peace_zone.gd`): no GET IN, no horn, no camera shake, no TAKE OVER.
+- Layouts in English, Tamil, both languages at 915x412 and 2460x1080 (`test_culture_layout.gd`).
+- The swim entry look-up costs about 150 µs per call on the development machine (5 Hz while on foot).
+
+**Weak or not done.**
+- **No bicycle, no boat** (G-478: a vehicle kind with balance handling is `godot-complex` work).
+- **No swim animation:** the walk clip, slowed, with the figure lowered and leaned; it looks like wading.
+- **`violence` and `wanted` are rules with no combat or police runtime to suppress** (phase 5 does not exist); the hook is
+  `CultureWiring.allow_violence`. `Wanted` is still null in the game, so crimes reported by `Carjacking` and
+  `StreetReactions` go nowhere yet; the guards are in place for when it is wired.
+- Traffic that passes the temple still honks (AI traffic, not the player's horn) and drives through the forecourt's streets.
+- A river's bank bund (0.55 m, collider up to 2.2 m) is only stepped over by the exit's placement 1.8 m up the bank; a
+  bank with a wall right behind it could put the player in the wall (the body is pushed out by the engine, not tested at
+  every bank).
+- The sandals are not removed from the player model's feet (the model's sandals are part of its mesh); the rack shows
+  a pair, the steps get softer.
+- Not seen on a phone; Tamil is unread machine Tamil (G-443).
