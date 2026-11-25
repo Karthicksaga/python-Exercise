@@ -1,5 +1,5 @@
 class_name PersonView
-extends Node3D
+extends CombatFigure
 ## One person of the cast drawn in the street (a walker, someone in a crowd, a driver): their GLB
 ## (`assets/people/<id>.glb`, decision G-10: `Body` near, `Body_LOD1` from 30 m) playing one of
 ## its own clips (idle, walk, run, sit, talk). No physics, no AnimationTree: the AI moves it and
@@ -45,8 +45,6 @@ var _skip: int = 0
 var _pending: float = 0.0
 var _body_mesh: MeshInstance3D = null
 var _shadow := true
-## The body for the procedural poses (null if the model lacks a core bone).
-var poser: PoseRig = null
 var swing_enabled: bool = true
 ## The seat pose shown over the `sit` clip (null: the clip as it is).
 var seat: SeatPose = null
@@ -121,6 +119,9 @@ func advance(dt: float, distance: float, in_view: bool = true) -> void:
 	if not knocked and (not in_view or distance > animate_reach):
 		# Hold the pose; the clip resumes where the time says when it is seen again close up.
 		_pending = fmod(_pending, 4.0)
+		if is_striking():
+			# Unseen, a blow still runs its clock so it lands (and signals) on time.
+			combat_after_clip(dt, false)
 		return
 	if _far:
 		_skip += 1
@@ -136,10 +137,12 @@ func _after_clip(dt: float) -> void:
 	if poser == null:
 		return
 	if _knock != null and _knock.active():
+		combat_interrupt()
 		if _knock.step(dt):
 			got_up.emit()
 		return
 	if seat != null:
+		combat_interrupt()
 		if _seat_rots.size() != poser.index.size():
 			_seat_rots.resize(poser.index.size())
 		if seat.get_instance_id() != _seat_id or seat.version != _seat_version:
@@ -152,6 +155,7 @@ func _after_clip(dt: float) -> void:
 		return
 	if swing_enabled and player.speed_scale > 0.0 and (clip == &"walk" or clip == &"run"):
 		GaitSwing.apply(poser, 1.0 if clip == &"walk" else 0.0, 1.0 if clip == &"run" else 0.0)
+	combat_after_clip(dt)
 
 
 ## Sit with `pose` over the `sit` clip (plays it); null back to the clip alone.
