@@ -83,3 +83,37 @@ func test_the_lever_snaps_to_notches_by_touch() -> bool:
 	assert_eq(got, [8, 0, 4, 6] as Array[int], "each tap picks its notch")
 	assert_eq(hud.lever.labels[hud.lever.notch], "P2", "the knob shows P2")
 	return true
+
+
+func test_the_vigilance_handle_shows_in_the_cab_only_and_reports_a_hold() -> bool:
+	var made := _hud(Vector2i(915, 412))
+	var hud := made[1] as RailHud
+	hud.set_mode(RailHud.STATION)
+	await wait_frames(2)
+	assert_false(hud.handle.is_visible_in_tree(), "no handle in the station")
+	hud.set_mode(RailHud.CAB)
+	await wait_frames(2)
+	assert_true(hud.handle.is_visible_in_tree(), "the handle shows in the cab")
+	assert_true(hud.handle.get_global_rect().size.y >= RailHudStyle.MIN_TARGET and hud.handle.get_global_rect().size.x >= RailHudStyle.MIN_TARGET * 2.0, "big enough to hold with a thumb")
+	assert_false(hud.handle_held(), "not held at first")
+	# A finger (index 1, while another one is on the lever) holds it.
+	var down := InputEventScreenTouch.new()
+	down.index = 1
+	down.pressed = true
+	down.position = hud.handle.size / 2.0
+	hud.handle._gui_input(down)
+	assert_true(hud.handle_held(), "held by a second finger")
+	var up := InputEventScreenTouch.new()
+	up.index = 1
+	up.pressed = false
+	hud.handle._gui_input(up)
+	assert_false(hud.handle_held(), "let go")
+	hud.set_vigilance(3.2, false, false)
+	assert_eq(hud.handle.text, "HOLD 4", "the countdown shows in the last five seconds")
+	hud.set_vigilance(0.0, true, false)
+	assert_eq(hud.handle.text, "HOLD!", "the warning")
+	hud.set_vigilance(0.0, false, true)
+	assert_eq(hud.handle.text, "BRAKING", "the penalty brake")
+	hud.set_vigilance(9.0, false, false)
+	assert_eq(hud.handle.text, "HOLD", "calm again")
+	return true

@@ -38,6 +38,22 @@ static func button(text: String, primary: bool = false) -> Button:
 	return b
 
 
+## The cab's vigilance handle: a glass button that is held by any finger (`HoldButton`, G-454).
+static func hold_button(text: String) -> HoldButton:
+	var b := HoldButton.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(MIN_TARGET * 2.2, MIN_TARGET)
+	b.add_theme_stylebox_override("normal", glass(GLASS_FILL, 24))
+	b.add_theme_stylebox_override("hover", glass(GLASS_FILL, 24))
+	b.add_theme_stylebox_override("pressed", glass(Color(0.2, 0.55, 0.32, 0.7), 24))
+	b.add_theme_stylebox_override("hover_pressed", glass(Color(0.2, 0.55, 0.32, 0.7), 24))
+	b.add_theme_stylebox_override("focus", glass(Color(0, 0, 0, 0), 24))
+	b.add_theme_color_override("font_color", TEXT)
+	b.add_theme_color_override("font_pressed_color", TEXT)
+	b.add_theme_font_size_override("font_size", 17)
+	return b
+
+
 static func label(text: String, size: int = 14, colour: Color = TEXT) -> Label:
 	var l := Label.new()
 	l.text = text

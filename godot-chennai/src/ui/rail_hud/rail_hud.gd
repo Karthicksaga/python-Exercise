@@ -39,6 +39,8 @@ var lever: NotchLever
 var dial: SpeedDial
 var horn: Button
 var emg: Button
+## The vigilance handle (dead man's handle, G-454): hold it while the train moves.
+var handle: HoldButton
 var doors: Label
 var leave: Button
 var step_off: Button
@@ -171,6 +173,10 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right.add_child(row)
+	# The vigilance handle sits with HORN and EMG: the right thumb holds it (same height, so the column stays as it was).
+	handle = RailHudStyle.hold_button("HOLD")
+	handle.name = "Handle"
+	row.add_child(handle)
 	horn = RailHudStyle.button("HORN")
 	horn.button_down.connect(func() -> void: horn_changed.emit(true))
 	horn.button_up.connect(func() -> void: horn_changed.emit(false))
@@ -246,6 +252,7 @@ func set_mode(next: StringName) -> void:
 	dial.visible = cab
 	horn.visible = cab
 	emg.visible = cab
+	handle.visible = cab
 	doors.visible = cab
 	score.visible = cab
 	signal_chip.visible = cab
@@ -264,7 +271,7 @@ func set_mode(next: StringName) -> void:
 
 ## Shows a container only while one of its children shows.
 func _tidy() -> void:
-	_cab_row.visible = horn.visible or emg.visible
+	_cab_row.visible = horn.visible or emg.visible or handle.visible
 	var any := false
 	for c: Node in _buttons.get_children():
 		if c != _cab_row and (c as Control).visible:
@@ -308,6 +315,31 @@ func set_cab(kmh: float, limit: float, notch: int, doors_open: bool, aspect: Str
 	score.text = "Score %d" % points
 
 
+## The vigilance handle's state: seconds left before the warning (0 when it does not count),
+## the warning sounding, the emergency brake tripped. The label and colour follow.
+func set_vigilance(left: float, warning: bool, tripped: bool) -> void:
+	var text := "HOLD"
+	var colour := RailHudStyle.TEXT
+	if tripped:
+		text = "BRAKING"
+		colour = RailHudStyle.DANGER
+	elif warning:
+		text = "HOLD!"
+		colour = RailHudStyle.DANGER
+	elif left > 0.0 and left <= 5.0:
+		text = "HOLD %d" % ceili(left)
+		colour = RailHudStyle.AMBER
+	if handle.text != text:
+		handle.text = text
+		handle.add_theme_color_override("font_color", colour)
+		handle.add_theme_color_override("font_pressed_color", colour)
+
+
+## True while a finger (or the mouse) holds the handle and it is on screen.
+func handle_held() -> bool:
+	return handle.is_visible_in_tree() and handle.held()
+
+
 ## The timetable sheet: a title, rows of text, and the route map's data.
 func show_timetable(title: String, rows: PackedStringArray, lines: Array[Array], stations: Array[Array], at: Vector2, credit: String) -> void:
 	sheet_title.text = title
@@ -343,7 +375,7 @@ func _on_look_input(event: InputEvent) -> void:
 ## Every visible button (layout tests).
 func visible_buttons() -> Array[Button]:
 	var out: Array[Button] = []
-	for b: Button in [leave, step_off, seat, view, horn, emg, timetable, drive]:
+	for b: Button in [leave, step_off, seat, view, horn, emg, handle, timetable, drive]:
 		if b.is_visible_in_tree():
 			out.append(b)
 	return out

@@ -14,6 +14,10 @@ signal scored(points: int, why: String)
 signal message(text: String)
 signal doors_changed(open: bool)
 signal finished(score: int)
+## The vigilance handle has been let go too long: the warning tone (G-454).
+signal vigilance_warning
+## The warning was ignored: the emergency brake has been applied.
+signal vigilance_tripped
 
 ## The lever's notches, lowest first (index 4 is OFF): acceleration asked for, m/s².
 const NOTCHES: Array[String] = ["EMG", "B3", "B2", "B1", "OFF", "P1", "P2", "P3", "P4"]
@@ -27,6 +31,15 @@ const SIGNAL_AHEAD := 6.0
 ## A train ahead within this distance of a signal makes it red, within the next stretch yellow.
 const RED_BLOCK := 400.0
 const YELLOW_BLOCK := 900.0
+## The vigilance (dead man's) handle (G-454): a suburban train's cab has one the driver must keep
+## held. Let go at speed for longer than VIGILANCE_LIMIT and it sounds a warning; if the handle is not
+## held again within WARNING_GRACE the emergency brake comes on and stays on until the train stands.
+## The times are estimates (the owner's prototype has no handle). Off unless the game turns
+## `vigilance_on` on, so the prototype's scoring and every test of it are unchanged; it adds no points.
+const VIGILANCE_LIMIT := 8.0
+const WARNING_GRACE := 3.0
+## Slower than this (m/s) nobody needs to hold it (standing at a stop, creeping in).
+const VIGILANCE_SPEED := 1.0
 ## The line's end on the map: the run finishes this far past the last stop.
 const END_MARGIN := 150.0
 
@@ -50,6 +63,14 @@ var done: bool = false
 var horn: bool = false
 ## Other trains on the line ahead (metres along it, their middles), set by the game each step.
 var ahead: PackedFloat64Array = PackedFloat64Array()
+
+## The vigilance handle: whether it is in force, whether the driver holds it now, how long it has
+## been let go at speed, the warning is sounding, the brake has been tripped.
+var vigilance_on: bool = false
+var handle_held: bool = true
+var released_for: float = 0.0
+var warning: bool = false
+var tripped: bool = false
 
 var _overspeed: float = 0.0
 var _standing: float = 0.0
@@ -88,6 +109,46 @@ func notch_down() -> void:
 
 func emergency() -> void:
 	set_notch(EMERGENCY)
+
+
+## The driver holds (true) or lets go of (false) the vigilance handle.
+func set_handle(held: bool) -> void:
+	handle_held = held
+
+
+## Seconds left before the warning sounds (VIGILANCE_LIMIT at most), or 0 while it sounds or when nothing counts.
+func vigilance_left() -> float:
+	if not vigilance_on or handle_held or v <= VIGILANCE_SPEED or warning or tripped:
+		return 0.0
+	return maxf(0.0, VIGILANCE_LIMIT - released_for)
+
+
+func _vigilance(dt: float) -> void:
+	if not vigilance_on:
+		return
+	if tripped:
+		# The penalty brake holds the lever at EMG until the train stands.
+		notch = EMERGENCY
+		if v < 0.2:
+			tripped = false
+			warning = false
+			released_for = 0.0
+			message.emit("Stopped. Hold the handle, then set the lever to OFF to go on.")
+		return
+	if handle_held or v <= VIGILANCE_SPEED:
+		released_for = 0.0
+		warning = false
+		return
+	released_for += dt
+	if not warning and released_for > VIGILANCE_LIMIT:
+		warning = true
+		vigilance_warning.emit()
+		message.emit("Vigilance: hold the handle!")
+	elif warning and released_for > VIGILANCE_LIMIT + WARNING_GRACE:
+		tripped = true
+		notch = EMERGENCY
+		vigilance_tripped.emit()
+		message.emit("Vigilance brake: emergency stop.")
 
 
 func kmh() -> float:
@@ -148,6 +209,7 @@ func step(dt: float) -> void:
 	if done:
 		return
 	time += dt
+	_vigilance(dt)
 	var target := NOTCH_ACCEL[notch]
 	var rate := 1.6 if target < 0.0 else 2.2
 	effort += clampf(target - effort, -rate * dt, rate * dt)

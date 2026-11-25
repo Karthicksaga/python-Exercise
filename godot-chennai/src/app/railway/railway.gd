@@ -95,6 +95,8 @@ var cab_departure: int = 0
 ## Timetable trains the player took over (hidden for the rest of their run).
 var taken: Dictionary[String, bool] = {}
 var _horn_down: bool = false
+## Seconds until the vigilance warning tone sounds again.
+var _alarm_cool: float = 0.0
 var _horn_cool: float = 0.0
 ## Trains the player left at a platform: [line, s, seconds].
 var _parked: Array[Array] = []
@@ -727,6 +729,10 @@ func take_cab() -> bool:
 	cab.message.connect(func(text: String) -> void: _toast(text))
 	cab.finished.connect(func(_score: int) -> void: _cab_finished())
 	cab.doors_changed.connect(func(open: bool) -> void: Sound.rail.door(open, not open))
+	# The vigilance handle (G-454): in force from the first step, held by the HOLD button.
+	cab.vigilance_on = true
+	cab.handle_held = false
+	_alarm_cool = 0.0
 	taken[train.id] = true
 	var body := rig.body
 	_anchor.global_transform = body.global_transform
@@ -737,7 +743,7 @@ func take_cab() -> bool:
 		_seat_pose = SeatPose.passenger(PlayerRiderLink.HIP_HEIGHT, 0.47)
 	body.figure.set_seat(_seat_pose)
 	inside_view = true
-	_toast("You are driving to %s. Raise the lever when the doors close; stop at the red STOP board." % cab.line.destination(), 5.0)
+	_toast("You are driving to %s. Raise the lever when the doors close; stop at the red STOP board. Keep HOLD pressed while moving." % cab.line.destination(), 5.0)
 	_set_state(&"cab")
 	return true
 
@@ -750,7 +756,13 @@ func _step_cab(dt: float) -> void:
 			ahead.append(t.state.s)
 	cab.ahead = ahead
 	cab.horn = _horn_down
+	if hud != null:
+		cab.set_handle(hud.handle_held())
 	cab.step(dt)
+	_alarm_cool -= dt
+	if cab.warning and not cab.tripped and _alarm_cool <= 0.0:
+		_alarm_cool = 0.7
+		Sound.rail.vigilance()
 	_horn_cool -= dt
 	if _horn_down and _horn_cool <= 0.0:
 		_horn_cool = 0.9
@@ -1092,6 +1104,7 @@ func _update_hud(focus: Vector2) -> void:
 			hud.set_info("%s · to %s" % [stop.name, cab.line.destination()], stop.name_ta, ("%d m to the stop mark" % roundi(mark)) if is_finite(mark) and mark > 0.0 else cab.state_text())
 			var sig := cab.next_signal()
 			hud.set_cab(cab.kmh(), cab.limit(), cab.notch, cab.doors_open, String(cab.aspect(sig)) if sig >= 0 else "green", cab.score)
+			hud.set_vigilance(cab.vigilance_left(), cab.warning, cab.tripped)
 			hud.set_offers(false, can_leave_cab(), false)
 		_:
 			var here := _station_here(focus)

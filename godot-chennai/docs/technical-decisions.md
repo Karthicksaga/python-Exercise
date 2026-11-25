@@ -2733,3 +2733,18 @@ and `test_content_on_map.gd` stay (one count in the latter changed: the kerb hin
 Weak: the road clock is by shortest drive, not by the traffic and the signals; `share-auto` and home are still
 Anna Nagar; a job offered from the board far away means a drive to its start (the clock waits for it); the labels use
 the street the snap found, some of which have no name in the data ("Bus stop 2 of 4" alone).
+
+### G-454: The cab has a vigilance (dead man's) handle
+The Three.js notes say the real cab has a vigilance device; the owner's prototype has none. `CabDrive` gets one
+that is **off unless the game turns it on** (`vigilance_on`; `Railway.take_cab` does), so the prototype's scoring and
+the old tests are untouched and the handle adds **no points**: `set_handle(held)` each step; released for more than
+`VIGILANCE_LIMIT` (8 s) while moving faster than 1 m/s it sounds the warning (`vigilance_warning`, a toast, the door chime
+at pitch 1.6 every 0.7 s); not held again within `WARNING_GRACE` (3 s) the emergency brake comes on
+(`vigilance_tripped`, lever forced to EMG) and stays on until the train stands, then the lever is the driver's again.
+Standing or creeping needs no handle; taking hold again in time silences the warning and starts the count over.
+The HUD has a HOLD button in the glass style (`RailHud.handle`, a `HoldButton`, so any finger holds it while another
+works the lever; 48 px tall, with HORN and EMG at the bottom right) that counts down in the last five seconds ("HOLD 3"),
+shows "HOLD!" while the warning sounds and "BRAKING" while tripped. `Railway` reads `hud.handle_held()` every step
+(polling, so a HUD that hides while held cannot leave it stuck). The times are estimates. The cab starts with the handle
+not held: the first toast says to keep HOLD pressed while moving. Not done: no keyboard or pad key for the handle, no
+separate alarm sound, no vigilance on the passengers' ride (the timetable's trains).
