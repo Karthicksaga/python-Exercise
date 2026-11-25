@@ -68,6 +68,28 @@ func test_every_mode_fits_every_screen() -> bool:
 	return true
 
 
+## The map credit's plate sits bottom right over every HUD; the cab's buttons stand above it (G-455).
+func test_the_cab_buttons_clear_the_map_credit() -> bool:
+	for size in SIZES:
+		var made := _hud(size)
+		var vp := made[0] as SubViewport
+		var hud := made[1] as RailHud
+		var plate: DebugHud = preload("res://src/ui/debug_hud/debug_hud.tscn").instantiate()
+		plate.settings = DebugSettings.new()
+		plate.settings.path = "user://layout-test-debug.json"
+		vp.add_child(plate)
+		hud.set_mode(RailHud.CAB)
+		hud.set_offers(false, true, false)
+		await wait_frames(3)
+		var credit := (plate.find_child("Credit", true, false) as Control).get_parent() as Control
+		check(credit.is_visible_in_tree() and credit.get_global_rect().size.x > 20.0, "%s: the credit shows" % size)
+		for b in hud.visible_buttons():
+			check(not b.get_global_rect().intersects(credit.get_global_rect()), "%s: %s does not cover the map credit %s" % [size, b.name, credit.get_global_rect()])
+		vp.queue_free()
+		await wait_frames(1)
+	return true
+
+
 func test_the_lever_snaps_to_notches_by_touch() -> bool:
 	var made := _hud(Vector2i(915, 412))
 	var hud := made[1] as RailHud

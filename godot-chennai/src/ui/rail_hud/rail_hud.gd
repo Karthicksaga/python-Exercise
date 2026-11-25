@@ -24,6 +24,8 @@ const OFF := &"off"
 const STATION := &"station"
 const RIDE := &"ride"
 const CAB := &"cab"
+## Room kept at the bottom right for the map credit's plate (`DebugHud`), UI units.
+const CREDIT_CLEAR := 30.0
 
 var mode: StringName = OFF
 var tamil_font: Font = null
@@ -61,6 +63,7 @@ var _centre: VBoxContainer
 ## empty container is laid out (an empty one had a zero height, G-330).
 var _buttons: VBoxContainer
 var _cab_row: HBoxContainer
+var _action_row: HBoxContainer
 var _dragging: bool = false
 
 
@@ -151,22 +154,33 @@ func _ready() -> void:
 	right.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	right.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Above the map credit's plate at the bottom right (it sat over HORN and EMG, G-455).
+	right.offset_bottom = -CREDIT_CLEAR
 	layer.add_child(right)
 	doors = RailHudStyle.label("Doors closed", 14)
 	doors.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	right.add_child(doors)
+	# The passenger and cab actions share a row, so the column stays low enough to leave the speed dial
+	# its room above it and the map credit its plate below it (G-455).
+	var actions := HBoxContainer.new()
+	actions.name = "ActionRow"
+	_action_row = actions
+	actions.alignment = BoxContainer.ALIGNMENT_END
+	actions.add_theme_constant_override("separation", 10)
+	actions.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	right.add_child(actions)
 	leave = RailHudStyle.button("LEAVE CAB")
 	leave.pressed.connect(func() -> void: leave_cab_pressed.emit())
-	right.add_child(leave)
+	actions.add_child(leave)
 	step_off = RailHudStyle.button("STEP OFF", true)
 	step_off.pressed.connect(func() -> void: step_off_pressed.emit())
-	right.add_child(step_off)
+	actions.add_child(step_off)
 	seat = RailHudStyle.button("SIT")
 	seat.pressed.connect(func() -> void: seat_pressed.emit())
-	right.add_child(seat)
+	actions.add_child(seat)
 	view = RailHudStyle.button("VIEW")
 	view.pressed.connect(func() -> void: view_pressed.emit())
-	right.add_child(view)
+	actions.add_child(view)
 	var row := HBoxContainer.new()
 	row.name = "CabRow"
 	_cab_row = row
@@ -272,11 +286,12 @@ func set_mode(next: StringName) -> void:
 ## Shows a container only while one of its children shows.
 func _tidy() -> void:
 	_cab_row.visible = horn.visible or emg.visible or handle.visible
+	_action_row.visible = leave.visible or step_off.visible or seat.visible or view.visible
 	var any := false
 	for c: Node in _buttons.get_children():
-		if c != _cab_row and (c as Control).visible:
+		if (c as Control).visible:
 			any = true
-	_buttons.visible = any or _cab_row.visible
+	_buttons.visible = any
 
 
 func set_info(title: String, tamil: String, line: String) -> void:

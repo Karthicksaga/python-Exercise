@@ -2755,7 +2755,10 @@ row), reached the "(c) OpenStreetMap contributors" plate at the bottom right (ow
 data's licence, so it is moved, not dropped: `PauseMenu` carries its own credit line inside its panel (fed with the
 data's attribution by `Main`), and the HUD's plate hides while the menu is open (`PauseMenu.opened` and `closed`,
 `DebugHud.set_credit_shown`). Test: `test_ui_layout.gd` builds the pause menu with the real rows plus a long one at
-the five UI sizes (938 x 412 among them), `test_perf_wiring.gd` checks it in the booted game.
+the five UI sizes (938 x 412 among them), `test_perf_wiring.gd` checks it in the booted game. The probe before the fix:
+at 938 x 412 the panel spanned x 200..737 and the credit x 721..926 at y 379..400. The same plate also sat over HORN and
+EMG in the cab: the rail HUD's bottom-right column now stands 30 units higher (`RailHud.CREDIT_CLEAR`) and the passenger
+and cab actions share a row so the speed dial keeps its room (`test_rail_hud_layout.gd`).
 
 ### G-456: What every run leaked at exit: found, and the cheap ones fixed
 Every Godot run ended with "146 ObjectDB instances were leaked at exit", Main-booting tests with "2 resources still in
