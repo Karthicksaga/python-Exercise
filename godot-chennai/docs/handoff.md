@@ -753,6 +753,47 @@ not visible. Decisions in `technical-decisions.md` G-280..G-283.
   first time (a few seconds on a phone is not measured; "Drawing the map..." shows meanwhile).
 - **JOBS button:** was exactly under PAUSE since the pause menu landed; moved left of it.
 
+## Combat visuals: strike, carry, puffs, weapons in hand, motion blur (agent/godot-combat-visuals, G-430...G-439), 25 Nov 2026
+**Interfaces for the combat agent (names are stable; the code lands behind them on this branch).**
+Both figures of a person (`HumanFigure`: the player and fare passengers; `PersonView`: walkers,
+crowds, gangsters from `PeoplePool`) now extend `CombatFigure` (`src/player/combat_figure.gd`), so
+the calls are the same on everyone and `WeaponModels` takes either.
+
+```gdscript
+## Throw a blow. kind: &"jab", &"cross", &"hook" (fists) or &"bat" (swing). side: the striking
+## hand, 0 left, 1 right (the bat is always swung from the right, side is ignored for it).
+## Timings are the Three.js STRIKES: punches 0.12 s wind-up + 0.26 s recovery, bat 0.22 + 0.38.
+## Starting again while striking restarts the blow. Ignored while seated or knocked down.
+func play_strike(kind: StringName, side: int) -> void
+func is_striking() -> bool            # from play_strike until the recovery ends
+func cancel_strike() -> void          # drop it at once (hit, knocked out, got into a vehicle)
+## Emitted ONCE per blow, on the physics step where the hit frame is reached (fist fully out,
+## bat across the front): apply the damage, spawn the puff and play the sound here.
+signal strike_hit(kind: StringName, side: int)
+## Where the blow lands, scene space (fist, or the middle of the bat's blade) in the current pose.
+func strike_point() -> Vector3
+## Carry something in the hands: &"box" (both hands), &"shoulder" (small box on the right
+## shoulder), &"bag" (one hand), &"push" (both hands on a trolley bar). on=false puts it down.
+func carry(on: bool, kind: StringName = &"box") -> void
+func carrying() -> StringName         # &"" when empty-handed
+
+class_name HitPuffs   # src/app/combat_fx/hit_puffs.gd, one MultiMeshInstance3D, pooled (8 blows)
+## A blow lands at `position` (scene space), surface `normal` (unit, away from what was hit);
+## strength 1 a punch, ~1.6 a bat, 0.5 a small hit. The oldest puff is reused when all are busy.
+func spawn(position: Vector3, normal: Vector3, strength: float) -> void
+func advance(dt: float) -> void       # once per frame, by the owner (Main adds the node)
+
+class_name WeaponModels  # src/weapons_view/weapon_models.gd
+## ids: &"bat", &"stick", &"bottle", &"pistol", &"shotgun", &"smg" (the ids of src/combat/weapons.gd
+## plus stick and bottle; &"fists" and unknown ids detach). Replaces what the figure holds.
+static func attach(figure: CombatFigure, weapon_id: StringName) -> void
+static func detach(figure: CombatFigure) -> void
+static func held(figure: CombatFigure) -> StringName
+```
+Wiring to do on the combat side: call `figure.play_strike` when a swing starts, apply damage on
+`strike_hit` (not on the button), `HitPuffs.spawn(figure.strike_point(), -facing, strength)`, and
+`WeaponModels.attach` on weapon change.
+
 ## Poses: seated, passengers, falls, arm swing (agent/godot-anim, G-260…G-269), 24 Nov 2026
 **Knockdown API (for `agent/godot-crash`; stable, committed first).** Both figures of a person
 have the same four methods and one signal: `HumanFigure` (the player, fare passengers) and
