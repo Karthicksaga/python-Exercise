@@ -1145,5 +1145,15 @@ Tests: `tests/unit/test_benchmark.gd`, `tests/scene/test_benchmark_card.gd`,
   stay on, so on a slow phone a level takes longer in real time than 90 s.
 - The phone estimate in `docs/performance.md` is a single-number calibration of software
   rendering against one overlay reading; treat it as a ranking, not a prediction.
+- Feature costs: `--benchmark-ab=…` (G-406) interleaves feature-off phases inside each segment;
+  the ranking and the three proposed optimisations are in `docs/performance.md` ("Profile on
+  desktop vs what the phone showed"). The owner cannot pass flags: a Settings row for the A/B
+  would let the phone rank its own costs (not built).
+- Found, not fixed: under software Vulkan (lavapipe) loading deadlocked in step 3 ("Building the
+  streets around you") in 4 of about 20 launches here: the main thread and three worker threads
+  wait on one mutex (gdb, no symbols), the frame watchdog prints "no frame for 5 s" with the
+  process idle. Not seen on the Compatibility renderer here or in CI; whether it happens on a
+  phone is unknown. `scene/test_boarding_safety.gd::test_taking_over_traffic_in_a_crowded_street_never_throws`
+  failed once in CI (a taken bike thrown at 72 km/h from a solid) and passed on the rerun.
 - Found and fixed on the way: Medium asked for FSR 1, which 4.7.2 only has on Forward+; the
   Mobile renderer printed a warning and scaled bilinearly while the overlay said "FSR".
