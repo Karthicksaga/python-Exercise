@@ -54,6 +54,8 @@ func _run() -> void:
 	var city: Node = (load(CITY_PATH) as PackedScene).instantiate()
 	if OS.get_cmdline_user_args().has("--no-landmarks"):
 		city.set("show_landmarks", false)
+	if OS.get_cmdline_user_args().has("--no-roads"):
+		city.set("road_detail", false)
 	root.add_child(city)
 	err = await city.call("setup", source)
 	var spawn: Dictionary = city.get("spawn")
