@@ -1297,3 +1297,28 @@ rate whatever the crossing; no Doppler on passing trains; the train's own sounds
 the player's `enclosed` state. `tests/scene/test_city_streaming.gd::test_main_thread_budget_under_cpu_load`
 (a wall-clock test) fails on this machine (53 to 75 ms against 16) and also on the base commit
 (27 ms there, measured in a clean worktree): unrelated to sound.
+
+## Polish: road feel, blur row, hero Low, job spread, cab handle, credit, leaks (agent/godot-polish, G-450..G-456), 25 Nov 2026
+Seven items from the coordinator's list, one commit each (decisions in `technical-decisions.md`):
+1. **Road condition feel (G-450).** `RoadStyle.feel` now drives the player's vehicle through `RoadSurface`
+   (`src/game_world/infra/`, read per chunk, cached, fed by the chunk builder's worker) and `GroundFeel` /
+   `RaycastVehicle.set_ground`: damaged roads bump a little (a bike wanders 2.3 cm, mud 4.2 cm), unpaved lanes cost a bike
+   or auto 35 % of its top speed and 30 % grip, cars and buses lose less, puddles splash and slow a little. Speed readout and
+   crash rules unchanged (tested: no step changes speed like a crash). Tests `test_road_surface.gd`, `test_road_feel.gd`.
+   Weak: traffic and parked vehicles ignore it; the vehicle's centre decides, not each wheel; no splash sound.
+2. **Motion blur row (G-451).** Settings row "Motion blur" (pause menu and title), Off by default, hidden below High; the
+   `MotionBlur` node exists in Main only while it is on. Weak: still not measured on the phone (G-435).
+3. **Hero materials on Low (G-452).** `CityMaterials.add_hero`; the hero atlas materials follow `set_flat`.
+4. **Jobs, places, stories spread (G-453).** Nine city jobs, the hospital, gym, mall, cinema and the stories that use them are
+   in their own districts (`respace_stages.gd -- jobs`, `apply_job_sites.py`, new `test_job_spread.gd`: jobs start in at least 8
+   districts). Weak: `share-auto` and home stay in Anna Nagar; the clock is scaled by shortest road run, not traffic;
+   the labels use whatever street the snap found (some unnamed); a job's start is far from the player unless they drive there
+   (the clock waits at the start, `startRadius` 300).
+5. **Cab vigilance handle (G-454).** HOLD button; released 8 s at speed = warning, 3 s later the emergency brake. Off outside
+   the player's own cab, no score change. Weak: no key or pad binding, no own alarm sound (the door chime at pitch 1.6).
+6. **Map credit vs pause panel (G-455).** Reproduced at 938 x 412 UI units (panel 200..737, credit 721..926 at y 379): the
+   menu has its own credit line, the HUD plate hides while it is open.
+7. **Exit leaks (G-456).** 146 sound loads, a settings cycle, a ride anchor. About 82 `RefCounted` objects and a few mesh RIDs
+   remain after Main boots (not identified).
+`test_city_streaming.gd::test_main_thread_budget_under_cpu_load` is a wall-clock test and fails whenever the machine is busy
+(17 to 21 ms against 16 here, also on the coordinator's checkout at the same time).
