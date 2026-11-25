@@ -1,5 +1,5 @@
 class_name HumanFigure
-extends Node3D
+extends CombatFigure
 ## A walking, running person drawn from a MakeHuman (MPFB) model with the retargeted CC0
 ## locomotion clips; port of the Three.js `HumanFigure` for the player (decisions G-61, G-62).
 ## The node sits at the figure's feet, facing -Z like every Node3D (the model is turned round).
@@ -68,8 +68,6 @@ var _all_feet: SoleSet = null
 var _rest_low: float = 0.0
 var _hips: int = -1
 var _arms: Dictionary[String, PackedInt32Array] = {}
-## The body for the procedural poses (seat, swing, falls; G-260).
-var poser: PoseRig = null
 ## Natural arm swing, torso turn, head nod and run lean on top of the gait clips (G-263).
 var swing_enabled: bool = true
 ## The leg split the swing used on the last step, radians (tests).
@@ -301,15 +299,19 @@ func advance(dt: float, speed: float, grounded: bool) -> void:
 	tree.set("parameters/gait/blend_amount", moving)
 	tree.advance(dt)
 	if _knock != null and _knock.active():
+		combat_interrupt()
 		if _knock.step(dt):
 			got_up.emit()
 		return
 	_settle_arms()
 	last_split = GaitSwing.apply(poser, weights["walk"], weights["run"]) if swing_enabled and poser != null and not seated else 0.0
 	if seated:
+		combat_interrupt()
 		_sit()
-	elif plants_feet or _fade > 0.0:
-		_plant()
+	else:
+		combat_after_clip(dt)
+		if plants_feet or _fade > 0.0:
+			_plant()
 
 
 ## Model-space bone poses in rig order.
