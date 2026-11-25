@@ -24,6 +24,27 @@ the owner does on the phone. Decisions G-250…G-259 (`technical-decisions.md`).
    Auto picks from the GPU name, the memory and the screen (an Adreno 613 starts at Low), and
    drops one level by itself if play stays under 24 fps for 10 s (a message says so).
 
+## The benchmark: one tap, one screenshot (G-400…G-405)
+
+1. Install the APK from the latest green CI run (and the "(GL)" one, see above). Start it, then
+   **Settings → "Run benchmark"** (on the title's SETTINGS or the pause menu). Put the phone down,
+   plugged in or not, but write down which. It takes about 7 minutes: the same 90-second route
+   (morning street, 18:40 long street, night street, the Egmore platform, the T. Nagar market,
+   over the Anna flyover, a fast drive into new streets) at your level, then at the other two.
+   The line at the top says where it is; Back pauses it.
+2. At the end a results card fills the screen: **take one screenshot** and send it. It says in
+   one line what to use ("Use Low", "Medium is fine"), which renderer ran, the phone, the GPU and
+   the build, and a table per level.
+3. Do the same on the other APK ("Chennai Open World (GL)", the Compatibility renderer) and send
+   that screenshot too: the card names the renderer, so the two can be compared.
+4. If you can, also send the text file: the same numbers are saved in the app's data as
+   `benchmark.txt` (readable) and `benchmark.json`.
+
+The card's columns: avg, p95 and p99 frame time in ms (p95: one frame in 20 is slower than this),
+frames over 50 ms (a visible stutter), and the GPU and CPU time of a frame; the side that limits
+the frame is in amber. Under each table: draw calls, triangles, video memory and the chunks built
+while driving.
+
 ## How it is measured here (and what that is worth)
 
 - **Harness:** a scratch script boots the real `Main` (`--start=play`), moves the player to a
@@ -86,7 +107,7 @@ mode (xvfb counts):
 
 | | Low | Medium | High (as before) |
 |---|---|---|---|
-| 3D resolution | 65 %, bilinear | 80 %, FSR 1 | 100 % |
+| 3D resolution | 65 %, bilinear | 80 %, bilinear (FSR 1 is Forward+ only; G-405) | 100 % |
 | City lighting | per vertex, no glint | per pixel | per pixel |
 | MSAA | off | off | 2x |
 | Sun shadows | 1024, 18 m, hard | 1024, 28 m, hard | 2048, 40 m, soft |
@@ -189,12 +210,101 @@ blocked (not working) for 203 ms of it; under investigation.
 or uploaded in it, and whether the phone's main thread was working, waiting for a core or blocked.
 "hitches led by: …" counts the causes. Please send the log again from the new build.
 
+## Profile on desktop vs what the phone showed (25 Nov 2026, G-400…G-406)
+
+**How.** The benchmark route (`--benchmark`, the seven segments of the card) on the build machine,
+Mobile renderer on software Vulkan (lavapipe) under xvfb at 1230x540, every segment measured with
+the interleaved A/B (`--benchmark-ab=shadows,traffic,crowds,parked,trees,kit,far,landmarks,objects`,
+G-406): inside each segment the run cycles everything-on and each feature off, 40 steps each, so
+the build machine's load (it swung 4x within an hour: the same High configuration measured 542 and
+121 ms a frame in two separate runs) falls on every phase alike. One run at High, one at Low, 90 s
+of game time each, about 12-18 frames per phase per segment.
+
+**Calibration.** The owner's overlay on the POCO M6 Pro (Adreno 613, build afed12f, High,
+2460x1080, MSAA 2x): 55-58 ms of GPU time a frame, GPU-bound, render CPU 1.2-1.4 ms. The High run
+here averaged 118 ms of GPU time over the route with everything on, so the rough phone estimate is
+**software ms × 0.47** (56 / 118). It assumes the phone spends its time in the same proportions as
+a software rasteriser, which a tile-based mobile GPU does not exactly do (shadow passes and overdraw
+cost it relatively more bandwidth): read the estimates as a ranking with a size, not a forecast.
+
+**Per segment** (GPU / CPU ms a frame here with everything on; the four largest savings from
+switching one feature off, ms of GPU here; the phone estimate of the GPU time; draws and primitives
+a frame, High / Low). Single-segment savings carry about ±10 ms of noise at High and ±3 ms at Low
+(a few phases measured "negative" costs that large); the whole-route means below are tighter.
+
+| Segment | High here | High: largest items | Low here | Low: largest items | Phone High | Phone Low | Draws H / L | Prims H / L |
+|---|---|---|---|---|---|---|---|---|
+| Morning, Anna Salai | 175 / 10.2 | shadows 50, objects 26, far 26, kit 25 | 54 / 3.3 | shadows 9, trees 6, far 5, parked 4 | 83 | 25 | 140 / 123 | 164k / 119k |
+| 18:40, Kamarajar Salai | 114 / 15.6 | traffic 32, crowds 28, objects 25, landmarks 25 | 41 / 3.9 | shadows 12, traffic 11, trees 10, crowds 10 | 54 | 19 | 160 / 121 | 136k / 64k |
+| Night, EVR Periyar Salai | 107 / 8.9 | shadows 31, traffic 23, trees 23, parked 18 | 48 / 3.3 | shadows 12, traffic 8, trees 6, far 6 | 50 | 23 | 147 / 123 | 129k / 85k |
+| Egmore platform | 83 / 18.6 | shadows 18, landmarks 12, traffic 9, trees 8 | 35 / 4.1 | landmarks 3, trees 3, shadows 3, objects 2 | 39 | 17 | 142 / 122 | 196k / 122k |
+| T. Nagar market | 116 / 12.8 | shadows 25, far 22, landmarks 14, objects 9 | 49 / 3.8 | shadows 11, traffic 9 | 55 | 23 | 164 / 133 | 299k / 177k |
+| Anna flyover | 122 / 12.6 | shadows 24, traffic 10, trees 2 | 60 / 4.3 | shadows 7, trees 2, traffic 2, kit 1 | 57 | 28 | 148 / 123 | 200k / 123k |
+| Driving, new chunks | 113 / 9.2 | shadows 37, far 31, traffic 28, crowds 27 | 49 / 3.9 | far 9, shadows 6, traffic 6, kit 5 | 53 | 23 | 131 / 119 | 164k / 114k |
+
+**Whole route, ranked** (mean GPU saved over the seven segments ± its standard error, the share of
+the frame's GPU time, the phone estimate, and the exact change in draws and primitives):
+
+| Feature off | High: GPU saved here | share | phone ms | draws, prims | Low: GPU saved here | share | phone ms |
+|---|---|---|---|---|---|---|---|
+| Sun shadows | 28.3 ± 4.6 | 24 % | 13 | −21, −56k | 8.5 ± 1.3 | 18 % | 4.0 |
+| Traffic and walkers | 17.8 ± 3.8 | 15 % | 8 | −21, −38k (and the most CPU: −8.6 ms here) | 5.7 ± 1.5 | 12 % | 2.7 |
+| Far buildings | 15.1 ± 5.2 | 13 % | 7 | −5 | 2.6 ± 1.6 | 5 % | 1.2 |
+| Trees and palms | 14.1 ± 3.2 | 12 % | 7 | −8, −16k | 4.3 ± 1.3 | 9 % | 2.0 |
+| Street objects | 10.5 ± 6.2 | 9 % | 5 | −1, −20k | 1.1 ± 1.7 | 2 % | (noise) |
+| Landmarks | 10.3 ± 5.1 | 9 % | 5 | 0, −4k | 0.5 ± 1.6 | 1 % | (noise) |
+| Crowds | 9.3 ± 5.1 | 8 % | 4 | 0 | 1.6 ± 1.5 | 3 % | (noise) |
+| Parked vehicles | 9.2 ± 3.8 | 8 % | 4 | 0 | −0.4 ± 2.2 | 0 % | (noise) |
+| Shop fronts (kit) | 8.2 ± 5.1 | 7 % | 4 | 0 | 1.2 ± 0.9 | 3 % | (noise) |
+
+What it says, against the phone:
+- **The phone is GPU-bound and so is this route**: CPU here is 9-19 ms at High and 3-4 ms at Low
+  against 83-175 and 35-60 ms of GPU; on the phone the render CPU was 1.2-1.4 ms. Draw calls
+  (119-164 a frame) stay under the brief's 230-300 budget at every level. Fewer draw calls alone
+  would not move the phone's frame.
+- **Low on the phone** (estimate): 17-28 ms of GPU a frame along the route (Low is 41 % of High's
+  GPU time here, measured in the same quiet hour), under its 33 ms cap at 30 fps everywhere, the
+  flyover and the morning street with the least headroom. Medium was not A/B-measured; in one
+  three-level run it took 59 % of High's GPU time, about 33 ms on the phone: right at the 30 fps line.
+- **High on the phone** (estimate): 39-83 ms, the morning street on Anna Salai the worst (tall
+  frontages, low sun, long shadows: shadows alone are 50 ms of its 175 here).
+- **Sun shadows are the largest single item at every level**; at Low they still cost about a fifth
+  of the frame (15 draws and 29k primitives drawn again into the shadow map, even at 18 m).
+- **Traffic and walkers** are the second item on the GPU and the largest on the CPU.
+- What the A/B cannot show: the cost of the pixels themselves (resolution, MSAA, per-pixel
+  lighting), which is what Low's 65 % scale already cuts (G-342); and the phone's own balance
+  (only the owner's benchmark screenshot, both APKs, will show it).
+
+**The next three optimisations (proposed, not built):**
+1. **Only moving things in the sun's shadow map.** The merged chunk walls, roofs, decks and the
+   ground draw again into the shadow map for a few shadows near the player; give static city
+   geometry `cast_shadow = OFF` on Low and Medium (and the shadow look of buildings from a baked
+   darkening at wall feet in the chunk's vertex colour), keep the sun shadow for the player,
+   vehicles and people. Expected: most of the shadow item, about **−3 ms on Low and −8 to −10 ms on
+   High on the phone** (−15 to −21 draws a frame). Check: the A/B with `shadows` again, then the
+   owner's card.
+2. **Traffic and walkers as instanced bodies.** One MultiMesh per traffic kind for the bodies
+   (wheels and drivers only within 28 m) and baked-pose walkers beyond the animate reach: about
+   −15 of the 21 draws and half the GPU item, **−1.5 ms on Low, −4 ms on High on the phone**, and
+   most of the traffic's CPU (−0.5 to −1 ms of main thread on the phone, measured 1.2 ms headless).
+3. **A shorter far layer and cheaper trees on Medium and High.** Far buildings and trees are 25 %
+   of High's GPU time but 14 % of Low's (shorter view, no tree shadows): give Medium Low's tree
+   material and far-layer reach and High a fade from 60 % of its view. Expected **−5 to −7 ms on
+   Medium on the phone**, which with 1. would bring Medium from about 33 ms to about 25 ms: Medium at
+   a steady 30 fps on the Adreno 613.
+
+Measured on: build machine (4 cores, shared, load 1-13 while measuring), Godot 4.7.2, Mobile
+renderer on lavapipe (Mesa 25.2.8) under xvfb, 1230x540; branch `agent/godot-bench`. Nothing here
+ran on a phone.
+
 ## Not known yet
 
 - Whether the phone is GPU-bound or CPU-bound: the overlay's verdict will say. Vulkan GPU time
   is measured by the renderer; under Compatibility it may read "n/a".
 - Android exposes no thermal state to Godot; the log's "drift" line compares the first and last
-  minute at the same settings instead.
+  minute at the same settings instead. The benchmark asks Android itself (PowerManager's thermal
+  status and headroom, the battery temperature, G-404); whether the POCO answers is unknown until
+  its first card.
 - Godot's thread priorities do not reach Android's scheduler; the worker cap (one chunk build at
   a time on Low) is the lever left for the two fast cores.
 

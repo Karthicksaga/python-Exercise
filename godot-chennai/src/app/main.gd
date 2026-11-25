@@ -65,6 +65,8 @@ func _ready() -> void:
 	# Quality presets, the performance overlay, the perf log and the feature switches (G-250…).
 	perf = PerfWiring.attach(self)
 	add_child(perf)
+	# The benchmark's Settings row and launch flag (G-400); nothing else of it runs until started.
+	BenchmarkWiring.attach(self)
 	if not PerfWiring.title_tour_allowed():
 		title_tour = false
 	title.visible = false
