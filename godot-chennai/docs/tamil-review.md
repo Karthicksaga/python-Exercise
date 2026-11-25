@@ -59,7 +59,7 @@ English only.
 | `ctl.siren` | SIREN | சைரன் | needs native review |
 | `cul.act.get_out` | GET OUT | வெளியேறு | needs native review |
 | `cul.act.leave_shoes` | LEAVE SANDALS | செருப்பை விடு | needs native review |
-| `cul.act.light_lamp` | LIGHT LAMP | விளக்கேற்று | needs native review |
+| `cul.act.light_lamp` | LIGHT LAMP | விளக்கை ஏற்று | needs native review |
 | `cul.act.swim` | SWIM | நீந்து | needs native review |
 | `cul.journal.close_tip` | Close the journal | குறிப்பேட்டை மூடு | needs native review |
 | `cul.journal.count` | {0} of {1} places visited | {1} இடங்களில் {0} இடங்களைப் பார்த்துள்ளீர்கள் | needs native review |

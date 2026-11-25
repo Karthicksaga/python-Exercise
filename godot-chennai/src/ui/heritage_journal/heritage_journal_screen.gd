@@ -73,6 +73,10 @@ func _init() -> void:
 	header.add_child(_title)
 	close_button = UiTheme.icon_button(UiIcons.EXIT, 40.0, UiTheme.MIN_TARGET)
 	close_button.name = "Close"
+	# The glass icon button is not focusable by default; the journal's gamepad focus starts on CLOSE.
+	close_button.focus_mode = Control.FOCUS_ALL
+	# A two-line title (both languages) must not stretch the circle.
+	close_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	Tr.bind(close_button, "cul.journal.close_tip", null, false, &"tooltip_text")
 	close_button.pressed.connect(close)
 	header.add_child(close_button)
