@@ -65,8 +65,8 @@ const HORNS: Dictionary = {
 	"bus": {"notes": [[233.0, 0.0, 0.85], [294.0, 0.0, 0.85], [349.0, 0.0, 0.85]], "wave": "saw", "colour_hz": 1100.0, "colour_q": 0.9, "buzz": 0.0, "attack": 0.06, "scoop": 0.9, "volume": 0.11},
 	# The ambulance's plain horn (the siren is separate).
 	"ambulance": {"notes": [[392.0, 0.0, 0.4], [494.0, 0.0, 0.4]], "wave": "square", "colour_hz": 1500.0, "colour_q": 1.1, "buzz": 0.0, "attack": 0.012, "scoop": 1.0, "volume": 0.13},
-	# A truck's air horn, a fourth lower than the bus's and shorter (G-373).
-	"goods": {"notes": [[174.0, 0.0, 0.7], [220.0, 0.0, 0.7]], "wave": "saw", "colour_hz": 900.0, "colour_q": 0.9, "buzz": 0.0, "attack": 0.05, "scoop": 0.92, "volume": 0.12},
+	# A truck's air horn, a fourth above the bus's lowest note and shorter (G-373).
+	"goods": {"notes": [[262.0, 0.0, 0.7], [330.0, 0.0, 0.7]], "wave": "saw", "colour_hz": 900.0, "colour_q": 0.9, "buzz": 0.0, "attack": 0.05, "scoop": 0.92, "volume": 0.12},
 }
 
 ## The engine's rpm sample points, as shares of the way from idle to the change point (1.05 is

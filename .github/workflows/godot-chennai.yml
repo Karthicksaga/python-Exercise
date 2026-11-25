@@ -57,6 +57,7 @@ jobs:
         run: python3 tools/rail/test_build_rail.py
       - name: Sound files measured again against the manifest (G-371)
         run: |
+          sudo apt-get install -y --no-install-recommends ffmpeg > /dev/null
           python3 -m pip install --quiet numpy
           python3 tools/audio/test_audio_files.py
       # The import cache (.godot/imported) is rebuilt from scratch only when an asset or its

@@ -41,6 +41,8 @@ def normalise(y, target_lufs=-16.0, peak=0.78):
     """Gain to `target_lufs` (BS.1770 integrated loudness), but never past `peak` (linear; 0.78 is
     -2.2 dBFS, so the decoded Ogg stays under -1 dBFS). Returns (samples, flag) where flag is
     "peak_limited" when the peak, not the loudness, set the gain."""
+    y = np.asarray(y, dtype=np.float64)
+    y = y / max(1e-9, float(np.max(np.abs(y)))) * 0.5  # in range for the 16-bit measuring copy
     with tempfile.TemporaryDirectory() as d:
         tmp = os.path.join(d, "n.wav")
         dsp.write_wav(tmp, y)
@@ -206,7 +208,85 @@ def bed_tea():
     return out
 
 
+def rail_horn_emu():
+    """A suburban EMU's electric horn: one hard, buzzy note near 430 Hz that swells in and holds."""
+    L = 1.6
+    t = t_axis(L)
+    ph = 2 * np.pi * 430.0 * t
+    x = sum(np.sin(h * ph + 0.3 * h) / h ** 0.8 for h in range(1, 14))
+    x = x + 0.3 * np.sign(np.sin(ph * 1.5))  # a second, rougher reed a fifth above
+    x *= (1 + 0.06 * np.sin(2 * np.pi * 33.0 * t))  # the diaphragm's buzz
+    env = np.minimum(1.0, t / 0.05) * np.where(t < L - 0.25, 1.0, np.maximum(0.0, (L - t) / 0.25))
+    return x * env
+
+
+def rail_door_chime():
+    """The doors-closing warning: three quick high beeps."""
+    out = np.zeros(int(1.3 * RATE))
+    for k in range(3):
+        t = np.arange(int(0.16 * RATE)) / RATE
+        beep = np.sin(2 * np.pi * 1760.0 * t) + 0.3 * np.sin(2 * np.pi * 3520.0 * t)
+        beep *= np.minimum(1.0, t / 0.004) * np.minimum(1.0, (0.16 - t) / 0.02)
+        i = int((0.05 + k * 0.33) * RATE)
+        out[i:i + len(beep)] += beep
+    return out
+
+
+def _door(open_, seed):
+    """A pneumatic door: a hiss that rises, then a rumble of the leaf and a thunk at the stop."""
+    L = 1.6
+    t = t_axis(L)
+    hiss = periodic_noise(L, 1500, 8000, 0.0, seed=seed) * (np.minimum(1.0, t / 0.04) * np.exp(-t / 0.45))
+    slide = periodic_noise(L, 60, 600, 1.0, seed=seed + 1) * np.where((t > 0.12) & (t < 1.0), 0.8, 0.0)
+    thunk_t = 1.0 if open_ else 1.05
+    th = np.arange(int(0.3 * RATE)) / RATE
+    thunk = (np.sin(2 * np.pi * 85 * th) + 0.5 * np.sin(2 * np.pi * 190 * th)) * np.exp(-th / 0.07)
+    out = hiss * 0.5 + slide * 0.5
+    i = int(thunk_t * RATE)
+    out[i:i + len(thunk)] += thunk * 1.2
+    return fade(out, 0.002, 0.2)
+
+
+def rail_door_open():
+    return _door(True, 40)
+
+
+def rail_door_close():
+    return _door(False, 50)
+
+
+def crossing_bell():
+    """The gate bell: a shrill bell struck about four times a second (a whole number of strikes per loop)."""
+    L = 2.0
+    buf = np.zeros(int(L * RATE))
+    for k in range(8):
+        hit = resonant_hit([1210, 1840, 2790, 4010], [0.14, 0.09, 0.06, 0.04], [1.0, 0.8, 0.5, 0.3], 0.5, seed=60 + k)
+        circular_add(buf, int(k * 0.25 * RATE), hit)
+    return buf
+
+
+def crossing_boom():
+    """A level-crossing boom: a motor whirr under a gearbox grind, ending on a clunk."""
+    L = 2.2
+    t = t_axis(L)
+    whirr = np.sin(2 * np.pi * (70 + 18 * t / L) * t) + 0.5 * np.sin(2 * np.pi * (140 + 36 * t / L) * t)
+    grind = periodic_noise(L, 200, 1800, 0.5, seed=71)
+    env = np.minimum(1.0, t / 0.1) * np.where(t < 1.8, 1.0, 0.0)
+    out = (whirr * 0.5 + grind * 0.4) * env
+    th = np.arange(int(0.35 * RATE)) / RATE
+    clunk = (np.sin(2 * np.pi * 110 * th) + 0.6 * np.sin(2 * np.pi * 340 * th)) * np.exp(-th / 0.09)
+    i = int(1.8 * RATE)
+    out[i:i + len(clunk)] += clunk * 1.4
+    return fade(out, 0.005, 0.1)
+
+
 SOUNDS = {
+    "rail.horn.emu": dict(fn=rail_horn_emu, loop=False, category="rail", what="EMU horn (synthetic)"),
+    "rail.door.chime": dict(fn=rail_door_chime, loop=False, category="rail", what="Doors-closing chime (synthetic)"),
+    "rail.door.open": dict(fn=rail_door_open, loop=False, category="rail", what="Train doors opening (synthetic)"),
+    "rail.door.close": dict(fn=rail_door_close, loop=False, category="rail", what="Train doors closing (synthetic)"),
+    "crossing.bell": dict(fn=crossing_bell, loop=True, category="rail", what="Level-crossing gate bell loop (synthetic)"),
+    "crossing.boom": dict(fn=crossing_boom, loop=False, category="rail", what="Level-crossing boom lowering or lifting (synthetic)"),
     "rail.announce": dict(fn=rail_announce, loop=False, category="rail", what="Station announcement chime (synthetic)"),
     "rail.squeal": dict(fn=rail_squeal, loop=True, category="rail", what="Brake squeal loop (synthetic)"),
     "rail.clatter": dict(fn=rail_clatter, loop=True, category="rail", what="Wheel clatter over rail joints, loop at about 20 m/s (synthetic)"),
@@ -226,6 +306,9 @@ def main():
     os.makedirs(os.path.join(ROOT, OUT), exist_ok=True)
     for pid, s in SOUNDS.items():
         if args.only and pid != args.only:
+            continue
+        if files.get(pid, {}).get("source") == "recording":
+            print("%-16s a recording owns it: kept" % pid)
             continue
         x = np.asarray(s["fn"](), dtype=np.float64)
         x = x - x.mean()

@@ -5,6 +5,29 @@ are in `assets/audio/manifest.json` and `assets/LICENSES.md`; the credits for CC
 are on the ABOUT page (`SoundCredits`). Tools: `tools/audio/` (`fetch_commons.py`,
 `import_recordings.py`, `synth_extras.py`, `measure_manifest.py`, tests `test_audio_files.py`).
 
+## What is real and what is synthetic (25 Nov 2026)
+| Sound | State | Source |
+|---|---|---|
+| Car engine, start and stop; crickets, rain, three crows, four stone footsteps | Real (before this work) | NSU Prinz (CC BY 4.0), OpenGameArt (CC0) |
+| `bell.temple` (a far temple bell) | **Real** | Bonsyou5599.ogg, Jnn, Wikimedia Commons, CC BY 2.1 jp |
+| `rail.horn.emu`, `rail.door.chime`, `rail.door.open`, `rail.door.close`, `rail.announce`, `rail.rumble`, `rail.clatter`, `rail.squeal`, `crossing.bell`, `crossing.boom`, `bus.airbrake`, `bed.market`, `bed.tea` | **Synthetic** (`tools/audio/synth_extras.py`) | none found that could be downloaded, see below |
+| Engines: auto, share auto (same), bike, thumper, bus, ambulance, goods; horns of auto, bike, thumper, bus, goods; the bus door | Synthesised stand-ins (G-81), unchanged | |
+| `bed.city`, `bed.sea`, koel, sirens, wind, skid, crashes, gear clunk, interface cues | Synthesised stand-ins, out of this task | |
+
+Wikimedia Commons answered every download after the first three with HTTP 429 and
+`Retry-After: 600` (retried every ten minutes for more than an hour; the limit is on files its edge
+has not cached, shared by every user of the same address). Candidates that were found and licence-checked on Commons and are ready to cut
+once the limit lifts (add the pieces to `recordings.json`, run `fetch_commons.py` then the importer):
+`Level crossing Belgium 2022.ogg` (CC0) for the bell; `The horn of a Bluebird railcar.ogg` (CC0) and
+`OER 5200 Chime Door open and close.ogg` (public domain) for the EMU horn and doors; `WWS Level-crossingbarrier8211Lifting.ogg`
+(CC BY 4.0) for the boom; `WWS CityBusMANSG220engine.ogg`, `…horn.ogg`, `…dooropeningclosing.ogg` (CC BY 4.0) for the bus;
+`Pulsar2.ogg` (CC BY 3.0, an Indian 150 cc single) for the bike; `WWS FSRTarpan239Dvandriving.ogg` and `WWS TractorUrsusC-45.ogg`
+(CC BY 4.0) for the ambulance and the goods carrier; `USSR bicycle 2T engine D-4.wav` (public domain) and `WWS MotorcycleTOMOSD-9.ogg`
+(CC BY 4.0), two-stroke singles, for the auto (they need `speed` retuning: two-stroke idle is about twice the game's four-stroke auto).
+Downloaded and analysed but not used: `Jawa250/350 motorbike exhaust sound.ogg` (public domain): revving and gear changes
+only (no idle, firing note 37 to 80 Hz), so they cannot make a thumper that idles at 8 Hz.
+Nothing here has been listened to by a person: the loops, levels and clicks are measured, the sound is not judged.
+
 ## How a recording gets in
 1. Find a CC0, public-domain or CC-BY file (never -SA, -NC, -ND). Wikimedia Commons: its API and
    `upload.wikimedia.org` answer HTTP 429 with `Retry-After: 600` after about three downloads from

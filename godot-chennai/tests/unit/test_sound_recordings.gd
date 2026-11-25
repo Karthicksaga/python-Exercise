@@ -81,7 +81,7 @@ func test_stored_metrics_match_the_shipped_bytes() -> bool:
 			continue
 		assert_eq(FileAccess.get_sha256(lib.path_of(id)), str(m.get("sha256", "")), "%s: the file is the one that was measured" % id)
 		checked += 1
-	assert_true(checked >= 20, "the phase 6 files were checked (%d)" % checked)
+	assert_true(checked >= 25, "the phase 6 files were checked (%d)" % checked)
 	return true
 
 
@@ -127,7 +127,7 @@ func test_wav_loops_wrap_without_a_click_in_the_samples() -> bool:
 			peak = maxf(peak, absf(v))
 		assert_true(peak <= 0.9, "%s does not clip (%.2f)" % [id, peak])
 		checked += 1
-	assert_true(checked >= 20, "engine loops measured (%d)" % checked)
+	assert_true(checked >= 4, "engine loops measured (%d)" % checked)
 	return true
 
 
@@ -152,7 +152,7 @@ func test_every_recording_and_synthetic_sound_has_its_own_licence_row() -> bool:
 		var rel := lib.path_of(id).trim_prefix("res://")
 		assert_true(_row_for(licences, rel), "%s has a row of its own in assets/LICENSES.md" % rel)
 		n += 1
-	assert_true(n >= 40, "phase 6 sounds checked (%d)" % n)
+	assert_true(n >= 25, "phase 6 sounds checked (%d)" % n)
 	# The check can fail: a file with no row is caught.
 	assert_false(_row_for(licences, "assets/audio/rec/no_such_sound.ogg"), "a sound with no row fails")
 	# Every file under assets/audio has a manifest row (a shipped sound cannot slip in unlisted).

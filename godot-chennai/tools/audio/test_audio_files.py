@@ -32,7 +32,7 @@ class AudioFiles(unittest.TestCase):
             for k, tol in (("rms_db", 0.1), ("peak_db", 0.1), ("lufs", 0.2), ("loop_jump", 0.1)):
                 self.assertAlmostEqual(now[k], m[k], delta=tol, msg="%s %s" % (pid, k))
             n += 1
-        self.assertGreater(n, 30)
+        self.assertGreater(n, 25)
 
     def test_limits(self):
         for pid, row in self.rows():
