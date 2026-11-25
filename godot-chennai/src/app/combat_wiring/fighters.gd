@@ -217,7 +217,7 @@ func _process(dt: float) -> void:
 func windup(e: Combat.Enemy) -> void:
 	var v: PersonView = _views.get(e.id)
 	if v != null:
-		CombatFx.strike(v, StringName(Strikes.strike_kind(e.weapon)), 1)
+		CombatFx.strike(v, &"bat" if Strikes.strike_kind(e.weapon) == "bat" else &"jab", 1)
 
 
 ## The figure of an enemy (tests, effects), or null.

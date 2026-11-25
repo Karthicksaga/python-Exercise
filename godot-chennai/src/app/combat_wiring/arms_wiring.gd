@@ -63,7 +63,13 @@ func _ready() -> void:
 		pivot.name = "Weapon"
 		pivot.position.y = 0.85
 		v.add_child(pivot)
-		CombatFx.hold(pivot, StringName(str(spot["weapon"])))
+		var model := CombatFx.weapon_mesh(StringName(str(spot["weapon"])))
+		if model != null:
+			var mi := MeshInstance3D.new()
+			mi.mesh = model
+			mi.scale = Vector3.ONE * 1.4
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			pivot.add_child(mi)
 		v.visible = false
 		add_child(v)
 		_views[str(spot["id"])] = v

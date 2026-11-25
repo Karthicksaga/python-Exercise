@@ -28,12 +28,27 @@ static func make(name: StringName) -> Object:
 	return s.call(&"new") as Object
 
 
-## A blow on a figure (&"punch" or &"bat", the right hand); false when the figure cannot draw it.
+## A blow on a figure: &"jab", &"cross", &"hook" (fists) or &"bat"; `side` 1 the right hand,
+## 0 the left. False when the figure cannot draw it.
 static func strike(figure: Object, kind: StringName, side: int = 1) -> bool:
 	if figure == null or not figure.has_method(&"play_strike"):
 		return false
 	figure.call(&"play_strike", kind, side)
 	return true
+
+
+## A figure reels from a blow struck from `from` (scene point).
+static func flinch(figure: Object, from: Vector3, strength: float) -> bool:
+	if figure == null or not figure.has_method(&"play_flinch"):
+		return false
+	figure.call(&"play_flinch", from, strength)
+	return true
+
+
+## The figure's blow is drawn; drop it (knocked out, into a vehicle).
+static func cancel(figure: Object) -> void:
+	if figure != null and figure.has_method(&"cancel_strike"):
+		figure.call(&"cancel_strike")
 
 
 static func striking(figure: Object) -> bool:
@@ -47,6 +62,20 @@ static func carry(figure: Object, on: bool, kind: StringName = &"box") -> bool:
 	return true
 
 
+## The puffs' frame (their owner advances them).
+static func advance(puffs: Object, dt: float) -> void:
+	if puffs != null and puffs.has_method(&"advance"):
+		puffs.call(&"advance", dt)
+
+
+## A weapon's shared mesh (a pickup lying in the street), or null.
+static func weapon_mesh(weapon: StringName) -> Mesh:
+	var s := script_of(&"WeaponModels")
+	if s == null or not _has_static(s, &"mesh"):
+		return null
+	return s.call(&"mesh", weapon) as Mesh
+
+
 ## A puff where a blow lands; `puffs` is the HitPuffs node (or null).
 static func puff(puffs: Object, at: Vector3, normal: Vector3, strength: float) -> bool:
 	if puffs == null or not puffs.has_method(&"spawn"):
@@ -58,7 +87,8 @@ static func puff(puffs: Object, at: Vector3, normal: Vector3, strength: float) -
 ## The weapon in a figure's hand (&"" takes it away). False when the models are not there.
 static func hold(figure: Node3D, weapon: StringName) -> bool:
 	var s := script_of(&"WeaponModels")
-	if s == null or figure == null:
+	# Only the people's figures (`CombatFigure`) hold weapons.
+	if s == null or figure == null or not figure.has_method(&"play_strike"):
 		return false
 	if weapon == &"":
 		if _has_static(s, &"detach"):

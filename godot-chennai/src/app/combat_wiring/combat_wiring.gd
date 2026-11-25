@@ -67,6 +67,10 @@ var _respawn_pending := Vector3.INF
 var _lock := -1
 var _last_objective: MissionData.Objective = null
 var _space: PhysicsDirectSpaceState3D = null
+## The player's punch combo as drawn (the rules keep their own): last move and seconds since.
+var _move := ""
+var _since_move := 99.0
+var _carrying := false
 var _runner: MissionRunner = null
 
 
@@ -298,7 +302,10 @@ func _physics_process(dt: float) -> void:
 	var fire := rig.controls.fire_held or (reads and Input.is_action_pressed(&"player_fire"))
 	# A swing started earlier lands now, where the player faces.
 	var landed := ""
+	_since_move += dt
 	if not on_foot:
+		if swing.kind() != "":
+			CombatFx.cancel(rig.body.figure)
 		swing.cancel()
 	else:
 		landed = swing.step(dt)
@@ -317,7 +324,10 @@ func _physics_process(dt: float) -> void:
 		state.heading = rig.body.yaw
 		var kind := Strikes.strike_kind(str(combat.arsenal.melee()["id"]))
 		if hit and combat.arsenal.melee_ready_in() <= Strikes.windup(kind) and swing.begin(kind):
-			CombatFx.strike(rig.body.figure, StringName(kind), 1)
+			# The drawn blow: the bat, or the combo's jab (lead hand), cross (rear), hook (lead).
+			_move = "bat" if kind == "bat" else Melee.next_combo_move(_move, _since_move)
+			_since_move = 0.0
+			CombatFx.strike(rig.body.figure, StringName(_move), 0 if _move in ["jab", "hook"] else 1)
 		if fire:
 			var shot := combat.shoot(state, events, _civilians)
 			if bool(shot["fired"]):
@@ -398,6 +408,10 @@ func _handle(events: Array[Dictionary], at: Vector2) -> void:
 		match str(ev["type"]):
 			"enemyWindup":
 				fighters.windup(ev["enemy"] as Combat.Enemy)
+			"enemyHit":
+				var he := ev["enemy"] as Combat.Enemy
+				var heavy := bool(ev["heavy"])
+				CombatFx.flinch(fighters.view_of(he), WorldOrigin.to_scene_xz(at.x, at.y, 1.2), 1.4 if heavy else 1.0)
 			"enemyShot":
 				Sound.cue("shot")
 				fighters.tracer(Vector2(float(ev["fromX"]), float(ev["fromZ"])), Vector2(float(ev["toX"]), float(ev["toZ"])), 0.0)
@@ -410,6 +424,7 @@ func _handle(events: Array[Dictionary], at: Vector2) -> void:
 				Sound.cue("punch")
 				_blow_lands(at, Vector2(e.x, e.z), "bat" if bat else "punch")
 				rig.camera.add_trauma(float(TRAUMA["taken_bat" if bat else "taken"]))
+				CombatFx.flinch(rig.body.figure, WorldOrigin.to_scene_xz(e.x, e.z, 1.2), 1.4 if bat else 1.0)
 				if _on_foot():
 					var push := (at - Vector2(e.x, e.z)).normalized() * (2.2 if bat else 1.5)
 					rig.body.knock(Vector3(push.x, 0.0, push.y))
@@ -523,6 +538,13 @@ func _process(dt: float) -> void:
 		return
 	var at := _player_at()
 	arms.draw(dt, at)
+	CombatFx.advance(puffs, dt)
+	# A box carried on foot for a goods objective with no vehicle (`carryPose`).
+	var goods := layer.session.goods_scene()
+	var carry := not goods.is_empty() and str(goods.get("kind", "")) == "" and _on_foot()
+	if carry != _carrying:
+		_carrying = carry
+		CombatFx.carry(rig.body.figure, carry, &"box")
 	hud.set_health(combat.health / Combat.PLAYER_MAX_HEALTH)
 	hud.set_wanted(police.wanted.stars, police.wanted.seen)
 	var a := combat.arsenal

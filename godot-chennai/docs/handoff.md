@@ -1183,3 +1183,30 @@ landed blow or bullet, `WeaponModels.attach/detach` when the shown weapon change
 goods objective is carried on foot. Flinches and falls of struck people use the existing
 knockdown API (`play_fall`, `play_landed`, `play_getup`). Classes are found by `class_name`
 (`ProjectSettings.get_global_class_list()`), so file paths are the visuals agent's choice.
+
+## Combat in play: what was built (agent/godot-combat, G-410…G-420), 25 Nov 2026
+**Done.** Combat, weapons, gangs, pickups, the wanted level and the police are in the running game
+(`src/app/combat_wiring/`, made in loading step 4 by `Main._add_combat`). Health heals after six
+seconds unhurt; the HUD row (bar and stars) sits under the money line; HIT, FIRE and the weapon pill
+are on the foot controls (F / R / Q, pad B / RB / Y). Stage fight groups appear when their objective
+starts and `cleared` reaches the mission runner, so stages 7 to 10, 12 to 15 and the beach-road brawl
+(Godot 20) finish and pay; stage rewards hand over their guns. Knocked out: ₹100, the stage restarts
+at the start. Busted: the fine, weapons taken, released outside the nearest OSM police station.
+One `Wanted` (`PoliceWiring.wanted`): the carjacking and the street reactions report to it.
+Police cars drive the AI's road graph (`Pursuer`), deploy officers, search, stand down; a roadblock
+from four stars. Children never: civilians the rules may hit are adults only, and a crowd's children
+are not drawn within 45 m of a fight (`FightSafety`, `CityLife.fight_points`).
+
+**How to use.** `main.combat` (`CombatWiring`): `combat` (the rules), `arms`, `police`, `fighters`,
+`hud`, `snapshot()` for tests. Tests on a flat 40 km ground: `tests/support/combat_ground.gd`
+(`CombatGround.make_fight(save, weapons_save)`, then `await ready_fight()`). Screenshots and the
+fight's cost: `tests/tools/combat_shots.gd` (header has the command).
+
+**Weak or not done.**
+- No colliders on enemies: the player can walk through them (the Three.js game had kinematic boxes).
+- Police cars are kinematic views: they drive through traffic (traffic gives way only through the
+  AI's obstacles, which this branch does not feed yet: `PoliceWiring.obstacles()` exists, unused).
+- The stage 11 courier chase still has no drawn quarry; the drive-by ride is teleported in its test.
+- Enemies stand at y 0 (the city is flat today); decks would need a ground ray per enemy.
+- Sound: cues `punch`, `whiff`, `shot`, `hurt`, `fail` are counted but have no recordings yet.
+- Headless and xvfb only; nothing on a phone.

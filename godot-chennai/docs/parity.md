@@ -40,8 +40,8 @@ Written 25 Nov 2026 by the parity-checklist agent (branch `agent/godot-parity`, 
 | Minimap with heading and roads (`packages/ui/src/Minimap.ts`, `packages/game-engine/src/MapView.ts`) | done | `src/ui/minimap/minimap.gd`, `src/ui/minimap/map_roads.gd` | |
 | Minimap place and objective glyphs (`packages/ui/src/placeIcons.ts`) | partial | `src/ui/minimap/map_glyphs.gd` (PLACE ring, MISSION diamond) | Glyph shapes exist. Three.js place icons (tagged badges) are not copied one for one |
 | HUD: stage, money, reputation, timer, objective (`packages/ui/src/Hud.ts`) | done | `src/ui/mission_hud/mission_hud.gd`, `src/ui/mission_hud/meter_bar.gd` | |
-| Player health bar that heals after six seconds unhurt (`apps/game/src/Game.ts`, `packages/combat/src/Combat.ts`) | missing | - | No health bar in `src/ui` (grep `health`: none). Combat is not wired into play |
-| Wanted stars HUD (`packages/ui/src/WantedStars.ts`) | missing | - | No stars display in `src/ui` (grep `stars`: none) |
+| Player health bar that heals after six seconds unhurt (`apps/game/src/Game.ts`, `packages/combat/src/Combat.ts`) | done | `src/ui/combat_hud/combat_hud.gd`, `src/app/combat_wiring/combat_wiring.gd`, G-410, G-413 | Glass bar under the money line, hurt edge flash. Test: `scene/test_combat_play.gd` (heal timing, bar), `test_combat_main.gd` |
+| Wanted stars HUD (`packages/ui/src/WantedStars.ts`) | done | `src/ui/combat_hud/combat_hud.gd` (`WantedStars`), G-413 | Hidden at 0, flash red/blue while seen. Test: `scene/test_combat_play.gd` |
 | Place screen for each place (`packages/ui/src/PlaceScreen.ts`, `apps/game/src/PlaceDesk.ts`) | done | `src/app/missions_layer/missions_layer.gd` (dialogs), `src/missions/life.gd` | Place dialogs are in the missions layer, not a separate scene |
 | Landmark name labels (`packages/ui/src/LandmarkLabels.ts`) | partial | `src/game_engine/city/landmark_models.gd` (in-world `Label3D` signs) | Signs exist in the world. No on-screen label overlay like the Three.js one |
 | Ride panel for vehicles and trains (`packages/ui/src/RidePanel.ts`) | replaced | `src/ui/rail_hud/rail_hud.gd`, `src/ui/driving_controls/driving_controls.gd` | Train HUD and driving controls replace it |
@@ -117,7 +117,7 @@ Written 25 Nov 2026 by the parity-checklist agent (branch `agent/godot-parity`, 
 | People manifest, cast by role (`packages/player/src/people.ts`, `apps/game/src/peopleFiles.ts`) | done | `src/player/people_manifest.gd`, `src/player/people/people_pool.gd`, G-100 to G-105 | 70 people. Test: `tests/people/test_people.gd` |
 | Pedestrian figures and crowd figures (`packages/player/src/CrowdFigures.ts`, `apps/game/src/Population.ts`) | done | `src/player/people/person_view.gd`, `src/ai/crowd_field.gd`, G-126 | |
 | Player footsteps, landing, wet ground (`apps/game/src/Game.ts`) | done | `src/audio/player_sounds.gd` | Test: `test_player_sounds.gd` |
-| Figures that fight and fall (`apps/game/src/Fighters.ts`) | partial | `src/player/poses/knockdown.gd`, `src/player/poses/knockdown_poses.gd`, G-275 | Falls and get-up exist (`test_knockdown.gd`). Fights are not in play |
+| Figures that fight and fall (`apps/game/src/Fighters.ts`) | done | `src/app/combat_wiring/fighters.gd`, G-416 | Enemy and officer figures from the cast (adults only), windup strike, fall when down, tracers, gang arm band. Drawn poses by the visuals branch |
 | Hit puffs on a punch (`apps/game/src/HitPuffs.ts`) | missing | - | No hit puff effect in Godot |
 
 ## 5. Vehicles and physics
@@ -174,21 +174,21 @@ Written 25 Nov 2026 by the parity-checklist agent (branch `agent/godot-parity`, 
 | Stage 4 Parcel run, goods on the back seat (`content.ts`) | done | `content.json` (stage 4), `src/missions/goods_stop.gd` | Test: `test_goods.gd` |
 | Stage 5 Cross-town dash (`content.ts`) | done | `content.json` (stage 5) | |
 | Stage 6 Two-wheel courier (`content.ts`) | done | `content.json` (stage 6) | |
-| Stage 7 Park trouble: beat three thugs (`content.ts`) | partial | `content.json` (stage 7, defeat) | Defeat objective: nothing in `src/app` sends a defeat event (grep) |
-| Stage 8 Bike thieves: take down the thieves (`content.ts`) | partial | `content.json` (stage 8, defeat) | Same reason as stage 7 |
-| Stage 9 Godown raid: clear the guards (`content.ts`) | partial | `content.json` (stage 9, defeat) | Same reason as stage 7 |
-| Stage 10 Roundtana showdown: defeat the boss (`content.ts`) | partial | `content.json` (stage 10, defeat) | Same reason as stage 7 |
+| Stage 7 Park trouble: beat three thugs (`content.ts`) | done | `content.json` (stage 7, defeat) | Played headless to the end: `scene/test_combat_play.gd` (stage 7 with punches, 8 with the pistol, knock-out on 9) |
+| Stage 8 Bike thieves: take down the thieves (`content.ts`) | done | `content.json` (stage 8, defeat) | Played headless to the end: `scene/test_combat_play.gd` (stage 7 with punches, 8 with the pistol, knock-out on 9) |
+| Stage 9 Godown raid: clear the guards (`content.ts`) | done | `content.json` (stage 9, defeat) | Played headless to the end: `scene/test_combat_play.gd` (stage 7 with punches, 8 with the pistol, knock-out on 9) |
+| Stage 10 Roundtana showdown: defeat the boss (`content.ts`) | done | `content.json` (stage 10, defeat) | Played headless to the end: `scene/test_combat_play.gd` |
 | Stage 11 Courier chase (`apps/game/src/streetWar.ts`) | partial | `content.json` (stage 11, chase), `src/missions/chase.gd` | Chase rules exist; the pursuer in play is not wired |
-| Stage 12 Protection money: tea shop, fight (`streetWar.ts`) | partial | `content.json` (stage 12, tea-shop) | Gang fight needs combat and gangs in play |
-| Stage 13 Hot wheels: drive-by with a gun (`streetWar.ts`) | partial | `content.json` (stage 13, drive-by) | Needs weapons in play |
-| Stage 14 Snake pit: hideout fight (`streetWar.ts`) | partial | `content.json` (stage 14, snake-pit) | Needs combat in play |
-| Stage 15 Turf war: the clock tower fight (`streetWar.ts`) | partial | `content.json` (stage 15, turf-war) | Needs gangs and weapons in play |
+| Stage 12 Protection money: tea shop, fight (`streetWar.ts`) | done | `content.json` (stage 12, tea-shop) | Fight objective played headless to the end and paid: `scene/test_combat_play.gd` |
+| Stage 13 Hot wheels: drive-by with a gun (`streetWar.ts`) | done | `content.json` (stage 13, drive-by) | Fight objective played headless to the end and paid: `scene/test_combat_play.gd` (hostiles shoot while riding; the ride itself is teleported) |
+| Stage 14 Snake pit: hideout fight (`streetWar.ts`) | done | `content.json` (stage 14, snake-pit) | Fight objective played headless to the end and paid: `scene/test_combat_play.gd` |
+| Stage 15 Turf war: the clock tower fight (`streetWar.ts`) | done | `content.json` (stage 15, turf-war) | Fight objective played headless to the end and paid: `scene/test_combat_play.gd` |
 | Stage 16 Muhurtham, the wedding party (`laterStages.ts`) | done | `content.json` (Godot stage 17, wedding-party) | Order changed on purpose: TD in `technical-decisions.md` (stages 16 to 21 reordered). Three.js 16 is Godot 17 |
 | Stage 17 Hot property, planted chain (`laterStages.ts`) | done | `content.json` (Godot stage 18, planted-chain) | Order changed (see stage 16) |
 | Stage 18 The Mumbai Mail, train stage (`laterStages.ts`) | partial | `content.json` (Godot stage 19, mumbai-mail) | Rules exist; no train rider scene (`docs/mission-design.md` W8) |
 | Stage 19 The harmonium thief (`laterStages.ts`) | done | `content.json` (Godot stage 21, harmonium-thief) | Order changed (see stage 16) |
 | Stage 20 Biryani for the dressing room (`laterStages.ts`) | done | `content.json` (Godot stage 16, stadium-biryani) | Order changed (see stage 16) |
-| Stage 21 Beach road brawl, fists and bats (`laterStages.ts`) | partial | `content.json` (Godot stage 20, beach-road-brawl) | Brawl enemies need combat in play |
+| Stage 21 Beach road brawl, fists and bats (`laterStages.ts`) | done | `content.json` (Godot stage 20, beach-road-brawl) | Fight objective played headless to the end and paid: `scene/test_combat_play.gd` |
 | City job: ambulance run (`apps/game/src/content.ts`) | done | `content.json` (jobs), `src/missions/job_runner.gd` | Test: `test_jobs.gd`, `test_missions_jobs.gd` |
 | City job: courier delivery (`content.ts`) | done | `content.json` (jobs), `src/missions/job_runner.gd` | |
 | City job: cab ride (`content.ts`) | done | `content.json` (jobs) | |
@@ -222,17 +222,17 @@ Written 25 Nov 2026 by the parity-checklist agent (branch `agent/godot-parity`, 
 
 | Three.js feature (file) | Godot status | Godot file / G-number | Note |
 |---|---|---|---|
-| Combat rules: health, damage, enemies (`packages/combat/src/Combat.ts`) | partial | `src/combat/combat.gd`, `src/combat/combat_world.gd` | Rules done and tested. No combat runtime is wired into `Main` (grep: no caller) |
-| Punch combo and bat swing with wind-up and blow (`packages/combat/src/Strikes.ts`, TD-25) | partial | `src/combat/melee.gd`, `tests/unit/rules/test_melee.gd` | Logic only. No punch or bat input in `src/ui` or `src/app` |
-| Weapons: pistol, shotgun, SMG, rounds (`packages/combat/src/Weapons.ts`) | partial | `src/combat/weapons.gd`, `src/combat/arsenal.gd` | Logic only. Nothing fires |
-| Weapons lying in the world, pick up (`packages/combat/src/Pickups.ts`) | partial | `src/combat/weapon_pickups.gd` | Logic only |
-| Gangs, crews, turf (`packages/combat/src/Gangs.ts`, `apps/game/src/streetWar.ts`) | partial | `src/combat/gangs.gd`, `src/missions/content/content.json` (gangs, crews) | Data and logic exist. No gang crews spawned in play |
-| Pedestrians hit in a fight (`packages/combat/src/PedestrianHits.ts`) | partial | `src/combat/pedestrian_hits.gd` | Logic only. Vehicle hits on people are done (section 6) |
-| Wanted level: heat and stars (`packages/combat/src/Wanted.ts`, TD-28) | partial | `src/combat/wanted.gd`, `src/app/city_life/street_reactions.gd` | Logic done. No Wanted instance is created in `Main`; carjacking and street reactions call it only when present |
-| Police response: units and pursuit (`packages/combat/src/Police.ts`, `apps/game/src/Police.ts`) | partial | `src/combat/police_fleet.gd`, `src/combat/wanted.gd` | Crew rules done. Not in play |
-| Killed officers stay dead, new units from out of sight (TD-28, `agent/police-tuning`) | partial | `src/combat/police_fleet.gd` | Rules in `tests/unit/rules/test_police_fleet.gd` |
+| Combat rules: health, damage, enemies (`packages/combat/src/Combat.ts`) | done | `src/combat/combat.gd`, `src/app/combat_wiring/combat_wiring.gd`, G-410 | Wired in `Main` (loading step 4). Tests: rules, `scene/test_combat_play.gd` |
+| Punch combo and bat swing with wind-up and blow (`packages/combat/src/Strikes.ts`, TD-25) | done | `src/combat/strikes.gd`, `swing_clock.gd`, HIT on foot (G-411, G-414) | Damage lands at the wind-up's end. The drawn strike pose is the visuals branch (G-430s). Test: `unit/rules/test_strikes.gd`, `scene/test_combat_play.gd` |
+| Weapons: pistol, shotgun, SMG, rounds (`packages/combat/src/Weapons.ts`) | done | `src/combat/weapons.gd`, FIRE and the weapon pill, G-417 | Tracers; saved arsenal. Test: `scene/test_combat_play.gd` (shotgun, SMG vs pistol) |
+| Weapons lying in the world, pick up (`packages/combat/src/Pickups.ts`) | done | `src/app/combat_wiring/arms_wiring.gd`, G-417 | Ring and turning model. Test: `scene/test_combat_play.gd`, `test_combat_main.gd` (the bat near home) |
+| Gangs, crews, turf (`packages/combat/src/Gangs.ts`, `apps/game/src/streetWar.ts`) | done | `src/app/combat_wiring/arms_wiring.gd`, G-417, G-420 | Crews fielded near the player (1 on Low), calm, warning, provoked, regroup. Test: `scene/test_combat_play.gd` |
+| Pedestrians hit in a fight (`packages/combat/src/PedestrianHits.ts`) | done | `src/app/city_life/street_reactions.gd` (`strike_person`), G-415, G-416 | Adults only; children kept out of a fight's ring. Test: `unit/rules/test_strikes.gd` |
+| Wanted level: heat and stars (`packages/combat/src/Wanted.ts`, TD-28) | done | `src/app/combat_wiring/police_wiring.gd`, G-418 | One Wanted; carjacking, hit-and-run, assault, gunfire, theft feed it. Test: `scene/test_combat_play.gd`, `test_combat_main.gd` |
+| Police response: units and pursuit (`packages/combat/src/Police.ts`, `apps/game/src/Police.ts`) | done | `src/app/combat_wiring/police_wiring.gd`, `src/ai/pursuer.gd`, G-419 | Road-graph pursuit, search, deploy, bust, roadblock from 4 stars. Test: `unit/test_pursuer.gd`, `scene/test_combat_play.gd` |
+| Killed officers stay dead, new units from out of sight (TD-28, `agent/police-tuning`) | done | `src/combat/police_fleet.gd` in `PoliceWiring`, G-419 | Rules tests plus play |
 | Combat animation: arms and fists in a fight (`apps/game/src/Arms.ts`, `Fighters.ts`) | partial | `src/player/human_figure.gd` | Arm and hand poses exist; no fight poses |
-| Combat and gang browser tests (`apps/game/tests/combat.spec.ts`, `gangs.spec.ts`, `weapons.spec.ts`, `police.spec.ts`) | missing | - | No Godot scene test for these in play. Logic tests only |
+| Combat and gang browser tests (`apps/game/tests/combat.spec.ts`, `gangs.spec.ts`, `weapons.spec.ts`, `police.spec.ts`) | done | `scene/test_combat_play.gd`, `tests/scene/test_combat_main.gd` | Draw-budget case of `gangs.spec` not ported (no figures headless) |
 
 ## 9. Railway
 
@@ -372,10 +372,10 @@ Count of test calls per file is not checked. Status describes the Godot test tha
 | `apps/game/tests/boarding.spec.ts` | done | `tests/scene/test_boarding_safety.gd`, `tests/scene/test_game_vehicles.gd` | |
 | `apps/game/tests/city.spec.ts` | done | `tests/scene/test_city_streaming.gd` | |
 | `apps/game/tests/citymap.spec.ts` | done | `tests/scene/test_maps.gd` | |
-| `apps/game/tests/combat.spec.ts` | missing | - | Combat not in play |
+| `apps/game/tests/combat.spec.ts` | done | `scene/test_combat_play.gd` | Ported by behaviour, on the flat combat ground (G-410) |
 | `apps/game/tests/driving.spec.ts` | done | `tests/scene/test_driving.gd` | |
 | `apps/game/tests/fares.spec.ts` | partial | `tests/scene/test_missions_layer.gd`, `test_fare_figures.gd` | Fare flow in play; some stages not checked |
-| `apps/game/tests/gangs.spec.ts` | missing | - | Gangs not in play |
+| `apps/game/tests/gangs.spec.ts` | done | `scene/test_combat_play.gd` | Ported by behaviour, on the flat combat ground (G-410) |
 | `apps/game/tests/handling.spec.ts` | done | `tests/scene/test_vehicle_handling.gd` | |
 | `apps/game/tests/jobs.spec.ts` | done | `tests/scene/test_missions_jobs.gd` | |
 | `apps/game/tests/landmarks.spec.ts` | done | `tests/unit/test_landmarks.gd` | |
@@ -385,13 +385,13 @@ Count of test calls per file is not checked. Status describes the Godot test tha
 | `apps/game/tests/pedestrians.spec.ts` | partial | `tests/scene/test_city_life.gd`, `test_street_reactions.gd` | Walkers done; fights missing |
 | `apps/game/tests/people.spec.ts` | done | `tests/people/test_people.gd`, `tests/scene/test_human_figure.gd` | |
 | `apps/game/tests/places.spec.ts` | partial | `tests/scene/test_missions_layer.gd` | Place dialogs; the place list not checked by name |
-| `apps/game/tests/police.spec.ts` | missing | - | Police not in play |
+| `apps/game/tests/police.spec.ts` | done | `scene/test_combat_play.gd` | Ported by behaviour, on the flat combat ground (G-410) |
 | `apps/game/tests/railway.spec.ts` | done | `tests/scene/test_railway.gd` | |
 | `apps/game/tests/shareAuto.spec.ts` | partial | `tests/unit/rules/test_share_auto.gd` | Scene version not found by name |
 | `apps/game/tests/stages3.spec.ts` | partial | `tests/scene/test_missions_v2.gd`, `tests/scene/test_missions_layer.gd` | Stages 16 to 21 play-through not confirmed |
 | `apps/game/tests/stations.spec.ts` | done | `tests/scene/test_railway.gd` | |
 | `apps/game/tests/traffic.spec.ts` | done | `tests/scene/test_city_life.gd`, `tests/scene/test_traffic_view_teleport.gd` | |
-| `apps/game/tests/weapons.spec.ts` | missing | - | Weapons not in play |
+| `apps/game/tests/weapons.spec.ts` | done | `scene/test_combat_play.gd` | Ported by behaviour, on the flat combat ground (G-410) |
 
 ## 14. Godot-only work (not counted in the summary)
 
@@ -512,3 +512,10 @@ rows in sections 1 to 11. Items 9 and 10 are missing test rows.
 8. Motion blur (`packages/game-engine/src/MotionBlur.ts`): no code. Not decided whether it should return.
 9. Strike pose unit test (`packages/player/src/strikePose.test.ts`): nothing to test until the pose exists.
 10. Police browser test (`apps/game/tests/police.spec.ts`): no scene test, because police is not in play.
+
+**Update, 25 Nov 2026 (agent/godot-combat, G-410…G-420).** Items 1 (health bar), 5 (wanted stars), 7 (combat,
+gang and weapon scene tests) and 10 (police scene test) are done: `tests/scene/test_combat_play.gd` and
+`test_combat_main.gd`. Items 2, 3, 4, 6 and 9 (strike and carry poses, hit puffs, weapons in hand, the strike pose test)
+are `agent/godot-combat-visuals` (G-430s); the combat side calls them through `CombatFx`. Stages 7 to 10, 12 to 15 and
+the beach-road brawl are now done rows; stage 11 (the chase's pursuer in play) stays partial. The summary counts above
+were not recounted.
