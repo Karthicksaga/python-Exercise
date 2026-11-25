@@ -55,6 +55,9 @@ var speed: float = 0.0
 var run_scale: float = 1.0
 ## The vehicle being ridden, or null on foot.
 var vehicle: Node3D = null
+## Walking pace the figure shows while held by a vehicle's anchor (0 standing): a scripted walk,
+## such as through a train's doorway (G-331).
+var vehicle_gait: float = 0.0
 var seat: Node3D = null
 ## False stops reading input (cutscenes, menus); gravity still applies.
 var controls_enabled: bool = true
@@ -130,7 +133,7 @@ func _physics_process(dt: float) -> void:
 			global_transform = seat.global_transform
 		# Seated (or getting in and out): the figure poses itself on the seat it was given.
 		if figure != null:
-			figure.advance(dt, 0.0, true)
+			figure.advance(dt, vehicle_gait, true)
 		return
 	if _solid_after >= 0:
 		if Engine.get_physics_frames() <= _solid_after:

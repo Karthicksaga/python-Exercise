@@ -14,7 +14,7 @@ extends Node
 signal state_changed(state: StringName)
 
 const CITY := "res://src/game_world/city/city_world.tscn"
-const STEPS: PackedStringArray = ["Reading the map of Chennai", "Reading the streets", "Building the streets around you", "Parking the vehicles"]
+const STEPS: PackedStringArray = ["Reading the map of Chennai", "Reading the streets", "Building the streets around you", "Parking the vehicles", "Running the trains"]
 ## Longest wait for the ground's collider, in physics frames (game time, not wall clock).
 const GROUND_WAIT_FRAMES := 120
 
@@ -34,6 +34,8 @@ var pause_menu: PauseMenu = null
 
 ## Traffic, walkers and crowds round the player (G-120…G-128).
 var life: CityLife = null
+## The suburban railway, the MRTS and the trains at Chennai Central (G-320…G-334).
+var railway: Railway = null
 ## Taking over traffic cars, autos and bikes on foot (G-300); the ACTION button's TAKE OVER.
 var carjacking: Carjacking = null
 ## People and traffic riders react to being hit by the player's vehicle (G-362, G-363).
@@ -144,6 +146,8 @@ func _run_step(i: int) -> String:
 			return await _add_city()
 		3:
 			return await _add_play()
+		4:
+			return await _add_railway()
 	return "Unknown step %d." % i
 
 
@@ -231,6 +235,18 @@ func _add_play() -> String:
 	var error := await play_wiring.prepare(world.spawn["point"])
 	if error == "":
 		_add_carjacking()
+	return error
+
+
+## The railway (G-320…G-334): tracks, stations, trains, riding and driving, its HUD.
+func _add_railway() -> String:
+	if railway != null:
+		return ""
+	railway = Railway.new()
+	world.add_child(railway)
+	var error := await railway.prepare(world, rig)
+	if error == "":
+		RailwayWiring.wire(self, railway)
 	return error
 
 
@@ -404,6 +420,8 @@ func _set_controls(on: bool) -> void:
 	elif rig != null:
 		rig.controls.visible = on
 		rig.reads_devices = on
+	if railway != null:
+		RailwayWiring.set_active(railway, rig, on)
 	pause_menu.show_pause_button(on)
 
 

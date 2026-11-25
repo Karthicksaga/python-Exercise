@@ -53,6 +53,8 @@ jobs:
         run: tools/ci_install_godot.sh
       - name: Synced assets match chennai-open-world
         run: python3 tools/sync_from_threejs.py --check
+      - name: Railway file rebuilt from the Three.js extract (G-320)
+        run: python3 tools/rail/test_build_rail.py
       # The import cache (.godot/imported) is rebuilt from scratch only when an asset or its
       # import settings change.
       - name: Cache the import

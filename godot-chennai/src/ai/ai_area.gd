@@ -15,7 +15,8 @@ const HALF := 1200.0
 const REBUILD := 500.0
 ## Beach outlines are looked for in chunks this close to the centre, when the sea is near.
 const BEACH_REACH := 900.0
-const RAIL := "res://assets/world/rail.json"
+## The game's railway file (`RailNetwork.PATH`, G-321): the Three.js lines plus the MRTS and the Central lines.
+const RAIL := "res://world/rail/rail.json"
 
 var centre: Vector2
 var roads: Array[Road] = []

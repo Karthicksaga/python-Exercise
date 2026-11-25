@@ -1078,3 +1078,40 @@ code sets `overlay.visible` from it and `_modal_open()`.
 **Not done / weak.** Not run on a phone: the tap replays a mouse click at release, so a pressed look shows
 only at release; at 2460x1080 raw the pause list fits without scrolling (the phone's real viewport is
 938x412); the mouse wheel still uses the engine; horizontal scrolling is not handled (none is used).
+
+## Railway (phase 6), branch `agent/godot-railway`, 24 Nov 2026
+**Done (decisions G-320…G-334, tests run here):**
+- `src/rail/`: GDScript port of the Three.js `packages/rail` (path, motion, timetable, rules,
+  doors, station layout and boards, platform crowds), the owner's cab prototype as rules
+  (`CabDrive`) and level crossings (`LevelCrossing`). Tests translated from `rail.test.ts`,
+  `doors.test.ts`, `station.test.ts` and `apps/game/src/rail.test.ts` (`tests/unit/test_rail*.gd`).
+- `tools/rail/build_rail.py`: port of `build.ts`; rebuilds the Three.js `rail.json` value for value
+  (`test_build_rail.py`, also in CI) and writes `world/rail/rail.json` (one network: Beach–Tambaram
+  both ways, MRTS both ways on its viaduct, Central–Arakkonam, Central–Sullurpeta, eight express
+  services out of Central; 23 stations; 5 crossings). Coverage: `world/rail/RAIL.md`.
+- `src/game_engine/rail/`: track chunks (merged, worker-built, overhead line at LOD), stations
+  (decks, ramps, sheds, Tamil-over-English yellow boards, departure board, stop boards, starter
+  signals, MRTS stairs), instanced trains from `assets/trains/*` (MultiMesh per car type and LOD,
+  sliding doors), crossings, coach and cab interiors.
+- `src/app/railway/`: `Railway` (riding, driving, crowds, crossings, HUD data) and `RailwayWiring`;
+  `src/ui/rail_hud/` (glass HUD, lever, speedometer, timetable and route map). Main has a fifth
+  loading step "Running the trains". Scene tests: `tests/scene/test_railway.gd` (railway.spec.ts
+  port plus the cab), `test_rail_hud_layout.gd`.
+- Screenshots and measurements: `tests/tools/rail_shots.gd` (header has the command).
+
+**Shared files touched (small, additive):** `main.gd` (step 5, `railway`), `city_life.gd`
+(`extra_obstacles`, `extra_people` hooks), `player_controller.gd` (`vehicle_gait`), `ai_area.gd`
+(reads `world/rail/rail.json`), the CI workflow (runs the rail builder tests), `LICENSES.md`.
+
+**Merged with feat/godot-chennai (glass UI, perf presets): the HUD uses `UiTheme.glass_box`, the
+railway follows `QualitySettings`. Still to do after nav/roads:** add the rail lines as a
+layer of the nav agent's city map (`Railway.show_timetable` builds the same data); reconcile with
+the transit agent's `world/transit` rail lines (their train stub should ride these trains).
+
+**Weak or not done:** see the decisions' notes; in short: lines stop at the Three.js map box
+(trains pop in and out mid-city in the regional world); four-car rakes; no train horn, rumble or
+crossing bell recordings (bus horn stands in); wheels and bogies do not turn; road direction at
+crossings assumed square; OSM platform slabs from the detail layer can double the drawn platforms;
+no foot-over-bridges or booking offices drawn; seated pose in the coach is the generic passenger
+pose; express trains cannot be boarded at Central's terminus platforms when they arrive (they
+terminate) and only leave once per two game hours; nothing checked on a phone.
