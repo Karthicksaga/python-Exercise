@@ -271,10 +271,10 @@ func current_place() -> String:
 
 
 func status_text() -> String:
-	var weather := "Clear"
+	var weather := "weather.clear"
 	if Weather.raining:
-		weather = "Storm" if storm and not reduced_motion else "Rain"
-	return "%s · %s · %s" % [GameLoop.clock.label(), GameLoop.clock.text(), weather]
+		weather = "weather.storm" if storm and not reduced_motion else "weather.rain"
+	return "%s · %s · %s" % [GameLoop.clock.label_text(), GameLoop.clock.text(), Tr.line(weather)]
 
 
 func _update_chip(force: bool) -> void:

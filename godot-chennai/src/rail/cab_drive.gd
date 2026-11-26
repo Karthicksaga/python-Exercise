@@ -165,7 +165,7 @@ func step(dt: float) -> void:
 	if kmh() > lim + 3.0:
 		_overspeed += dt
 		if _overspeed > 2.5:
-			_add(-10, "Over the speed limit")
+			_add(-10, Tr.t("cab.overspeed"))
 			_overspeed = 0.0
 	else:
 		_overspeed = maxf(0.0, _overspeed - dt)
@@ -189,19 +189,19 @@ func _stations(dt: float) -> void:
 				var why := ""
 				if err > 25.0:
 					points = -40
-					why = "Overran the platform"
+					why = Tr.t("cab.overran")
 				elif e <= 3.0:
 					points = 100
-					why = "Perfect stop"
+					why = Tr.t("cab.perfect")
 				elif e <= 8.0:
 					points = 60
-					why = "Good stop"
+					why = Tr.t("cab.good")
 				elif e <= 20.0:
 					points = 25
-					why = "Stopped short of the mark"
+					why = Tr.t("cab.short")
 				else:
-					why = "Stopped far from the mark"
-				_add(points, "%s (%s%.1f m)" % [why, "+" if err >= 0.0 else "", err])
+					why = Tr.t("cab.far")
+				_add(points, Tr.t("cab.stop_error", [why, "+" if err >= 0.0 else "", "%.1f" % err]))
 				served[next] = true
 				stops_made += 1
 				doors_open = true
@@ -211,7 +211,7 @@ func _stations(dt: float) -> void:
 		else:
 			_standing = 0.0
 		if s > stop.s + 70.0 and not served.has(next):
-			_add(-60, "Missed the stop at %s" % stop.name)
+			_add(-60, Tr.t("cab.missed", [stop.name]))
 			served[next] = true
 			next += 1
 	if doors_open:
@@ -220,9 +220,9 @@ func _stations(dt: float) -> void:
 			doors_open = false
 			doors_changed.emit(false)
 			next += 1
-			message.emit("Doors closed. Signal green. Proceed." if next >= line.stops.size() or aspect(next - 1) == &"green" else "Doors closed. Wait for the signal.")
+			message.emit(Tr.t("cab.doors_green") if next >= line.stops.size() or aspect(next - 1) == &"green" else Tr.t("cab.doors_wait"))
 		elif v > 0.5:
-			_add(-30, "Moved with doors open")
+			_add(-30, Tr.t("cab.moved_open"))
 			doors_open = false
 			doors_changed.emit(false)
 			next += 1
@@ -239,7 +239,7 @@ func _signals(before: float) -> void:
 					red = true
 			if red:
 				_spad[i] = true
-				_add(-80, "Signal passed at danger")
+				_add(-80, Tr.t("cab.spad"))
 
 
 func _add(points: int, why: String) -> void:
@@ -251,20 +251,20 @@ func _finish() -> void:
 	done = true
 	v = 0.0
 	finished.emit(score)
-	message.emit("End of the line on the map. Score %d." % score)
+	message.emit(Tr.t("cab.end_map", [score]))
 
 
 ## What the panel shows: next station, distance to its mark, the state in words.
 func state_text() -> String:
 	if done:
-		return "End of the line. Score %d" % score
+		return Tr.t("cab.state.done", [score])
 	if doors_open:
-		return "Doors open. Passengers getting on and off."
+		return Tr.t("cab.state.doors")
 	if v < 0.2:
-		return "Standing. Raise the lever to move off."
+		return Tr.t("cab.state.standing")
 	var a := NOTCH_ACCEL[notch]
 	if a < 0.0:
-		return "Braking %s" % notch_name()
+		return Tr.t("cab.state.braking", [notch_name()])
 	if a > 0.0:
-		return "Power %s" % notch_name()
-	return "Coasting"
+		return Tr.t("cab.state.power", [notch_name()])
+	return Tr.t("cab.state.coasting")

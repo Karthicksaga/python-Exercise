@@ -192,7 +192,7 @@ func prepare(start: Vector2) -> String:
 	var stations := _stations
 	var area: AiArea = await BackgroundTask.start(func() -> AiArea: return AiArea.build(source, start, stations)).finish(get_tree())
 	if area == null:
-		return "The streets' traffic could not be worked out."
+		return Tr.t("err.traffic")
 	var people := PeopleManifest.open(PeoplePool.MANIFEST)
 	var entries: Array[Dictionary] = []
 	entries.assign(people.entries)
@@ -285,12 +285,12 @@ func _load_vehicle_models() -> String:
 				files.append(f)
 	for f in files:
 		if ResourceLoader.load_threaded_request(f) != OK:
-			return "Could not start loading %s." % f
+			return Tr.t("err.start_loading", [f])
 	for f in files:
 		while ResourceLoader.load_threaded_get_status(f) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 			await get_tree().process_frame
 		if ResourceLoader.load_threaded_get(f) == null:
-			return "Could not load %s." % f
+			return Tr.t("err.load", [f])
 	return ""
 
 

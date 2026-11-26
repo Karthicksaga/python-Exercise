@@ -144,7 +144,7 @@ func exit() -> bool:
 	if _mode != &"driving" or vehicle == null:
 		return false
 	if absf(vehicle.forward_speed()) > EXIT_SPEED:
-		toast.emit("Stop the vehicle first")
+		toast.emit(Tr.t("toast.stop_first"))
 		return false
 	var v := vehicle
 	v.set_siren(false)

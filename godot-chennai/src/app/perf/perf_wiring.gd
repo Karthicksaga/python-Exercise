@@ -480,7 +480,7 @@ func _watch_auto(dt: float, ms: float) -> void:
 	if fps < QualitySettings.AUTO_MIN_FPS and settings.drop_auto():
 		_auto_play = 0.0
 		_auto_first = true
-		_toast("Graphics lowered to %s" % settings.preset_name(), "It ran at %d fps. Change it in Settings → Graphics." % roundi(fps))
+		_toast(Tr.t("toast.graphics_lowered", [Tr.ref(QualitySettings.NAME_KEYS[clampi(settings.preset, QualitySettings.LOW, QualitySettings.HIGH)])]), Tr.t("toast.graphics_detail", [roundi(fps)]))
 
 
 func _toast(title: String, detail: String) -> void:

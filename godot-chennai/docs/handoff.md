@@ -1428,3 +1428,49 @@ bookkeeping median 0.4 ms (was 2.4), max 2.6 ms (was 19). The test and its thres
   already does (G-51). The dummy renderer's RID errors ("Parameter m is null", `Condition "!F"`) that
   `test_city_life` prints appear on b19bacc as well.
 - Not measured on a phone or with the benchmark route; the overlay's hitch line (G-340) will show it.
+
+## Language: English and Tamil (G-440 to G-446, agent/godot-lang), 25 Nov 2026
+Decisions in `docs/technical-decisions.md` ("Language: English and Tamil"). The review table is
+`docs/tamil-review.md`.
+
+**Where things are.** `src/i18n/` (`Tr` the front door, `TrCatalog` the CSV reader, `LanguageSettings` the
+setting, `ContentKeys` the mission-content scan), catalogs `assets/i18n/en.csv` and `ta.csv` (805 keys each:
+528 for the UI and logic, 277 from the mission JSON), fonts `assets/fonts/ui/`, tools `tools/i18n/`
+(`content_keys.py`, `review_table.py`; both have `--check`, run in CI), tests `tests/unit/test_i18n.gd` and
+`tests/scene/test_i18n_layout.gd`, screenshots `tests/tools/i18n_shots.gd` (UI only, over a flat backdrop;
+`--screen=pause|title|hud|drive|dialog|loading|about|settings|controls --mode=en|ta|both`).
+
+**How to add or change text.**
+- A new string: a row in `en.csv` and in `ta.csv` (status `needs native review`), `Tr.t("area.key", args)` in the
+  code, `python3 tools/i18n/review_table.py`. Static labels: `Tr.bind(control, key)` so they follow the language;
+  a screen that builds its text rebuilds it on `Tr.bus.changed`. Inside another text use `&"key"` or
+  `Tr.ref(key, args)` as the argument (never a translated string: in Both mode it would carry both languages).
+  Use `Tr.line` for one-line readouts, `Tr.t` where two lines are fine. Never call `Tr.reload()` (it is
+  `GDScript.reload`): `Tr.reload_catalogs()`.
+- Mission text: edit the JSON, then `python3 tools/i18n/content_keys.py --write` for the English rows and write
+  the Tamil rows (`c.<path>`) in `ta.csv`. The test names the missing ones.
+- A native speaker reviews `ta.csv`, sets `status` to `reviewed`, runs `review_table.py`. A release without
+  unreviewed Tamil: `custom_features="tamil_reviewed_only"` in the export preset (or the project setting
+  `chennai/i18n/hide_unreviewed`); those texts then show in English only.
+- Tests must leave the language English (`_done()` in the i18n tests): the runner has no after-test hook.
+
+**Measured / tested here (Godot 4.7.2, headless and software GL).** 805 keys, 805 Tamil rows to review; every
+Tamil string shaped with no `.notdef` glyph at 12 to 32 px; Tamil and Both at 915x412 and 1830x824 on the pause
+menu, title (menu, About, Settings, Controls), loading screen, mission HUD with a long toast, job board dialog,
+touch and driving controls and railway HUD: nothing off screen, buttons at least 48 tall, no overlap, no text
+wider than its box; round buttons shrink and break words; long Tamil words wrap. Screenshots looked at (not
+kept): pause menu, HUD, job board, driving controls, loading, title, in Tamil and in Both.
+
+**Weak or not done.**
+- **All Tamil is unreviewed machine Tamil.** Word choices that need a speaker first: ஏறு for GET IN, வண்டியைப் பிடி
+  for TAKE OVER, நற்பெயர் for reputation, பொத்தான் for button, சேமிப்புப் புள்ளி for checkpoint, the cinema and
+  gym jokes, station and street names (transliterated from English), spoken versus written forms.
+- In Both mode the title menu needs a scroll (two-line subtitles; rows grow), the job board shows only a short
+  trimmed preview of each job's brief (as in English), and round buttons carry two small lines.
+- Both mode puts a name inside another text once per language (a station name in a toast stays English in the
+  Tamil line: map names have a Tamil form only on the station boards).
+- Not seen on a phone. Screenshots are the UI over a flat colour, not the game, under software GL.
+- Developer-only English remains (G-446): about fifty strings in the performance overlay, its switches and log,
+  console lines, rail file errors, the `km/h` readout and the notch names.
+- Tamil has no plural forms in the counted texts (`.one` and `.other` hold the same words); numbers are Latin
+  digits everywhere.

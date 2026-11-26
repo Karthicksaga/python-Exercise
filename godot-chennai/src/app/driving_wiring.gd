@@ -40,7 +40,7 @@ func _get_in() -> Variant:
 	if v == null:
 		return null
 	var gap := v.global_position.distance_to(driving.rider.position())
-	return ActionCandidate.make("GET IN", ActionContext.P_BOARD, gap, func() -> void: driving.enter(driving.nearest_vehicle()))
+	return ActionCandidate.make(Tr.t("act.get_in"), ActionContext.P_BOARD, gap, func() -> void: driving.enter(driving.nearest_vehicle()))
 
 
 func _on_crash(v: Vehicle, outcome: CrashRules.Outcome) -> void:
@@ -129,7 +129,7 @@ func _on_bump(v: Vehicle, outcome: CrashRules.Outcome) -> void:
 func _on_mode(mode: StringName) -> void:
 	var v := driving.vehicle
 	if controls != null:
-		controls.set_mode(mode, "SIREN" if v != null and v.has_siren() else "HORN")
+		controls.set_mode(mode, "ctl.siren" if v != null and v.has_siren() else "ctl.horn")
 	if rig != null and rig.controls != null:
 		# The walking controls (stick, ACTION, JUMP) only on foot.
 		rig.controls.visible = mode == &"foot"

@@ -134,7 +134,7 @@ func toggle() -> void:
 
 ## "Sound: On" / "Sound: Off" for the menu button.
 func label() -> String:
-	return "Sound: %s" % ("On" if enabled else "Off")
+	return Tr.t("set.sound", [&"set.on" if enabled else &"set.off"])
 
 
 func _apply_enabled() -> void:

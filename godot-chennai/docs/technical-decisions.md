@@ -2843,3 +2843,75 @@ queue lock kept the main thread waiting. The main thread now only `try_lock`s: `
 backlog handed over at the next call or at the end of the frame (`flush`), `take_done` says "not yet",
 `pending` gives the last count. `wait`, `stop` and `fill_now` (start-up and shutdown) still block. Release
 jobs are pushed untracked (`push(job, false)`), so their tickets no longer pile up in `_done`.
+## Language: English and Tamil (G-440 to G-446, agent/godot-lang)
+
+### G-440: Every visible string is a key behind `Tr`; the catalogs are two CSV files
+`assets/i18n/en.csv` (`key,text`) and `ta.csv` (`key,text,status`) hold the game's text; code calls
+`Tr.t(key, args)` (`src/i18n/tr.gd`) and never touches the engine's translation classes. `Tr` reads the files
+(`TrCatalog`, `FileAccess.get_csv_line`, so quotes, commas and newlines work) into one `Translation` per locale
+registered with the `TranslationServer` (engine `tr()` and `auto_translate` work as well; `Tr.set_mode` also sets
+the engine locale), and keeps them for its own lookups. The files are `importer="keep"` (Godot would otherwise
+turn a `.csv` into its own translation format) and are in the export `include_filter`.
+Keys are `area.part.name` (`menu.pause.resume`, `rail.hud.leave_cab`, `msn.job_result`). Texts hold `{0}`, `{1}`
+(an Array) or `{name}` (a Dictionary) placeholders, so Tamil word order may differ; an argument that is a
+`StringName` is a key and a `Tr.ref(key, args)` is a key with its own arguments, both translated in the language
+of the text that holds them (so "Weather: Rain" is never half Tamil). Counted texts are `<key>.one` /
+`<key>.other` (`Tr.n`, `Tr.nref`). A missing key comes back as itself and is listed in `Tr.missing`; a missing
+Tamil text shows the English. `Tr.reload()` is taken by `GDScript.reload`: the method is `reload_catalogs()`.
+Display modes: English (the default until `LanguageSettings.apply`), Tamil, Both. Both puts Tamil above English
+on two lines (`Tr.t`, `Tr.stacked`: titles, buttons, paragraphs) or on one line with " · " (`Tr.line`: small
+readouts, row subtitles); where the Tamil is the same as the English it shows once.
+`Tr.bind(control, key, args, inline, prop, base_size)` makes a label, button or tooltip follow the language
+(a weak list refreshed on a change; `base_size` shrinks the letters in Tamil (x0.9) and Both (x0.75)); screens
+that build their text rebuild it on `Tr.bus.changed`.
+
+### G-441: The Language setting
+`LanguageSettings` (`src/i18n/language_settings.gd`): English, தமிழ், தமிழ் + English, saved in the save file's own
+section `chennai-language-v1` (the `ControlSettings` pattern: `SaveStore` keeps unknown sections, a damaged value
+means English). `Main` applies the saved language first thing, and adds one row ("Language: ...") to the pause
+menu and the title's SETTINGS page. Pressing it cycles the three, saves, and every open screen follows at once
+(`Tr.bus.changed`: the pause menu relabels, the title rebuilds its rows, About and CONTROLS, the loading screen's
+bound labels, the HUD's next frame).
+
+### G-442: Mission text stays English in the JSON; its keys come from the data
+The 21 stages, 13 jobs, 5 new missions, 3 stories, gangs and places keep their English in
+`src/missions/content/*.json` (the old game's text, and the new missions' English written there). Every string
+under a title/brief/label/ending/name/meaning/detail/where key (and each `briefIf` value) has the key
+`c.<path>` (`c.missions.morning-walk.objectives.0.label`; an array element with an `id` is named by it), found by
+`tools/i18n/content_keys.py` and `ContentKeys.scan()` (the test fails if they differ or if `en.csv`'s `c.` rows
+differ from the content). The Tamil is in `ta.csv` next to the UI Tamil, not in the JSON: one place to review
+and one status column, and the JSON stays the same shape as the Three.js game's. Code shows content with
+`Tr.src(english)`, which finds the key by the English text (an unknown text, such as a name from the map, is
+shown as it is) and `Tr.srcref(english)` inside another text. A content text edited without its translation
+fails `test_content_strings_have_keys_in_both_languages`.
+
+### G-443: Tamil is machine Tamil until a person has read it
+Every `ta.csv` row has `status` = `needs native review` (or `reviewed`). `docs/tamil-review.md` is the table for
+the reviewer (key, English, Tamil, status), written by `tools/i18n/review_table.py` (a test checks it matches the
+catalog). A release can leave unreviewed Tamil out: the export feature tag `tamil_reviewed_only` (put it in the
+preset's `custom_features`) or the project setting `chennai/i18n/hide_unreviewed`; those strings then show in
+English only (`Tr.hide_unreviewed`). The default shows them, and the About page says the Tamil is still being
+checked (`about.tamil_review`, shown only while there is unreviewed Tamil on screen).
+
+### G-444: Fonts: Noto Sans Tamil behind the UI theme
+`UiTheme.font()` is the engine's default Latin face with Noto Sans Tamil Regular (Bold for buttons) as fallback
+(`assets/fonts/ui/`, SIL OFL 1.1, unmodified copies from `@fontsource/noto-sans-tamil` 5.3.0, rows in
+`assets/LICENSES.md`); the theme's default font and the full map, the Label3D marker labels and the rail HUD
+use it. The title keeps its own Barlow Condensed + Noto Sans Tamil Bold. The test shapes every Tamil string at
+six sizes (12 to 32 px, the sizes of a 915x412 and a 1830x824 screen) and fails on any `.notdef` glyph
+(index 0), not only on `has_char`.
+
+### G-445: Long text: stack, shrink, wrap, scroll; never cut or overlap
+Rules the layout tests (`tests/scene/test_i18n_layout.gd`, Tamil and Both at 915x412 and 1830x824) hold:
+round touch buttons shrink their letters, then break words onto more lines (`TouchButton`, `HoldButton.fit_text`),
+the title rows grow with a wrapped subtitle (so the menu scrolls under a thumb in Both mode rather than cut
+text), the toast sits in the gap between the mission column and the minimap, narrower and in smaller letters if
+the text is long, the dialog's rows give up height when its header grows, JOBS grows to the left, the foot of
+the title is as tall as its credit's line, steps of the loading screen are one line each. Rows of a job board
+keep their one-line trimmed preview (as in English); the full text comes with the toast when the job is taken.
+
+### G-446: What is not converted
+Developer-only text stays English: the performance overlay and its switches, the perf log, `[boot]` and
+`[perf]` console lines, rail file errors (`RailNetwork`), the `km/h` readout and the notch names (EMG, B1, P4).
+Place and station names come from the map data (OSM) with their own Tamil where it has one (`name_ta`); the
+sentences around them are translated.

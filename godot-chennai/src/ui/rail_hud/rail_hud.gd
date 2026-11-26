@@ -130,14 +130,20 @@ func _ready() -> void:
 	layer.add_child(dial)
 	score = RailHudStyle.label("", 14)
 	score.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	score.position = Vector2(-300, 70)
-	score.size = Vector2(140, 22)
+	score.offset_left = -300.0
+	score.offset_right = -160.0
+	score.offset_top = 70.0
+	score.offset_bottom = 92.0
+	score.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	layer.add_child(score)
 	signal_chip = RailHudStyle.label("", 14)
 	signal_chip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	signal_chip.position = Vector2(-300, 94)
-	signal_chip.size = Vector2(140, 22)
+	signal_chip.offset_left = -300.0
+	signal_chip.offset_right = -160.0
+	signal_chip.offset_top = 94.0
+	signal_chip.offset_bottom = 116.0
+	signal_chip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	signal_chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	layer.add_child(signal_chip)
 	var right := VBoxContainer.new()
@@ -150,19 +156,19 @@ func _ready() -> void:
 	right.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	right.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(right)
-	doors = RailHudStyle.label("Doors closed", 14)
+	doors = RailHudStyle.label(Tr.t("rail.hud.doors_closed"), 14)
 	doors.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	right.add_child(doors)
-	leave = RailHudStyle.button("LEAVE CAB")
+	leave = RailHudStyle.button_key("rail.hud.leave_cab")
 	leave.pressed.connect(func() -> void: leave_cab_pressed.emit())
 	right.add_child(leave)
-	step_off = RailHudStyle.button("STEP OFF", true)
+	step_off = RailHudStyle.button_key("rail.hud.step_off", true)
 	step_off.pressed.connect(func() -> void: step_off_pressed.emit())
 	right.add_child(step_off)
-	seat = RailHudStyle.button("SIT")
+	seat = RailHudStyle.button_key("rail.hud.sit")
 	seat.pressed.connect(func() -> void: seat_pressed.emit())
 	right.add_child(seat)
-	view = RailHudStyle.button("VIEW")
+	view = RailHudStyle.button_key("rail.hud.view")
 	view.pressed.connect(func() -> void: view_pressed.emit())
 	right.add_child(view)
 	var row := HBoxContainer.new()
@@ -171,11 +177,11 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right.add_child(row)
-	horn = RailHudStyle.button("HORN")
+	horn = RailHudStyle.button_key("rail.hud.horn")
 	horn.button_down.connect(func() -> void: horn_changed.emit(true))
 	horn.button_up.connect(func() -> void: horn_changed.emit(false))
 	row.add_child(horn)
-	emg = RailHudStyle.button("EMG")
+	emg = RailHudStyle.button_key("rail.hud.emg")
 	emg.add_theme_stylebox_override("normal", RailHudStyle.glass(Color(0.75, 0.12, 0.1, 0.7), 24))
 	emg.pressed.connect(func() -> void: emergency_pressed.emit())
 	row.add_child(emg)
@@ -185,10 +191,10 @@ func _ready() -> void:
 	top.alignment = BoxContainer.ALIGNMENT_CENTER
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_centre.add_child(top)
-	timetable = RailHudStyle.button("TIMETABLE")
+	timetable = RailHudStyle.button_key("rail.hud.timetable")
 	timetable.pressed.connect(func() -> void: timetable_pressed.emit())
 	top.add_child(timetable)
-	drive = RailHudStyle.button("DRIVE", true)
+	drive = RailHudStyle.button_key("rail.hud.drive", true)
 	drive.pressed.connect(func() -> void: drive_pressed.emit())
 	top.add_child(drive)
 	_build_sheet(layer)
@@ -219,7 +225,7 @@ func _build_sheet(layer: Control) -> void:
 	sheet_rows = VBoxContainer.new()
 	sheet_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(sheet_rows)
-	close_sheet = RailHudStyle.button("CLOSE")
+	close_sheet = RailHudStyle.button_key("rail.hud.close")
 	close_sheet.pressed.connect(func() -> void: sheet.visible = false)
 	left.add_child(close_sheet)
 	map = RouteMap.new()
@@ -292,20 +298,24 @@ func set_offers(can_step_off: bool, can_leave_cab: bool, can_drive: bool) -> voi
 	_tidy()
 
 
+## The keys of the signal aspects the cab names (red, yellow, green).
+const ASPECT_KEYS: Dictionary[String, String] = {"red": "rail.aspect.red", "yellow": "rail.aspect.yellow", "green": "rail.aspect.green"}
+
+
 func set_seated(seated: bool) -> void:
-	seat.text = "STAND" if seated else "SIT"
+	Tr.bind(seat, "rail.hud.stand" if seated else "rail.hud.sit", null, false, &"text", 15)
 
 
 ## The cab's figures: speed and limit (km/h), notch, doors, signal aspect name, score.
 func set_cab(kmh: float, limit: float, notch: int, doors_open: bool, aspect: String, points: int) -> void:
 	dial.set_values(kmh, limit)
 	lever.set_notch(notch)
-	doors.text = "Doors open" if doors_open else "Doors closed"
+	doors.text = Tr.t("rail.hud.doors_open" if doors_open else "rail.hud.doors_closed")
 	doors.add_theme_color_override("font_color", RailHudStyle.GOOD if doors_open else RailHudStyle.TEXT)
 	var colours := {"red": RailHudStyle.DANGER, "yellow": RailHudStyle.AMBER, "green": RailHudStyle.GOOD}
-	signal_chip.text = "Signal %s · limit %d" % [aspect, roundi(limit)]
+	signal_chip.text = Tr.line("rail.hud.signal", [Tr.ref(ASPECT_KEYS.get(aspect, "rail.aspect.green")), roundi(limit)])
 	signal_chip.add_theme_color_override("font_color", colours.get(aspect, RailHudStyle.TEXT) as Color)
-	score.text = "Score %d" % points
+	score.text = Tr.line("rail.hud.score", [points])
 
 
 ## The timetable sheet: a title, rows of text, and the route map's data.

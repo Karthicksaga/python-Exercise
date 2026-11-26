@@ -60,7 +60,7 @@ func select(wanted: String, forward_speed: float) -> void:
 		pending = ""
 		return
 	if pending != wanted:
-		_hint = "Stopping to shift to %s" % wanted
+		_hint = Tr.t("gear.stopping", [wanted])
 	pending = wanted
 
 
@@ -80,7 +80,7 @@ func controls(gas: bool, brake: bool, steer: float, forward_speed: float) -> Con
 	var out: Controls
 	if pending != "" or gear == "P":
 		if gear == "P" and gas and not _gas_before:
-			_hint = "In P: select D to drive or R to reverse"
+			_hint = Tr.t("gear.in_p")
 		out = Controls.new(0.0, steer, HOLD)
 	else:
 		var direction := -1.0 if gear == "R" else 1.0

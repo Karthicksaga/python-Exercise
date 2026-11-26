@@ -1,0 +1,806 @@
+key,text
+about.fonts,"Fonts: Barlow Condensed and Noto Sans Tamil, SIL Open Font Licence 1.1."
+about.intro,An original game set in real Chennai.
+about.map,"Map: {0}{1}, ODbL 1.0. Building heights, colours and road widths are estimated where OpenStreetMap has none."
+about.map_date,(map data {0})
+about.tamil_review,"The Tamil text in this game is still being checked by Tamil speakers, so some lines may read oddly."
+act.board_train,BOARD THE TRAIN
+act.get_in,GET IN
+act.take_over,TAKE OVER
+cab.doors_green,Doors closed. Signal green. Proceed.
+cab.doors_wait,Doors closed. Wait for the signal.
+cab.end_map,End of the line on the map. Score {0}.
+cab.far,Stopped far from the mark
+cab.good,Good stop
+cab.missed,Missed the stop at {0}
+cab.moved_open,Moved with doors open
+cab.overran,Overran the platform
+cab.overspeed,Over the speed limit
+cab.perfect,Perfect stop
+cab.short,Stopped short of the mark
+cab.spad,Signal passed at danger
+cab.state.braking,Braking {0}
+cab.state.coasting,Coasting
+cab.state.done,End of the line. Score {0}
+cab.state.doors,Doors open. Passengers getting on and off.
+cab.state.power,Power {0}
+cab.state.standing,Standing. Raise the lever to move off.
+cab.stop_error,{0} ({1}{2} m)
+ctl.action,ACTION
+ctl.brake,BRAKE
+ctl.exit,EXIT
+ctl.exit_tip,Exit
+ctl.gas,GAS
+ctl.hold_reverse,hold to reverse
+ctl.horn,HORN
+ctl.jump,JUMP
+ctl.reverse,REVERSE
+ctl.run,RUN
+ctl.siren,SIREN
+dlg.choice_wait,Nothing happens until you decide.
+dlg.choose,CHOOSE
+dlg.close,CLOSE
+dlg.continue,CONTINUE
+dlg.from_checkpoint,from the checkpoint
+dlg.from_start,from the start
+dlg.go,GO
+dlg.health_line,health {0}
+dlg.heat,police heat
+dlg.job_board,Job board
+dlg.job_board_btn,JOB BOARD
+dlg.jobs,JOBS
+dlg.leave,LEAVE
+dlg.play,PLAY
+dlg.quit_job,QUIT JOB
+dlg.retry,RETRY
+dlg.stages,STAGES
+dlg.stages_message,"Missions and finished stages, for the medal. A replay pays a quarter."
+dlg.stages_title,Stages
+dlg.start_over,START OVER
+dlg.stop,STOP
+dlg.take_job,TAKE JOB
+dlg.the_stage,The stage
+dlg.try_again,{0}: try again {1}.
+dlg.workout,Workout
+dlg.workout_message,Tap LIFT while the needle is in the green: {0} reps.
+err.ground,The ground's collider did not appear in {0} physics frames.
+err.load,Could not load {0}.
+err.start_loading,Could not start loading {0}.
+err.step_stopped,Step {0} stopped with an error (see the log).
+err.streets_start,The streets round the start did not load.
+err.traffic,The streets' traffic could not be worked out.
+err.unknown_step,Unknown step {0}.
+err.vehicles_park,The vehicles round the start did not park.
+event.bandh,A bandh: shops are shutting and the main road is closed.
+event.detour,Road ahead blocked by a water-main repair. Find another way.
+event.passenger_change,"The passenger changes their mind: somewhere nearer, please."
+event.procession,A temple procession fills the road ahead. Slow down or go round.
+event.rain,Rain starts. The road will be slick.
+event.title.bandh,Bandh
+event.title.detour,Detour
+event.title.other,Event
+event.title.passenger_change,Change of plan
+event.title.procession,Procession
+event.title.rain,Rain
+event.zone.bandh,Bandh
+event.zone.detour,Road blocked
+event.zone.procession,Procession
+fail.cargo_ruined,The cargo is ruined
+fail.job_abandoned,Job abandoned
+fail.out_of_time,Out of time
+fail.patient_lost,The patient is lost
+fail.player_down,You are down
+fail.spotted,You were spotted
+fail.story_abandoned,Story abandoned
+fail.target_escaped,They got away
+fail.too_many_crashes,Too many crashes
+fail.vehicle_destroyed,The vehicle is wrecked
+fare.both,People getting off and on
+fare.in.one,Passenger getting in
+fare.in.other,Passengers getting in
+fare.out.one,Passenger getting out
+fare.out.other,Passengers getting out
+fare.patient_in,The patient is being loaded
+fare.patient_out,The patient is being taken in
+gear.in_p,In P: select D to drive or R to reverse
+gear.stopping,Stopping to shift to {0}
+goods.cap.cash-bag.one,The money
+goods.cap.cash-bag.other,The money
+goods.cap.food-bag.one,The order
+goods.cap.food-bag.other,The orders
+goods.cap.harmonium.one,The harmonium
+goods.cap.harmonium.other,The harmoniums
+goods.cap.medicine.one,The medicine
+goods.cap.medicine.other,The medicine
+goods.cap.parcel.one,The parcel
+goods.cap.parcel.other,The parcels
+goods.cap.the_goods,The goods
+goods.cap.tiffin.one,The lunch box
+goods.cap.tiffin.other,The lunch boxes
+goods.cap.vessel.one,The sambar vessel
+goods.cap.vessel.other,The sambar vessels
+goods.cash-bag.one,the money
+goods.cash-bag.other,the money
+goods.collecting,{0} being collected
+goods.food-bag.one,the order
+goods.food-bag.other,the orders
+goods.harmonium.one,the harmonium
+goods.harmonium.other,the harmoniums
+goods.loading,{0} being loaded
+goods.medicine.one,the medicine
+goods.medicine.other,the medicine
+goods.parcel.one,the parcel
+goods.parcel.other,the parcels
+goods.the_goods,the goods
+goods.tiffin.one,the lunch box
+goods.tiffin.other,the lunch boxes
+goods.vessel.one,the sambar vessel
+goods.vessel.other,the sambar vessels
+guide.accelerate,Accelerate
+guide.action_pad,"Action: get in, talk, pick up, hand over"
+guide.action_touch,"Action: GET IN, TALK, PICK UP, HAND OVER, ENTER"
+guide.big_button,Big round button
+guide.brake_or_space,S or Space
+guide.brake_reverse,Brake; hold when stopped to reverse
+guide.drag_side,Drag the {0} side
+guide.exit_stopped,Get out when stopped
+guide.foot.walk_run,Walk; push to the edge to run
+guide.gas,Gas
+guide.get_out,Get out
+guide.group.anywhere,ANYWHERE
+guide.group.driving,DRIVING
+guide.group.foot,ON FOOT
+guide.horn,Horn
+guide.horn_pad,Horn (siren on an ambulance or police car)
+guide.horn_touch,Horn (SIREN on an ambulance or police car)
+guide.jobs,The job board and your stages
+guide.jump,Jump
+guide.look,Look round
+guide.mouse_drag,Mouse drag
+guide.pause,Pause
+guide.pause_menu,"Pause: resume, change the time, weather, sound or the controls, or go to the title"
+guide.run,Run
+guide.side.left,left
+guide.side.right,right
+guide.slide_side,Slide the {0} side
+guide.small_button,Small button above it
+guide.steer,Steer
+guide.steer_touch,"Steer: touch anywhere, slide sideways; it centres itself"
+guide.stick.left,Left stick
+guide.stick.right,Right stick
+guide.stick_appears,A stick appears: walk; push to the edge to run
+guide.stick_appears_toggle,A stick appears: walk; tap RUN to run
+guide.touch_side,Touch the {0} side
+guide.walk,Walk
+hud.cargo,Cargo
+hud.go_inside,GO INSIDE
+hud.goals_met,{0} of {1} goals
+hud.jobs,JOBS
+hud.km,{0} km
+hud.lift,LIFT
+hud.m,{0} m
+hud.medal.bronze,Bronze
+hud.medal.gold,Gold
+hud.medal.silver,Silver
+hud.medal_line,{0} medal
+hud.noticed,Noticed
+hud.patient,Patient
+hud.pause,PAUSE
+hud.replay,(replay)
+hud.stages,Stages {0}/{1}
+hud.take,TAKE
+hud.world_text,{0} roads · {1} chunks
+job.avoid_kept,Kept off {0}: +{1}%
+job.avoid_stuck,Stuck on {0} for {1} s: -{2}%
+job.needs_rep,Needs reputation {0}
+job.note.bumps.one,{n} bump: -{pct}%
+job.note.bumps.other,{n} bumps: -{pct}%
+job.note.bumps_only.one,{n} bump
+job.note.bumps_only.other,{n} bumps
+job.note.carried.one,"{n} passenger carried, ₹{fares} in fares"
+job.note.carried.other,"{n} passengers carried, ₹{fares} in fares"
+job.note.late.one,{n} stop late: -{pct}%
+job.note.late.other,{n} stops late: -{pct}%
+job.note.left,{0} left waiting with a seat free
+job.note.missed,{0} carried past their stop
+job.note.parcel,Parcel undamaged: +25%
+job.note.rating,{0}★ rating: {1}₹{2} tip
+job.note.reached,Reached {0}
+job.note.shift_up,Shift time up
+job.note.smooth,Smooth ride: +20%
+job.note.time_left,{0}% of the time left
+job.offered_only,Offered {0} only
+life.change_clothes,You change into the {0}. Your mother says it needs ironing.
+life.escalator,The escalator is jammed with families taking a group photo on every step. Ten minutes to go up one floor.
+life.film.filter-coffee-kadhal.genre,Romance
+life.film.filter-coffee-kadhal.plot,Two rival coffee-stall owners on the same street fall in love during a week of monsoon rain.
+life.film.filter-coffee-kadhal.scene.0,"A song in the rain, under one shared umbrella with a hole in it."
+life.film.filter-coffee-kadhal.scene.1,"They argue over chicory for ten full minutes, then hold hands."
+life.film.filter-coffee-kadhal.title,Filter Coffee Kadhal
+life.film.roundtana-thunder.genre,Action drama
+life.film.roundtana-thunder.plot,A soft-spoken bus conductor stands up to the gang that hoards the neighbourhood's water tankers.
+life.film.roundtana-thunder.scene.0,The conductor stops a runaway tanker with one punch-ticket.
+life.film.roundtana-thunder.scene.1,"Slow-motion walk through a water-pipe shower, three times."
+life.film.roundtana-thunder.title,Roundtana Thunder
+life.film.sambar-sunday.genre,Family comedy
+life.film.sambar-sunday.plot,Three generations of one family fight over the last vada at a cousin's wedding lunch.
+life.film.sambar-sunday.scene.0,Grandfather hides the vada inside his turban.
+life.film.sambar-sunday.scene.1,The bride's uncle starts a sambar-tasting contest that nobody asked for.
+life.film.sambar-sunday.title,Sambar Sunday
+life.film_line,{0} ({1}). {2}
+life.film_over,{0} is over at {1}.
+life.free_socks,BUY 1 GET 1*: your free item is a pair of socks (*see small print).
+life.free_socks_again,The free item is socks again; you already have socks.
+life.gym_pass,A day pass is ₹{0}. The trainer suggests push-ups at home.
+life.healthy,The doctor checks you over: perfectly healthy. The nurse gives you a lollipop anyway.
+life.moment.end,"The credits roll and half the hall is already outside, discussing the climax."
+life.moment.entry,"The hero's entry: the whole hall whistles, and paper confetti rains from the back rows."
+life.moment.interval,"INTERVAL. Everyone rushes the snack counter at once, as if the popcorn might run out."
+life.moment.phone,"Someone's phone rings, loudly. He answers: ""I'm in the theatre, the hero just came. Call me at the interval."""
+life.no_film,No such film.
+life.no_popcorn,No money for popcorn. Your neighbour offers you one piece.
+life.not_for_sale,Not for sale.
+life.not_ill,You are not ill. The man behind you in the queue asks if you will give him your token.
+life.outfit.everyday,Everyday shirt and trousers
+life.outfit.festival,Green festival shirt
+life.outfit.lower.everyday,everyday shirt and trousers
+life.outfit.lower.festival,green festival shirt
+life.outfit.lower.maroon-shirt,maroon silk-cotton shirt
+life.outfit.lower.mustard-kurta,mustard kurta
+life.outfit.lower.track-suit,blue track suit
+life.outfit.maroon-shirt,Maroon silk-cotton shirt
+life.outfit.mustard-kurta,Mustard kurta
+life.outfit.track-suit,Blue track suit
+life.outfit_bought,You buy the {0} and wear it out of the shop. {1}
+life.outfit_costs,The {0} is ₹{1}. You have ₹{2}.
+life.own,You already own the {0}.
+life.popcorn,"Popcorn, ₹{0}. By the time you are back, your neighbour has eaten a third of it."
+life.queue_done,"Three hours, one token number and four new friends in the queue later, you are treated for free."
+life.reps.low,{0} of {1} good reps. The trainer says you lifted more selfies than weights. Not counted.
+life.reps.rest,{0} of {1} good reps. You already trained today: rest days build muscle too. Come back tomorrow.
+life.reps.top,{0} of {1} good reps. Already at top fitness: the trainer asks you to demonstrate for the new joiners.
+life.reps.up,{0} of {1} good reps. Fitness {2}/{3}: sprinting is {4}% faster.
+life.sleep,"You sleep until {0}. The neighbour's pressure cooker whistles you awake, fully rested. Game saved."
+life.snack.bajji-plate,Bajji plate
+life.snack.corn-cup,Masala corn cup
+life.snack.filter-coffee,Filter coffee
+life.snack_bought,{0}: +{1} health.
+life.snack_costs,{0} is ₹{1}. You have ₹{2}.
+life.sold_out,Sold out.
+life.ticket_costs,A ticket is ₹{0}. You have ₹{1}.
+life.treat_ambulance,"You came in with the ambulance, so the staff treat you free. A bandage, a tetanus shot and a lecture about helmets."
+life.treat_costs,"Treatment costs ₹{0} and you have ₹{1}. The free counter is always open, if you can wait."
+life.treat_paid,"Bandaged and patched up for ₹{0}. The doctor writes ""rest"" on the prescription in very large letters."
+life.wait_lobby,You wait in the lobby for the {0} show.
+life.walk_in,You walk in just as the {0} show starts.
+loading.brand,OPEN WORLD
+loading.close,CLOSE
+loading.dots,{0}…
+loading.fail,Could not load
+loading.fail_step,Could not finish: {0}
+loading.retry,TRY AGAIN
+loading.slow,Still working on: {0} ({1} s). A slow phone can need a minute.
+loading.slow_default,loading
+loading.step.0,Reading the map of Chennai
+loading.step.1,Reading the streets
+loading.step.2,Building the streets around you
+loading.step.3,Parking the vehicles
+loading.step.4,Running the trains
+loading.tip.0,Chennai was called Madras until 1996.
+loading.tip.1,Tap RUN to run; it stops when you let go of the stick.
+loading.tip.2,Chennai Central railway station opened in 1873.
+loading.tip.3,Change the time of day or the weather from PAUSE or SETTINGS.
+loading.tip.4,Marina Beach is one of the longest urban beaches in the world.
+map.close,CLOSE
+map.credit_estimated,"{0}, estimated heights and widths"
+map.drawing,Drawing the map...
+map.kind.dropoff,Drop off
+map.kind.fight,Fight
+map.kind.mission,Mission
+map.kind.pickup,Pick up
+map.kind.place,Place
+map.kind.target,Target
+map.kind.vehicle,Vehicle
+map.me,ME
+map.north,N
+map.title,MAP
+menu.pause.map,MAP
+menu.pause.quit,QUIT TO TITLE
+menu.pause.resume,RESUME
+menu.pause.tip,Pause
+menu.pause.title,PAUSED
+msn.aboard,{0}/{1} aboard
+msn.all_complete,All stages complete
+msn.all_complete_detail,Free roam: the city is yours.
+msn.all_done_detail,Every stage is complete. The city is yours.
+msn.avoided,{sp}· {s} s on {name}
+msn.back_checkpoint,{0}: back to the checkpoint
+msn.best,best ₹{0}
+msn.board_default,"Everyday work around the city. Failing a job costs a fine and reputation, never the game. Reputation {0}."
+msn.board_on_job,On the job: {0}. Quitting costs ₹{1} and reputation.
+msn.bump,Bump!
+msn.bump_cost,That will cost you
+msn.bump_patient,Careful with the patient
+msn.bumps.one,{sp}· {n} bump
+msn.bumps.other,{sp}· {n} bumps
+msn.checkpoint,Checkpoint
+msn.checkpoint_detail,A retry starts here
+msn.clock_detail,{0} for the whole job
+msn.clock_running,The clock is running
+msn.clothes,Change clothes
+msn.complete_detail,{0} · +₹{1}{2}{3}
+msn.drive_to_end,"Drive on to {0}, the end of the route"
+msn.drive_to_start,Drive to the start; the clock starts there. {0}
+msn.drive_to_start_at,Drive to the start of the route at {0}; the clock starts there
+msn.drop_where,Drop the passenger where they asked
+msn.escalator,Take the escalator up
+msn.escalator_detail,"Ten minutes, usually"
+msn.fare_plus,Fare +₹{0}
+msn.film_detail,₹{0} · next show {1}
+msn.film_label,{0} ({1})
+msn.fine,Fine ₹{0}.
+msn.finish_job_first,Finish or quit the current job first
+msn.free_counter,Free counter
+msn.get_back_in,Get back in the {0}
+msn.get_in,Get in the {0}
+msn.half_pay,{0} · half pay now
+msn.jammed,{0} is jammed
+msn.jammed_detail,"Cross it, don't drive along it: time on it cuts the pay"
+msn.job_complete,{0} complete
+msn.job_failed,Job failed
+msn.job_failed_detail,{0}. {1}Reputation {2}. The city still needs drivers: try again from the board.
+msn.job_meta,{0} · up to ₹{1} · {2} min
+msn.job_panel,Job · {0}{1}{2}
+msn.job_panel_share,Job · {0} · {1}/{2} aboard · ₹{3}{4}
+msn.job_result,+₹{0} · {1}{2} · {3} s · reputation {4}{5}. {6}.
+msn.label_note,{0} · {1}
+msn.medal_suffix,{sp}· {m} medal
+msn.missed_detail,They got off further on and paid nothing
+msn.missed_stop,Missed their stop
+msn.mission,Mission
+msn.mission_complete,{0} complete
+msn.not_now,Not now.
+msn.nothing,Nothing to do.
+msn.on_this_job,On this job now
+msn.owned,Owned
+msn.panel_mission,Mission · {0}
+msn.panel_replay,Replay · {0}
+msn.panel_stage,Stage {0} · {1}
+msn.passed_detail,There was a free seat: that costs reputation
+msn.passed_waiting,Passed someone waiting
+msn.passenger_in,Passenger in
+msn.pay_replay,replay pays ₹{0}
+msn.pay_up_to,up to ₹{0}
+msn.playing_now,Playing now
+msn.popcorn,Popcorn
+msn.price,₹{0}
+msn.queue_hours,{0} hours in the queue
+msn.rep_plus,{sp}· reputation +{g}
+msn.reps_try,{0} good reps: Selva did four. Try again.
+msn.shift_over,{0} shift over
+msn.sleep,Sleep until {0}
+msn.sleep_detail,{0} hours · saves the game
+msn.snack_detail,₹{0} · +{1} health
+msn.stage_complete,Stage {0} complete
+msn.stage_meta,{0} · {1}{2}
+msn.stage_notice,Stage {0}: {1}
+msn.starts_again,{0} starts again
+msn.stop_drop,Stop here: a passenger gets off
+msn.stop_let_in,Stop here to let them in
+msn.stop_wait,{0}: wait {1} s
+msn.story_detail,+₹{0} · {1}
+msn.story_done,{0}: done
+msn.story_label,Story: {0}
+msn.story_over,{0} is over; ask again at the place
+msn.story_tag,Story
+msn.treat_fee,₹{0} at your health
+msn.treat_free,Free after the ambulance
+msn.treatment,Treatment
+msn.waving,Someone is waving at the kerb: pull up beside them
+msn.wearing,Wearing: {0}
+msn.workout,Workout: {0} reps
+msn.workout_detail,Day pass ₹{0} · fitness {1}/{2}
+quality.explain.high,"full resolution, long shadows, full traffic"
+quality.explain.low,"65% resolution, flat lighting, less traffic"
+quality.explain.medium,"80% resolution, short shadows, fewer people"
+quality.high,High
+quality.low,Low
+quality.medium,Medium
+rail.aspect.green,green
+rail.aspect.red,red
+rail.aspect.yellow,yellow
+rail.at,At {0}
+rail.board_toast,Train to {0} · ticket ₹{1} · next: {2}
+rail.cab_title,{0} · to {1}
+rail.cant_board,Can't board: {0}
+rail.continues,The line continues to {0} beyond the map.
+rail.driving_to,You are driving to {0}. Raise the lever when the doors close; stop at the red STOP board.
+rail.end_of_line,end of the line
+rail.every,{0} · every {1} min
+rail.hud.close,CLOSE
+rail.hud.doors_closed,Doors closed
+rail.hud.doors_open,Doors open
+rail.hud.drive,DRIVE
+rail.hud.emg,EMG
+rail.hud.horn,HORN
+rail.hud.leave_cab,LEAVE CAB
+rail.hud.score,Score {0}
+rail.hud.signal,Signal {0} · limit {1}
+rail.hud.sit,SIT
+rail.hud.stand,STAND
+rail.hud.step_off,STEP OFF
+rail.hud.timetable,TIMETABLE
+rail.hud.view,VIEW
+rail.leave_cab_hint,Stop at a platform and open the doors to leave the cab.
+rail.lines_note,"Lines (headways estimated, not the real timetable):"
+rail.next,Next: {0}
+rail.next_train,"Next train: {0}, {1}"
+rail.no_trains,No trains
+rail.reason.beyond,This train's next stop is beyond the map (towards {0}).
+rail.reason.doors_closing,The doors are closing.
+rail.reason.not_standing,The train is not standing here.
+rail.reason.terminates,This train terminates here.
+rail.reason.ticket,A ticket costs ₹{0}.
+rail.ride_end,{0}: end of the ride. {1}
+rail.row,{0}   PF {1}   {2}   {3}
+rail.run_score,Score {0} for this run.
+rail.score_line,{0}{1} {2}
+rail.station,{0} station
+rail.status.arriving,Arriving
+rail.status.due,Due
+rail.status.min,{0} min
+rail.status.on_platform,On platform
+rail.terminates_at,This train terminates at {0}.
+rail.timetable,Timetable
+rail.to_mark,{0} m to the stop mark
+rail.train_to,Train to {0}
+rail.wait_next,Wait for the next station: you can step off when the train stops.
+set.button_opacity,Button opacity: {0}%
+set.button_size,Buttons: {0}
+set.graphics,Graphics: {0}
+set.graphics.auto,Auto ({0})
+set.invert_y,Invert look Y: {0}
+set.language,Language: {0}
+set.left_handed,Left-handed: {0}
+set.look_speed,Look speed: {0}x
+set.minimap,Minimap: {0}
+set.minimap.north,north up
+set.minimap.turns,turns with you
+set.off,Off
+set.on,On
+set.perf_overlay,Performance overlay: {0}
+set.run,Run: {0}
+set.run.edge,push stick to edge
+set.run.tap,tap RUN
+set.size.large,Large
+set.size.medium,Medium
+set.size.small,Small
+set.sound,Sound: {0}
+set.time,Time: {0} ({1})
+set.vibration,Vibration: {0}
+set.weather,Weather: {0}
+sound.more_free,"{0} more recordings are CC0 or public domain (OpenGameArt, Wikimedia Commons); thanks to their authors."
+sound.synth,The other {0} sounds are synthesised for this game.
+sound.thanks,"Sound recordings, with thanks:"
+time.evening,Evening
+time.morning,Morning
+time.night,Night
+time.noon,Noon
+title.back,BACK
+title.continue_line,{0} · ₹{1} · {2} of {3} stages
+title.credit_prefix,Map data
+title.free_roam,Free roam
+title.name.open_world,OPEN WORLD
+title.row.about,ABOUT
+title.row.continue,CONTINUE
+title.row.controls,CONTROLS
+title.row.new_game,NEW GAME
+title.row.quit,QUIT
+title.row.settings,SETTINGS
+title.stage,Stage {0}
+title.sub.about,Credits and map data
+title.sub.controls,Touch controls on foot and driving
+title.sub.new_game,Begin in Chennai: Stage 1
+title.sub.new_game_named,"Begin in Chennai: Stage 1, {0}"
+title.sub.settings,"Time of day, weather and sound"
+title.sub.start_again,Start again from Stage 1
+toast.careful,Careful
+toast.drop_back,Drop back
+toast.graphics_detail,It ran at {0} fps. Change it in Settings → Graphics.
+toast.graphics_lowered,Graphics lowered to {0}
+toast.heat_detail,They may remember this
+toast.heat_raised,Police heat +{0}
+toast.load_shaking,The load is shaking: smooth and slow
+toast.noticing,He is noticing you
+toast.stop_first,Stop the vehicle first
+toast.too_far_take,Too far to take over
+veh.label.ambulance,Ambulance
+veh.label.auto,Auto-rickshaw
+veh.label.bike,Motorbike
+veh.label.bus,City bus
+veh.label.car,Hatchback
+veh.noun.ambulance,ambulance
+veh.noun.auto,auto-rickshaw
+veh.noun.bike,motorbike
+veh.noun.bus,city bus
+veh.noun.car,hatchback
+weather.clear,Clear
+weather.rain,Rain
+weather.storm,Storm
+c.missions.morning-walk.title,Morning walk
+c.missions.morning-walk.brief,Stretch your legs. Walk down the street to the marker.
+c.missions.morning-walk.objectives.0.label,Walk to the marker
+c.missions.borrowed-wheels.title,Borrowed wheels
+c.missions.borrowed-wheels.brief,Your cousin left his hatchback on the street. Take it across town to Kilpauk Garden Road.
+c.missions.borrowed-wheels.objectives.0.label,Get in the hatchback
+c.missions.borrowed-wheels.objectives.1.label,"Drive to Kilpauk Garden Road, Kilpauk"
+c.missions.auto-shift.title,Auto shift
+c.missions.auto-shift.brief,Cover a friend's auto in Perambur for one fare. Pick the passenger up and drop them in Amirthammal Colony before they lose patience.
+c.missions.auto-shift.objectives.0.label,Get in the auto-rickshaw
+c.missions.auto-shift.objectives.1.label,Pick up the passenger
+c.missions.auto-shift.objectives.2.label,Drop the passenger
+c.missions.parcel-run.title,Parcel run
+c.missions.parcel-run.brief,"Three parcels, three addresses between Chetpet and Nungambakkam, and the clock is running on each one."
+c.missions.parcel-run.objectives.0.label,Get in a car
+c.missions.parcel-run.objectives.1.label,"Deliver parcel 1 of 3, Mc Nichols Road"
+c.missions.parcel-run.objectives.2.label,"Deliver parcel 2 of 3, Nungambakkam"
+c.missions.parcel-run.objectives.3.label,"Deliver parcel 3 of 3, Spur Tank Road"
+c.missions.cross-town.title,Cross-town dash
+c.missions.cross-town.brief,"Corner to corner across Anna Nagar, as fast as the streets allow."
+c.missions.cross-town.objectives.0.label,Get in a car
+c.missions.cross-town.objectives.1.label,Drive to the start line
+c.missions.cross-town.objectives.2.label,Race to the finish
+c.missions.bike-courier.title,Two-wheel courier
+c.missions.bike-courier.brief,Lunch boxes go cold fast. Take the motorbike and make both drops on time.
+c.missions.bike-courier.objectives.0.label,Get on a motorbike
+c.missions.bike-courier.objectives.1.label,"Collect the lunch boxes, Jeenis Road, Saidapet"
+c.missions.bike-courier.objectives.2.label,"First drop, Jothiammal Nagar"
+c.missions.bike-courier.objectives.3.label,"Second drop, Saidapet"
+c.missions.park-trouble.title,Park trouble
+c.missions.park-trouble.brief,"Three thugs are shaking down walkers in Tower Park. No weapons, just fists. Sort them out."
+c.missions.park-trouble.objectives.0.label,Go to Tower Park
+c.missions.park-trouble.objectives.1.label,Beat the three thugs (HIT)
+c.missions.bike-thieves.title,Bike thieves
+c.missions.bike-thieves.brief,"A stolen motorbike is being stripped on a back street off Jawaharlal Nehru Road in Vadapalani, and two of the gang are armed. You have a pistol now: FIRE shoots where you look."
+c.missions.bike-thieves.objectives.0.label,"Find the thieves, off Jawaharlal Nehru Road"
+c.missions.bike-thieves.objectives.1.label,Take down the thieves
+c.missions.bike-thieves.objectives.2.label,Get on a motorbike
+c.missions.bike-thieves.objectives.3.label,Ride it back to its owner on Arcot Road
+c.missions.godown-raid.title,Godown raid
+c.missions.godown-raid.brief,"The gang keeps its takings in a godown in the Ambattur Industrial Estate, far across town. Four guards, all armed. Use the corners."
+c.missions.godown-raid.objectives.0.label,"Get to the godown, Ambit Park Road, Ambattur"
+c.missions.godown-raid.objectives.1.label,Clear out the guards
+c.missions.roundtana-showdown.title,Roundtana showdown
+c.missions.roundtana-showdown.brief,The boss is waiting at the Roundtana with his best men. End it.
+c.missions.roundtana-showdown.objectives.0.label,Go to the Roundtana
+c.missions.roundtana-showdown.objectives.1.label,Defeat the boss and his men
+c.missions.courier-chase.title,Courier chase
+c.missions.courier-chase.brief,"With the boss gone, three gangs want his streets. The Manjal Puli (Yellow Tigers) send a rider down Peters Road in Royapettah with the week's protection money. Take a car and stop him."
+c.missions.courier-chase.objectives.0.label,"Go to Peters Road, Royapettah"
+c.missions.courier-chase.objectives.1.label,Get in a car
+c.missions.courier-chase.objectives.2.label,Wait on Peters Road for the courier
+c.missions.courier-chase.objectives.3.label,Catch the courier: pull up beside him
+c.missions.courier-chase.objectives.4.label,"Take the money back to the tea shop, Triplicane High Road"
+c.missions.tea-shop.title,Protection money
+c.missions.tea-shop.brief,"A tea shop owner in the Flower Bazaar paid the Manjal Puli for years. Now the Neela Nandu (Blue Crabs) want a cut too, and four of them are walking up the street. Stand with him. He keeps an old shotgun under the counter for you."
+c.missions.tea-shop.objectives.0.label,"Wait at the tea shop, Audiappa Naicken Street"
+c.missions.tea-shop.objectives.1.label,Send the racket packing
+c.missions.drive-by.title,Hot wheels
+c.missions.drive-by.brief,Word is out that you took the Neela Nandu's money. A friend left you a motorbike on KMS Street; the crew is waiting by it. Get on and ride for the Marina beach road.
+c.missions.drive-by.objectives.0.label,"Go to KMS Street, Triplicane"
+c.missions.drive-by.objectives.1.label,Get on the motorbike
+c.missions.drive-by.objectives.2.label,Ride to the beach road before they get you
+c.missions.snake-pit.title,Snake pit
+c.missions.snake-pit.brief,"The Pachai Paambu (Green Snakes) of Egmore have been arming both sides. Their hideout is a back street off Pantheon Road. Six of them, with shotguns and an SMG. Clear it out."
+c.missions.snake-pit.objectives.0.label,"Find the hideout, Egmore"
+c.missions.snake-pit.objectives.1.label,Clear out the hideout
+c.missions.turf-war.title,Turf war
+c.missions.turf-war.brief,The Manjal Puli boss has called every crew he has left to the bus junction in T. Nagar to finish this. So have you.
+c.missions.turf-war.objectives.0.label,"Go to the bus junction, T. Nagar"
+c.missions.turf-war.objectives.1.label,Win the turf war
+c.missions.stadium-biryani.title,Biryani for the dressing room
+c.missions.stadium-biryani.brief,"Match day at Chepauk. A kitchen near Egmore station has forty parcels of biryani for the dressing room and its delivery rider has flu. The toss is soon: ride, and don't stop for tea."
+c.missions.stadium-biryani.objectives.0.label,Get on a motorbike
+c.missions.stadium-biryani.objectives.1.label,Collect the biryani near Egmore station
+c.missions.stadium-biryani.objectives.2.label,"Deliver it to the stadium gate, Wallajah Road"
+c.missions.stadium-biryani.objectives.3.label,"Last box to the scorers, Victoria Hostel Road"
+c.missions.wedding-party.title,Muhurtham
+c.missions.wedding-party.brief,Selvi akka's niece gets married in Mylapore this morning and the hired van never came. Three of the family are waiting on Westcott Road in their silks. Take the auto by the clock tower and get them to the mandapam before the muhurtham.
+c.missions.wedding-party.objectives.0.label,Get in the auto by the clock tower
+c.missions.wedding-party.objectives.1.label,Pick up the wedding party on Westcott Road
+c.missions.wedding-party.objectives.2.label,"Get them to the mandapam on North Mada Street, Mylapore"
+c.missions.planted-chain.title,Hot property
+c.missions.planted-chain.brief,"Lakshmi, who sells jasmine by the temple near Elliot's Beach, wants a word. As she talks, someone slips a gold chain into your pocket and a constable starts shouting. Lose the police, then hand the chain in at the temple office."
+c.missions.planted-chain.objectives.0.label,"Meet Lakshmi at her flower stall, Besant Nagar 2nd Avenue"
+c.missions.planted-chain.objectives.1.label,Someone planted a stolen chain on you: lose the police
+c.missions.planted-chain.objectives.2.label,"Hand the chain in at the temple office, Besant Nagar"
+c.missions.mumbai-mail.title,The Mumbai Mail
+c.missions.mumbai-mail.brief,"Padma Raghavan, a Carnatic singer with a concert in Mumbai tomorrow, has missed her ride and her train leaves Central soon. A car is parked on North Mada Street. Pick her up on South Mada Street and get her to Chennai Central."
+c.missions.mumbai-mail.objectives.0.label,Get in the car on North Mada Street
+c.missions.mumbai-mail.objectives.1.label,Pick up the singer on South Mada Street
+c.missions.mumbai-mail.objectives.2.label,"Drop her at Chennai Central, EVR Periyar Salai"
+c.missions.beach-road-brawl.title,Beach road brawl
+c.missions.beach-road-brawl.brief,"A gang is robbing delivery riders on the beach road at Santhome. Five of them, bats and fists. Police patrols are thick on the beach road, so leave the guns holstered and settle it by hand."
+c.missions.beach-road-brawl.objectives.0.label,"Go to Kamarajar Salai, the beach road at Santhome"
+c.missions.beach-road-brawl.objectives.1.label,Beat the gang robbing the riders
+c.missions.harmonium-thief.title,The harmonium thief
+c.missions.harmonium-thief.brief,"Padma's accompanist sent her harmonium ahead on a suburban train, and a thief has taken it off at Egmore. Walk to Park station, take the train one stop to Egmore, then catch him on the motorbike outside the station."
+c.missions.harmonium-thief.objectives.0.label,Walk to Park station
+c.missions.harmonium-thief.objectives.1.label,Take a train from Park to Chennai Egmore (BOARD on the platform)
+c.missions.harmonium-thief.objectives.2.label,Step off and get on the motorbike outside Egmore station
+c.missions.harmonium-thief.objectives.3.label,Catch the thief on EVR Periyar Salai
+c.missions.harmonium-thief.objectives.4.label,Bring the harmonium back to Egmore station
+c.jobs.ambulance-run.title,Ambulance run
+c.jobs.ambulance-run.brief,"A patient needs a hospital now. Use the SIREN to clear the traffic, and drive smoothly: every bump hurts."
+c.jobs.ambulance-run.stops.0.label,Pick up the patient
+c.jobs.ambulance-run.stops.1.label,Drive the patient to the hospital
+c.jobs.courier.title,Courier delivery
+c.jobs.courier.brief,Collect a parcel from the post office and get it across town on the motorbike. No damage earns a bonus.
+c.jobs.courier.stops.0.label,Collect the parcel at the post office on 8th Street
+c.jobs.courier.stops.1.label,Deliver the parcel on 5th street
+c.jobs.cab-ride.title,Cab ride
+c.jobs.cab-ride.brief,A passenger is waiting for a car. The fare goes by distance; a smooth ride earns a tip.
+c.jobs.cab-ride.stops.0.label,Pick up the passenger
+c.jobs.cab-ride.stops.1.label,Drop the passenger on 4th Avenue (Santhi Colony Road)
+c.jobs.bus-route.title,Bus route
+c.jobs.bus-route.brief,Drive the city bus round its loop. Stop at every stop in order and keep to the timetable.
+c.jobs.bus-route.stops.0.label,Bus stop 1 of 4 on 4th Avenue (Santhi Colony Road)
+c.jobs.bus-route.stops.1.label,Bus stop 2 of 4 on 4th Avenue (Santhi Colony Road)
+c.jobs.bus-route.stops.2.label,Bus stop 3 of 4 on 4th Avenue (Santhi Colony Road)
+c.jobs.bus-route.stops.3.label,Bus stop 4 of 4 on 4th Avenue (Santhi Colony Road)
+c.jobs.hospital-transfer.title,Hospital transfer
+c.jobs.hospital-transfer.brief,"A stable patient needs moving between hospitals for a scan. Less rush, but a smooth ride matters even more."
+c.jobs.hospital-transfer.stops.0.label,Collect the patient at the hospital on 6th Main Road
+c.jobs.hospital-transfer.stops.1.label,Transfer to the hospital
+c.jobs.food-delivery.title,Lunch rush
+c.jobs.food-delivery.brief,"Three hot lunches from one kitchen to three homes. Ride fast, ride clean."
+c.jobs.food-delivery.stops.0.label,"Collect the orders on 2nd Avenue, Anna Nagar West"
+c.jobs.food-delivery.stops.1.label,Delivery 1 of 3
+c.jobs.food-delivery.stops.2.label,Delivery 2 of 3 on 5th street
+c.jobs.food-delivery.stops.3.label,Delivery 3 of 3 on 6th Main Road
+c.jobs.medicine-run.title,Medicine run
+c.jobs.medicine-run.brief,"A hospital ward has run short. Take a box of medicine from the chemist, quickly."
+c.jobs.medicine-run.stops.0.label,Collect the medicine on 1st Main Road
+c.jobs.medicine-run.stops.1.label,Deliver to the hospital
+c.jobs.share-auto.title,Share auto
+c.jobs.share-auto.brief,"Run a share auto down 2nd Avenue, Thirumangalam to Anna Nagar East. People wave it down anywhere: pull up beside them to let them in (4 seats), and stop where each one asks to get off. Fares are small (about ₹10 plus ₹5 a km each, estimated); missing a drop or passing people by costs reputation."
+c.jobs.share-auto.stops.0.label,End of the route at Anna Nagar East
+c.jobs.share-auto.share.name,"2nd Avenue, Anna Nagar West"
+c.jobs.tower-park-visit.title,Tower Park visitor
+c.jobs.tower-park-visit.brief,A visitor wants to see Anna Nagar Tower Park before it closes. Take them to the gate.
+c.jobs.tower-park-visit.stops.0.label,"Pick up the visitor on 2nd Avenue, Anna Nagar West"
+c.jobs.tower-park-visit.stops.1.label,Drop them at Anna Nagar Tower Park
+c.jobs.evening-bus.title,"Evening bus, the other way"
+c.jobs.evening-bus.brief,"The same loop backwards at the busy hour. Tighter timetable, more people waiting."
+c.jobs.evening-bus.stops.0.label,Bus stop 1 of 4 on 4th Avenue (Santhi Colony Road)
+c.jobs.evening-bus.stops.1.label,Bus stop 2 of 4 on 4th Avenue (Santhi Colony Road)
+c.jobs.evening-bus.stops.2.label,Bus stop 3 of 4 on 4th Avenue (Santhi Colony Road)
+c.jobs.evening-bus.stops.3.label,Bus stop 4 of 4 on 4th Avenue (Santhi Colony Road)
+c.jobs.marina-evening.title,Marina evening drive
+c.jobs.marina-evening.brief,"Take a friend from T. Nagar to Marina Beach for the evening breeze. Anna Salai is jammed at this hour: cross it, don't drive along it. Evenings only (16:00–20:30); the clock starts at the pick-up."
+c.jobs.marina-evening.stops.0.label,"Pick up your friend on Sir Thyagaraya Road, T. Nagar"
+c.jobs.marina-evening.stops.1.label,"Drop them at Marina Beach, on the beach road"
+c.jobs.marina-evening.avoid.name,Anna Salai
+c.jobs.egmore-transfer.title,Egmore hospital transfer
+c.jobs.egmore-transfer.brief,"A stable patient moves from a hospital in Egmore to one in Royapettah for treatment, through central Chennai. Use the SIREN; three bumps end the run."
+c.jobs.egmore-transfer.stops.0.label,"Collect the patient at the hospital on Pantheon Road, Egmore"
+c.jobs.egmore-transfer.stops.1.label,"Transfer to the hospital on Conron Smith Road, Royapettah"
+c.jobs.mount-road-bus.title,Mount Road bus
+c.jobs.mount-road-bus.brief,"Drive the bus up Anna Salai from Teynampet towards Thousand Lights, stopping at four real stops in order. Keep to the timetable in the heaviest traffic in town."
+c.jobs.mount-road-bus.stops.0.label,Bus stop 1 of 4: SIET
+c.jobs.mount-road-bus.stops.1.label,Bus stop 2 of 4: DMS
+c.jobs.mount-road-bus.stops.2.label,Bus stop 3 of 4: US Embassy
+c.jobs.mount-road-bus.stops.3.label,Bus stop 4 of 4: Thousand Lights
+c.gangs.puli.name,Manjal Puli
+c.gangs.puli.meaning,Yellow Tigers
+c.gangs.nandu.name,Neela Nandu
+c.gangs.nandu.meaning,Blue Crabs
+c.gangs.paambu.name,Pachai Paambu
+c.gangs.paambu.meaning,Green Snakes
+c.places.home.name,Home
+c.places.hospital.name,Sugam Hospital
+c.places.gym.name,Thol Power Gym
+c.places.mall.name,Vaanavil Mall
+c.places.cinema.name,Minnal Cinemas
+c.stories.paati-checkup.title,Paati's check-up
+c.stories.paati-checkup.brief,"Your grandmother has a check-up at Sugam Hospital and has been ready since six in the morning. Drive her there, and home again before her TV serial starts."
+c.stories.paati-checkup.ending,Paati gives you ₹400 and the rest of her tiffin. The doctor's advice for you: fewer vadas.
+c.stories.paati-checkup.steps.0.label,Get in a car: Paati is waiting
+c.stories.paati-checkup.steps.1.label,Drive Paati to Sugam Hospital. Gently: she is holding a tiffin box
+c.stories.paati-checkup.steps.2.label,Walk Paati in for her check-up (ENTER Sugam Hospital)
+c.stories.paati-checkup.steps.3.label,Drive Paati home before her serial starts
+c.stories.gym-bet.title,Selva's gym bet
+c.stories.gym-bet.brief,"Your friend Selva bets you can't match his four good reps, then beat him to the juice shop on foot. Loser buys the sugarcane juice."
+c.stories.gym-bet.ending,"Selva pays for the juice and the bet, and books a rematch for next week."
+c.stories.gym-bet.steps.0.label,Match Selva: 4 good reps out of 5 (in the gym)
+c.stories.gym-bet.steps.1.label,"Race Selva to the juice shop, on foot"
+c.stories.first-show.title,"First day, first show"
+c.stories.first-show.brief,Ravi got two tickets for the first show of a new film at Minnal Cinemas. Pick him up on the motorbike and get there before the hero's entry.
+c.stories.first-show.ending,Ravi pays you back for the petrol. He has already booked the second show.
+c.stories.first-show.steps.0.label,Get on a motorbike: the show starts soon
+c.stories.first-show.steps.1.label,Pick up Ravi (he is still choosing a shirt)
+c.stories.first-show.steps.2.label,Ride to Minnal Cinemas before the hero's entry
+c.stories.first-show.steps.3.label,Go in for the first show (ENTER Minnal Cinemas)
+c.missions.hall-ticket.where,Triplicane
+c.missions.hall-ticket.title,Hall Ticket
+c.missions.hall-ticket.brief,"A student's entrance exam starts at nine and the gates shut on the stroke. The lodge to the exam centre on Greams Road is across the city at rush hour. Get there on time, and if the gate has shut, the side gate on Pathari Road stays open for a few minutes more."
+c.missions.hall-ticket.quietZones.0.label,Hospital zone: no horns
+c.missions.hall-ticket.goals.early.label,Reach the gate with 2 minutes to spare
+c.missions.hall-ticket.goals.quiet.label,No horn in the hospital zone
+c.missions.hall-ticket.goals.clean.label,No crashes
+c.missions.hall-ticket.objectives.0.label,Get in the auto outside the lodge
+c.missions.hall-ticket.objectives.1.label,Pick up the student at the lodge
+c.missions.hall-ticket.objectives.2.label,"Drive to the exam centre gate, Greams Road"
+c.missions.hall-ticket.objectives.side.label,"The gate has shut: run to the side gate, Pathari Road"
+c.missions.sambar-sixty.where,Mylapore
+c.missions.sambar-sixty.title,Sambar for Sixty
+c.missions.sambar-sixty.brief,"Sixty guests, one wedding hall, and a vessel of sambar that must arrive hot and not half-spilled. The lane through the back streets is short and rough; the main road is smooth and long. Watch the stability meter: every breaker and pothole takes some."
+c.missions.sambar-sixty.goals.intact.label,Arrive with the vessel over 90% intact
+c.missions.sambar-sixty.goals.hot.label,Arrive with 90 seconds to spare
+c.missions.sambar-sixty.objectives.0.label,Get in the goods auto behind the caterer's
+c.missions.sambar-sixty.objectives.1.label,Load the sambar vessel at the caterer's kitchen
+c.missions.sambar-sixty.objectives.2.label,"Deliver the vessel to the wedding hall, Venkatakrishna Road"
+c.missions.sambar-sixty.objectives.2.rough.0.label,speed breaker
+c.missions.sambar-sixty.objectives.2.rough.1.label,pothole
+c.missions.sambar-sixty.objectives.2.rough.2.label,speed breaker
+c.missions.sambar-sixty.objectives.2.rough.3.label,pothole
+c.missions.sambar-sixty.objectives.2.rough.4.label,speed breaker
+c.missions.sambar-sixty.objectives.2.rough.5.label,pothole
+c.missions.sambar-sixty.objectives.2.rough.6.label,pothole
+c.missions.sambar-sixty.objectives.2.rough.7.label,speed breaker
+c.missions.sambar-sixty.objectives.2.rough.8.label,pothole
+c.missions.sambar-sixty.objectives.2.rough.9.label,pothole
+c.missions.sambar-sixty.objectives.2.rough.10.label,pothole
+c.missions.wrong-number.where,Thousand Lights
+c.missions.wrong-number.title,Wrong Number
+c.missions.wrong-number.brief,"A call to the wrong number, and a stranger's voice sounding afraid: a parcel runner is carrying something that is not his, and he keeps changing scooters. Follow him down Mount Road without being noticed, then decide what to do with what you learn."
+c.missions.wrong-number.goals.unseen.label,Never more than 40% suspicion
+c.missions.wrong-number.goals.clean.label,No crashes
+c.missions.wrong-number.goals.quick.label,Finish in 10 minutes
+c.missions.wrong-number.objectives.0.label,Get on the motorbike
+c.missions.wrong-number.objectives.1.label,Wait at the junction on Mount Road where the runner appears
+c.missions.wrong-number.objectives.2.label,"Follow the parcel runner to the drop-off, unseen"
+c.missions.wrong-number.objectives.2.pauses.0.label,He swaps scooters in a side lane
+c.missions.wrong-number.objectives.2.pauses.1.label,He swaps scooters in a side lane
+c.missions.wrong-number.objectives.2.pauses.2.label,He swaps scooters in a side lane
+c.missions.wrong-number.objectives.3.label,He has dropped the envelope. What now?
+c.missions.wrong-number.objectives.3.options.report.label,Report it to the police station
+c.missions.wrong-number.objectives.3.options.report.detail,"Reputation up, a small reward."
+c.missions.wrong-number.objectives.3.options.take.label,Take the envelope
+c.missions.wrong-number.objectives.3.options.take.detail,"More money, and a star of police heat. Something later reacts."
+c.missions.wrong-number.objectives.station.label,"Take it to the police station, Nandanam Main Road"
+c.missions.monsoon-night.where,Santhome
+c.missions.monsoon-night.title,Monsoon Night
+c.missions.monsoon-night.brief,The northeast monsoon has broken over the coast and a patient needs the hospital in Alwarpet. The shortest road floods first; the minimap shows the water. Re-route early and drive smoothly: the patient feels every jolt.
+c.missions.monsoon-night.goals.health.label,Patient health above 70%
+c.missions.monsoon-night.goals.clean.label,No crashes
+c.missions.monsoon-night.objectives.0.label,Get in the ambulance
+c.missions.monsoon-night.objectives.1.label,Pick up the patient on Santhome High Road
+c.missions.monsoon-night.objectives.2.label,"Take the patient to the hospital, TTK Road"
+c.missions.monsoon-night.objectives.2.hazards.0.label,Underpass on the shortest road
+c.missions.monsoon-night.objectives.2.hazards.1.label,Low junction ahead
+c.missions.monsoon-night.objectives.2.hazards.2.label,The long way floods last
+c.missions.the-bandh.where,Egmore
+c.missions.the-bandh.title,The Bandh
+c.missions.the-bandh.brief,"A general strike has shut the main roads and every shop. Three urgent deliveries must still cross the city before noon, and the only doors open are the back ones. Use the lanes and the beach road; the shut roads show red on the minimap."
+c.missions.the-bandh.briefIf.took_envelope,The envelope's owners know your bike now. Keep clear of the police.
+c.missions.the-bandh.goals.quiet.label,No police attention
+c.missions.the-bandh.goals.clean.label,No crashes
+c.missions.the-bandh.goals.fast.label,All three delivered in 12 minutes
+c.missions.the-bandh.objectives.0.label,Get on the motorbike behind the depot
+c.missions.the-bandh.objectives.1.label,"Collect the three urgent parcels at the depot's back door, Pantheon Road"
+c.missions.the-bandh.objectives.1.hazards.0.label,Bandh: road shut
+c.missions.the-bandh.objectives.1.hazards.1.label,Bandh: road shut
+c.missions.the-bandh.objectives.1.hazards.2.label,Bandh: road shut
+c.missions.the-bandh.objectives.2.label,"Back door 1, Bharathi Salai: the medicine"
+c.missions.the-bandh.objectives.2.hazards.0.label,Bandh: road shut
+c.missions.the-bandh.objectives.2.hazards.1.label,Bandh: road shut
+c.missions.the-bandh.objectives.2.hazards.2.label,Bandh: road shut
+c.missions.the-bandh.objectives.3.label,"Back door 2, Buchi Babu Street: the lunch box"
+c.missions.the-bandh.objectives.3.hazards.0.label,Bandh: road shut
+c.missions.the-bandh.objectives.3.hazards.1.label,Bandh: road shut
+c.missions.the-bandh.objectives.3.hazards.2.label,Bandh: road shut
+c.missions.the-bandh.objectives.4.label,"Back door 3, the beach road: the parcel"
+c.missions.the-bandh.objectives.4.hazards.0.label,Bandh: road shut
+c.missions.the-bandh.objectives.4.hazards.1.label,Bandh: road shut
+c.missions.the-bandh.objectives.4.hazards.2.label,Bandh: road shut

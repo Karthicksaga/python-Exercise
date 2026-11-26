@@ -68,7 +68,7 @@ func toggle_perf_overlay() -> void:
 
 ## The pause menu row's text and press, like `Weather.label` / `Weather.toggle`.
 static func label() -> String:
-	return "Performance overlay: %s" % ("On" if shared().perf_overlay else "Off")
+	return Tr.t("set.perf_overlay", [&"set.on" if shared().perf_overlay else &"set.off"])
 
 
 static func toggle() -> void:

@@ -38,7 +38,7 @@ var brake_hint: Label
 var _area: Control
 var _mode: StringName = &"foot"
 var _toast_time := 0.0
-var _horn_label := "HORN"
+var _horn_key := "ctl.horn"
 var _reversing := false
 
 
@@ -58,27 +58,30 @@ func _init() -> void:
 	steer_pad = SteerZone.new()
 	steer_pad.name = "Steer"
 	_area.add_child(steer_pad)
-	gas = _button("GAS", "Gas", 20, 5.0)
+	gas = _button("ctl.gas", "Gas", 20, 5.0)
 	_area.add_child(gas)
-	brake = _button("BRAKE", "Brake", 14, 4.0)
+	brake = _button("ctl.brake", "Brake", 14, 4.0)
 	_area.add_child(brake)
-	brake_hint = UiTheme.label("hold to reverse", 11, UiTheme.TEXT)
+	brake_hint = UiTheme.label("", 11, UiTheme.TEXT)
+	Tr.bind(brake_hint, "ctl.hold_reverse", null, true)
 	brake_hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	brake_hint.add_theme_constant_override("outline_size", 3)
 	brake_hint.name = "ReverseHint"
 	brake_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	brake_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# Under the circle, in the strip below the pedals (DRIVE_BOTTOM), not inside it.
-	brake_hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	brake_hint.offset_left = -12.0
-	brake_hint.offset_right = 12.0
+	# Centred on the pedal and growing both ways, so a longer Tamil line stays under it.
+	brake_hint.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	brake_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	brake_hint.offset_left = 0.0
+	brake_hint.offset_right = 0.0
 	brake_hint.offset_top = 1.0
 	brake_hint.offset_bottom = 17.0
 	brake.add_child(brake_hint)
-	horn = _button("HORN", "Horn", 12, 3.0)
+	horn = _button("ctl.horn", "Horn", 12, 3.0)
 	_area.add_child(horn)
 	exit_button = _button("", "Exit", 16, 4.0)
-	exit_button.tooltip_text = "Exit"
+	Tr.bind(exit_button, "ctl.exit_tip", null, false, &"tooltip_text")
 	var exit_icon := UiTheme.IconOverlay.new()
 	exit_icon.kind = UiIcons.EXIT
 	exit_icon.visual = 40.0
@@ -146,6 +149,8 @@ func _place() -> void:
 	steer_pad.queue_redraw()
 	for pair: Array in [[gas, 5.0], [brake, 4.0], [horn, 3.0], [exit_button, 4.0]]:
 		UiTheme.set_round(pair[0] as Button, pair[1] as float)
+	for b: HoldButton in [gas, brake, horn]:
+		b.fit_text()
 	_apply_opacity()
 
 
@@ -163,11 +168,13 @@ func _on_device(device: DeviceTracker.Device) -> void:
 	exit_button.hint = DeviceTracker.glyph(&"exit", device)
 
 
-func _button(text: String, node_name: String, font: int, inset: float) -> HoldButton:
+func _button(key: String, node_name: String, font: int, inset: float) -> HoldButton:
 	var b := HoldButton.new()
-	b.text = text
 	b.name = node_name
-	b.add_theme_font_size_override("font_size", font)
+	if key != "":
+		Tr.bind(b, key, null, false, &"text", font)
+	else:
+		b.add_theme_font_size_override("font_size", font)
 	# Round dark glass over a bright sky or a white wall; the drawn circle sits `inset` inside the
 	# button's rect, which is the thumb's hit area.
 	UiTheme.style_glass(b, false, inset, 24)
@@ -187,15 +194,15 @@ func steer_value() -> float:
 	return steer_pad.value
 
 
-## Which controls show: the driving set, or none. `horn_label` is "HORN", or "SIREN" on vehicles
-## with one.
-func set_mode(m: StringName, horn_label: String = "HORN") -> void:
+## Which controls show: the driving set, or none. `horn_key` is the key of "HORN", or of "SIREN" on
+## vehicles with one.
+func set_mode(m: StringName, horn_key: String = "ctl.horn") -> void:
 	_mode = m
 	var drive := m == &"driving"
 	for c: Control in [steer_pad, gas, brake, horn, exit_button, readout]:
 		c.visible = drive
-	_horn_label = horn_label
-	horn.text = horn_label
+	_horn_key = horn_key
+	Tr.bind(horn, horn_key, null, false, &"text", 12)
 	set_reversing(false)
 
 
@@ -207,8 +214,7 @@ func set_readout(text: String) -> void:
 ## BRAKE shows REVERSE while the vehicle is reversing on hold.
 func set_reversing(on: bool) -> void:
 	_reversing = on
-	brake.text = "REVERSE" if on else "BRAKE"
-	brake.add_theme_font_size_override("font_size", 12 if on else 14)
+	Tr.bind(brake, "ctl.reverse" if on else "ctl.brake", null, false, &"text", 12 if on else 14)
 	brake_hint.visible = not on
 
 

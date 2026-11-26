@@ -202,11 +202,11 @@ static func _max(values: Array[float]) -> float:
 ## Status text for a train `wait` seconds away (0 when standing, `standing` true).
 static func board_status(wait: float, standing: bool) -> String:
 	if standing:
-		return "On platform"
+		return Tr.t("rail.status.on_platform")
 	if wait < 45.0:
-		return "Arriving"
+		return Tr.t("rail.status.arriving")
 	var minutes := ceili(wait / 60.0)
-	return "Due" if minutes <= 1 else "%d min" % minutes
+	return Tr.t("rail.status.due") if minutes <= 1 else Tr.t("rail.status.min", [minutes])
 
 
 ## The next trains at a platform, soonest first: each service's next train and the one after, at

@@ -63,6 +63,9 @@ var _watching: bool = false
 func _ready() -> void:
 	# The menus and Back keep working while the world is paused; the world itself pauses.
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# The saved language first: every screen below is built in it (G-441).
+	LanguageSettings.shared().apply()
+	Tr.bus.changed.connect(_on_language)
 	_add_pause_menu()
 	# Quality presets, the performance overlay, the perf log and the feature switches (G-250…).
 	perf = PerfWiring.attach(self)
@@ -85,6 +88,12 @@ static func _default_source() -> WorldSource:
 	if RegionalWorldSource.available() and not OS.get_cmdline_user_args().has("--world=v1"):
 		return RegionalWorldSource.new()
 	return FileWorldSource.new()
+
+
+## The language changed: the title's rows say the save's line in the new language.
+func _on_language() -> void:
+	if title != null and title.visible:
+		title.set_save(title_summary())
 
 
 func _set_state(next: StringName) -> void:
@@ -120,9 +129,9 @@ func _load() -> void:
 	_stop_watchdog()
 	loading.visible = false
 	var roads := source.loaded_roads()
-	hud.set_world_text("%s roads · %s chunks" % [_thousands(roads.size()), _thousands(source.chunk_count())])
+	hud.set_world_text(Tr.line("hud.world_text", [_thousands(roads.size()), _thousands(source.chunk_count())]))
 	hud.set_credit(source.get_attribution())
-	title.set_credits(source.get_attribution(), source.get_data_date(), SoundCredits.text(Sound.library))
+	title.set_credits(source.get_attribution(), source.get_data_date(), Sound.library)
 	if OS.get_cmdline_user_args().has("--start=play"):
 		play()
 	else:
@@ -152,7 +161,7 @@ func _run_step(i: int) -> String:
 			return await _add_play()
 		4:
 			return await _add_railway()
-	return "Unknown step %d." % i
+	return Tr.t("err.unknown_step", [i])
 
 
 ## Runs a step's work on a worker thread; prints a heartbeat every 5 s while it runs (a slow
@@ -169,7 +178,7 @@ func _background(i: int, work: Callable) -> String:
 			loading.show_slow(i, roundi((beat - started) / 1000.0))
 	var result: Variant = task.result()
 	if typeof(result) != TYPE_STRING:
-		return "Step %d stopped with an error (see the log)." % (i + 1)
+		return Tr.t("err.step_stopped", [i + 1])
 	return result
 
 
@@ -177,12 +186,12 @@ func _add_city() -> String:
 	if world != null:
 		return ""
 	if ResourceLoader.load_threaded_request(CITY) != OK:
-		return "Could not start loading %s." % CITY
+		return Tr.t("err.start_loading", [CITY])
 	while ResourceLoader.load_threaded_get_status(CITY) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 		await get_tree().process_frame
 	var scene := ResourceLoader.load_threaded_get(CITY) as PackedScene
 	if scene == null:
-		return "Could not load %s." % CITY
+		return Tr.t("err.load", [CITY])
 	world = scene.instantiate() as CityWorld
 	world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(world)
@@ -193,13 +202,13 @@ func _add_city() -> String:
 	# The streets round the spawn are built in the background; wait in game time until they and
 	# their colliders are in (the streamer's gating, G-54).
 	if not await world.wait_ready_around(world.spawn["point"], -1.0, GROUND_WAIT_FRAMES * 60):
-		return "The streets round the start did not load."
+		return Tr.t("err.streets_start")
 	for f in GROUND_WAIT_FRAMES:
 		if world.ground_ready():
 			var failed := await _add_player()
 			return failed if failed != "" else await _add_life()
 		await GameLoop.wait_physics_frames(1)
-	return "The ground's collider did not appear in %d physics frames." % GROUND_WAIT_FRAMES
+	return Tr.t("err.ground", [GROUND_WAIT_FRAMES])
 
 
 ## The player at the start, on the road the Three.js game starts on; streaming and the floating
@@ -286,12 +295,14 @@ func _add_pause_menu() -> void:
 	pause_menu = PauseMenu.new()
 	add_child(pause_menu)
 	# The same three settings on the pause menu and on the title's SETTINGS page (G-162).
-	var time_label := func() -> String: return "Time: %s (%s)" % [GameLoop.clock.label(), GameLoop.clock.text()]
+	var time_label := func() -> String: return Tr.t("set.time", [Tr.ref(GameLoop.clock.label_key()), GameLoop.clock.text()])
 	var time_next := func() -> void: GameLoop.clock.next()
+	var language := LanguageSettings.shared()
 	for host: Object in [pause_menu, title]:
 		host.call(&"add_setting", &"Time", time_label, time_next)
 		host.call(&"add_setting", &"Weather", Weather.label, Weather.toggle)
 		host.call(&"add_setting", &"Sound", Sound.label, Sound.toggle)
+		host.call(&"add_setting", &"Language", language.label, language.next)
 	ControlSettingsRows.add_to(pause_menu, ControlSettings.shared())
 	pause_menu.pause_requested.connect(pause)
 	pause_menu.resume_requested.connect(resume)
@@ -355,13 +366,13 @@ func title_summary() -> Dictionary:
 		return out
 	var session := layer.session
 	if not session.content.missions.is_empty():
-		out["new_game_line"] = "Begin in Chennai: Stage 1, %s" % session.content.missions[0].title
+		out["new_game_line"] = Tr.line("title.sub.new_game_named", [Tr.srcref(session.content.missions[0].title)])
 	if SaveStore.new(session.store.path).read().progress().is_empty():
 		return out
 	var m := session.runner.mission()
-	var where := "Stage %d" % m.stage if m != null else "Free roam"
+	var where := Tr.ref("title.stage", [m.stage]) if m != null else Tr.ref("title.free_roam")
 	out["has_save"] = true
-	out["continue_line"] = "%s · ₹%s · %d of %d stages" % [where, MissionSession.rupees(session.runner.balance()), session.runner.stages_done(), session.runner.stage_count()]
+	out["continue_line"] = Tr.line("title.continue_line", [where, MissionSession.rupees(session.runner.balance()), session.runner.stages_done(), session.runner.stage_count()])
 	return out
 
 
