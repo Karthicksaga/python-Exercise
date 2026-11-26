@@ -52,7 +52,7 @@ const SHOP_HEIGHT := 3.2
 const SHUTTER_TOP := 2.45
 const SIGN_BOTTOM := 2.5
 const SIGN_TOP := 3.05
-const SIGN_DEPTH := 0.14
+const SIGN_DEPTH := 0.16
 const SHUTTER_OFFSET := 0.06
 const CHAJJA_DEPTH := 0.55
 const CHAJJA_THICK := 0.1
@@ -335,7 +335,7 @@ func _add_shop_fronts(b: Building, wall: int, f: WallFrame, length: float, bays:
 			var mapped := _is_mapped_category(b, category)
 			stats["sign_mapped" if mapped else "sign_estimated"] = stats.get("sign_mapped" if mapped else "sign_estimated", 0) + 1
 			var sign_uv := CityAtlas.kit_uv(CityAtlas.sign_rect(category))
-			box(kit, f, s_a + 0.05, s_a + bay_width - 0.05, SIGN_BOTTOM, SIGN_TOP, 0.01, SIGN_DEPTH, {"front": sign_uv, "top": _plain_uv, "bottom": _plain_uv, "ends": _plain_uv}, Color.WHITE)
+			box(kit, f, s_a + 0.05, s_a + bay_width - 0.05, SIGN_BOTTOM, SIGN_TOP, 0.025, SIGN_DEPTH, {"front": sign_uv, "top": _plain_uv, "bottom": _plain_uv, "ends": _plain_uv}, Color.WHITE)
 
 
 func _is_mapped_category(b: Building, category: int) -> bool:
@@ -360,7 +360,7 @@ func _add_balcony(f: WallFrame, bay_width: float, y0: float, colour: Color) -> v
 	var mid := bay_width / 2.0
 	var top := y0 + 0.04
 	box(walls, f, mid - half, mid + half, top - BALCONY_THICK, top, 0.0, BALCONY_DEPTH, {"front": _plaster_flat, "top": _plaster_flat, "bottom": _plaster_flat}, colour)
-	box(kit, f, mid - half, mid + half, top + 0.015, top + RAIL_HEIGHT, 0.0, BALCONY_DEPTH - 0.02, {"front": _rail_uv, "ends": _rail_uv}, Color.WHITE)
+	box(kit, f, mid - half, mid + half, top + 0.03, top + RAIL_HEIGHT, 0.02, BALCONY_DEPTH - 0.02, {"front": _rail_uv, "ends": _rail_uv}, Color.WHITE)
 
 
 ## The wall colour of a building: the mapped `building:colour`, else (estimated) the colour of
@@ -467,7 +467,8 @@ func add(b: Building, plan: Plan) -> void:
 	var roof_col := roof_colour(b)
 	if tiled and _add_pitched_roof(b, outline, upper_top, roof_col, base):
 		return
-	var roof_y := upper_top - 0.05 if tiled else b.height - 0.35
+	var roof_bias := (CityHash.unit(b.id, 19) - 0.5) * 0.04
+	var roof_y := (upper_top - 0.05 if tiled else b.height - 0.35) + roof_bias
 	var tone := 0.55 + CityHash.unit(b.id, 3) * 0.2
 	var flat_col := Color(tone, tone * 0.98, tone * 0.95) if roof_col.a == 0.0 else roof_col
 	_add_flat(roofs, outline, roof_y, flat_col, CityAtlas.ROOF_PLAIN)

@@ -38,7 +38,7 @@ const WEIGHTS: Dictionary[StringName, Dictionary] = {
 	COASTAL: {&"casuarina": 0.42, &"coconut": 0.28, &"palmyra": 0.1, &"neem": 0.09, &"tamarind": 0.03, &"rain": 0.03, &"banyan": 0.01, &"dead_palm": 0.02, &"dead_snag": 0.02},
 	RURAL: {&"palmyra": 0.24, &"neem": 0.17, &"tamarind": 0.13, &"mango": 0.08, &"coconut": 0.1, &"banyan": 0.05, &"peepal": 0.05, &"rain": 0.06, &"dead_bare": 0.05, &"dead_snag": 0.03, &"dead_palm": 0.04},
 	PARK: {&"rain": 0.18, &"banyan": 0.1, &"peepal": 0.12, &"neem": 0.12, &"gulmohar": 0.14, &"tamarind": 0.1, &"mango": 0.1, &"coconut": 0.08, &"casuarina": 0.03, &"palmyra": 0.02, &"dead_snag": 0.01},
-	AVENUE: {&"rain": 0.34, &"neem": 0.2, &"gulmohar": 0.14, &"peepal": 0.08, &"tamarind": 0.08, &"mango": 0.05, &"coconut": 0.05, &"palmyra": 0.03, &"banyan": 0.02, &"dead_snag": 0.005, &"dead_bare": 0.005},
+	AVENUE: {&"rain": 0.34, &"neem": 0.21, &"gulmohar": 0.14, &"peepal": 0.08, &"tamarind": 0.08, &"mango": 0.05, &"coconut": 0.05, &"palmyra": 0.03, &"banyan": 0.02},
 }
 
 ## Understory by place: what grows beside a tree. profile -> weights of bushes and grass.

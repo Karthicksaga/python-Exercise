@@ -386,7 +386,7 @@ func _wait_for_ground() -> void:
 
 ## Pauses play: game time, physics and the world stop (the tree pauses), sound goes quiet.
 func pause() -> void:
-	if state != &"play":
+	if state != &"play" or _is_map_open():
 		return
 	get_tree().paused = true
 	_set_controls(false)
@@ -395,11 +395,25 @@ func pause() -> void:
 	_set_state(&"paused")
 
 
+func _is_map_open() -> bool:
+	var layer := find_child("MissionsLayer", false, false) as MissionsLayer
+	return layer != null and layer.full_map != null and layer.full_map.is_open()
+
+
 ## The full-screen map, from the pause menu (G-281): the missions layer owns its data.
 func _open_map() -> void:
 	var layer := find_child("MissionsLayer", false, false) as MissionsLayer
-	if layer != null:
-		layer.open_map()
+	if layer == null:
+		return
+	pause_menu.close()
+	layer.open_map()
+	if layer.full_map != null and not layer.full_map.closed.is_connected(_on_map_closed):
+		layer.full_map.closed.connect(_on_map_closed)
+
+
+func _on_map_closed() -> void:
+	if state == &"paused" and not pause_menu.is_open():
+		pause_menu.open()
 
 
 func resume() -> void:

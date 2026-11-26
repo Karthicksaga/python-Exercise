@@ -93,6 +93,8 @@ class Build:
 	var roads: RoadDetail.Plan
 	## The chunk's trees, bushes and grass (G-384); null when there are none.
 	var tree_batch: TreeBatch
+	## Static roadside poles and solid tree trunks in world XZ + radius (for pedestrian avoidance).
+	var street_obstacles: PackedVector3Array = PackedVector3Array()
 	var usec: int = 0
 	var error: String = ""
 
@@ -227,18 +229,27 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	var boxes := StreetFurniture.building_boxes(chunk.buildings)
 	var pack_near: Dictionary[int, Array] = {}
 	var pack_far := MeshBuilder.new()
-	for b in chunk.buildings:
+	var pack_rects: Array[Rect2] = []
+	var pack_polys: Array[PackedVector2Array] = []
+	for bi in chunk.buildings.size():
+		var b := chunk.buildings[bi]
 		var lookup_id := b.source_id if b.source_id > 0 else b.id
 		var aidx := kit.building_pack.asset_index_for(lookup_id) if kit.building_pack != null and b.min_height <= 0.0 and b.outline.size() >= 3 else -1
 		if aidx >= 0 and kit.building_pack.lod0_meshes[aidx] != null:
-			var xform := BuildingPack.placement_for(b, spans, kit.building_pack.asset_dims[aidx], out.centre)
-			if not pack_near.has(aidx):
-				pack_near[aidx] = []
-			(pack_near[aidx] as Array).append(xform)
-			if kit.building_pack.lod2_builders[aidx] != null:
-				pack_far.append(kit.building_pack.lod2_builders[aidx], xform)
-			out.detail["pack100_replaced"] = out.detail.get("pack100_replaced", 0) + 1
-			continue
+			var mesh_aabb: AABB = kit.building_pack.lod0_meshes[aidx].get_aabb()
+			var fit := BuildingPack.checked_placement(b, spans, kit.building_pack.asset_dims[aidx], mesh_aabb, out.centre, boxes, chunk.buildings, bi, pack_rects, pack_polys)
+			if bool(fit.get("ok", false)):
+				var xform := fit["xform"] as Transform3D
+				if not pack_near.has(aidx):
+					pack_near[aidx] = []
+				(pack_near[aidx] as Array).append(xform)
+				if kit.building_pack.lod2_builders[aidx] != null:
+					pack_far.append(kit.building_pack.lod2_builders[aidx], xform)
+				pack_rects.append(fit["rect"] as Rect2)
+				pack_polys.append(fit["fp"] as PackedVector2Array)
+				out.detail["pack100_replaced"] = out.detail.get("pack100_replaced", 0) + 1
+				continue
+			out.detail["pack100_fallback"] = out.detail.get("pack100_fallback", 0) + 1
 		var plan := BuildingMeshes.plan_facade(b, spans)
 		meshes.palette = kit.palettes.at(BuildingMeshes.centre_of(b)) if kit.palettes != null else null
 		meshes.add(b, plan)
@@ -355,40 +366,9 @@ static func _add_mesh(out: Build, parent: Node3D, layer: String, builder: MeshBu
 static func _add_pack_buildings(kit: Kit, out: Build, near: Node3D, far: Node3D, pack_near: Dictionary[int, Array], pack_far: MeshBuilder) -> void:
 	if kit.building_pack == null or pack_near.is_empty():
 		return
-	var shadow_mode := GeometryInstance3D.SHADOW_CASTING_SETTING_ON if kit.shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var holder := Node3D.new()
-	holder.name = "PackBuildings"
-	for aidx: int in pack_near:
-		var xforms: Array = pack_near[aidx]
-		var mesh := kit.building_pack.lod0_meshes[aidx]
-		if mesh == null or xforms.is_empty():
-			continue
-		var local_box := mesh.get_aabb()
-		var lo := Vector3(INF, INF, INF)
-		var hi := Vector3(-INF, -INF, -INF)
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = mesh
-		mm.instance_count = xforms.size()
-		for i in xforms.size():
-			var xf := xforms[i] as Transform3D
-			mm.set_instance_transform(i, xf)
-			for c_idx in 8:
-				var pt := xf * local_box.get_endpoint(c_idx)
-				lo = lo.min(pt)
-				hi = hi.max(pt)
-		var box := AABB(lo, (hi - lo).max(Vector3.ONE)).grow(0.5)
-		mm.custom_aabb = box
-		var mmi := MultiMeshInstance3D.new()
-		mmi.name = kit.building_pack.asset_ids[aidx]
-		mmi.multimesh = mm
-		mmi.custom_aabb = box
-		mmi.material_override = kit.materials.landmark
-		mmi.layers = RENDER_LAYER
-		mmi.cast_shadow = shadow_mode
-		holder.add_child(mmi)
-		out.surfaces += 1
+	var holder := BuildingPack.Batch.build(kit.building_pack, pack_near, out.centre, kit.focus, kit.materials.landmark, kit.shadows, RENDER_LAYER)
 	near.add_child(holder)
+	out.surfaces += holder.draw_calls()
 
 	var far_mesh := pack_far.commit(kit.materials.landmark)
 	if far_mesh != null:
@@ -396,7 +376,7 @@ static func _add_pack_buildings(kit: Kit, out: Build, near: Node3D, far: Node3D,
 		far_mi.name = "PackFar"
 		far_mi.mesh = far_mesh
 		far_mi.layers = RENDER_LAYER
-		far_mi.cast_shadow = shadow_mode
+		far_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		far.add_child(far_mi)
 		out.triangles["pack_far"] = pack_far.triangle_count()
 
@@ -516,15 +496,21 @@ static func _add_colliders(out: Build, chunk: ChunkData, trees: Array[TreeSpot])
 	if not faces.is_empty():
 		_body(out, "Walls", faces)
 	var solids := PackedVector3Array()
+	var tree_faces := PackedVector3Array()
 	for t in trees:
 		if not TreeSpecies.solid(t.species):
 			continue
 		var r := maxf(0.22, TreeSpecies.number(t.species, "trunk") * t.scale * 0.9)
-		solid_box(solids, Vector3(t.position.x - out.centre.x, 1.5, t.position.y - out.centre.y), Vector3(r, 1.5, r), 0.0)
+		solid_box(tree_faces, Vector3(t.position.x - out.centre.x, 2.75, t.position.y - out.centre.y), Vector3(r, 2.75, r), 0.0)
+		out.street_obstacles.append(Vector3(t.position.x, t.position.y, r + 0.15))
+	if not tree_faces.is_empty():
+		_body(out, "Trees", tree_faces)
 	var all_poles: Array[StreetFurniture.Pole] = out.furniture.poles.duplicate()
 	if out.roads != null:
 		all_poles.append_array(out.roads.poles)
 	for p in all_poles:
+		var pr := StreetFurniture.POLE_HALF + 0.12
+		out.street_obstacles.append(Vector3(p.position.x, p.position.y, pr))
 		var h := StreetFurniture.POLE_HEIGHT / 2.0
 		solid_box(solids, _local3(p.position, out.centre, h), Vector3(StreetFurniture.POLE_HALF + 0.02, h, StreetFurniture.POLE_HALF + 0.02), p.yaw)
 	for s in out.furniture.shelters:
@@ -568,6 +554,8 @@ static func _body(out: Build, label: String, faces: PackedVector3Array) -> void:
 	shape.set_faces(faces)
 	var body := StaticBody3D.new()
 	body.name = "%s%d" % [label, out.bodies.size()]
+	if label == "Trees":
+		body.add_to_group(&"tree_collider")
 	var cs := CollisionShape3D.new()
 	cs.shape = shape
 	body.add_child(cs)

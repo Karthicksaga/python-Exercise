@@ -69,7 +69,6 @@ static func create() -> CityMaterials:
 	c.kit.texture_repeat = false
 	c.kit.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 	c.kit.alpha_scissor_threshold = 0.5
-	c.kit.alpha_antialiasing_mode = BaseMaterial3D.ALPHA_ANTIALIASING_ALPHA_TO_COVERAGE
 	c.kit.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var kit_glow := _texture("kit_glow.png", c.loaded)
 	if kit_glow != null:

@@ -325,10 +325,37 @@ func test_menus_sit_above_the_performance_overlay() -> bool:
 	var pause := PauseMenu.new()
 	var title: TitleMenu = TITLE.instantiate()
 	var overlay := PerfOverlay.new()
+	var map := FullMap.new()
 	root.add_child(title)
 	await wait_frames(1)
 	check(pause.layer > overlay.layer, "the pause menu draws above the performance overlay (%s > %s)" % [pause.layer, overlay.layer])
 	check(title.layer > overlay.layer, "and so does the title (%s > %s)" % [title.layer, overlay.layer])
+	check(map.layer > pause.layer, "the full map sits above the pause menu (%s > %s)" % [map.layer, pause.layer])
 	pause.free()
 	overlay.free()
+	map.free()
+	return true
+
+
+func test_tap_on_scaled_viewport_hits_row() -> bool:
+	_taps.clear()
+	var vp := _viewport(Vector2i(1830, 824))
+	vp.size_2d_override = Vector2i(915, 412)
+	vp.size_2d_override_stretch = true
+	var menu := await _pause(vp)
+	var sc := menu.find_child("Scroll", true, false) as TouchScroll
+	check(sc.max_scroll() > 0.0, "scaled pause menu scrolls")
+	var target := menu.setting_button(&"Weather")
+	var win_pt := vp.get_screen_transform() * _centre(target)
+	for down: bool in [true, false]:
+		var b := InputEventMouseButton.new()
+		b.button_index = MOUSE_BUTTON_LEFT
+		b.pressed = down
+		b.button_mask = MOUSE_BUTTON_MASK_LEFT if down else 0
+		b.position = win_pt
+		b.global_position = win_pt
+		vp.push_input(b)
+	await wait_frames(2)
+	check(int(_taps.get("Weather", 0)) == 1, "scaled viewport mouse tap hits row (%s)" % _taps)
+	vp.queue_free()
 	return true

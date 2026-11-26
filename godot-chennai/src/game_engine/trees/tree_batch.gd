@@ -13,7 +13,7 @@ extends Node3D
 
 const STRIDE := 16
 ## Seconds between distance checks of a batch (each batch has its own phase).
-const CHECK_EVERY := 0.25
+const CHECK_EVERY := 0.12
 ## The camera must have moved this far (m) since the last check for another.
 const MOVE_MIN := 1.5
 
@@ -139,10 +139,12 @@ func _process(delta: float) -> void:
 	# A sort in progress goes one species a frame, so a chunk with many plants never spends more than
 	# a few hundred microseconds in one frame.
 	if _cursor >= 0:
-		changes += _refresh_group(groups[_cursor], _step_cam, _step_forced)
-		_cursor += 1
-		if _cursor >= groups.size():
-			_cursor = -1
+		for _step in 4:
+			changes += _refresh_group(groups[_cursor], _step_cam, _step_forced)
+			_cursor += 1
+			if _cursor >= groups.size():
+				_cursor = -1
+				break
 		return
 	_clock -= delta
 	if _clock > 0.0:
@@ -221,12 +223,13 @@ func _rebuild(g: Group) -> void:
 		var node := g.nodes[lod]
 		var mm := node.multimesh
 		var n := counts[lod]
+		mm.visible_instance_count = 0
 		node.visible = n > 0
 		if n > 0:
 			var buf := bufs[lod]
 			buf.resize(g.count * STRIDE)
 			mm.buffer = buf
-		mm.visible_instance_count = n
+			mm.visible_instance_count = n
 		var casting := lod == 0 and TreeQuality.shadows
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casting else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 

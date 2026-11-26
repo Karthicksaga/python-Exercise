@@ -16,7 +16,7 @@ const Y_SEA := 0.01
 const Y_PARK := 0.02
 const Y_VERGE := 0.035
 const Y_ROAD := 0.06
-const Y_MARKING := 0.09
+const Y_MARKING := 0.098
 const DASH := 3.2
 const DASH_PITCH := 9.0
 ## No paint this close to a road's ends, where junctions usually are.
@@ -95,9 +95,13 @@ func ribbon(points: PackedVector2Array, width: float, y: float, uv_scale: float,
 		var o := Vector2(-(b.y - a.y), b.x - a.x) / length * half
 		mesh.quad(_v(a + o, ya, uv_scale), _v(b + o, yb, uv_scale), _v(b - o, yb, uv_scale), _v(a - o, ya, uv_scale))
 	var sides := 10 if width > 8.0 else 8
-	for k in points.size():
+	for k in range(1, points.size() - 1):
+		var d0 := (points[k] - points[k - 1]).normalized()
+		var d1 := (points[k + 1] - points[k]).normalized()
+		if d0.dot(d1) >= 0.998:
+			continue
 		var p := points[k] - origin
-		var yk := y + (heights[k] if raised else 0.0)
+		var yk := (y - 0.001) + (heights[k] if raised else 0.0)
 		var centre := _v(p, yk, uv_scale)
 		var rim: Array[int] = []
 		for s in sides:
@@ -428,7 +432,7 @@ func decal(d: RoadDetail.Mark) -> void:
 	var c := d.position - origin
 	var across := Vector2(-d.dir.y, d.dir.x)
 	var uv := Vector2(_layer_index * LAYER_U + 0.5, 0.5)
-	var y := Y_ROAD + 0.008
+	var y := Y_ROAD + 0.024
 	if d.kind == &"patch" or d.kind == &"stripped":
 		var a := d.dir * (d.length / 2.0)
 		var s := across * (d.width / 2.0)
@@ -492,17 +496,18 @@ func build(spans: Array, areas: Array[WorldArea], square: Rect2, kerb_runs: Arra
 		elif road.is_main():
 			ribbon(pts, road.width + 5.0, Y_VERGE, 3.0, CityAtlas.GROUND_PAVING)
 		var surface := RoadStyle.surface(road, plan.rural) if plan != null else CityAtlas.GROUND_ASPHALT
-		ribbon(pts, road.width, Y_ROAD, 6.0 if surface == CityAtlas.GROUND_CONCRETE else 9.0, surface)
+		var road_bias := 0.006 if road.kind == &"primary" or road.kind == &"trunk" else (0.003 if road.is_main() else 0.0)
+		ribbon(pts, road.width, Y_ROAD + road_bias, 6.0 if surface == CityAtlas.GROUND_CONCRETE else 9.0, surface)
 		add_stripes(span)
 	kerbs(kerb_runs)
 	kerbs(edges, CityAtlas.GROUND_PAVING, PARK_KERB)
 	if plan != null:
 		kerbs(plan.blocks, CityAtlas.GROUND_KERB_BW, 0.22)
 		kerbs(plan.footpaths, CityAtlas.GROUND_SLAB, FOOT_H, CityAtlas.GROUND_SLAB, SLAB_TILE)
-		flat_runs(plan.drains, CityAtlas.GROUND_DARK, Y_ROAD - 0.01)
+		flat_runs(plan.drains, CityAtlas.GROUND_DARK, Y_ROAD - 0.012)
 		var wear_layer := CityAtlas.GROUND_RUT
-		flat_runs(plan.lips, CityAtlas.GROUND_MUD, Y_ROAD + 0.004)
-		flat_runs(plan.ruts, wear_layer, Y_ROAD + 0.006)
+		flat_runs(plan.lips, CityAtlas.GROUND_MUD, Y_ROAD + 0.012)
+		flat_runs(plan.ruts, wear_layer, Y_ROAD + 0.018)
 		for d in plan.decals:
 			decal(d)
 		for c in plan.crossings:

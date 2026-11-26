@@ -47,7 +47,7 @@ const TABLE: Array[Dictionary] = [
 		"lod_threshold": 4.0, "landmark_range": 0.6, "aniso": 0,
 		"max_fps": 30, "physics_steps": 2, "workers": 1, "street_lights": 0, "ai_patience": 6,
 		"animate_reach": 25.0, "npc_shadow": 0.0, "parked_reach": 100.0, "prop_shadows": false,
-		"tree_density": 0.55, "scrub_density": 0.3, "tree_lod0": 22.0, "tree_lod1": 75.0, "tree_far": 180.0, "tree_sway": false, "tree_shadows": false, "tree_species": 4, "under_species": 1,
+		"tree_density": 0.55, "scrub_density": 0.3, "tree_lod0": 28.0, "tree_lod1": 85.0, "tree_far": 220.0, "tree_sway": false, "tree_shadows": false, "tree_species": 4, "under_species": 1,
 		"hit_puffs": 4, "motion_blur": false,
 	},
 	{
