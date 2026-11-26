@@ -1692,3 +1692,11 @@ there); Yellow and Inter-Corridor Metro lines not added; the full map has no res
 names (main roads only, unlike the Three.js map's ranked street labels at close zoom) and no park or
 water fills; hospital and police labels are generic words (TD-18); Sullurpeta line averages 58 km/h
 (OSM maps 19 stations on 67 km); main-thread cost is up about 0.05–0.2 ms a frame (noisy machine).
+## Street imagery reference (agent/godot-streetref, G-510 to G-513), 25 Nov 2026
+Prototype of "real Chennai streets from street-level imagery", observation-only and licence-safe. New files only:
+`tools/imagery/` (tool, tests, prototype page), `assets/street_ref/` (manifest, schemas, observations,
+`facade_categories.json`), `docs/street-imagery.md`. Run `tools/imagery/run_tests.sh` (geo venv).
+Blocker for the owner: a free `MAPILLARY_TOKEN` and egress to `graph.mapillary.com` and `api.openstreetcam.org`;
+until then no coverage report is real and all facade fields are estimates. Next: run discover and report, review
+images by hand, fill observations, then a game change that reads the categories in `BuildingMeshes`.
+

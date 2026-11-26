@@ -158,3 +158,8 @@ is not worn by anyone here).
 |---|---|---|---|
 | `assets/transit/noto-sans-tamil-ui-600.woff2` | Noto Sans Tamil SemiBold, the whole Tamil block (15 KB): the Tamil fallback for bus destination signs, stop names and announcements on the HUD (any OSM stop name, so not a cut to known glyphs) | `@fontsource/noto-sans-tamil` 5.3.0 from the npm registry, file `files/noto-sans-tamil-tamil-600-normal.woff2` (sha256 `c8829e71…3a61bf5`), unchanged | SIL Open Font Licence 1.1, © The Noto Project Authors (`assets/fonts/OFL.txt`) |
 | `world/transit/transit.json`, `world/transit/routes.bin`, `world/TRANSIT.md` | Bus stops, bus stations, railway stations and platforms, rail lines, bus routes snapped to the roads (`docs/transit.md`) | Built from OpenStreetMap by `tools/geo` `cli transit`; headways, hours and fares are estimates | **ODbL 1.0**, © OpenStreetMap contributors |
+## Street reference data (decision G-510)
+| Files | What | Source | Licence |
+|---|---|---|---|
+| `assets/street_ref/facade_categories.json`, `manifest.json`, `observations/*.json`, `*.schema.json` | Facade category parameter ranges (all estimated from general knowledge), the (currently empty) list of referenced imagery ids and the hand-reviewed observations | Original data written for the project. No photograph or pixel from Mapillary, KartaView or Google is stored; any image later cited by id is CC BY-SA 4.0 under its provider's terms and is credited in the manifest | **CC0 1.0**, original work for the project |
+

@@ -3400,3 +3400,31 @@ Every word this work added or touched (boarding refusals, BOARD THE METRO, the M
 ending underground, the map legend and toggle, the map's generic labels) is a constant in
 `src/rail/rail_text.gd` (`RailText`), English only; station and area names come from the data. When
 agent/godot-lang is merged each becomes a `Tr` key in `assets/i18n/en.csv` and `ta.csv`.
+
+## Street-level imagery reference (G-510 to G-513, branch `agent/godot-streetref`, 25 Nov 2026)
+Details in `docs/street-imagery.md`.
+
+### G-510: Imagery is used for observation only; shipped facades stay original generated content
+Mapillary and KartaView imagery is CC BY-SA 4.0 (provider terms); textures cut from it would be ShareAlike
+adaptations. So a human reads facts (colours, floors, shop types, roofs, gates) from imagery into hand-reviewed
+`assets/street_ref/observations/*.json`, each fact `observed` (source image ids) or `estimated` (general
+knowledge), and the game generates original facades from those facts. No photograph, thumbnail or derived pixel is
+stored or shipped. Google Street View is only ever looked at by a person: no code, no scraping, no derivatives.
+Shipping derived textures is documented as an owner decision (not recommended).
+
+### G-511: The discovery tool never claims coverage it did not measure
+`tools/imagery` logs every searched tile as ok or failed; the report separates "searched, none found" from "not
+searched", and with no successful search prints zero counts and says nothing is known. Tokens come from
+`MAPILLARY_TOKEN` / `KARTAVIEW_TOKEN` only (header, never URL), the tool stops with instructions when absent.
+Reality check: egress to both providers is blocked in the build sandbox (proxy 403), so nothing was fetched.
+
+### G-512: Seven facade categories as data, all estimated until observed
+`assets/street_ref/facade_categories.json` holds the ranges for the seven categories; a validator requires every
+field to be `observed` (with manifest-listed sources) or `estimated` (basis general knowledge). Not read by the
+game yet; the planned hook is `BuildingMeshes` through the existing kinds and `AreaPalettes`.
+
+### G-513: A source manifest is checked in CI-able form
+`assets/street_ref/manifest.json` (+ schema, `python -m street_imagery check`) lists every referenced image id with
+provider, capture date, licence, attribution; Google rows, links to image files and image files in the folder
+are rejected.
+

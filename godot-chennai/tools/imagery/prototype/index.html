@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chennai facade categories</title>
+<style>
+:root { --bg:#f6f3ec; --card:#fffdf8; --ink:#2a2620; --muted:#6b6459; --line:#d9d2c3; --est:#8a5a00; --est-bg:#fbeccb; --obs:#0b5a35; --obs-bg:#d6efdf; --sky:#cfe3ee; --ground:#bdb29a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#1d1b17; --card:#27241f; --ink:#ece6d8; --muted:#a79f90; --line:#3d382f; --est:#f0c46a; --est-bg:#4a3a14; --obs:#8fe0b0; --obs-bg:#173d29; --sky:#2c3d47; --ground:#4a4436; } }
+:root[data-theme="dark"] { --bg:#1d1b17; --card:#27241f; --ink:#ece6d8; --muted:#a79f90; --line:#3d382f; --est:#f0c46a; --est-bg:#4a3a14; --obs:#8fe0b0; --obs-bg:#173d29; --sky:#2c3d47; --ground:#4a4436; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui, sans-serif; }
+main { max-width:1180px; margin:0 auto; padding:20px 16px 48px; }
+h1 { font-size:1.5rem; margin:0 0 6px; }
+.lede { color:var(--muted); max-width:70ch; margin:0 0 14px; }
+.banner { background:var(--est-bg); color:var(--est); border:1px solid var(--est); border-radius:8px; padding:10px 14px; margin:0 0 18px; }
+.legend { display:flex; gap:12px; flex-wrap:wrap; margin:0 0 18px; color:var(--muted); font-size:.9rem; }
+.cat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin:0 0 18px; }
+.cat h2 { margin:0 0 2px; font-size:1.15rem; }
+.cat .desc { color:var(--muted); margin:0 0 12px; max-width:80ch; }
+.swatches { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px; }
+.swatches svg { background:var(--sky); border-radius:6px; max-width:100%; height:auto; }
+table { border-collapse:collapse; width:100%; font-size:.9rem; }
+th, td { text-align:left; vertical-align:top; padding:6px 8px; border-top:1px solid var(--line); }
+th { color:var(--muted); font-weight:600; }
+.pill { display:inline-block; padding:1px 8px; border-radius:99px; font-size:.78rem; font-weight:600; }
+.pill.estimated { background:var(--est-bg); color:var(--est); }
+.pill.observed { background:var(--obs-bg); color:var(--obs); }
+.chips { display:flex; gap:4px; flex-wrap:wrap; }
+.chip { width:18px; height:18px; border-radius:4px; border:1px solid var(--line); }
+@media (max-width:640px) { th:nth-child(4), td:nth-child(4) { display:none; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Chennai facade categories</h1>
+<p class="lede">A prototype of the direction: the seven facade categories as simple, original, procedural drawings, each built from the parameter ranges in <code>assets/street_ref/facade_categories.json</code>. No photograph is used or stored; the drawings are made by code from the numbers in the tables. Each swatch is a different random draw from the same category.</p>
+<div class="banner" id="banner"></div>
+<div class="legend"><span><span class="pill observed">observed</span> seen in reviewed imagery, with source image ids</span><span><span class="pill estimated">estimated</span> from general knowledge, not from imagery</span></div>
+<div id="cats"></div>
+</main>
+<script id="data" type="application/json">{"format":1,"decision":"G-512","status":"all_estimated","area":"anna_nagar","licence":"CC0 1.0, original work for the project","note":"Parameter ranges for original generated facades. EVERY field here is `estimated`: it comes from the author's general knowledge of Chennai streets, NOT from reviewed imagery (no imagery could be reached when this was written, see docs/street-imagery.md section 3). A field becomes `observed` only through hand-reviewed observation files that cite manifest image ids. Not read by the game yet.","categories":[{"id":"residential_house","label":"Residential house","game_kind":"house","description":"Older single-family house of one or two floors on a small plot, often joined to its neighbours, with a sit-out (verandah) and a flat terrace.","fields":{"palette":{"status":"estimated","basis":"general_knowledge","basis_note":"Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.","value":[{"name":"cream","hex":"#E6D8B0","weight":3},{"name":"pale yellow","hex":"#EBDB8C","weight":2},{"name":"pale green","hex":"#BFD4A8","weight":2},{"name":"pale blue","hex":"#A9C6DA","weight":2},{"name":"pink","hex":"#E3B4B0","weight":1.5},{"name":"white wash","hex":"#EDEBE3","weight":2},{"name":"terracotta","hex":"#C98A66","weight":1}]},"floors":{"status":"estimated","basis":"general_knowledge","basis_note":"One to two floors is the usual size of an old plot house.","value":{"min":1,"max":2}},"windows":{"status":"estimated","basis":"general_knowledge","basis_note":"Casement or sliding windows behind iron grilles, with a concrete sunshade (chajja) over them.","value":{"per_bay":{"min":1,"max":2},"kinds":["grille_casement","sliding_aluminium"],"sunshade_probability":0.7}},"balconies":{"status":"estimated","basis":"general_knowledge","basis_note":"Small projecting slab or an open sit-out; seldom a full balcony.","value":{"probability":0.2,"kinds":["small_projecting_slab","open_sit_out"]}},"gates":{"status":"estimated","basis":"general_knowledge","basis_note":"Painted iron gate in a low compound wall.","value":{"probability":0.8,"kinds":["painted_iron_sliding","painted_iron_swing"]}},"shutters":{"status":"estimated","basis":"general_knowledge","basis_note":"Only where a room is let as a shop.","value":{"probability":0.05,"kinds":["rolling_shutter"]}},"signboard_slots":{"status":"estimated","basis":"general_knowledge","basis_note":"Rarely a small nameplate or home-business board.","value":{"ground_floor":{"min":0,"max":1},"upper":{"min":0,"max":0}}},"roofs":{"status":"estimated","basis":"general_knowledge","basis_note":"Flat concrete terrace with a parapet and a black water tank; some older houses keep a clay-tile roof.","value":{"types":[{"kind":"flat_terrace","weight":0.65},{"kind":"clay_tile_hip","weight":0.3},{"kind":"sheet","weight":0.05}],"parapet_m":0.9,"water_tank_probability":0.7}}}},{"id":"independent_house","label":"Independent house","game_kind":"house","description":"Newer detached or semi-detached house of two to four floors inside a compound wall, car porch below.","fields":{"palette":{"status":"estimated","basis":"general_knowledge","basis_note":"Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.","value":[{"name":"off white","hex":"#EFEBDD","weight":3},{"name":"beige","hex":"#D9C7A0","weight":2},{"name":"light grey","hex":"#C8C8C2","weight":1.5},{"name":"sand","hex":"#D8BE96","weight":1.5},{"name":"accent terracotta","hex":"#B96A4A","weight":1},{"name":"pale peach","hex":"#EBC7A8","weight":1.5}]},"floors":{"status":"estimated","basis":"general_knowledge","basis_note":"Two to four floors, often with stilt parking.","value":{"min":2,"max":4}},"windows":{"status":"estimated","basis":"general_knowledge","basis_note":"Aluminium or UPVC windows, often with a projecting sunshade.","value":{"per_bay":{"min":1,"max":3},"kinds":["sliding_aluminium","casement_with_grille","large_fixed_glass"],"sunshade_probability":0.5}},"balconies":{"status":"estimated","basis":"general_knowledge","basis_note":"A balcony on the first floor and above is common.","value":{"probability":0.6,"kinds":["projecting_slab_with_railing","glass_or_steel_railing"]}},"gates":{"status":"estimated","basis":"general_knowledge","basis_note":"Compound wall with a sliding or swing gate and pillars.","value":{"probability":0.95,"kinds":["sliding_iron","swing_iron_with_pillars"]}},"shutters":{"status":"estimated","basis":"general_knowledge","basis_note":"Rare.","value":{"probability":0.05,"kinds":["rolling_shutter"]}},"signboard_slots":{"status":"estimated","basis":"general_knowledge","basis_note":"Nameplate at the gate.","value":{"ground_floor":{"min":0,"max":1},"upper":{"min":0,"max":0}}},"roofs":{"status":"estimated","basis":"general_knowledge","basis_note":"Flat terrace with tank; a small sloped accent roof over a stair head on some.","value":{"types":[{"kind":"flat_terrace","weight":0.8},{"kind":"sloped_tile_accent","weight":0.15},{"kind":"sheet","weight":0.05}],"parapet_m":1.0,"water_tank_probability":0.8}}}},{"id":"apartment","label":"Apartment block","game_kind":"apartments","description":"Mid-rise residential block: ground floor open for parking (stilt) or with a gate and security room, regular floors above with balconies.","fields":{"palette":{"status":"estimated","basis":"general_knowledge","basis_note":"Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.","value":[{"name":"cream","hex":"#E8DCB8","weight":2.5},{"name":"light grey","hex":"#C9C9C4","weight":2},{"name":"pale yellow","hex":"#EAD99A","weight":1.5},{"name":"peach","hex":"#E8C3A2","weight":1.5},{"name":"pale blue","hex":"#B5CCDD","weight":1},{"name":"accent maroon band","hex":"#8B4A44","weight":0.7}]},"floors":{"status":"estimated","basis":"general_knowledge","basis_note":"Four to nine floors in the residential layouts of Chennai; taller towers exist but are not the common case.","value":{"min":4,"max":9}},"windows":{"status":"estimated","basis":"general_knowledge","basis_note":"Sliding aluminium windows, often with grilles, in regular bays.","value":{"per_bay":{"min":1,"max":2},"kinds":["sliding_aluminium","casement_with_grille"],"sunshade_probability":0.6}},"balconies":{"status":"estimated","basis":"general_knowledge","basis_note":"Most flats have a balcony; many are later enclosed with grilles.","value":{"probability":0.85,"kinds":["projecting_slab_with_railing","grille_enclosed","utility_balcony"]}},"gates":{"status":"estimated","basis":"general_knowledge","basis_note":"A gate and compound wall to the street.","value":{"probability":0.9,"kinds":["sliding_iron","swing_iron_with_pillars"]}},"shutters":{"status":"estimated","basis":"general_knowledge","basis_note":"A small shop or generator room at the ground floor in some.","value":{"probability":0.1,"kinds":["rolling_shutter"]}},"signboard_slots":{"status":"estimated","basis":"general_knowledge","basis_note":"A name board at the gate.","value":{"ground_floor":{"min":0,"max":1},"upper":{"min":0,"max":0}}},"roofs":{"status":"estimated","basis":"general_knowledge","basis_note":"Flat terrace, tanks, lift motor room.","value":{"types":[{"kind":"flat_terrace","weight":0.9},{"kind":"lift_head_and_tanks","weight":0.1}],"parapet_m":1.1,"water_tank_probability":0.9}}}},{"id":"commercial","label":"Commercial building","game_kind":"commercial","description":"Mixed-use block on a main road: shops along the ground floor, offices or storage above, a continuous signboard band.","fields":{"palette":{"status":"estimated","basis":"general_knowledge","basis_note":"Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.","value":[{"name":"grey concrete","hex":"#B8B8B2","weight":2},{"name":"cream","hex":"#E3D7B5","weight":1.5},{"name":"dirty white","hex":"#DCD9CF","weight":2},{"name":"faded yellow","hex":"#D8C778","weight":1},{"name":"faded blue","hex":"#8FA9BE","weight":1},{"name":"red oxide band","hex":"#A0553E","weight":0.7}]},"floors":{"status":"estimated","basis":"general_knowledge","basis_note":"Two to six floors on main roads.","value":{"min":2,"max":6}},"windows":{"status":"estimated","basis":"general_knowledge","basis_note":"Mixed aluminium and fixed glass over the shop line.","value":{"per_bay":{"min":1,"max":3},"kinds":["sliding_aluminium","fixed_glass","grille_casement"],"sunshade_probability":0.5}},"balconies":{"status":"estimated","basis":"general_knowledge","basis_note":"Few balconies above the shops.","value":{"probability":0.2,"kinds":["projecting_slab_with_railing","none"]}},"gates":{"status":"estimated","basis":"general_knowledge","basis_note":"Side passage or parking gate only.","value":{"probability":0.1,"kinds":["sliding_iron"]}},"shutters":{"status":"estimated","basis":"general_knowledge","basis_note":"Rolling shutters at every shop bay.","value":{"probability":0.9,"kinds":["rolling_shutter","folding_shutter"]}},"signboard_slots":{"status":"estimated","basis":"general_knowledge","basis_note":"A board per shop bay plus boards on upper floors; painted or flex boards in Tamil and English.","value":{"ground_floor":{"min":2,"max":5},"upper":{"min":1,"max":3}}},"roofs":{"status":"estimated","basis":"general_knowledge","basis_note":"Flat terrace.","value":{"types":[{"kind":"flat_terrace","weight":0.9},{"kind":"sheet","weight":0.1}],"parapet_m":1.0,"water_tank_probability":0.5}}}},{"id":"retail_shop","label":"Retail shop","game_kind":"commercial","description":"One or two floors, the whole front given to the shop: shutter, signboard, a hanging or painted board, an awning on some.","fields":{"palette":{"status":"estimated","basis":"general_knowledge","basis_note":"Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.","value":[{"name":"white wash","hex":"#E6E3D8","weight":2},{"name":"faded green","hex":"#8FB08A","weight":1.5},{"name":"faded blue","hex":"#8FA9BE","weight":1.5},{"name":"yellow","hex":"#E2C75A","weight":1.5},{"name":"red oxide","hex":"#A9553E","weight":1},{"name":"grey","hex":"#B5B5B0","weight":1.5}]},"floors":{"status":"estimated","basis":"general_knowledge","basis_note":"One or two floors.","value":{"min":1,"max":2}},"windows":{"status":"estimated","basis":"general_knowledge","basis_note":"Mostly the shop opening itself; a small window above.","value":{"per_bay":{"min":1,"max":2},"kinds":["fixed_glass","grille_casement"],"sunshade_probability":0.3}},"balconies":{"status":"estimated","basis":"general_knowledge","basis_note":"Almost none.","value":{"probability":0.05,"kinds":["none"]}},"gates":{"status":"estimated","basis":"general_knowledge","basis_note":"Folding grille at the opening.","value":{"probability":0.05,"kinds":["folding_grille"]}},"shutters":{"status":"estimated","basis":"general_knowledge","basis_note":"Rolling shutter across the opening.","value":{"probability":0.95,"kinds":["rolling_shutter","folding_shutter"]}},"signboard_slots":{"status":"estimated","basis":"general_knowledge","basis_note":"One large board over the opening and often a side board.","value":{"ground_floor":{"min":1,"max":3},"upper":{"min":0,"max":1}}},"roofs":{"status":"estimated","basis":"general_knowledge","basis_note":"Flat terrace or a sheet roof.","value":{"types":[{"kind":"flat_terrace","weight":0.7},{"kind":"sheet","weight":0.3}],"parapet_m":0.8,"water_tank_probability":0.3}}}},{"id":"office","label":"Office building","game_kind":"commercial","description":"Five to twelve floor block of regular office floors, glazed or cladded front, lobby at the ground floor.","fields":{"palette":{"status":"estimated","basis":"general_knowledge","basis_note":"Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.","value":[{"name":"light grey","hex":"#C4C6C6","weight":2},{"name":"glass blue-grey","hex":"#8FA3AE","weight":2},{"name":"white","hex":"#EDEDE8","weight":1.5},{"name":"sand","hex":"#D6C7A5","weight":1},{"name":"dark accent","hex":"#4F5961","weight":0.8}]},"floors":{"status":"estimated","basis":"general_knowledge","basis_note":"Five to twelve floors in the mid-rise office streets; high-rise is a landmark case, not the default.","value":{"min":5,"max":12}},"windows":{"status":"estimated","basis":"general_knowledge","basis_note":"Ribbon or curtain-wall glazing.","value":{"per_bay":{"min":2,"max":4},"kinds":["ribbon_glazing","fixed_glass_curtain_wall","sliding_aluminium"],"sunshade_probability":0.2}},"balconies":{"status":"estimated","basis":"general_knowledge","basis_note":"Rare.","value":{"probability":0.05,"kinds":["none"]}},"gates":{"status":"estimated","basis":"general_knowledge","basis_note":"Gate with a guard post.","value":{"probability":0.8,"kinds":["boom_barrier","sliding_iron"]}},"shutters":{"status":"estimated","basis":"general_knowledge","basis_note":"Only on a ground-floor service unit.","value":{"probability":0.1,"kinds":["rolling_shutter"]}},"signboard_slots":{"status":"estimated","basis":"general_knowledge","basis_note":"One generic board at the entrance and one at the top; no company names in the game.","value":{"ground_floor":{"min":0,"max":1},"upper":{"min":0,"max":1}}},"roofs":{"status":"estimated","basis":"general_knowledge","basis_note":"Flat roof with plant and tanks.","value":{"types":[{"kind":"flat_terrace","weight":0.95},{"kind":"lift_head_and_tanks","weight":0.05}],"parapet_m":1.2,"water_tank_probability":0.6}}}},{"id":"institutional","label":"Institutional building","game_kind":"commercial","description":"School, college, government or hospital building: long frontage, two to four floors, corridor balconies, a portico or gate arch.","fields":{"palette":{"status":"estimated","basis":"general_knowledge","basis_note":"Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.","value":[{"name":"cream and white","hex":"#E9E1C8","weight":2},{"name":"yellow ochre","hex":"#D9B95A","weight":1.5},{"name":"pale blue","hex":"#B3C9DA","weight":1},{"name":"red oxide plinth","hex":"#A9553E","weight":0.8},{"name":"light grey","hex":"#C9C9C4","weight":1.5}]},"floors":{"status":"estimated","basis":"general_knowledge","basis_note":"Two to four floors.","value":{"min":2,"max":4}},"windows":{"status":"estimated","basis":"general_knowledge","basis_note":"Regular wide windows with a sunshade.","value":{"per_bay":{"min":2,"max":3},"kinds":["casement_with_grille","wide_glazed_with_shade"],"sunshade_probability":0.8}},"balconies":{"status":"estimated","basis":"general_knowledge","basis_note":"Open corridor walkways with railings along upper floors.","value":{"probability":0.6,"kinds":["corridor_walkway_with_railing"]}},"gates":{"status":"estimated","basis":"general_knowledge","basis_note":"A gated compound.","value":{"probability":0.95,"kinds":["wide_iron_gate_with_pillars","arch_gateway"]}},"shutters":{"status":"estimated","basis":"general_knowledge","basis_note":"Rare.","value":{"probability":0.05,"kinds":["rolling_shutter"]}},"signboard_slots":{"status":"estimated","basis":"general_knowledge","basis_note":"A board at the gate and one on the facade; generic words only.","value":{"ground_floor":{"min":1,"max":1},"upper":{"min":0,"max":1}}},"roofs":{"status":"estimated","basis":"general_knowledge","basis_note":"Mostly flat; some older blocks with a tiled or sheet roof.","value":{"types":[{"kind":"flat_terrace","weight":0.7},{"kind":"clay_tile_hip","weight":0.15},{"kind":"sheet","weight":0.15}],"parapet_m":1.0,"water_tank_probability":0.5}}}}]}</script>
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById("data").textContent);
+function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function hashStr(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function pickWeighted(r, items, w) { const tot = items.reduce((s, i) => s + w(i), 0); let x = r() * tot; for (const i of items) { x -= w(i); if (x <= 0) return i; } return items[items.length - 1]; }
+function between(r, o) { return o.min + Math.floor(r() * (o.max - o.min + 1)); }
+function shade(hex, f) { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.max(0, Math.min(255, Math.round(v * f)))); return "#" + c.map(v => v.toString(16).padStart(2, "0")).join(""); }
+function el(name, attrs, kids) { const e = document.createElementNS("http://www.w3.org/2000/svg", name); for (const k in attrs) e.setAttribute(k, attrs[k]); (kids || []).forEach(c => e.appendChild(c)); return e; }
+const W = 230, FH = 30, BAYW = 46;
+function facade(cat, seed) {
+  const r = rng(seed), f = cat.fields;
+  const floors = between(r, f.floors.value), wall = pickWeighted(r, f.palette.value, e => e.weight).hex;
+  const bays = Math.max(2, Math.min(5, Math.round((cat.id === "retail_shop" ? 3 : 4) + (r() - 0.5) * 2)));
+  const gateOn = r() < f.gates.value.probability, roof = pickWeighted(r, f.roofs.value.types, e => e.weight).kind;
+  const wallH = floors * FH + 10, H = wallH + 70, ground = H - 22;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img", "aria-label": cat.label + " swatch" });
+  const x0 = 15, fw = W - 30, bw = fw / bays, top = ground - wallH;
+  svg.appendChild(el("rect", { x: 0, y: ground, width: W, height: H - ground, fill: "var(--ground)" }));
+  svg.appendChild(el("rect", { x: x0, y: top, width: fw, height: wallH, fill: wall }));
+  svg.appendChild(el("rect", { x: x0, y: ground - 6, width: fw, height: 6, fill: shade(wall, 0.8) }));
+  // roof
+  if (roof === "clay_tile_hip") svg.appendChild(el("polygon", { points: `${x0 - 5},${top} ${x0 + 25},${top - 28} ${x0 + fw - 25},${top - 28} ${x0 + fw + 5},${top}`, fill: "#b0583b" }));
+  else if (roof === "sheet" || roof === "sloped_tile_accent") svg.appendChild(el("polygon", { points: `${x0 - 3},${top} ${x0 + 12},${top - 14} ${x0 + fw - 12},${top - 14} ${x0 + fw + 3},${top}`, fill: "#7f8a8e" }));
+  else svg.appendChild(el("rect", { x: x0 - 2, y: top - f.roofs.value.parapet_m * 6, width: fw + 4, height: f.roofs.value.parapet_m * 6, fill: shade(wall, 0.88) }));
+  if (r() < f.roofs.value.water_tank_probability && roof !== "clay_tile_hip") svg.appendChild(el("rect", { x: x0 + fw * (0.15 + r() * 0.6), y: top - 28, width: 17, height: 13, rx: 4, fill: "#1b1b1b" }));
+  // floors
+  const shutterOn = r() < f.shutters.value.probability;
+  for (let fl = 0; fl < floors; fl++) {
+    const y = ground - (fl + 1) * FH - 4;
+    const isGround = fl === 0;
+    for (let b = 0; b < bays; b++) {
+      const bx = x0 + b * bw, cx = bx + bw / 2;
+      if (isGround && shutterOn) {
+        svg.appendChild(el("rect", { x: bx + 5, y: y + 6, width: bw - 10, height: FH - 8, fill: "#8d9395" }));
+        for (let k = 0; k < 5; k++) svg.appendChild(el("line", { x1: bx + 5, x2: bx + bw - 5, y1: y + 10 + k * 4.5, y2: y + 10 + k * 4.5, stroke: "#6c7274", "stroke-width": 1 }));
+        continue;
+      }
+      const n = between(r, f.windows.value.per_bay), ww = Math.min(20, (bw - 12) / n - 3);
+      const kind = f.windows.value.kinds[Math.floor(r() * f.windows.value.kinds.length)];
+      for (let k = 0; k < n; k++) {
+        const wx = cx - (n * (ww + 3) - 3) / 2 + k * (ww + 3), wy = y + 8;
+        svg.appendChild(el("rect", { x: wx, y: wy, width: ww, height: 15, fill: /glass|ribbon|curtain/.test(kind) ? "#6f93a8" : "#40505a" }));
+        if (/grille/.test(kind)) for (let g = 1; g < 4; g++) svg.appendChild(el("line", { x1: wx + g * ww / 4, x2: wx + g * ww / 4, y1: wy, y2: wy + 15, stroke: "#111", "stroke-width": 0.8 }));
+        else svg.appendChild(el("line", { x1: wx + ww / 2, x2: wx + ww / 2, y1: wy, y2: wy + 15, stroke: "#ddd", "stroke-width": 0.8 }));
+        if (r() < f.windows.value.sunshade_probability) svg.appendChild(el("rect", { x: wx - 2, y: wy - 3, width: ww + 4, height: 3, fill: shade(wall, 0.7) }));
+      }
+      if (fl > 0 && r() < f.balconies.value.probability) {
+        svg.appendChild(el("rect", { x: bx + 4, y: y + 24, width: bw - 8, height: 3, fill: shade(wall, 0.72) }));
+        svg.appendChild(el("rect", { x: bx + 4, y: y + 18, width: bw - 8, height: 6, fill: "none", stroke: "#2b2b2b", "stroke-width": 0.9 }));
+      }
+    }
+  }
+  if (!shutterOn) svg.appendChild(el("rect", { x: x0 + fw / 2 - 8, y: ground - 24, width: 16, height: 24, fill: "#5b3b25" }));
+  // signboard slots: blank plates, no text
+  const sg = between(r, f.signboard_slots.value.ground_floor), su = between(r, f.signboard_slots.value.upper);
+  for (let k = 0; k < sg; k++) svg.appendChild(el("rect", { x: x0 + 4 + k * (fw / Math.max(sg, 1)), y: ground - FH - 12, width: fw / Math.max(sg, 1) - 8, height: 9, fill: ["#2e5d86", "#a8382d", "#e0b93b", "#3f7d4e"][k % 4] }));
+  for (let k = 0; k < su && floors > 1; k++) svg.appendChild(el("rect", { x: x0 + 8 + k * 60, y: ground - 2 * FH - 12, width: 50, height: 9, fill: "#cfcabf" }));
+  // gate and compound wall
+  if (gateOn && !["retail_shop", "commercial"].includes(cat.id)) {
+    svg.appendChild(el("rect", { x: 0, y: ground + 4, width: W, height: 12, fill: shade(wall, 0.92), opacity: 0.95 }));
+    for (let g = 0; g < 9; g++) svg.appendChild(el("line", { x1: W / 2 - 30 + g * 7.5, x2: W / 2 - 30 + g * 7.5, y1: ground + 2, y2: ground + 18, stroke: "#222", "stroke-width": 1.4 }));
+  }
+  return svg;
+}
+function summarise(name, v) {
+  switch (name) {
+    case "palette": { const d = document.createElement("div"); d.className = "chips"; v.forEach(e => { const c = document.createElement("span"); c.className = "chip"; c.style.background = e.hex; c.title = `${e.name} ${e.hex} (weight ${e.weight})`; d.appendChild(c); }); return d; }
+    case "floors": return `${v.min} to ${v.max} floors`;
+    case "windows": return `${v.per_bay.min}-${v.per_bay.max} per bay: ${v.kinds.join(", ").replace(/_/g, " ")}; sunshade ${Math.round(v.sunshade_probability * 100)}%`;
+    case "balconies": case "shutters": case "gates": return `${Math.round(v.probability * 100)}%: ${v.kinds.join(", ").replace(/_/g, " ")}`;
+    case "signboard_slots": return `ground ${v.ground_floor.min}-${v.ground_floor.max}, upper ${v.upper.min}-${v.upper.max}`;
+    case "roofs": return v.types.map(t => `${t.kind.replace(/_/g, " ")} ${Math.round(t.weight * 100)}%`).join(", ") + `; parapet ${v.parapet_m} m; tank ${Math.round(v.water_tank_probability * 100)}%`;
+  }
+  return JSON.stringify(v);
+}
+const root = document.getElementById("cats");
+let obs = 0, est = 0;
+for (const cat of DATA.categories) {
+  const sec = document.createElement("section"); sec.className = "cat";
+  const h = document.createElement("h2"); h.textContent = cat.label + "  (game kind: " + cat.game_kind + ")"; sec.appendChild(h);
+  const p = document.createElement("p"); p.className = "desc"; p.textContent = cat.description; sec.appendChild(p);
+  const sw = document.createElement("div"); sw.className = "swatches";
+  for (let i = 0; i < 3; i++) sw.appendChild(facade(cat, hashStr(cat.id) + i * 7919));
+  sec.appendChild(sw);
+  const t = document.createElement("table");
+  t.innerHTML = "<thead><tr><th>Field</th><th>Value</th><th>Status</th><th>Basis</th></tr></thead>";
+  const tb = document.createElement("tbody");
+  for (const [name, fd] of Object.entries(cat.fields)) {
+    fd.status === "observed" ? obs++ : est++;
+    const tr = document.createElement("tr");
+    const c1 = document.createElement("td"); c1.textContent = name.replace(/_/g, " ");
+    const c2 = document.createElement("td"); const s = summarise(name, fd.value); typeof s === "string" ? (c2.textContent = s) : c2.appendChild(s);
+    const c3 = document.createElement("td"); const pill = document.createElement("span"); pill.className = "pill " + fd.status; pill.textContent = fd.status; c3.appendChild(pill);
+    const c4 = document.createElement("td"); c4.textContent = fd.status === "observed" ? fd.sources.map(x => x.provider ? x.provider + ":" + x.image_id : "human inspection").join(", ") : "general knowledge: " + fd.basis_note;
+    [c1, c2, c3, c4].forEach(c => tr.appendChild(c)); tb.appendChild(tr);
+  }
+  t.appendChild(tb); sec.appendChild(t); root.appendChild(sec);
+}
+document.getElementById("banner").textContent = `${obs} fields observed, ${est} fields estimated. ` + (obs === 0 ? "Nothing here comes from reviewed imagery yet: every value is the author's general knowledge of Chennai streets. The swatches show the proposed direction and the parameter ranges, not a reconstruction of real buildings." : "Observed values cite their source image ids.");
+</script>
+</body>
+</html>

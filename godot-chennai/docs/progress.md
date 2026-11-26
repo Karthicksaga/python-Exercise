@@ -401,3 +401,10 @@ Details and numbers: `docs/transit.md`, `world/TRANSIT.md`.
 | Full map covers the whole city and labels areas, roads, stations, hospitals, police, bus stands and stops, decluttered by zoom (G-466) | Done (owner's phone report) | `test_map_city.gd`, `test_maps.gd`, screenshots |
 | Main-thread cost (G-467) | Measured headless here (see handoff); not on a phone | `tests/tools/rail_shots.gd --shot=measure` |
 | Seen on a phone | Not done | — |
+## Street imagery reference prototype (G-510 to G-513, branch `agent/godot-streetref`, 25 Nov 2026)
+- Built and tested (39 pytest, mypy clean): Mapillary and KartaView discovery tool, SQLite store, chunk mapping,
+  coverage report, source manifest and observation/facade validators, facade category data, comparison page
+  (rendered with Chromium). Plan, licence analysis and extension guide in `docs/street-imagery.md`.
+- NOT done: any real API call succeeded (egress blocked, no token), so no coverage numbers, observations or
+  observed facade values exist; nothing is wired into the game.
+
