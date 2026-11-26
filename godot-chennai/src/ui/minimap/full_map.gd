@@ -270,7 +270,7 @@ func _paint(v: Control) -> void:
 	var major_w := (2.4 if zoom <= 1 else (1.6 if zoom <= 3 else 1.1)) / ppm
 	if city != null:
 		for cell in city.roads_in(view):
-			v.draw_multiline(cell, Color(1, 0.93, 0.78, 0.6 if zoom <= 3 else 0.45), major_w)
+			v.draw_multiline(cell, Color(0.86, 0.84, 0.78, 0.5 if zoom <= 3 else 0.38), major_w)
 	var roads := roads_for_zoom()
 	if roads != null:
 		if zoom <= 1 and not roads.minor.is_empty():
@@ -278,7 +278,7 @@ func _paint(v: Control) -> void:
 		if not roads.major.is_empty() and (city == null or zoom <= 1):
 			v.draw_multiline(roads.major, Color(1, 0.93, 0.78, 0.6), major_w)
 	if rail_drawn():
-		rail.draw_lines(v, ppm, 3.0 if zoom <= 1 else (2.2 if zoom <= 3 else 1.6), cheap)
+		rail.draw_lines(v, ppm, 3.5 if zoom <= 1 else (3.0 if zoom <= 3 else 2.2), cheap)
 		rail.draw_stations(v, ppm, 6.0 if zoom <= 1 else (4.0 if zoom <= 3 else 3.0), cheap)
 	v.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	_paint_labels(v, view, size)

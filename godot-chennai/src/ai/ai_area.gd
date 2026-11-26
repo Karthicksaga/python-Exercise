@@ -37,7 +37,7 @@ static func walking_road(r: Road) -> bool:
 	return r.kind != &"service" and r.kind != &"motorway" and not r.tunnel
 
 
-## Rail stations from the rail file (Beach–Tambaram today).
+## Railway stations from the rail file (not the Metro's, G-462).
 static func read_stations(path: String = RAIL) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	if not FileAccess.file_exists(path):
@@ -45,7 +45,9 @@ static func read_stations(path: String = RAIL) -> PackedVector2Array:
 	var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if d is Dictionary:
 		for s: Variant in (d as Dictionary).get("stations", []):
-			if s is Dictionary:
+			# Metro stations (G-462) are not the AI's busy station places: their crowds belong at
+			# their street entrances, which the rail file does not map.
+			if s is Dictionary and not bool((s as Dictionary).get("metro", false)):
 				out.append(Vector2(float((s as Dictionary).get("x", 0.0)), float((s as Dictionary).get("z", 0.0))))
 	return out
 

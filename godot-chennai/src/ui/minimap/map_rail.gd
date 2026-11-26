@@ -164,9 +164,13 @@ func draw_lines(c: CanvasItem, ppm: float, width: float, cheap: bool) -> void:
 		if not all.is_empty():
 			c.draw_multiline(all, Color(0.85, 0.85, 0.9, 0.7), width / ppm)
 		return
+	# A dark casing under the colours, so the lines read over the roads at every zoom.
+	for k in kinds:
+		if not k.lines.is_empty():
+			c.draw_multiline(k.lines, Color(0.02, 0.02, 0.03, 0.85), (width + 2.5) / ppm)
 	for k in kinds:
 		if not k.under.is_empty():
-			c.draw_multiline(k.under, Color(k.colour, 0.38), width * 0.7 / ppm)
+			c.draw_multiline(k.under, Color(k.colour, 0.45), width * 0.7 / ppm)
 		if not k.lines.is_empty():
 			c.draw_multiline(k.lines, k.colour, width / ppm)
 

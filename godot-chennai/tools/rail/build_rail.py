@@ -10,18 +10,19 @@ specs of `scripts/build-rail.ts`), so the Three.js game's railway is reused, not
 `--threejs` rebuilds `apps/game/public/world/rail.json` from the same extract with the same
 options, and the tests (`test_build_rail.py`) check it matches the committed file value for value.
 
-The Godot world is bigger than the Three.js box, so the Godot file differs in three ways,
-each additive (the Three.js reader still reads it):
+The Godot file (G-460..G-462) is built from the railway part of the regional OSM extract
+(`data/rail/regional-rail.osm.json.gz`, written by `extract_rail.py`) over the whole world's box,
+so lines run to their real ends or off the world's edge. It differs from the Three.js file in
+these ways, each additive for a reader (new keys only):
 
-- **Bounds:** the extract's own box (`scripts/fetch-rail.mjs`, minus 200 m) instead of the old
-  city box, so lines run to where the data ends rather than stopping mid-city.
-- **More lines from the same extract:** every passenger route relation it covers with track and
-  stops on the map: Chennai MRTS both ways (on its viaduct, `heights`), the suburban lines from
-  Chennai Central/Beach to Arakkonam and to Sullurpeta, and the express services out of Chennai
-  Central (Coromandel, Charminar, Shatabdi, Rajdhani, Saptagiri). Nothing is invented: a line
-  exists here only if its OSM route relation is in the extract.
-- **Level crossings** (`railway=level_crossing` nodes on the tracks drawn), and per line
-  `system`, `train` and (MRTS) `heights`.
+- **More lines:** the MRTS both ways (on its viaduct, `heights`), the suburban lines to Arakkonam,
+  Sullurpeta and Chengalpattu with estimated return services, the express services out of
+  Chennai Central, and the Metro's Blue and Green lines both ways (viaducts and tunnels).
+  Nothing is invented: a line exists only if its OSM route relation is in the extract.
+- **Regional routing:** a relation's ways are joined as a graph (`route_path`), lines running
+  head-on on one centre line keep left (`keep_left`, estimated second tracks drawn as tracks),
+  every end in the world is a terminus, suburban lines call at every station on their track.
+- **Level crossings**, and per line `system`, `train`, `motion`, `metroLine`.
 
 Real (OSM): track centre lines, stations and names, the ways each service follows, viaduct and
 bridge tags, level crossings. Estimated (invented here, as in build.ts): platform length, side,
@@ -1408,6 +1409,12 @@ def build_godot(extract: dict[str, Any]) -> dict[str, Any]:
         line["motion"] = MOTION[specs[line["id"]].train]
         if line["id"] in METRO_LINES:
             line["metroLine"] = METRO_LINES[line["id"]]
+    # Metro stations are marked (G-462): the AI's busy station places stay the railway's own
+    # (a Metro station's crowd belongs at its street entrances, not mapped in this file).
+    metro_ids = {st["id"] for line in out["lines"] if line["id"] in METRO_LINES for st in line["stops"]}
+    for station in out["stations"]:
+        if station["id"] in metro_ids:
+            station["metro"] = True
     timetable(out["lines"], len(THREEJS_LINES))
     out["format"] = "rail-godot-2"
     out["note"] = ("Built by godot-chennai/tools/rail/build_rail.py (a port of packages/rail/src/build.ts) from the railway part "
