@@ -21,7 +21,7 @@ signal pressed
 var projection := MapProjection.new()
 var roads: MapRoads = null
 ## The railway round the player (G-465), drawn when `settings.rail_shown`; `cheap` (the Low
-## preset) draws it in one colour with no tunnels, outlines or names.
+## preset) draws it without casing, tunnels or names (colours kept).
 var rail: MapRail = null
 var cheap := false
 ## Station names drawn on the plate at most (the nearest).

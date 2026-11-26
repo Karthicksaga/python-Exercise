@@ -2841,8 +2841,9 @@ filed by 1 km cell. The minimap takes the part within 600 m when it moves out of
 no full scan), draws the lines and dots and names the nearest three stations on the plate; the full
 map draws everything and writes station names from the 2.6 km zoom in. The full map's legend lists
 the kinds with their colours above RAIL ON / RAIL OFF, which toggles the rail on both maps
-(`MapSettings.rail_shown`, saved). Low preset: one colour, no tunnels, no outlines, no names on the
-minimap.
+(`MapSettings.rail_shown`, saved). Low preset: the colours stay (one `draw_multiline` per kind; the shots here
+run Low on llvmpipe and showed the old one-colour Low as the grey lines the owner reported), no dark
+casing, no tunnel strokes, no station names on the minimap.
 
 ### G-466: The full map covers the whole city and labels it, decluttered by zoom
 Owner (phone screenshots): the full map stopped at a box round the player and named little.

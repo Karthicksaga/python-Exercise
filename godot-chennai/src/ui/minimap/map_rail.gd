@@ -154,22 +154,18 @@ static func _within(pairs: PackedVector2Array, at: Vector2, r2: float) -> Packed
 	return out
 
 
-## Draws the lines (and with `cheap`, one colour and no tunnels: the Low preset) on a canvas whose
-## transform is already world metres; `ppm` pixels per metre, `width` the line width in pixels.
+## Draws the lines, coloured per kind, on a canvas whose transform is already world metres; `ppm`
+## pixels per metre, `width` the line width in pixels. `cheap` (the Low preset) drops the dark
+## casing and the tunnels: one `draw_multiline` per kind, the colours kept (the owner reads the
+## lines by colour on a Low phone).
 func draw_lines(c: CanvasItem, ppm: float, width: float, cheap: bool) -> void:
-	if cheap:
-		var all := PackedVector2Array()
+	if not cheap:
+		# A dark casing under the colours, so the lines read over the roads at every zoom.
 		for k in kinds:
-			all.append_array(k.lines)
-		if not all.is_empty():
-			c.draw_multiline(all, Color(0.85, 0.85, 0.9, 0.7), width / ppm)
-		return
-	# A dark casing under the colours, so the lines read over the roads at every zoom.
+			if not k.lines.is_empty():
+				c.draw_multiline(k.lines, Color(0.02, 0.02, 0.03, 0.85), (width + 2.5) / ppm)
 	for k in kinds:
-		if not k.lines.is_empty():
-			c.draw_multiline(k.lines, Color(0.02, 0.02, 0.03, 0.85), (width + 2.5) / ppm)
-	for k in kinds:
-		if not k.under.is_empty():
+		if not cheap and not k.under.is_empty():
 			c.draw_multiline(k.under, Color(k.colour, 0.45), width * 0.7 / ppm)
 		if not k.lines.is_empty():
 			c.draw_multiline(k.lines, k.colour, width / ppm)
@@ -181,4 +177,4 @@ func draw_stations(c: CanvasItem, ppm: float, dot: float, cheap: bool) -> void:
 		var p := station_points[i]
 		if not cheap:
 			c.draw_circle(p, (dot / 2.0 + 1.2) / ppm, Color(0.05, 0.06, 0.09, 0.9))
-		c.draw_circle(p, dot / 2.0 / ppm, Color.WHITE if cheap else station_colours[i].lerp(Color.WHITE, 0.45))
+		c.draw_circle(p, dot / 2.0 / ppm, station_colours[i].lerp(Color.WHITE, 0.45))

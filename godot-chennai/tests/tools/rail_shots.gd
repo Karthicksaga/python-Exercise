@@ -319,6 +319,8 @@ func _map(low: bool) -> void:
 	var layer: Node = main.find_child("MissionsLayer", false, false)
 	layer.call("open_map")
 	var map: Object = layer.get("full_map")
+	var mr: MapRail = map.get("rail")
+	print("[rail_shots] map rail: %d segments, %d stations, drawn %s" % [mr.segment_count() if mr != null else -1, mr.station_points.size() if mr != null else -1, map.call("rail_drawn")])
 	map.call("set_zoom", 2)
 	for k in 30:
 		await process_frame

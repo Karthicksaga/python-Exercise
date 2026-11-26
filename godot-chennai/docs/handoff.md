@@ -1374,8 +1374,8 @@ Remaining: the final full run with TEST_TIMEOUT=3000 on the latest merge, rush-h
 - Metro Blue and Green both ways (G-462, G-464): viaducts drawn, tunnels in the timetable only,
   original four-car Metro model, ₹20, BOARD THE METRO, no cab, rides end before a tunnel.
 - Maps (G-463, G-465, G-466): rail coloured per kind with named station dots on the minimap and the
-  full map; RAIL ON/OFF under the legend's kinds toggles both maps (saved); Low draws one colour, no
-  names on the minimap. The full map now covers the whole city (every tile's main roads, the land
+  full map; RAIL ON/OFF under the legend's kinds toggles both maps (saved); Low keeps the colours (no
+  casing, no tunnels, no names on the minimap). The full map now covers the whole city (every tile's main roads, the land
   inside the world's edge) and labels suburbs, neighbourhoods, main roads, stations, hospitals,
   police, bus stands and bus stops, decluttered by priority and zoom; two wider zoom steps.
 - AI: Metro stations are not the AI's busy station places (`"metro": true` in the stations list;
