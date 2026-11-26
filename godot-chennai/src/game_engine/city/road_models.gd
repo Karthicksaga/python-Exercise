@@ -85,22 +85,23 @@ static func _arm(b: MeshBuilder, from: Vector3, dir: Vector3, reach: float, hex:
 	for i in range(1, 5):
 		var t := float(i) / 4.0
 		var p := from + dir * reach * t + Vector3(0, 0.55 * sin(t * PI * 0.9), 0)
-		var lo := Vector3(minf(prev.x, p.x) - 0.04, minf(prev.y, p.y) - 0.04, minf(prev.z, p.z) - 0.04)
-		var hi := Vector3(maxf(prev.x, p.x) + 0.04, maxf(prev.y, p.y) + 0.04, maxf(prev.z, p.z) + 0.04)
+		var w := 0.055 - 0.002 * float(i % 2)
+		var lo := Vector3(minf(prev.x, p.x) - w, minf(prev.y, p.y) - w, minf(prev.z, p.z) - w)
+		var hi := Vector3(maxf(prev.x, p.x) + w, maxf(prev.y, p.y) + w, maxf(prev.z, p.z) + w)
 		CityModels.box(b, lo, hi, hex)
 		prev = p
 	var end := prev
 	var ex := 0.18 + absf(dir.x) * 0.3
 	var ez := 0.2 + absf(dir.z) * 0.3
 	CityModels.box(b, Vector3(end.x - ex, end.y - 0.12, end.z - ez), Vector3(end.x + ex, end.y + 0.06, end.z + ez), 0x4b4f53)
-	CityModels.box(b, Vector3(end.x - ex * 0.8, end.y - 0.15, end.z - ez * 0.8), Vector3(end.x + ex * 0.8, end.y - 0.12, end.z + ez * 0.8), 0xf2f6ff)
+	CityModels.box(b, Vector3(end.x - ex * 0.8, end.y - 0.175, end.z - ez * 0.8), Vector3(end.x + ex * 0.8, end.y - 0.125, end.z + ez * 0.8), 0xf2f6ff)
 
 
 ## Thin rural pole: 7.5 m, light grey, a short arm of 1.2 m, a sign plate low on the shaft.
 static func rural_pole(b: MeshBuilder) -> void:
 	CityModels.box(b, Vector3(-0.2, 0, -0.2), Vector3(0.2, 0.3, 0.2), 0x9d9a92)
-	CityModels.box(b, Vector3(-0.07, 0.3, -0.07), Vector3(0.07, 7.5, 0.07), 0x8f9498, 0.02)
-	CityModels.box(b, Vector3(-0.2, 2.3, -0.1), Vector3(0.2, 2.8, -0.07), 0xd9a92a)
+	CityModels.box(b, Vector3(-0.085, 0.3, -0.085), Vector3(0.085, 7.5, 0.085), 0x8f9498, 0.02)
+	CityModels.box(b, Vector3(-0.2, 2.3, -0.115), Vector3(0.2, 2.8, -0.086), 0xd9a92a)
 	_arm(b, Vector3(0, 7.2, 0), Vector3(0, 0, -1), 1.2, 0x8f9498)
 
 
@@ -108,11 +109,11 @@ static func rural_pole(b: MeshBuilder) -> void:
 ## (along +X and -X), oval lamp heads and thin stays.
 static func twin_pole(b: MeshBuilder) -> void:
 	CityModels.box(b, Vector3(-0.28, 0, -0.28), Vector3(0.28, 0.4, 0.28), 0x9d9a92)
-	CityModels.box(b, Vector3(-0.12, 0.4, -0.12), Vector3(0.12, 10.0, 0.12), 0x5a2a2c, 0.04)
+	CityModels.box(b, Vector3(-0.13, 0.4, -0.13), Vector3(0.13, 10.0, 0.13), 0x5a2a2c, 0.04)
 	_arm(b, Vector3(0, 9.7, 0), Vector3(1, 0, 0), 2.2, 0x5a2a2c)
 	_arm(b, Vector3(0, 9.7, 0), Vector3(-1, 0, 0), 2.2, 0x5a2a2c)
 	for sgn: float in [-1.0, 1.0]:
-		CityModels.box(b, Vector3(minf(0.0, sgn * 1.1) - 0.01, 9.0, -0.01), Vector3(maxf(0.0, sgn * 1.1) + 0.01, 9.7, 0.01), 0x2a2b2d)
+		CityModels.box(b, Vector3(minf(0.0, sgn * 1.1) - 0.025, 9.0, -0.025), Vector3(maxf(0.0, sgn * 1.1) + 0.025, 9.7, 0.025), 0x2a2b2d)
 
 
 ## High mast: a 25 m grey pole with a ring platform carrying twelve flood-light panels in a circle.
@@ -124,4 +125,4 @@ static func high_mast(b: MeshBuilder) -> void:
 		var a := TAU * k / 12.0
 		var c := Vector3(cos(a) * 1.7, 24.5, sin(a) * 1.7)
 		CityModels.box(b, c - Vector3(0.28, 0.0, 0.28), c + Vector3(0.28, 0.5, 0.28), 0x3c4044)
-		CityModels.box(b, c - Vector3(0.22, 0.02, 0.22) + Vector3(cos(a), 0, sin(a)) * 0.08, c + Vector3(0.22, 0.04, 0.22) + Vector3(cos(a), 0, sin(a)) * 0.08, 0xf2f6ff)
+		CityModels.box(b, c - Vector3(0.22, -0.04, 0.22) + Vector3(cos(a), 0, sin(a)) * 0.10, c + Vector3(0.22, 0.45, 0.22) + Vector3(cos(a), 0, sin(a)) * 0.10, 0xf2f6ff)

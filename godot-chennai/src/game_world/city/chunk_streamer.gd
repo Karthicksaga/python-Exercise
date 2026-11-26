@@ -153,7 +153,7 @@ func _set_look(slot: Slot) -> void:
 		return
 	var d := distance_to_cell(slot.cell, focus)
 	var want := d <= near_distance or (near.visible and d <= near_distance + 20.0)
-	if near.visible != want:
+	if near.visible != want or far.visible == want:
 		near.visible = want
 		far.visible = not want
 

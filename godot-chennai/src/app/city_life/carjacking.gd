@@ -93,6 +93,9 @@ func _step(dt: float) -> void:
 	var feet := WorldOrigin.to_world(driving.rider.position())
 	if vehicle != null:
 		_request = -1
+		if _driver != null and not _pulled:
+			var cam := get_viewport().get_camera_3d()
+			_driver.advance(dt, _driver.global_position.distance_to(cam.global_position) if cam != null else 0.0, true)
 		if driving.vehicle == vehicle:
 			_finish()
 		elif driving.boarding_vehicle != vehicle and driving.mode() == &"foot" and not _pulled:
@@ -185,8 +188,10 @@ func _swap(id: int) -> void:
 	_driver = life.pool.make_view(who) if who != "" else null
 	if _driver != null:
 		v.add_child(_driver)
-		_driver.transform = Transform3D(Basis.IDENTITY, view.driver_seat - Vector3(0, _driver.seat_height, 0))
+		_driver.transform = Transform3D(Basis.IDENTITY, view.driver_seat - Vector3(0, CityLife.SEAT_HIP, 0))
 		_driver.play(&"sit")
+		_driver.set_seat(life.driver_seat(v.type))
+		_driver.advance(0.016, 0.0, true)
 		_driver.visible = true
 	stats["swapped"] = int(stats["swapped"]) + 1
 
@@ -228,6 +233,7 @@ func _on_boarding(v: Vehicle, event: StringName) -> void:
 		_driver.global_transform = Transform3D(Basis(Vector3.UP, atan2(-dir.x, -dir.z)), feet)
 		# Stumbles first (the fall clips come with the animation work), then runs.
 		_driver.play(&"idle")
+		_driver.advance(0.0, 0.0, true)
 		_fleeing.append([_driver, FLEE_SECONDS, dir.normalized()])
 		_driver = null
 

@@ -21,6 +21,7 @@ static func apply_viewport(vp: Viewport, v: Dictionary) -> void:
 	var fsr := int(v["scale_mode"]) == QualitySettings.FSR1 and method() == "forward_plus" and scale < 0.999
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if fsr else Viewport.SCALING_3D_MODE_BILINEAR
 	vp.msaa_3d = Viewport.MSAA_2X if int(v["msaa"]) >= 1 else Viewport.MSAA_DISABLED
+	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if int(v["aniso"]) >= 1 else Viewport.SCREEN_SPACE_AA_DISABLED
 	vp.anisotropic_filtering_level = [Viewport.ANISOTROPY_DISABLED, Viewport.ANISOTROPY_2X, Viewport.ANISOTROPY_4X][clampi(int(v["aniso"]), 0, 2)]
 	vp.mesh_lod_threshold = float(v["lod_threshold"])
 	# No light in the game casts positional shadows: the atlas is memory and a clear for nothing.
@@ -41,7 +42,7 @@ static func apply_engine(v: Dictionary) -> void:
 		_shadow_size = size
 		RenderingServer.directional_shadow_atlas_set_size(size, true)
 	# Hard shadows on Low and Medium: one shadow-map tap a pixel instead of a dozen (G-342).
-	var quality := RenderingServer.SHADOW_QUALITY_SOFT_LOW if bool(v["soft_shadows"]) else RenderingServer.SHADOW_QUALITY_HARD
+	var quality := RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM if bool(v["soft_shadows"]) else RenderingServer.SHADOW_QUALITY_HARD
 	if quality != _soft_quality:
 		_soft_quality = quality
 		RenderingServer.directional_soft_shadow_filter_set_quality(quality)

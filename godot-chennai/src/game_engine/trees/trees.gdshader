@@ -10,7 +10,7 @@
 shader_type spatial;
 render_mode cull_disabled, diffuse_lambert, specular_disabled;
 
-uniform sampler2D atlas : source_color, filter_linear_mipmap, repeat_disable;
+uniform sampler2D atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 // Wind: 0 off (Low), 1 the normal sway.
 uniform float sway : hint_range(0.0, 2.0) = 1.0;
 uniform float wind_speed = 1.5;
@@ -31,10 +31,10 @@ void vertex() {
 		float t = TIME * wind_speed + phase;
 		float gust = sin(t) + 0.45 * sin(t * 2.31 + 1.7);
 		float w2 = weight * weight;
-		float amp = sway * w2 * 0.2;
+		float amp = sway * w2 * 0.14;
 		VERTEX.x += gust * amp;
 		VERTEX.z += cos(t * 0.83 + 0.6) * amp * 0.6;
-		float flutter = sin(TIME * 5.3 + VERTEX.x * 2.1 + VERTEX.y * 1.7 + phase) * 0.035 * sway * weight;
+		float flutter = sin(TIME * 2.2 + VERTEX.x * 1.2 + VERTEX.y * 1.0 + phase) * 0.004 * sway * weight;
 		VERTEX += NORMAL * flutter;
 	}
 	leaf_normal = normalize(MODELVIEW_NORMAL_MATRIX * NORMAL);
@@ -43,7 +43,7 @@ void vertex() {
 void fragment() {
 	vec4 tex = texture(atlas, UV);
 	ALPHA = tex.a;
-	ALPHA_SCISSOR_THRESHOLD = 0.5;
+	ALPHA_SCISSOR_THRESHOLD = 0.38;
 	float shade = 1.0 - 0.14 * wet - 0.25 * night;
 	ALBEDO = tex.rgb * COLOR.rgb * shade;
 	ROUGHNESS = 1.0;

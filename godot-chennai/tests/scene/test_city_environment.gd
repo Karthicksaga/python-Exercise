@@ -72,7 +72,31 @@ func test_street_lights_at_night_within_the_budget() -> bool:
 	assert_true(StreetLights.POOL <= 6, "at most six real lights")
 	for light in env.street_lights.lights:
 		check(not light.shadow_enabled, "street lights cast no shadows")
+		check(light.light_energy <= StreetLights.LIGHT_ENERGY + 0.01 and light.light_energy <= 1.8, "street light energy stays balanced (%.2f)" % light.light_energy)
+	assert_true(env.street_lights._glow_material.albedo_color.a <= StreetLights.GLOW_ALPHA + 0.01 and env.street_lights._glow_material.albedo_color.a <= 0.5, "additive road glow does not clip white")
 	assert_true(env.street_lights.lamps.size() > StreetLights.POOL, "more lamps than real lights: the rest only glow")
+	# Moving down the street preserves existing slot assignments and fades newly acquired lamps in smoothly.
+	var prev_slot := -1
+	var kept_pos := Vector3.ZERO
+	for k in env.street_lights.lights.size():
+		if env.street_lights.lights[k].position.x < 10.0 and env.street_lights.lights[k].position.x > -40.0:
+			prev_slot = k
+			kept_pos = env.street_lights.lights[k].position
+			break
+	env.camera.global_position = Vector3(110.0, 2.0, 0.0)
+	env.street_lights.step(0.24, env.camera.global_position, 1.0)
+	env.street_lights.step(0.016, env.camera.global_position, 1.0)
+	if prev_slot >= 0 and absf(kept_pos.x - 110.0) < 15.0:
+		assert_true(env.street_lights.lights[prev_slot].position.distance_to(kept_pos) < 0.5, "still-nearby lamp keeps its slot")
+	var faded := 0
+	for light in env.street_lights.lights:
+		if light.visible and light.light_energy < StreetLights.LIGHT_ENERGY * 0.25:
+			faded += 1
+	assert_true(faded > 0, "newly switched lamps fade in smoothly rather than popping")
+	env.street_lights.step(0.5, env.camera.global_position, 1.0)
+	for light in env.street_lights.lights:
+		if light.visible:
+			check(absf(light.light_energy - StreetLights.LIGHT_ENERGY) < 0.02, "fades up to full energy (%.2f)" % light.light_energy)
 	_restore()
 	return true
 

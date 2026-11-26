@@ -45,7 +45,17 @@ func test_presets_apply_live() -> bool:
 	var vp := main.get_viewport()
 	assert_eq(vp.scaling_3d_scale, 1.0, "High: full resolution")
 	assert_eq(vp.msaa_3d, Viewport.MSAA_2X, "High: MSAA 2x as before")
+	assert_eq(vp.screen_space_aa, Viewport.SCREEN_SPACE_AA_FXAA, "High: FXAA smooths thin poles and foliage")
 	assert_eq(vp.positional_shadow_atlas_size, 0, "no positional shadow atlas (no light casts one)")
+	# Near and Far building views must remain mutually exclusive on every shown chunk (never z-fight).
+	for c: Vector2i in main.world.streamer.shown_cells():
+		var build := main.world.streamer.build_of(c)
+		if build == null or build.view == null:
+			continue
+		var near_n := build.view.get_node_or_null(^"Near") as Node3D
+		var far_n := build.view.get_node_or_null(^"Far") as Node3D
+		if near_n != null and far_n != null:
+			assert_false(near_n.visible and far_n.visible, "chunk %s never draws Near and Far together" % c)
 	var env := main.play_wiring.environment.environment
 	s.set_preset(QualitySettings.LOW)
 	assert_near(vp.scaling_3d_scale, 0.65, 0.001, "Low: 3D at 65 %")
@@ -53,6 +63,7 @@ func test_presets_apply_live() -> bool:
 	assert_true(main.world.materials.ground.shader != CityMaterials.GROUND_SHADER and main.world.materials.ground.shader.code.contains("vertex_lighting"), "the ground too")
 	assert_eq(vp.scaling_3d_mode, Viewport.SCALING_3D_MODE_BILINEAR, "bilinear on Low")
 	assert_eq(vp.msaa_3d, Viewport.MSAA_DISABLED, "no MSAA")
+	assert_eq(vp.screen_space_aa, Viewport.SCREEN_SPACE_AA_DISABLED, "no FXAA on Low")
 	assert_eq(vp.anisotropic_filtering_level, Viewport.ANISOTROPY_DISABLED, "no anisotropic filtering")
 	assert_eq(Engine.max_fps, 30, "a 30 fps cap")
 	assert_eq(Engine.max_physics_steps_per_frame, 2, "at most two catch-up physics steps")

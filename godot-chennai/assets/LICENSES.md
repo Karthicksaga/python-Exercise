@@ -138,3 +138,8 @@ is not worn by anyone here).
 | Files | What | Source | Licence |
 |---|---|---|---|
 | `assets/trees/tree_atlas.png`, `assets/trees/atlas_layout.json` | The tree kit's one atlas, 1024x512: leaf cards (broad, neem, feathery, gulmohar blossom), coconut frond, palmyra fan (green and dry), casuarina needles, grass blades, bougainvillea, oleander, croton, twigs, bark. VRAM-compressed on import (about 0.7 MB with mip maps) | Original, painted by `tools/trees/bake_tree_atlas.py` (Pillow, drawn shapes only: no photographs and no third-party textures). The meshes that use it are built in code (`src/game_engine/trees/tree_models.gd`) | **CC0 1.0**, original work for the project |
+
+## Sculpted Chennai building pack
+| Files | What | Source | Licence |
+|---|---|---|---|
+| `assets/buildings/pack_100/*.glb`, `assets/buildings/pack_100/catalog.json`, `assets/buildings/pack_100/lookup.bin` | 100 sculpted Chennai building archetypes across Residential, Commercial, Mixed-Use, Industrial, Institutional, Heritage, North Chennai, Coastal, and Canal/Streetscape packs (`LOD0/LOD1/LOD2` + `COL_*` collision boxes, linear vertex-coloured PBR) | Original models built in **Blender 5.3.0** by `tools/blender/buildings/chennai_kit.py` + `shard_1.py`..`shard_5.py` inspired by Chennai architectural styles; no photographs, no third-party meshes, no real brands | **CC0 1.0**, original work for the project |
