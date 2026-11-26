@@ -128,6 +128,7 @@ func _ready() -> void:
 static func _make_label(node_name: String, font_size: int, pixel: float) -> Label3D:
 	var l := Label3D.new()
 	l.name = node_name
+	l.font = UiTheme.font(true)
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	l.fixed_size = true
 	l.no_depth_test = true
@@ -188,8 +189,8 @@ var _entrance_mesh: Mesh = null
 ## "420 m" below a kilometre (to ten metres from 100 m), "1.2 km" above.
 static func _metres_text(m: float) -> String:
 	if m < 1000.0:
-		return "%d m" % (int(round(m / 10.0)) * 10 if m >= 100.0 else int(round(m)))
-	return "%.1f km" % (m / 1000.0)
+		return Tr.line("hud.m", [(int(round(m / 10.0)) * 10 if m >= 100.0 else int(round(m)))])
+	return Tr.line("hud.km", ["%.1f" % (m / 1000.0)])
 
 
 func _build_icon(marker_kind: StringName) -> void:

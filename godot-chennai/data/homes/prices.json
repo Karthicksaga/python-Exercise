@@ -1,0 +1,20 @@
+{
+ "format": 1,
+ "note": "Every home and furniture price in one place, for the owner to tune. A price in this file is on the prototype's scale; the game charges price x scale, rounded to round_to and never under minimum. To make everything dearer or cheaper change only `scale`. Why 0.05: stage rewards and jobs pay 50 to 1,200 rupees (about 58,000 in the whole content), the prototype's 60,000+ homes would be unreachable; at 0.05 a flat costs 3,000 (a few stages or about ten jobs), the old house 9,000, a new room 1,000 and a sofa 225. See docs/homes.md.",
+ "scale": 0.05,
+ "round_to": 5,
+ "minimum": 5,
+ "refund": 0.5,
+ "extension_each": 20000,
+ "max_extensions": 2,
+ "homes": {"flat": 60000, "cottage": 90000, "terrace": 120000, "old": 180000},
+ "props": {
+  "sofa": 4500, "oonjal": 6000, "ctable": 1800, "tvunit": 5500, "chair": 700, "mat": 250, "shelf": 2800, "shoe": 600,
+  "cot": 5000, "pero": 4200, "dress": 2600, "desk": 2200,
+  "fridge": 9000, "counter": 3500, "sink": 2500, "grinder": 4000, "mixie": 2200, "cooker": 1200, "idli": 900, "coffee": 500, "vessels": 2600, "filter": 3000, "kudam": 350, "cyl": 1500,
+  "dtable": 5200, "plank": 300,
+  "tube": 350, "fan": 1800, "pend": 500, "brass": 1500, "table_l": 600, "diya": 200, "string": 800,
+  "pooja": 3200, "tulsi": 1600, "kolu": 2400, "tanjore": 2000, "clock": 500, "calendar": 150, "frames": 400, "toran": 250, "plant": 300,
+  "washer": 7000, "drying": 500, "scooter": 9000, "bicycle": 3500, "tank": 3800
+ }
+}

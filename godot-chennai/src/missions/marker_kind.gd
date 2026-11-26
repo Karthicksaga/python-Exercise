@@ -17,14 +17,15 @@ const PLACE := &"place"
 const TARGET := &"target"
 
 const ALL: Array[StringName] = [PICKUP, DROPOFF, MISSION, FIGHT, VEHICLE, PLACE, TARGET]
-const LABELS := {
-	PICKUP: "Pick up",
-	DROPOFF: "Drop off",
-	MISSION: "Mission",
-	FIGHT: "Fight",
-	VEHICLE: "Vehicle",
-	PLACE: "Place",
-	TARGET: "Target",
+## The translation key of each kind's words.
+const LABEL_KEYS := {
+	PICKUP: "map.kind.pickup",
+	DROPOFF: "map.kind.dropoff",
+	MISSION: "map.kind.mission",
+	FIGHT: "map.kind.fight",
+	VEHICLE: "map.kind.vehicle",
+	PLACE: "map.kind.place",
+	TARGET: "map.kind.target",
 }
 ## Green to collect, blue to hand over, amber (the game's accent) for the mission, red for a fight.
 const COLOURS := {
@@ -38,8 +39,9 @@ const COLOURS := {
 }
 
 
+## The kind's words in the chosen language, on one line (markers, legend, beacon).
 static func label_of(kind: StringName) -> String:
-	return str(LABELS.get(kind, "Mission"))
+	return Tr.line(str(LABEL_KEYS.get(kind, "map.kind.mission")))
 
 
 static func colour_of(kind: StringName) -> Color:

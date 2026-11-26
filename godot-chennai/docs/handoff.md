@@ -1040,6 +1040,7 @@ the honk hook); people get no reaction hook (CityLife has none). Smoke is grey a
 smoke. Effect cost measured on the desktop only (G-273). The player still stops dead against a
 light traffic vehicle (the solver's wall); only the judgement is shared by mass.
 ## Thrown on boarding; people react to hits (agent/godot-crash2, G-360…G-363), 24 Nov 2026
+## Thrown on boarding; people react to hits (agent/godot-crash2, G-340…G-343), 24 Nov 2026
 **Owner's phone report on afed12f, fixed.** (1) "When I entered the bike I was thrown away for a
 long distance": root cause G-360. After TAKE OVER the traffic view of the taken agent was hidden
 in the bike's place; when the player sat down the agent was respawned and the view, shown and
@@ -1428,3 +1429,340 @@ bookkeeping median 0.4 ms (was 2.4), max 2.6 ms (was 19). The test and its thres
   already does (G-51). The dummy renderer's RID errors ("Parameter m is null", `Condition "!F"`) that
   `test_city_life` prints appear on b19bacc as well.
 - Not measured on a phone or with the benchmark route; the overlay's hitch line (G-340) will show it.
+
+## Language: English and Tamil (G-440 to G-446, agent/godot-lang), 25 Nov 2026
+Decisions in `docs/technical-decisions.md` ("Language: English and Tamil"). The review table is
+`docs/tamil-review.md`.
+
+**Where things are.** `src/i18n/` (`Tr` the front door, `TrCatalog` the CSV reader, `LanguageSettings` the
+setting, `ContentKeys` the mission-content scan), catalogs `assets/i18n/en.csv` and `ta.csv` (805 keys each:
+528 for the UI and logic, 277 from the mission JSON), fonts `assets/fonts/ui/`, tools `tools/i18n/`
+(`content_keys.py`, `review_table.py`; both have `--check`, run in CI), tests `tests/unit/test_i18n.gd` and
+`tests/scene/test_i18n_layout.gd`, screenshots `tests/tools/i18n_shots.gd` (UI only, over a flat backdrop;
+`--screen=pause|title|hud|drive|dialog|loading|about|settings|controls --mode=en|ta|both`).
+
+**How to add or change text.**
+- A new string: a row in `en.csv` and in `ta.csv` (status `needs native review`), `Tr.t("area.key", args)` in the
+  code, `python3 tools/i18n/review_table.py`. Static labels: `Tr.bind(control, key)` so they follow the language;
+  a screen that builds its text rebuilds it on `Tr.bus.changed`. Inside another text use `&"key"` or
+  `Tr.ref(key, args)` as the argument (never a translated string: in Both mode it would carry both languages).
+  Use `Tr.line` for one-line readouts, `Tr.t` where two lines are fine. Never call `Tr.reload()` (it is
+  `GDScript.reload`): `Tr.reload_catalogs()`.
+- Mission text: edit the JSON, then `python3 tools/i18n/content_keys.py --write` for the English rows and write
+  the Tamil rows (`c.<path>`) in `ta.csv`. The test names the missing ones.
+- A native speaker reviews `ta.csv`, sets `status` to `reviewed`, runs `review_table.py`. A release without
+  unreviewed Tamil: `custom_features="tamil_reviewed_only"` in the export preset (or the project setting
+  `chennai/i18n/hide_unreviewed`); those texts then show in English only.
+- Tests must leave the language English (`_done()` in the i18n tests): the runner has no after-test hook.
+
+**Measured / tested here (Godot 4.7.2, headless and software GL).** 805 keys, 805 Tamil rows to review; every
+Tamil string shaped with no `.notdef` glyph at 12 to 32 px; Tamil and Both at 915x412 and 1830x824 on the pause
+menu, title (menu, About, Settings, Controls), loading screen, mission HUD with a long toast, job board dialog,
+touch and driving controls and railway HUD: nothing off screen, buttons at least 48 tall, no overlap, no text
+wider than its box; round buttons shrink and break words; long Tamil words wrap. Screenshots looked at (not
+kept): pause menu, HUD, job board, driving controls, loading, title, in Tamil and in Both.
+
+**Weak or not done.**
+- **All Tamil is unreviewed machine Tamil.** Word choices that need a speaker first: ஏறு for GET IN, வண்டியைப் பிடி
+  for TAKE OVER, நற்பெயர் for reputation, பொத்தான் for button, சேமிப்புப் புள்ளி for checkpoint, the cinema and
+  gym jokes, station and street names (transliterated from English), spoken versus written forms.
+- In Both mode the title menu needs a scroll (two-line subtitles; rows grow), the job board shows only a short
+  trimmed preview of each job's brief (as in English), and round buttons carry two small lines.
+- Both mode puts a name inside another text once per language (a station name in a toast stays English in the
+  Tamil line: map names have a Tamil form only on the station boards).
+- Not seen on a phone. Screenshots are the UI over a flat colour, not the game, under software GL.
+- Developer-only English remains (G-446): about fifty strings in the performance overlay, its switches and log,
+  console lines, rail file errors, the `km/h` readout and the notch names.
+- Tamil has no plural forms in the counted texts (`.one` and `.other` hold the same words); numbers are Latin
+  digits everywhere.
+
+## Culture and life: heritage journal, temple visit, peace zone, swimming (G-480 to G-489, agent/godot-culture), 25 Nov 2026
+Decisions in `docs/technical-decisions.md` ("Culture and life"). Branch `agent/godot-culture` from `agent/godot-lang`
+(e297162), the Language system, which every text here uses. Open owner decisions: G-489 (peace-zone rule list, Marina
+swimming, second place, Tamil review, bicycle).
+
+**Where things are.**
+- Logic (pure, `src/culture/`): `CultureData` (reads `assets/culture/culture.json`), `PeaceZones`, `HeritageJournal`,
+  `TempleVisit`, `SwimWater` (sea and river probe), `SwimState` (limits, energy, tiring).
+- Glue (`src/app/culture_wiring/`): `CultureWiring` (added by `Main._add_culture` at the end of the Play loading step;
+  `main.culture`), `TempleProps` (sandal stand and lamp meshes), `PropMesh` (boxes and cylinders merged into one mesh).
+- UI: `src/ui/heritage_journal/heritage_journal_screen.gd` (from the pause menu's HERITAGE JOURNAL row; Back closes it
+  first, `Main.go_back`), `src/ui/swim_hud/swim_hud.gd` (the energy plate).
+- Hooks added to existing code, all additive and null-safe (`peace: PeaceZones = null`): `Driving` (enter, horn),
+  `DrivingWiring` (GET IN offer, crash effects and shake), `Carjacking` (TAKE OVER, crime report), `StreetReactions`
+  (crime report); `PlayerController.begin_swim / end_swim / swim_mover`; `Sound.set_calm / step_gain / bell`,
+  `Ambience.ring`; `PlayerSounds` (wet strokes); `SaveStore.HERITAGE` and the "keep other sections" write.
+- Data: `assets/culture/culture.json` (stops, peace zones, temple places, swim numbers) and the `cul.*` keys in
+  `assets/i18n/*.csv` (48 rows; the rows are in `docs/tamil-review.md`). Export presets include `assets/culture/*.json`.
+
+**How to add a place to the journal.** A row under `stops` (id, kind, position from its landmark spec or `world.json`,
+radius, source), the two keys `cul.stop.<id>.name` and `.line` in `en.csv` and `ta.csv`, `python3
+tools/i18n/review_table.py`. `test_culture.gd` checks the position and the names against the landmark spec.
+**How to add a place of worship.** A zone under `peace_zones`, a stop with `on_foot`, and (for a visit like the
+temple's) a `temple_visit`-like block: today there is one visit; a second needs `CultureWiring` to hold a list of
+visits (it holds one `TempleVisit`).
+
+**Measured / tested here (Godot 4.7.2, headless; screenshots under software GL).**
+- The real player body walks from the sandal stand through the east gopuram's passage to the lamp (tested through
+  the ACTION button); the free ground in the 12 to 34 m ring round the compound's centre is one connected stretch
+  reaching all 36 sectors (`test_culture_game.gd`).
+- The Marina can be swum (SWIM at the beach, on the surface at 0.01 m, GET OUT onto the beach) and a real river or canal
+  of the middle tiles can be swum at its water level (-0.75 m) and left onto the bank, in the real streamed city.
+- Peace zone rules in the vehicle yard (`test_peace_zone.gd`): no GET IN, no horn, no camera shake, no TAKE OVER.
+- Layouts in English, Tamil, both languages at 915x412 and 2460x1080 (`test_culture_layout.gd`).
+- The swim entry look-up costs about 150 µs per call on the development machine (5 Hz while on foot).
+
+**Weak or not done.**
+- **No bicycle, no boat** (G-488: a vehicle kind with balance handling is `godot-complex` work).
+- **No swim animation:** the walk clip, slowed, with the figure lowered and leaned; it looks like wading.
+- **`violence` and `wanted` are rules with no combat or police runtime to suppress** (phase 5 does not exist); the hook is
+  `CultureWiring.allow_violence`. `Wanted` is still null in the game, so crimes reported by `Carjacking` and
+  `StreetReactions` go nowhere yet; the guards are in place for when it is wired.
+- Traffic that passes the temple still honks (AI traffic, not the player's horn) and drives through the forecourt's streets.
+- A river's bank bund (0.55 m, collider up to 2.2 m) is only stepped over by the exit's placement 1.8 m up the bank; a
+  bank with a wall right behind it could put the player in the wall (the body is pushed out by the engine, not tested at
+  every bank).
+- The sandals are not removed from the player model's feet (the model's sandals are part of its mesh); the rack shows
+  a pair, the steps get softer.
+- Not seen on a phone; Tamil is unread machine Tamil (G-443).
+## Polish: road feel, blur row, hero Low, job spread, cab handle, credit, leaks (agent/godot-polish, G-450..G-456), 25 Nov 2026
+Seven items from the coordinator's list, one commit each (decisions in `technical-decisions.md`):
+1. **Road condition feel (G-450).** `RoadStyle.feel` now drives the player's vehicle through `RoadSurface`
+   (`src/game_world/infra/`, read per chunk, cached, fed by the chunk builder's worker) and `GroundFeel` /
+   `RaycastVehicle.set_ground`: damaged roads bump a little (a bike wanders 2.3 cm, mud 4.2 cm), unpaved lanes cost a bike
+   or auto 35 % of its top speed and 30 % grip, cars and buses lose less, puddles splash and slow a little. Speed readout and
+   crash rules unchanged (tested: no step changes speed like a crash). Tests `test_road_surface.gd`, `test_road_feel.gd`.
+   Weak: traffic and parked vehicles ignore it; the vehicle's centre decides, not each wheel; no splash sound.
+2. **Motion blur row (G-451).** Settings row "Motion blur" (pause menu and title), Off by default, hidden below High; the
+   `MotionBlur` node exists in Main only while it is on. Weak: still not measured on the phone (G-435).
+3. **Hero materials on Low (G-452).** `CityMaterials.add_hero`; the hero atlas materials follow `set_flat`.
+4. **Jobs, places, stories spread (G-453).** Nine city jobs, the hospital, gym, mall, cinema and the stories that use them are
+   in their own districts (`respace_stages.gd -- jobs`, `apply_job_sites.py`, new `test_job_spread.gd`: jobs start in at least 8
+   districts). Weak: `share-auto` and home stay in Anna Nagar; the clock is scaled by shortest road run, not traffic;
+   the labels use whatever street the snap found (some unnamed); a job's start is far from the player unless they drive there
+   (the clock waits at the start, `startRadius` 300).
+5. **Cab vigilance handle (G-454).** HOLD button; released 8 s at speed = warning, 3 s later the emergency brake. Off outside
+   the player's own cab, no score change. Weak: no key or pad binding, no own alarm sound (the door chime at pitch 1.6).
+6. **Map credit vs pause panel (G-455).** Reproduced at 938 x 412 UI units (panel 200..737, credit 721..926 at y 379): the
+   menu has its own credit line, the HUD plate hides while it is open.
+7. **Exit leaks (G-456).** 146 sound loads, a settings cycle, a ride anchor. About 82 `RefCounted` objects and a few mesh RIDs
+   remain after Main boots (not identified).
+`test_city_streaming.gd::test_main_thread_budget_under_cpu_load` is a wall-clock test and fails whenever the machine is busy
+(17 to 21 ms against 16 here, also on the coordinator's checkout at the same time).
+
+## Transit (G-210…G-219), branch `agent/godot-transit`, 24 Nov 2026
+**Done.** Data: `tools/geo/chennai_geo/transit.py` (`cli transit`) → `world/transit/` and
+`world/TRANSIT.md` (OSM only). Runtime: `src/transit/` (`TransitNetwork`, `TransitTimetable`,
+`TransitFare`, `RouteBuses`, `BusRide`, `TrainService` stub, `StationPlace`, `BusJobRoutes`),
+`src/ai/agent_routes.gd` (hook) with small guarded changes in `AgentSystem` and `RoadGraph`
+(heights from the roads' deck samples), views `RouteSign` and doors in `TrafficVehicleView`, wiring
+`src/app/transit_layer/` (added by `Main._add_transit` after `PlayWiring`), HUD
+`src/ui/transit_hint/`. Docs: `docs/transit.md` (format, coverage, plan for trains, weak list).
+Tests: `tools/geo/tests/test_transit.py`, `tests/unit/test_transit.gd`,
+`tests/scene/test_transit_ride.gd`. Tool: `tests/tools/transit_shots.gd` (screenshots and
+`--measure`).
+**For others.**
+- *osmdetail*: stop shelters and poles stay yours (`tile.json busStops`); transit reads the same
+  OSM stops by position and draws only bus signs and doors. Platforms: `transit.json` stations
+  carry OSM platform refs and positions for the station place; your platform meshes are the
+  visuals.
+- *landmarks*: Central and Egmore are `StationPlace`s by their OSM station point (entry area 70 m).
+- *Phase 5*: set `main.transit.wanted_level` to the `Wanted` level (boarding is refused while > 0).
+- *Phase 6 (trains)*: extend `TrainService` (`has_trains`, `train_at`, `board`); plan in
+  `docs/transit.md` §4.
+- *Missions*: on load the three baked bus jobs move onto mapped stops and a real-route job is added
+  to `session.content.jobs` (`TransitLayer._adapt_jobs`); `content.json` is unchanged.
+**Weak.** See `docs/transit.md` §5: OSM has only 77 bus relations here; most stops have no route;
+interior seen only on llvmpipe; no grip pose for the player; bicycles not built.
+
+### Transit, 25 Nov: getting on a bus on foot (G-220); for agent/godot-railway
+- BOARD now walks the player in through the front door, up the step, past the seated conductor
+  (ticket) to a free seat or standing place (`src/transit/bus_boarding.gd`, `TransitLayer`);
+  ALIGHT walks them out to the pavement. Tests: `test_transit.gd`
+  (`test_bus_boarding_walks_in_…`), `test_transit_ride.gd` (the real game).
+- **Railway (agent/godot-railway), station boards.** Transit does not build trains. What exists
+  for you: `world/transit/transit.json` stations (OSM position, `name`/`nameTa`, system, lines,
+  platforms with refs and positions, entrances) and lines (stations in order, estimated headways),
+  read by `TransitNetwork`; `StationPlace` (entry area, platform list); `TrainService` (the
+  interface: `departures(station, hour)` works from `TransitTimetable`; `has_trains`, `train_at`,
+  `board` are the stub). Extend `TrainService` for real trains and give it to
+  `TransitLayer.trains`; the station hint then stops saying "no trains yet" by itself
+  (`has_trains`). A station departure board can read `trains.departures(...)`. If you change the
+  station or line data, keep `transit.json`'s keys or bump its `transit` version.
+**Transit status (paused 25 Nov at the coordinator's request):** done and pushed: OSM stops/stations/routes data, route buses, riding, fast travel, stations, bus job on real stops, walked boarding past the conductor to a seat (G-210…G-220); filtered tests green, last CI green.
+Remaining: the final full run with TEST_TIMEOUT=3000 on the latest merge, rush-hour (standing) and 1830 boarding screenshots, approach path avoiding shelters, interior roof wedges, pre-instancing passengers (4 ms boarding frame).
+
+### Transit merged into the integration branch (agent/godot-merge-transit), 25 Nov 2026
+- Conflicts resolved, both sides kept: export include filter (transit's `world/transit/*` plus
+  the trees' `assets/trees/*.json`, the size diet's excludes unchanged); `Main` keeps the five
+  loading steps (transit is wired inside step 4 after `PlayWiring`, the railway is step 5);
+  `TrafficVehicleView` keeps the G-360 jump guard (`set_shown`, `set_pose`, box back a step later)
+  and transit's doors and destination sign; docs and licences carry both sides.
+- Fixed at the merge: `TransitNetwork`'s inner class `RailLine` clashed with the railway's global
+  `RailLine` (parse error); it is now `TransitNetwork.TrainLine`. With the railway wired,
+  `TransitLayer.stations_by_railway` keeps the stub station hint ("no trains yet") off and
+  `railway_busy` keeps the bus hint and BOARD off while the player is on a train or in the cab
+  (G-217 note; `test_transit_ride.gd`). Route buses' near model is merged around the doors (42 to
+  34 draw calls per bus, `docs/transit.md` §5). `LandmarkModels.triangle_count` no longer throws
+  on the empty arrays the headless dummy renderer can return to a worker thread (seen once in
+  `test_city_life`, a SCRIPT ERROR that failed the run).
+- G-364 holds: every transit change to the traffic (request, doors, carrying, fast travel) is
+  queued and run in `CityLife.between_steps`; `test_transit_ride` now asserts
+  `off_step_changes == 0`.
+- Weak: in a station's forecourt nothing shows now (the railway's panel shows on the platforms
+  only); bus stop hints while the railway owns stations were checked only in the scene test.
+
+## Touch in menus, GET OUT, the overlay off in the APK (agent/godot-fixui, G-490…G-494), 25 Nov 2026
+**Owner bug report (POCO M6 Pro, touch only), fixed.**
+1. *No menu button answered a finger* (pause, title SETTINGS, the controls rows, the Jobs list; Sound
+   "anywhere"). Root cause: `TouchScroll` replayed a tap as a click in window coordinates, so the
+   phone's stretch (2460x1080 window over a 938x412 UI) moved every replayed tap to 1/2.62 of the spot,
+   onto the dim behind the panel. One line: `push_input(event, true)` (G-490). The G-350 tests used
+   unscaled SubViewports, where the bug cannot show. New `tests/scene/test_menu_touch.gd` taps through
+   `Input.parse_input_event` in window pixels (the engine's own touch-to-mouse emulation and stretch, as
+   on the phone) in the real game, at 915x412, 2460x1080 with the project's stretch, and a 2460x1080 UI:
+   every title row, title SETTINGS row, CONTROLS/BACK, every pause row, MAP and the map's buttons, RESUME,
+   JOBS and every Jobs-list button press once and only themselves with a 5 px roll; a drag scrolls and
+   presses nothing; SOUND really mutes and unmutes. With the old line it fails 25 rows at the phone setup.
+   Also fixed on the way (G-492): the full map panned twice the finger's distance (touch plus emulated
+   mouse), the minimap opened the map twice, and the pause list under the full map took the map's drags
+   (`TouchScroll.COVER_GROUP`).
+2. *No way out of a car or bike.* The round X became a "GET OUT" glass pill top-right beside PAUSE,
+   visible whenever the player drives or rides, parked or taken over; pressed while moving it brakes and
+   gets out when slow (G-494). `tests/scene/test_get_out.gd`: parked car, parked bike, a bike taken over
+   from traffic, and while moving: finger tap at the phone's stretch, player on foot within 3 m.
+   **Strings:** `src/i18n` is not on this base, so the new words are in `src/ui/ui_strings/ui_strings.gd`
+   (`UiStrings.text(key)`, English, Tamil column empty until reviewed). For the lang agent: move its two
+   keys (`get_out`, `stopping_to_get_out`) into the translation table and replace `UiStrings.text` with
+   `tr`.
+3. *The performance overlay was on.* Cause: a save from an earlier build said "on", and the row to turn
+   it off was untappable (item 1). Release builds now never restore it and ignore the three-finger tap;
+   five corner taps or the row show it for the session (G-491). Its text wraps inside the screen (G-493;
+   the hitch line was 2,600 px wide). `tests/scene/test_overlay_release.gd` boots the real game with
+   `DebugSettings.release_build` on over a save that says "on".
+**Test expectation changed on purpose:** `test_controls_layout.gd::test_left_handed_is_the_exact_mirror`
+no longer expects GET OUT mirrored (it stays in the top-right row; mirrored it sat on the mission column).
+**For the pause-menu agents (lang, polish):** `pause_menu.gd` changed in one line (`PAUSE_RIGHT` follows
+`ControlsLayout.EXIT_SIZE`); the fix itself is in `touch_scroll.gd`.
+**Not done / weak.**
+- Not run on a phone. The tests use the engine's own emulation path, which is what Android feeds, but
+  Android's event order and batching were not observed on the device.
+- On foot the top-right corner is now 112 px of empty space right of PAUSE (it was 56): PAUSE and JOBS
+  keep their place whether or not GET OUT shows.
+- Found, not changed: in title SETTINGS the two-line rows ("Graphics: Auto (Low)", "Run benchmark") are
+  wider than their 300 px button and their second line touches or passes the edge at 915x412.
+- A replayed tap still presses at release, so the pressed look of a row in a scrolling list shows only
+  then (unchanged from G-350).
+
+## Rail extras: rail on the maps, the Metro, trains past the old edge, the whole-city map (G-460…G-468, agent/godot-rail2), 25-26 Nov 2026
+**Done (tested here, desktop only):**
+- Data: `tools/rail/extract_rail.py` (pyosmium, needs `data/raw/world.osm.pbf`) → committed
+  `data/rail/regional-rail.osm.json.gz`; `tools/rail/build_rail.py` builds `world/rail/rail.json`
+  (482 KB: 22 lines, 126 stations, 1,268 tracks of which 113 estimated second-track runs, 409 level
+  crossings) and `world/rail/RAIL.md`. `--threejs` still reproduces the Three.js file value for value.
+- Lines past the old edge (G-461): Beach–Tambaram between its termini, Perungalattur–Chengalpattu,
+  Central–beyond Sevvapet Road (Arakkonam), Beach–beyond Arambakkam (Sullurpeta) and the three
+  estimated return services, the expresses to the world's edge. Keep-left onto the other track.
+- Metro Blue and Green both ways (G-462, G-464): viaducts drawn, tunnels in the timetable only,
+  original four-car Metro model, ₹20, BOARD THE METRO, no cab, rides end before a tunnel.
+- Maps (G-463, G-465, G-466): rail coloured per kind with named station dots on the minimap and the
+  full map; RAIL ON/OFF under the legend's kinds toggles both maps (saved); Low keeps the colours (no
+  casing, no tunnels, no names on the minimap). The full map now covers the whole city (every tile's main roads, the land
+  inside the world's edge) and labels suburbs, neighbourhoods, main roads, stations, hospitals,
+  police, bus stands and bus stops, decluttered by priority and zoom; two wider zoom steps.
+- AI: Metro stations are not the AI's busy station places (`"metro": true` in the stations list;
+  without this the start in Anna Nagar became a station place and `test_game_vehicles` failed).
+- Strings: every new player-visible word is in `src/rail/rail_text.gd` (`RailText`) until
+  agent/godot-lang's `Tr` is merged (then move them to `assets/i18n/en.csv` + `ta.csv`).
+**Measured** (`tests/tools/rail_shots.gd --shot=measure [--at=guindy]`, headless, title screen over
+the live city, this shared 4-core container with other agents' Godot runs, two runs each; base =
+origin/agent/godot-merge-transit): `Railway` main-thread frame avg at Egmore 0.375 / 0.403 ms before,
+0.596 / 0.483 ms after; at Guindy 0.337 / 0.341 before, 0.399 / 0.379 after; physics step 0.24–0.28
+before, 0.28–0.33 after (crowds part 155–197 µs before, 210–249 after). The first regional build
+measured 0.96 ms at Egmore; `lines_near` + `trains_near` + a 60 m line cache brought it here. The
+full map's city is built on a worker: 3.1 s here for 66,867 road segments and 3,593 labels.
+**Shared files touched (small):** `missions_layer.gd` (rail and city on the maps), `railway_wiring.gd`,
+`regional_world_source.gd` (`read_tile_roads`, `boundary`), `ai_area.gd` (skip Metro stations),
+`map_road_feed.gd` (near set fix, `near_task`), `assets/LICENSES.md`, `trains.py`.
+**Weak or not done:** nothing checked on a phone; the city build takes seconds on a phone (map shows
+"Drawing the map..." meanwhile) and holds ~67k segments; Metro tunnels and underground stations are
+not drawn (rides there are impossible; underground stations show on the maps only); Metro and
+second-track heights and the return services are estimates; Velachery MRTS is at grade (OSM has no
+bridge tag there); Tambaram–Perungalattur is not run by the Chengalpattu line (OSM relation starts
+there); Yellow and Inter-Corridor Metro lines not added; the full map has no residential street
+names (main roads only, unlike the Three.js map's ranked street labels at close zoom) and no park or
+water fills; hospital and police labels are generic words (TD-18); Sullurpeta line averages 58 km/h
+(OSM maps 19 stations on 67 km); main-thread cost is up about 0.05–0.2 ms a frame (noisy machine).
+## Street imagery reference (agent/godot-streetref, G-510 to G-513), 25 Nov 2026
+Prototype of "real Chennai streets from street-level imagery", observation-only and licence-safe. New files only:
+`tools/imagery/` (tool, tests, prototype page), `assets/street_ref/` (manifest, schemas, observations,
+`facade_categories.json`), `docs/street-imagery.md`. Run `tools/imagery/run_tests.sh` (geo venv).
+Blocker for the owner: a free `MAPILLARY_TOKEN` and egress to `graph.mapillary.com` and `api.openstreetcam.org`;
+until then no coverage report is real and all facade fields are estimates. Next: run discover and report, review
+images by hand, fill observations, then a game change that reads the categories in `BuildingMeshes`.
+
+## Homes (agent/godot-homes, G-230 to G-238), 24 Nov 2026
+Buy a home, walk through its door, be inside, furnish it, extend it, save. How-to, prices, rules,
+the Tamil review list and the layout: `docs/homes.md`; decisions in `technical-decisions.md`.
+
+**Done.** Data (`data/homes/`: 4 home types, 47 props, one price file with one scale of 0.05,
+11 listings), pure logic in `src/homes/`, glue in `src/app/homes_layer/`, HUD and editor in
+`src/ui/home_editor/`. Hook-up: `Main` makes `HomesLayer.for_main(self)` after the `MissionsLayer`,
+has a `home` state (`set_home`) and Back leaves a home. `ActionCandidate.enabled` and
+`ActionContext.best_enabled()` are new (BUY dims while too poor); `TouchControls` reads it.
+`export_presets.cfg` includes `data/homes/*.json`. Listings are looked up on a worker when the
+player is within 450 m, boards and doors made within 190 m.
+
+**Numbers** (Compatibility, xvfb + llvmpipe, 915x412 and 1830x824 give the same counts;
+`tests/tools/homes_shots.gd`). Street with a FOR SALE board in view: 158 to 172 draw calls, 196k to
+234k primitives (the city; the board is 4 labels, the board and posts, the door frame and leaf: about
+a dozen draw calls, only while near). Inside, furnished (17 pieces from every category): **8 draw
+calls and 8,082 primitives for the 3D room** (shell, glass, ground, door, furniture solid and
+glow, kolam), 88 with the furnish panel open (every button and label is a canvas draw); empty room
+22 with the HUD. A furnished room is 2,558 triangles (12 pieces, `test_a_furnished_room_is_cheap_to_draw`
+asserts under 5,000); all 47 props together are 5,726 triangles, the largest prop 648. Data added:
+28 KB of JSON (props 21 KB); no new binary assets, so the APK grows by about 0.1 MB (data plus the
+scripts). Entering and leaving cost one fade each; suspending is four assignments.
+
+**Tests.** `test_homes.gd` (32), `test_home_sites.gd` (3, all 11 buildings on the real map),
+`test_home_interior.gd` (9), `test_homes_layer.gd` (2, the whole flow through `main.tscn`).
+
+**Weak or not done.**
+- Not seen on a phone. Seen under llvmpipe only; the 915x412 and 1830x824 screenshots are
+  in the report's scratch folder.
+- Every Tamil string needs native review (`docs/homes.md` lists them); the street ACTION button
+  reads BUY/ENTER in English only (the shared button takes one label), the board is bilingual.
+- No live wanted level exists, so the police rule is a hook (`HomesLayer.wanted_stars`) tested with a
+  fake; set it when the combat runtime lands.
+- A fixed camera (no orbit), no moving a piece, no stairs or second floor, no owned-home list.
+- The doors and boards stand on the OSM walls, which are estimated geometry: a building drawn with
+  a different front than its footprint edge may show the door a little off.
+- The 11 buildings were chosen by size and road distance, not looked at one by one.
+## Building fusion (agent/godot-fusion), 24 Nov 2026
+Format 2.3 (`fusion.bin`), decisions G-220…G-226; read `docs/fusion.md` (datasets, rules, measured
+thresholds, licences, weak points) and `world/FUSION.md` (per ring, tile and reason).
+
+**Data.** `tools/geo`: `cli fetch-buildings` (Overture 2026-11-18.0 via DuckDB bbox filter, Google
+Open Buildings v3 S2 cells 3a4d/3a53, Microsoft quadkeys; cache `$CHENNAI_FUSION_CACHE`, never
+committed; recorded in `data/MANIFEST.json buildings`), then `cli fuse` after every `build`
+(`build` deletes `world/`; fuse is deterministic, about 4.5 min, needs ~9 GB). 391,283 OSM
+buildings + 1,389,771 added (Overture 762,654, Google 602,434, Microsoft 24,683) = 1,781,054;
+ring 2 ×32, ring 3 ×115. No dataset has an independent height in this box; all added buildings
+are estimated. 23.4 MB of fusion.bin; world 37.0 → 62.3 MB.
+**Game.** `FusionTile` (`src/game_world/fusion/`), `RegionalWorldSource.tile_fusion/apply_fusion`,
+`WorldSource.apply_fusion/get_data_credits` (no-op/default for other sources),
+`ChunkBuilder.build` calls `apply_fusion` right after `read_chunk` (before landmarks and
+`apply_detail`, so palettes apply to added estimated houses). `read_chunk` is unchanged.
+Fusion-only squares come from `world.json fusion.cells`. About page: `TitleMenu.set_credits(…,
+others)`. `--no-fusion` in `city_shot.gd` and `infra_measure.gd` for before/after.
+**Measured (headless worker build, `test_fusion.gd`, one run, cold caches so noisy):** village
+(50, 210): 0 → 350 buildings, near triangles 824 → 35,955, draw calls 1 → 6 (the normal building
+layers), build ~75–91 ms; T. Nagar (121, 248): 103 → 155 buildings, near triangles 54,160 →
+69,198, draw calls 9 → 9.
+**Not done (stopped early at the coordinator's request, memory-limited machine):** before/after
+screenshots (village and city street, Compatibility 915×412 and 1830×824); `infra_measure`
+main-thread numbers with and without fusion (the full suite's
+`test_main_thread_budget_under_cpu_load` failed once with a 41.9 ms step, a known wall-clock
+flake, but whether fusion's larger chunks raise the step is NOT measured); a full `./run_tests.sh`
+after the merge of feat (filtered suites fusion/osm_detail/regional/boot pass; the full run
+before the merge had only that flake plus two expectations since fixed); APK size from CI.

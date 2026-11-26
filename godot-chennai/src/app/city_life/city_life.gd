@@ -146,6 +146,7 @@ var _walker_state: Array = [PackedVector4Array(), PackedFloat32Array()]
 var _people: Array[CrowdField.Person] = []
 ## Walkers and crowd people further than this are not drawn this step (FIGURE_CAP).
 var _people_reach: float = PEOPLE_REACH
+var _heights: RoadHeights = null
 var _sync_start: int = 0
 ## Main-thread sync totals (µs): vehicles and drivers, walkers, crowd, the rest (signals, sound).
 var _parts: Vector4i = Vector4i.ZERO
@@ -191,7 +192,7 @@ func prepare(start: Vector2) -> String:
 	var stations := _stations
 	var area: AiArea = await BackgroundTask.start(func() -> AiArea: return AiArea.build(source, start, stations)).finish(get_tree())
 	if area == null:
-		return "The streets' traffic could not be worked out."
+		return Tr.t("err.traffic")
 	var people := PeopleManifest.open(PeoplePool.MANIFEST)
 	var entries: Array[Dictionary] = []
 	entries.assign(people.entries)
@@ -204,6 +205,8 @@ func prepare(start: Vector2) -> String:
 		return error
 	population = AiPopulation.new(_source.get_bounds(), traffic_pool, walker_pool, AgentPresets.chennai_mix(), 17)
 	population.ground_ready = _ground_ready
+	if world.layouts != null:
+		_heights = RoadHeights.create(world.layouts)
 	# Closer spawn rings than the Three.js defaults: the phone's haze hides little beyond 170 m,
 	# and a pool spread thinner than that leaves the street in front of the player empty.
 	var ts := population.traffic_settings
@@ -229,7 +232,9 @@ func prepare(start: Vector2) -> String:
 	population.traffic.on_change = _changing_agents
 	population.walkers.on_change = _changing_agents
 	for a in population.traffic.agents:
-		var v := TrafficVehicleView.make(population.traffic.kinds[a.kind].name, a.variation)
+		var kind := population.traffic.kinds[a.kind]
+		# Buses keep their door nodes: on a route they open them at stops (G-214).
+		var v := TrafficVehicleView.make(kind.name, a.variation, kind.group == &"bus")
 		v.agent_id = a.id
 		add_child(v)
 		v.set_shown(false)
@@ -248,9 +253,9 @@ func prepare(start: Vector2) -> String:
 
 
 ## On the AI thread: take the new area, then step as usual.
-func _adopt_and_step(next: AiArea, dt: float, focus: Vector2, h: float, obstacles: PackedVector3Array, siren: Variant) -> void:
+func _adopt_and_step(next: AiArea, dt: float, focus: Vector2, h: float, obstacles: PackedVector3Array, siren: Variant, walker_obs: PackedVector3Array = PackedVector3Array()) -> void:
 	population.adopt(next, focus)
-	population.step(dt, focus, h, obstacles, siren)
+	population.step(dt, focus, h, obstacles, siren, walker_obs)
 
 
 ## Back on the main thread after a step that adopted an area: the signal heads follow it.
@@ -282,12 +287,12 @@ func _load_vehicle_models() -> String:
 				files.append(f)
 	for f in files:
 		if ResourceLoader.load_threaded_request(f) != OK:
-			return "Could not start loading %s." % f
+			return Tr.t("err.start_loading", [f])
 	for f in files:
 		while ResourceLoader.load_threaded_get_status(f) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 			await get_tree().process_frame
 		if ResourceLoader.load_threaded_get(f) == null:
-			return "Could not load %s." % f
+			return Tr.t("err.load", [f])
 	return ""
 
 
@@ -341,6 +346,7 @@ func _physics_process(delta: float) -> void:
 			_cells_changed = false
 		if world.world_ready_around(focus):
 			var obstacles := _obstacles(focus)
+			var walker_obs := _street_obstacles(focus)
 			var siren: Variant = _siren()
 			var h := hour()
 			_step_dt = _since if _since > 0.0 else delta
@@ -350,9 +356,9 @@ func _physics_process(delta: float) -> void:
 			if _next_area != null:
 				_adopting = _next_area
 				_next_area = null
-				_work = _adopt_and_step.bind(_adopting, _step_dt, focus, h, obstacles, siren)
+				_work = _adopt_and_step.bind(_adopting, _step_dt, focus, h, obstacles, siren, walker_obs)
 			else:
-				_work = population.step.bind(_step_dt, focus, h, obstacles, siren)
+				_work = population.step.bind(_step_dt, focus, h, obstacles, siren, walker_obs)
 			_step_frame = _frame
 			_busy = true
 			_go.post()
@@ -445,6 +451,26 @@ func _obstacles(focus: Vector2) -> PackedVector3Array:
 	return out
 
 
+## Static poles and solid tree trunks near `focus` so pedestrians steer clear of them.
+func _street_obstacles(focus: Vector2) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	if world == null or world.streamer == null:
+		return out
+	var max_r := PEOPLE_REACH + 15.0
+	var max_r2 := max_r * max_r
+	var chunk_r := max_r + 185.0
+	var chunk_r2 := chunk_r * chunk_r
+	for b in world.streamer.shown_builds():
+		if b.street_obstacles.is_empty() or b.centre.distance_squared_to(focus) > chunk_r2:
+			continue
+		for o in b.street_obstacles:
+			var dx := o.x - focus.x
+			var dz := o.y - focus.y
+			if dx * dx + dz * dz <= max_r2:
+				out.append(o)
+	return out
+
+
 ## The siren of a driven emergency vehicle, as (x, z, heading), or null.
 func _siren() -> Variant:
 	for node in get_tree().get_nodes_in_group(Vehicle.GROUP):
@@ -512,7 +538,8 @@ func _sync(dt: float, focus: Vector2) -> void:
 		if st.w < 0.0 or downed.has(i):
 			continue
 		var pos := Vector2(st.x, st.y) + Vector2(-sin(st.z), -cos(st.z)) * st.w * ahead
-		var at := WorldOrigin.to_scene(pos, wy[i])
+		var foot_y := _heights.footpath_height_at(pos) if (_heights != null and wy[i] < 0.05) else 0.0
+		var at := WorldOrigin.to_scene(pos, maxf(wy[i], foot_y))
 		var d := at.distance_to(cam)
 		if d > _people_reach:
 			continue
@@ -553,7 +580,8 @@ func _sync(dt: float, focus: Vector2) -> void:
 		if watching and pos.distance_squared_to(_watch_at) < StreetHits.BYSTANDER_REACH * StreetHits.BYSTANDER_REACH:
 			var to := _watch_at - pos
 			yaw = atan2(-to.x, -to.y)
-		var at := WorldOrigin.to_scene(pos, 0.0)
+		var crowd_y := _heights.footpath_height_at(pos) if (_heights != null and p.kind != &"beach") else 0.0
+		var at := WorldOrigin.to_scene(pos, crowd_y)
 		var d := at.distance_to(cam)
 		if d > _people_reach:
 			continue

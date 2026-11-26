@@ -53,6 +53,8 @@ var charge: Callable = func(_rupees: int) -> void: pass
 var hour_of: Callable = func() -> float: return 12.0
 var network: RailNetwork
 var index: RailIndex
+## The railway as the maps draw it (G-465; built on a worker thread in `prepare`).
+var map_rail: MapRail = null
 var models: TrainModels
 var platforms: Array[StationLayout.Platform] = []
 var materials: RailMaterials
@@ -95,6 +97,8 @@ var cab_departure: int = 0
 ## Timetable trains the player took over (hidden for the rest of their run).
 var taken: Dictionary[String, bool] = {}
 var _horn_down: bool = false
+## Seconds until the vigilance warning tone sounds again.
+var _alarm_cool: float = 0.0
 var _horn_cool: float = 0.0
 ## Trains the player left at a platform: [line, s, seconds].
 var _parked: Array[Array] = []
@@ -131,6 +135,7 @@ func prepare(city: CityWorld, player: PlayerRig) -> String:
 	city.set_rail_index(index)  # trees keep clear of the tracks (G-383)
 	platforms = await BackgroundTask.start(func() -> Array[StationLayout.Platform]: return StationLayout.platforms(net)).finish(get_tree())
 	models = await BackgroundTask.start(func() -> TrainModels: return TrainModels.load_all()).finish(get_tree())
+	map_rail = await BackgroundTask.start(func() -> MapRail: return MapRailFeed.build(net)).finish(get_tree())
 	if models.error != "":
 		push_warning(models.error)
 	materials = RailMaterials.create()
@@ -184,6 +189,20 @@ var _stop_lines: Array[RailLine] = []
 var _platform_points := PackedVector2Array()
 
 
+## The lines within `reach` of `at`, asked again only after the player moved LINES_REASK metres
+## (the answer is a superset for reach + LINES_REASK).
+const LINES_REASK := 60.0
+var _around: Dictionary[float, Array] = {}
+
+
+func _lines_around(at: Vector2, reach: float) -> Array[RailLine]:
+	var cached: Array = _around.get(reach, [])
+	if cached.is_empty() or (cached[0] as Vector2).distance_to(at) > LINES_REASK:
+		cached = [at, network.lines_near(at, reach + LINES_REASK)]
+		_around[reach] = cached
+	return cached[1] as Array[RailLine]
+
+
 func _near_lines(at: Vector2, reach: float = 100.0) -> Array[RailLine]:
 	var out: Array[RailLine] = []
 	for i in _stop_points.size():
@@ -205,6 +224,11 @@ func apply_quality(level: int) -> void:
 		tracks_view.load_distance = float(p["tracks"])
 		tracks_view.unload_distance = float(p["tracks"]) + 100.0
 		tracks_view.set_overhead(bool(p["ohe"]), float(p["ohe_distance"]))
+
+
+## The shared graphics level, applied (the settings' `changed` signal calls this).
+func apply_shared_quality() -> void:
+	apply_quality(QualitySettings.shared().preset)
 
 
 func set_hud(h: RailHud) -> void:
@@ -366,8 +390,9 @@ static func _departure_of(id: String) -> int:
 func _draw_trains(focus: Vector2) -> void:
 	_draws.clear()
 	var range_m := trains_view.draw_range + 150.0
-	for line in network.lines:
-		for t in line.trains(clock):
+	# Only the lines that pass near (G-461: most of the 22 regional lines are kilometres away).
+	for line in _lines_around(focus, range_m):
+		for t in line.trains_near(clock, focus, range_m):
 			if taken.has(t.id):
 				continue
 			var p := line.path.at(t.state.s).point()
@@ -428,7 +453,7 @@ func offer() -> Variant:
 	var found := standing_train(at, rig.body.global_position.y)
 	if found.is_empty():
 		return null
-	return ActionCandidate.make("BOARD THE TRAIN", ActionContext.P_BOARD + 2, 1.0, board)
+	return ActionCandidate.make(Tr.t("act.board_train"), ActionContext.P_BOARD + 2, 1.0, board)
 
 
 ## BOARD: the rules first (standing, doors, next stop on the map, a ticket), then the walk.
@@ -443,7 +468,7 @@ func board() -> bool:
 	var stop_index := int(found[1])
 	var answer := RailRules.boarding(train, stop_index, int(money_of.call()))
 	if not answer.ok:
-		_toast("Can't board: %s" % answer.reason)
+		_toast(Tr.t("rail.cant_board", [answer.reason]))
 		return true
 	charge.call(answer.fare)
 	fares += answer.fare
@@ -451,7 +476,7 @@ func board() -> bool:
 	ride_departure = train.departure
 	ride_id = train.id
 	var nxt := train.state.next_stop
-	_toast("Train to %s · ticket ₹%d · next: %s" % [ride_line.destination(), answer.fare, ride_line.stops[nxt].name if nxt >= 0 else "end of the line"])
+	_toast(Tr.t("rail.board_toast", [ride_line.destination(), answer.fare, ride_line.stops[nxt].name if nxt >= 0 else Tr.ref("rail.end_of_line")]))
 	_start_walk(true, train, stop_index)
 	Sound.rail.door(false)
 	return true
@@ -628,7 +653,7 @@ func _step_ride() -> void:
 	_anchor.global_transform = xf
 	if RailRules.ride_ends_at(tr):
 		var stop := ride_line.stops[tr.state.stopped_at]
-		_toast("%s: end of the ride. %s" % [stop.name, ("The line continues to %s beyond the map." % ride_line.to.name) if ride_line.to.beyond else ("This train terminates at %s." % stop.name)], 5.0)
+		_toast(Tr.t("rail.ride_end", [stop.name, Tr.ref("rail.continues", [ride_line.to.name]) if ride_line.to.beyond else Tr.ref("rail.terminates_at", [stop.name])]), 5.0)
 		step_off()
 
 
@@ -641,7 +666,7 @@ func step_off() -> bool:
 		end_ride(true)
 		return true
 	if not RailRules.can_step_off(tr):
-		_toast("Wait for the next station: you can step off when the train stops.")
+		_toast(Tr.t("rail.wait_next"))
 		return true
 	_start_walk(false, tr, tr.state.stopped_at)
 	ride_line = null
@@ -702,6 +727,9 @@ func cab_offer_train() -> RailLine.TrainAt:
 	if found.is_empty():
 		return null
 	var train := found[0] as RailLine.TrainAt
+	# The Metro runs under automatic train operation: no cab for the player (G-462).
+	if train.line.is_metro():
+		return null
 	var f := TrainModels.formation(train.line.train_type)
 	var t: TrainModels.CarType = models.types.get(str(f[0][0]), null)
 	if t == null or not t.has_cab or train.state.next_stop < 0:
@@ -723,10 +751,14 @@ func take_cab() -> bool:
 	cab.dwell = minf(CabDrive.DOOR_DWELL, maxf(3.0, train.state.dwell_left))
 	cab.next = train.state.stopped_at
 	cab.served[train.state.stopped_at] = true
-	cab.scored.connect(func(points: int, why: String) -> void: _toast("%s%d %s" % ["+" if points >= 0 else "", points, why]))
+	cab.scored.connect(func(points: int, why: String) -> void: _toast(Tr.t("rail.score_line", ["+" if points >= 0 else "", points, why])))
 	cab.message.connect(func(text: String) -> void: _toast(text))
 	cab.finished.connect(func(_score: int) -> void: _cab_finished())
 	cab.doors_changed.connect(func(open: bool) -> void: Sound.rail.door(open, not open))
+	# The vigilance handle (G-454): in force from the first step, held by the HOLD button.
+	cab.vigilance_on = true
+	cab.handle_held = false
+	_alarm_cool = 0.0
 	taken[train.id] = true
 	var body := rig.body
 	_anchor.global_transform = body.global_transform
@@ -737,7 +769,7 @@ func take_cab() -> bool:
 		_seat_pose = SeatPose.passenger(PlayerRiderLink.HIP_HEIGHT, 0.47)
 	body.figure.set_seat(_seat_pose)
 	inside_view = true
-	_toast("You are driving to %s. Raise the lever when the doors close; stop at the red STOP board." % cab.line.destination(), 5.0)
+	_toast(Tr.t("rail.driving_to", [cab.line.destination()]), 5.0)
 	_set_state(&"cab")
 	return true
 
@@ -750,7 +782,13 @@ func _step_cab(dt: float) -> void:
 			ahead.append(t.state.s)
 	cab.ahead = ahead
 	cab.horn = _horn_down
+	if hud != null:
+		cab.set_handle(hud.handle_held())
 	cab.step(dt)
+	_alarm_cool -= dt
+	if cab.warning and not cab.tripped and _alarm_cool <= 0.0:
+		_alarm_cool = 0.7
+		Sound.rail.vigilance()
 	_horn_cool -= dt
 	if _horn_down and _horn_cool <= 0.0:
 		_horn_cool = 0.9
@@ -775,7 +813,7 @@ func leave_cab() -> bool:
 	if cab == null:
 		return false
 	if not can_leave_cab():
-		_toast("Stop at a platform and open the doors to leave the cab.")
+		_toast(Tr.t("rail.leave_cab_hint"))
 		return true
 	var line := cab.line
 	var stop := line.stops[mini(cab.next, line.stops.size() - 1)]
@@ -785,7 +823,7 @@ func leave_cab() -> bool:
 	var near := line.path.project_near(WorldOrigin.to_world(front), 30.0)
 	var spot := line.path.beside(clampf(near.s, stop.s - RailRules.PLATFORM_LENGTH / 2.0 + 4.0, stop.s + RailRules.PLATFORM_LENGTH / 2.0 - 4.0), stop.side * RailRules.platform_offset(stop))
 	var feet := WorldOrigin.to_scene(spot, p.base + RailRules.PLATFORM_HEIGHT + 0.05)
-	_toast("Score %d for this run." % cab.score, 4.0)
+	_toast(Tr.t("rail.run_score", [cab.score]), 4.0)
 	cab = null
 	var body := rig.body
 	body.exit_vehicle(feet, p.yaw + PI / 2.0 * stop.side)
@@ -876,8 +914,8 @@ func _listen(focus: Vector2) -> void:
 	var nearest_d := INF
 	var nearest_speed := 0.0
 	var nearest_brake := 0.0
-	for line in network.lines:
-		for t in line.trains(clock):
+	for line in _lines_around(focus, HORN_RANGE):
+		for t in line.trains_near(clock, focus, HORN_RANGE):
 			var d := line.path.at(t.state.s).point().distance_to(focus)
 			if d > HORN_RANGE:
 				continue
@@ -1020,11 +1058,29 @@ func crowd_people(camera: Vector3) -> Array[Array]:
 
 # --- level crossings ------------------------------------------------------------------------------------
 
+## Crossings are worked out and drawn only within CROSSING_RANGE of the player (G-461: the regional
+## network maps 409; the timetable says where a far one's barriers are when the player gets there),
+## and freed beyond CROSSING_FREE. At most CROSSING_ADDS views are made per check.
+const CROSSING_RANGE := 700.0
+const CROSSING_FREE := 900.0
+const CROSSING_ADDS := 2
+
+
 func _add_crossings() -> void:
-	for c in network.crossings:
-		var n := CrossingView.make(c, materials)
-		add_child(n)
-		_crossing_nodes.append(n)
+	_crossing_nodes.resize(network.crossings.size())
+
+
+func _crossing_view(i: int) -> CrossingView:
+	return _crossing_nodes[i] as CrossingView if i < _crossing_nodes.size() else null
+
+
+## How many crossing views exist now (tests).
+func crossing_views() -> int:
+	var n := 0
+	for v in _crossing_nodes:
+		if v != null:
+			n += 1
+	return n
 
 
 func _step_crossings(dt: float) -> void:
@@ -1035,8 +1091,24 @@ func _step_crossings(dt: float) -> void:
 	var bell := 0.0
 	if _crossing_closing.size() != network.crossings.size():
 		_crossing_closing.resize(network.crossings.size())
-	for i in network.crossings.size():
+	# Views beyond CROSSING_FREE go; their barriers count as up.
+	for i in _crossing_nodes.size():
+		var v := _crossing_view(i)
+		if v != null and focus.distance_to(Vector2(network.crossings[i].x, network.crossings[i].z)) > CROSSING_FREE:
+			v.queue_free()
+			_crossing_nodes[i] = null
+			crossing_amounts[i] = 0.0
+			_crossing_closing[i] = 0
+	var adds := 0
+	for i in network.crossings_near(focus, CROSSING_RANGE):
 		var c := network.crossings[i]
+		if _crossing_view(i) == null:
+			if adds >= CROSSING_ADDS:
+				continue
+			adds += 1
+			var made := CrossingView.make(c, materials)
+			add_child(made)
+			_crossing_nodes[i] = made
 		var want := LevelCrossing.closed_amount(network, c, clock, extra)
 		var now := crossing_amounts[i]
 		# The booms move at their own pace (SWING seconds end to end).
@@ -1052,7 +1124,7 @@ func _step_crossings(dt: float) -> void:
 		_crossing_closing[i] = closing
 		bell = maxf(bell, RailSounds.bell_level(heard, amount))
 		crossing_amounts[i] = amount
-		(_crossing_nodes[i] as CrossingView).set_amount(amount, clock)
+		_crossing_view(i).set_amount(amount, clock)
 	Sound.rail.set_bell(bell)
 
 
@@ -1061,9 +1133,9 @@ func _step_crossings(dt: float) -> void:
 func crossing_obstacles() -> PackedVector3Array:
 	var out := PackedVector3Array()
 	for i in network.crossings.size():
-		if crossing_amounts[i] <= 0.0:
+		if crossing_amounts[i] <= 0.0 or _crossing_view(i) == null:
 			continue
-		out.append_array((_crossing_nodes[i] as CrossingView).obstacles())
+		out.append_array(_crossing_view(i).obstacles())
 	return out
 
 
@@ -1079,8 +1151,8 @@ func _update_hud(focus: Vector2) -> void:
 			if tr != null:
 				var nxt := tr.state.stopped_at if tr.state.stopped_at >= 0 else tr.state.next_stop
 				var stop := ride_line.stops[nxt] if nxt >= 0 else null
-				var status := ("At %s" % stop.name) if tr.state.stopped_at >= 0 and stop != null else ("Next: %s" % (stop.name if stop != null else "end of the line"))
-				hud.set_info("Train to %s" % ride_line.destination(), stop.name_ta if stop != null else "", status)
+				var status := Tr.t("rail.at", [stop.name]) if tr.state.stopped_at >= 0 and stop != null else Tr.t("rail.next", [stop.name if stop != null else Tr.ref("rail.end_of_line")])
+				hud.set_info(Tr.t("rail.train_to", [ride_line.destination()]), stop.name_ta if stop != null else "", status)
 				hud.set_offers(RailRules.can_step_off(tr) and state == &"ride", false, false)
 			else:
 				hud.set_offers(false, false, false)
@@ -1089,9 +1161,10 @@ func _update_hud(focus: Vector2) -> void:
 			var nxt := mini(cab.next, cab.line.stops.size() - 1)
 			var stop := cab.line.stops[nxt]
 			var mark := cab.to_mark()
-			hud.set_info("%s · to %s" % [stop.name, cab.line.destination()], stop.name_ta, ("%d m to the stop mark" % roundi(mark)) if is_finite(mark) and mark > 0.0 else cab.state_text())
+			hud.set_info(Tr.t("rail.cab_title", [stop.name, cab.line.destination()]), stop.name_ta, Tr.t("rail.to_mark", [roundi(mark)]) if is_finite(mark) and mark > 0.0 else cab.state_text())
 			var sig := cab.next_signal()
 			hud.set_cab(cab.kmh(), cab.limit(), cab.notch, cab.doors_open, String(cab.aspect(sig)) if sig >= 0 else "green", cab.score)
+			hud.set_vigilance(cab.vigilance_left(), cab.warning, cab.tripped)
 			hud.set_offers(false, can_leave_cab(), false)
 		_:
 			var here := _station_here(focus)
@@ -1100,8 +1173,8 @@ func _update_hud(focus: Vector2) -> void:
 				return
 			hud.set_mode(RailHud.STATION)
 			var rows := StationLayout.departure_rows(here, clock, 1)
-			var line := ("Next train: %s, %s" % [rows[0].destination, rows[0].status.to_lower()]) if not rows.is_empty() else "No trains"
-			hud.set_info("%s station" % here.station.name, here.station.name_ta, line)
+			var line := Tr.t("rail.next_train", [rows[0].destination, rows[0].status.to_lower()]) if not rows.is_empty() else Tr.t("rail.no_trains")
+			hud.set_info(Tr.t("rail.station", [here.station.name]), here.station.name_ta, line)
 			hud.set_offers(false, false, cab_offer_train() != null)
 
 
@@ -1133,7 +1206,7 @@ func show_timetable() -> void:
 		if best == null or p.line.path.at(p.stop.s).point().distance_to(focus) < best.line.path.at(best.stop.s).point().distance_to(focus):
 			best = p
 	var rows := PackedStringArray()
-	var title := "Timetable"
+	var title := Tr.t("rail.timetable")
 	if best != null:
 		title = "%s  ·  %s" % [best.station.name_ta, best.station.name]
 		var hour := float(hour_of.call())
@@ -1142,11 +1215,11 @@ func show_timetable() -> void:
 				continue
 			for r in StationLayout.departure_rows(p, clock, 6):
 				var at := StationLayout.clock_text(hour + r.wait / 3600.0)
-				rows.append("%s   PF %d   %s   %s" % [at, r.platform, r.destination, r.status])
+				rows.append(Tr.line("rail.row", [at, r.platform, r.destination, r.status]))
 	rows.append("")
-	rows.append("Lines (headways estimated, not the real timetable):")
+	rows.append(Tr.t("rail.lines_note"))
 	for line in network.lines:
-		rows.append("%s · every %d min" % [line.name, roundi(line.headway / 60.0)])
+		rows.append(Tr.line("rail.every", [line.name, roundi(line.headway / 60.0)]))
 	var map_lines: Array[Array] = []
 	for line in network.lines:
 		var c := Color(0.95, 0.55, 0.2) if line.system == "suburban" else (Color(0.4, 0.75, 1.0) if line.system == "mrts" else Color(0.85, 0.35, 0.35))

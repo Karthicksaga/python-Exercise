@@ -59,7 +59,15 @@ func setup(list: Array[StationLayout.Platform], mats: RailMaterials, font: Font)
 	platforms = list
 	materials = mats
 	_font = font
+	# The platforms' centres, once: the regional network has 250 platforms (G-461) and `step`
+	# runs every frame.
+	_centres.clear()
+	for p in platforms:
+		_centres.append(p.line.path.at(p.stop.s).point())
 	active = true
+
+
+var _centres := PackedVector2Array()
 
 
 func _process(_delta: float) -> void:
@@ -69,9 +77,8 @@ func _process(_delta: float) -> void:
 
 func step() -> void:
 	for i in platforms.size():
+		var d := _centres[i].distance_to(focus)
 		var p := platforms[i]
-		var c := p.line.path.at(p.stop.s).point()
-		var d := c.distance_to(focus)
 		if d < load_distance and not _nodes.has(i) and not _tasks.has(i) and _tasks.size() < 2:
 			var mat := materials.platform
 			var half: float = half_train.get(p.line.id, 45.0)
@@ -96,6 +103,14 @@ func step() -> void:
 
 func shown() -> int:
 	return _nodes.size()
+
+
+## True once a platform of the station `station_id` is built and in the scene.
+func shown_station(station_id: String) -> bool:
+	for i: int in _nodes.keys():
+		if platforms[i].station.id == station_id:
+			return true
+	return false
 
 
 ## The platform's geometry (worker thread): deck, edges, ramps, shed, board frames, the stop

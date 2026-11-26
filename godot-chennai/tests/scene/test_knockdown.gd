@@ -172,3 +172,21 @@ func test_a_bike_crash_throws_the_figure_off_and_it_gets_up() -> bool:
 	check(yard.driving.mode() == &"foot" and f.knockdown_state() == &"", "on foot again")
 	check(f.rotation.x == 0.0 and f.rotation.z == 0.0, "the figure node is not tipped (the skeleton falls)")
 	return true
+
+
+## G-456: a link that never rode owns a node outside the tree; freeing the link frees it.
+func test_a_rider_link_that_never_rode_leaves_no_node_behind() -> bool:
+	var link := PlayerRiderLink.new()
+	var anchor: Node3D = link._anchor
+	assert_true(is_instance_valid(anchor) and anchor.get_parent() == null, "it made a node outside the tree")
+	link = null
+	assert_false(is_instance_valid(anchor), "and freeing the link freed it")
+	# One that rode hands its node to the tree: the parent frees it, the link must not.
+	var parent := Node3D.new()
+	var rode := PlayerRiderLink.new()
+	var kept: Node3D = rode._anchor
+	parent.add_child(kept)
+	rode = null
+	assert_true(is_instance_valid(kept) and kept.get_parent() == parent, "a node in the tree is left to its parent")
+	parent.free()
+	return true

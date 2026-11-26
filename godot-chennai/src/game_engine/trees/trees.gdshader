@@ -41,9 +41,9 @@ void vertex() {
 }
 
 void fragment() {
-	vec4 tex = texture(atlas, UV);
+	vec4 tex = texture(atlas, UV, -0.35);
 	ALPHA = tex.a;
-	ALPHA_SCISSOR_THRESHOLD = 0.38;
+	ALPHA_SCISSOR_THRESHOLD = 0.26;
 	float shade = 1.0 - 0.14 * wet - 0.25 * night;
 	ALBEDO = tex.rgb * COLOR.rgb * shade;
 	ROUGHNESS = 1.0;

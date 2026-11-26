@@ -74,13 +74,13 @@ func prepare(point: Vector2) -> String:
 				files.append(f)
 	for f in files:
 		if ResourceLoader.load_threaded_request(f) != OK:
-			return "Could not start loading %s." % f
+			return Tr.t("err.start_loading", [f])
 	for f in files:
 		while ResourceLoader.load_threaded_get_status(f) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 			await get_tree().process_frame
 		var r := ResourceLoader.load_threaded_get(f)
 		if r == null:
-			return "Could not load %s." % f
+			return Tr.t("err.load", [f])
 		_models.append(r)
 	# The spots round the start, in place before play begins (game time, bounded).
 	for i in 60 * 60:
@@ -88,7 +88,7 @@ func prepare(point: Vector2) -> String:
 		if _settled_round(point):
 			return ""
 		await get_tree().process_frame
-	return "The vehicles round the start did not park."
+	return Tr.t("err.vehicles_park")
 
 
 func _settled_round(point: Vector2) -> bool:

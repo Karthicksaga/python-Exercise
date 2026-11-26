@@ -33,7 +33,7 @@ static func run(parent: Node, life: CityLife) -> Dictionary:
 	var w := ShaderWarmup.new()
 	w.name = "ShaderWarmup"
 	parent.add_child(w)
-	w._fill(life)
+	w._fill(life, parent as CityWorld)
 	var tree := parent.get_tree()
 	for i in FRAMES:
 		if DisplayServer.get_name() == "headless":
@@ -45,8 +45,20 @@ static func run(parent: Node, life: CityLife) -> Dictionary:
 	return out
 
 
-func _fill(life: CityLife) -> void:
+func _fill(life: CityLife, world: CityWorld = null) -> void:
 	var things: Array[Node3D] = []
+	if world != null and world.materials != null and world.materials.landmark != null:
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		var box := BoxMesh.new()
+		box.size = Vector3(0.05, 0.05, 0.05)
+		mm.mesh = box
+		mm.instance_count = 1
+		mm.set_instance_transform(0, Transform3D.IDENTITY)
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.material_override = world.materials.landmark
+		things.append(mmi)
 	if life != null and life.pool != null and life.cast != null:
 		var ids := life.cast.used_ids()
 		if not ids.is_empty():

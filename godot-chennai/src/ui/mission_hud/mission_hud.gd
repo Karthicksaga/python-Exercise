@@ -31,12 +31,15 @@ const JOBS_SIZE := Vector2(72, 48)
 const EXIT_ROOM := PauseMenu.PAUSE_RIGHT + 48.0 + 10.0
 ## The corner map never gets smaller than this (px); under it, it moves left of the buttons.
 const MIN_PLATE := 84.0
+## Room the minimap and the JOBS and PAUSE buttons take on the right, for the toast beside the column.
+const MAP_ROOM := 170.0
 const URGENT := 10.0
 ## A dialog row's height and what the rest of a dialog takes (title, buttons, gaps, margins).
 const ROW_HEIGHT := 56.0
 const DIALOG_CHROME := 128.0
 
 var _fit_toast := false
+var _toast_checks := 0
 
 var money_label: Label
 var stage_label: Label
@@ -69,6 +72,18 @@ var minimap: Minimap
 var medals_box: HBoxContainer
 var medal_badge: MedalBadge
 var medal_goals: VBoxContainer
+
+var street_banner: PanelContainer
+var _street_tag: Label
+var _street_title: Label
+var _street_sub: Label
+var _street_left := 0.0
+
+var nav_card: PanelContainer
+var _nav_dist: Label
+var _nav_turn: Label
+var _nav_road: Label
+var _nav_eta: Label
 
 var _toast_left := 0.0
 ## The top-left column (stats, the combat row, the objective).
@@ -113,11 +128,12 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_column()
-	jobs_button = _button("JOBS", "Jobs", 15, false)
+	jobs_button = _button("hud.jobs", "Jobs", 15, false)
 	jobs_button.anchor_left = 1.0
 	jobs_button.anchor_right = 1.0
 	jobs_button.offset_left = -GUTTER - EXIT_ROOM - JOBS_SIZE.x
 	jobs_button.offset_right = -GUTTER - EXIT_ROOM
+	jobs_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	jobs_button.offset_top = GUTTER
 	jobs_button.offset_bottom = GUTTER + JOBS_SIZE.y
 	jobs_button.pressed.connect(func() -> void: jobs_pressed.emit())
@@ -129,6 +145,8 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_place_minimap)
 	ControlSettings.shared().changed.connect(_place_minimap)
 	_build_toast()
+	_build_street_banner()
+	_build_nav_card()
 	inside_button = _button("GO INSIDE", "Inside", 16, true)
 	inside_button.anchor_left = 0.5
 	inside_button.anchor_right = 0.5
@@ -154,10 +172,13 @@ func add_column_row(row: Control) -> void:
 func _button(text: String, node_name: String, font: int, accent: bool) -> Button:
 	var b := Button.new()
 	b.name = node_name
-	b.text = text
+	if literal:
+		b.text = text
+		b.add_theme_font_size_override("font_size", font)
+	else:
+		Tr.bind(b, text, null, false, &"text", font)
 	b.custom_minimum_size = Vector2(0, UiTheme.MIN_TARGET)
 	b.focus_mode = Control.FOCUS_ALL
-	b.add_theme_font_size_override("font_size", font)
 	# Glass pills; only the primary action carries the accent outline (G-290).
 	UiTheme.style_glass(b, accent, 0.0)
 	b.add_theme_stylebox_override("normal", _pill(accent))
@@ -198,7 +219,7 @@ func _build_column() -> void:
 	money_label = UiTheme.label("₹0", 16, Color("#ffd166"))
 	money_label.name = "Money"
 	stats.add_child(money_label)
-	stage_label = UiTheme.label("Stages 0/21", 14)
+	stage_label = UiTheme.label(Tr.line("hud.stages", [0, 21]), 14)
 	stage_label.name = "Stages"
 	stats.add_child(stage_label)
 	reputation_label = UiTheme.label("★ 50", 14)
@@ -235,7 +256,7 @@ func _build_column() -> void:
 	stability_row = HBoxContainer.new()
 	stability_row.name = "StabilityRow"
 	stability_row.add_theme_constant_override("separation", 8)
-	stability_label = UiTheme.label("Cargo", 12, UiTheme.TEXT_DIM)
+	stability_label = UiTheme.label(Tr.line("hud.cargo"), 12, UiTheme.TEXT_DIM)
 	stability_label.custom_minimum_size.x = 54
 	stability_row.add_child(stability_label)
 	stability_bar = MeterBar.new()
@@ -248,7 +269,7 @@ func _build_column() -> void:
 	suspicion_row = HBoxContainer.new()
 	suspicion_row.name = "SuspicionRow"
 	suspicion_row.add_theme_constant_override("separation", 8)
-	var sl := UiTheme.label("Noticed", 12, UiTheme.TEXT_DIM)
+	var sl := UiTheme.label(Tr.line("hud.noticed"), 12, UiTheme.TEXT_DIM)
 	sl.custom_minimum_size.x = 54
 	suspicion_row.add_child(sl)
 	suspicion_bar = MeterBar.new()
@@ -292,6 +313,81 @@ func _build_toast() -> void:
 	toast_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(toast_detail)
 	toast_panel.visible = false
+
+
+func _build_street_banner() -> void:
+	street_banner = PanelContainer.new()
+	street_banner.name = "StreetBanner"
+	street_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	street_banner.visible = false
+	var box := _plate(0.84)
+	box.border_color = UiTheme.AMBER
+	box.set_border_width_all(1)
+	box.content_margin_left = 16
+	box.content_margin_right = 16
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	street_banner.add_theme_stylebox_override("panel", box)
+	street_banner.anchor_left = 0.5
+	street_banner.anchor_right = 0.5
+	street_banner.offset_left = -165.0
+	street_banner.offset_right = 165.0
+	street_banner.offset_top = 14.0
+	street_banner.offset_bottom = 72.0
+	add_child(street_banner)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	street_banner.add_child(v)
+	var f := RailFonts.with_tamil()
+	_street_tag = UiTheme.label("ENTERING STREET", 10, UiTheme.AMBER)
+	_street_tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(_street_tag)
+	_street_title = UiTheme.label("", 14, UiTheme.TEXT)
+	_street_title.add_theme_font_override("font", f)
+	_street_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(_street_title)
+	_street_sub = UiTheme.label("", 11, UiTheme.TEXT_DIM)
+	_street_sub.add_theme_font_override("font", f)
+	_street_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(_street_sub)
+
+
+func _build_nav_card() -> void:
+	nav_card = PanelContainer.new()
+	nav_card.name = "NavGuidance"
+	nav_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	nav_card.visible = false
+	var box := _plate(0.84)
+	box.border_color = Color("#38bdf8")
+	box.set_border_width_all(1)
+	box.content_margin_left = 12
+	box.content_margin_right = 12
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	nav_card.add_theme_stylebox_override("panel", box)
+	nav_card.anchor_left = 0.5
+	nav_card.anchor_right = 0.5
+	nav_card.offset_left = -150.0
+	nav_card.offset_right = 150.0
+	nav_card.offset_top = 80.0
+	nav_card.offset_bottom = 142.0
+	add_child(nav_card)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	nav_card.add_child(v)
+	var row := HBoxContainer.new()
+	v.add_child(row)
+	_nav_dist = UiTheme.label("IN 100 M", 13, UiTheme.AMBER)
+	row.add_child(_nav_dist)
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(sp)
+	_nav_turn = UiTheme.label("CONTINUE", 12, Color("#38bdf8"))
+	row.add_child(_nav_turn)
+	_nav_road = UiTheme.label("", 12, UiTheme.TEXT)
+	v.add_child(_nav_road)
+	_nav_eta = UiTheme.label("", 11, Color("#7ee787"))
+	v.add_child(_nav_eta)
 
 
 func _build_dialog() -> void:
@@ -352,7 +448,7 @@ func _build_dialog() -> void:
 	needle_bar = NeedleBar.new()
 	needle_bar.custom_minimum_size = Vector2(600, 28)
 	needle_box.add_child(needle_bar)
-	lift_button = _button("LIFT", "Lift", 18, true)
+	lift_button = _button("hud.lift", "Lift", 18, true)
 	lift_button.custom_minimum_size = Vector2(160, 56)
 	lift_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	lift_button.pressed.connect(func() -> void: lift_pressed.emit())
@@ -372,16 +468,31 @@ func _process(delta: float) -> void:
 		# container keeps the tallest size it was ever given).
 		_fit_toast = false
 		toast_panel.size = Vector2(toast_panel.size.x, 0)
+		_toast_checks = 3
+	elif _toast_checks > 0 and toast_panel.visible:
+		# Tamil lines are taller than Latin ones: if the toast still runs off the bottom, smaller letters.
+		_toast_checks -= 1
+		var bottom := toast_panel.position.y + toast_panel.get_combined_minimum_size().y
+		var fs := toast_detail.get_theme_font_size("font_size")
+		if bottom > (size.y if size.y > 0.0 else 412.0) - 8.0 and fs > 9:
+			toast_detail.add_theme_font_size_override("font_size", fs - 1)
+			toast_panel.size = Vector2(toast_panel.size.x, 0)
+			_toast_checks = 3
 	if _toast_left > 0.0:
 		_toast_left -= delta
 		toast_panel.modulate.a = clampf(_toast_left / 0.3, 0.0, 1.0)
 		if _toast_left <= 0.0:
 			toast_panel.visible = false
+	if _street_left > 0.0:
+		_street_left -= delta
+		street_banner.modulate.a = clampf(_street_left / 0.35, 0.0, 1.0)
+		if _street_left <= 0.0:
+			street_banner.visible = false
 
 
 func set_stats(rupees: String, done: int, count: int, reputation: int) -> void:
 	_text(money_label, "₹%s" % rupees)
-	_text(stage_label, "Stages %d/%d" % [done, count])
+	_text(stage_label, Tr.line("hud.stages", [done, count]))
 	_text(reputation_label, "★ %d" % reputation)
 
 
@@ -401,7 +512,7 @@ func set_mission(view: Dictionary, bearing: float) -> void:
 	var parts := PackedStringArray()
 	var distance: float = view["distance"]
 	if distance >= 0.0:
-		parts.append(("%.1f km" % (distance / 1000.0)) if distance >= 1000.0 else "%d m" % roundi(distance))
+		parts.append(Tr.line("hud.km", ["%.1f" % (distance / 1000.0)]) if distance >= 1000.0 else Tr.line("hud.m", [roundi(distance)]))
 	var seconds: float = view["seconds_left"]
 	if seconds >= 0.0:
 		var s := maxi(0, ceili(seconds))
@@ -412,7 +523,7 @@ func set_mission(view: Dictionary, bearing: float) -> void:
 	stability_row.visible = stab >= 0.0
 	if stab >= 0.0:
 		stability_bar.set_value(stab)
-		_text(stability_label, str(view.get("stability_label", "Cargo")))
+		_text(stability_label, str(view.get("stability_label", Tr.line("hud.cargo"))))
 	var susp: float = float(view.get("suspicion", -1.0))
 	suspicion_row.visible = susp >= 0.0
 	if susp >= 0.0:
@@ -427,10 +538,28 @@ func toast(title: String, detail: String = "", seconds: float = 3.2) -> void:
 	toast_title.text = title
 	toast_detail.text = detail
 	toast_detail.visible = detail != ""
-	# Width: the text's, up to 60 % of the screen; the panel grows both ways from the centre.
-	var width := minf(size.x * 0.6 if size.x > 0.0 else 550.0, maxf(240.0, toast_title.get_theme_font("font").get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 48.0))
+	# Width: the text's, up to 60 % of the screen and never wider than the gap between the mission
+	# column (left) and the minimap (right): Tamil and both-language texts are long (G-445). The
+	# panel grows both ways from the middle of that gap.
+	var screen_w := size.x if size.x > 0.0 else 915.0
+	var gap_left := GUTTER + COLUMN_WIDTH + 12.0
+	var gap_right := screen_w - (GUTTER + MAP_ROOM)
+	var widest := minf(screen_w * 0.6, maxf(200.0, gap_right - gap_left))
+	var width := minf(widest, maxf(240.0, toast_title.get_theme_font("font").get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 48.0))
 	if detail != "":
-		width = minf(size.x * 0.6 if size.x > 0.0 else 550.0, maxf(width, toast_detail.get_theme_font("font").get_string_size(detail, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x * 0.5 + 48.0))
+		width = minf(widest, maxf(width, toast_detail.get_theme_font("font").get_string_size(detail, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x * 0.5 + 48.0))
+	var centre := (gap_left + gap_right) / 2.0 if gap_right - gap_left >= 200.0 else screen_w / 2.0
+	toast_panel.anchor_left = centre / screen_w
+	toast_panel.anchor_right = centre / screen_w
+	# Long Tamil or two-language text: smaller letters until the whole toast fits the screen.
+	var room := (size.y if size.y > 0.0 else 412.0) * 0.76 - 16.0
+	var title_h := _text_height(toast_title.get_theme_font("font"), title, width - 40.0, 16)
+	var fs := 13
+	if detail != "":
+		var detail_font := toast_detail.get_theme_font("font")
+		while fs > 9 and title_h + _text_height(detail_font, detail, width - 40.0, fs) + 28.0 > room:
+			fs -= 1
+	toast_detail.add_theme_font_size_override("font_size", fs)
 	# A fixed width for the labels to wrap at, and a height of what they need: a label wrapped
 	# at an earlier, narrower width must not keep its tall minimum size.
 	toast_title.custom_minimum_size = Vector2(width - 40.0, 0)
@@ -444,12 +573,38 @@ func toast(title: String, detail: String = "", seconds: float = 3.2) -> void:
 	_toast_left = seconds
 
 
+## The height a wrapped label takes: its lines at the font's height plus the label's line gap.
+static func _text_height(font: Font, text: String, width: float, fs: int) -> float:
+	var h := font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, width, fs).y
+	return h + roundf(h / maxf(font.get_height(fs), 1.0)) * 3.0
+
+
 func toast_showing() -> bool:
 	return toast_panel.visible and _toast_left > 0.0
 
 
 func toast_text() -> String:
 	return "%s %s" % [toast_title.text, toast_detail.text] if toast_panel.visible else ""
+
+
+func show_street_banner(tag: String, title: String, subtitle: String, duration: float = 3.0) -> void:
+	_text(_street_tag, tag)
+	_text(_street_title, title)
+	_text(_street_sub, subtitle)
+	_street_sub.visible = subtitle != ""
+	street_banner.visible = true
+	street_banner.modulate.a = 1.0
+	_street_left = duration
+
+
+func set_nav_guidance(on: bool, dist_text: String = "", maneuver: String = "", road: String = "", eta_text: String = "") -> void:
+	nav_card.visible = on
+	if not on:
+		return
+	_text(_nav_dist, dist_text)
+	_text(_nav_turn, maneuver)
+	_text(_nav_road, road)
+	_text(_nav_eta, eta_text)
 
 
 ## GO INSIDE at a place's entrance: the place's name, or "" to hide.
@@ -473,15 +628,17 @@ func show_dialog(title: String, message: String, rows: Array[Dictionary] = [], a
 	for r in rows:
 		var row := _row(r)
 		dialog_rows.add_child(row)
-		list_height += ROW_HEIGHT + 6.0
+		# A Tamil or two-language row is taller than the base 56: count what it needs.
+		list_height += maxf(ROW_HEIGHT, row.get_combined_minimum_size().y) + 6.0
 	var scroll := dialog_rows.get_parent() as ScrollContainer
 	# The header (title, message) and the buttons stay pinned; the rows scroll in what is left:
 	# four rows at the 915x412 base.
 	var room := (size.y if size.y > 0.0 else 412.0) - DIALOG_CHROME - (18.0 if message != "" else 0.0)
 	scroll.custom_minimum_size.y = minf(list_height, maxf(ROW_HEIGHT, room))
 	scroll.visible = not rows.is_empty()
+	_fit_dialog.call_deferred()
 	for a in actions:
-		var b := _button(str(a["label"]), "Action_%s" % str(a["id"]), 16, not bool(a.get("quiet", false)))
+		var b := _button(str(a["label"]), "Action_%s" % str(a["id"]), 16, not bool(a.get("quiet", false)), true)
 		b.custom_minimum_size = Vector2(150, 48)
 		var id := str(a["id"])
 		b.pressed.connect(func() -> void: action_chosen.emit(id))
@@ -498,6 +655,21 @@ func show_dialog(title: String, message: String, rows: Array[Dictionary] = [], a
 		(func() -> void:
 			if is_instance_valid(b) and b.is_inside_tree() and b.is_visible_in_tree():
 				b.grab_focus()).call_deferred()
+
+
+## One frame after the dialog is built: if its header (a two-language title, a wrapped message)
+## makes the whole taller than the screen, the list of rows gives up the height (it scrolls).
+func _fit_dialog() -> void:
+	if not dialog.visible and not is_inside_tree():
+		return
+	await get_tree().process_frame
+	if not is_instance_valid(dialog) or not dialog.visible:
+		return
+	var body := dialog.find_child("Body", true, false) as Control
+	var scroll := dialog_rows.get_parent() as ScrollContainer
+	var over := body.get_combined_minimum_size().y - (size.y - 24.0)
+	if over > 0.5 and scroll.visible:
+		scroll.custom_minimum_size.y = maxf(ROW_HEIGHT, scroll.custom_minimum_size.y - over)
 
 
 func _row(r: Dictionary) -> Control:
@@ -522,6 +694,8 @@ func _row(r: Dictionary) -> Control:
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 10)
 	text.add_child(line)
+	# Tamil and two-language rows are longer: the meta goes on a line of its own under the detail.
+	var meta_line: Control = line if Tr.mode == Tr.Mode.ENGLISH else text
 	var detail := UiTheme.label(disabled if disabled != "" else str(r.get("detail", "")), 12, UiTheme.TEXT_DIM)
 	detail.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	detail.custom_minimum_size.x = 60
@@ -530,11 +704,11 @@ func _row(r: Dictionary) -> Control:
 	var meta := str(r.get("meta", ""))
 	if meta != "":
 		var m := UiTheme.label(meta, 12, Color("#ffd166"))
-		line.add_child(m)
+		meta_line.add_child(m)
 	var b := Button.new()
 	var id := str(r["id"])
 	b.name = "Take_%s" % id
-	b.text = str(r.get("button", "TAKE"))
+	b.text = str(r.get("button", Tr.t("hud.take")))
 	b.custom_minimum_size = Vector2(110, UiTheme.MIN_TARGET)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b.disabled = disabled != ""
@@ -588,9 +762,9 @@ func show_medals(title: String, medal: String, goals: Array, paid: int, replay: 
 	var met := 0
 	for g: Dictionary in goals:
 		met += 1 if bool(g["met"]) else 0
-	var message := "+₹%s%s" % [_thousands(paid), " (replay)" if replay else ""]
+	var message := "+₹%s%s" % [_thousands(paid), " " + Tr.line("hud.replay") if replay else ""]
 	if medal != "":
-		message += "  ·  %s medal  ·  %d of %d goals" % [medal.capitalize(), met, goals.size()]
+		message += "  ·  %s  ·  %s" % [Tr.line("hud.medal_line", [Tr.ref(Medals.KEYS.get(medal, "hud.medal.bronze"))]), Tr.line("hud.goals_met", [met, goals.size()])]
 	show_dialog(title, message, [] as Array[Dictionary], actions)
 	medal_badge.set_medal(medal)
 	for g: Dictionary in goals:

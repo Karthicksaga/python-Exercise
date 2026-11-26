@@ -32,6 +32,9 @@ static func make(city: CityWorld, player: PlayerRig, content: GameContent) -> Pl
 	p.driving.name = "Driving"
 	p.driving.rider = PlayerRiderLink.make(player.body)
 	p.driving.reverse_on_hold = true
+	# What the road under the vehicle does to it (G-450): the street layout's condition of the way.
+	p.driving.ground_source = func(at: Vector3) -> Dictionary:
+		return city.surface.feel_at(WorldOrigin.to_world(at), at.y) if city.surface != null else {}
 	p.add_child(p.driving)
 	p.ui = CanvasLayer.new()
 	p.ui.name = "DrivingUi"

@@ -47,8 +47,11 @@ static func triangle_count(mesh: Mesh) -> int:
 		var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
 		if idx.size() > 0:
 			n += idx.size() / 3
-		else:
+		elif arrays[Mesh.ARRAY_VERTEX] is PackedVector3Array:
 			n += (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() / 3
+		# Else no vertex array came back: headless, the dummy renderer's mesh store is not
+		# thread-safe and a mesh loaded on this worker while others build can come back empty
+		# ("uninitialized RID"); nothing is drawn headless, so it counts as no triangles.
 	return n
 
 

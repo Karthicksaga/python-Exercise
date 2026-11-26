@@ -6,10 +6,10 @@ extends RefCounted
 
 ## Named times the player can jump to from the pause menu.
 const TIMES_OF_DAY: Array[Dictionary] = [
-	{"label": "Morning", "hour": 8.5},
-	{"label": "Noon", "hour": 12.5},
-	{"label": "Evening", "hour": 17.75},
-	{"label": "Night", "hour": 21.5},
+	{"label": "Morning", "key": "time.morning", "hour": 8.5},
+	{"label": "Noon", "key": "time.noon", "hour": 12.5},
+	{"label": "Evening", "key": "time.evening", "hour": 17.75},
+	{"label": "Night", "key": "time.night", "hour": 21.5},
 ]
 const GOLDEN_HOUR := 17.75
 
@@ -51,6 +51,20 @@ func label() -> String:
 			gap = d
 			best = t["label"]
 	return best
+
+
+## The named time in the display language ("Evening" / "மாலை").
+func label_text() -> String:
+	return Tr.line(label_key())
+
+
+## The translation key of `label()`.
+func label_key() -> String:
+	var current := label()
+	for t: Dictionary in TIMES_OF_DAY:
+		if t["label"] == current:
+			return str(t["key"])
+	return "time.evening"
 
 
 ## Jump to the next named time (pause menu).

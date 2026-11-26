@@ -263,5 +263,7 @@ func test_kerb_spot_reproduces_every_baked_kerb() -> bool:
 		hinted += 1 if int(f["side"]) != 0 else 0
 		lt(kerb.distance_to(f["kerb"]), 0.15, "%s: baked kerb reproduced" % f["where"])
 	eq(tried, 49)
-	eq(hinted, 15, "the hints carry the 15 stops that named a side")
+	# CHANGED (G-453): the nine city jobs that moved lost their hints (the side of the real place they
+	# were baked with is meaningless in a new district): 15 stops named a side, 6 still do.
+	eq(hinted, 6, "the hints carry the 6 stops that still name a side")
 	return true

@@ -20,6 +20,9 @@ const LOW := 0
 const MEDIUM := 1
 const HIGH := 2
 const NAMES: Array[String] = ["Low", "Medium", "High"]
+## The keys of `NAMES` and `EXPLAIN`, for what the player reads.
+const NAME_KEYS: Array[String] = ["quality.low", "quality.medium", "quality.high"]
+const EXPLAIN_KEYS: Array[String] = ["quality.explain.low", "quality.explain.medium", "quality.explain.high"]
 ## One line per level for the Settings row (what the level trades).
 const EXPLAIN: Array[String] = [
 	"65% resolution, flat lighting, less traffic",
@@ -48,7 +51,7 @@ const TABLE: Array[Dictionary] = [
 		"max_fps": 30, "physics_steps": 2, "workers": 1, "street_lights": 0, "ai_patience": 6,
 		"animate_reach": 25.0, "npc_shadow": 0.0, "parked_reach": 100.0, "prop_shadows": false,
 		"fighters": 10, "crews": 1, "police_cars": 2,
-		"tree_density": 0.55, "scrub_density": 0.3, "tree_lod0": 22.0, "tree_lod1": 75.0, "tree_far": 180.0, "tree_sway": false, "tree_shadows": false, "tree_species": 4, "under_species": 1,
+		"tree_density": 0.55, "scrub_density": 0.3, "tree_lod0": 28.0, "tree_lod1": 85.0, "tree_far": 220.0, "tree_sway": false, "tree_shadows": false, "tree_species": 4, "under_species": 1,
 		"hit_puffs": 4, "motion_blur": false,
 	},
 	{
@@ -136,6 +139,11 @@ func current() -> Dictionary:
 
 func preset_name() -> String:
 	return NAMES[clampi(preset, LOW, HIGH)]
+
+
+## The level's name in the chosen language.
+func preset_text() -> String:
+	return Tr.line(NAME_KEYS[clampi(preset, LOW, HIGH)])
 
 
 ## Picks a default from what the device says (pure; the auto-detect table, G-251). Returns
@@ -299,12 +307,38 @@ func _held_dict() -> Dictionary:
 
 ## The Settings row: "Graphics: Auto (Low)".
 func row_label() -> String:
-	return "Graphics: %s" % ("Auto (%s)" % preset_name() if auto else preset_name())
+	return Tr.t("set.graphics", [Tr.ref("set.graphics.auto", [Tr.ref(NAME_KEYS[clampi(preset, LOW, HIGH)])]) if auto else Tr.ref(NAME_KEYS[clampi(preset, LOW, HIGH)])])
 
 
 ## What the current level changes, one line.
 func explain() -> String:
-	return EXPLAIN[clampi(preset, LOW, HIGH)]
+	return Tr.t(EXPLAIN_KEYS[clampi(preset, LOW, HIGH)])
+
+
+## The player's choice of the motion blur (default off, G-451). It only takes effect where the
+## preset allows it (`motion_blur_available`: High).
+var motion_blur: bool = false
+
+
+func motion_blur_available() -> bool:
+	return bool(current()["motion_blur"])
+
+
+## Blur is drawn: chosen and allowed.
+func motion_blur_active() -> bool:
+	return motion_blur and motion_blur_available()
+
+
+func set_motion_blur(on: bool) -> void:
+	if on == motion_blur:
+		return
+	motion_blur = on
+	_commit()
+
+
+## The Settings row: "Motion blur: Off".
+func motion_blur_label() -> String:
+	return "Motion blur: %s" % ("On" if motion_blur else "Off")
 
 
 func set_overlay(on: bool) -> void:
@@ -339,7 +373,7 @@ func to_dict() -> Dictionary:
 		if not switches[id]:
 			off.append(id)
 	off.sort()
-	return {"version": VERSION, "preset": preset, "auto": auto, "auto_cap": auto_cap, "overlay": overlay, "off": off}
+	return {"version": VERSION, "preset": preset, "auto": auto, "auto_cap": auto_cap, "overlay": overlay, "motion_blur": motion_blur, "off": off}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -351,6 +385,8 @@ func from_dict(d: Dictionary) -> void:
 	auto_cap = clampi(int(c) if (c is int or c is float) else HIGH, LOW, HIGH)
 	var o: Variant = d.get("overlay", false)
 	overlay = o if o is bool else false
+	var mb: Variant = d.get("motion_blur", false)
+	motion_blur = mb if mb is bool else false
 	switches.clear()
 	var off: Variant = d.get("off", [])
 	if off is Array:

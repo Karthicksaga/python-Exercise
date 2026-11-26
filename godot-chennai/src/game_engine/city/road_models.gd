@@ -74,7 +74,7 @@ static func arm_pole(b: MeshBuilder) -> void:
 	var h := StreetFurniture.POLE_HEIGHT
 	var s := StreetFurniture.POLE_HALF
 	CityModels.box(b, Vector3(-0.3, 0, -0.3), Vector3(0.3, 0.45, 0.3), 0x9d9a92)
-	CityModels.box(b, Vector3(-s, 0.45, -s), Vector3(s, h, s), 0x5a2a2c, s * 0.45)
+	CityModels.box(b, Vector3(-s, 0.45, -s), Vector3(s, h, s), 0x5a2a2c, s * 0.22)
 	_arm(b, Vector3(0, h - 0.35, 0), Vector3(0, 0, -1), 2.5, 0x5a2a2c)
 
 
@@ -85,7 +85,7 @@ static func _arm(b: MeshBuilder, from: Vector3, dir: Vector3, reach: float, hex:
 	for i in range(1, 5):
 		var t := float(i) / 4.0
 		var p := from + dir * reach * t + Vector3(0, 0.55 * sin(t * PI * 0.9), 0)
-		var w := 0.055 - 0.002 * float(i % 2)
+		var w := 0.072 - 0.002 * float(i % 2)
 		var lo := Vector3(minf(prev.x, p.x) - w, minf(prev.y, p.y) - w, minf(prev.z, p.z) - w)
 		var hi := Vector3(maxf(prev.x, p.x) + w, maxf(prev.y, p.y) + w, maxf(prev.z, p.z) + w)
 		CityModels.box(b, lo, hi, hex)
@@ -100,7 +100,7 @@ static func _arm(b: MeshBuilder, from: Vector3, dir: Vector3, reach: float, hex:
 ## Thin rural pole: 7.5 m, light grey, a short arm of 1.2 m, a sign plate low on the shaft.
 static func rural_pole(b: MeshBuilder) -> void:
 	CityModels.box(b, Vector3(-0.2, 0, -0.2), Vector3(0.2, 0.3, 0.2), 0x9d9a92)
-	CityModels.box(b, Vector3(-0.085, 0.3, -0.085), Vector3(0.085, 7.5, 0.085), 0x8f9498, 0.02)
+	CityModels.box(b, Vector3(-0.10, 0.3, -0.10), Vector3(0.10, 7.5, 0.10), 0x8f9498, 0.015)
 	CityModels.box(b, Vector3(-0.2, 2.3, -0.115), Vector3(0.2, 2.8, -0.086), 0xd9a92a)
 	_arm(b, Vector3(0, 7.2, 0), Vector3(0, 0, -1), 1.2, 0x8f9498)
 

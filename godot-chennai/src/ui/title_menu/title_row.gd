@@ -14,6 +14,8 @@ const AMBER_TEXT := Color("#ffb400")
 const AMBER_SOFT := Color(1.0, 0.706, 0.012, 0.16)
 
 var primary: bool = false
+## The row's English title: what `TitleMenu.row` looks for, whatever the language.
+var id: String = ""
 ## Text offset to the right, in UI units: the slide-in and the focus nudge animate it.
 var slide_x: float = 0.0:
 	set(value):
@@ -23,12 +25,16 @@ var subtitle_text: String = ""
 var title_label: Label
 var sub_label: Label
 var glow: StyleBoxFlat = null
+var _column: VBoxContainer
 var _content: MarginContainer
 var _nudge: Tween = null
 var _animate: bool = true
 
 
-func _init(title: String = "", subtitle: String = "", is_primary: bool = false) -> void:
+## `title` is the English id of the row (its node name); `title_key` and `sub_key` make the two
+## labels follow the language. A `subtitle` given as text wins over `sub_key`.
+func _init(title: String = "", subtitle: String = "", is_primary: bool = false, title_key: String = "", sub_key: String = "") -> void:
+	id = title
 	primary = is_primary
 	subtitle_text = subtitle
 	text = ""
@@ -41,17 +47,23 @@ func _init(title: String = "", subtitle: String = "", is_primary: bool = false) 
 	_content.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_content)
 	var column := VBoxContainer.new()
+	_column = column
+	column.minimum_size_changed.connect(_sync_height)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_theme_constant_override("separation", 0)
 	_content.add_child(column)
 	title_label = UiTheme.label(title, 20, AMBER_TEXT if primary else PAPER)
 	title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if title_key != "":
+		Tr.bind(title_label, title_key, null, true)
 	column.add_child(title_label)
 	sub_label = UiTheme.label(subtitle, 12, MUTED)
 	sub_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	sub_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	sub_label.visible = subtitle != ""
+	sub_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if subtitle == "" and sub_key != "":
+		Tr.bind(sub_label, sub_key, null, true)
+	sub_label.visible = sub_label.text != ""
 	column.add_child(sub_label)
 	_styles()
 	name = title.capitalize().replace(" ", "")
@@ -61,6 +73,12 @@ func _init(title: String = "", subtitle: String = "", is_primary: bool = false) 
 	focus_entered.connect(_lift.bind(true))
 	focus_exited.connect(_lift.bind(false))
 	_place()
+
+
+## The row is at least 48 tall and as tall as its two lines need: a Tamil or two-language
+## subtitle wraps to a second line (G-445) instead of being cut short.
+func _sync_height() -> void:
+	custom_minimum_size = Vector2(0, maxf(UiTheme.MIN_TARGET, _column.get_combined_minimum_size().y + 1.0))
 
 
 func _plate(fill: Color, bar: Color) -> StyleBoxFlat:

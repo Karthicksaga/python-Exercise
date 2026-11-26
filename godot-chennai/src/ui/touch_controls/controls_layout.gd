@@ -35,7 +35,8 @@ const STICK_REST := 28.0
 const GAS_SIZE := Vector2(92, 92)
 const BRAKE_SIZE := Vector2(76, 76)
 const HORN_SIZE := 52.0
-const EXIT_SIZE := Vector2(48, 48)
+## GET OUT, a labelled pill in the top-right row beside PAUSE (G-494; it was a 48 round X).
+const EXIT_SIZE := Vector2(104, 48)
 const DRIVE_RIGHT := 16.0
 ## Room under the pedals for BRAKE's "hold to reverse" line, clear of the map credit.
 const DRIVE_BOTTOM := 40.0
@@ -114,8 +115,11 @@ static func driving(area: Vector2, s: ControlSettings) -> Dictionary:
 		&"steer_zone": Rect2(0.0, 0.0, area.x * STEER_SHARE, area.y),
 		&"steer_rest": Rect2(24.0, area.y - 24.0 - 120.0, 200.0, 120.0),
 	}
-	# The readout is centred already; mirroring keeps it so.
-	return _handed(rects, area, s)
+	# The readout is centred already; mirroring keeps it so. GET OUT stays in the top-right row
+	# with PAUSE and JOBS, which never mirror: mirrored, it sat on the mission column (G-494).
+	var out := _handed(rects, area, s)
+	out[&"exit"] = exit_rect
+	return out
 
 
 ## Only the touchable buttons of a layout (not zones, ring or readout), for tests and hit checks.

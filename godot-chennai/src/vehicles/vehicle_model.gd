@@ -360,6 +360,17 @@ func has_doors() -> bool:
 	return not _doors.is_empty()
 
 
+## True when `n` is a door node or inside one (it swings with `set_door`).
+func is_door_part(n: Node) -> bool:
+	var at := n
+	while at != null and at != self:
+		var n3 := at as Node3D
+		if n3 != null and _doors.has(n3):
+			return true
+		at = at.get_parent()
+	return false
+
+
 ## Light the red beacons (phase 0) or the blue ones (phase 1); -1 turns them all off.
 func flash_beacons(phase: int) -> void:
 	for i in _beacons.size():

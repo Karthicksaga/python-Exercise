@@ -71,7 +71,6 @@ static func create() -> CityMaterials:
 	c.kit.texture_repeat = false
 	c.kit.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 	c.kit.alpha_scissor_threshold = 0.5
-	c.kit.alpha_antialiasing_mode = BaseMaterial3D.ALPHA_ANTIALIASING_ALPHA_TO_COVERAGE
 	c.kit.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var kit_glow := _texture("kit_glow.png", c.loaded)
 	if kit_glow != null:
@@ -120,6 +119,9 @@ static func _fallback_ground() -> ImageTexture:
 ## glint on the ground and walls). Shadows are still sampled per pixel. Live: the ground and water
 ## swap to a vertex-lit copy of their shader (made once, on first use).
 var flat: bool = false
+## The hero landmarks' own atlas materials (`LandmarkModels.atlas_material`, one per landmark that
+## has an atlas, G-390): they follow the same lighting mode as the shared ones (G-452).
+var heroes: Array[StandardMaterial3D] = []
 static var _vertex_shaders: Dictionary[Shader, Shader] = {}
 
 
@@ -131,9 +133,20 @@ func set_flat(on: bool) -> void:
 	for m: StandardMaterial3D in [walls, roofs, kit, rails, objects, landmark, decks]:
 		if m != null:
 			m.shading_mode = mode
+	for m in heroes:
+		m.shading_mode = mode
 	ground.shader = vertex_lit(GROUND_SHADER) if on else GROUND_SHADER
 	trees.shader = vertex_lit(TreeKit.SHADER) if on else TreeKit.SHADER
 	water.shader = vertex_lit(WATER_SHADER) if on else WATER_SHADER
+
+
+## A hero landmark's material joins the set: it takes the lighting mode in force now (main
+## thread; the worker that built it knows nothing of the preset).
+func add_hero(m: StandardMaterial3D) -> void:
+	if m == null or heroes.has(m):
+		return
+	heroes.append(m)
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_VERTEX if flat else BaseMaterial3D.SHADING_MODE_PER_PIXEL
 
 
 ## A copy of `shader` lit per vertex, without the specular term (cached).

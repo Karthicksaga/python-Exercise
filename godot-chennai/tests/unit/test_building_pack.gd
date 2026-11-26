@@ -25,19 +25,29 @@ func test_chunk_builder_replaces_without_overlap() -> bool:
 	assert_eq(b1.error, "", "chunk builds with building_pack")
 	assert_true(int(b1.detail.get("pack100_replaced", 0)) > 0, "pack100 replaced eligible buildings")
 	assert_eq(b1.triangles, b2.triangles, "chunk triangles deterministic with pack100")
-	var holder := b1.view.get_node_or_null(^"Near/PackBuildings")
-	assert_true(holder != null, "Near/PackBuildings created")
+	var holder := b1.view.get_node_or_null(^"Near/PackBuildings") as BuildingPack.Batch
+	assert_true(holder != null, "Near/PackBuildings created as BuildingPack.Batch")
 	assert_true(b1.view.get_node_or_null(^"Near/PackMid") == null, "Near/PackMid omitted to prevent visibility gaps and z-fighting")
 	assert_true(b1.view.get_node_or_null(^"Far/PackFar") != null, "Far/PackFar created for ChunkStreamer far look")
 	assert_true(holder.get_child_count() > 0, "MultiMeshInstance3D children created")
+	var checked_mmi := false
+	var visible_instances := 0
 	for child in holder.get_children():
 		var mmi := child as MultiMeshInstance3D
 		assert_true(mmi != null, "child is MultiMeshInstance3D")
-		assert_eq(mmi.visibility_range_begin, 0.0, "no per-node visibility_range_begin inside Near")
-		assert_eq(mmi.visibility_range_end, 0.0, "no per-node visibility_range_end inside Near")
-		assert_true(mmi.custom_aabb.size.length() > 1.0, "custom_aabb set on MultiMeshInstance3D")
-		assert_true(mmi.multimesh.custom_aabb.size.length() > 1.0, "custom_aabb set on MultiMesh")
-		break
+		visible_instances += mmi.multimesh.visible_instance_count
+		if not checked_mmi:
+			assert_eq(mmi.visibility_range_begin, 0.0, "no per-node visibility_range_begin inside Near")
+			assert_eq(mmi.visibility_range_end, 0.0, "no per-node visibility_range_end inside Near")
+			assert_true(mmi.custom_aabb.size.length() > 1.0, "custom_aabb set on MultiMeshInstance3D")
+			assert_true(mmi.multimesh.custom_aabb.size.length() > 1.0, "custom_aabb set on MultiMesh")
+			checked_mmi = true
+	assert_eq(visible_instances, int(b1.detail.get("pack100_replaced", 0)), "every replaced building drawn once across LOD0/LOD1")
+	holder.refresh(Vector3(0.0, 2.0, 0.0))
+	var after_refresh := 0
+	for child in holder.get_children():
+		after_refresh += (child as MultiMeshInstance3D).multimesh.visible_instance_count
+	assert_eq(after_refresh, visible_instances, "no building dropped or doubled after LOD refresh")
 	CityTestKit.free_build(b1)
 	CityTestKit.free_build(b2)
 	kit.building_pack = null

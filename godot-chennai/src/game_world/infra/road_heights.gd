@@ -18,6 +18,8 @@ extends RefCounted
 
 ## Margin past a carriageway's edge that still counts as on the deck (parapet and verge), m.
 const EDGE := 0.6
+## Raised arterial footpath height above ground (matches GroundMeshes.FOOT_H).
+const FOOTPATH_HEIGHT := 0.12
 
 var layouts: CityLayouts
 
@@ -84,3 +86,25 @@ func height_at(p: Vector2, near_y: float = 0.0, step_up: float = 1.0) -> float:
 func top_at(p: Vector2) -> float:
 	var s := surfaces_at(p)
 	return s[s.size() - 1]
+
+
+## Height of a raised roadside footpath under ground-level point p (FOOTPATH_HEIGHT or 0.0).
+func footpath_height_at(p: Vector2) -> float:
+	if layouts == null:
+		return 0.0
+	var layout := layouts.layout_for(layouts.source.cell_at(p))
+	var state := [false, false]
+	layout.segments_near(p, 24.0, func(ri: int, i: int) -> bool:
+		var road := layout.roads[ri]
+		if road.is_raised() or road.tunnel or road.kind == &"footway":
+			return false
+		var d := Geometry2D.get_closest_point_to_segment(p, road.points[i], road.points[i + 1]).distance_to(p)
+		var half_w := road.width * 0.5
+		if d < half_w - 0.05:
+			state[0] = true
+			return true
+		var style := RoadStyle.of(road)
+		if style.footpath > 0.0 and d <= half_w + style.footpath + 0.12:
+			state[1] = true
+		return false)
+	return FOOTPATH_HEIGHT if (bool(state[1]) and not bool(state[0])) else 0.0

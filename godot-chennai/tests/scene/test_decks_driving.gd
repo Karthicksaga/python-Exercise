@@ -120,6 +120,15 @@ func _point_at(pts: PackedVector2Array, d: float) -> Vector2:
 
 
 func test_car_drives_up_over_and_down_a_flyover_at_speed() -> bool:
+	return await _over_the_flyover(&"car")
+
+
+## Transit agent (G-214): a motorbike rides the same flyover (bikes use the same decks).
+func test_motorbike_rides_up_over_and_down_a_flyover_at_speed() -> bool:
+	return await _over_the_flyover(&"bike")
+
+
+func _over_the_flyover(kind: StringName) -> bool:
 	var kit := CityTestKit.regional_kit()
 	var layout := kit.layouts.layout_for(kit.source.cell_at(NEAR))
 	var found := _path(layout)
@@ -138,7 +147,7 @@ func test_car_drives_up_over_and_down_a_flyover_at_speed() -> bool:
 	assert_true(top > 6.0, "and climbs to the deck (%.1f m)" % top)
 	streamer.focus = pts[0]
 	assert_true(await wait_until(func() -> bool: return streamer.world_ready_around(pts[0]), MAX_FRAMES), "the start loads")
-	var t := VehicleCatalog.type(&"car")
+	var t := VehicleCatalog.type(kind)
 	var car := RaycastVehicle.new()
 	car.setup(t.spec)
 	var start_dir := (pts[1] - pts[0]).normalized()
@@ -198,7 +207,10 @@ func test_car_drives_up_over_and_down_a_flyover_at_speed() -> bool:
 	assert_true(peak_y > top - 0.5, "rode up onto the deck (peak %.2f m, deck %.1f m)" % [peak_y, top])
 	assert_true(lowest_y > -0.5, "never sank through the ground (lowest %.2f m)" % lowest_y)
 	assert_true(worst_gap < 0.9, "stayed on the ramp and deck surface, never fell off it (worst %.2f m)" % worst_gap)
-	assert_true(worst_off < 6.0, "kept to the carriageway (worst %.1f m off the centre line)" % worst_off)
+	# The test's driver steers with a car's gain; a bike weaves wider but must stay on the deck
+	# (the Anna flyover's carriageway is about 15 m wide).
+	var lane_limit := 6.0 if kind == &"car" else 7.0
+	assert_true(worst_off < lane_limit, "kept to the carriageway (worst %.1f m off the centre line)" % worst_off)
 	assert_true(on_deck_frames > 60 and on_deck_min_speed > 12.0, "crossed the deck at speed (%d frames, slowest %.1f m/s)" % [on_deck_frames, on_deck_min_speed])
 	car.queue_free()
 	return _finish()

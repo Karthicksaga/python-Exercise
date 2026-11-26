@@ -10,6 +10,8 @@ const SILVER := "silver"
 const GOLD := "gold"
 const RANK := {"": 0, "bronze": 1, "silver": 2, "gold": 3}
 const MAX_GOALS := 3
+## The translation keys of the medals' names.
+const KEYS: Dictionary[String, String] = {"gold": "hud.medal.gold", "silver": "hud.medal.silver", "bronze": "hud.medal.bronze"}
 
 
 ## Whether one goal {id, kind, value} was met by `stats`.

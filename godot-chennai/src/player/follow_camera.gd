@@ -103,7 +103,7 @@ func _init() -> void:
 	camera = Camera3D.new()
 	camera.name = "Camera"
 	camera.fov = BASE_FOV
-	camera.near = 0.25
+	camera.near = 0.35
 	camera.far = 750.0
 	add_child(camera)
 	_probe.radius = PROBE_RADIUS
@@ -273,17 +273,39 @@ func _sweep(from: Vector3, dir: Vector3, length: float) -> float:
 
 
 ## True when the obstacles between the focus and the wanted camera place are thin (seen past):
-## the place itself is free, and sweeping back from it meets the obstacle within THIN of where
-## the forward sweep met it.
+## a tree collider, or an obstacle thinner than THIN without a wall behind within THIN.
 func _thin(dir: Vector3, want: float, hit: float) -> bool:
+	if _is_tree_hit(dir, hit):
+		return true
 	var place := _focus + dir * want
 	if _inside(place):
 		return false
-	var back := _sweep(place, -dir, want)
+	var max_sweep := minf(want, hit + THIN + _probe.radius * 2.0 + 0.1)
+	var probe_end := _focus + dir * max_sweep
+	if max_sweep < want and _inside(probe_end):
+		return false
+	var back := _sweep(probe_end, -dir, max_sweep)
 	if back < 0.0:
 		return true
-	var exit := want - back
+	var exit := max_sweep - back
 	return exit - hit < THIN
+
+
+func _is_tree_hit(dir: Vector3, hit: float) -> bool:
+	var space := get_world_3d().direct_space_state
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = _probe
+	q.transform = Transform3D(Basis.IDENTITY, _focus + dir * (hit + _probe.radius + 0.05))
+	q.collision_mask = VIEW_MASK
+	q.exclude = exclude
+	var hits := space.intersect_shape(q, 2)
+	if hits.is_empty():
+		return false
+	for h: Dictionary in hits:
+		var node := h.get("collider") as Node
+		if node == null or not node.is_in_group(&"tree_collider"):
+			return false
+	return true
 
 
 func _inside(at: Vector3) -> bool:

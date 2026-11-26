@@ -117,7 +117,7 @@ func _ready() -> void:
 	session.stage_result.connect(_on_stage_result)
 	session.event_started.connect(_on_event_started)
 	session.event_ended.connect(_on_event_ended)
-	session.heat_raised.connect(func(stars: int) -> void: hud.toast("Police heat +%d" % stars, "They may remember this", 3.0))
+	session.heat_raised.connect(func(stars: int) -> void: hud.toast(Tr.t("toast.heat_raised", [stars]), Tr.t("toast.heat_detail"), 3.0))
 	session.meter_warning.connect(_on_meter_warning)
 	if _main != null:
 		_attach_main()
@@ -147,6 +147,7 @@ func setup(city: CityWorld, player: PlayerRig, drive: Driving) -> void:
 		holder.add_child.call_deferred(beacon)
 		holder.add_child.call_deferred(figures)
 	_watch_driving()
+	_init_navigation_services()
 	session.announce_stage()
 
 
@@ -172,6 +173,7 @@ func _physics_process(dt: float) -> void:
 	var st := status()
 	_measure_feel(dt, st)
 	session.step(dt, st, _impact)
+	_step_street_and_nav(dt, Vector2(st.x, st.z))
 	_apply_hazards(st)
 	_follow_rain()
 	_impact = 0.0
@@ -384,7 +386,7 @@ func _process(dt: float) -> void:
 	hud.set_stats(MissionSession.rupees(session.runner.balance()), session.runner.stages_done(), session.runner.stage_count(), session.jobs.reputation())
 	hud.set_mission(session.view(st.mode, distance), bearing)
 	var place := session.place_near(at, st.mode)
-	hud.set_place_prompt(str(place.get("name", "")) if not held else "")
+	hud.set_place_prompt(Tr.src_line(str(place.get("name", ""))) if not held else "")
 	figures.watch = (driven().global_position if driven() != null else rig.body.global_position)
 	figures.show_scene(dt, session.fare_scene(), session.goods_scene(), driven(), _ground_y(), session.upcoming_fare())
 	_update_minimap(dt, at, st)
@@ -432,20 +434,20 @@ func open_board() -> void:
 func _show_board() -> void:
 	var actions: Array[Dictionary] = []
 	var stages := _board_tab == "stages"
-	actions.append({"id": "tab", "label": "JOBS" if stages else "STAGES", "quiet": true})
+	actions.append({"id": "tab", "label": Tr.t("dlg.jobs" if stages else "dlg.stages"), "quiet": true})
 	if session.jobs.job() != null:
-		actions.append({"id": "quit", "label": "QUIT JOB", "quiet": true})
-	actions.append({"id": "close", "label": "CLOSE", "quiet": true})
+		actions.append({"id": "quit", "label": Tr.t("dlg.quit_job"), "quiet": true})
+	actions.append({"id": "close", "label": Tr.t("dlg.close"), "quiet": true})
 	if stages:
 		var rows := session.stage_rows()
 		for r in rows:
-			r["button"] = "PLAY"
-		hud.show_dialog("Stages", "Missions and finished stages, for the medal. A replay pays a quarter.", rows, actions)
+			r["button"] = Tr.t("dlg.play")
+		hud.show_dialog(Tr.t("dlg.stages_title"), Tr.t("dlg.stages_message"), rows, actions)
 	else:
 		var rows := session.board_rows(GameLoop.clock.hour)
 		for r in rows:
-			r["button"] = "TAKE JOB"
-		hud.show_dialog("Job board", session.board_message(), rows, actions)
+			r["button"] = Tr.t("dlg.take_job")
+		hud.show_dialog(Tr.t("dlg.job_board"), session.board_message(), rows, actions)
 
 
 func close_dialog() -> void:
@@ -458,9 +460,9 @@ func close_dialog() -> void:
 func _on_result(title: String, message: String, board: bool) -> void:
 	_hold()
 	_dialog = "result"
-	var actions: Array[Dictionary] = [{"id": "continue", "label": "CONTINUE"}]
+	var actions: Array[Dictionary] = [{"id": "continue", "label": Tr.t("dlg.continue")}]
 	if board:
-		actions.append({"id": "board", "label": "JOB BOARD", "quiet": true})
+		actions.append({"id": "board", "label": Tr.t("dlg.job_board_btn"), "quiet": true})
 	hud.show_dialog(title, message, [], actions)
 
 
@@ -468,12 +470,12 @@ func _on_result(title: String, message: String, board: bool) -> void:
 func _on_retry_offered(reason: String, _reason_id: String, checkpoint: int) -> void:
 	_hold()
 	_dialog = "retry"
-	var actions: Array[Dictionary] = [{"id": "retry", "label": "RETRY"}]
+	var actions: Array[Dictionary] = [{"id": "retry", "label": Tr.t("dlg.retry")}]
 	if checkpoint > 0:
-		actions.append({"id": "start_over", "label": "START OVER", "quiet": true})
+		actions.append({"id": "start_over", "label": Tr.t("dlg.start_over"), "quiet": true})
 	var m := session.runner.mission()
-	var where := "from the checkpoint" if checkpoint > 0 else "from the start"
-	hud.show_dialog(reason, "%s: try again %s." % [m.title if m != null else "The stage", where], [] as Array[Dictionary], actions)
+	var where := Tr.ref("dlg.from_checkpoint") if checkpoint > 0 else Tr.ref("dlg.from_start")
+	hud.show_dialog(reason, Tr.t("dlg.try_again", [Tr.srcref(m.title) if m != null else Tr.ref("dlg.the_stage"), where]), [] as Array[Dictionary], actions)
 
 
 ## The retry itself: the player and their vehicle go back to where the checkpoint was reached.
@@ -503,16 +505,16 @@ func _on_choice_asked(title: String, options: Array) -> void:
 		if int(o.get("reputation", 0)) > 0:
 			meta.append("★ +%d" % int(o["reputation"]))
 		if int(o.get("wanted", 0)) > 0:
-			meta.append("police heat")
-		rows.append({"id": str(o["id"]), "title": str(o["label"]), "detail": str(o.get("detail", "")), "meta": " · ".join(meta), "button": "CHOOSE"})
-	hud.show_dialog(title, "Nothing happens until you decide.", rows, [] as Array[Dictionary])
+			meta.append(Tr.line("dlg.heat"))
+		rows.append({"id": str(o["id"]), "title": Tr.src(str(o["label"])), "detail": Tr.src(str(o.get("detail", ""))), "meta": " · ".join(meta), "button": Tr.t("dlg.choose")})
+	hud.show_dialog(title, Tr.t("dlg.choice_wait"), rows, [] as Array[Dictionary])
 
 
 ## The medals screen after a stage with goals (G-142).
 func _on_stage_result(title: String, medal: String, goals: Array, paid: int, replay: bool) -> void:
 	_hold()
 	_dialog = "medals"
-	var actions: Array[Dictionary] = [{"id": "continue", "label": "CONTINUE"}, {"id": "stages", "label": "STAGES", "quiet": true}]
+	var actions: Array[Dictionary] = [{"id": "continue", "label": Tr.t("dlg.continue")}, {"id": "stages", "label": Tr.t("dlg.stages"), "quiet": true}]
 	hud.show_medals(title, medal, goals, paid, replay, actions)
 
 
@@ -575,8 +577,8 @@ func _show_place(message: String) -> void:
 	var rows := session.place_actions(_place_id, GameLoop.clock.hour)
 	for r in rows:
 		r["title"] = r["label"]
-		r["button"] = "GO"
-	hud.show_dialog(str(place.get("name", "")), message if message != "" else "%s · %s · ₹%s" % [GameLoop.clock.text(), "health %d" % roundi(session.health), MissionSession.rupees(session.runner.balance())], rows, [{"id": "close", "label": "LEAVE", "quiet": true}])
+		r["button"] = Tr.t("dlg.go")
+	hud.show_dialog(Tr.src(str(place.get("name", ""))), message if message != "" else "%s · %s · ₹%s" % [GameLoop.clock.text(), Tr.line("dlg.health_line", [roundi(session.health)]), MissionSession.rupees(session.runner.balance())], rows, [{"id": "close", "label": Tr.t("dlg.leave"), "quiet": true}])
 
 
 func _do_place(id: String) -> void:
@@ -586,7 +588,7 @@ func _do_place(id: String) -> void:
 		_needle_t = 0.0
 		_lifts = 0
 		_good = 0
-		hud.show_dialog("Workout", "Tap LIFT while the needle is in the green: %d reps." % Life.WORKOUT_REPS, [], [{"id": "close", "label": "STOP", "quiet": true}])
+		hud.show_dialog(Tr.t("dlg.workout"), Tr.t("dlg.workout_message", [Life.WORKOUT_REPS]), [], [{"id": "close", "label": Tr.t("dlg.stop"), "quiet": true}])
 		hud.show_needle(true, 0.0, Vector2(Life.WORKOUT_ZONE[0], Life.WORKOUT_ZONE[1]))
 		return
 	_apply_place(id, 0)
@@ -626,10 +628,10 @@ func _on_cue(cue_name: StringName) -> void:
 
 func _on_meter_warning(meter: String) -> void:
 	if meter == "stability":
-		hud.toast("Careful", "The load is shaking: smooth and slow", 2.2)
+		hud.toast(Tr.t("toast.careful"), Tr.t("toast.load_shaking"), 2.2)
 		Sound.cue("hurt")
 	else:
-		hud.toast("He is noticing you", "Drop back", 2.2)
+		hud.toast(Tr.t("toast.noticing"), Tr.t("toast.drop_back"), 2.2)
 		Sound.cue("click")
 
 
@@ -652,6 +654,9 @@ var _mini_roads: MapRoads = MapRoads.new()
 var _map_feed := MapRoadFeed.new()
 var full_map: FullMap
 var _map_held := false
+var geo_index: ChennaiGeoIndex = null
+var street_service: StreetNameService = null
+var _player_route: Dictionary = {}
 
 
 func _update_minimap(dt: float, at: Vector2, st: MissionData.PlayerStatus) -> void:
@@ -675,6 +680,15 @@ func _update_minimap(dt: float, at: Vector2, st: MissionData.PlayerStatus) -> vo
 	if not _mini_roads.covers(at, Minimap.RANGE):
 		_map_feed.world = world
 		_mini_roads = _map_feed.nearby(at, Minimap.RANGE + 140.0)
+	if rail_map != null and (_mini_rail == null or not _mini_rail.covers(at, Minimap.RANGE)):
+		_mini_rail = rail_map.nearby(at, Minimap.RANGE + 340.0)
+	hud.minimap.rail = _mini_rail
+	hud.minimap.cheap = QualitySettings.shared().preset == QualitySettings.LOW
+	# The full map's whole city is read in the background once the game has run a while (G-466),
+	# so it is usually ready when the map is first opened.
+	_map_played += MAP_STEP
+	if _map_played > MAP_CITY_AFTER and _map_played < MAP_CITY_AFTER + MAP_STEP * 1.5 and world != null and world.source != null:
+		MapCityFeed.shared_task(world.source, hud.minimap.cheap)
 	var yaw := rig.body.global_rotation.y if driven() == null else driven().global_rotation.y
 	hud.minimap.set_view(at, yaw, zones, _mini_roads, map_markers(at, Minimap.RANGE), followed)
 
@@ -689,7 +703,7 @@ func map_markers(at: Vector2, reach: float) -> Array[Dictionary]:
 	for p in session.content.places:
 		var where := Vector2(float(p["x"]), float(p["z"]))
 		if reach == INF or where.distance_to(at) <= reach:
-			out.append({"x": where.x, "z": where.y, "radius": 0.0, "kind": MarkerKind.PLACE, "label": str(p["name"]), "primary": false})
+			out.append({"x": where.x, "z": where.y, "radius": 0.0, "kind": MarkerKind.PLACE, "label": Tr.src_line(str(p["name"])), "primary": false})
 	return out
 
 
@@ -700,9 +714,12 @@ func open_map() -> void:
 		return
 	if full_map == null:
 		full_map = FullMap.new()
-		full_map.credit = "%s, estimated heights and widths" % (world.source.get_attribution() if world != null and world.source != null else "© OpenStreetMap contributors")
+		full_map.credit = Tr.line("map.credit_estimated", [world.source.get_attribution() if world != null and world.source != null else "© OpenStreetMap contributors"])
 		full_map.closed.connect(_on_map_closed)
+		full_map.route_requested.connect(_on_full_map_route)
 		add_child(full_map)
+	full_map.geo_index = geo_index
+	full_map.street_service = street_service
 	var at := Vector2(status().x, status().z)
 	var yaw := rig.body.global_rotation.y if driven() == null else driven().global_rotation.y
 	if not get_tree().paused:
@@ -712,6 +729,12 @@ func open_map() -> void:
 	_map_feed.wide_task(at)
 	var near := _mini_roads
 	full_map.loading = true
+	var low := QualitySettings.shared().preset == QualitySettings.LOW
+	full_map.set_rail(rail_map, low)
+	# The whole city with its labels (G-466): built once a game on a worker thread.
+	if world != null and world.source != null:
+		MapCityFeed.shared_task(world.source, low)
+	full_map.set_city(MapCityFeed.shared())
 	full_map.open(at, yaw, near, null, map_markers(at, INF))
 	full_map.set_zoom(1)
 
@@ -726,6 +749,19 @@ func close_map() -> bool:
 func _exit_tree() -> void:
 	# A road read on a worker must end before the game does.
 	_map_feed.wait()
+	MapCityFeed.wait()
+
+
+## A pan or zoom of the full map ended: the streets round the new centre, when the near set does
+## not reach there (read on a worker; `_poll_map` takes them in).
+func _on_map_moved(centre: Vector2) -> void:
+	if full_map == null or full_map.zoom > 1:
+		return
+	var near := full_map.near_roads
+	if near != null and near.covers(centre, FullMap.ZOOMS[1] * 2.2):
+		return
+	_map_feed.world = world
+	_map_feed.near_task(centre)
 
 
 func _on_map_closed() -> void:
@@ -736,13 +772,18 @@ func _on_map_closed() -> void:
 
 ## While the full map is open: take the wide road sets in as soon as the worker has them.
 func _poll_map() -> void:
-	if full_map == null or not full_map.is_open() or _map_feed.result.is_empty() or not _map_feed.finished():
+	if full_map == null or not full_map.is_open():
+		return
+	if full_map.city == null and MapCityFeed.shared() != null:
+		full_map.set_city(MapCityFeed.shared())
+	if _map_feed.result.is_empty() or not _map_feed.finished():
 		return
 	_map_feed.wait()
 	var got: Dictionary = _map_feed.result
 	_map_feed.result = {}
-	full_map.loading = false
-	full_map.set_roads(got["near"], got["wide"])
+	full_map.loading = full_map.city == null
+	var wide: Variant = got.get("wide", null)
+	full_map.set_roads(got["near"], wide as MapRoads if wide != null else full_map.wide_roads)
 
 
 ## NEW GAME: forget the progress, park everything back and put the player at the start.
@@ -758,3 +799,68 @@ func new_game() -> void:
 			driving.cancel_boarding()
 		rig.place(WorldOrigin.to_scene_xz(float(s["x"]), float(s["z"]), _ground_y() + 0.05), float(s["yaw"]))
 	session.announce_stage()
+
+
+func _init_navigation_services() -> void:
+	if world == null or world.source == null or geo_index != null:
+		return
+	geo_index = ChennaiGeoIndex.new()
+	geo_index.open(world.source)
+	street_service = StreetNameService.new()
+	street_service.geo = geo_index
+	street_service.on_street_entered.connect(func(sname: String, loc_name: String, loc_ta: String) -> void:
+		if hud != null:
+			var s_ta := street_service.current_street_ta
+			var title_txt := "%s · %s" % [sname.to_upper(), s_ta] if s_ta != "" else sname.to_upper()
+			var sub := "%s (%s), Chennai" % [loc_name, loc_ta] if loc_ta != "" else "%s, Chennai" % loc_name
+			hud.show_street_banner("ENTERING STREET", title_txt, sub, 2.8)
+	)
+	street_service.on_locality_entered.connect(func(loc_name: String, loc_ta: String) -> void:
+		if hud != null:
+			var sub := "%s · CHENNAI" % loc_ta if loc_ta != "" else "CHENNAI"
+			hud.show_street_banner("ENTERING LOCALITY", loc_name.to_upper(), sub, 3.0)
+	)
+
+
+func _on_full_map_route(route: Dictionary) -> void:
+	_player_route = route
+	var poly: PackedVector2Array = route.get("polyline", PackedVector2Array()) if bool(route.get("ok", false)) else PackedVector2Array()
+	if hud != null:
+		hud.minimap.route_polyline = poly
+		hud.minimap.queue_redraw()
+		if poly.size() < 2:
+			hud.set_nav_guidance(false)
+
+
+func _step_street_and_nav(dt: float, at: Vector2) -> void:
+	if street_service != null:
+		street_service.update_player(dt, at, false)
+	if _player_route.is_empty() or not bool(_player_route.get("ok", false)) or hud == null:
+		return
+	var poly: PackedVector2Array = _player_route.get("polyline", PackedVector2Array())
+	if poly.size() < 2:
+		return
+	var dest: Vector2 = poly[poly.size() - 1]
+	if at.distance_to(dest) <= 22.0:
+		hud.show_street_banner("ARRIVED", "DESTINATION REACHED", "Navigation complete", 3.0)
+		_on_full_map_route({})
+		return
+	# Off-route check (> 65m from route polyline)
+	var min_d := INF
+	for i in range(poly.size() - 1):
+		var c := Geometry2D.get_closest_point_to_segment(at, poly[i], poly[i + 1])
+		min_d = minf(min_d, at.distance_to(c))
+	if min_d > 65.0 and geo_index != null:
+		var stops: Array = _player_route.get("stops", [])
+		if stops.size() >= 2:
+			var new_stops: Array[Dictionary] = [{"role": "start", "name": "Current Position", "pos": at}]
+			for i in range(1, stops.size()):
+				new_stops.append(stops[i] as Dictionary)
+			var mode := str(_player_route.get("mode", "fastest"))
+			_on_full_map_route(ChennaiRouter.compute_route(geo_index, new_stops, mode))
+			return
+	var rem := at.distance_to(dest)
+	var eta_min := maxi(1, roundi(rem / 9.5 / 60.0))
+	var steps: Array = _player_route.get("steps", [])
+	var next_step: Dictionary = steps[0] if not steps.is_empty() else {}
+	hud.set_nav_guidance(true, "IN " + MapProjection.distance_text(rem).to_upper(), str(next_step.get("maneuver", "CONTINUE")), str(next_step.get("road", "Route")), "Remaining: %s · EST. %d min" % [MapProjection.distance_text(rem), eta_min])

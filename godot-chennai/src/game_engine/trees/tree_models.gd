@@ -89,6 +89,7 @@ func _tube(b: MeshBuilder, pts: Array[Vector3], radii: Array[float], sides: int,
 	var r := atlas.uv(BARK)
 	var rings: Array[PackedInt32Array] = []
 	var n := pts.size()
+	var prev_s := Vector3.ZERO
 	for i in n:
 		var t: Vector3
 		if i == 0:
@@ -98,8 +99,16 @@ func _tube(b: MeshBuilder, pts: Array[Vector3], radii: Array[float], sides: int,
 		else:
 			t = pts[i + 1] - pts[i - 1]
 		t = t.normalized()
-		var ref := UP if absf(t.dot(UP)) < 0.95 else Vector3.RIGHT
-		var s := ref.cross(t).normalized()
+		if t.is_zero_approx():
+			t = UP
+		var s := Vector3.ZERO
+		if prev_s != Vector3.ZERO:
+			s = prev_s - t * prev_s.dot(t)
+		if s.length_squared() < 1e-6:
+			var ref := UP if absf(t.dot(UP)) < 0.9 else Vector3.RIGHT
+			s = ref.cross(t)
+		s = s.normalized()
+		prev_s = s
 		var u := t.cross(s).normalized()
 		var level := _lvl(pts[i].y, hmax, weight)
 		var v := lerpf(r.end.y, r.position.y, float(i) / float(n - 1))
@@ -262,6 +271,18 @@ func _broadleaf(b: MeshBuilder, lod: int, p: Dictionary) -> void:
 	var centre := Vector3(lean.x * 1.2, cy, lean.z * 1.2)
 	if lod == 0:
 		_limbs(b, from, int(p["limbs"]), float(p["reach"]), float(p["rise"]), float(p["r1"]) * 0.8, 5, bark, h)
+	elif lod == 1:
+		# Lightweight fork limbs in LOD1 prevent abrupt branch pop-in at tree_lod0 (<= 24 tris).
+		var fork_count := mini(4, int(p["limbs"]))
+		var reach := float(p["reach"]) * 0.85
+		var rise := float(p["rise"]) * 0.85
+		var r_base := float(p["r1"]) * 0.72
+		for i in fork_count:
+			var a := TAU * (float(i) + 0.3 * _rng.randf()) / float(fork_count)
+			var dir := Vector3(cos(a), 0.0, sin(a))
+			var pts: Array[Vector3] = [from, from + dir * reach + Vector3(0.0, rise, 0.0)]
+			var rad: Array[float] = [r_base, r_base * 0.4]
+			_tube(b, pts, rad, 3, bark, 0.5, h)
 	var tiles: Array[StringName] = []
 	for t: StringName in p["tiles"]:
 		tiles.append(t)
@@ -464,7 +485,9 @@ func _dome(b: MeshBuilder, lod: int) -> void:
 		var ao := 0.85 + 0.2 * _rng.randf()
 		_card(b, &"bougainvillea", c, side, up, 1.4, 1.25, Color(ao, ao, ao, 1.0), (dir * 0.6 + UP * 0.5).normalized(), _lvl(c.y, h, 0.4))
 	if lod == 0:
-		_card(b, &"bougainvillea", Vector3(0, 2.0, 0), Vector3.RIGHT, Vector3.FORWARD, 1.2, 1.2, Color(1, 1, 1, 1), UP, _lvl(2.0, h, 0.4))
+		# Tilted upper crown cards inside the dome avoid a hovering horizontal slab at eye level.
+		_card(b, &"bougainvillea", Vector3(0.0, 1.55, 0.0), Vector3(0.92, 0.39, 0.0), Vector3(-0.39, 0.92, 0.0), 1.15, 0.95, Color(1, 1, 1, 1), UP, _lvl(1.55, h, 0.4))
+		_card(b, &"bougainvillea", Vector3(0.0, 1.55, 0.0), Vector3(0.0, 0.39, 0.92), Vector3(0.0, 0.92, -0.39), 1.15, 0.95, Color(0.95, 0.95, 0.95, 1), UP, _lvl(1.55, h, 0.4))
 
 
 func _scrub(b: MeshBuilder, lod: int) -> void:

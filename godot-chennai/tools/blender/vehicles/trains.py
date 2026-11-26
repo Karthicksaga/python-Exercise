@@ -13,6 +13,8 @@ Writes `assets/trains/<name>.glb`, `<name>_lod1.glb`, `<name>_lod2.glb` and `<na
   with a blue window band, roof air-conditioning units, closed doors.
 * `wap7`: a WAP-7-style twin-cab electric locomotive (Co-Co, two pantographs) in a red and
   cream colour family; `lhb_coach`: an LHB-style coach in a matching express colour family.
+* `metro_cab`, `metro_car`: a four-car Metro set (standard gauge, 2.9 m wide, four doors a side,
+  flat cab front): stainless with a dark window band and an invented teal waist line (G-464).
 * `vb_cab`, `vb_coach`: a Vande-Bharat-style semi-high-speed set (aerodynamic nose car and an
   intermediate car) in a saffron and grey colour family.
 
@@ -44,6 +46,9 @@ LOD_DIST = (60, 300, 900)  # research note: LOD0 <= 60 m, LOD1 60-300 m, LOD2 30
 # Half cross-section (x, z) from the belly centre up the right side to the roof centre.
 COACH_PROFILE = [(0.0, 1.05), (1.56, 1.05), (1.625, 1.13), (1.625, 3.02), (1.6, 3.3), (1.5, 3.53), (1.27, 3.74), (0.8, 3.9), (0.0, 3.96)]
 LOCO_PROFILE = [(0.0, 1.12), (1.5, 1.12), (1.575, 1.2), (1.575, 3.55), (1.5, 3.78), (1.25, 3.92), (0.0, 3.98)]
+# G-464: a Metro car (standard gauge, 2.9 m wide, low roof): an original stainless shell.
+METRO_PROFILE = [(0.0, 1.0), (1.38, 1.0), (1.45, 1.08), (1.45, 2.95), (1.42, 3.22), (1.32, 3.45), (1.05, 3.62), (0.0, 3.68)]
+METRO_GAUGE_HALF = 0.7175  # half of 1,435 mm
 VB_PROFILE = [(0.0, 0.9), (1.5, 0.9), (1.63, 1.05), (1.63, 2.95), (1.58, 3.35), (1.42, 3.62), (1.1, 3.82), (0.6, 3.92), (0.0, 3.95)]
 
 
@@ -284,6 +289,30 @@ def wap7_livery(length, front):
     return lv.image()
 
 
+TEAL = (0.0, 0.28, 0.3)
+
+
+def metro_livery(kind, length, front, doors):
+    hw, zb, zt = 1.45, 1.0, 3.68
+    lv = Livery(f"livery_metro_{kind}", length, front, METRO_PROFILE, STAINLESS)
+    lv.band(1.0, 1.2, UNDER)
+    lv.roof(3.3, (0.55, 0.56, 0.57))
+    lv.band(1.95, 2.75, (0.03, 0.035, 0.045))  # the dark window band
+    lv.band(1.55, 1.68, TEAL)  # an invented waist line, no operator colours or marks
+    for d in doors:
+        lv.band(1.08, 2.95, (0.02, 0.02, 0.024), d + 0.7, d - 0.7)
+    lv.leaf_rect(0, 1, 0, 1, STAINLESS)
+    lv.leaf_rect(0.15, 0.85, 0.5, 0.88, (0.03, 0.035, 0.045))
+    lv.leaf_rect(0, 1, 0.27, 0.33, TEAL)
+    lv.end_rect(END_COLS, -hw, hw, zb, zt, STAINLESS, hw=hw, zb=zb, zt=zt)
+    lv.end_rect(END_COLS, -0.4, 0.4, 1.08, 2.95, DARK, hw=hw, zb=zb, zt=zt)
+    lv.end_rect(CAB_COLS, -hw, hw, zb, zt, STAINLESS, hw=hw, zb=zb, zt=zt)
+    lv.end_rect(CAB_COLS, -hw, hw, 1.05, 1.45, YELLOW, hw=hw, zb=zb, zt=zt)
+    lv.end_rect(CAB_COLS, -1.3, 1.3, 2.25, 3.15, DARK, hw=hw, zb=zb, zt=zt)
+    lv.end_rect(CAB_COLS, -hw, hw, 1.55, 1.68, TEAL, hw=hw, zb=zb, zt=zt)
+    return lv.image()
+
+
 def vb_livery(kind, length, front):
     lv = Livery(f"livery_vb_{kind}", length, front, VB_PROFILE, SAFFRON)
     lv.band(0.9, 1.35, VB_GREY)
@@ -488,7 +517,7 @@ def build_car(spec, lod):
             span = spec["axle_spacing"] * (spec["axles"] - 1)
             for k in range(spec["axles"]):
                 ay = by + span / 2 - k * spec["axle_spacing"]
-                ws = TD.wheelset(f"wheelset_{bname.split('_')[1][0]}{k + 1}", ay, wr, GAUGE_HALF, 9)
+                ws = TD.wheelset(f"wheelset_{bname.split('_')[1][0]}{k + 1}", ay, wr, spec.get("gauge_half", GAUGE_HALF), 9)
                 K.parent_keep(ws, b)
                 sets.append((ws.name, ay))
             nodes["bogies"].append(bname)
@@ -500,7 +529,7 @@ def build_car(spec, lod):
             span = spec["axle_spacing"] * (spec["axles"] - 1) + 0.9
             parts.append(K.box("bogie", (2.3, span, 0.7), (0, by, wr + 0.1), role("bogie")))
             for sx in (1, -1):
-                parts.append(K.box("wheels", (0.12, span - 0.2, 2 * wr), (sx * GAUGE_HALF, by, wr), role("steel")))
+                parts.append(K.box("wheels", (0.12, span - 0.2, 2 * wr), (sx * spec.get("gauge_half", GAUGE_HALF), by, wr), role("steel")))
     body_obj = K.join(parts, "body")
     if lod == 2:
         K.decimate(body_obj, spec["lod2_budget"] - 8)
@@ -839,6 +868,39 @@ def emu_spec(kind, ac):
     return spec
 
 
+def metro_spec(kind):
+    """G-464: Metro cars, estimated from published figures of the class (about 21-22 m, 2.9 m wide,
+    four 1.4 m doors a side, floor 1.1 m above the rail)."""
+    L = 21.6 if kind == "cab" else 21.0
+    doors = [6.6, 1.8, -3.0, -7.8] if kind == "cab" else [7.35, 2.45, -2.45, -7.35]
+    return dict(
+        name=f"metro_{kind}", family=f"metro_{kind}", kind="cab" if kind == "cab" else "coach", length=L, profile=METRO_PROFILE,
+        livery=lambda: metro_livery(kind, L, L / 2, doors), doors=doors, door_w=1.4, door_top=2.95,
+        wheel_r=0.43, axles=2, axle_spacing=2.5, bogie_y=7.0, gauge_half=METRO_GAUGE_HALF,
+        ring_ys=[d + s for d in doors for s in (0.7, -0.7)] + ([L / 2 - 2.4] if kind == "cab" else []),
+        roof_units=[(1.9, 2.6, 0.32, 5.0), (1.9, 2.6, 0.32, -5.0)], metal=0.35, rough=0.4,
+        lod2_budget=150 if kind == "cab" else 120, sill=1.08, head=2.95,
+        windows=[(a, b, 1.95, 2.75, "sealed") for a, b in _metro_windows(L, doors, kind)],
+        cab_windows=[(-1.3, -0.05, 2.25, 3.1), (0.05, 1.3, 2.25, 3.1)], frames="black", gutter=False,
+        anchors={"seat_driver": (0.5, L / 2 - 1.1, 2.15), "grip_master_controller": (0.4, L / 2 - 0.7, 2.1)} if kind == "cab" else
+                {"standing_area": (0, 0.0, 1.1)},
+    )
+
+
+def _metro_windows(L, doors, kind):
+    """Windows between the doors (and none in the cab)."""
+    edges = sorted(doors, reverse=True)
+    out = []
+    top = L / 2 - (2.6 if kind == "cab" else 0.9)
+    for d in edges:
+        if top - (d + 0.95) > 0.8:
+            out.append((top, d + 0.95))
+        top = d - 0.95
+    if top - (-L / 2 + 0.9) > 0.8:
+        out.append((top, -L / 2 + 0.9))
+    return out
+
+
 WAP7 = dict(
     name="wap7", family="wap7", kind="cab", length=20.56, profile=LOCO_PROFILE, twin_cab=True, buffers=True, gangway=False,
     livery=lambda: wap7_livery(20.56, 10.28), doors=[], wheel_r=0.546, axles=3, axle_spacing=2.0, bogie_y=5.6, loco=True,
@@ -882,6 +944,7 @@ FORMATIONS = {
                          "emu_ac_motor", "emu_ac_trailer", "emu_ac_trailer", "emu_ac_motor", "emu_ac_cab@reversed"], notes="12-car AC rake (estimated)"),
     "express": dict(cars=["wap7"] + ["lhb_coach"] * 18, notes="WAP-7-style locomotive with up to 22 LHB-style coaches; 18 shown (estimated)"),
     "vb": dict(cars=["vb_cab"] + ["vb_coach"] * 6 + ["vb_cab@reversed"], notes="8-car semi-high-speed set (estimated)"),
+    "metro": dict(cars=["metro_cab", "metro_car", "metro_car", "metro_cab@reversed"], notes="4-car Metro set (estimated)"),
 }
 
 
@@ -899,8 +962,9 @@ def livery_samples(spec):
         "lhb": [("red body", 1.6, LHB_RED), ("grey window band", 2.8, GREY), ("cream line", 1.885, CREAM)],
         "wap7": [("red body", 1.7, LOCO_RED), ("cream band", 2.09, CREAM)],
         "vb_": [("saffron body", 1.6, SAFFRON), ("grey skirt", 1.2, VB_GREY)],
+        "metro_": [("stainless body", 1.4, STAINLESS), ("teal waist line", 1.61, TEAL)],
     }
-    key = next(k for k in ("emu_ac", "emu_", "lhb", "wap7", "vb_") if fam.startswith(k))
+    key = next(k for k in ("emu_ac", "emu_", "lhb", "wap7", "vb_", "metro_") if fam.startswith(k))
     out = []
     for what, z, rgb in pts[key]:
         out.append(K.texture_sample(what, img, (lv.col(y) + 0.5) / W, (lv.row_s(lv.s_of_z(z)) + 0.5) / W, rgb))
@@ -919,7 +983,7 @@ def run(spec, family):
         name=spec["name"], label=spec["name"].replace("_", " "), kind=kind, source=SOURCE, licence=K.LICENCE,
         frame="metres; +Y up, the front (cab or +Y end) towards -Z, +X right; rail top at y = 0; origin mid-car on the rail top",
         size_m=dict(zip(("width", "height", "length"), K.size_godot(lo, hi))),
-        dimensions_note="broad gauge (1,676 mm); car length, width, height and wheel sizes are estimates from published figures",
+        dimensions_note=("standard gauge (1,435 mm)" if spec.get("gauge_half") else "broad gauge (1,676 mm)") + "; car length, width, height and wheel sizes are estimates from published figures",
         lods=[dict(file=spec["name"] + ".glb", triangles=res[0]["tris"], max_distance_m=LOD_DIST[0]),
               dict(file=spec["name"] + "_lod1.glb", triangles=res[1]["tris"], min_distance_m=LOD_DIST[0], max_distance_m=LOD_DIST[1]),
               dict(file=spec["name"] + "_lod2.glb", triangles=res[2]["tris"], min_distance_m=LOD_DIST[1], max_distance_m=LOD_DIST[2])],
@@ -933,7 +997,7 @@ def run(spec, family):
         texture_samples=livery_samples(spec),
         livery=dict(texture=f"embedded livery_{spec['family']} 512 px", family=family,
                     notes="shapes and colour families only: no logos, lettering or real numbers"),
-        formation=FORMATIONS.get(family) if spec["name"] in ("emu_cab", "emu_ac_cab", "wap7", "vb_cab") else None,
+        formation=FORMATIONS.get(family) if spec["name"] in ("emu_cab", "emu_ac_cab", "wap7", "vb_cab", "metro_cab") else None,
         draw_note="instance one mesh per car type per LOD (MultiMesh) so a whole train is a few draw calls",
         required_nodes=["body", "marker_front"] + nodes["bogies"] + [p["node"] for p in nodes["pivots"]],
     )
@@ -955,3 +1019,6 @@ if __name__ == "__main__":
     if not want or "vb" in want:
         run(VB_CAB, "vb")
         run(VB_COACH, "vb")
+    if not want or "metro" in want:
+        run(metro_spec("cab"), "metro")
+        run(metro_spec("car"), "metro")

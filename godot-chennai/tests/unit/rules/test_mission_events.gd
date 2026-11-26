@@ -17,8 +17,11 @@ func _drive_job(s: MissionSession, id: String, seconds: float, started: Array, e
 	s.take_job(id, 10.0)
 	var j := s.jobs.job()
 	var first := j.stops[0]
-	# In the vehicle, away from the first stop, so the clock runs and the job does not progress.
-	var p := MissionData.PlayerStatus.make(first.x + 600.0, first.z, j.vehicle, 8.0)
+	# In the vehicle, away from the first stop, so the clock runs and the job does not progress. CHANGED
+	# (G-453): a job that waits for the player at its start (`startRadius`) only starts inside it, so
+	# the player stands half that far from the stop, not 600 m.
+	var away := 600.0 if j.start_radius < 0.0 else minf(600.0, j.start_radius / 2.0)
+	var p := MissionData.PlayerStatus.make(first.x + away, first.z, j.vehicle, 8.0)
 	var t := 0.0
 	while t < seconds and s.jobs.job() != null:
 		s.step(0.5, p)

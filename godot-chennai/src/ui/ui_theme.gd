@@ -26,13 +26,33 @@ const BODY_SIZE := 14
 const BUTTON_SIZE := 16
 const TITLE_SIZE := 30
 
+## The Tamil faces behind the theme's Latin font (G-444, Noto Sans Tamil, SIL OFL).
+const TAMIL_REGULAR := "res://assets/fonts/ui/noto-sans-tamil-400.woff2"
+const TAMIL_BOLD := "res://assets/fonts/ui/noto-sans-tamil-700.woff2"
+
 static var _theme: Theme = null
+static var _fonts: Dictionary[bool, Font] = {}
 
 
 static func get_theme() -> Theme:
 	if _theme == null:
 		_theme = _build()
 	return _theme
+
+
+## The UI font: the engine's default Latin face with Noto Sans Tamil behind it, so a line of Tamil
+## (or of both languages) never shows empty boxes. `bold` is for buttons.
+static func font(bold: bool = false) -> Font:
+	if not _fonts.has(bold):
+		var v := FontVariation.new()
+		v.base_font = ThemeDB.fallback_font
+		var path := TAMIL_BOLD if bold else TAMIL_REGULAR
+		if ResourceLoader.exists(path):
+			var tamil := load(path) as Font
+			if tamil != null:
+				v.fallbacks = [tamil]
+		_fonts[bold] = v
+	return _fonts[bold]
 
 
 ## One glass StyleBox for every HUD button and plate. `inset` shrinks what is drawn inside the
@@ -128,6 +148,8 @@ static func _box(fill: Color, border: Color = Color.TRANSPARENT, radius: int = 1
 static func _build() -> Theme:
 	var t := Theme.new()
 	t.default_font_size = BODY_SIZE
+	t.default_font = font()
+	t.set_font("font", "Button", font(true))
 	t.set_color("font_color", "Label", TEXT)
 	t.set_stylebox("panel", "PanelContainer", _box(PANEL, Color(1, 1, 1, 0.08), 14))
 	t.set_font_size("font_size", "Button", BUTTON_SIZE)

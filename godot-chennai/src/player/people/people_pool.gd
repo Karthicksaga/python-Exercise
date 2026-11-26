@@ -13,6 +13,7 @@ const MAKE_PER_FRAME := 3
 
 var manifest: PeopleManifest
 var _scenes: Dictionary[String, PackedScene] = {}
+var _sole_offsets: Dictionary[String, float] = {}
 var _free: Dictionary[String, Array] = {}
 var _by_key: Dictionary[int, PersonView] = {}
 var _frame_used: Dictionary[int, bool] = {}
@@ -46,7 +47,28 @@ func prepare(ids: PackedStringArray) -> String:
 		if scene == null:
 			return "Could not load %s." % p
 		_scenes[id] = scene
+		_sole_offsets[id] = _measure_sole_offset(scene)
 	return ""
+
+
+static func _measure_sole_offset(scene: PackedScene) -> float:
+	var inst := scene.instantiate() as Node3D
+	if inst == null:
+		return 0.0
+	var skeletons := inst.find_children("*", "Skeleton3D", true, false)
+	var offset := 0.0
+	if not skeletons.is_empty():
+		var sk := skeletons[0] as Skeleton3D
+		var rig := RigData.from_skeleton(sk, inst)
+		var meshes: Array[MeshInstance3D] = []
+		for node in sk.find_children("*", "MeshInstance3D", true, false):
+			meshes.append(node as MeshInstance3D)
+		if not meshes.is_empty():
+			var soles := SoleSet.from_meshes(meshes, sk, rig)
+			if soles.vertex_count() > 0:
+				offset = maxf(0.0, -soles.lowest(rig.rest_model()))
+	inst.free()
+	return offset
 
 
 func has_person(id: String) -> bool:
@@ -66,7 +88,7 @@ func _make(id: String) -> PersonView:
 	var scene: PackedScene = _scenes.get(id)
 	if scene == null:
 		return null
-	var v := PersonView.make(id, scene, float(manifest.entry(id).get("seatHeightM", 0.45)))
+	var v := PersonView.make(id, scene, float(manifest.entry(id).get("seatHeightM", 0.45)), float(_sole_offsets.get(id, 0.0)))
 	v.visible = false
 	add_child(v)
 	made += 1
@@ -78,7 +100,7 @@ func make_view(id: String) -> PersonView:
 	var scene: PackedScene = _scenes.get(id)
 	if scene == null:
 		return null
-	return PersonView.make(id, scene, float(manifest.entry(id).get("seatHeightM", 0.45)))
+	return PersonView.make(id, scene, float(manifest.entry(id).get("seatHeightM", 0.45)), float(_sole_offsets.get(id, 0.0)))
 
 
 func _give_back(v: PersonView) -> void:

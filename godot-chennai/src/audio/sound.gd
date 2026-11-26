@@ -60,6 +60,10 @@ var _traffic_level: float = 0.5
 var _enclosed: bool = false
 var _speed: float = 0.0
 var _street: StringName = &""
+## 0..1: how calm the place is (a temple's compound: the city fades, the bell is heard more, G-483).
+var _calm: float = 0.0
+## Footsteps are this loud: 1, less barefoot (the temple's sandal stand).
+var step_gain: float = 1.0
 
 
 func _ready() -> void:
@@ -93,6 +97,13 @@ func _ready() -> void:
 		add_child(p)
 		_horn_3d.append(p)
 	_load_settings()
+
+
+func _exit_tree() -> void:
+	# Tests and tools end here: collect the loads nobody asked for so they are not reported as
+	# leaks at exit (G-456). On a phone the process just ends; nothing waits.
+	if library != null and DisplayServer.get_name() == "headless":
+		library.drain()
 
 
 func _loop_player(id: String, bus: StringName) -> AudioStreamPlayer:
@@ -134,7 +145,7 @@ func toggle() -> void:
 
 ## "Sound: On" / "Sound: Off" for the menu button.
 func label() -> String:
-	return "Sound: %s" % ("On" if enabled else "Off")
+	return Tr.t("set.sound", [&"set.on" if enabled else &"set.off"])
 
 
 func _apply_enabled() -> void:
@@ -233,7 +244,7 @@ func walk(dt: float, speed: float, grounded: bool, wet: bool) -> void:
 	if ids.is_empty():
 		return
 	var run := clampf((speed - 2.0) / 3.0, 0.0, 1.0)
-	_one_shot(_world_pool, ids[rng.randi_range(0, ids.size() - 1)], 0.75 + 0.5 * run, 0.92 + rng.randf() * 0.16)
+	_one_shot(_world_pool, ids[rng.randi_range(0, ids.size() - 1)], (0.75 + 0.5 * run) * step_gain, 0.92 + rng.randf() * 0.16)
 	_counts["footstep"] = int(_counts["footstep"]) + 1
 	_counts["wet_footstep" if wet else "dry_footstep"] = int(_counts.get("wet_footstep" if wet else "dry_footstep", 0)) + 1
 
@@ -331,6 +342,16 @@ func set_street(kind: StringName) -> void:
 	_street = kind
 
 
+## A calm place (0..1): the street and the city beds fade, the temple bell is heard more often.
+func set_calm(level: float) -> void:
+	_calm = clampf(level, 0.0, 1.0)
+
+
+## A temple bell close by (its own recording, not the far ambience one), for the lamp and the walk round.
+func bell(gain: float = 0.7) -> void:
+	ambience.ring("bell.temple", 5.0, 12.0, gain)
+
+
 ## The place round the player, for the ambience: metres to the sea (INF inland), how busy the
 ## roads are (0..1), and whether the player sits inside a closed vehicle.
 func set_place(coast_metres: float, traffic_level: float, enclosed: bool) -> void:
@@ -361,7 +382,7 @@ func _process(dt: float) -> void:
 	rail.update(dt)
 	if active:
 		var clock: GameClock = GameLoop.clock
-		ambience.update(dt, {"hour": clock.hour, "rain": Weather.rain_level(), "coast": _coast, "traffic": _traffic_level, "enclosed": _enclosed, "street": _street})
+		ambience.update(dt, {"hour": clock.hour, "rain": Weather.rain_level(), "coast": _coast, "traffic": _traffic_level, "enclosed": _enclosed, "street": _street, "calm": _calm})
 
 
 # --- players ----------------------------------------------------------------------------

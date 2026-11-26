@@ -36,6 +36,8 @@ var life: CityLife
 var driving: Driving
 ## The game's wanted level (Phase 5 wires one); null: the crime is only signalled.
 var wanted: Wanted = null
+## Peace zones (G-481): nobody is pulled from a vehicle and no crime is reported inside one; null: none.
+var peace: PeaceZones = null
 ## The swapped vehicle waiting to be taken, its agent and its seated driver.
 var vehicle: Vehicle = null
 var agent_id: int = -1
@@ -118,7 +120,7 @@ func _step(dt: float) -> void:
 	if pick.is_empty():
 		if asked >= 0:
 			# Gone, out of reach or too fast by now: never a silent press.
-			driving.toast.emit("Too far to take over")
+			driving.toast.emit(Tr.t("toast.too_far_take"))
 		return
 	var id := int(pick["id"])
 	if absf(float(pick["speed"])) < Carjack.MAX_SPEED or id == asked:
@@ -134,17 +136,19 @@ func _step(dt: float) -> void:
 func offer() -> Variant:
 	if driving.mode() != &"foot" or driving.rider == null or driving.boarding != null:
 		return null
+	if peace != null and not peace.allows("take_over", WorldOrigin.to_world(driving.rider.position())):
+		return null
 	if vehicle != null:
 		if _pulled:
 			return null
 		var gap := vehicle.global_position.distance_to(driving.rider.position())
-		return ActionCandidate.make("TAKE OVER", ActionContext.P_TAKE_OVER, gap, func() -> void: driving.enter(vehicle))
+		return ActionCandidate.make(Tr.t("act.take_over"), ActionContext.P_TAKE_OVER, gap, func() -> void: driving.enter(vehicle))
 	if _offered.is_empty():
 		return null
 	var id := int(_offered["id"])
 	var feet := WorldOrigin.to_world(driving.rider.position())
 	var gap := Carjack.distance_to_footprint(feet.x, feet.y, _offered)
-	return ActionCandidate.make("TAKE OVER", ActionContext.P_TAKE_OVER, gap, func() -> void: request(id))
+	return ActionCandidate.make(Tr.t("act.take_over"), ActionContext.P_TAKE_OVER, gap, func() -> void: request(id))
 
 
 ## How many pulled-out drivers are still running off.
@@ -218,7 +222,7 @@ func _on_boarding(v: Vehicle, event: StringName) -> void:
 	v.remove_meta(&"driver_aboard")
 	var at := WorldOrigin.to_world(v.global_position)
 	var look := life.views[agent_id].variant.id
-	if wanted != null:
+	if wanted != null and (peace == null or peace.allows("wanted", at)):
 		wanted.report("carjacking")
 	carjacked.emit(look, at)
 	_scare_at = at

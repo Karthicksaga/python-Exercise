@@ -39,9 +39,24 @@ static func build(network: RailNetwork, origin: Vector2, size: float) -> RailInd
 	for t in network.tracks:
 		index._add(t.id, t.kind, t.points, PackedFloat32Array())
 	for line in network.lines:
-		if line.elevated():
+		if not line.elevated():
+			continue
+		# The Metro's tunnels are not drawn (G-462): only the runs at or above UNDERGROUND.
+		var run := PackedVector2Array()
+		var hs := PackedFloat32Array()
+		for i in line.path.points.size():
+			if line.heights[i] >= RailLine.UNDERGROUND:
+				run.append(line.path.points[i])
+				hs.append(line.heights[i])
+				continue
+			if run.size() >= 2:
+				next_id += 1
+				index._add(next_id, "elevated", run, hs)
+			run = PackedVector2Array()
+			hs = PackedFloat32Array()
+		if run.size() >= 2:
 			next_id += 1
-			index._add(next_id, "elevated", line.path.points, line.heights)
+			index._add(next_id, "elevated", run, hs)
 	for c in network.crossings:
 		var cell := index.cell_at(Vector2(c.x, c.z))
 		if not index.crossings.has(cell):

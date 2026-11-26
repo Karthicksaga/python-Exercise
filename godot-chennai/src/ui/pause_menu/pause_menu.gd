@@ -17,12 +17,13 @@ signal resume_requested
 signal title_requested
 signal pause_requested
 signal map_requested
+signal journal_requested
 
 ## The PAUSE button (G-290): a round glass icon, 40 to the eye, a 48 hit area.
 const PAUSE_VISUAL := 40.0
 const PAUSE_SIZE := Vector2(48, 48)
-## Right of the PAUSE button: the driving EXIT (a 48 round icon) and the gap beside it.
-const PAUSE_RIGHT := 56.0
+## Right of the PAUSE button: the driving GET OUT and the gap beside it.
+const PAUSE_RIGHT := ControlsLayout.EXIT_SIZE.x + 8.0
 const GUTTER := 16
 
 var pause_button: Button
@@ -32,6 +33,7 @@ var _list: VBoxContainer
 var _resume: Button
 var _settings: Dictionary[StringName, Array] = {}  # id → [button, label: Callable, press: Callable]
 var _margin: SafeAreaMargin
+var _credit: Label
 
 
 func _init() -> void:
@@ -55,7 +57,7 @@ func _init() -> void:
 
 	pause_button = UiTheme.icon_button(UiIcons.PAUSE, PAUSE_VISUAL, PAUSE_SIZE.x)
 	pause_button.name = "Pause"
-	pause_button.tooltip_text = "Pause"
+	Tr.bind(pause_button, "menu.pause.tip", null, false, &"tooltip_text")
 	pause_button.anchor_left = 1.0
 	pause_button.anchor_right = 1.0
 	pause_button.offset_left = -PAUSE_RIGHT - PAUSE_SIZE.x
@@ -87,30 +89,44 @@ func _init() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
 	_panel.add_child(column)
-	column.add_child(UiTheme.label("PAUSED", UiTheme.BUTTON_SIZE + 6, UiTheme.AMBER))
+	var heading := UiTheme.label("", UiTheme.BUTTON_SIZE + 6, UiTheme.AMBER)
+	Tr.bind(heading, "menu.pause.title")
+	column.add_child(heading)
 	_scroll = UiTheme.touch_scroll()
 	column.add_child(_scroll)
+	# The map credit while the HUD's own is hidden: inside the panel, so nothing can overlap it.
+	_credit = UiTheme.label("© OpenStreetMap contributors", 12, UiTheme.TEXT_DIM)
+	_credit.name = "Credit"
+	_credit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_credit)
 	_list = VBoxContainer.new()
 	_list.name = "List"
 	_list.add_theme_constant_override("separation", 10)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(_list)
-	_resume = _menu_button("RESUME", "Resume")
+	_resume = _menu_button("menu.pause.resume", "Resume")
 	_resume.pressed.connect(func() -> void: resume_requested.emit())
-	var map := _menu_button("MAP", "Map")
+	var map := _menu_button("menu.pause.map", "Map")
 	map.pressed.connect(func() -> void: map_requested.emit())
-	var quit := _menu_button("QUIT TO TITLE", "QuitToTitle")
+	var journal := _menu_button("menu.pause.journal", "Journal")
+	journal.pressed.connect(func() -> void: journal_requested.emit())
+	var quit := _menu_button("menu.pause.quit", "QuitToTitle")
 	quit.pressed.connect(func() -> void: title_requested.emit())
 	visible = true
 
 
 func _ready() -> void:
+	Tr.bus.changed.connect(_on_language)
 	get_viewport().size_changed.connect(_fit)
 	_list.resized.connect(_fit)
 
 
-func _menu_button(text: String, node_name: String) -> Button:
-	var b := UiTheme.button(text)
+## A button in the list; `text` is a key (it follows the language) or, for a setting, the row's
+## current text.
+func _menu_button(text: String, node_name: String, is_key: bool = true) -> Button:
+	var b := UiTheme.button("" if is_key else text)
+	if is_key:
+		Tr.bind(b, text)
 	b.name = node_name
 	b.custom_minimum_size = Vector2(280, UiTheme.MIN_TARGET)
 	_list.add_child(b)
@@ -120,13 +136,19 @@ func _menu_button(text: String, node_name: String) -> Button:
 ## A setting: a button labelled `label.call()` (e.g. "Weather: Rain"); pressing it calls
 ## `press` and relabels. Settings go between RESUME and QUIT TO TITLE, in the order added.
 func add_setting(id: StringName, label: Callable, press: Callable) -> Button:
-	var b := _menu_button(String(label.call()), String(id))
+	var b := _menu_button(String(label.call()), String(id), false)
 	_list.move_child(b, _list.get_child_count() - 2)
 	_settings[id] = [b, label, press]
 	b.pressed.connect(func() -> void:
 		press.call()
 		refresh())
 	return b
+
+
+## The language changed: relabel the settings and fit the panel to the new text.
+func _on_language() -> void:
+	refresh()
+	_fit.call_deferred()
 
 
 ## Relabels every setting from its current value.
@@ -145,6 +167,12 @@ func show_pause_button(on: bool) -> void:
 	pause_button.visible = on and not is_open()
 
 
+## The map credit line the panel carries (the data's attribution).
+func set_credit(text: String) -> void:
+	if text != "":
+		_credit.text = text
+
+
 func open() -> void:
 	refresh()
 	_panel.visible = true
@@ -152,11 +180,13 @@ func open() -> void:
 	pause_button.visible = false
 	_fit.call_deferred()
 	_resume.grab_focus()
+	opened.emit()
 
 
 func close() -> void:
 	_panel.visible = false
 	(get_node(^"Root/Dim") as Control).visible = false
+	closed.emit()
 
 
 func is_open() -> bool:
@@ -170,7 +200,7 @@ func _fit() -> void:
 	var screen := get_viewport().get_visible_rect().size
 	var room := screen.y - float(_margin.get_theme_constant("margin_top") + _margin.get_theme_constant("margin_bottom"))
 	# The panel's own margins and the PAUSED title above the list.
-	var chrome := 20.0 + 8.0 + 32.0 + 4.0
+	var chrome := 20.0 + 8.0 + 32.0 + 4.0 + 8.0 + _credit.get_combined_minimum_size().y
 	var want := _list.get_combined_minimum_size().y
 	_scroll.custom_minimum_size = Vector2(_list.get_combined_minimum_size().x, clampf(want, UiTheme.MIN_TARGET, maxf(UiTheme.MIN_TARGET, room - chrome)))
 	_panel.reset_size()

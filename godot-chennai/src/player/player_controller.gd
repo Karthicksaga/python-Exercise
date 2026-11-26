@@ -14,11 +14,16 @@ extends CharacterBody3D
 ## For vehicles: `enter_vehicle(vehicle, seat)` takes the player off their feet (no collision,
 ## no movement, the body follows the seat) and `exit_vehicle(feet, yaw)` puts them back.
 ## For combat later: `knock(velocity)`, `facing()`, `figure`.
+## For swimming (culture, G-484): `begin_swim(at)` takes the body off the ground (no collision) and
+## `_swim_step` moves it on the water's surface by `swim_mover`, which decides where it may go;
+## `end_swim(feet, yaw)` puts it back on its feet.
 
 signal entered_vehicle(vehicle: Node3D)
 signal exited_vehicle(vehicle: Node3D)
 signal jumped
 signal landed
+signal swim_started
+signal swim_ended
 
 const HEIGHT := 1.75
 const RADIUS := 0.32
@@ -37,6 +42,11 @@ const TURN_RATE := 12.0
 const STEP_HEIGHT := 0.35
 ## Less steering in the air.
 const AIR_CONTROL := 0.35
+## Swimming: how far the figure sits below the water surface (the water hides the legs), how far it
+## leans forward, and how quickly the speed follows the stick.
+const SWIM_DROP := 0.95
+const SWIM_LEAN := 0.35
+const SWIM_RESPONSE := 5.0
 
 ## Physics layers (decision G-64): what each body is on. The camera's view is blocked by
 ## WORLD, PEOPLE and VEHICLES, never by the player.
@@ -68,6 +78,12 @@ var _jump := JumpState.new()
 var _knock: Vector3 = Vector3.ZERO
 ## Off a vehicle: collisions come back after this physics frame (G-361), else -1.
 var _solid_after: int = -1
+## True while swimming (`begin_swim`).
+var swimming: bool = false
+## (from: Vector3, want: Vector2, dt: float) -> Vector3: where a swimmer at `from` (scene space)
+## wanting to go `want` (unit or shorter, scene x and z) is after `dt` seconds.
+var swim_mover: Callable = Callable()
+var _swim_speed: float = 0.0
 
 
 ## A jump press from outside `step` (the rig, between steps); same as `PlayerInput.jump`.
@@ -128,6 +144,9 @@ func facing() -> Vector3:
 
 
 func _physics_process(dt: float) -> void:
+	if swimming:
+		_swim_step(input if controls_enabled else PlayerInput.new(), dt)
+		return
 	if vehicle != null:
 		if seat != null:
 			global_transform = seat.global_transform
@@ -283,3 +302,62 @@ func _make_solid() -> void:
 ## Collides now, or waits for the step after leaving a vehicle (G-361).
 func is_solid() -> bool:
 	return collision_layer != 0
+
+
+## Into the water at `at` (scene space, on the surface): no collision, no gravity, the figure sinks
+## to its chest and leans forward.
+func begin_swim(at: Vector3) -> void:
+	if swimming or vehicle != null:
+		return
+	swimming = true
+	_solid_after = -1
+	collision_layer = 0
+	collision_mask = 0
+	velocity = Vector3.ZERO
+	_swim_speed = 0.0
+	global_position = at
+	if figure != null:
+		figure.position.y = -SWIM_DROP
+		figure.rotation.x = -SWIM_LEAN
+	swim_started.emit()
+
+
+## Out of the water onto `feet`, facing `facing_yaw`; solid again after one physics step (as getting
+## out of a vehicle, G-361).
+func end_swim(feet: Vector3, facing_yaw: float) -> void:
+	if not swimming:
+		return
+	swimming = false
+	if figure != null:
+		figure.position.y = 0.0
+		figure.rotation.x = 0.0
+	global_basis = Basis.IDENTITY
+	respawn(feet, facing_yaw)
+	_solid_after = Engine.get_physics_frames()
+	swim_ended.emit()
+
+
+## One fixed step in the water: the stick moves the body on the surface where `swim_mover` lets it.
+func _swim_step(i: PlayerInput, dt: float) -> void:
+	var dir := Vector2.ZERO
+	if i.move.length() >= 0.08:
+		var s := sin(i.camera_yaw)
+		var c := cos(i.camera_yaw)
+		dir = Vector2(i.move.x * c - i.move.y * s, -i.move.x * s - i.move.y * c).limit_length(1.0)
+	var want_speed := dir.length()
+	_swim_speed += (want_speed - _swim_speed) * minf(1.0, SWIM_RESPONSE * dt)
+	var before := global_position
+	if swim_mover.is_valid():
+		var to: Variant = swim_mover.call(before, dir, dt)
+		if to is Vector3 and swimming:
+			global_position = to as Vector3
+	var moved := global_position - before
+	speed = Vector2(moved.x, moved.z).length() / maxf(dt, 0.0001)
+	if dir != Vector2.ZERO:
+		var wanted_yaw := atan2(-dir.x, -dir.y)
+		yaw += wrapf(wanted_yaw - yaw, -PI, PI) * minf(1.0, TURN_RATE * 0.5 * dt)
+		yaw = wrapf(yaw, -PI, PI)
+	if figure != null and swimming:
+		figure.rotation.y = yaw - rotation.y
+		# The walk clip's arms and legs, slowed: strokes.
+		figure.advance(dt, minf(speed, 1.6), true)

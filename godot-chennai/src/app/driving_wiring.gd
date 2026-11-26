@@ -21,6 +21,8 @@ var _followed: Node3D = null
 var _settings: ControlSettings = null
 ## Sparks, glass and smoke (one per wiring, in `WorldOrigin.GROUP`).
 var effects: CrashEffects = null
+## Peace zones: no crash effects or camera shake inside, no GET IN (G-481); null: none.
+var peace: PeaceZones = null
 ## No camera shake (the platform's reduced-motion flag by default).
 var reduced_motion: bool = TitleMenu.platform_reduces_motion()
 ## Camera trauma per band (game-feel tiers: bump small, shaken medium, fall and thrown large).
@@ -32,6 +34,23 @@ signal reaction(kind: StringName, at: Vector3)
 var _honk_in := -1.0
 var _honk_kind: StringName = &""
 var _honk_at := Vector3.ZERO
+## GET OUT was pressed while moving (G-494): BRAKE is held for the player until the vehicle is
+## slow enough to leave, then the rider gets out. GAS, a crash or leaving the seat cancels it.
+var stopping_to_exit := false
+
+
+## GET OUT: out now when slow enough, else stop first and get out then.
+func get_out() -> void:
+	var v := driving.vehicle
+	if driving.mode() != &"driving" or v == null:
+		return
+	if absf(v.forward_speed()) <= Driving.EXIT_SPEED:
+		stopping_to_exit = false
+		driving.exit()
+		return
+	stopping_to_exit = true
+	if controls != null:
+		controls.show_toast(UiStrings.text(&"stopping_to_get_out"))
 
 
 ## GET IN, offered to the ACTION button while a vehicle is within reach on foot.
@@ -39,8 +58,11 @@ func _get_in() -> Variant:
 	var v := driving.nearest_vehicle()
 	if v == null:
 		return null
+	# Vehicles stay outside a peace zone (G-481): nothing to get into there.
+	if peace != null and not peace.allows("boarding", WorldOrigin.to_world(driving.rider.position())):
+		return null
 	var gap := v.global_position.distance_to(driving.rider.position())
-	return ActionCandidate.make("GET IN", ActionContext.P_BOARD, gap, func() -> void: driving.enter(driving.nearest_vehicle()))
+	return ActionCandidate.make(Tr.t("act.get_in"), ActionContext.P_BOARD, gap, func() -> void: driving.enter(driving.nearest_vehicle()))
 
 
 func _on_crash(v: Vehicle, outcome: CrashRules.Outcome) -> void:
@@ -51,6 +73,9 @@ func _on_crash(v: Vehicle, outcome: CrashRules.Outcome) -> void:
 
 ## The look and feel of a hit: effects, camera shake, smoke when wrecked, the other's reaction.
 func feedback(v: Vehicle, outcome: CrashRules.Outcome) -> void:
+	# A peace zone has no sparks, glass or shaking (G-481); the hit is still felt in the vehicle's wobble.
+	if peace != null and not peace.allows("crash_effects", WorldOrigin.to_world(v.global_position)):
+		return
 	if camera != null:
 		camera.shake_strength = 0.0 if reduced_motion else 1.0
 		camera.add_trauma(float(TRAUMA.get(outcome.type, 0.0)))
@@ -105,7 +130,7 @@ static func wire(d: Driving, c: DrivingControls, player_rig: PlayerRig) -> Drivi
 	# Before `Driving` (-10) in each step, so the touch state is fresh; the camera runs last (100).
 	w.process_physics_priority = -20
 	if c != null:
-		c.exit_pressed.connect(func() -> void: d.exit())
+		c.exit_pressed.connect(w.get_out)
 		c.horn_pressed.connect(d.press_horn)
 		d.toast.connect(c.show_toast)
 	if player_rig != null and player_rig.controls != null:
@@ -113,6 +138,7 @@ static func wire(d: Driving, c: DrivingControls, player_rig: PlayerRig) -> Drivi
 		w._settings = player_rig.controls.settings
 	d.crashed.connect(w._on_crash)
 	d.bumped.connect(w._on_bump)
+	d.splashed.connect(func(_v: Vehicle, at: Vector3, strength: float) -> void: w.effects.splash(at, strength))
 	w.effects = CrashEffects.new()
 	w.effects.add_to_group(WorldOrigin.GROUP)
 	w.add_child(w.effects)
@@ -127,9 +153,11 @@ func _on_bump(v: Vehicle, outcome: CrashRules.Outcome) -> void:
 
 
 func _on_mode(mode: StringName) -> void:
+	if mode != &"driving":
+		stopping_to_exit = false
 	var v := driving.vehicle
 	if controls != null:
-		controls.set_mode(mode, "SIREN" if v != null and v.has_siren() else "HORN")
+		controls.set_mode(mode, "ctl.siren" if v != null and v.has_siren() else "ctl.horn")
 	if rig != null and rig.controls != null:
 		# The walking controls (stick, ACTION, JUMP) only on foot.
 		rig.controls.visible = mode == &"foot"
@@ -144,6 +172,7 @@ func _physics_process(dt: float) -> void:
 		driving.touch_gas = controls.gas_held()
 		driving.touch_brake = controls.brake_held()
 		driving.touch_steer = controls.steer_value()
+	_stop_to_exit_step()
 	if camera == null:
 		return
 	var t := driving.camera_target()
@@ -155,6 +184,22 @@ func _physics_process(dt: float) -> void:
 	var driven := driving.vehicle
 	if driving.mode() == &"driving" and driven != null:
 		camera.chase(driven.linear_velocity, driven.yaw(), driven.forward_speed(), driven.type.spec.max_speed, dt)
+
+
+func _stop_to_exit_step() -> void:
+	if not stopping_to_exit:
+		return
+	var v := driving.vehicle
+	if driving.mode() != &"driving" or v == null or driving.touch_gas or driving.gas:
+		stopping_to_exit = false  # the player drives on
+		return
+	if absf(v.forward_speed()) <= Driving.EXIT_SPEED:
+		stopping_to_exit = false
+		driving.touch_brake = false
+		driving.exit()
+		return
+	# Holding BRAKE while reversing on hold drives backwards (G-175): let go first, then brake.
+	driving.touch_brake = not driving.reverse_hold.reversing
 
 
 func _process(_delta: float) -> void:

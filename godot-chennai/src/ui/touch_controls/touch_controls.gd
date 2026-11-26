@@ -87,16 +87,18 @@ func _ready() -> void:
 	_stick.radius = STICK_RADIUS
 	_stick.knob = KNOB
 	_layer.add_child(_stick)
-	_action_button = TouchButton.new("ACTION", ControlsLayout.ACTION_SIZE)
+	_action_button = TouchButton.new(Tr.t("ctl.action"), ControlsLayout.ACTION_SIZE)
 	_action_button.name = "Action"
 	_action_button.primary = true
 	_action_button.font_size = 16
 	_layer.add_child(_action_button)
-	_jump_button = TouchButton.new("JUMP", ControlsLayout.JUMP_SIZE)
+	_jump_button = TouchButton.new(Tr.t("ctl.jump"), ControlsLayout.JUMP_SIZE)
+	Tr.bind(_jump_button, "ctl.jump")
 	_jump_button.name = "Jump"
 	_jump_button.icon = UiIcons.JUMP
 	_layer.add_child(_jump_button)
-	_run_button = TouchButton.new("RUN", ControlsLayout.RUN_SIZE)
+	_run_button = TouchButton.new(Tr.t("ctl.run"), ControlsLayout.RUN_SIZE)
+	Tr.bind(_run_button, "ctl.run")
 	_run_button.name = "Run"
 	_layer.add_child(_run_button)
 	_hit_button = TouchButton.new("HIT", ControlsLayout.HIT_SIZE)
@@ -166,7 +168,7 @@ func _process(_delta: float) -> void:
 	if text != _label or not _label_known:
 		_label_known = true
 		_label = text
-		_action_button.text = text if text != "" else "ACTION"
+		_action_button.text = text if text != "" else Tr.t("ctl.action")
 		_action_button.font_size = 16 if text.length() <= 6 else 13
 		_action_button.dim = text == ""
 

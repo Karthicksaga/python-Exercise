@@ -1,0 +1,6 @@
+{
+ "format": 1,
+ "note": "Every Mapillary or KartaView image the observation files cite, with its licence and attribution. Empty: no imagery could be reached yet (docs/street-imagery.md section 3), so none is cited. Reference photographs are never stored in the repository; this file holds identifiers only.",
+ "licence_of_this_file": "CC0 1.0",
+ "images": []
+}

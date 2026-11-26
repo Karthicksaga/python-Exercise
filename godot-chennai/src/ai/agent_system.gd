@@ -113,6 +113,8 @@ var _slowed: Dictionary[int, Vector2] = {}
 var _fears: Dictionary[int, Fear] = {}
 ## The longest half length of any kind (the broad phase of the path check).
 var _longest: float = 0.0
+## Fixed routes for some agents (bus routes, G-214); null: everyone turns at random as before.
+var routes: AgentRoutes = null
 
 
 func _init(g: RoadGraph, world_bounds: Rect2, s: AgentPresets.Settings, seed_value: int = 1) -> void:
@@ -190,7 +192,7 @@ func rebase(g: RoadGraph, focus: Vector2) -> void:
 				a.next = 0
 			continue
 		a.edge = moved[i].x
-		a.next = moved[i].y if moved[i].y >= 0 else g.next_edge(a.edge, rng)
+		a.next = moved[i].y if moved[i].y >= 0 else _next_of(a)
 
 
 static func _find_edge(g: RoadGraph, old: RoadGraph, e: int) -> int:
@@ -282,6 +284,10 @@ func _ready_at(p: Vector2) -> bool:
 ## (and puts the agent away) when no stretch on loaded ground was found.
 func _place(a: Agent, focus: Vector2, any_distance: bool) -> bool:
 	_release_all(a)
+	if routes != null:
+		if routes.place(self, a, focus):
+			return true
+		routes.placed_freely(a)
 	var chosen := -1
 	var chosen_t := 0.5
 	for attempt in 40:
@@ -316,20 +322,45 @@ func _place(a: Agent, focus: Vector2, any_distance: bool) -> bool:
 		a.speed = 0.0
 		a.generation += 1
 		return false
+	put_on(a, chosen, graph.edge_length[chosen] * chosen_t)
+	a.next = graph.next_edge(chosen, rng)
+	return true
+
+
+## Put an agent on stretch `e`, `along` metres down it, in its lane, standing (the caller sets
+## `a.next`). For `AgentRoutes.place` and the usual placing.
+func put_on(a: Agent, e: int, along: float) -> void:
 	a.active = true
 	a.pull_over = 0.0
 	a.dodge = 0.0
-	a.edge = chosen
-	a.next = graph.next_edge(chosen, rng)
-	a.pos = graph.point_on(chosen, graph.edge_length[chosen] * chosen_t, lane_offset(a, chosen))
-	a.heading = graph.heading(chosen)
-	a.y = graph.height_on(chosen, graph.edge_length[chosen] * chosen_t)
+	a.edge = e
+	a.next = e
+	a.pos = graph.point_on(e, along, lane_offset(a, e))
+	a.heading = graph.heading(e)
+	a.y = graph.height_on(e, along)
 	a.speed = 0.0
 	a.stuck = 0.0
 	a.generation += 1
 	_slowed.erase(a.id)
 	_fears.erase(a.id)
-	return true
+
+
+## Move an agent to a new place round `focus` now (as when it is recycled). For `AgentRoutes`.
+func replace(a: Agent, focus: Vector2) -> bool:
+	return _place(a, focus, false)
+
+
+## True when the agent's kind is a bus (`Kind.group`).
+func is_bus(a: Agent) -> bool:
+	return kinds[a.kind].group == &"bus"
+
+
+func _next_of(a: Agent) -> int:
+	if routes != null:
+		var e := routes.next_edge(self, a)
+		if e != -2:
+			return e
+	return graph.next_edge(a.edge, rng)
 
 
 ## Hold an agent still where it is (someone knocked down, a vehicle being taken): not steered,
@@ -560,7 +591,7 @@ func _junction_gate(a: Agent, k: AgentPresets.Kind, along: float, may_enter: boo
 func _apply_active(focus: Vector2) -> void:
 	var retire_beyond := settings.retire_beyond
 	for a in agents:
-		var wanted := a.id < _wanted
+		var wanted := a.id < _wanted or (routes != null and (routes.wants_out(self, a) or routes.keeps(a)))
 		if wanted and not a.active:
 			_place(a, focus, _retire_now)
 		elif not wanted and a.active and not _held.has(a.id) and (_retire_now or a.pos.distance_to(focus) > retire_beyond):
@@ -577,6 +608,8 @@ func _apply_active(focus: Vector2) -> void:
 ## other agents (the player, parked vehicles, people on the road); `siren`: Vector3(x, z,
 ## heading) of an emergency vehicle traffic pulls over for, or null.
 func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Variant = null) -> void:
+	if routes != null:
+		routes.before_update(self, focus)
 	_apply_active(focus)
 	# Broad phase (G-127): obstacles and agents by BUCKET-metre square, so each agent looks only
 	# at those in the squares its reach touches, not at everyone.
@@ -641,13 +674,13 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 			if other == a or not other.active or other.pos.distance_squared_to(a.pos) > near_sq:
 				continue
 			var c := cos(other.heading - a.heading)
-			if walker and (c < 0.0 or other.speed < a.speed * 0.7):
-				# Someone coming the other way, or dawdling ahead: step round them.
+			if walker and (c < 0.0 or other.speed < a.speed * 0.7 or a.pos.distance_squared_to(other.pos) < 1.0):
+				# Someone coming the other way, dawdling ahead, or walking close abreast: step clear.
 				var rw := other.pos - a.pos
 				var ahead_w := rw.dot(f)
 				var room := k.half_width + kinds[other.kind].half_width + PASSING_ROOM
-				if ahead_w > k.half_length + kinds[other.kind].half_length + 0.1 and ahead_w < DODGE_AHEAD + a.speed:
-					var aside_w := _aside(a, room, rw.x * f.y - rw.y * f.x, ahead_w)
+				if ahead_w > -room and ahead_w < DODGE_AHEAD + a.speed:
+					var aside_w := _aside(a, room, rw.x * f.y - rw.y * f.x, ahead_w + room)
 					if aside_w != INF:
 						step_to = aside_w if not stepping or absf(aside_w) > absf(step_to) else step_to
 						stepping = true
@@ -681,6 +714,12 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 		if line < INF:
 			target = minf(target, _stop_speed(line))
 		a.at_signal = line < INF or (blocker != null and blocker.at_signal and clear < k.gap + 3.0)
+		var kerb := 0.0
+		if routes != null:
+			var room := routes.stop_room(self, a, dt)
+			if room < INF:
+				target = minf(target, _stop_speed(room))
+			kerb = routes.kerb(a)
 		if settings.takes_turns:
 			if not _holding[a.id].is_empty():
 				_release_passed(a, k)
@@ -694,7 +733,7 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 			var rs := a.pos - Vector2(sv.x, sv.y)
 			var ahead_s := rs.dot(Vector2(-sin(sv.z), -cos(sv.z)))
 			yielding = ahead_s > -4.0 and rs.length() < SIREN_RANGE
-		a.pull_over += clampf((1.0 if yielding else 0.0) - a.pull_over, -dt, dt)
+		a.pull_over += clampf(maxf(1.0 if yielding else 0.0, kerb) - a.pull_over, -dt, dt)
 		if yielding:
 			target = minf(target, YIELD_SPEED)
 		var slowed := _slowed.has(a.id)
@@ -745,11 +784,12 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 				_place(a, focus, false)
 				continue
 			a.edge = a.next
-			a.next = graph.next_edge(a.edge, rng)
+			a.next = _next_of(a)
 		# Recycle agents far away, or jammed a long time out of sight (waiting at lights is not jammed).
-		a.stuck = a.stuck + dt if a.speed < 0.2 and not a.at_signal and fear == null else 0.0
+		var kept := routes != null and routes.keeps(a)
+		a.stuck = a.stuck + dt if a.speed < 0.2 and not a.at_signal and fear == null and not kept else 0.0
 		var distance := a.pos.distance_to(focus)
-		if distance > settings.despawn or (a.stuck > 8.0 and distance > 45.0):
+		if not kept and (distance > settings.despawn or (a.stuck > 8.0 and distance > 45.0)):
 			_place(a, focus, false)
 
 
@@ -760,7 +800,7 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 func _aside(a: Agent, room: float, lateral: float, ahead: float) -> float:
 	if absf(lateral) >= room or ahead <= 0.0:
 		return INF
-	var side := -1.0 if lateral > 0.1 else 1.0
+	var side := -1.0 if lateral >= 0.0 else 1.0
 	return clampf(a.dodge + side * (room - absf(lateral)), -DODGE_MAX, DODGE_MAX)
 
 

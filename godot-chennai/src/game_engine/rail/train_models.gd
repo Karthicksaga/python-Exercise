@@ -15,6 +15,8 @@ const FORMATIONS := {
 	"emu": ["emu_cab", "emu_motor", "emu_trailer", "emu_cab@reversed"],
 	"emu_ac": ["emu_ac_cab", "emu_ac_motor", "emu_ac_trailer", "emu_ac_cab@reversed"],
 	"express": ["wap7", "lhb_coach", "lhb_coach", "lhb_coach"],
+	# G-464: the Metro's four-car set (real Chennai Metro sets are four cars too).
+	"metro": ["metro_cab", "metro_car", "metro_car", "metro_cab@reversed"],
 }
 
 
