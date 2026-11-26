@@ -161,6 +161,26 @@ func _run_to(distance: float, v0: float, stop: bool) -> void:
 	_push(peak / b, -b)
 
 
+## Only the distance along the line `t` seconds into the run (no allocation: the per-frame
+## "is this train near the player" check, G-461).
+func s_at(t: float) -> float:
+	if phases.is_empty():
+		return 0.0
+	var clamped := clampf(t, 0.0, duration)
+	var lo := 0
+	var hi := phases.size() - 1
+	while lo < hi:
+		var mid := (lo + hi) >> 1
+		var p: Phase = phases[mid]
+		if clamped < p.t0 + p.duration:
+			hi = mid
+		else:
+			lo = mid + 1
+	var phase: Phase = phases[lo]
+	var tau := clampf(clamped - phase.t0, 0.0, phase.duration)
+	return minf(length, phase.s0 + phase.v0 * tau + 0.5 * phase.a * tau * tau)
+
+
 ## Where the train is `t` seconds into its run (clamped to the run).
 func state(t: float) -> TrainState:
 	var clamped := clampf(t, 0.0, duration)

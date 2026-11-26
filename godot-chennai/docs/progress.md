@@ -390,3 +390,14 @@ Details and numbers: `docs/transit.md`, `world/TRANSIT.md`.
 | Overlay text wraps inside the screen (G-493) | Done | `test_overlay_release.gd` (30 long lines, real text, 915x412 and phone) |
 | GET OUT pill while driving or riding, stop-then-exit while moving (G-494) | Done | `test_get_out.gd` (parked car, bike, taken-over bike, moving) |
 | Seen on the owner's phone | Not done | — |
+
+## Rail extras: rail on the maps, the Metro, trains past the old edge, the whole-city map (G-460…G-468, branch `agent/godot-rail2`, 25 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Railway from the regional OSM extract (committed railway part, 258 KB) (G-460) | Done: 22 lines, 121 stations, 1,268 tracks (113 estimated second-track runs), 409 crossings | `tools/rail/test_build_rail.py` (23 tests incl. extract, route graph, keep-left, heights, the Three.js lines inside the old box) |
+| Trains past the old edge: Beach - Tambaram, Chengalpattu, beyond Avadi (Arakkonam), beyond Gummidipoondi (Sullurpeta), return services (G-461) | Done on desktop | `test_rail_file.gd`, `test_railway.gd` (ride to Sevvapet Road, ride to Tambaram) |
+| Chennai Metro Blue and Green, both ways: viaducts, tunnels, Metro trains, ₹20, no cab, rides end before tunnels (G-462, G-464) | Done on desktop; tunnels and underground stations not drawn | `test_rail_file.gd::test_metro_blue_and_green_lines`, `test_railway.gd::test_metro_ride_…` |
+| Rail lines coloured per kind on the minimap and the full map, station dots and names, RAIL ON/OFF in the legend, Low preset cheap (G-463, G-465) | Done | `test_map_rail.gd`, `test_rail_maps.gd` |
+| Full map covers the whole city and labels areas, roads, stations, hospitals, police, bus stands and stops, decluttered by zoom (G-466) | Done (owner's phone report) | `test_map_city.gd`, `test_maps.gd`, screenshots |
+| Main-thread cost (G-467) | Measured headless here (see handoff); not on a phone | `tests/tools/rail_shots.gd --shot=measure` |
+| Seen on a phone | Not done | — |

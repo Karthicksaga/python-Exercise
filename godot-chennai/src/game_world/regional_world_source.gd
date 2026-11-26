@@ -274,6 +274,34 @@ func read_chunk(cell: Vector2i) -> ChunkData:
 	return chunk
 
 
+## The road pieces of one tile without keeping them (the full map reads every tile once, G-466):
+## the cached set when the game already holds it, else a fresh decode (no deck heights). Null
+## outside the world. Thread-safe.
+func read_tile_roads(tile: Vector2i) -> RoadNetwork:
+	_mutex.lock()
+	var net: RoadNetwork = _roads.get(tile)
+	_mutex.unlock()
+	if net != null:
+		return net
+	if not tiles.has(tile):
+		return null
+	var bytes := FileAccess.get_file_as_bytes(dir.path_join("tiles/%d_%d/%s" % [tile.x, tile.y, tiles[tile].roads_file]))
+	if bytes.is_empty():
+		return null
+	return WorldCodecV2.decode_roads(bytes, _names[tile])
+
+
+## The world's edge from `world.json` (`boundary`: a ring of [x, z] in metres), or empty.
+func boundary() -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(dir.path_join("world.json")))
+	if parsed is Dictionary:
+		for p: Variant in (parsed as Dictionary).get("boundary", []) as Array:
+			var xy: Array = p
+			out.append(Vector2(float(xy[0]), float(xy[1])))
+	return out
+
+
 ## The road pieces of one tile, read on first use (thread-safe); null outside the world.
 func tile_roads(tile: Vector2i) -> RoadNetwork:
 	_mutex.lock()

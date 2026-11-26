@@ -92,14 +92,24 @@ class BoardRow:
 ## the rail file, so the FOB spans the yard as mapped.
 static func platforms(network: RailNetwork) -> Array[Platform]:
 	var tracks: Array[RailPath] = []
+	# Each track's box: the regional network has 1,300 tracks, so only the few whose box reaches a
+	# platform are projected onto (G-461).
+	var boxes: Array[Rect2] = []
 	for t in network.tracks:
 		if t.kind == "main" and t.points.size() >= 2:
 			tracks.append(RailPath.new(t.points))
+			var box := Rect2(t.points[0], Vector2.ZERO)
+			for q in t.points:
+				box = box.expand(q)
+			boxes.append(box.grow(STATION_REACH + 8.0))
 	var out: Array[Platform] = []
 	for line in network.lines:
 		for index in line.stops.size():
 			var stop := line.stops[index]
 			if stop.twin:
+				continue
+			# A Metro station in a tunnel has no platform on the map (G-462).
+			if line.underground_at(stop.s):
 				continue
 			var station := network.station(stop.id)
 			if station == null:
@@ -114,7 +124,10 @@ static func platforms(network: RailNetwork) -> Array[Platform]:
 			# Other tracks' laterals near the platform's middle (projected back into this line's frame).
 			var centre := line.path.at(stop.s).point()
 			var laterals: Array[float] = [0.0]
-			for path in tracks:
+			for ti in tracks.size():
+				if not boxes[ti].has_point(centre):
+					continue
+				var path := tracks[ti]
 				var hit := path.project_near(centre, STATION_REACH + 4.0)
 				if hit.distance > STATION_REACH + 4.0:
 					continue

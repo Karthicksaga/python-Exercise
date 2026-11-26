@@ -46,6 +46,9 @@ class TrainAt:
 
 ## A terminus on the map: a line end not beyond the map with a stop this close (G-322).
 const TERMINUS_REACH := 150.0
+## Below this rail-top height the line runs in a tunnel (the Metro, G-462): nothing is drawn there,
+## its stations have no platform on the map and rides end before it.
+const UNDERGROUND := -1.5
 
 var id: String = ""
 var name: String = ""
@@ -57,11 +60,17 @@ var profile: RunProfile
 ## Seconds between departures, and of the first one.
 var headway: float = 480.0
 var offset: float = 0.0
-## Godot additions: "suburban", "mrts" or "express"; the train type ("emu", "emu_ac", "express").
+## Godot additions: "suburban", "mrts", "express" or "metro"; the train type ("emu", "emu_ac",
+## "express", "metro").
 var system: String = "suburban"
 var train_type: String = "emu"
-## Rail-top height above the ground per path point (the MRTS viaduct), or empty (on the ground).
+## Rail-top height above the ground per path point (the MRTS viaduct; the Metro's viaducts and,
+## negative, its tunnels), or empty (on the ground).
 var heights: PackedFloat32Array = PackedFloat32Array()
+## Godot addition (G-463): "blue" or "green" for a Metro line, else "".
+var metro_line: String = ""
+## Stretches in a tunnel as (s from, s to), in order (G-462).
+var tunnels: PackedVector2Array = PackedVector2Array()
 
 
 static func from_data(data: Dictionary) -> RailLine:
@@ -90,6 +99,8 @@ static func from_data(data: Dictionary) -> RailLine:
 	if data.has("heights"):
 		for h: Variant in data["heights"] as Array:
 			line.heights.append(float(h))
+	line.metro_line = str(data.get("metroLine", ""))
+	line._find_tunnels()
 	line._make_profile(RunProfile.MotionSpec.from_data(data.get("motion", null)))
 	return line
 
@@ -132,6 +143,39 @@ func elevated() -> bool:
 	return not heights.is_empty()
 
 
+func _find_tunnels() -> void:
+	var start := -1.0
+	for i in heights.size():
+		var under := heights[i] < UNDERGROUND
+		if under and start < 0.0:
+			start = path.lengths[maxi(0, i - 1)] if i > 0 else 0.0
+		elif not under and start >= 0.0:
+			tunnels.append(Vector2(start, path.lengths[i]))
+			start = -1.0
+	if start >= 0.0:
+		tunnels.append(Vector2(start, path.length()))
+
+
+## True where the rail top at distance `s` is in a tunnel.
+func underground_at(s: float) -> bool:
+	return height_at(s) < UNDERGROUND
+
+
+## True when the line goes through a tunnel anywhere between distances `a` and `b`.
+func tunnel_between(a: float, b: float) -> bool:
+	var lo := minf(a, b)
+	var hi := maxf(a, b)
+	for t in tunnels:
+		if t.x < hi and t.y > lo:
+			return true
+	return false
+
+
+## True for a Metro line (its own trains, platforms and fares, G-462).
+func is_metro() -> bool:
+	return system == "metro"
+
+
 ## Trains on the line at railway time `clock` (seconds).
 func trains(clock: float) -> Array[TrainAt]:
 	var out: Array[TrainAt] = []
@@ -140,6 +184,23 @@ func trains(clock: float) -> Array[TrainAt]:
 	for k in range(maxi(first, -1_000_000), last + 1):
 		var t := clock - (offset + k * headway)
 		if t < 0.0 or t > profile.duration:
+			continue
+		out.append(_at(k, t))
+	return out
+
+
+## The trains on the line within `reach` metres of `at` (G-461: only these get a full state; the
+## regional lines carry dozens of trains, most of them kilometres away).
+func trains_near(clock: float, at: Vector2, reach: float) -> Array[TrainAt]:
+	var out: Array[TrainAt] = []
+	var r2 := reach * reach
+	var first := ceili((clock - offset - profile.duration) / headway)
+	var last := floori((clock - offset) / headway)
+	for k in range(maxi(first, -1_000_000), last + 1):
+		var t := clock - (offset + k * headway)
+		if t < 0.0 or t > profile.duration:
+			continue
+		if path.point_at(profile.s_at(t)).distance_squared_to(at) > r2:
 			continue
 		out.append(_at(k, t))
 	return out

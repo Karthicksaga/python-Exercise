@@ -46,9 +46,27 @@ func _to_platform(line: RailLine, index: int, u: float) -> void:
 	await wait_physics_frames(30)
 
 
+## A platform up on a viaduct: once its station's deck is built (solid), the player is put on it
+## again (the first placing can fall through before the deck exists).
+func _to_viaduct_platform(line: RailLine, index: int) -> void:
+	await _to_platform(line, index, 0.0)
+	var id := line.stops[index].id
+	await wait_until(func() -> bool: return rail.stations_view.shown_station(id), 60 * 30)
+	await wait_physics_frames(10)
+	var stop := line.stops[index]
+	var p := line.path.beside(stop.s, stop.side * RailRules.platform_offset(stop))
+	main.rig.place(WorldOrigin.to_scene(p, line.height_at(stop.s) + RailRules.PLATFORM_HEIGHT + 0.1), line.path.at(stop.s).yaw)
+	await wait_physics_frames(30)
+
+
 ## Skips the timetable to a few seconds before the next train reaches stop `index`, then waits
 ## (game time) for it to stand there.
 func _train_at(line: RailLine, index: int) -> bool:
+	# A train already standing there that leaves within 12 s is let go: the next one is waited for
+	# (the timetable since G-461 can leave one at the end of its stop when a test starts).
+	for t in line.trains(rail.clock):
+		if t.state.stopped_at == index and t.state.dwell_left < 12.0:
+			rail.advance(t.state.dwell_left + 1.0)
 	var wait := line.next_arrival(index, rail.clock)
 	if wait > 4.0:
 		rail.advance(wait - 4.0)
@@ -123,14 +141,19 @@ func test_board_at_egmore_ride_to_chetpet_and_step_off() -> bool:
 	return true
 
 
-func test_a_ride_towards_tambaram_ends_at_st_thomas_mount_and_no_money_no_ticket() -> bool:
+# CHANGED (G-461): the Beach line no longer leaves the map at St. Thomas Mount: it runs to its
+# terminus at Tambaram. A ride towards the world's edge is now one towards Arakkonam, which ends
+# at Sevvapet Road, the last station in the world; the ticket checks are as before.
+func test_a_ride_towards_arakkonam_ends_at_the_last_station_in_the_world_and_no_money_no_ticket() -> bool:
 	if not assert_true(await _start(), "the game reaches play with the railway"):
 		return true
-	var line := rail.network.line(LINE)
-	var guindy := _stop(line, "Guindy")
-	var mount := _stop(line, "St. Thomas Mount")
-	await _to_platform(line, guindy, 0.0)
-	assert_true(await _train_at(line, guindy), "a train stands at Guindy")
+	var line := rail.network.line("central-arakkonam")
+	var before := _stop(line, "Veppampattu")
+	var last := _stop(line, "Sevvapet Road")
+	assert_eq(last, line.stops.size() - 1, "Sevvapet Road is the last stop in the world")
+	assert_true(line.to.beyond, "the line runs on beyond the world")
+	await _to_platform(line, before, 0.0)
+	assert_true(await _train_at(line, before), "a train stands at Veppampattu")
 	await wait_physics_frames(60)
 	money = 0
 	assert_true(rail.board(), "BOARD pressed")
@@ -139,15 +162,74 @@ func test_a_ride_towards_tambaram_ends_at_st_thomas_mount_and_no_money_no_ticket
 	money = 100
 	assert_true(rail.board(), "BOARD with money")
 	assert_true(await wait_until(func() -> bool: return rail.state == &"ride", 60 * 6), "riding")
-	assert_eq(line.stops[line.train(rail.ride_departure, rail.clock).state.next_stop].name, "St. Thomas Mount", "next stop")
+	assert_eq(line.stops[line.train(rail.ride_departure, rail.clock).state.next_stop].name, "Sevvapet Road", "next stop")
 	rail.advance(28.0)
-	await _ride_to(line, mount)
+	await _ride_to(line, last)
 	# On arrival the ride ends by itself, with the reason on screen.
-	assert_true(await wait_until(func() -> bool: return rail.state == &"foot", 60 * 10), "the ride ends at the last station on the map")
-	assert_contains(rail.last_message, "continues to Tambaram beyond the map", "the reason")
+	assert_true(await wait_until(func() -> bool: return rail.state == &"foot", 60 * 10), "the ride ends at the last station in the world")
+	assert_contains(rail.last_message, "continues to Arakkonam beyond the map", "the reason")
 	var off := WorldOrigin.to_world(main.rig.body.global_position)
-	assert_true(off.distance_to(RailRules.platform_of(line, line.stops[mount]).point()) < 56.0, "on its platform")
+	assert_true(off.distance_to(RailRules.platform_of(line, line.stops[last]).point()) < 56.0, "on its platform")
 	assert_true(main.rig.body.global_position.y > 0.7, "at platform height")
+	return true
+
+
+func test_a_ride_to_tambaram_ends_at_the_terminus() -> bool:
+	if not assert_true(await _start(), "the game reaches play with the railway"):
+		return true
+	var line := rail.network.line(LINE)
+	var sanatorium := _stop(line, "Tambaram Sanatorium")
+	var tambaram := _stop(line, "Tambaram")
+	assert_eq(tambaram, line.stops.size() - 1, "Tambaram is the terminus")
+	assert_false(line.to.beyond, "in the world")
+	await _to_platform(line, sanatorium, 0.0)
+	assert_true(await _train_at(line, sanatorium), "a train stands at Tambaram Sanatorium")
+	await wait_physics_frames(60)
+	assert_true(rail.board(), "BOARD")
+	assert_true(await wait_until(func() -> bool: return rail.state == &"ride", 60 * 6), "riding")
+	rail.advance(28.0)
+	await _ride_to(line, tambaram)
+	assert_true(await wait_until(func() -> bool: return rail.state == &"foot", 60 * 10), "the ride ends at the terminus")
+	assert_contains(rail.last_message, "terminates at Tambaram", "the reason")
+	return true
+
+
+## G-462: the Metro. Board a Blue Line train at Guindy on its viaduct (₹20, BOARD THE METRO, no
+## cab), ride to Little Mount, where the ride ends because the line goes underground; boarding
+## at Little Mount itself is refused for the same reason. Its cars are the Metro set.
+func test_metro_ride_on_the_viaduct_ends_where_the_line_goes_underground() -> bool:
+	if not assert_true(await _start(), "the game reaches play with the railway"):
+		return true
+	var line := rail.network.line("metro-blue-north")
+	assert_true(line != null and line.is_metro(), "the Blue Line is a Metro line")
+	var guindy := _stop(line, "Guindy Metro")
+	var mount := _stop(line, "Little Mount")
+	assert_true(line.height_at(line.stops[guindy].s) > 10.0, "Guindy is up on the viaduct")
+	assert_true(line.underground_at(line.stops[mount + 1].s), "the next stop after Little Mount is underground")
+	await _to_viaduct_platform(line, guindy)
+	assert_true(main.rig.body.global_position.y > 10.0, "on the viaduct's platform (%.1f m)" % main.rig.body.global_position.y)
+	assert_true(await _train_at(line, guindy), "a Metro train stands at Guindy")
+	await wait_physics_frames(30)
+	assert_true(rail.trains_view.drawn_cars >= 4, "its four cars are drawn")
+	assert_true(rail.models.types.has("metro_cab") and rail.models.types.has("metro_car"), "the Metro cars are loaded")
+	assert_true(await wait_until(func() -> bool: return rail.trains_view.nearest_doors > 0.8, 60 * 5), "doors open")
+	var offer := rail.offer() as ActionCandidate
+	assert_true(offer != null and offer.label == RailText.BOARD_METRO, "ACTION offers BOARD THE METRO")
+	assert_true(rail.cab_offer_train() == null, "no cab on the Metro")
+	assert_true(rail.board(), "BOARD")
+	assert_eq(money, 100 - RailRules.METRO_FARE, "the Metro fare")
+	assert_contains(rail.last_message, "Metro Blue Line", "the toast names the line")
+	assert_true(await wait_until(func() -> bool: return rail.state == &"ride", 60 * 6), "riding")
+	rail.advance(18.0)
+	await _ride_to(line, mount)
+	assert_true(await wait_until(func() -> bool: return rail.state == &"foot", 60 * 10), "the ride ends before the tunnel")
+	assert_contains(rail.last_message, RailText.RIDE_UNDERGROUND, "the reason")
+	assert_true(main.rig.body.global_position.y > 10.0, "on Little Mount's platform, up on the viaduct")
+	assert_true(await _train_at(line, mount), "the next train stands at Little Mount")
+	await wait_physics_frames(30)
+	assert_true(rail.board(), "BOARD pressed")
+	assert_eq(rail.state, &"foot", "refused")
+	assert_contains(rail.last_message, RailText.UNDERGROUND_NEXT, "it goes underground before its next stop")
 	return true
 
 

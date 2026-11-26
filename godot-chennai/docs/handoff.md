@@ -1652,3 +1652,43 @@ no longer expects GET OUT mirrored (it stays in the top-right row; mirrored it s
   wider than their 300 px button and their second line touches or passes the edge at 915x412.
 - A replayed tap still presses at release, so the pressed look of a row in a scrolling list shows only
   then (unchanged from G-350).
+
+## Rail extras: rail on the maps, the Metro, trains past the old edge, the whole-city map (G-460…G-468, agent/godot-rail2), 25-26 Nov 2026
+**Done (tested here, desktop only):**
+- Data: `tools/rail/extract_rail.py` (pyosmium, needs `data/raw/world.osm.pbf`) → committed
+  `data/rail/regional-rail.osm.json.gz`; `tools/rail/build_rail.py` builds `world/rail/rail.json`
+  (482 KB: 22 lines, 126 stations, 1,268 tracks of which 113 estimated second-track runs, 409 level
+  crossings) and `world/rail/RAIL.md`. `--threejs` still reproduces the Three.js file value for value.
+- Lines past the old edge (G-461): Beach–Tambaram between its termini, Perungalattur–Chengalpattu,
+  Central–beyond Sevvapet Road (Arakkonam), Beach–beyond Arambakkam (Sullurpeta) and the three
+  estimated return services, the expresses to the world's edge. Keep-left onto the other track.
+- Metro Blue and Green both ways (G-462, G-464): viaducts drawn, tunnels in the timetable only,
+  original four-car Metro model, ₹20, BOARD THE METRO, no cab, rides end before a tunnel.
+- Maps (G-463, G-465, G-466): rail coloured per kind with named station dots on the minimap and the
+  full map; RAIL ON/OFF under the legend's kinds toggles both maps (saved); Low keeps the colours (no
+  casing, no tunnels, no names on the minimap). The full map now covers the whole city (every tile's main roads, the land
+  inside the world's edge) and labels suburbs, neighbourhoods, main roads, stations, hospitals,
+  police, bus stands and bus stops, decluttered by priority and zoom; two wider zoom steps.
+- AI: Metro stations are not the AI's busy station places (`"metro": true` in the stations list;
+  without this the start in Anna Nagar became a station place and `test_game_vehicles` failed).
+- Strings: every new player-visible word is in `src/rail/rail_text.gd` (`RailText`) until
+  agent/godot-lang's `Tr` is merged (then move them to `assets/i18n/en.csv` + `ta.csv`).
+**Measured** (`tests/tools/rail_shots.gd --shot=measure [--at=guindy]`, headless, title screen over
+the live city, this shared 4-core container with other agents' Godot runs, two runs each; base =
+origin/agent/godot-merge-transit): `Railway` main-thread frame avg at Egmore 0.375 / 0.403 ms before,
+0.596 / 0.483 ms after; at Guindy 0.337 / 0.341 before, 0.399 / 0.379 after; physics step 0.24–0.28
+before, 0.28–0.33 after (crowds part 155–197 µs before, 210–249 after). The first regional build
+measured 0.96 ms at Egmore; `lines_near` + `trains_near` + a 60 m line cache brought it here. The
+full map's city is built on a worker: 3.1 s here for 66,867 road segments and 3,593 labels.
+**Shared files touched (small):** `missions_layer.gd` (rail and city on the maps), `railway_wiring.gd`,
+`regional_world_source.gd` (`read_tile_roads`, `boundary`), `ai_area.gd` (skip Metro stations),
+`map_road_feed.gd` (near set fix, `near_task`), `assets/LICENSES.md`, `trains.py`.
+**Weak or not done:** nothing checked on a phone; the city build takes seconds on a phone (map shows
+"Drawing the map..." meanwhile) and holds ~67k segments; Metro tunnels and underground stations are
+not drawn (rides there are impossible; underground stations show on the maps only); Metro and
+second-track heights and the return services are estimates; Velachery MRTS is at grade (OSM has no
+bridge tag there); Tambaram–Perungalattur is not run by the Chengalpattu line (OSM relation starts
+there); Yellow and Inter-Corridor Metro lines not added; the full map has no residential street
+names (main roads only, unlike the Three.js map's ranked street labels at close zoom) and no park or
+water fills; hospital and police labels are generic words (TD-18); Sullurpeta line averages 58 km/h
+(OSM maps 19 stations on 67 km); main-thread cost is up about 0.05–0.2 ms a frame (noisy machine).

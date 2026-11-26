@@ -680,6 +680,15 @@ func _update_minimap(dt: float, at: Vector2, st: MissionData.PlayerStatus) -> vo
 	if not _mini_roads.covers(at, Minimap.RANGE):
 		_map_feed.world = world
 		_mini_roads = _map_feed.nearby(at, Minimap.RANGE + 140.0)
+	if rail_map != null and (_mini_rail == null or not _mini_rail.covers(at, Minimap.RANGE)):
+		_mini_rail = rail_map.nearby(at, Minimap.RANGE + 340.0)
+	hud.minimap.rail = _mini_rail
+	hud.minimap.cheap = QualitySettings.shared().preset == QualitySettings.LOW
+	# The full map's whole city is read in the background once the game has run a while (G-466),
+	# so it is usually ready when the map is first opened.
+	_map_played += MAP_STEP
+	if _map_played > MAP_CITY_AFTER and _map_played < MAP_CITY_AFTER + MAP_STEP * 1.5 and world != null and world.source != null:
+		MapCityFeed.shared_task(world.source, hud.minimap.cheap)
 	var yaw := rig.body.global_rotation.y if driven() == null else driven().global_rotation.y
 	hud.minimap.set_view(at, yaw, zones, _mini_roads, map_markers(at, Minimap.RANGE), followed)
 
@@ -720,6 +729,12 @@ func open_map() -> void:
 	_map_feed.wide_task(at)
 	var near := _mini_roads
 	full_map.loading = true
+	var low := QualitySettings.shared().preset == QualitySettings.LOW
+	full_map.set_rail(rail_map, low)
+	# The whole city with its labels (G-466): built once a game on a worker thread.
+	if world != null and world.source != null:
+		MapCityFeed.shared_task(world.source, low)
+	full_map.set_city(MapCityFeed.shared())
 	full_map.open(at, yaw, near, null, map_markers(at, INF))
 	full_map.set_zoom(1)
 
@@ -734,6 +749,19 @@ func close_map() -> bool:
 func _exit_tree() -> void:
 	# A road read on a worker must end before the game does.
 	_map_feed.wait()
+	MapCityFeed.wait()
+
+
+## A pan or zoom of the full map ended: the streets round the new centre, when the near set does
+## not reach there (read on a worker; `_poll_map` takes them in).
+func _on_map_moved(centre: Vector2) -> void:
+	if full_map == null or full_map.zoom > 1:
+		return
+	var near := full_map.near_roads
+	if near != null and near.covers(centre, FullMap.ZOOMS[1] * 2.2):
+		return
+	_map_feed.world = world
+	_map_feed.near_task(centre)
 
 
 func _on_map_closed() -> void:
@@ -744,13 +772,18 @@ func _on_map_closed() -> void:
 
 ## While the full map is open: take the wide road sets in as soon as the worker has them.
 func _poll_map() -> void:
-	if full_map == null or not full_map.is_open() or _map_feed.result.is_empty() or not _map_feed.finished():
+	if full_map == null or not full_map.is_open():
+		return
+	if full_map.city == null and MapCityFeed.shared() != null:
+		full_map.set_city(MapCityFeed.shared())
+	if _map_feed.result.is_empty() or not _map_feed.finished():
 		return
 	_map_feed.wait()
 	var got: Dictionary = _map_feed.result
 	_map_feed.result = {}
-	full_map.loading = false
-	full_map.set_roads(got["near"], got["wide"])
+	full_map.loading = full_map.city == null
+	var wide: Variant = got.get("wide", null)
+	full_map.set_roads(got["near"], wide as MapRoads if wide != null else full_map.wide_roads)
 
 
 ## NEW GAME: forget the progress, park everything back and put the player at the start.
