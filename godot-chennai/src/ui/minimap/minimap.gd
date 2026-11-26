@@ -27,6 +27,7 @@ var markers: Array[Dictionary] = []
 var player := Vector2.ZERO
 var heading := 0.0
 var quarry := Vector2.INF
+var route_polyline := PackedVector2Array()
 var settings: MapSettings = null
 ## How many times `set_view` was called (tests count refreshes).
 var updates := 0
@@ -152,6 +153,9 @@ func _paint_content(l: Control) -> void:
 			l.draw_multiline(roads.major, Color(1, 0.93, 0.78, 0.55), 2.2 / ppm)
 	for z in zones:
 		_paint_zone(l, z)
+	if route_polyline.size() >= 2:
+		l.draw_polyline(route_polyline, Color(0.06, 0.25, 0.45, 0.9), 5.0 / ppm)
+		l.draw_polyline(route_polyline, Color("#38bdf8"), 2.8 / ppm)
 	if quarry != Vector2.INF:
 		l.draw_circle(quarry, 4.0 / ppm, Color.WHITE)
 	# Areas of the markers that are on the plate: a thin ring of the real size.
@@ -207,10 +211,14 @@ func _paint_overlay(l: Control) -> void:
 			var tp := (c + (hit["at"] as Vector2) + inward * 22.0) - Vector2(width / 2.0, -4.0)
 			l.draw_string_outline(_font, tp, text, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE, 4, Color(0, 0, 0, 0.85))
 			l.draw_string(_font, tp, text, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE, colour)
+	# North: a letter that moves round the rim when the map turns.
+	var north := Vector2.UP.rotated(projection.angle())
+	var np := c + north * (radius - 10.0)
 	if not markers.is_empty() and bool(projection.clamp_to_circle(marker_point(), radius, MARKER_INSET)["inside"]):
 		var near := MapProjection.distance_text(marker_point().distance_to(player))
 		var w2 := _font.get_string_size(near, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE).x
-		var p2 := Vector2(c.x - w2 / 2.0, size.y - 8.0)
+		var label_y := size.y - 20.0 if (north.y > 0.65 and absf(np.x - c.x) < w2 * 0.5 + 12.0) else size.y - 8.0
+		var p2 := Vector2(c.x - w2 / 2.0, label_y)
 		l.draw_string_outline(_font, p2, near, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE, 4, Color(0, 0, 0, 0.85))
 		l.draw_string(_font, p2, near, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE, MarkerKind.colour_of(StringName(str(markers[0].get("kind", "mission")))))
 	# The player: an arrow pointing the way they face (up when the map turns).
@@ -219,8 +227,5 @@ func _paint_overlay(l: Control) -> void:
 	var tip := c + fwd * 8.0
 	l.draw_colored_polygon(PackedVector2Array([tip, c - fwd * 6.0 + side * 5.0, c - fwd * 2.5, c - fwd * 6.0 - side * 5.0]), Color.WHITE)
 	l.draw_polyline(PackedVector2Array([tip, c - fwd * 6.0 + side * 5.0, c - fwd * 2.5, c - fwd * 6.0 - side * 5.0, tip]), Color(0.05, 0.06, 0.09, 0.9), 1.5)
-	# North: a letter that moves round the rim when the map turns.
-	var north := Vector2.UP.rotated(projection.angle())
-	var np := c + north * (radius - 10.0)
 	l.draw_string_outline(_font, np + Vector2(-4, 4), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE, 4, Color(0, 0, 0, 0.85))
 	l.draw_string(_font, np + Vector2(-4, 4), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_SIZE, Color(1, 1, 1, 0.85))

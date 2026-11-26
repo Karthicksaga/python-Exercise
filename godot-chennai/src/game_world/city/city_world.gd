@@ -24,6 +24,8 @@ signal ready_to_stream
 @export var road_detail: bool = true
 ## Optional road detail by quality preset, 0 Low, 1 Medium, 2 High (G-317); the performance wiring sets it.
 @export var road_extras: int = 2
+## Blender 100-building replacement pack (`BuildingPack`); off leaves legacy procedural boxes only.
+@export var pack100_buildings: bool = true
 ## Recentre the floating origin on `focus_node` when it wanders far (G-7).
 @export var manage_origin: bool = false
 ## The Three.js game's spawn: the nearest road to this point (`content.ts`).
@@ -32,6 +34,7 @@ const SPAWN_NEAR := Vector2(40.0, 60.0)
 var source: WorldSource
 var layouts: CityLayouts
 var models: CityModels
+var building_pack: BuildingPack
 var materials: CityMaterials
 var streamer: ChunkStreamer
 ## {"point": Vector2, "heading": float} on the road nearest SPAWN_NEAR.
@@ -92,6 +95,12 @@ func setup(world: WorldSource) -> String:
 		kit.sea_box = Rect2(lo, hi - lo)
 	kit.signs = SignCategories.shared()
 	kit.palettes = AreaPalettes.load_file()
+	if pack100_buildings and BuildingPack.available():
+		building_pack = await BackgroundTask.start(func() -> BuildingPack: return BuildingPack.load_pack(true)).finish(get_tree())
+		if building_pack.error != "":
+			push_warning(building_pack.error)
+		else:
+			kit.building_pack = building_pack
 	if show_landmarks:
 		landmarks = await BackgroundTask.start(func() -> Array[LandmarkSpec]: return LandmarkSpec.load_all()).finish(get_tree())
 	kit.landmarks = landmarks

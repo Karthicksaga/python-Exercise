@@ -303,7 +303,7 @@ static func _mitre(pts: PackedVector2Array, i: int) -> Vector2:
 	if m.length() < 1e-6:
 		return n1
 	m = m.normalized()
-	return m / maxf(0.5, m.dot(n0))
+	return m / maxf(0.70, m.dot(n0))
 
 
 ## Corners of a shelter's footprint.

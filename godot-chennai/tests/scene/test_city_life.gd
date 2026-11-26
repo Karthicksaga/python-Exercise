@@ -156,6 +156,14 @@ func test_carjacking_stop_a_car_pull_the_driver_out_and_drive_off() -> bool:
 	var taken := jack.vehicle
 	var paint := life.views[jack.agent_id].paint
 	var id := jack.agent_id
+	if jack._driver != null:
+		assert_eq(jack._driver.clip, &"sit", "stopped vehicle driver keeps sitting clip")
+		assert_true(jack._driver.seat != null, "stopped vehicle driver has SeatPose applied")
+		assert_near(jack._driver.position.y, life.views[id].driver_seat.y - CityLife.SEAT_HIP, 0.02, "driver sits at SEAT_HIP offset inside cab")
+		if jack._driver.poser != null:
+			var hips_world := jack._driver.global_transform * jack._driver.poser.at(PoseRig.HIPS)
+			var roof_y := taken.global_position.y + taken.model.position.y + taken.type.spec.half_extents.y * 2.0
+			assert_true(hips_world.y < roof_y, "seated hips stay below vehicle height (hips %.2f, roof %.2f)" % [hips_world.y, roof_y])
 	assert_true(driving.nearest_vehicle() == taken, "it is the vehicle the Get-in button offers")
 	assert_true(driving.enter(driving.nearest_vehicle()), "getting in starts")
 	assert_true(driving.boarding.phase() == &"approach" or driving.boarding.phase() == &"open", "walking to the door")

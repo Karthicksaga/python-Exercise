@@ -77,9 +77,10 @@ func _init(with_poles: bool = false) -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	sun.directional_shadow_max_distance = SHADOW_REACH
-	sun.shadow_bias = 0.05
-	sun.shadow_normal_bias = 1.5
-	sun.shadow_blur = 1.5
+	sun.shadow_bias = 0.02
+	sun.shadow_normal_bias = 0.35
+	sun.shadow_blur = 1.6
+	sun.directional_shadow_pancake_size = 20.0
 	add_child(sun)
 	rain = RainView.new(RAIN_DROPS)
 	add_child(rain)

@@ -29,10 +29,14 @@ const SENSITIVITY := 0.0055
 const MIN_PITCH := -0.2
 const MAX_PITCH := 1.15
 ## Distance behind a person on foot, metres, and the closest it comes.
+## MIN_DISTANCE 0.9→1.6: prevents the camera from diving into the player's back
+## when a wall is directly behind the player (the probe sphere was clipping the body).
 const DISTANCE := 5.6
-const MIN_DISTANCE := 0.9
+const MIN_DISTANCE := 1.6
 ## Height above the feet that the camera looks at (about the shoulders).
-const LOOK_HEIGHT := 1.5
+## LOOK_HEIGHT 1.5→1.65: raises the focus above the shoulder blades so at min distance
+## the view is still above the collar, not into the torso.
+const LOOK_HEIGHT := 1.65
 const FOLLOW_RATE := 14.0
 const SNAP_DISTANCE := 8.0
 ## Look-ahead: seconds of travel ahead on foot and in a vehicle, at most this far, eased at this rate.
@@ -48,7 +52,7 @@ const SPEED_FOV := 7.0
 const TRAVEL_TRAIL_FROM := 3.0
 const TRAIL_RATE := 2.6
 ## Collision: probe radius (larger than the near plane's half size), gap kept from a hit, metres.
-const PROBE_RADIUS := 0.22
+const PROBE_RADIUS := 0.28
 const MARGIN := 0.15
 ## An obstacle along the view thinner than this is a pole or a person, not a wall, metres.
 const THIN := 0.8
@@ -99,8 +103,8 @@ func _init() -> void:
 	camera = Camera3D.new()
 	camera.name = "Camera"
 	camera.fov = BASE_FOV
-	camera.near = 0.1
-	camera.far = 1500.0
+	camera.near = 0.35
+	camera.far = 750.0
 	add_child(camera)
 	_probe.radius = PROBE_RADIUS
 
@@ -247,6 +251,8 @@ func update(dt: float) -> void:
 	var look_at_point := _focus + Vector3(_lead.x, 0.0, _lead.z)
 	if global_position.distance_to(look_at_point) > 0.01:
 		look_at(look_at_point, Vector3.UP)
+	if snapping:
+		reset_physics_interpolation()
 	_shake(dt)
 
 
@@ -267,17 +273,39 @@ func _sweep(from: Vector3, dir: Vector3, length: float) -> float:
 
 
 ## True when the obstacles between the focus and the wanted camera place are thin (seen past):
-## the place itself is free, and sweeping back from it meets the obstacle within THIN of where
-## the forward sweep met it.
+## a tree collider, or an obstacle thinner than THIN without a wall behind within THIN.
 func _thin(dir: Vector3, want: float, hit: float) -> bool:
+	if _is_tree_hit(dir, hit):
+		return true
 	var place := _focus + dir * want
 	if _inside(place):
 		return false
-	var back := _sweep(place, -dir, want)
+	var max_sweep := minf(want, hit + THIN + _probe.radius * 2.0 + 0.1)
+	var probe_end := _focus + dir * max_sweep
+	if max_sweep < want and _inside(probe_end):
+		return false
+	var back := _sweep(probe_end, -dir, max_sweep)
 	if back < 0.0:
 		return true
-	var exit := want - back
+	var exit := max_sweep - back
 	return exit - hit < THIN
+
+
+func _is_tree_hit(dir: Vector3, hit: float) -> bool:
+	var space := get_world_3d().direct_space_state
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = _probe
+	q.transform = Transform3D(Basis.IDENTITY, _focus + dir * (hit + _probe.radius + 0.05))
+	q.collision_mask = VIEW_MASK
+	q.exclude = exclude
+	var hits := space.intersect_shape(q, 2)
+	if hits.is_empty():
+		return false
+	for h: Dictionary in hits:
+		var node := h.get("collider") as Node
+		if node == null or not node.is_in_group(&"tree_collider"):
+			return false
+	return true
 
 
 func _inside(at: Vector3) -> bool:

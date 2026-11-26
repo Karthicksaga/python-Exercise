@@ -56,14 +56,15 @@ var _seat_version: int = -1
 
 
 ## A view of person `id` from its loaded scene (no file access here; the pool loads scenes).
-static func make(id: String, scene: PackedScene, seat: float) -> PersonView:
+static func make(id: String, scene: PackedScene, seat: float, sole_offset: float = 0.0) -> PersonView:
 	var v := PersonView.new()
 	v.name = "Person_%s" % id.replace("-", "_")
 	v.person_id = id
 	v.seat_height = seat
 	var body := scene.instantiate() as Node3D
-	# The cast faces glTF +Z; the game's heading 0 faces -Z.
+	# The cast faces glTF +Z; the game's heading 0 faces -Z. Ground rest soles on y = 0.
 	body.rotation.y = PI
+	body.position.y = sole_offset
 	v.add_child(body)
 	for n in body.find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D

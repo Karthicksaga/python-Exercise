@@ -15,7 +15,7 @@ extends RefCounted
 ##   the project's Tamil font when the spec has `signs` (TD-18: nothing else).
 
 const LOD_NAMES: Array[String] = ["LOD0", "LOD1", "LOD2"]
-const FADE := 12.0
+const FADE := 0.0
 const SIGN_FONT := "res://assets/fonts/noto-sans-tamil-signs.woff2"
 
 

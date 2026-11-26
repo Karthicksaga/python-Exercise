@@ -24,6 +24,10 @@ const SAMPLE_RATE := 30.0
 ## The lowest few sole vertices of every sampled frame are run-time candidates, with the
 ## support points of each foot part (`SoleSet.support_points`).
 const CANDIDATES_PER_FRAME := 4
+## Share of the source clip's clavicle swing carried to MPFB A-pose shoulders: the CC0 clips
+## retract the clavicles ~48 deg backward/upward, pinching shirt shoulder seams when coupled with
+## arm settling; keeping 30% preserves natural sway while preventing shoulder horns.
+const SHOULDER_FOLLOW := 0.30
 
 ## Limb bones and the child that gives the direction each one points in.
 const LIMB_CHILD := {
@@ -192,6 +196,8 @@ static func run(source: RigData, clips: Dictionary[String, Animation], target: R
 				var parent_world := target_root if p < 0 else world[p]
 				if src_of[i] >= 0:
 					world[i] = src_world[src_of[i]] * source_rest_inverse[i] * rest_world[i]
+					if target.names[i] == "LeftShoulder" or target.names[i] == "RightShoulder":
+						world[i] = (parent_world * rest_local_rot[i]).slerp(world[i], SHOULDER_FOLLOW)
 				else:
 					world[i] = parent_world * rest_local_rot[i]
 				locals[i] = (parent_world.inverse() * world[i]).normalized()

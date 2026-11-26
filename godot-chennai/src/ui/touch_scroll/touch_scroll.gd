@@ -294,7 +294,7 @@ func _tap(local: Vector2) -> void:
 	var motion := InputEventMouseMotion.new()
 	motion.position = global
 	motion.global_position = global
-	vp.push_input(motion)
+	vp.push_input(motion, true)
 	for down: bool in [true, false]:
 		var b := InputEventMouseButton.new()
 		b.button_index = MOUSE_BUTTON_LEFT
@@ -302,5 +302,5 @@ func _tap(local: Vector2) -> void:
 		b.button_mask = MOUSE_BUTTON_MASK_LEFT if down else 0
 		b.position = global
 		b.global_position = global
-		vp.push_input(b)
+		vp.push_input(b, true)
 	_replaying = false

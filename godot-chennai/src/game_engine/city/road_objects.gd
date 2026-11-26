@@ -8,7 +8,7 @@ const WIRE_HEIGHTS: Array[float] = [8.25, 7.95]
 const WIRE_LATERAL: Array[float] = [0.0, 0.32]
 const WIRE_SAG := 0.45
 const WIRE_STEPS := 4
-const WIRE_WIDTH := 0.05
+const WIRE_WIDTH := 0.065
 const WIRE_COLOUR := 0x16171a
 ## Longest span a wire crosses between two poles, and the shortest worth drawing.
 const WIRE_MAX := 75.0

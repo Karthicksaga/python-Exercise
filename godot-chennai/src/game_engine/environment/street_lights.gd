@@ -10,8 +10,12 @@ extends Node3D
 const COOL := Color(0.78, 0.88, 1.0)
 ## Real lights at most (Mobile renderer: 8 omni lights per mesh; leave room for headlights).
 const POOL := 6
-const RANGE := 15.0
+const RANGE := 16.0
 const HEAD_HEIGHT := 7.5
+## Reduced 1.35→0.85: prevents blown-out white disk on road surface at night.
+const LIGHT_ENERGY := 0.85
+const LIGHT_FADE_SPEED := 3.0
+const GLOW_ALPHA := 0.34
 
 ## Lamp points: x and z on the ground, y the height of the head above it (0: `head_height`).
 var lamps: PackedVector3Array = PackedVector3Array()
@@ -32,11 +36,12 @@ var _glow: MultiMeshInstance3D
 var _poles: MultiMeshInstance3D = null
 var _glow_material: StandardMaterial3D
 var _pick_timer: float = 0.0
+var _slot_fade: PackedFloat32Array = PackedFloat32Array()
 ## The pool quad's height below the head in the shared mesh (instances scale it to their own).
 const GLOW_REF := 8.0
-## 13 m across under a 9 m pole (G-259: the ground has no real light, the pool is all it gets).
-const POOL_SIZE := 13.0
-const HALO_SIZE := 2.6
+## 10.5 m across under a 9 m pole (G-259: soft light pool without blowing out adjacent poles).
+const POOL_SIZE := 10.5
+const HALO_SIZE := 1.35
 
 
 func _init(with_poles: bool = false) -> void:
@@ -57,7 +62,8 @@ func _init(with_poles: bool = false) -> void:
 	if with_poles:
 		var pole_material := StandardMaterial3D.new()
 		pole_material.albedo_color = Color(0.42, 0.43, 0.42)
-		pole_material.roughness = 0.8
+		pole_material.roughness = 0.85
+		pole_material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 		var pole := CylinderMesh.new()
 		pole.top_radius = 0.07
 		pole.bottom_radius = 0.1
@@ -70,7 +76,8 @@ func _init(with_poles: bool = false) -> void:
 		var light := OmniLight3D.new()
 		light.light_color = COOL
 		light.omni_range = RANGE
-		light.omni_attenuation = 1.2
+		## Increased attenuation 1.5→2.2: steeper falloff avoids blown-out bright core on the road.
+		light.omni_attenuation = 2.2
 		light.shadow_enabled = false
 		# Not the merged chunk meshes (their glow is the ground pools); vehicles, people, props.
 		light.light_cull_mask = 0xFFFFF & ~ChunkBuilder.RENDER_LAYER
@@ -78,13 +85,16 @@ func _init(with_poles: bool = false) -> void:
 		light.visible = false
 		add_child(light)
 		lights.append(light)
+		_slot_fade.append(1.0)
 
 
-## A soft round falloff, white in the middle.
+## A soft round falloff, bright in the middle without clipping to harsh white.
+## Centre alpha 0.72→0.38: prevents the blown-out white disk seen on dark roads at night.
+## Mid-stop alpha 0.22→0.10 and moved out to 0.50 for a wider, gentler gradient.
 static func _radial() -> GradientTexture2D:
 	var g := Gradient.new()
-	g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.35), Color(1, 1, 1, 0)])
-	g.offsets = PackedFloat32Array([0.0, 0.3, 1.0])
+	g.colors = PackedColorArray([Color(1, 1, 1, 0.38), Color(1, 1, 1, 0.10), Color(1, 1, 1, 0)])
+	g.offsets = PackedFloat32Array([0.0, 0.50, 1.0])
 	var t := GradientTexture2D.new()
 	t.gradient = g
 	t.fill = GradientTexture2D.FILL_RADIAL
@@ -156,19 +166,25 @@ func step(dt: float, camera_position: Vector3, night_amount: float) -> void:
 	night = night_amount
 	var glow := clampf((night - 0.15) / 0.85, 0.0, 1.0)
 	_glow.visible = glow > 0.01 and not lamps.is_empty()
-	_glow_material.albedo_color = Color(1, 1, 1, 0.9 * glow)
+	_glow_material.albedo_color = Color(1, 1, 1, GLOW_ALPHA * glow)
 	_pick_timer -= dt
 	if _pick_timer <= 0.0:
 		_pick_timer = 0.25
 		_pick(camera_position)
 	for k in lights.size():
 		var light := lights[k]
-		light.visible = glow > 0.01 and light.has_meta(&"lamp") and k < pool
-		light.light_energy = 3.2 * glow
+		var active := glow > 0.01 and light.has_meta(&"lamp") and k < pool
+		light.visible = active
+		if active:
+			_slot_fade[k] = minf(1.0, _slot_fade[k] + maxf(dt, 0.0) * LIGHT_FADE_SPEED)
+		else:
+			_slot_fade[k] = 1.0
+		light.light_energy = LIGHT_ENERGY * glow * _slot_fade[k]
 
 
 func _pick(from: Vector3) -> void:
-	# The nearest few by one scan (no sort of every lamp; G-257): lights.size() is at most POOL.
+	# The nearest few by one scan (no sort of every lamp; G-257): keep active slots pinned to the
+	# same lamp position so OmniLight3Ds never shuffle slots and new lamps fade in smoothly.
 	var best: Array[int] = []
 	var best_d := PackedFloat32Array()
 	for i in lamps.size():
@@ -183,13 +199,42 @@ func _pick(from: Vector3) -> void:
 		if best.size() > lights.size():
 			best.resize(lights.size())
 			best_d.resize(lights.size())
+	var slot_used := PackedByteArray()
+	slot_used.resize(lights.size())
+	var lamp_used := PackedByteArray()
+	lamp_used.resize(best.size())
 	for k in lights.size():
 		var light := lights[k]
-		if k < best.size():
-			light.position = Vector3(lamps[best[k]].x, _head(best[k]) - 0.3, lamps[best[k]].z)
-			light.set_meta(&"lamp", best[k])
+		if not light.has_meta(&"lamp"):
+			continue
+		var cur := Vector2(light.position.x, light.position.z)
+		for j in best.size():
+			if lamp_used[j] != 0:
+				continue
+			var li := best[j]
+			if cur.distance_squared_to(Vector2(lamps[li].x, lamps[li].z)) < 0.04:
+				light.position = Vector3(lamps[li].x, _head(li) - 0.3, lamps[li].z)
+				light.set_meta(&"lamp", li)
+				slot_used[k] = 1
+				lamp_used[j] = 1
+				break
+	var next_j := 0
+	for k in lights.size():
+		if slot_used[k] != 0:
+			continue
+		while next_j < best.size() and lamp_used[next_j] != 0:
+			next_j += 1
+		var light := lights[k]
+		if next_j < best.size():
+			var li := best[next_j]
+			lamp_used[next_j] = 1
+			var was_lit := light.visible
+			light.position = Vector3(lamps[li].x, _head(li) - 0.3, lamps[li].z)
+			light.set_meta(&"lamp", li)
+			_slot_fade[k] = 0.0 if was_lit else 1.0
 		elif light.has_meta(&"lamp"):
 			light.remove_meta(&"lamp")
+			_slot_fade[k] = 1.0
 
 
 ## Real lights lit now (tests: the budget).

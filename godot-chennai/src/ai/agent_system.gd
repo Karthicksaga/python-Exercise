@@ -641,13 +641,13 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 			if other == a or not other.active or other.pos.distance_squared_to(a.pos) > near_sq:
 				continue
 			var c := cos(other.heading - a.heading)
-			if walker and (c < 0.0 or other.speed < a.speed * 0.7):
-				# Someone coming the other way, or dawdling ahead: step round them.
+			if walker and (c < 0.0 or other.speed < a.speed * 0.7 or a.pos.distance_squared_to(other.pos) < 1.0):
+				# Someone coming the other way, dawdling ahead, or walking close abreast: step clear.
 				var rw := other.pos - a.pos
 				var ahead_w := rw.dot(f)
 				var room := k.half_width + kinds[other.kind].half_width + PASSING_ROOM
-				if ahead_w > k.half_length + kinds[other.kind].half_length + 0.1 and ahead_w < DODGE_AHEAD + a.speed:
-					var aside_w := _aside(a, room, rw.x * f.y - rw.y * f.x, ahead_w)
+				if ahead_w > -room and ahead_w < DODGE_AHEAD + a.speed:
+					var aside_w := _aside(a, room, rw.x * f.y - rw.y * f.x, ahead_w + room)
 					if aside_w != INF:
 						step_to = aside_w if not stepping or absf(aside_w) > absf(step_to) else step_to
 						stepping = true
@@ -760,7 +760,7 @@ func update(dt: float, obstacles: PackedVector3Array, focus: Vector2, siren: Var
 func _aside(a: Agent, room: float, lateral: float, ahead: float) -> float:
 	if absf(lateral) >= room or ahead <= 0.0:
 		return INF
-	var side := -1.0 if lateral > 0.1 else 1.0
+	var side := -1.0 if lateral >= 0.0 else 1.0
 	return clampf(a.dodge + side * (room - absf(lateral)), -DODGE_MAX, DODGE_MAX)
 
 

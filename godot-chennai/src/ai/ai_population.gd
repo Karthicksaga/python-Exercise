@@ -110,9 +110,10 @@ func _apply_levels(hour: float, immediately: bool = false) -> void:
 	traffic.set_active_count(counts.y if traffic_cap < 0 else mini(counts.y, traffic_cap), immediately)
 
 
-## One step of everything. `obstacles`: Vector3(x, z, radius) of the player and anything else
-## everyone must keep clear of (world metres); `siren`: Vector3(x, z, heading) or null.
-func step(dt: float, focus: Vector2, hour: float, obstacles: PackedVector3Array, siren: Variant = null) -> void:
+## One step of everything. `obstacles`: Vector3(x, z, radius) things everyone stops for (player,
+## vehicles, crossings); `walker_obstacles`: static roadside items (poles, tree trunks) only
+## pedestrians avoid; `siren`: Vector3(x, z, heading) or null.
+func step(dt: float, focus: Vector2, hour: float, obstacles: PackedVector3Array, siren: Variant = null, walker_obstacles: PackedVector3Array = PackedVector3Array()) -> void:
 	if traffic == null:
 		return
 	time += dt
@@ -132,10 +133,12 @@ func step(dt: float, focus: Vector2, hour: float, obstacles: PackedVector3Array,
 	var vehicles := vehicle_obstacles()
 	var for_walkers := obstacles.duplicate()
 	for_walkers.append_array(vehicles)
+	for_walkers.append_array(walker_obstacles)
 	walkers.update(dt, for_walkers, focus)
 	var t2 := Time.get_ticks_usec()
 	var avoid := obstacles.duplicate()
 	avoid.append_array(vehicles)
+	avoid.append_array(walker_obstacles)
 	people = crowd.people_near(focus, hour, time, avoid) if crowds_on else ([] as Array[CrowdField.Person])
 	cost_usec = Vector3i(t1 - t0, t2 - t1, Time.get_ticks_usec() - t2)
 

@@ -1,0 +1,327 @@
+{
+  "schema_version": 1,
+  "description": "Protected custom-built landmarks and exclusion rules for godot-chennai. Never overwrite, replace, resize, retexture, or strip collision/scripts.",
+  "protection_rules": {
+    "match_by": [
+      "stable_id",
+      "osm_id",
+      "spatial_footprint_containment"
+    ],
+    "exclude_from_replacement_osm_uses": [
+      "religious",
+      "historic"
+    ]
+  },
+  "protected_buildings": [
+    {
+      "id": "anna-nagar-tower",
+      "name": "Anna Nagar Tower",
+      "name_ta": "அண்ணா நகர் கோபுரம்",
+      "kind": "tower",
+      "osm_ids": [
+        "way/651861526",
+        "node/295552094"
+      ],
+      "excluded_osm_ids": [
+        "way/651861526"
+      ],
+      "overlay_only": false,
+      "world_origin_xz": [
+        402.41,
+        -147.93
+      ],
+      "coordinates_latlng": [
+        13.08633,
+        80.213815
+      ],
+      "godot_scene_path": null,
+      "model_paths": [
+        "res://assets/landmarks/anna-nagar-tower/anna-nagar-tower.glb"
+      ],
+      "atlas_paths": [
+        "res://assets/landmarks/anna-nagar-tower/spec.json"
+      ],
+      "associated_scripts": [
+        "res://src/game_engine/city/landmark_models.gd",
+        "res://src/game_engine/city/landmark_spec.gd",
+        "res://src/game_engine/city/chunk_builder.gd",
+        "res://src/app/world/landmarks_layer.gd"
+      ],
+      "status": "protected",
+      "reason": "Existing manually developed custom hero landmark (1960s concrete observation tower: a slender shaft with stacked circular viewing levels, a canopy and a finial, on a stepped round plinth)"
+    },
+    {
+      "id": "chennai-central",
+      "name": "Chennai Central",
+      "name_ta": "சென்னை சென்ட்ரல்",
+      "kind": "station",
+      "osm_ids": [
+        "way/214739119",
+        "way/217845073"
+      ],
+      "excluded_osm_ids": [
+        "way/214739119"
+      ],
+      "overlay_only": false,
+      "world_origin_xz": [
+        7082.8,
+        299.33
+      ],
+      "coordinates_latlng": [
+        13.082308,
+        80.275495
+      ],
+      "godot_scene_path": null,
+      "model_paths": [
+        "res://assets/landmarks/chennai-central/chennai-central.glb"
+      ],
+      "atlas_paths": [
+        "res://assets/landmarks/chennai-central/spec.json"
+      ],
+      "associated_scripts": [
+        "res://src/game_engine/city/landmark_models.gd",
+        "res://src/game_engine/city/landmark_spec.gd",
+        "res://src/game_engine/city/chunk_builder.gd",
+        "res://src/app/world/landmarks_layer.gd"
+      ],
+      "status": "protected",
+      "reason": "Existing manually developed custom hero landmark (Gothic Revival and Romanesque: red-painted brick with white bands, an arcaded upper floor, end pavilions with pale pyramidal roofs, an off-centre clock tower)"
+    },
+    {
+      "id": "chennai-egmore",
+      "name": "Chennai Egmore",
+      "name_ta": "சென்னை எழும்பூர்",
+      "kind": "station",
+      "osm_ids": [
+        "way/209558519",
+        "way/209558528",
+        "way/209558533"
+      ],
+      "excluded_osm_ids": [
+        "way/209558519",
+        "way/209558528",
+        "way/209558533"
+      ],
+      "overlay_only": false,
+      "world_origin_xz": [
+        5563.65,
+        798.39
+      ],
+      "coordinates_latlng": [
+        13.07782,
+        80.261469
+      ],
+      "godot_scene_path": null,
+      "model_paths": [
+        "res://assets/landmarks/chennai-egmore/chennai-egmore.glb"
+      ],
+      "atlas_paths": [
+        "res://assets/landmarks/chennai-egmore/chennai-egmore_atlas.png",
+        "res://assets/landmarks/chennai-egmore/spec.json"
+      ],
+      "associated_scripts": [
+        "res://src/game_engine/city/landmark_models.gd",
+        "res://src/game_engine/city/landmark_spec.gd",
+        "res://src/game_engine/city/chunk_builder.gd",
+        "res://src/app/world/landmarks_layer.gd"
+      ],
+      "status": "protected",
+      "reason": "Existing manually developed custom hero landmark (Indo-Saracenic with Dravidian elements: red brick with cream trim, domes and pointed arches; a three-span train shed)"
+    },
+    {
+      "id": "chennai-lighthouse",
+      "name": "Chennai Lighthouse",
+      "name_ta": "சென்னை மெரினா கலங்கரை விளக்கம்",
+      "kind": "lighthouse",
+      "osm_ids": [
+        "way/1552618806",
+        "way/211436935",
+        "way/1552618808",
+        "way/1552618807"
+      ],
+      "excluded_osm_ids": [
+        "way/1552618806"
+      ],
+      "overlay_only": false,
+      "world_origin_xz": [
+        7507.96,
+        5037.3
+      ],
+      "coordinates_latlng": [
+        13.039699,
+        80.279421
+      ],
+      "godot_scene_path": null,
+      "model_paths": [
+        "res://assets/landmarks/chennai-lighthouse/chennai-lighthouse.glb"
+      ],
+      "atlas_paths": [
+        "res://assets/landmarks/chennai-lighthouse/spec.json"
+      ],
+      "associated_scripts": [
+        "res://src/game_engine/city/landmark_models.gd",
+        "res://src/game_engine/city/landmark_spec.gd",
+        "res://src/game_engine/city/chunk_builder.gd",
+        "res://src/app/world/landmarks_layer.gd"
+      ],
+      "status": "protected",
+      "reason": "Existing manually developed custom hero landmark (1970s reinforced-concrete lighthouse: a triangular tower in red and white horizontal bands, a gallery and a lantern)"
+    },
+    {
+      "id": "generic-mall-royapettah",
+      "name": "Shopping complex",
+      "name_ta": "வணிக வளாகம்",
+      "kind": "mall",
+      "osm_ids": [
+        "way/154030370"
+      ],
+      "excluded_osm_ids": [
+        "way/154030370"
+      ],
+      "overlay_only": false,
+      "world_origin_xz": [
+        5860.16,
+        2930.86
+      ],
+      "coordinates_latlng": [
+        13.058642,
+        80.264206
+      ],
+      "godot_scene_path": null,
+      "model_paths": [
+        "res://assets/landmarks/generic-mall-royapettah/generic-mall-royapettah.glb"
+      ],
+      "atlas_paths": [
+        "res://assets/landmarks/generic-mall-royapettah/spec.json"
+      ],
+      "associated_scripts": [
+        "res://src/game_engine/city/landmark_models.gd",
+        "res://src/game_engine/city/landmark_spec.gd",
+        "res://src/game_engine/city/chunk_builder.gd",
+        "res://src/app/world/landmarks_layer.gd"
+      ],
+      "status": "protected",
+      "reason": "Existing manually developed custom hero landmark (Modern multi-storey shopping complex: concrete podium, glass atrium front with mullions, entrance canopy, rooftop parking)"
+    },
+    {
+      "id": "kapaleeshwarar-temple",
+      "name": "Kapaleeshwarar Temple",
+      "name_ta": "கபாலீசுவரர் கோயில்",
+      "kind": "temple",
+      "osm_ids": [
+        "way/1548155931",
+        "way/24270420",
+        "way/208567697",
+        "way/211277567",
+        "way/208567695",
+        "way/208567696",
+        "way/208567700",
+        "way/208567685",
+        "way/208567693",
+        "way/211277562",
+        "way/211277563",
+        "way/211277564",
+        "way/211277565",
+        "way/211277566"
+      ],
+      "excluded_osm_ids": [
+        "way/1548155931"
+      ],
+      "overlay_only": false,
+      "world_origin_xz": [
+        6476.13,
+        5706.76
+      ],
+      "coordinates_latlng": [
+        13.033678,
+        80.269894
+      ],
+      "godot_scene_path": null,
+      "model_paths": [
+        "res://assets/landmarks/kapaleeshwarar-temple/kapaleeshwarar-temple.glb"
+      ],
+      "atlas_paths": [
+        "res://assets/landmarks/kapaleeshwarar-temple/spec.json"
+      ],
+      "associated_scripts": [
+        "res://src/game_engine/city/landmark_models.gd",
+        "res://src/game_engine/city/landmark_spec.gd",
+        "res://src/game_engine/city/chunk_builder.gd",
+        "res://src/app/world/landmarks_layer.gd"
+      ],
+      "status": "protected",
+      "reason": "Existing manually developed custom hero landmark (Dravidian temple: gateway towers (gopurams) with painted stucco tiers, a walled compound with shrines and pillared halls, a stepped tank to the west)"
+    },
+    {
+      "id": "kathipara-junction",
+      "name": "Kathipara Junction",
+      "name_ta": "கத்திப்பாரா சந்திப்பு",
+      "kind": "junction",
+      "osm_ids": [
+        "way/280718090"
+      ],
+      "excluded_osm_ids": [],
+      "overlay_only": true,
+      "world_origin_xz": [
+        -700.0,
+        8620.0
+      ],
+      "coordinates_latlng": [
+        13.007479,
+        80.203637
+      ],
+      "godot_scene_path": null,
+      "model_paths": [
+        "res://assets/landmarks/kathipara-junction/kathipara-junction.glb"
+      ],
+      "atlas_paths": [
+        "res://assets/landmarks/kathipara-junction/kathipara-junction_atlas.png",
+        "res://assets/landmarks/kathipara-junction/spec.json"
+      ],
+      "associated_scripts": [
+        "res://src/game_engine/city/landmark_models.gd",
+        "res://src/game_engine/city/landmark_spec.gd",
+        "res://src/game_engine/city/chunk_builder.gd",
+        "res://src/app/world/landmarks_layer.gd"
+      ],
+      "status": "protected",
+      "reason": "Existing manually developed custom hero landmark (1970s-2008 Indian highway cloverleaf grade separator: concrete decks on pier-and-cap bents, 1 m parapets, two levels (the loop ramps and the straight flyover over them), black-and-white painted kerbs)"
+    },
+    {
+      "id": "ripon-building",
+      "name": "Ripon Building",
+      "name_ta": "ரிப்பன் மாளிகை",
+      "kind": "civic",
+      "osm_ids": [
+        "way/27618298"
+      ],
+      "excluded_osm_ids": [
+        "way/27618298"
+      ],
+      "overlay_only": false,
+      "world_origin_xz": [
+        6654.07,
+        253.52
+      ],
+      "coordinates_latlng": [
+        13.08272,
+        80.271537
+      ],
+      "godot_scene_path": null,
+      "model_paths": [
+        "res://assets/landmarks/ripon-building/ripon-building.glb"
+      ],
+      "atlas_paths": [
+        "res://assets/landmarks/ripon-building/spec.json"
+      ],
+      "associated_scripts": [
+        "res://src/game_engine/city/landmark_models.gd",
+        "res://src/game_engine/city/landmark_spec.gd",
+        "res://src/game_engine/city/chunk_builder.gd",
+        "res://src/app/world/landmarks_layer.gd"
+      ],
+      "status": "protected",
+      "reason": "Existing manually developed custom hero landmark (Neoclassical (white, colonnaded, central clock tower))"
+    }
+  ]
+}

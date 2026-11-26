@@ -23,6 +23,7 @@ const ALL: Array[Array] = [
 	["decks", "Bridges and flyovers (decks)"],
 	["objects", "Street objects (poles, gates, towers, props)"],
 	["kit", "Shop fronts and signs (facade kit)"],
+	["pack100_buildings", "Chennai 100-pack sculpted buildings"],
 	["trees", "Trees and palms"],
 	["far", "Far buildings"],
 	["water", "Water"],
@@ -38,8 +39,8 @@ const ALL: Array[Array] = [
 ]
 ## Chunk layer nodes per switch: direct children of a chunk's view or of its Near/Far.
 const LAYERS: Dictionary[String, PackedStringArray] = {
-	"decks": ["Decks"], "objects": ["Objects"], "kit": ["Kit"], "trees": ["Trees", "Palms"],
-	"far": ["Far"], "water": ["Water"],
+	"decks": ["Decks"], "objects": ["Objects"], "kit": ["Kit"], "pack100_buildings": ["PackBuildings", "Far/PackFar"], "trees": ["Trees", "Palms"],
+	"far": ["Far/Far"], "water": ["Water"],
 }
 ## Collider bodies per switch, by name prefix (`ChunkBuilder._body` labels).
 const BODY_PREFIXES: PackedStringArray = ["Decks", "DetailSolids", "Platforms", "Solids"]
