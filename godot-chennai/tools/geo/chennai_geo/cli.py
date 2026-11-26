@@ -9,6 +9,7 @@
     python -m chennai_geo.cli compare                # ring-0 counts vs today's committed world
     python -m chennai_geo.cli landmarks-rank         # -> data/landmarks/candidates.json + COVERAGE.md
     python -m chennai_geo.cli landmark-osm ID        # OSM footprints into assets/landmarks/ID/spec.json
+    python -m chennai_geo.cli transit                # stops, stations, routes -> world/transit/ (G-210)
 """
 from __future__ import annotations
 
@@ -80,6 +81,9 @@ def main(argv: list[str] | None = None) -> int:
     lo = sub.add_parser("landmark-osm")
     lo.add_argument("ids", nargs="*", help="landmark ids (default: every spec)")
     lo.add_argument("--osm", type=Path, default=RAW / "world.osm.pbf")
+    tr = sub.add_parser("transit")
+    tr.add_argument("--osm", type=Path, default=RAW / "world.osm.pbf")
+    tr.add_argument("--world", type=Path, default=WORLD)
     a = ap.parse_args(argv)
 
     if a.cmd == "fetch":
@@ -141,6 +145,17 @@ def main(argv: list[str] | None = None) -> int:
         for path in sorted(SPECS.glob("*/spec.json")):
             if not a.ids or path.parent.name in a.ids:
                 print(fill_from_osm(path, a.osm))
+    elif a.cmd == "transit":
+        from . import transit  # noqa: PLC0415
+
+        t = time.time()
+        osm = transit.parse_transit(a.osm)
+        graph = transit.load_graph(a.world)
+        transit.mark_bridges_by_water(graph, a.world)
+        b = json.loads((a.world / "world.json").read_text())["bounds"]
+        net = transit.build_network(osm, graph, (b["minX"], b["maxX"], b["minZ"], b["maxZ"]))
+        sizes = transit.write_network(net, graph, a.world, _osm_timestamp())
+        print(json.dumps({**sizes, **{k: v for k, v in sorted(net.stats.items())}}, indent=1), f"{time.time() - t:.0f} s")
     elif a.cmd == "convert-v1":
         w = v1_to_world(a.src)
         print(write_world_v2(w, a.out, {"convertedFrom": str(a.src)}))

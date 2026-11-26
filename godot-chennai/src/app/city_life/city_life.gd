@@ -232,7 +232,9 @@ func prepare(start: Vector2) -> String:
 	population.traffic.on_change = _changing_agents
 	population.walkers.on_change = _changing_agents
 	for a in population.traffic.agents:
-		var v := TrafficVehicleView.make(population.traffic.kinds[a.kind].name, a.variation)
+		var kind := population.traffic.kinds[a.kind]
+		# Buses keep their door nodes: on a route they open them at stops (G-214).
+		var v := TrafficVehicleView.make(kind.name, a.variation, kind.group == &"bus")
 		v.agent_id = a.id
 		add_child(v)
 		v.set_shown(false)

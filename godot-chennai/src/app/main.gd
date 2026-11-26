@@ -53,6 +53,8 @@ var title_seed: int = -1
 var title_spot: StringName = &""
 ## Quality, overlay, perf log, feature switches (`PerfWiring`).
 var perf: PerfWiring = null
+## Route buses, the passenger ride and boarding, the stations (`TransitLayer`, G-214…G-220).
+var transit: TransitLayer = null
 ## Watches for a stalled main loop while loading (see `_watch_frames`).
 var _watchdog: Thread = null
 var _watching: bool = false
@@ -294,6 +296,11 @@ func _add_railway() -> String:
 	var error := await railway.prepare(world, rig)
 	if error == "":
 		RailwayWiring.wire(self, railway)
+		# The railway runs the trains and owns the station panel; buses wait while it has the player.
+		if transit != null:
+			var rail := railway
+			transit.stations_by_railway = true
+			transit.railway_busy = func() -> bool: return rail.state != &"foot"
 	return error
 
 

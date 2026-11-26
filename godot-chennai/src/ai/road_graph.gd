@@ -33,6 +33,11 @@ var edge_lanes: PackedInt32Array = PackedInt32Array()
 var edge_oneway: PackedByteArray = PackedByteArray()
 ## Index into `roads` of the road the edge belongs to.
 var edge_road: PackedInt32Array = PackedInt32Array()
+## Segment of its road each edge runs along (points[i] -> points[i + 1]), and 1 when the edge runs
+## it backwards: so an agent's height comes from the road's own height samples (format 2.1,
+## `Road.height_at`, decision G-151) on flyovers, bridges and their ramps (G-214).
+var edge_seg: PackedInt32Array = PackedInt32Array()
+var edge_back: PackedByteArray = PackedByteArray()
 var roads: Array[Road] = []
 var _index: Dictionary[Vector2i, int] = {}
 
@@ -80,9 +85,9 @@ static func build(list: Array[Road], include: Callable, respect_oneway: bool = t
 			if a == b:
 				continue
 			var one := road.oneway and respect_oneway
-			g._connect(a, b, road, ri, each_way, one)
+			g._connect(a, b, road, ri, each_way, one, i, false)
 			if not one:
-				g._connect(b, a, road, ri, each_way, false)
+				g._connect(b, a, road, ri, each_way, false, i, true)
 	g.node_y.resize(g.node_pos.size())
 	if not deck_nodes.is_empty():
 		g._raise(deck_nodes)
@@ -117,8 +122,13 @@ func _raise(deck_nodes: Dictionary[int, float]) -> void:
 			open.insert(open.bsearch(Vector2(h, m)), Vector2(h, m))
 
 
-## Height of the road surface `along` metres down an edge.
+## Height of the road surface `along` metres down an edge: the road's own heights where it is
+## raised (`infra.bin`), else the deck estimate of `build(..., decks)` (0 on the ground).
 func height_on(edge: int, along: float) -> float:
+	var r := roads[edge_road[edge]]
+	if r.is_raised() and edge < edge_seg.size():
+		var t := clampf(along / edge_length[edge], 0.0, 1.0)
+		return r.height_at(edge_seg[edge], 1.0 - t if edge_back[edge] == 1 else t)
 	var a := node_y[edge_from[edge]]
 	var b := node_y[edge_to[edge]]
 	if a == b:
@@ -138,7 +148,7 @@ func _node_at(p: Vector2) -> int:
 	return id
 
 
-func _connect(a: int, b: int, road: Road, ri: int, lanes: int, oneway: bool) -> void:
+func _connect(a: int, b: int, road: Road, ri: int, lanes: int, oneway: bool, seg: int = 0, back: bool = false) -> void:
 	var pa := node_pos[a]
 	var pb := node_pos[b]
 	var length := pa.distance_to(pb)
@@ -153,6 +163,8 @@ func _connect(a: int, b: int, road: Road, ri: int, lanes: int, oneway: bool) -> 
 	edge_lanes.append(lanes)
 	edge_oneway.append(1 if oneway else 0)
 	edge_road.append(ri)
+	edge_seg.append(seg)
+	edge_back.append(1 if back else 0)
 
 
 ## The node at exactly this point (to 10 cm), or -1.

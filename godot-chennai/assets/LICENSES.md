@@ -150,3 +150,10 @@ is not worn by anyone here).
 | Files | What | Source | Licence |
 |---|---|---|---|
 | `assets/culture/culture.json` | The heritage journal's places, the peace zone, the temple visit's places and the swimming rules (data only; the texts are `cul.*` keys in `assets/i18n`) | Original. Positions are from the landmark specs and `world/world.json` (OpenStreetMap, ODbL 1.0, © OpenStreetMap contributors); the one-line facts are from the specs' sourced facts | Original work for the project; map positions ODbL 1.0 |
+
+## Transit (decision G-219)
+
+| Files | What | Source | Licence |
+|---|---|---|---|
+| `assets/transit/noto-sans-tamil-ui-600.woff2` | Noto Sans Tamil SemiBold, the whole Tamil block (15 KB): the Tamil fallback for bus destination signs, stop names and announcements on the HUD (any OSM stop name, so not a cut to known glyphs) | `@fontsource/noto-sans-tamil` 5.3.0 from the npm registry, file `files/noto-sans-tamil-tamil-600-normal.woff2` (sha256 `c8829e71…3a61bf5`), unchanged | SIL Open Font Licence 1.1, © The Noto Project Authors (`assets/fonts/OFL.txt`) |
+| `world/transit/transit.json`, `world/transit/routes.bin`, `world/TRANSIT.md` | Bus stops, bus stations, railway stations and platforms, rail lines, bus routes snapped to the roads (`docs/transit.md`) | Built from OpenStreetMap by `tools/geo` `cli transit`; headways, hours and fares are estimates | **ODbL 1.0**, © OpenStreetMap contributors |

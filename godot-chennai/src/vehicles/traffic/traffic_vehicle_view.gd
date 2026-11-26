@@ -34,12 +34,18 @@ var _shape: CollisionShape3D
 var _shown: bool = true
 ## The physics frame of the last jump: the box stays off until a step after it.
 var _jump_frame: int = -1
+## Route buses (G-214): the near model keeps its door nodes (not merged) so the doors open at
+## stops, and a destination sign can be shown (`set_route_sign`).
+var keeps_doors: bool = false
+var route_sign: RouteSign = null
+var _doors_open: float = 0.0
 
 
 ## A view of `variant_id` in a paint picked by `variation` (0..1) from the model's paints;
 ## `own_paint` keeps the variant's own paint (a police car stays white, G-419).
 static func make(variant_id: StringName, variation: float, own_paint: bool = false) -> TrafficVehicleView:
 	var v := TrafficVehicleView.new()
+	v.keeps_doors = with_doors
 	var base := VehicleCatalog.variant(variant_id)
 	var own := VehicleCatalog.VariantInfo.new()
 	own.id = base.id
@@ -92,8 +98,9 @@ static func make(variant_id: StringName, variation: float, own_paint: bool = fal
 ## Each model (`Lod0` near, `Lod1`/`Lod2` far: six to eighteen surfaces each) becomes one mesh
 ## with a surface per material, shared by every view of the same look and paint; the far ones
 ## cast no shadow. The wheels stay apart (they turn; `VehicleModel` moved them out of `Lod0`).
-## Traffic doors never open. A traffic vehicle costs about four draw calls instead of seven to
-## eighteen (G-127, measured with `traffic_shot.gd`).
+## Traffic doors never open, except on route buses (`keeps_doors`): their near model is merged
+## around the door nodes, which stay apart to swing. A traffic vehicle costs about four draw calls
+## instead of seven to eighteen (G-127, measured with `traffic_shot.gd`).
 ##
 ## Not headless: the dummy renderer's mesh store is not thread-safe, and the city builds chunk
 ## meshes on worker threads meanwhile (nothing is drawn headless anyway).
@@ -103,6 +110,9 @@ func _merge_far_lods(look: String) -> void:
 	for child in model.get_children():
 		var lod := child as Node3D
 		if lod == null or not String(lod.name).begins_with("Lod"):
+			continue
+		if keeps_doors and lod.name == &"Lod0" and model.has_doors():
+			_merge_around_doors(look, lod)  # the doors must swing (route buses at their stops)
 			continue
 		var parts := lod.find_children("*", "MeshInstance3D", true, false)
 		if parts.is_empty():
@@ -123,6 +133,34 @@ func _merge_far_lods(look: String) -> void:
 			lod.remove_child(n)
 			n.queue_free()
 		lod.add_child(merged)
+
+
+## A route bus's near model: every mesh not on a door becomes one merged mesh (as above); the
+## door leaves stay separate nodes so `set_doors` can swing them. A mesh that holds a door below it
+## keeps its node (empty) so the door keeps its place. Measured near a stop: 42 extra draw calls
+## for an unmerged route bus, a handful once merged around its doors (`docs/transit.md` §5).
+func _merge_around_doors(look: String, lod: Node3D) -> void:
+	var fixed: Array[Node] = []
+	for n in lod.find_children("*", "MeshInstance3D", true, false):
+		if not model.is_door_part(n):
+			fixed.append(n)
+	if fixed.is_empty():
+		return
+	var first := fixed[0] as MeshInstance3D
+	var key := "%s:%s:%s:doors" % [look, lod.name, paint.to_html()]
+	var mesh: ArrayMesh = _merged.get(key)
+	if mesh == null:
+		mesh = _merge(lod, fixed)
+		_merged[key] = mesh
+	var merged := MeshInstance3D.new()
+	merged.name = "Merged"
+	merged.mesh = mesh
+	merged.visibility_range_begin = first.visibility_range_begin
+	merged.visibility_range_end = first.visibility_range_end
+	merged.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	for n in fixed:
+		(n as MeshInstance3D).mesh = null
+	lod.add_child(merged)
 
 
 static var _merged: Dictionary = {}
@@ -197,6 +235,43 @@ func set_pose(road_point: Vector3, heading: float, speed: float, dt: float, came
 		_spin = fposmod(_spin + speed * dt / maxf(0.2, spec.wheels[0].radius), TAU)
 		for i in _hub_y.size():
 			model.set_wheel(i, _hub_y[i], 0.0, _spin)
+
+
+## Open (1) or close (0) every door leaf (a route bus at a stop). Cheap when unchanged.
+func set_doors(amount: float) -> void:
+	if is_equal_approx(amount, _doors_open) or not model.has_doors():
+		return
+	_doors_open = amount
+	for leaf in 4:
+		model.set_door(leaf, amount)
+
+
+func doors_open() -> float:
+	return _doors_open
+
+
+## Shows (or with an empty `ref`, hides) the destination sign: route number, Tamil and English
+## destination. `font` should carry a Tamil fallback.
+func set_route_sign(ref: String, english: String, tamil: String, font: Font) -> void:
+	if ref == "":
+		if route_sign != null:
+			route_sign.visible = false
+		return
+	if route_sign == null:
+		# The body's real size from the manifest (the chassis box is smaller than the body).
+		var half := variant.type.spec.half_extents
+		var top := half.y
+		var m := VehicleCatalog.manifest_for(variant.type)
+		if m != null:
+			var size: Dictionary = m.data.get("body_size_m", m.data.get("size_m", {}))
+			if not size.is_empty():
+				# Width from the chassis box (the manifest's width counts the mirrors).
+				half = Vector3(half.x + 0.05, half.y, float(size.get("length", half.z * 2.0)) / 2.0)
+				top = model.position.y + float(size.get("height", half.y * 2.0))
+		route_sign = RouteSign.make(Vector3(half.x, top, half.z), font)
+		add_child(route_sign)
+	route_sign.show_route(ref, english, tamil)
+	route_sign.visible = true
 
 
 ## Where the driver's hips are, in the scene.
