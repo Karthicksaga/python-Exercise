@@ -1,0 +1,991 @@
+{
+ "format": 1,
+ "decision": "G-512",
+ "status": "all_estimated",
+ "area": "anna_nagar",
+ "licence": "CC0 1.0, original work for the project",
+ "note": "Parameter ranges for original generated facades. EVERY field here is `estimated`: it comes from the author's general knowledge of Chennai streets, NOT from reviewed imagery (no imagery could be reached when this was written, see docs/street-imagery.md section 3). A field becomes `observed` only through hand-reviewed observation files that cite manifest image ids. Not read by the game yet.",
+ "categories": [
+  {
+   "id": "residential_house",
+   "label": "Residential house",
+   "game_kind": "house",
+   "description": "Older single-family house of one or two floors on a small plot, often joined to its neighbours, with a sit-out (verandah) and a flat terrace.",
+   "fields": {
+    "palette": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.",
+     "value": [
+      {
+       "name": "cream",
+       "hex": "#E6D8B0",
+       "weight": 3
+      },
+      {
+       "name": "pale yellow",
+       "hex": "#EBDB8C",
+       "weight": 2
+      },
+      {
+       "name": "pale green",
+       "hex": "#BFD4A8",
+       "weight": 2
+      },
+      {
+       "name": "pale blue",
+       "hex": "#A9C6DA",
+       "weight": 2
+      },
+      {
+       "name": "pink",
+       "hex": "#E3B4B0",
+       "weight": 1.5
+      },
+      {
+       "name": "white wash",
+       "hex": "#EDEBE3",
+       "weight": 2
+      },
+      {
+       "name": "terracotta",
+       "hex": "#C98A66",
+       "weight": 1
+      }
+     ]
+    },
+    "floors": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "One to two floors is the usual size of an old plot house.",
+     "value": {
+      "min": 1,
+      "max": 2
+     }
+    },
+    "windows": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Casement or sliding windows behind iron grilles, with a concrete sunshade (chajja) over them.",
+     "value": {
+      "per_bay": {
+       "min": 1,
+       "max": 2
+      },
+      "kinds": [
+       "grille_casement",
+       "sliding_aluminium"
+      ],
+      "sunshade_probability": 0.7
+     }
+    },
+    "balconies": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Small projecting slab or an open sit-out; seldom a full balcony.",
+     "value": {
+      "probability": 0.2,
+      "kinds": [
+       "small_projecting_slab",
+       "open_sit_out"
+      ]
+     }
+    },
+    "gates": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Painted iron gate in a low compound wall.",
+     "value": {
+      "probability": 0.8,
+      "kinds": [
+       "painted_iron_sliding",
+       "painted_iron_swing"
+      ]
+     }
+    },
+    "shutters": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Only where a room is let as a shop.",
+     "value": {
+      "probability": 0.05,
+      "kinds": [
+       "rolling_shutter"
+      ]
+     }
+    },
+    "signboard_slots": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Rarely a small nameplate or home-business board.",
+     "value": {
+      "ground_floor": {
+       "min": 0,
+       "max": 1
+      },
+      "upper": {
+       "min": 0,
+       "max": 0
+      }
+     }
+    },
+    "roofs": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Flat concrete terrace with a parapet and a black water tank; some older houses keep a clay-tile roof.",
+     "value": {
+      "types": [
+       {
+        "kind": "flat_terrace",
+        "weight": 0.65
+       },
+       {
+        "kind": "clay_tile_hip",
+        "weight": 0.3
+       },
+       {
+        "kind": "sheet",
+        "weight": 0.05
+       }
+      ],
+      "parapet_m": 0.9,
+      "water_tank_probability": 0.7
+     }
+    }
+   }
+  },
+  {
+   "id": "independent_house",
+   "label": "Independent house",
+   "game_kind": "house",
+   "description": "Newer detached or semi-detached house of two to four floors inside a compound wall, car porch below.",
+   "fields": {
+    "palette": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.",
+     "value": [
+      {
+       "name": "off white",
+       "hex": "#EFEBDD",
+       "weight": 3
+      },
+      {
+       "name": "beige",
+       "hex": "#D9C7A0",
+       "weight": 2
+      },
+      {
+       "name": "light grey",
+       "hex": "#C8C8C2",
+       "weight": 1.5
+      },
+      {
+       "name": "sand",
+       "hex": "#D8BE96",
+       "weight": 1.5
+      },
+      {
+       "name": "accent terracotta",
+       "hex": "#B96A4A",
+       "weight": 1
+      },
+      {
+       "name": "pale peach",
+       "hex": "#EBC7A8",
+       "weight": 1.5
+      }
+     ]
+    },
+    "floors": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Two to four floors, often with stilt parking.",
+     "value": {
+      "min": 2,
+      "max": 4
+     }
+    },
+    "windows": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Aluminium or UPVC windows, often with a projecting sunshade.",
+     "value": {
+      "per_bay": {
+       "min": 1,
+       "max": 3
+      },
+      "kinds": [
+       "sliding_aluminium",
+       "casement_with_grille",
+       "large_fixed_glass"
+      ],
+      "sunshade_probability": 0.5
+     }
+    },
+    "balconies": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "A balcony on the first floor and above is common.",
+     "value": {
+      "probability": 0.6,
+      "kinds": [
+       "projecting_slab_with_railing",
+       "glass_or_steel_railing"
+      ]
+     }
+    },
+    "gates": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Compound wall with a sliding or swing gate and pillars.",
+     "value": {
+      "probability": 0.95,
+      "kinds": [
+       "sliding_iron",
+       "swing_iron_with_pillars"
+      ]
+     }
+    },
+    "shutters": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Rare.",
+     "value": {
+      "probability": 0.05,
+      "kinds": [
+       "rolling_shutter"
+      ]
+     }
+    },
+    "signboard_slots": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Nameplate at the gate.",
+     "value": {
+      "ground_floor": {
+       "min": 0,
+       "max": 1
+      },
+      "upper": {
+       "min": 0,
+       "max": 0
+      }
+     }
+    },
+    "roofs": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Flat terrace with tank; a small sloped accent roof over a stair head on some.",
+     "value": {
+      "types": [
+       {
+        "kind": "flat_terrace",
+        "weight": 0.8
+       },
+       {
+        "kind": "sloped_tile_accent",
+        "weight": 0.15
+       },
+       {
+        "kind": "sheet",
+        "weight": 0.05
+       }
+      ],
+      "parapet_m": 1.0,
+      "water_tank_probability": 0.8
+     }
+    }
+   }
+  },
+  {
+   "id": "apartment",
+   "label": "Apartment block",
+   "game_kind": "apartments",
+   "description": "Mid-rise residential block: ground floor open for parking (stilt) or with a gate and security room, regular floors above with balconies.",
+   "fields": {
+    "palette": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.",
+     "value": [
+      {
+       "name": "cream",
+       "hex": "#E8DCB8",
+       "weight": 2.5
+      },
+      {
+       "name": "light grey",
+       "hex": "#C9C9C4",
+       "weight": 2
+      },
+      {
+       "name": "pale yellow",
+       "hex": "#EAD99A",
+       "weight": 1.5
+      },
+      {
+       "name": "peach",
+       "hex": "#E8C3A2",
+       "weight": 1.5
+      },
+      {
+       "name": "pale blue",
+       "hex": "#B5CCDD",
+       "weight": 1
+      },
+      {
+       "name": "accent maroon band",
+       "hex": "#8B4A44",
+       "weight": 0.7
+      }
+     ]
+    },
+    "floors": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Four to nine floors in the residential layouts of Chennai; taller towers exist but are not the common case.",
+     "value": {
+      "min": 4,
+      "max": 9
+     }
+    },
+    "windows": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Sliding aluminium windows, often with grilles, in regular bays.",
+     "value": {
+      "per_bay": {
+       "min": 1,
+       "max": 2
+      },
+      "kinds": [
+       "sliding_aluminium",
+       "casement_with_grille"
+      ],
+      "sunshade_probability": 0.6
+     }
+    },
+    "balconies": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Most flats have a balcony; many are later enclosed with grilles.",
+     "value": {
+      "probability": 0.85,
+      "kinds": [
+       "projecting_slab_with_railing",
+       "grille_enclosed",
+       "utility_balcony"
+      ]
+     }
+    },
+    "gates": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "A gate and compound wall to the street.",
+     "value": {
+      "probability": 0.9,
+      "kinds": [
+       "sliding_iron",
+       "swing_iron_with_pillars"
+      ]
+     }
+    },
+    "shutters": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "A small shop or generator room at the ground floor in some.",
+     "value": {
+      "probability": 0.1,
+      "kinds": [
+       "rolling_shutter"
+      ]
+     }
+    },
+    "signboard_slots": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "A name board at the gate.",
+     "value": {
+      "ground_floor": {
+       "min": 0,
+       "max": 1
+      },
+      "upper": {
+       "min": 0,
+       "max": 0
+      }
+     }
+    },
+    "roofs": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Flat terrace, tanks, lift motor room.",
+     "value": {
+      "types": [
+       {
+        "kind": "flat_terrace",
+        "weight": 0.9
+       },
+       {
+        "kind": "lift_head_and_tanks",
+        "weight": 0.1
+       }
+      ],
+      "parapet_m": 1.1,
+      "water_tank_probability": 0.9
+     }
+    }
+   }
+  },
+  {
+   "id": "commercial",
+   "label": "Commercial building",
+   "game_kind": "commercial",
+   "description": "Mixed-use block on a main road: shops along the ground floor, offices or storage above, a continuous signboard band.",
+   "fields": {
+    "palette": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.",
+     "value": [
+      {
+       "name": "grey concrete",
+       "hex": "#B8B8B2",
+       "weight": 2
+      },
+      {
+       "name": "cream",
+       "hex": "#E3D7B5",
+       "weight": 1.5
+      },
+      {
+       "name": "dirty white",
+       "hex": "#DCD9CF",
+       "weight": 2
+      },
+      {
+       "name": "faded yellow",
+       "hex": "#D8C778",
+       "weight": 1
+      },
+      {
+       "name": "faded blue",
+       "hex": "#8FA9BE",
+       "weight": 1
+      },
+      {
+       "name": "red oxide band",
+       "hex": "#A0553E",
+       "weight": 0.7
+      }
+     ]
+    },
+    "floors": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Two to six floors on main roads.",
+     "value": {
+      "min": 2,
+      "max": 6
+     }
+    },
+    "windows": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Mixed aluminium and fixed glass over the shop line.",
+     "value": {
+      "per_bay": {
+       "min": 1,
+       "max": 3
+      },
+      "kinds": [
+       "sliding_aluminium",
+       "fixed_glass",
+       "grille_casement"
+      ],
+      "sunshade_probability": 0.5
+     }
+    },
+    "balconies": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Few balconies above the shops.",
+     "value": {
+      "probability": 0.2,
+      "kinds": [
+       "projecting_slab_with_railing",
+       "none"
+      ]
+     }
+    },
+    "gates": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Side passage or parking gate only.",
+     "value": {
+      "probability": 0.1,
+      "kinds": [
+       "sliding_iron"
+      ]
+     }
+    },
+    "shutters": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Rolling shutters at every shop bay.",
+     "value": {
+      "probability": 0.9,
+      "kinds": [
+       "rolling_shutter",
+       "folding_shutter"
+      ]
+     }
+    },
+    "signboard_slots": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "A board per shop bay plus boards on upper floors; painted or flex boards in Tamil and English.",
+     "value": {
+      "ground_floor": {
+       "min": 2,
+       "max": 5
+      },
+      "upper": {
+       "min": 1,
+       "max": 3
+      }
+     }
+    },
+    "roofs": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Flat terrace.",
+     "value": {
+      "types": [
+       {
+        "kind": "flat_terrace",
+        "weight": 0.9
+       },
+       {
+        "kind": "sheet",
+        "weight": 0.1
+       }
+      ],
+      "parapet_m": 1.0,
+      "water_tank_probability": 0.5
+     }
+    }
+   }
+  },
+  {
+   "id": "retail_shop",
+   "label": "Retail shop",
+   "game_kind": "commercial",
+   "description": "One or two floors, the whole front given to the shop: shutter, signboard, a hanging or painted board, an awning on some.",
+   "fields": {
+    "palette": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.",
+     "value": [
+      {
+       "name": "white wash",
+       "hex": "#E6E3D8",
+       "weight": 2
+      },
+      {
+       "name": "faded green",
+       "hex": "#8FB08A",
+       "weight": 1.5
+      },
+      {
+       "name": "faded blue",
+       "hex": "#8FA9BE",
+       "weight": 1.5
+      },
+      {
+       "name": "yellow",
+       "hex": "#E2C75A",
+       "weight": 1.5
+      },
+      {
+       "name": "red oxide",
+       "hex": "#A9553E",
+       "weight": 1
+      },
+      {
+       "name": "grey",
+       "hex": "#B5B5B0",
+       "weight": 1.5
+      }
+     ]
+    },
+    "floors": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "One or two floors.",
+     "value": {
+      "min": 1,
+      "max": 2
+     }
+    },
+    "windows": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Mostly the shop opening itself; a small window above.",
+     "value": {
+      "per_bay": {
+       "min": 1,
+       "max": 2
+      },
+      "kinds": [
+       "fixed_glass",
+       "grille_casement"
+      ],
+      "sunshade_probability": 0.3
+     }
+    },
+    "balconies": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Almost none.",
+     "value": {
+      "probability": 0.05,
+      "kinds": [
+       "none"
+      ]
+     }
+    },
+    "gates": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Folding grille at the opening.",
+     "value": {
+      "probability": 0.05,
+      "kinds": [
+       "folding_grille"
+      ]
+     }
+    },
+    "shutters": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Rolling shutter across the opening.",
+     "value": {
+      "probability": 0.95,
+      "kinds": [
+       "rolling_shutter",
+       "folding_shutter"
+      ]
+     }
+    },
+    "signboard_slots": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "One large board over the opening and often a side board.",
+     "value": {
+      "ground_floor": {
+       "min": 1,
+       "max": 3
+      },
+      "upper": {
+       "min": 0,
+       "max": 1
+      }
+     }
+    },
+    "roofs": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Flat terrace or a sheet roof.",
+     "value": {
+      "types": [
+       {
+        "kind": "flat_terrace",
+        "weight": 0.7
+       },
+       {
+        "kind": "sheet",
+        "weight": 0.3
+       }
+      ],
+      "parapet_m": 0.8,
+      "water_tank_probability": 0.3
+     }
+    }
+   }
+  },
+  {
+   "id": "office",
+   "label": "Office building",
+   "game_kind": "commercial",
+   "description": "Five to twelve floor block of regular office floors, glazed or cladded front, lobby at the ground floor.",
+   "fields": {
+    "palette": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.",
+     "value": [
+      {
+       "name": "light grey",
+       "hex": "#C4C6C6",
+       "weight": 2
+      },
+      {
+       "name": "glass blue-grey",
+       "hex": "#8FA3AE",
+       "weight": 2
+      },
+      {
+       "name": "white",
+       "hex": "#EDEDE8",
+       "weight": 1.5
+      },
+      {
+       "name": "sand",
+       "hex": "#D6C7A5",
+       "weight": 1
+      },
+      {
+       "name": "dark accent",
+       "hex": "#4F5961",
+       "weight": 0.8
+      }
+     ]
+    },
+    "floors": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Five to twelve floors in the mid-rise office streets; high-rise is a landmark case, not the default.",
+     "value": {
+      "min": 5,
+      "max": 12
+     }
+    },
+    "windows": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Ribbon or curtain-wall glazing.",
+     "value": {
+      "per_bay": {
+       "min": 2,
+       "max": 4
+      },
+      "kinds": [
+       "ribbon_glazing",
+       "fixed_glass_curtain_wall",
+       "sliding_aluminium"
+      ],
+      "sunshade_probability": 0.2
+     }
+    },
+    "balconies": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Rare.",
+     "value": {
+      "probability": 0.05,
+      "kinds": [
+       "none"
+      ]
+     }
+    },
+    "gates": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Gate with a guard post.",
+     "value": {
+      "probability": 0.8,
+      "kinds": [
+       "boom_barrier",
+       "sliding_iron"
+      ]
+     }
+    },
+    "shutters": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Only on a ground-floor service unit.",
+     "value": {
+      "probability": 0.1,
+      "kinds": [
+       "rolling_shutter"
+      ]
+     }
+    },
+    "signboard_slots": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "One generic board at the entrance and one at the top; no company names in the game.",
+     "value": {
+      "ground_floor": {
+       "min": 0,
+       "max": 1
+      },
+      "upper": {
+       "min": 0,
+       "max": 1
+      }
+     }
+    },
+    "roofs": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Flat roof with plant and tanks.",
+     "value": {
+      "types": [
+       {
+        "kind": "flat_terrace",
+        "weight": 0.95
+       },
+       {
+        "kind": "lift_head_and_tanks",
+        "weight": 0.05
+       }
+      ],
+      "parapet_m": 1.2,
+      "water_tank_probability": 0.6
+     }
+    }
+   }
+  },
+  {
+   "id": "institutional",
+   "label": "Institutional building",
+   "game_kind": "commercial",
+   "description": "School, college, government or hospital building: long frontage, two to four floors, corridor balconies, a portico or gate arch.",
+   "fields": {
+    "palette": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Typical painted-wall colours of Chennai streets as the project author knows them; no photograph reviewed.",
+     "value": [
+      {
+       "name": "cream and white",
+       "hex": "#E9E1C8",
+       "weight": 2
+      },
+      {
+       "name": "yellow ochre",
+       "hex": "#D9B95A",
+       "weight": 1.5
+      },
+      {
+       "name": "pale blue",
+       "hex": "#B3C9DA",
+       "weight": 1
+      },
+      {
+       "name": "red oxide plinth",
+       "hex": "#A9553E",
+       "weight": 0.8
+      },
+      {
+       "name": "light grey",
+       "hex": "#C9C9C4",
+       "weight": 1.5
+      }
+     ]
+    },
+    "floors": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Two to four floors.",
+     "value": {
+      "min": 2,
+      "max": 4
+     }
+    },
+    "windows": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Regular wide windows with a sunshade.",
+     "value": {
+      "per_bay": {
+       "min": 2,
+       "max": 3
+      },
+      "kinds": [
+       "casement_with_grille",
+       "wide_glazed_with_shade"
+      ],
+      "sunshade_probability": 0.8
+     }
+    },
+    "balconies": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Open corridor walkways with railings along upper floors.",
+     "value": {
+      "probability": 0.6,
+      "kinds": [
+       "corridor_walkway_with_railing"
+      ]
+     }
+    },
+    "gates": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "A gated compound.",
+     "value": {
+      "probability": 0.95,
+      "kinds": [
+       "wide_iron_gate_with_pillars",
+       "arch_gateway"
+      ]
+     }
+    },
+    "shutters": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Rare.",
+     "value": {
+      "probability": 0.05,
+      "kinds": [
+       "rolling_shutter"
+      ]
+     }
+    },
+    "signboard_slots": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "A board at the gate and one on the facade; generic words only.",
+     "value": {
+      "ground_floor": {
+       "min": 1,
+       "max": 1
+      },
+      "upper": {
+       "min": 0,
+       "max": 1
+      }
+     }
+    },
+    "roofs": {
+     "status": "estimated",
+     "basis": "general_knowledge",
+     "basis_note": "Mostly flat; some older blocks with a tiled or sheet roof.",
+     "value": {
+      "types": [
+       {
+        "kind": "flat_terrace",
+        "weight": 0.7
+       },
+       {
+        "kind": "clay_tile_hip",
+        "weight": 0.15
+       },
+       {
+        "kind": "sheet",
+        "weight": 0.15
+       }
+      ],
+      "parapet_m": 1.0,
+      "water_tank_probability": 0.5
+     }
+    }
+   }
+  }
+ ]
+}

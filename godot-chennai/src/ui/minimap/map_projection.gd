@@ -52,7 +52,7 @@ func clamp_to_rect(p: Vector2, half: Vector2, inset: float) -> Dictionary:
 ## "420 m", "1.2 km", "12 km": whole metres below a kilometre, then one decimal below ten.
 static func distance_text(metres: float) -> String:
 	if metres < 1000.0:
-		return "%d m" % (int(round(metres / 10.0)) * 10 if metres >= 100.0 else int(round(metres)))
+		return Tr.line("hud.m", [(int(round(metres / 10.0)) * 10 if metres >= 100.0 else int(round(metres)))])
 	if metres < 10000.0:
-		return "%.1f km" % (metres / 1000.0)
-	return "%d km" % int(round(metres / 1000.0))
+		return Tr.line("hud.km", ["%.1f" % (metres / 1000.0)])
+	return Tr.line("hud.km", [int(round(metres / 1000.0))])

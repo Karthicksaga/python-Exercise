@@ -14,6 +14,13 @@ const PLATFORM_WIDTH := 4.0
 const PLATFORM_EDGE := 1.75
 ## Ticket for one ride, rupees (estimated: a second-class single for a short suburban trip).
 const FARE := 5
+## A Metro ride, rupees (estimated: one flat fare in the middle of the real distance slabs, G-462).
+const METRO_FARE := 20
+
+
+## The ticket for a ride on `line`.
+static func fare_for(line: RailLine) -> int:
+	return METRO_FARE if line != null and line.is_metro() else FARE
 
 ## Seconds the doors take to slide open or shut (doors.ts).
 const DOOR_SLIDE := 1.2
@@ -86,23 +93,33 @@ static func boarding(train: RailLine.TrainAt, index: int, money: int) -> Answer:
 	var a := Answer.new()
 	var state := train.state
 	var line := train.line
+	var fare := fare_for(line)
 	if state.stopped_at != index:
-		a.reason = "The train is not standing here."
+		a.reason = Tr.t("rail.reason.not_standing")
 	elif state.dwell_left < 1.5:
-		a.reason = "The doors are closing."
+		a.reason = Tr.t("rail.reason.doors_closing")
 	elif state.next_stop < 0:
-		a.reason = ("This train's next stop is beyond the map (towards %s)." % line.to.name) if line.to.beyond else "This train terminates here."
+		a.reason = Tr.t("rail.reason.beyond", [line.to.name]) if line.to.beyond else Tr.t("rail.reason.terminates")
 	elif money < FARE:
-		a.reason = "A ticket costs ₹%d." % FARE
+		a.reason = Tr.t("rail.reason.ticket", [FARE])
 	else:
 		a.ok = true
-		a.fare = FARE
+		a.fare = fare
 	return a
 
 
-## True when a rider must get off here: the train stops on the map no more.
+## True when the train's run to its next stop goes through a tunnel (G-462: rides end before one;
+## nothing is drawn below the ground).
+static func goes_underground(train: RailLine.TrainAt) -> bool:
+	var next := train.state.next_stop
+	if next < 0:
+		return false
+	return train.line.tunnel_between(train.state.s, train.line.stops[next].s) or train.line.underground_at(train.line.stops[next].s)
+
+
+## True when a rider must get off here: the train stops on the map no more, or goes underground.
 static func ride_ends_at(train: RailLine.TrainAt) -> bool:
-	return train.state.stopped_at >= 0 and train.state.next_stop < 0
+	return train.state.stopped_at >= 0 and (train.state.next_stop < 0 or goes_underground(train))
 
 
 ## May a rider step off now? Only while the train stands at a station.

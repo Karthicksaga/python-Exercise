@@ -30,7 +30,7 @@ const BOOM_GAIN := 0.7
 
 var library: SoundLibrary
 ## What was played, by name (tests and the debug snapshot).
-var played: Dictionary = {"rail_horn": 0, "rail_announce": 0, "rail_door": 0, "rail_chime": 0, "crossing_boom": 0}
+var played: Dictionary = {"rail_horn": 0, "rail_announce": 0, "rail_door": 0, "rail_chime": 0, "rail_vigilance": 0, "crossing_boom": 0}
 
 var _rumble: AudioStreamPlayer
 var _clatter: AudioStreamPlayer
@@ -130,6 +130,13 @@ func door(open: bool, chime: bool = false) -> void:
 		played["rail_chime"] = int(played["rail_chime"]) + 1
 	_shot("rail.door.open" if open else "rail.door.close", DOOR_GAIN, 1.0)
 	played["rail_door"] = int(played["rail_door"]) + 1
+
+
+## The vigilance warning in the cab (G-454): the door chime, higher, so it cannot be taken for the
+## doors.
+func vigilance() -> void:
+	_shot("rail.door.chime", CHIME_GAIN, 1.6)
+	played["rail_vigilance"] = int(played["rail_vigilance"]) + 1
 
 
 ## A crossing's boom going down (closing) or up, `gain` by distance.

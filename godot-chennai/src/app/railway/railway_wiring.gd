@@ -21,6 +21,7 @@ static func wire(main: Main, railway: Railway) -> void:
 	railway.hour_of = func() -> float: return GameLoop.clock.hour
 	var missions := main.find_child("MissionsLayer", false, false) as MissionsLayer
 	if missions != null:
+		missions.rail_map = railway.map_rail
 		railway.money_of = func() -> int: return missions.session.runner.balance() if missions.session != null else 0
 		railway.charge = func(rupees: int) -> void:
 			if missions.session != null:
@@ -35,7 +36,9 @@ static func wire(main: Main, railway: Railway) -> void:
 	# The graphics level (G-334): trains drawn, the overhead line, crowd figures.
 	var quality := QualitySettings.shared()
 	railway.apply_quality(quality.preset)
-	quality.changed.connect(func() -> void: railway.apply_quality(quality.preset))
+	# A method of the railway, not a lambda capturing `quality`: that lambda sat on the shared settings'
+	# own signal and kept both alive to the end of the run (a leak at exit, G-456).
+	quality.changed.connect(railway.apply_shared_quality)
 	railway.state_changed.connect(func(_s: StringName) -> void: set_active(railway, rig, main.state == &"play"))
 	set_active(railway, rig, main.state == &"play")
 

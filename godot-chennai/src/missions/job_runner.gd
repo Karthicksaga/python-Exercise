@@ -91,9 +91,9 @@ static func inside_zone(zone: JobData.AvoidZone, x: float, z: float) -> bool:
 static func avoid_penalty(zone: JobData.AvoidZone, seconds: float) -> Dictionary:
 	var over := maxf(0.0, seconds - zone.grace)
 	if over <= 0.0:
-		return {"share": AVOID_BONUS, "stars": 0, "note": "Kept off %s: +%d%%" % [zone.name, RulesMath.js_round_int(AVOID_BONUS * 100.0)]}
+		return {"share": AVOID_BONUS, "stars": 0, "note": Tr.t("job.avoid_kept", [zone.name, RulesMath.js_round_int(AVOID_BONUS * 100.0)])}
 	var share := minf(AVOID_MAX, over * AVOID_RATE)
-	return {"share": -share, "stars": 2 if over >= 60.0 else 1, "note": "Stuck on %s for %d s: -%d%%" % [zone.name, RulesMath.js_round_int(seconds), RulesMath.js_round_int(share * 100.0)]}
+	return {"share": -share, "stars": 2 if over >= 60.0 else 1, "note": Tr.t("job.avoid_stuck", [zone.name, RulesMath.js_round_int(seconds), RulesMath.js_round_int(share * 100.0)])}
 
 
 func job() -> JobData.Job:
@@ -161,11 +161,11 @@ func dwell_left() -> Variant:
 ## Whether the board offers this job: {ok: true} or {ok: false, reason}. `hour` < 0: not checked.
 func available(j: JobData.Job, hour: float = -1.0) -> Dictionary:
 	if _current != null:
-		return {"ok": false, "reason": "Finish or quit the current job first"}
+		return {"ok": false, "reason": Tr.t("msn.finish_job_first")}
 	if j.min_reputation > _rep:
-		return {"ok": false, "reason": "Needs reputation %d" % j.min_reputation}
+		return {"ok": false, "reason": Tr.t("job.needs_rep", [j.min_reputation])}
 	if not j.hours.is_empty() and hour >= 0.0 and not open_at(j.hours, hour):
-		return {"ok": false, "reason": "Offered %s only" % hours_text(j.hours)}
+		return {"ok": false, "reason": Tr.t("job.offered_only", [hours_text(j.hours)])}
 	return {"ok": true}
 
 
@@ -195,7 +195,7 @@ func accept(j: JobData.Job, hour: float = -1.0) -> Array[Dictionary]:
 func quit() -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if _current != null:
-		events.append(_fail(_current, "Job abandoned"))
+		events.append(_fail(_current, Tr.t("fail.job_abandoned")))
 	return _emit(events)
 
 
@@ -217,7 +217,7 @@ func bump() -> Array[Dictionary]:
 	_bumps += 1
 	events.append({"type": "bump", "job": j, "count": _bumps})
 	if j.max_bumps >= 0 and _bumps >= j.max_bumps:
-		events.append(_fail(j, "Too many crashes"))
+		events.append(_fail(j, Tr.t("fail.too_many_crashes")))
 	return _emit(events)
 
 
@@ -255,7 +255,7 @@ func _update(dt: float, x: float, z: float, mode: String, speed: float) -> Array
 		if _shift != null:
 			events.append({"type": "completed", "result": _finish_share(j, _shift, false)})
 		else:
-			events.append(_fail(j, "Out of time"))
+			events.append(_fail(j, Tr.t("fail.out_of_time")))
 		return events
 	if _shift != null:
 		var shift := _shift
@@ -327,21 +327,21 @@ func _finish(j: JobData.Job) -> Dictionary:
 	var time_share := clampf(1.0 - _elapsed / (j.time_limit + _bonus), 0.0, 1.0)
 	var notes: Array[String] = []
 	var pay := j.payout * (0.7 + 0.3 * time_share)
-	notes.append("%d%% of the time left" % RulesMath.js_round_int(time_share * 100.0))
+	notes.append(Tr.t("job.note.time_left", [RulesMath.js_round_int(time_share * 100.0)]))
 	if _bumps > 0:
 		var share_lost := minf(0.6, _bumps * (0.15 if j.kind == "ambulance" else 0.1))
 		pay *= 1.0 - share_lost
-		notes.append("%d bump%s: -%d%%" % [_bumps, "" if _bumps == 1 else "s", RulesMath.js_round_int(share_lost * 100.0)])
+		notes.append(Tr.n("job.note.bumps", _bumps, {"pct": RulesMath.js_round_int(share_lost * 100.0)}))
 	elif j.kind == "courier":
 		pay += j.payout * 0.25
-		notes.append("Parcel undamaged: +25%")
+		notes.append(Tr.t("job.note.parcel"))
 	elif j.kind == "ambulance":
 		pay += j.payout * 0.2
-		notes.append("Smooth ride: +20%")
+		notes.append(Tr.t("job.note.smooth"))
 	if _late > 0:
 		var late_share := minf(0.5, _late * 0.12)
 		pay *= 1.0 - late_share
-		notes.append("%d stop%s late: -%d%%" % [_late, "" if _late == 1 else "s", RulesMath.js_round_int(late_share * 100.0)])
+		notes.append(Tr.n("job.note.late", _late, {"pct": RulesMath.js_round_int(late_share * 100.0)}))
 	var avoid_stars := 0
 	if j.avoid != null:
 		var penalty := avoid_penalty(j.avoid, _avoid_time)
@@ -352,7 +352,7 @@ func _finish(j: JobData.Job) -> Dictionary:
 	if j.kind == "cab":
 		var tip := j.payout * (stars - 3) * 0.08
 		pay += tip
-		notes.append("%d★ rating: %s₹%d tip" % [stars, "+" if tip >= 0.0 else "-", RulesMath.js_round_int(absf(tip))])
+		notes.append(Tr.t("job.note.rating", [stars, "+" if tip >= 0.0 else "-", RulesMath.js_round_int(absf(tip))]))
 	var earned := maxi(RulesMath.js_round_int(j.payout * 0.25), RulesMath.js_round_int(pay))
 	var before := _rep
 	_rep = clampi(_rep + stars - 2, 0, 100)
@@ -369,15 +369,15 @@ func _finish_share(j: JobData.Job, shift: ShareShift, reached_end: bool) -> Dict
 	var stars := ShareShift.share_stars(summary, _bumps)
 	var carried: int = summary["carried"]
 	var notes: Array[String] = [
-		"Reached %s" % shift.route.to if reached_end else "Shift time up",
-		"%d passenger%s carried, ₹%d in fares" % [carried, "" if carried == 1 else "s", int(summary["fares"])],
+		Tr.t("job.note.reached", [shift.route.to]) if reached_end else Tr.t("job.note.shift_up"),
+		Tr.n("job.note.carried", carried, {"fares": int(summary["fares"])}),
 	]
 	if int(summary["missed"]) > 0:
-		notes.append("%d carried past their stop" % int(summary["missed"]))
+		notes.append(Tr.t("job.note.missed", [int(summary["missed"])]))
 	if int(summary["left"]) > 0:
-		notes.append("%d left waiting with a seat free" % int(summary["left"]))
+		notes.append(Tr.t("job.note.left", [int(summary["left"])]))
 	if _bumps > 0:
-		notes.append("%d bump%s" % [_bumps, "" if _bumps == 1 else "s"])
+		notes.append(Tr.n("job.note.bumps_only", _bumps))
 	var before := _rep
 	_rep = clampi(_rep + ShareShift.share_reputation(summary), 0, 100)
 	_done += 1

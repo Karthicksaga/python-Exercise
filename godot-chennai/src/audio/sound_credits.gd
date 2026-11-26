@@ -29,15 +29,15 @@ static func lines(library: SoundLibrary) -> PackedStringArray:
 		var e: Dictionary = by_original[key]
 		out.append("%s: %s, %s, %s" % [_name(str(e.get("original", ""))), str(e.get("author", "")), _licence(str(e.get("licence", ""))), _site(str(e.get("url", "")))])
 	if free > 0:
-		out.append("%d more recordings are CC0 or public domain (OpenGameArt, Wikimedia Commons); thanks to their authors." % free)
+		out.append(Tr.t("sound.more_free", [free]))
 	if synth > 0:
-		out.append("The other %d sounds are synthesised for this game." % synth)
+		out.append(Tr.t("sound.synth", [synth]))
 	return out
 
 
 static func text(library: SoundLibrary = null) -> String:
 	var lib := library if library != null else SoundLibrary.new()
-	return "Sound recordings, with thanks:\n" + "\n".join(lines(lib))
+	return Tr.t("sound.thanks") + "\n" + "\n".join(lines(lib))
 
 
 static func _name(original: String) -> String:

@@ -2,9 +2,10 @@ class_name RailNetwork
 extends RefCounted
 ## The railway at run time (port of `RailNetwork` in `packages/rail/src/network.ts`): every line of
 ## the rail file, the stations, the drawn tracks and the level crossings. One network for the game
-## (G-321): `world/rail/rail.json`, built by `tools/rail/build_rail.py` from the Three.js game's
-## OSM extract; it holds the Three.js file's lines unchanged plus every other line that extract
-## covers. Pure logic; load it on a worker thread.
+## (G-321): `world/rail/rail.json`, built by `tools/rail/build_rail.py` from the railway part of the
+## regional OSM extract (G-460): the Three.js file's lines, now running to their real ends in the
+## world (Tambaram, Chengalpattu, Gummidipoondi, beyond Avadi; G-461), the MRTS, the expresses and
+## the Metro's Blue and Green lines (G-462). Pure logic; load it on a worker thread.
 
 ## The game's railway file (G-321). The synced Three.js file (`assets/world/rail.json`) stays for
 ## comparison and the tests only.
@@ -49,6 +50,12 @@ var tracks: Array[Track] = []
 var crossings: Array[Crossing] = []
 var attribution: String = ""
 var error: String = ""
+## G-461: the regional network runs 22 lines over 100 km, so the game asks by place: indices into
+## `lines` and `crossings` by NEAR_CELL cell (every cell a line's path passes through, and the ring
+## round it), built once in `from_data`. Read-only after.
+const NEAR_CELL := 500.0
+var _line_cells: Dictionary[Vector2i, PackedInt32Array] = {}
+var _crossing_cells: Dictionary[Vector2i, PackedInt32Array] = {}
 
 
 ## The network from parsed rail-file JSON.
@@ -85,7 +92,68 @@ static func from_data(data: Dictionary) -> RailNetwork:
 			var ld: Dictionary = l
 			c.lines[str(ld.get("line", ""))] = float(ld.get("s", 0.0))
 		n.crossings.append(c)
+	n._index()
 	return n
+
+
+func _index() -> void:
+	for li in lines.size():
+		var pts := lines[li].path.points
+		var seen: Dictionary[Vector2i, bool] = {}
+		for i in pts.size() - 1:
+			# Every cell the segment passes through (sampled at a quarter cell).
+			var a := pts[i]
+			var b := pts[i + 1]
+			var n := maxi(1, ceili(a.distance_to(b) / (NEAR_CELL / 4.0)))
+			for k in n + 1:
+				seen[_cell(a.lerp(b, float(k) / n))] = true
+		for c: Vector2i in seen.keys():
+			if not _line_cells.has(c):
+				_line_cells[c] = PackedInt32Array()
+			_line_cells[c].append(li)
+	for ci in crossings.size():
+		var c := _cell(Vector2(crossings[ci].x, crossings[ci].z))
+		if not _crossing_cells.has(c):
+			_crossing_cells[c] = PackedInt32Array()
+		_crossing_cells[c].append(ci)
+
+
+static func _cell(p: Vector2) -> Vector2i:
+	return Vector2i(floori(p.x / NEAR_CELL), floori(p.y / NEAR_CELL))
+
+
+## The lines whose track passes within about `radius` metres of `at` (cells within radius plus one
+## cell: a superset, never missing a line that comes that close). In `lines` order.
+func lines_near(at: Vector2, radius: float) -> Array[RailLine]:
+	var hit := PackedByteArray()
+	hit.resize(lines.size())
+	var c0 := _cell(at - Vector2(radius, radius))
+	var c1 := _cell(at + Vector2(radius, radius))
+	for cx in range(c0.x, c1.x + 1):
+		for cz in range(c0.y, c1.y + 1):
+			var in_cell: PackedInt32Array = _line_cells.get(Vector2i(cx, cz), PackedInt32Array())
+			for li in in_cell:
+				hit[li] = 1
+	var out: Array[RailLine] = []
+	for li in lines.size():
+		if hit[li] == 1:
+			out.append(lines[li])
+	return out
+
+
+## Indices of the crossings within `radius` metres of `at`, ascending.
+func crossings_near(at: Vector2, radius: float) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var c0 := _cell(at - Vector2(radius, radius))
+	var c1 := _cell(at + Vector2(radius, radius))
+	for cx in range(c0.x, c1.x + 1):
+		for cz in range(c0.y, c1.y + 1):
+			var in_cell: PackedInt32Array = _crossing_cells.get(Vector2i(cx, cz), PackedInt32Array())
+			for ci in in_cell:
+				if Vector2(crossings[ci].x, crossings[ci].z).distance_to(at) <= radius:
+					out.append(ci)
+	out.sort()
+	return out
 
 
 ## Reads and parses a rail file (worker thread); `error` says what went wrong.

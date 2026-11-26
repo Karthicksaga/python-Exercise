@@ -113,7 +113,7 @@ def _ext_height(e: ExternalBuilding) -> float | None:
 
 
 def fuse(osm: list[Building], external: Iterable[ExternalBuilding], raster: HeightRaster | None = None,
-         projection: GeoProjection = PROJECTION, next_id: int = 0x40000000) -> FusionResult:
+         projection: GeoProjection = PROJECTION, next_id: int = 0xC0000000) -> FusionResult:
     """Return OSM buildings (with heights filled and absorbed ids recorded) plus new buildings."""
     ext = list(external)
     rep = FusionReport(osm_buildings=len(osm), external_buildings=len(ext))

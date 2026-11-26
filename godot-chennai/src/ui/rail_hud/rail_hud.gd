@@ -24,6 +24,8 @@ const OFF := &"off"
 const STATION := &"station"
 const RIDE := &"ride"
 const CAB := &"cab"
+## Room kept at the bottom right for the map credit's plate (`DebugHud`), UI units.
+const CREDIT_CLEAR := 30.0
 
 var mode: StringName = OFF
 var tamil_font: Font = null
@@ -39,6 +41,8 @@ var lever: NotchLever
 var dial: SpeedDial
 var horn: Button
 var emg: Button
+## The vigilance handle (dead man's handle, G-454): hold it while the train moves.
+var handle: HoldButton
 var doors: Label
 var leave: Button
 var step_off: Button
@@ -59,6 +63,7 @@ var _centre: VBoxContainer
 ## empty container is laid out (an empty one had a zero height, G-330).
 var _buttons: VBoxContainer
 var _cab_row: HBoxContainer
+var _action_row: HBoxContainer
 var _dragging: bool = false
 
 
@@ -130,14 +135,20 @@ func _ready() -> void:
 	layer.add_child(dial)
 	score = RailHudStyle.label("", 14)
 	score.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	score.position = Vector2(-300, 70)
-	score.size = Vector2(140, 22)
+	score.offset_left = -300.0
+	score.offset_right = -160.0
+	score.offset_top = 70.0
+	score.offset_bottom = 92.0
+	score.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	layer.add_child(score)
 	signal_chip = RailHudStyle.label("", 14)
 	signal_chip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	signal_chip.position = Vector2(-300, 94)
-	signal_chip.size = Vector2(140, 22)
+	signal_chip.offset_left = -300.0
+	signal_chip.offset_right = -160.0
+	signal_chip.offset_top = 94.0
+	signal_chip.offset_bottom = 116.0
+	signal_chip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	signal_chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	layer.add_child(signal_chip)
 	var right := VBoxContainer.new()
@@ -149,33 +160,35 @@ func _ready() -> void:
 	right.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	right.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Above the map credit's plate at the bottom right (it sat over HORN and EMG, G-455).
+	right.offset_bottom = -CREDIT_CLEAR
 	layer.add_child(right)
-	doors = RailHudStyle.label("Doors closed", 14)
+	doors = RailHudStyle.label(Tr.t("rail.hud.doors_closed"), 14)
 	doors.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	right.add_child(doors)
-	leave = RailHudStyle.button("LEAVE CAB")
+	leave = RailHudStyle.button_key("rail.hud.leave_cab")
 	leave.pressed.connect(func() -> void: leave_cab_pressed.emit())
 	right.add_child(leave)
-	step_off = RailHudStyle.button("STEP OFF", true)
+	step_off = RailHudStyle.button_key("rail.hud.step_off", true)
 	step_off.pressed.connect(func() -> void: step_off_pressed.emit())
 	right.add_child(step_off)
-	seat = RailHudStyle.button("SIT")
+	seat = RailHudStyle.button_key("rail.hud.sit")
 	seat.pressed.connect(func() -> void: seat_pressed.emit())
 	right.add_child(seat)
-	view = RailHudStyle.button("VIEW")
+	view = RailHudStyle.button_key("rail.hud.view")
 	view.pressed.connect(func() -> void: view_pressed.emit())
-	right.add_child(view)
+	actions.add_child(view)
 	var row := HBoxContainer.new()
 	row.name = "CabRow"
 	_cab_row = row
 	row.add_theme_constant_override("separation", 10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right.add_child(row)
-	horn = RailHudStyle.button("HORN")
+	horn = RailHudStyle.button_key("rail.hud.horn")
 	horn.button_down.connect(func() -> void: horn_changed.emit(true))
 	horn.button_up.connect(func() -> void: horn_changed.emit(false))
 	row.add_child(horn)
-	emg = RailHudStyle.button("EMG")
+	emg = RailHudStyle.button_key("rail.hud.emg")
 	emg.add_theme_stylebox_override("normal", RailHudStyle.glass(Color(0.75, 0.12, 0.1, 0.7), 24))
 	emg.pressed.connect(func() -> void: emergency_pressed.emit())
 	row.add_child(emg)
@@ -185,10 +198,10 @@ func _ready() -> void:
 	top.alignment = BoxContainer.ALIGNMENT_CENTER
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_centre.add_child(top)
-	timetable = RailHudStyle.button("TIMETABLE")
+	timetable = RailHudStyle.button_key("rail.hud.timetable")
 	timetable.pressed.connect(func() -> void: timetable_pressed.emit())
 	top.add_child(timetable)
-	drive = RailHudStyle.button("DRIVE", true)
+	drive = RailHudStyle.button_key("rail.hud.drive", true)
 	drive.pressed.connect(func() -> void: drive_pressed.emit())
 	top.add_child(drive)
 	_build_sheet(layer)
@@ -219,7 +232,7 @@ func _build_sheet(layer: Control) -> void:
 	sheet_rows = VBoxContainer.new()
 	sheet_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(sheet_rows)
-	close_sheet = RailHudStyle.button("CLOSE")
+	close_sheet = RailHudStyle.button_key("rail.hud.close")
 	close_sheet.pressed.connect(func() -> void: sheet.visible = false)
 	left.add_child(close_sheet)
 	map = RouteMap.new()
@@ -246,6 +259,7 @@ func set_mode(next: StringName) -> void:
 	dial.visible = cab
 	horn.visible = cab
 	emg.visible = cab
+	handle.visible = cab
 	doors.visible = cab
 	score.visible = cab
 	signal_chip.visible = cab
@@ -264,12 +278,13 @@ func set_mode(next: StringName) -> void:
 
 ## Shows a container only while one of its children shows.
 func _tidy() -> void:
-	_cab_row.visible = horn.visible or emg.visible
+	_cab_row.visible = horn.visible or emg.visible or handle.visible
+	_action_row.visible = leave.visible or step_off.visible or seat.visible or view.visible
 	var any := false
 	for c: Node in _buttons.get_children():
-		if c != _cab_row and (c as Control).visible:
+		if (c as Control).visible:
 			any = true
-	_buttons.visible = any or _cab_row.visible
+	_buttons.visible = any
 
 
 func set_info(title: String, tamil: String, line: String) -> void:
@@ -292,20 +307,49 @@ func set_offers(can_step_off: bool, can_leave_cab: bool, can_drive: bool) -> voi
 	_tidy()
 
 
+## The keys of the signal aspects the cab names (red, yellow, green).
+const ASPECT_KEYS: Dictionary[String, String] = {"red": "rail.aspect.red", "yellow": "rail.aspect.yellow", "green": "rail.aspect.green"}
+
+
 func set_seated(seated: bool) -> void:
-	seat.text = "STAND" if seated else "SIT"
+	Tr.bind(seat, "rail.hud.stand" if seated else "rail.hud.sit", null, false, &"text", 15)
 
 
 ## The cab's figures: speed and limit (km/h), notch, doors, signal aspect name, score.
 func set_cab(kmh: float, limit: float, notch: int, doors_open: bool, aspect: String, points: int) -> void:
 	dial.set_values(kmh, limit)
 	lever.set_notch(notch)
-	doors.text = "Doors open" if doors_open else "Doors closed"
+	doors.text = Tr.t("rail.hud.doors_open" if doors_open else "rail.hud.doors_closed")
 	doors.add_theme_color_override("font_color", RailHudStyle.GOOD if doors_open else RailHudStyle.TEXT)
 	var colours := {"red": RailHudStyle.DANGER, "yellow": RailHudStyle.AMBER, "green": RailHudStyle.GOOD}
-	signal_chip.text = "Signal %s · limit %d" % [aspect, roundi(limit)]
+	signal_chip.text = Tr.line("rail.hud.signal", [Tr.ref(ASPECT_KEYS.get(aspect, "rail.aspect.green")), roundi(limit)])
 	signal_chip.add_theme_color_override("font_color", colours.get(aspect, RailHudStyle.TEXT) as Color)
-	score.text = "Score %d" % points
+	score.text = Tr.line("rail.hud.score", [points])
+
+
+## The vigilance handle's state: seconds left before the warning (0 when it does not count),
+## the warning sounding, the emergency brake tripped. The label and colour follow.
+func set_vigilance(left: float, warning: bool, tripped: bool) -> void:
+	var text := "HOLD"
+	var colour := RailHudStyle.TEXT
+	if tripped:
+		text = "BRAKING"
+		colour = RailHudStyle.DANGER
+	elif warning:
+		text = "HOLD!"
+		colour = RailHudStyle.DANGER
+	elif left > 0.0 and left <= 5.0:
+		text = "HOLD %d" % ceili(left)
+		colour = RailHudStyle.AMBER
+	if handle.text != text:
+		handle.text = text
+		handle.add_theme_color_override("font_color", colour)
+		handle.add_theme_color_override("font_pressed_color", colour)
+
+
+## True while a finger (or the mouse) holds the handle and it is on screen.
+func handle_held() -> bool:
+	return handle.is_visible_in_tree() and handle.held()
 
 
 ## The timetable sheet: a title, rows of text, and the route map's data.
@@ -343,7 +387,7 @@ func _on_look_input(event: InputEvent) -> void:
 ## Every visible button (layout tests).
 func visible_buttons() -> Array[Button]:
 	var out: Array[Button] = []
-	for b: Button in [leave, step_off, seat, view, horn, emg, timetable, drive]:
+	for b: Button in [leave, step_off, seat, view, horn, emg, handle, timetable, drive]:
 		if b.is_visible_in_tree():
 			out.append(b)
 	return out

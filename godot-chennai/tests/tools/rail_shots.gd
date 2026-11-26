@@ -10,12 +10,18 @@ extends SceneTree
 ## Shots: platform (a train standing at Chennai Egmore), cab (driving away from Egmore), ride
 ## (inside a coach), crossing (the level crossing near Park with a train coming), mrts (an MRTS
 ## platform on the viaduct), measure (draw calls and main-thread ms at Egmore with the railway on
-## and off). Pictures go to `--out` (a scratch folder, never the repository).
+## and off; `--at=guindy` measures at Guindy instead, where the Metro, the suburban line and the
+## MRTS meet). Rail extras (G-460…G-468): metro (a Metro train at Guindy on the viaduct),
+## metro_ground (the Blue Line's viaduct from the street at Meenambakkam), far (a train at Ponneri,
+## beyond the old map), map (the full map with the rail lines round Guindy), map_low (the same on
+## Low), minimap (the HUD at Guindy with the rail lines on the corner map).
+## Pictures go to `--out` (a scratch folder, never the repository).
 
 const MAIN := "res://src/app/main.tscn"
 
 var main: Node
 var out_dir := "user://rail_shots"
+var measure_at := "egmore"
 
 
 func _initialize() -> void:
@@ -27,6 +33,8 @@ func _run() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shot="):
 			shot = arg.trim_prefix("--shot=")
+		elif arg.begins_with("--at="):
+			measure_at = arg.trim_prefix("--at=")
 		elif arg.begins_with("--out="):
 			out_dir = arg.trim_prefix("--out=")
 	DirAccess.make_dir_recursive_absolute(out_dir)
@@ -55,6 +63,18 @@ func _run() -> void:
 			await _mrts()
 		"measure":
 			await _measure()
+		"metro":
+			await _metro()
+		"metro_ground":
+			await _metro_ground()
+		"far":
+			await _far()
+		"map":
+			await _map(false)
+		"map_low":
+			await _map(true)
+		"minimap":
+			await _minimap()
 	quit(0)
 
 
@@ -159,13 +179,22 @@ func _cab() -> void:
 	var ok: bool = _railway().call("take_cab")
 	print("[rail_shots] take_cab %s" % ok)
 	var cab: Object = _railway().get("cab")
+	# A finger on the vigilance handle (G-454) while driving; let go for the warning picture.
+	var handle: Object = (_railway().get("hud") as Object).get("handle")
 	for k in 60 * 10:
 		await physics_frame
+	# Pressed once the HUD has settled (a hidden HUD lets go of the handle).
+	handle.call("press", true)
 	cab.call("set_notch", 7)
 	for k in 60 * 12:
 		await physics_frame
 	await _save("cab_driving")
 	print("[rail_shots] cab v %.1f m/s s %.0f score %s" % [float(cab.get("v")), float(cab.get("s")), cab.get("score")])
+	handle.call("press", false)
+	for k in 60 * 9:
+		await physics_frame
+	await _save("cab_warning")
+	print("[rail_shots] cab warning %s tripped %s" % [cab.get("warning"), cab.get("tripped")])
 
 
 func _ride() -> void:
@@ -238,9 +267,88 @@ func _mrts() -> void:
 
 
 ## Draw calls and main-thread time near Egmore with a train standing, railway on and then off.
+func _metro() -> void:
+	var line := _line("metro-blue-north")
+	var i := _stop_index(line, "Guindy Metro")
+	var spot := _platform_spot(line, i, 30.0)
+	await _teleport(spot[0], spot[1], float(spot[2]) + PI)
+	_train_standing(line, i, 4.0)
+	for k in 90:
+		await physics_frame
+	var cam: Object = (main.get("rig") as Object).get("camera")
+	cam.set("yaw", float(spot[2]) + PI - 0.4)
+	cam.set("pitch", 0.1)
+	await _save("metro_guindy_platform")
+	print("[rail_shots] snapshot %s" % str(_railway().call("snapshot")))
+
+
+func _metro_ground() -> void:
+	var line := _line("metro-blue-north")
+	var i := _stop_index(line, "Meenambakkam")
+	var path: Object = line.get("path")
+	var stops: Array = line.get("stops")
+	var s: float = float((stops[i] as Object).get("s")) + 160.0
+	var pose: Object = path.call("at", s)
+	var p: Vector2 = path.call("beside", s, 28.0)
+	await _teleport(p, 0.05, float(pose.get("yaw")) - PI / 2.0)
+	_train_standing(line, i, 26.0)
+	for k in 120:
+		await physics_frame
+	var cam: Object = (main.get("rig") as Object).get("camera")
+	cam.set("yaw", float(pose.get("yaw")) - PI / 2.0 - 0.6)
+	cam.set("pitch", 0.32)
+	await _save("metro_viaduct_street")
+
+
+func _far() -> void:
+	var line := _line("central-sullurpeta")
+	var i := _stop_index(line, "Ponneri")
+	var spot := _platform_spot(line, i, 34.0)
+	await _teleport(spot[0], spot[1], float(spot[2]) + PI)
+	_train_standing(line, i, 6.0)
+	for k in 90:
+		await physics_frame
+	var cam: Object = (main.get("rig") as Object).get("camera")
+	cam.set("yaw", float(spot[2]) + PI - 0.35)
+	cam.set("pitch", 0.12)
+	await _save("far_ponneri_platform")
+
+
+func _guindy() -> void:
+	var line := _line("beach-tambaram")
+	var i := _stop_index(line, "Guindy")
+	var spot := _platform_spot(line, i, 0.0)
+	await _teleport(spot[0], spot[1], float(spot[2]))
+
+
+func _map(low: bool) -> void:
+	if low:
+		QualitySettings.shared().set_preset(QualitySettings.LOW)
+	await _guindy()
+	var layer: Node = main.find_child("MissionsLayer", false, false)
+	layer.call("open_map")
+	var map: Object = layer.get("full_map")
+	var mr: MapRail = map.get("rail")
+	print("[rail_shots] map rail: %d segments, %d stations, drawn %s" % [mr.segment_count() if mr != null else -1, mr.station_points.size() if mr != null else -1, map.call("rail_drawn")])
+	map.call("set_zoom", 2)
+	for k in 30:
+		await process_frame
+	await _save("full_map_rail_low" if low else "full_map_rail")
+	map.call("set_zoom", 1)
+	await _save("full_map_rail_zoom1_low" if low else "full_map_rail_zoom1")
+	layer.call("close_map")
+
+
+func _minimap() -> void:
+	await _guindy()
+	for k in 60:
+		await physics_frame
+	await _save("minimap_rail_guindy")
+
+
 func _measure() -> void:
 	var line := _line("beach-tambaram")
-	var i := _stop_index(line, "Chennai Egmore")
+	var i := _stop_index(line, "Guindy" if measure_at == "guindy" else "Chennai Egmore")
 	var spot := _platform_spot(line, i, 34.0)
 	await _teleport(spot[0], spot[1], float(spot[2]) + PI)
 	_train_standing(line, i, 2.0)

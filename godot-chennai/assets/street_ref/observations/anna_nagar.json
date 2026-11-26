@@ -1,0 +1,9 @@
+{
+ "format": 1,
+ "area": "anna_nagar",
+ "status": "empty",
+ "note": "No observation recorded yet: imagery was unreachable from the build sandbox and no token was supplied. Add observations by hand after reviewing images (docs/street-imagery.md section 7).",
+ "reviewed_by": "",
+ "reviewed_on": "",
+ "observations": []
+}

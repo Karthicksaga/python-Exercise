@@ -310,3 +310,40 @@ static func _sha(path: String) -> String:
 	ctx.start(HashingContext.HASH_SHA256)
 	ctx.update(FileAccess.get_file_as_bytes(path))
 	return ctx.finish().hex_encode()
+
+
+func test_hero_materials_follow_the_low_preset_lighting() -> bool:
+	# The hero atlas materials are made per landmark on a worker (G-390), so `set_flat` could not
+	# see them; `add_hero` registers them and Low lights them per vertex like the shared ones (G-452).
+	var mats := CityMaterials.new()
+	mats.walls = StandardMaterial3D.new()
+	mats.ground = ShaderMaterial.new()
+	mats.trees = ShaderMaterial.new()
+	mats.water = ShaderMaterial.new()
+	mats.ground.shader = CityMaterials.GROUND_SHADER
+	mats.trees.shader = TreeKit.SHADER
+	mats.water.shader = CityMaterials.WATER_SHADER
+	var built: Array[LandmarkModels.Built] = []
+	for s in heroes():
+		var b := LandmarkModels.build(s, null)
+		built.append(b)
+		mats.add_hero(b.material)
+	assert_true(built.size() >= 1, "there are hero landmarks")
+	for b in built:
+		assert_eq(b.material.shading_mode, BaseMaterial3D.SHADING_MODE_PER_PIXEL, "a hero is lit per pixel by default")
+	mats.set_flat(true)
+	for b in built:
+		assert_eq(b.material.shading_mode, BaseMaterial3D.SHADING_MODE_PER_VERTEX, "Low: the hero is lit per vertex")
+		assert_true(b.material.albedo_texture != null and b.material.vertex_color_use_as_albedo, "its atlas and tint are kept")
+	# One that arrives after the preset was applied takes the mode in force.
+	var late := LandmarkModels.build(heroes()[0], null)
+	mats.add_hero(late.material)
+	assert_eq(late.material.shading_mode, BaseMaterial3D.SHADING_MODE_PER_VERTEX, "a late hero joins in per-vertex mode")
+	mats.set_flat(false)
+	for b in built:
+		assert_eq(b.material.shading_mode, BaseMaterial3D.SHADING_MODE_PER_PIXEL, "back to per pixel")
+	assert_eq(late.material.shading_mode, BaseMaterial3D.SHADING_MODE_PER_PIXEL, "the late one too")
+	for b in built:
+		b.node.free()
+	late.node.free()
+	return true

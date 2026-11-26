@@ -52,7 +52,9 @@ is the source of data, assets and rules until this version reaches parity.
 | `combat` | Health, weapons, fights, wanted level, gangs. Pure logic | nothing |
 | `rail` | Railway data, train motion, timetable. Pure logic | `map_data` |
 | `audio` | Sound: profiles and synthesised stand-ins (`SoundProfiles`, `Synth`), the manifest (`SoundLibrary`), engines (`EngineBlend`, `EngineVoice`), `Ambience`, the `Sound` autoload | `game_engine` (`GameLoop` clock, `Weather`) |
-| `ui` | Loading screen, title menu, HUD, touch controls, theme (`UiTheme`) | nothing (gets data from `app`) |
+| `ui` | Loading screen, title menu, HUD, touch controls, theme (`UiTheme`) | `i18n` (gets data from `app`) |
+| `culture` | Heritage journal, peace zones, the temple visit, swimming rules. Pure logic, data in `assets/culture/culture.json` | `game_world` (`WorldSea`, `WorldWaterway`), `missions` (`SaveStore`) |
+| `i18n` | Every visible string: `Tr`, the CSV catalogs in `assets/i18n/`, `LanguageSettings` (English, Tamil, Both) | nothing |
 | `app` | Composition root `main.tscn`, the placeholder `test_world` | everything |
 
 `game_world`, `map_data`, `rail`, `ai`, `missions` and `combat` stay free of nodes (plain
@@ -71,6 +73,10 @@ leaves a run hanging).
   edits small and additive so branches merge cleanly.
 - The cast agent owns `tools/blender/` and `assets/people/` outside `legacy/`; the sync owns
   `assets/people/legacy/` and the rows between its markers in `assets/LICENSES.md`.
-- Decision numbers: G-1…G-9 foundation, G-10…G-19 cast; later work continues after the highest.
+- Decision numbers: G-1…G-9 foundation, G-10…G-19 cast, G-480…G-489 culture; later work continues after the highest.
+- **Text:** never write a visible string in code. Add a key to `assets/i18n/en.csv` and `ta.csv` (Tamil row
+  status `needs native review`), call `Tr.t("area.key", args)`, run `python3 tools/i18n/review_table.py`; a
+  test fails on a missing key, a mismatched placeholder or a stale review table. Mission text stays English in
+  its JSON (`Tr.src`). See `docs/handoff.md` "Language".
 - Screenshots and logs go in a scratch folder, never in the repository. Commit messages end
   with the attribution lines the environment provides; no model identifiers in commits or docs.

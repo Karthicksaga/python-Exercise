@@ -155,3 +155,110 @@ func test_crossing_barriers_come_down_before_a_train_and_rise_after() -> bool:
 	var extra: Dictionary[String, float] = {"south": 1900.0}
 	assert_eq(LevelCrossing.closed_amount(net, crossing, clock + arrive - 60.0, extra), 1.0, "down for the player's train near it")
 	return true
+
+
+## A train running at about 12 m/s on the open line, lever in P2, so it holds speed for a while.
+func _cruising(vigilance: bool) -> CabDrive:
+	var cab := CabDrive.new(_line(), 10.0, 12.0)
+	cab.served[0] = true
+	cab.next = 1
+	cab.set_notch(6)
+	cab.vigilance_on = vigilance
+	cab.handle_held = false
+	return cab
+
+
+func test_vigilance_handle_is_off_unless_the_game_turns_it_on() -> bool:
+	# The prototype's rules are untouched: nobody holds a handle in the old tests.
+	var cab := _cruising(false)
+	_run(cab, 40.0)
+	assert_false(cab.warning or cab.tripped, "no warning, no brake")
+	assert_true(cab.v > 5.0, "still running (%.1f m/s)" % cab.v)
+	assert_eq(cab.vigilance_left(), 0.0, "and nothing counts down")
+	return true
+
+
+func test_a_held_handle_keeps_the_train_running() -> bool:
+	var cab := _cruising(true)
+	cab.set_handle(true)
+	_run(cab, 30.0)
+	assert_false(cab.warning or cab.tripped, "held: nothing happens")
+	assert_eq(cab.released_for, 0.0, "the count stays at zero")
+	return true
+
+
+func test_let_go_for_eight_seconds_at_speed_warns_then_brakes() -> bool:
+	var cab := _cruising(true)
+	var events: Array[String] = []
+	cab.vigilance_warning.connect(func() -> void: events.append("warning"))
+	cab.vigilance_tripped.connect(func() -> void: events.append("tripped"))
+	var texts: Array[String] = []
+	cab.message.connect(func(t: String) -> void: texts.append(t))
+	var warned_at := -1.0
+	var tripped_at := -1.0
+	for i in 60 * 30:
+		cab.step(1.0 / 60.0)
+		if warned_at < 0.0 and cab.warning:
+			warned_at = cab.released_for
+		if tripped_at < 0.0 and cab.tripped:
+			tripped_at = cab.released_for
+	assert_true(warned_at > CabDrive.VIGILANCE_LIMIT and warned_at < CabDrive.VIGILANCE_LIMIT + 0.1, "the warning comes just after 8 s (%.2f s)" % warned_at)
+	assert_true(tripped_at > CabDrive.VIGILANCE_LIMIT + CabDrive.WARNING_GRACE and tripped_at < CabDrive.VIGILANCE_LIMIT + CabDrive.WARNING_GRACE + 0.1, "the brake three seconds later (%.2f s)" % tripped_at)
+	assert_eq(events, ["warning", "tripped"] as Array[String], "once each, in order")
+	assert_true(texts.any(func(t: String) -> bool: return t.contains("hold the handle")), "the warning has words for the toast")
+	assert_eq(cab.v, 0.0, "the emergency brake stopped the train")
+	assert_false(cab.tripped, "and the trip clears once it stands")
+	assert_eq(cab.notch_name(), "EMG", "the lever stays at EMG until the driver moves it")
+	return true
+
+
+func test_taking_hold_again_in_time_cancels_the_warning() -> bool:
+	var cab := _cruising(true)
+	_run(cab, 7.0)
+	assert_false(cab.warning, "seven seconds is allowed")
+	assert_true(cab.vigilance_left() > 0.5 and cab.vigilance_left() < 1.5, "about a second left (%.2f)" % cab.vigilance_left())
+	_run(cab, 2.0)
+	assert_true(cab.warning and not cab.tripped, "warning sounds")
+	cab.set_handle(true)
+	cab.step(1.0 / 60.0)
+	assert_false(cab.warning, "holding it again silences the warning")
+	assert_eq(cab.released_for, 0.0, "and starts the count over")
+	cab.set_handle(false)
+	_run(cab, 7.0)
+	assert_false(cab.warning or cab.tripped, "another seven seconds is allowed again")
+	return true
+
+
+func test_standing_or_creeping_needs_no_handle() -> bool:
+	var cab := CabDrive.new(_line(), 10.0, 0.0)
+	cab.vigilance_on = true
+	cab.handle_held = false
+	_run(cab, 60.0)
+	assert_false(cab.warning or cab.tripped, "a standing train never warns")
+	var slow := CabDrive.new(_line(), 10.0, 0.8)
+	slow.vigilance_on = true
+	slow.handle_held = false
+	slow.set_notch(5)
+	slow.effort = 0.0
+	slow.v = 0.8
+	for i in 60 * 3:
+		slow.v = 0.8
+		slow.step(1.0 / 60.0)
+	assert_false(slow.warning, "under 1 m/s needs no handle either")
+	return true
+
+
+func test_the_vigilance_brake_holds_the_lever_and_adds_no_points() -> bool:
+	var with_handle := _cruising(true)
+	with_handle.set_handle(true)
+	var without := _cruising(true)
+	_run(with_handle, 5.0)
+	_run(without, 5.0)
+	assert_eq(with_handle.score, without.score, "the handle changes no score")
+	_run(without, 15.0)
+	assert_true(without.tripped or without.v == 0.0, "tripped or stopped by now")
+	without.set_notch(8)
+	without.step(1.0 / 60.0)
+	if without.tripped:
+		assert_eq(without.notch_name(), "EMG", "moving the lever while tripped changes nothing")
+	return true

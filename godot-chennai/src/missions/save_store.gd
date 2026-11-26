@@ -6,6 +6,7 @@
 ##   "cow-districts-v1" [names]                                        (VisitedDistricts)
 ##   "cow-hour-v1"      game hour (number)                             (GameClock)
 ##   "cow-weather-v1"   "clear" | "rain"
+##   "chennai-heritage-v1" {order, count, done}                        (HeritageJournal, G-482)
 ## Writes go to a temporary file first and are then renamed, so a crash mid-write keeps the old
 ## save. A missing or damaged file loads as a new game. The path is injected (tests use their own).
 class_name SaveStore
@@ -18,6 +19,11 @@ const WEAPONS := "cow-weapons-v1"
 const DISTRICTS := "cow-districts-v1"
 const HOUR := "cow-hour-v1"
 const WEATHER := "cow-weather-v1"
+## The heritage journal's own section (culture, G-482): not a Three.js key.
+const HERITAGE := "chennai-heritage-v1"
+## The sections the game's progress owns (NEW GAME clears them). Any other section on disk (the
+## settings, the journal) is kept when this store writes, even if it was read before they were saved.
+const PROGRESS_KEYS: Array[String] = [PROGRESS, JOBS, WEAPONS, DISTRICTS, HOUR, WEATHER]
 ## The save format version (G-142). 1: the Three.js keys only. 2: adds `medals`, `flags` and
 ## `extrasDone` inside `cow-progress-v1` for the medals, choices and extra missions. A file without
 ## the key is version 1 and is migrated when read (nothing is lost; the old keys are untouched).
@@ -30,6 +36,8 @@ var data: Dictionary = {}
 ## whether it was newer than this game knows (then it is left alone).
 var read_version := 0
 var too_new := false
+## Sections this store set itself (`set_section`): they win over the file's copy when writing.
+var _set_here: Dictionary[String, bool] = {}
 
 
 func _init(file_path: String = DEFAULT_PATH) -> void:
@@ -89,6 +97,7 @@ func save_extras(state: Dictionary) -> void:
 func write() -> Error:
 	if not too_new:
 		data[VERSION_KEY] = VERSION
+	_keep_other_sections()
 	var tmp := path + ".tmp"
 	var f := FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:
@@ -98,11 +107,29 @@ func write() -> Error:
 	return DirAccess.rename_absolute(tmp, path)
 
 
+## Sections other systems saved in the file since this store read it (settings, the heritage journal)
+## stay as they are on disk: a store that holds the stage progress would otherwise write over them
+## from its older copy. A section this store set itself, and the progress sections, are its own.
+func _keep_other_sections() -> void:
+	if too_new or not FileAccess.file_exists(path):
+		return
+	var json := JSON.new()
+	if json.parse(FileAccess.get_file_as_string(path)) != OK or not (json.data is Dictionary):
+		return
+	var on_disk: Dictionary = json.data
+	for key: Variant in on_disk:
+		var k := str(key)
+		if k == VERSION_KEY or _set_here.has(k) or PROGRESS_KEYS.has(k):
+			continue
+		data[k] = on_disk[key]
+
+
 func section(key: String, fallback: Variant = null) -> Variant:
 	return data.get(key, fallback)
 
 
 func set_section(key: String, value: Variant) -> void:
+	_set_here[key] = true
 	data[key] = value
 
 

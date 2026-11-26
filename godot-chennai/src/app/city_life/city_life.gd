@@ -97,6 +97,11 @@ var stagger: Dictionary[int, float] = {}
 ## Crowd people within `StreetHits.BYSTANDER_REACH` of this world point turn to look at it.
 var _watch_at := Vector2.ZERO
 var _watch_left := 0.0
+## Where a fight is on now (world metres, `FightSafety.fight_points`), set by the combat wiring:
+## no child of a crowd is drawn within `FightSafety.CHILD_CLEAR` of any (G-415).
+var fight_points := PackedVector2Array()
+## Children kept out of a fight's ring in the last sync (tests).
+var children_kept_out: int = 0
 ## The hour of the day for the density curves (the game clock unless a test sets it).
 var hour_override: float = -1.0
 ## Other systems' extra stop points for traffic (the railway's closed level crossings):
@@ -187,7 +192,7 @@ func prepare(start: Vector2) -> String:
 	var stations := _stations
 	var area: AiArea = await BackgroundTask.start(func() -> AiArea: return AiArea.build(source, start, stations)).finish(get_tree())
 	if area == null:
-		return "The streets' traffic could not be worked out."
+		return Tr.t("err.traffic")
 	var people := PeopleManifest.open(PeoplePool.MANIFEST)
 	var entries: Array[Dictionary] = []
 	entries.assign(people.entries)
@@ -227,7 +232,9 @@ func prepare(start: Vector2) -> String:
 	population.traffic.on_change = _changing_agents
 	population.walkers.on_change = _changing_agents
 	for a in population.traffic.agents:
-		var v := TrafficVehicleView.make(population.traffic.kinds[a.kind].name, a.variation)
+		var kind := population.traffic.kinds[a.kind]
+		# Buses keep their door nodes: on a route they open them at stops (G-214).
+		var v := TrafficVehicleView.make(kind.name, a.variation, kind.group == &"bus")
 		v.agent_id = a.id
 		add_child(v)
 		v.set_shown(false)
@@ -313,12 +320,12 @@ func _load_vehicle_models() -> String:
 				files.append(f)
 	for f in files:
 		if ResourceLoader.load_threaded_request(f) != OK:
-			return "Could not start loading %s." % f
+			return Tr.t("err.start_loading", [f])
 	for f in files:
 		while ResourceLoader.load_threaded_get_status(f) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 			await get_tree().process_frame
 		if ResourceLoader.load_threaded_get(f) == null:
-			return "Could not load %s." % f
+			return Tr.t("err.load", [f])
 	return ""
 
 
@@ -589,8 +596,12 @@ func _sync(dt: float, focus: Vector2) -> void:
 	var watching := _watch_left > 0.0
 	if watching:
 		_watch_left -= dt
+	children_kept_out = 0
 	for p in _people:
 		if downed_crowd.has(p.key):
+			continue
+		if (p.child or p.play) and not fight_points.is_empty() and not FightSafety.child_allowed(p.pos, fight_points):
+			children_kept_out += 1
 			continue
 		var who := cast.crowd_person(p.look, p.child, p.play)
 		if who == "":

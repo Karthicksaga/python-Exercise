@@ -37,6 +37,8 @@ var _age := PackedFloat32Array()
 var _life := PackedFloat32Array()
 ## Ground height (local y) under each piece, for sparks and shards to land on.
 var _floor := PackedFloat32Array()
+## 1 for a drop of water (pale blue), 0 for glass.
+var _water := PackedByteArray()
 var _base: PackedInt32Array = [0, SPARKS, SPARKS + SHARDS, SPARKS + SHARDS + PUFFS]
 var _next: PackedInt32Array = [0, 0, 0]
 ## The multimesh buffer (12 transform + 4 colour floats per instance), a member so the writes
@@ -78,6 +80,7 @@ func _init() -> void:
 	_age.resize(total)
 	_life.resize(total)
 	_floor.resize(total)
+	_water.resize(total)
 	_buf.resize(INSTANCES * 16)
 	_smokers.resize(SMOKERS)
 	_smoke_at.resize(SMOKERS)
@@ -141,6 +144,20 @@ func burst(point: Vector3, normal: Vector3, strength: float, sparks: int, shards
 		_spawn(Pool.SHARD, at + Vector3(0, 0.4, 0), dir * _rng.randf_range(1.5, 3.0 + 3.5 * s), SHARD_LIFE, at.y - 0.45)
 
 
+## Water thrown up from a puddle at `point` (scene space), `strength` 0..1 (G-450): droplets of
+## the glass pool, pale blue, thrown up and out.
+func splash(point: Vector3, strength: float) -> void:
+	var at := to_local(point)
+	var s := clampf(strength, 0.0, 1.0)
+	for i in mini(6 + roundi(14.0 * s), SHARDS):
+		var dir := Vector3(_rng.randf_range(-1.0, 1.0), 0.0, _rng.randf_range(-1.0, 1.0)).normalized()
+		dir *= _rng.randf_range(0.6, 1.4 + 1.6 * s)
+		dir.y = _rng.randf_range(1.2, 2.4 + 1.6 * s)
+		var slot := _base[Pool.SHARD] + _next[Pool.SHARD]
+		_spawn(Pool.SHARD, at + Vector3(0, 0.15, 0), dir, 0.7, at.y - 0.05)
+		_water[slot] = 1
+
+
 ## Smoke from a wrecked vehicle, from `local` (its own frame: the engine bay) until it is freed
 ## or `stop_smoke` is called. At most `SMOKERS` at once; the oldest gives way.
 func smoke(vehicle: Node3D, local: Vector3) -> void:
@@ -187,6 +204,7 @@ func _spawn(pool: int, at: Vector3, vel: Vector3, life: float, ground: float) ->
 	_age[i] = 0.0
 	_life[i] = life * _rng.randf_range(0.7, 1.3)
 	_floor[i] = ground
+	_water[i] = 0
 	_spawned[pool] += 1
 
 
@@ -260,7 +278,11 @@ func _step_pool(p: int, dt: float) -> void:
 					v = Vector3(v.x * SHARD_BOUNCE, -v.y * SHARD_BOUNCE, v.z * SHARD_BOUNCE)
 				var spin := a * (9.0 + float(i % 5) * 3.0)
 				xf = Transform3D(Basis(Vector3(0.3, 1, 0.5).normalized(), spin + float(i)), x)
-				c = Color(0.82, 0.93, 0.97) if i % 3 != 0 else Color(0.95, 0.55, 0.2)
+				if _water[i] == 1:
+					c = Color(0.62, 0.74, 0.80, 1.0)
+					xf = Transform3D(Basis.IDENTITY.scaled(Vector3(0.6, 1.0, 0.6)), x)
+				else:
+					c = Color(0.82, 0.93, 0.97) if i % 3 != 0 else Color(0.95, 0.55, 0.2)
 			_:
 				v *= 1.0 - 0.6 * dt
 				x += v * dt

@@ -14,23 +14,18 @@ extends CanvasLayer
 signal retry_requested
 signal close_requested
 
-## Tamil for the steps (G-166). Only lines whose Tamil is certain; a step not listed shows English
-## alone. Marked "needs native review" in docs/handoff.md.
-const TAMIL: Dictionary[String, String] = {
-	"Reading the map of Chennai": "சென்னை வரைபடத்தைப் படிக்கிறது",
-	"Reading the streets": "தெருக்களைப் படிக்கிறது",
-	"Building the streets around you": "உங்களைச் சுற்றியுள்ள தெருக்களை உருவாக்குகிறது",
-	"Parking the vehicles": "வாகனங்களை நிறுத்துகிறது",
+## The keys of the steps' names, by their English text (`Main.STEPS`): the screen shows each step
+## in the chosen language (G-166, G-440). A step without a key shows its English text.
+const STEP_KEYS: Dictionary[String, String] = {
+	"Reading the map of Chennai": "loading.step.0",
+	"Reading the streets": "loading.step.1",
+	"Building the streets around you": "loading.step.2",
+	"Parking the vehicles": "loading.step.3",
+	"Running the trains": "loading.step.4",
 }
 ## One short line per step: facts from public sources, then control hints. The tip for step `i`
-## is `TIPS[i % size]`, so it changes between steps and never on a timer.
-const TIPS: Array[String] = [
-	"Chennai was called Madras until 1996.",
-	"Tap RUN to run; it stops when you let go of the stick.",
-	"Chennai Central railway station opened in 1873.",
-	"Change the time of day or the weather from PAUSE or SETTINGS.",
-	"Marina Beach is one of the longest urban beaches in the world.",
-]
+## is `TIP_KEYS[i % size]`, so it changes between steps and never on a timer.
+const TIP_KEYS: Array[String] = ["loading.tip.0", "loading.tip.1", "loading.tip.2", "loading.tip.3", "loading.tip.4"]
 const PAPER := Color("#f4efe6")
 const MUTED := Color("#b8bcc2")
 const AMBER := Color("#ffb400")
@@ -85,7 +80,8 @@ func _ready() -> void:
 	var name_label := UiTheme.label("CHENNAI", 64, PAPER)
 	name_label.add_theme_font_override("font", TitleFonts.display(true, 0.3))
 	left.add_child(name_label)
-	var sub := UiTheme.label("OPEN WORLD", 13, AMBER)
+	var sub := UiTheme.label("", 13, AMBER)
+	Tr.bind(sub, "loading.brand", null, true)
 	sub.add_theme_font_override("font", TitleFonts.display(false, 6.0))
 	left.add_child(sub)
 	_tip = UiTheme.label("", 13, MUTED)
@@ -141,12 +137,14 @@ func _ready() -> void:
 	buttons.add_theme_constant_override("h_separation", 12)
 	buttons.add_theme_constant_override("v_separation", 8)
 	_error_box.add_child(buttons)
-	_retry = UiTheme.button("TRY AGAIN")
+	_retry = UiTheme.button("")
+	Tr.bind(_retry, "loading.retry")
 	_retry.name = "Retry"
 	_retry.custom_minimum_size = Vector2(160, UiTheme.MIN_TARGET)
 	_retry.pressed.connect(func() -> void: retry_requested.emit())
 	buttons.add_child(_retry)
-	var close := UiTheme.button("CLOSE")
+	var close := UiTheme.button("")
+	Tr.bind(close, "loading.close")
 	close.name = "Close"
 	close.custom_minimum_size = Vector2(160, UiTheme.MIN_TARGET)
 	close.pressed.connect(func() -> void: close_requested.emit())
@@ -199,20 +197,18 @@ func set_steps(names: PackedStringArray) -> void:
 		text.add_theme_constant_override("separation", 0)
 		row.add_child(text)
 		var en := UiTheme.label(step_name, 16)
+		if STEP_KEYS.has(step_name):
+			Tr.bind(en, STEP_KEYS[step_name], null, true, &"text", 15)
 		text.add_child(en)
-		var ta := UiTheme.label(String(TAMIL.get(step_name, "")), 12, MUTED)
-		ta.add_theme_font_override("font", TitleFonts.tamil())
-		ta.visible = TAMIL.has(step_name)
-		text.add_child(ta)
 		_list.add_child(row)
-		_rows.append({"row": row, "mark": mark, "name": en, "tamil": ta})
+		_rows.append({"row": row, "mark": mark, "name": en})
 	for i in names.size():
 		_paint(i, &"waiting")
 	_fill.anchor_right = 0.0
 	_error_box.visible = false
 	_slow.visible = false
 	_step_label.text = ""
-	_tip.text = TIPS[0]
+	_set_tip(0)
 
 
 func _paint(i: int, state: StringName) -> void:
@@ -242,8 +238,8 @@ func _paint(i: int, state: StringName) -> void:
 func begin_step(i: int) -> void:
 	_current = i
 	_paint(i, &"current")
-	_step_label.text = "%s…" % _names[i]
-	_tip.text = TIPS[i % TIPS.size()]
+	Tr.bind(_step_label, "loading.dots", [_step_arg(i)])
+	_set_tip(i)
 	_slow.visible = false
 
 
@@ -256,18 +252,18 @@ func finish_step(i: int) -> void:
 
 ## A step that is taking long: one dim line, set by `Main` from its heartbeat (not by a timer here).
 func show_slow(step: int, seconds: int) -> void:
-	var what := _names[step] if step >= 0 and step < _names.size() else "loading"
-	_slow.text = "Still working on: %s (%d s). A slow phone can need a minute." % [what, seconds]
+	var what: Variant = _step_arg(step) if step >= 0 and step < _names.size() else &"loading.slow_default"
+	Tr.bind(_slow, "loading.slow", [what, seconds])
 	_slow.visible = true
 
 
 ## Shows what failed with TRY AGAIN and CLOSE; TRY AGAIN takes the focus.
 func fail(step: int, message: String) -> void:
 	if step >= 0 and step < _names.size():
-		_step_label.text = "Could not finish: %s" % _names[step]
+		Tr.bind(_step_label, "loading.fail_step", [_step_arg(step)])
 		_paint(step, &"failed")
 	else:
-		_step_label.text = "Could not load"
+		Tr.bind(_step_label, "loading.fail")
 	_slow.visible = false
 	_error_label.text = message
 	_error_box.visible = true
@@ -300,5 +296,18 @@ func bar_fraction() -> float:
 	return _fill.anchor_right
 
 
+## Step `i`'s name in Tamil, "" where the step has none.
 func tamil_text(i: int) -> String:
-	return (_rows[i]["tamil"] as Label).text if (_rows[i]["tamil"] as Label).visible else ""
+	var key: String = STEP_KEYS.get(_names[i], "")
+	return Tr.raw(key, "ta") if key != "" else ""
+
+
+## The tip for step `i`, in the chosen language (it changes only when a step begins).
+func _set_tip(i: int) -> void:
+	Tr.bind(_tip, TIP_KEYS[i % TIP_KEYS.size()])
+
+
+## A step's name as a translation argument: its key when it has one, else its text.
+func _step_arg(i: int) -> Variant:
+	var key: String = STEP_KEYS.get(_names[i], "")
+	return StringName(key) if key != "" else _names[i]

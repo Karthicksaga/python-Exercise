@@ -53,6 +53,10 @@ jobs:
         run: tools/ci_install_godot.sh
       - name: Synced assets match chennai-open-world
         run: python3 tools/sync_from_threejs.py --check
+      - name: Translations match the mission content and the review table (G-442, G-443)
+        run: |
+          python3 tools/i18n/content_keys.py --check
+          python3 tools/i18n/review_table.py --check
       - name: Railway file rebuilt from the Three.js extract (G-320)
         run: python3 tools/rail/test_build_rail.py
       - name: Sound files measured again against the manifest (G-371)

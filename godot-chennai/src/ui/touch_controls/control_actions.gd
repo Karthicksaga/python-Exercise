@@ -14,6 +14,7 @@ extends RefCounted
 ## | player_run | Shift | |
 ## | player_run_toggle | | left stick press |
 ## | pad_pause | | Start |
+## | player_hit / player_fire / player_weapon | F / R / Q | B / RB / Y (G-414) |
 ##
 ## The stick actions have dead zone 0 so a test (or a phone) can read the raw stick with
 ## `Input.get_vector`; every consumer applies its own dead zone once.
@@ -26,12 +27,18 @@ const KEYS := {
 	&"player_run": [KEY_SHIFT],
 	&"player_jump": [KEY_SPACE],
 	&"player_action": [KEY_E],
+	&"player_hit": [KEY_F],
+	&"player_fire": [KEY_R],
+	&"player_weapon": [KEY_Q],
 }
 const BUTTONS := {
 	&"player_action": [JOY_BUTTON_A],
 	&"player_jump": [JOY_BUTTON_X],
 	&"player_run_toggle": [JOY_BUTTON_LEFT_STICK],
 	&"pad_pause": [JOY_BUTTON_START],
+	&"player_hit": [JOY_BUTTON_B],
+	&"player_fire": [JOY_BUTTON_RIGHT_SHOULDER],
+	&"player_weapon": [JOY_BUTTON_Y],
 }
 ## action → [axis, sign]
 const AXES := {

@@ -1,0 +1,88 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "street_ref manifest (G-514)",
+ "description": "Documentation of the format; the checker is tools/imagery/street_imagery/validate.py.",
+ "type": "object",
+ "required": [
+  "format",
+  "images"
+ ],
+ "properties": {
+  "format": {
+   "const": 1
+  },
+  "images": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "provider",
+     "id",
+     "captured_at",
+     "license",
+     "license_source",
+     "attribution",
+     "retrieved_at",
+     "used_for"
+    ],
+    "properties": {
+     "provider": {
+      "enum": [
+       "mapillary",
+       "kartaview"
+      ]
+     },
+     "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_\\-]{1,64}$"
+     },
+     "sequence_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "captured_at": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "creator": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "license": {
+      "enum": [
+       "CC-BY-SA-4.0",
+       "CC-BY-4.0",
+       "CC0-1.0"
+      ]
+     },
+     "license_source": {
+      "enum": [
+       "api_field",
+       "provider_terms"
+      ]
+     },
+     "attribution": {
+      "type": "string",
+      "minLength": 1
+     },
+     "retrieved_at": {
+      "type": "string"
+     },
+     "used_for": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+       "type": "string"
+      }
+     }
+    }
+   }
+  }
+ }
+}

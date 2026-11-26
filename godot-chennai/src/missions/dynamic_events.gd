@@ -12,11 +12,11 @@ const GAP_MAX := 90.0
 ## The default table: kind, weight, how long it lasts (s), seconds it adds to the clock (a
 ## detour allows for itself), a zone around the player's route when it needs one.
 const TABLE: Array[Dictionary] = [
-	{"kind": "detour", "weight": 3, "duration": 45.0, "time": 20.0, "text": "Road ahead blocked by a water-main repair. Find another way."},
-	{"kind": "procession", "weight": 2, "duration": 60.0, "time": 15.0, "text": "A temple procession fills the road ahead. Slow down or go round."},
-	{"kind": "rain", "weight": 2, "duration": 120.0, "time": 0.0, "text": "Rain starts. The road will be slick."},
-	{"kind": "bandh", "weight": 1, "duration": 90.0, "time": 25.0, "text": "A bandh: shops are shutting and the main road is closed."},
-	{"kind": "passenger_change", "weight": 2, "duration": 0.0, "time": 15.0, "text": "The passenger changes their mind: somewhere nearer, please."},
+	{"kind": "detour", "key": "event.detour", "weight": 3, "duration": 45.0, "time": 20.0, "text": "Road ahead blocked by a water-main repair. Find another way."},
+	{"kind": "procession", "key": "event.procession", "weight": 2, "duration": 60.0, "time": 15.0, "text": "A temple procession fills the road ahead. Slow down or go round."},
+	{"kind": "rain", "key": "event.rain", "weight": 2, "duration": 120.0, "time": 0.0, "text": "Rain starts. The road will be slick."},
+	{"kind": "bandh", "key": "event.bandh", "weight": 1, "duration": 90.0, "time": 25.0, "text": "A bandh: shops are shutting and the main road is closed."},
+	{"kind": "passenger_change", "key": "event.passenger_change", "weight": 2, "duration": 0.0, "time": 15.0, "text": "The passenger changes their mind: somewhere nearer, please."},
 ]
 
 var _rng: SeededRandom

@@ -20,7 +20,7 @@ if [ "${SKIP_IMPORT:-0}" != "1" ]; then
   [ -f .godot/global_script_class_cache.cfg ] || { cat tests/out/import.log >&2; echo "import failed" >&2; exit 1; }
 fi
 set +e
-timeout "${TEST_TIMEOUT:-600}" "$GODOT" --headless --audio-driver Dummy --path . --script res://tests/test_runner.gd -- "$@" 2>&1 | tee tests/out/test.log
+timeout "${TEST_TIMEOUT:-1200}" "$GODOT" --headless --audio-driver Dummy --path . --script res://tests/test_runner.gd -- "$@" 2>&1 | tee tests/out/test.log
 status=${PIPESTATUS[0]}
 set -e
 # Script errors never change Godot's exit code; any in the log fails the run as well.

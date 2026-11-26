@@ -75,10 +75,15 @@ func wide_task(centre: Vector2) -> void:
 				if not in_near and p.distance_squared_to(centre) < NEAR_RADIUS * NEAR_RADIUS:
 					in_near = true
 			if in_near:
-				var into := near.major if main else near.minor
+				# Packed arrays are values: append to the set's own array (a local copy of it was
+				# filled here before and the near set came out empty, G-466).
 				for i in range(pts.size() - 1):
-					into.append(pts[i])
-					into.append(pts[i + 1])
+					if main:
+						near.major.append(pts[i])
+						near.major.append(pts[i + 1])
+					else:
+						near.minor.append(pts[i])
+						near.minor.append(pts[i + 1])
 			if main:
 				for i in pts.size():
 					var p := pts[i]
@@ -91,6 +96,38 @@ func wide_task(centre: Vector2) -> void:
 						last = p
 		result = {"near": near, "wide": wide}
 	_task = WorkerThreadPool.add_task(job, false, "map roads")
+
+
+## Starts reading only the streets within NEAR_RADIUS of `centre` (the full map panned away from
+## the first set, G-466); `result` then has "near" only.
+func near_task(centre: Vector2) -> void:
+	if _task >= 0 and not WorkerThreadPool.is_task_completed(_task):
+		return
+	if _task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task)
+	_task = -1
+	result = {}
+	if world == null or world.source == null:
+		return
+	var source := world.source
+	var job := func() -> void:
+		var near := MapRoads.new()
+		near.centre = centre
+		near.radius = NEAR_RADIUS
+		for road in source.roads_near(centre, NEAR_RADIUS):
+			if road.kind == &"footway" or road.tunnel:
+				continue
+			var main := Road.MAIN_KINDS.has(road.kind)
+			var pts := road.points
+			for i in range(pts.size() - 1):
+				if main:
+					near.major.append(pts[i])
+					near.major.append(pts[i + 1])
+				else:
+					near.minor.append(pts[i])
+					near.minor.append(pts[i + 1])
+		result = {"near": near}
+	_task = WorkerThreadPool.add_task(job, false, "map roads near")
 
 
 ## True once the build started by `wide_task` has produced `result` (also when none was started).

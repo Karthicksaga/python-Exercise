@@ -5,14 +5,14 @@ extends RefCounted
 
 enum Reason { OUT_OF_TIME, TARGET_ESCAPED, CARGO_RUINED, SPOTTED, PATIENT_LOST, VEHICLE_DESTROYED, PLAYER_DOWN }
 
-const TEXTS := {
-	Reason.OUT_OF_TIME: "Out of time",
-	Reason.TARGET_ESCAPED: "They got away",
-	Reason.CARGO_RUINED: "The cargo is ruined",
-	Reason.SPOTTED: "You were spotted",
-	Reason.PATIENT_LOST: "The patient is lost",
-	Reason.VEHICLE_DESTROYED: "The vehicle is wrecked",
-	Reason.PLAYER_DOWN: "You are down",
+const TEXT_KEYS := {
+	Reason.OUT_OF_TIME: "fail.out_of_time",
+	Reason.TARGET_ESCAPED: "fail.target_escaped",
+	Reason.CARGO_RUINED: "fail.cargo_ruined",
+	Reason.SPOTTED: "fail.spotted",
+	Reason.PATIENT_LOST: "fail.patient_lost",
+	Reason.VEHICLE_DESTROYED: "fail.vehicle_destroyed",
+	Reason.PLAYER_DOWN: "fail.player_down",
 }
 const IDS := {
 	Reason.OUT_OF_TIME: "out_of_time",
@@ -26,7 +26,7 @@ const IDS := {
 
 
 static func text(reason: Reason) -> String:
-	return str(TEXTS[reason])
+	return Tr.t(str(TEXT_KEYS[reason]))
 
 
 static func id_of(reason: Reason) -> String:

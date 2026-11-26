@@ -30,6 +30,8 @@ var rig: PlayerRig = null
 var play_wiring: PlayWiring = null
 ## The pause menu and the PAUSE button (built here, shown in play).
 var pause_menu: PauseMenu = null
+## Homes for sale, BUY and ENTER, the interior and the furnish editor (G-233…G-237).
+var homes: HomesLayer = null
 
 
 ## Traffic, walkers and crowds round the player (G-120…G-128).
@@ -38,8 +40,12 @@ var life: CityLife = null
 var railway: Railway = null
 ## Taking over traffic cars, autos and bikes on foot (G-300); the ACTION button's TAKE OVER.
 var carjacking: Carjacking = null
+## The heritage journal, the temple visit, the peace zones and swimming (G-480…G-489).
+var culture: CultureWiring = null
 ## People and traffic riders react to being hit by the player's vehicle (G-362, G-363).
 var street_reactions: StreetReactions = null
+## Health, fights, weapons, gangs, the wanted level and the police (G-410…G-429).
+var combat: CombatWiring = null
 ## The live city behind the title: camera drift, chip, lightning (G-164). Made at the end of loading.
 var title_wiring: TitleWiring = null
 ## The title camera tours a faraway spot (needs a display; headless runs stay with the player).
@@ -49,6 +55,8 @@ var title_seed: int = -1
 var title_spot: StringName = &""
 ## Quality, overlay, perf log, feature switches (`PerfWiring`).
 var perf: PerfWiring = null
+## Route buses, the passenger ride and boarding, the stations (`TransitLayer`, G-214…G-220).
+var transit: TransitLayer = null
 ## Watches for a stalled main loop while loading (see `_watch_frames`).
 var _watchdog: Thread = null
 var _watching: bool = false
@@ -61,6 +69,9 @@ var _watching: bool = false
 func _ready() -> void:
 	# The menus and Back keep working while the world is paused; the world itself pauses.
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# The saved language first: every screen below is built in it (G-441).
+	LanguageSettings.shared().apply()
+	Tr.bus.changed.connect(_on_language)
 	_add_pause_menu()
 	# Quality presets, the performance overlay, the perf log and the feature switches (G-250…).
 	perf = PerfWiring.attach(self)
@@ -83,6 +94,12 @@ static func _default_source() -> WorldSource:
 	if RegionalWorldSource.available() and not OS.get_cmdline_user_args().has("--world=v1"):
 		return RegionalWorldSource.new()
 	return FileWorldSource.new()
+
+
+## The language changed: the title's rows say the save's line in the new language.
+func _on_language() -> void:
+	if title != null and title.visible:
+		title.set_save(title_summary())
 
 
 func _set_state(next: StringName) -> void:
@@ -118,9 +135,9 @@ func _load() -> void:
 	_stop_watchdog()
 	loading.visible = false
 	var roads := source.loaded_roads()
-	hud.set_world_text("%s roads · %s chunks" % [_thousands(roads.size()), _thousands(source.chunk_count())])
+	hud.set_world_text(Tr.line("hud.world_text", [_thousands(roads.size()), _thousands(source.chunk_count())]))
 	hud.set_credit(source.get_attribution())
-	title.set_credits(source.get_attribution(), source.get_data_date(), SoundCredits.text(Sound.library))
+	title.set_credits(source.get_attribution(), source.get_data_date(), Sound.library)
 	if OS.get_cmdline_user_args().has("--start=play"):
 		play()
 	else:
@@ -150,7 +167,7 @@ func _run_step(i: int) -> String:
 			return await _add_play()
 		4:
 			return await _add_railway()
-	return "Unknown step %d." % i
+	return Tr.t("err.unknown_step", [i])
 
 
 ## Runs a step's work on a worker thread; prints a heartbeat every 5 s while it runs (a slow
@@ -167,7 +184,7 @@ func _background(i: int, work: Callable) -> String:
 			loading.show_slow(i, roundi((beat - started) / 1000.0))
 	var result: Variant = task.result()
 	if typeof(result) != TYPE_STRING:
-		return "Step %d stopped with an error (see the log)." % (i + 1)
+		return Tr.t("err.step_stopped", [i + 1])
 	return result
 
 
@@ -175,12 +192,12 @@ func _add_city() -> String:
 	if world != null:
 		return ""
 	if ResourceLoader.load_threaded_request(CITY) != OK:
-		return "Could not start loading %s." % CITY
+		return Tr.t("err.start_loading", [CITY])
 	while ResourceLoader.load_threaded_get_status(CITY) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 		await get_tree().process_frame
 	var scene := ResourceLoader.load_threaded_get(CITY) as PackedScene
 	if scene == null:
-		return "Could not load %s." % CITY
+		return Tr.t("err.load", [CITY])
 	world = scene.instantiate() as CityWorld
 	world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(world)
@@ -191,13 +208,13 @@ func _add_city() -> String:
 	# The streets round the spawn are built in the background; wait in game time until they and
 	# their colliders are in (the streamer's gating, G-54).
 	if not await world.wait_ready_around(world.spawn["point"], -1.0, GROUND_WAIT_FRAMES * 60):
-		return "The streets round the start did not load."
+		return Tr.t("err.streets_start")
 	for f in GROUND_WAIT_FRAMES:
 		if world.ground_ready():
 			var failed := await _add_player()
 			return failed if failed != "" else await _add_life()
 		await GameLoop.wait_physics_frames(1)
-	return "The ground's collider did not appear in %d physics frames." % GROUND_WAIT_FRAMES
+	return Tr.t("err.ground", [GROUND_WAIT_FRAMES])
 
 
 ## The player at the start, on the road the Three.js game starts on; streaming and the floating
@@ -221,6 +238,8 @@ func _add_player() -> String:
 	WorldOrigin.shifted.connect(func(_offset: Vector3) -> void: rig.camera.snap())
 	# The missions, jobs, fares and their HUD (G-130): they follow `state_changed` and NEW GAME.
 	add_child(MissionsLayer.for_main(self))
+	homes = HomesLayer.for_main(self)
+	add_child(homes)
 	return ""
 
 
@@ -237,7 +256,39 @@ func _add_play() -> String:
 	var error := await play_wiring.prepare(world.spawn["point"])
 	if error == "":
 		_add_carjacking()
+		error = await _add_combat()
 	return error
+
+
+## Fights, weapons, gangs, Wanted and the police (G-410…G-429), on the missions layer's session.
+func _add_combat() -> String:
+	var layer := find_child("MissionsLayer", false, false) as MissionsLayer
+	if combat != null or layer == null:
+		return ""
+	combat = CombatWiring.make(world, rig, play_wiring.driving, layer, life)
+	world.add_child(combat)
+	var error := await combat.prepare(street_reactions, carjacking)
+	title.new_game_requested.connect(combat.new_game)
+	if perf != null:
+		perf.apply()
+	return error
+
+
+## The heritage journal, the temple visit, peace zones and swimming (`CultureWiring`); its toasts use the
+## mission HUD's, the peace zones go to the systems that keep their rules.
+func _add_culture() -> void:
+	if culture != null:
+		return
+	culture = CultureWiring.make(world, rig, play_wiring.driving)
+	culture.toast = func(title: String, detail: String, seconds: float) -> void:
+		var layer := find_child("MissionsLayer", false, false) as MissionsLayer
+		if layer != null and layer.hud != null:
+			layer.hud.toast(title, detail, seconds)
+	world.add_child(culture)
+	culture.share_peace([play_wiring.wiring, carjacking, street_reactions])
+	culture.active = state == &"play"
+	state_changed.connect(func(s: StringName) -> void: culture.active = s == &"play")
+	title.new_game_requested.connect(culture.new_game)
 
 
 ## The railway (G-320…G-334): tracks, stations, trains, riding and driving, its HUD.
@@ -249,6 +300,11 @@ func _add_railway() -> String:
 	var error := await railway.prepare(world, rig)
 	if error == "":
 		RailwayWiring.wire(self, railway)
+		# The railway runs the trains and owns the station panel; buses wait while it has the player.
+		if transit != null:
+			var rail := railway
+			transit.stations_by_railway = true
+			transit.railway_busy = func() -> bool: return rail.state != &"foot"
 	return error
 
 
@@ -269,17 +325,23 @@ func _add_pause_menu() -> void:
 	pause_menu = PauseMenu.new()
 	add_child(pause_menu)
 	# The same three settings on the pause menu and on the title's SETTINGS page (G-162).
-	var time_label := func() -> String: return "Time: %s (%s)" % [GameLoop.clock.label(), GameLoop.clock.text()]
+	var time_label := func() -> String: return Tr.t("set.time", [Tr.ref(GameLoop.clock.label_key()), GameLoop.clock.text()])
 	var time_next := func() -> void: GameLoop.clock.next()
+	var language := LanguageSettings.shared()
 	for host: Object in [pause_menu, title]:
 		host.call(&"add_setting", &"Time", time_label, time_next)
 		host.call(&"add_setting", &"Weather", Weather.label, Weather.toggle)
 		host.call(&"add_setting", &"Sound", Sound.label, Sound.toggle)
+		host.call(&"add_setting", &"Language", language.label, language.next)
 	ControlSettingsRows.add_to(pause_menu, ControlSettings.shared())
+	# The HUD's map credit sits bottom-right and met the panel's corner on a wide phone: the menu has its own (G-455).
+	pause_menu.opened.connect(func() -> void: hud.set_credit_shown(false))
+	pause_menu.closed.connect(func() -> void: hud.set_credit_shown(true))
 	pause_menu.pause_requested.connect(pause)
 	pause_menu.resume_requested.connect(resume)
 	pause_menu.title_requested.connect(show_title)
 	pause_menu.map_requested.connect(_open_map)
+	pause_menu.journal_requested.connect(_open_journal)
 	# The map's one option, on the pause menu and on the title's SETTINGS page like the others (G-281).
 	var map_settings := MapSettings.shared()
 	for host: Object in [pause_menu, title]:
@@ -338,13 +400,13 @@ func title_summary() -> Dictionary:
 		return out
 	var session := layer.session
 	if not session.content.missions.is_empty():
-		out["new_game_line"] = "Begin in Chennai: Stage 1, %s" % session.content.missions[0].title
+		out["new_game_line"] = Tr.line("title.sub.new_game_named", [Tr.srcref(session.content.missions[0].title)])
 	if SaveStore.new(session.store.path).read().progress().is_empty():
 		return out
 	var m := session.runner.mission()
-	var where := "Stage %d" % m.stage if m != null else "Free roam"
+	var where := Tr.ref("title.stage", [m.stage]) if m != null else Tr.ref("title.free_roam")
 	out["has_save"] = true
-	out["continue_line"] = "%s · ₹%s · %d of %d stages" % [where, MissionSession.rupees(session.runner.balance()), session.runner.stages_done(), session.runner.stage_count()]
+	out["continue_line"] = Tr.line("title.continue_line", [where, MissionSession.rupees(session.runner.balance()), session.runner.stages_done(), session.runner.stage_count()])
 	return out
 
 
@@ -416,6 +478,12 @@ func _on_map_closed() -> void:
 		pause_menu.open()
 
 
+## The heritage journal, from the pause menu (G-482).
+func _open_journal() -> void:
+	if culture != null:
+		culture.open_journal()
+
+
 func resume() -> void:
 	if state != &"paused":
 		return
@@ -423,6 +491,16 @@ func resume() -> void:
 	Sound.active = true
 	_set_controls(true)
 	_set_state(&"play")
+
+
+## Inside a home (G-235): `HomesLayer` suspends the world; the street's HUD, controls and PAUSE
+## button give way to the home's own. Back leaves the home (`go_back`).
+func set_home(on: bool) -> void:
+	if on == (state == &"home") or (on and state != &"play"):
+		return
+	hud.visible = not on
+	_set_controls(not on)
+	_set_state(&"home" if on else &"play")
 
 
 func _unpause() -> void:
@@ -453,11 +531,16 @@ func go_back() -> void:
 	var layer := find_child("MissionsLayer", false, false) as MissionsLayer
 	if layer != null and layer.close_map():
 		return
+	if culture != null and culture.close_journal():
+		return
 	match state:
 		&"play":
 			pause()
 		&"paused":
 			show_title()
+		&"home":
+			if homes != null:
+				homes.back()
 		&"title":
 			if not title.go_back():
 				quit()

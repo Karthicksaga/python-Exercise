@@ -6,7 +6,8 @@ extends SceneTree
 ##       --rendering-driver opengl3 --audio-driver Dummy --resolution 915x412 \
 ##       --script res://tests/tools/city_shot.gd -- --place=t_nagar --out=/tmp/shots/t_nagar.png
 ##
-## Places: spawn, t_nagar, marina, anna_salai (or --at=x,z,heading). Prints one line
+## Places: spawn, t_nagar, marina, anna_salai (or --at=x,z,heading); --no-fusion leaves out the
+## buildings added from other datasets (before/after shots, G-221). Prints one line
 ## "city_shot <place> draw_calls=… primitives=… objects=… chunks=…" for the report.
 
 const CITY_PATH := "res://src/game_world/city/city_world.tscn"
@@ -51,6 +52,9 @@ func _run() -> void:
 		printerr(err)
 		quit(1)
 		return
+	# --no-fusion: the same world without the buildings other datasets add (G-221), for before/after.
+	if OS.get_cmdline_user_args().has("--no-fusion") and source is RegionalWorldSource:
+		(source as RegionalWorldSource).fusion_file = ""
 	var city: Node = (load(CITY_PATH) as PackedScene).instantiate()
 	if OS.get_cmdline_user_args().has("--no-landmarks"):
 		city.set("show_landmarks", false)

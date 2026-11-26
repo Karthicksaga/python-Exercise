@@ -11,13 +11,26 @@ signal closed
 signal route_requested(route: Dictionary)
 
 ## Half the map's height in metres, per zoom step.
-const ZOOMS: Array[float] = [450.0, 1100.0, 2600.0, 5200.0]
+## (G-466: two wider steps show the whole city: 12 and 26 km from the centre to the top.)
+const ZOOMS: Array[float] = [450.0, 1100.0, 2600.0, 5200.0, 12000.0, 26000.0]
 const GUTTER := 16.0
 const TEXT := 14
 
 var projection := MapProjection.new()
 var near_roads: MapRoads = null
 var wide_roads: MapRoads = null
+## The whole railway (G-465): lines coloured by kind, stations as dots with names (names from the
+## second zoom in), a legend of the kinds above RAIL ON/OFF, which toggles them on both maps
+## (`MapSettings.rail_shown`). `cheap` (the Low preset): one colour, no tunnels, no outlines.
+var rail: MapRail = null
+## The whole city (G-466): main roads everywhere, the world's edge and every label, decluttered.
+## Null until built (the near and wide road sets draw meanwhile).
+var city: MapCity = null
+## The labels written in the last paint: [{index, words, kind, box}] (tests).
+var written: Array[Dictionary] = []
+var cheap := false
+var settings: MapSettings = null
+var rail_button: Button
 var markers: Array[Dictionary] = []
 var player := Vector2.ZERO
 var heading := 0.0
@@ -98,6 +111,8 @@ func _init() -> void:
 	_view.name = "View"
 	_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_view.mouse_filter = Control.MOUSE_FILTER_STOP
+	# Over the pause menu's list: its drags are the map's (G-492).
+	_view.add_to_group(TouchScroll.COVER_GROUP)
 	_view.painter = _paint
 	_view.gui_input.connect(_on_input)
 	_view.resized.connect(_fit)
@@ -125,8 +140,10 @@ func _init() -> void:
 	zoom_out_button = _button(bar, "-", "ZoomOut", func() -> void: set_zoom(zoom + 1))
 	for b: Button in [zoom_in_button, zoom_out_button]:
 		b.add_theme_font_size_override("font_size", 26)
-	recentre_button = _button(bar, "ME", "Recentre", recentre)
-	close_button = _button(bar, "CLOSE", "Close", close)
+	recentre_button = _button(bar, "", "Recentre", recentre)
+	Tr.bind(recentre_button, "map.me")
+	close_button = _button(bar, "", "Close", close)
+	Tr.bind(close_button, "map.close")
 	close_button.custom_minimum_size.x = 96.0
 	_build_drawers(margin)
 
@@ -174,6 +191,12 @@ func set_zoom(z: int) -> void:
 	zoom_in_button.disabled = zoom == 0
 	zoom_out_button.disabled = zoom == ZOOMS.size() - 1
 	_fit()
+	view_moved.emit(projection.centre)
+
+
+func set_city(c: MapCity) -> void:
+	city = c
+	_view.queue_redraw()
 
 
 func recentre() -> void:
@@ -202,6 +225,11 @@ func _fit() -> void:
 
 
 func _on_input(event: InputEvent) -> void:
+	# One finger arrives as touch and as emulated mouse (phone), one mouse as mouse and emulated
+	# touch (`emulate_touch_from_mouse`): only the real one pans, else the map moved twice as far
+	# as the finger (G-492).
+	if event.device == InputEvent.DEVICE_ID_EMULATION:
+		return
 	if event is InputEventMouseButton:
 		var b := event as InputEventMouseButton
 		if b.button_index == MOUSE_BUTTON_LEFT:
@@ -234,6 +262,8 @@ func _on_input(event: InputEvent) -> void:
 		_drag_dist += sd.relative.length()
 		_pan -= sd.relative / projection.pixels_per_metre
 		_fit()
+	elif event is InputEventScreenTouch and not (event as InputEventScreenTouch).pressed:
+		view_moved.emit(projection.centre)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -286,7 +316,7 @@ func _paint(v: Control) -> void:
 		_paint_geo_labels(v, vrect, c)
 
 	if loading:
-		v.draw_string(_font, Vector2(c.x - 60.0, 62.0), "Drawing the map...", HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT, Color(1, 1, 1, 0.7))
+		v.draw_string(_font, Vector2(c.x - 60.0, 62.0), Tr.line("map.drawing"), HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT, Color(1, 1, 1, 0.7))
 	var half := size / 2.0
 	# Places and the mission's marker, with their words; the mission's is pinned when off screen.
 	for i in markers.size():
@@ -328,9 +358,10 @@ func _paint(v: Control) -> void:
 	v.draw_colored_polygon(PackedVector2Array([pp + fwd * 11.0, pp - fwd * 8.0 + side * 7.0, pp - fwd * 3.0, pp - fwd * 8.0 - side * 7.0]), Color.WHITE)
 	v.draw_polyline(PackedVector2Array([pp + fwd * 11.0, pp - fwd * 8.0 + side * 7.0, pp - fwd * 3.0, pp - fwd * 8.0 - side * 7.0, pp + fwd * 11.0]), Color(0.05, 0.06, 0.09, 0.9), 1.5)
 	_paint_legend(v, size)
+	_paint_rail_legend(v)
 	_paint_scale(v, size)
 	v.draw_string(_font, Vector2(GUTTER, size.y - 8.0), credit, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.6))
-	v.draw_string(_font, Vector2(size.x - GUTTER - 12.0, 92.0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT, Color(1, 1, 1, 0.7))
+	v.draw_string(_font, Vector2(size.x - GUTTER - 12.0, 92.0), Tr.line("map.north"), HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT, Color(1, 1, 1, 0.7))
 	v.draw_line(Vector2(size.x - GUTTER - 6.0, 124.0), Vector2(size.x - GUTTER - 6.0, 98.0), Color(1, 1, 1, 0.7), 2.0)
 
 
@@ -437,6 +468,25 @@ func _paint_legend(v: Control, size: Vector2) -> void:
 		x += 28.0 + _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 
 
+## The rail kinds, a colour bar and a name each, stacked above the RAIL ON/OFF toggle; dimmed when
+## the lines are off.
+func _paint_rail_legend(v: Control) -> void:
+	if rail == null or rail.is_empty() or not rail_button.is_visible_in_tree():
+		return
+	var r := rail_button.get_global_rect()
+	var right := r.position.x + r.size.x
+	var y := r.position.y - 12.0
+	var alpha := 1.0 if rail_drawn() else 0.4
+	for i in range(rail.kinds.size() - 1, -1, -1):
+		var k := rail.kinds[i]
+		var w := _font.get_string_size(k.label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+		var x := right - w
+		v.draw_line(Vector2(x - 26.0, y - 4.0), Vector2(x - 8.0, y - 4.0), Color(k.colour, alpha), 4.0)
+		v.draw_string_outline(_font, Vector2(x, y), k.label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 4, Color(0, 0, 0, 0.9 * alpha))
+		v.draw_string(_font, Vector2(x, y), k.label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.85 * alpha))
+		y -= 18.0
+
+
 func _paint_scale(v: Control, size: Vector2) -> void:
 	var ppm := projection.pixels_per_metre
 	var length := 100.0
@@ -449,7 +499,7 @@ func _paint_scale(v: Control, size: Vector2) -> void:
 	v.draw_line(from, from + Vector2(px, 0), Color(1, 1, 1, 0.85), 2.0)
 	v.draw_line(from, from + Vector2(0, -6), Color(1, 1, 1, 0.85), 2.0)
 	v.draw_line(from + Vector2(px, 0), from + Vector2(px, -6), Color(1, 1, 1, 0.85), 2.0)
-	var text := "%d m" % int(length) if length < 1000.0 else "%d km" % int(length / 1000.0)
+	var text := Tr.line("hud.m", [int(length)]) if length < 1000.0 else Tr.line("hud.km", [int(length / 1000.0)])
 	v.draw_string(_font, from + Vector2(0, 16), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.85))
 
 

@@ -23,6 +23,27 @@ func _init() -> void:
 	draw.connect(_draw_hint)
 
 
+## Shrinks the letters until the text (each line) sits inside the round glass: Tamil words are
+## wider than the English ones they replace and both languages are stacked on two lines.
+func fit_text() -> void:
+	if size.x < 1.0:
+		return
+	var base := int(get_meta(&"tr_size", 0)) if has_meta(&"tr_size") else 0
+	if base <= 0:
+		return
+	var font := get_theme_font("font")
+	var lines := text.split("\n")
+	var fs := Tr.fit(base)
+	while fs > 9:
+		var widest := 0.0
+		for line in lines:
+			widest = maxf(widest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+		if widest <= size.x * 0.76 and fs * 1.3 * lines.size() <= size.y * 0.72:
+			break
+		fs -= 1
+	add_theme_font_size_override("font_size", fs)
+
+
 func held() -> bool:
 	return _mouse or not _touches.is_empty()
 

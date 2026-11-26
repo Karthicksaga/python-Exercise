@@ -25,6 +25,12 @@ var use: StringName = &"unknown"
 var roof_shape: StringName = &"unknown"
 var dataset: int = 0
 var source_id: int = 0
+## Format 2.3 (`fusion.bin`, G-221): which dataset the footprint came from (&"osm", &"overture",
+## &"google", &"microsoft"), the dataset Overture took it from, and the source's confidence
+## (-1 when it gives none). `source_id` is then the row in that source's extract.
+var fusion_source: StringName = &"osm"
+var fusion_origin: StringName = &""
+var confidence: float = -1.0
 
 
 func color() -> Color:

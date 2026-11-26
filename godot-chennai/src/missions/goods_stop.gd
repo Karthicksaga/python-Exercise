@@ -7,14 +7,25 @@ extends RefCounted
 ## Seconds at the vehicle to hand the goods over, by vehicle; share of it at which they swap.
 const HAND := {"auto": 1.4, "car": 1.8, "ambulance": 1.8, "bus": 1.4, "bike": 1.6}
 const SWAP := 0.5
-const NAMES := {
-	"parcel": ["the parcel", "the parcels"],
-	"food-bag": ["the order", "the orders"],
-	"tiffin": ["the lunch box", "the lunch boxes"],
-	"medicine": ["the medicine", "the medicine"],
-	"cash-bag": ["the money", "the money"],
-	"harmonium": ["the harmonium", "the harmoniums"],
-	"vessel": ["the sambar vessel", "the sambar vessels"],
+## The translation keys of each goods' words: [one, several] ("the parcel", "the parcels"), and the
+## same with a capital for the start of a line.
+const NAME_KEYS := {
+	"parcel": ["goods.parcel.one", "goods.parcel.other"],
+	"food-bag": ["goods.food-bag.one", "goods.food-bag.other"],
+	"tiffin": ["goods.tiffin.one", "goods.tiffin.other"],
+	"medicine": ["goods.medicine.one", "goods.medicine.other"],
+	"cash-bag": ["goods.cash-bag.one", "goods.cash-bag.other"],
+	"harmonium": ["goods.harmonium.one", "goods.harmonium.other"],
+	"vessel": ["goods.vessel.one", "goods.vessel.other"],
+}
+const CAP_KEYS := {
+	"parcel": ["goods.cap.parcel.one", "goods.cap.parcel.other"],
+	"food-bag": ["goods.cap.food-bag.one", "goods.cap.food-bag.other"],
+	"tiffin": ["goods.cap.tiffin.one", "goods.cap.tiffin.other"],
+	"medicine": ["goods.cap.medicine.one", "goods.cap.medicine.other"],
+	"cash-bag": ["goods.cap.cash-bag.one", "goods.cap.cash-bag.other"],
+	"harmonium": ["goods.cap.harmonium.one", "goods.cap.harmonium.other"],
+	"vessel": ["goods.cap.vessel.one", "goods.cap.vessel.other"],
 }
 
 var goods: MissionData.Goods
@@ -78,19 +89,22 @@ func person() -> Dictionary:
 func note() -> String:
 	if not started() or done():
 		return ""
-	var what := goods_name(goods.items)
-	what = what.substr(0, 1).to_upper() + what.substr(1)
-	return ("%s being loaded" if goods.action == "load" else "%s being collected") % what
+	return Tr.line("goods.loading" if goods.action == "load" else "goods.collecting", [Tr.ref(_name_key(goods.items, CAP_KEYS, "goods.cap.the_goods"))])
 
 
 ## "the parcel", "the lunch boxes", for the HUD.
 static func goods_name(items: Array[String]) -> String:
+	return Tr.line(_name_key(items, NAME_KEYS, "goods.the_goods"))
+
+
+static func _name_key(items: Array[String], table: Dictionary, several_kinds: String) -> String:
 	var kinds := {}
 	for i in items:
 		kinds[i] = true
 	if kinds.size() != 1:
-		return "the goods"
-	return NAMES[items[0]][1 if items.size() > 1 else 0]
+		return several_kinds
+	var keys: Array = table[items[0]]
+	return str(keys[1 if items.size() > 1 else 0])
 
 
 ## What is in the vehicle now, in drop order: everything still to be dropped at this or a

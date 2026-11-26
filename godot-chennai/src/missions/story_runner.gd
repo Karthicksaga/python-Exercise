@@ -125,7 +125,7 @@ func quit() -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if _current == null:
 		return events
-	events.append({"type": "failed", "story": _current, "reason": "Story abandoned"})
+	events.append({"type": "failed", "story": _current, "reason": Tr.t("fail.story_abandoned")})
 	_current = null
 	_timed = false
 	return _emit(events)
@@ -176,7 +176,7 @@ func update(dt: float, p: MissionData.PlayerStatus) -> Array[Dictionary]:
 		if _time_left <= 0.0:
 			_current = null
 			_timed = false
-			events.append({"type": "failed", "story": s, "reason": "Out of time"})
+			events.append({"type": "failed", "story": s, "reason": Tr.t("fail.out_of_time")})
 			return _emit(events)
 	return _emit(_advance(s)) if _met(st, p) else events
 

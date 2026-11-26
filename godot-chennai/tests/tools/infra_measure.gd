@@ -46,6 +46,9 @@ func _run() -> void:
 		printerr(err)
 		quit(1)
 		return
+	# --no-fusion: without the buildings other datasets add (G-221), for before/after numbers.
+	if OS.get_cmdline_user_args().has("--no-fusion"):
+		source.fusion_file = ""
 	var city: Node = (load(CITY_PATH) as PackedScene).instantiate()
 	root.add_child(city)
 	await city.call("setup", source)

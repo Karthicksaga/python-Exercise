@@ -344,3 +344,93 @@ interactive prototype (the Proposed on-foot layout and scheme A "wheel").
 | Quality caps: density, LOD distances, no sway on Low, shadows from LOD 0 on High (G-386) | Done | `test_quality_caps`, `test_perf_wiring` |
 | Before and after draws, primitives, main-thread ms, screenshots against the owner's photographs | Done on llvmpipe at 915x412 (`docs/trees.md`, handoff) | scratch harness (not committed) |
 | Seen on a phone | Not done | — |
+
+## Language: English and Tamil (G-440 to G-446, branch `agent/godot-lang`, 25 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| `Tr.t(key, args)` over CSV catalogs read into `Translation` objects on the `TranslationServer`; keys, `{0}` / `{name}` placeholders, counted texts, three display modes (G-440) | Done | `test_i18n.gd` (same keys in both files, no duplicates, placeholders match, modes, fallbacks, missing keys listed) |
+| Language setting (English, தமிழ், both) in the pause menu and the title's SETTINGS, saved, live (G-441) | Done | `test_language_setting_saves_and_switches_live`, `test_pause_menu_and_title_follow_the_language` |
+| UI, HUD, toasts, controls guide, map legend, railway HUD and texts, About, loading steps and tips, 21 stages, 13 jobs, 5 new missions, 3 stories as keys (G-440, G-442) | Done; developer-only text stays English (G-446) | static scan of every key in `src` (both languages, none unused), content scan (`ContentKeys`) |
+| Tamil written for all of it; every row `needs native review`; `docs/tamil-review.md`; release flag; About says so (G-443) | Done; **no native speaker has read any of it** | `test_unreviewed_tamil_can_be_left_out_of_a_release`, `test_review_table_matches_the_catalog` |
+| Noto Sans Tamil behind the UI font; no tofu (G-444) | Done | every Tamil string shaped at six sizes, no `.notdef` glyph |
+| Layouts survive Tamil and Both at 915x412 and 1830x824 (G-445) | Done in the test; seen only in screenshots under software GL | `test_i18n_layout.gd` |
+| Read by a native speaker; seen on a phone | Not done | — |
+
+## Culture and life (G-480 to G-489, branch `agent/godot-culture`, 25 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Culture data: nine places, the temple zone, the temple visit's places, swimming rules, from landmark specs and `world.json` (G-480) | Done | `test_culture.gd` (positions and names equal the specs'; keys in both catalogs) |
+| Peace zone as data; GET IN, horn, crash show, TAKE OVER, crime report keep its rules; walking pace; calm sound (G-481) | Done; **rule list is the owner's decision**; `violence` has no consumer until the combat runtime exists | `test_peace_zone.gd`, `test_culture_wiring.gd` |
+| Heritage journal: screen from the pause menu, fills in as places are visited, saved in `chennai-heritage-v1`, NEW GAME clears it (G-482) | Done | `test_culture.gd`, `test_culture_wiring.gd`, `test_culture_layout.gd` |
+| `SaveStore` keeps sections it did not set (settings, journal) when a mission save writes (G-482) | Done (fixes an existing loss of other sections) | `test_the_journal_has_its_own_section_and_the_mission_save_keeps_it` |
+| Kapaleeshwarar visit: leave sandals, walk in, light the lamp, walk round the shrines, journal "visit completed"; props, bell, calm (G-483) | Done; no deity image or model, no scoring | `test_temple_visit_*` (logic and ACTION button), `test_the_temple_in_the_real_city` (real body through the gopuram), `test_a_ring_of_free_ground_goes_round_the_shrines` |
+| Swimming: sea to a 30 m rope line, rivers and canals inside their banks, energy, tiring carries to shore, no drowning (G-484) | Done on desktop; no swim animation | `test_culture.gd` (limits, tiring, river), `test_swimming_*`, `test_swimming_at_the_marina_and_in_a_real_river` |
+| All text in `cul.*` keys, English and Tamil; Tamil `needs native review` (G-486) | Done; unread machine Tamil | `test_i18n.gd`, `docs/tamil-review.md` |
+| Layouts: journal, energy plate, pause row, ACTION labels in English, Tamil, both at 915x412 and 2460x1080 (G-487) | Done | `test_culture_layout.gd` |
+| Bicycle, boat, swim clip (G-488) | Not done | — |
+| Seen on a phone; read by a native Tamil speaker | Not done | — |
+## Transit: bus stops, routes, riding, stations (G-210…G-219, branch `agent/godot-transit`, 24 Nov 2026)
+Details and numbers: `docs/transit.md`, `world/TRANSIT.md`.
+| Item | State | How it was tested |
+|---|---|---|
+| Stops, bus stations, railway stations with platforms and entrances, rail lines, bus routes from OSM; snapped to the drive graph; coverage report (G-210…G-213) | Done: 1,463 stops, 185 stations, 15 lines, 77 relations → 11 clean, 18 fallback, 22 broken, 26 unusable; first set 40 | `tools/geo/tests/test_transit.py` (snapping, one-ways, detours, ordering, inference, codec, committed data vs roads) |
+| `TransitNetwork`, timetable, fares, `BusRide`, `TrainService` stub, `StationPlace`, `BusJobRoutes` | Done | `tests/unit/test_transit.gd` |
+| Route buses in traffic: real routes, kerb, dwell with doors open, signs, density by place and hour, loaded ground only (G-214) | Done on desktop | `test_transit.gd`, `tests/scene/test_transit_ride.gd`, screenshots |
+| AI heights from the roads' deck samples (traffic on flyovers) | Done | `test_transit.gd` (flyover heights) |
+| Travel by bus: BOARD, ticket, interior, announcements, FAST TRAVEL, ALIGHT; not while wanted (G-215, G-216) | Done on desktop | `test_transit_ride.gd` (real game, game time) |
+| Drive a bus on real stops (G-218) | Done (baked jobs moved; one real-route job) | `test_transit.gd` |
+| Stations as places, train interface (G-217) | Done; trains not built (phase 6) | `test_transit.gd`, screenshot |
+| Bicycles | Not built | — |
+## Touch in menus, GET OUT, overlay default (G-490 to G-494, branch `agent/godot-fixui`, 25 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Taps in every scrolling menu at the phone's stretch (G-490) | Done (desktop, engine touch emulation) | `test_menu_touch.gd` (915x412, 2460x1080 stretched, 2460x1080 UI); fails 25 rows without the fix |
+| Full map pans once per finger, minimap opens once, list under the map leaves its drags (G-492) | Done | `test_menu_touch.gd` map pan check |
+| Performance overlay off in a release boot, no three-finger toggle there (G-491) | Done | `test_overlay_release.gd` |
+| Overlay text wraps inside the screen (G-493) | Done | `test_overlay_release.gd` (30 long lines, real text, 915x412 and phone) |
+| GET OUT pill while driving or riding, stop-then-exit while moving (G-494) | Done | `test_get_out.gd` (parked car, bike, taken-over bike, moving) |
+| Seen on the owner's phone | Not done | — |
+
+## Rail extras: rail on the maps, the Metro, trains past the old edge, the whole-city map (G-460…G-468, branch `agent/godot-rail2`, 25 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Railway from the regional OSM extract (committed railway part, 258 KB) (G-460) | Done: 22 lines, 121 stations, 1,268 tracks (113 estimated second-track runs), 409 crossings | `tools/rail/test_build_rail.py` (23 tests incl. extract, route graph, keep-left, heights, the Three.js lines inside the old box) |
+| Trains past the old edge: Beach - Tambaram, Chengalpattu, beyond Avadi (Arakkonam), beyond Gummidipoondi (Sullurpeta), return services (G-461) | Done on desktop | `test_rail_file.gd`, `test_railway.gd` (ride to Sevvapet Road, ride to Tambaram) |
+| Chennai Metro Blue and Green, both ways: viaducts, tunnels, Metro trains, ₹20, no cab, rides end before tunnels (G-462, G-464) | Done on desktop; tunnels and underground stations not drawn | `test_rail_file.gd::test_metro_blue_and_green_lines`, `test_railway.gd::test_metro_ride_…` |
+| Rail lines coloured per kind on the minimap and the full map, station dots and names, RAIL ON/OFF in the legend, Low preset cheap (G-463, G-465) | Done | `test_map_rail.gd`, `test_rail_maps.gd` |
+| Full map covers the whole city and labels areas, roads, stations, hospitals, police, bus stands and stops, decluttered by zoom (G-466) | Done (owner's phone report) | `test_map_city.gd`, `test_maps.gd`, screenshots |
+| Main-thread cost (G-467) | Measured headless here (see handoff); not on a phone | `tests/tools/rail_shots.gd --shot=measure` |
+| Seen on a phone | Not done | — |
+## Street imagery reference prototype (G-510 to G-513, branch `agent/godot-streetref`, 25 Nov 2026)
+- Built and tested (39 pytest, mypy clean): Mapillary and KartaView discovery tool, SQLite store, chunk mapping,
+  coverage report, source manifest and observation/facade validators, facade category data, comparison page
+  (rendered with Chromium). Plan, licence analysis and extension guide in `docs/street-imagery.md`.
+- NOT done: any real API call succeeded (egress blocked, no token), so no coverage numbers, observations or
+  observed facade values exist; nothing is wired into the game.
+
+## Homes: buy, walk in, furnish, extend, save (branch `agent/godot-homes`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Four home types and 47 props from the prototype, English and Tamil, as data (G-230) | Done (Tamil needs native review) | `test_homes.gd`: files load, every prop complete with Tamil, plain pooja geometry, no business words |
+| One price file, one scale factor, economy tied to stage pay (G-231) | Done (proposal ×0.05, owner can tune) | `test_one_scale_factor_sets_every_price`, `test_prices_fit_the_game_economy` |
+| Grid placement, overlap and bounds, rotation, half refund, doorway kept clear, extensions ₹1,000 and ₹2,000 up to two, paths (G-232) | Done | `test_homes.gd` (12 tests on the rules) |
+| Save in its own versioned section; new game, damaged, unknown props, newer version (G-234) | Done | `test_state_round_trips_through_the_save_store`, `test_missing_or_damaged_sections_are_a_new_game`, `test_unknown_props_are_dropped_and_unknown_types_kept`, `test_a_newer_save_is_left_alone` |
+| 11 homes for sale on real OSM buildings in 4 areas, door on the road-facing edge, bilingual board with price, MY HOME once bought (G-233) | Done | `test_home_sites.gd` (every building resolves; door on the wall, facing out, not on a carriageway; board texts), screenshots |
+| BUY (price, dimmed when poor) then ENTER on the ACTION button (G-233, G-238) | Done | `test_homes_layer.gd`, `test_buy_is_dimmed_when_too_poor_and_the_button_still_explains` |
+| Interior scene: shell by home type plus extensions, windows, door that opens, walk in with the player's model, day/night from the game's clock, kolam (G-235) | Done | `test_home_interior.gd`, `test_homes_layer.gd`, screenshots |
+| The street is put away while inside (no AI, traffic, streaming, physics); interior sound bed; leaving restores everything (G-235) | Done (in headless tests and under llvmpipe; not on a phone) | `test_a_home_can_be_bought_entered_furnished_slept_in_and_left` |
+| SLEEP (to morning, saves), FURNISH through ActionContext inside (G-235) | Done | same test; `test_the_police_keep_you_out_and_back_leaves` |
+| Furnish editor UI with the seven category tabs, 48 dp buttons at four screen shapes (G-237) | Done | `test_hud_fits_every_screen_shape`, `test_hud_reports_what_was_pressed`, screenshots at 915x412 and 1830x824 |
+| Props as merged procedural meshes, glow at night, one real light (G-236) | Done | `test_every_prop_builds_a_small_model`, `test_a_furnished_room_is_two_meshes`, `test_a_furnished_room_is_cheap_to_draw`, `test_lamps_glow_only_at_night` |
+| Peace zone, police and vehicle entry rules (G-234) | Done (no live wanted level exists yet; a hook is ready) | `test_peace_zone_and_entry_rules`, `test_the_police_keep_you_out_and_back_leaves` |
+| Seen on a phone | Not done | — |
+## Building fusion: OSM + Overture + Google Open Buildings + Microsoft (branch `agent/godot-fusion`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Downloads for the world box (G-220) | Done: Overture 192 MB extract, Google 647 MB streamed (258 MB kept), Microsoft 73 MB | run by hand; pure helpers in pytest |
+| Fusion rules, measured thresholds 15 %/30 %, masks (G-222) | Done | `tools/geo/tests/test_fusion_multi.py` (fixture `fusion_small.json`) |
+| Height priority and validation (G-223) | Done; no independent heights in this box | `test_fusion_multi.py` |
+| `fusion.bin` format 2.3, provenance per building (G-221) | Done: 1,389,771 added, 23.4 MB | round trip and committed-world tests (`test_fusion_world.py`), `tests/unit/test_fusion.gd` |
+| Game: added buildings through the normal building path | Done (headless) | `test_fusion.gd` (no new draw calls, budgets, streaming of fusion-only squares) |
+| Credits on About, ATTRIBUTION.md, LICENSES.md (G-226) | Done | pytest + GDScript credit tests |
+| Screenshots before/after, main-thread measurement, APK size | Not done | — |

@@ -7,6 +7,12 @@ extends RefCounted
 ## from here too: this is the single switch, saved in the save file's own section
 ## `chennai-debug-v1` (additive, like `ControlSettings`).
 ##
+## In a release build (the APK) the overlay always starts off (G-491): an "on" saved by an
+## earlier session is not restored, and the perf overlay's three-finger tap does nothing, so only
+## the menu row and the five corner taps show it, for that session. The owner's phone kept showing
+## it because an earlier build had saved it on, and the menu row that turns it off could not be
+## tapped (G-490). Debug runs (the editor, tests, desktop) still remember it.
+##
 ## Pure data and persistence, no nodes.
 
 signal changed
@@ -19,6 +25,8 @@ var perf_overlay: bool = false
 var path: String = SaveStore.DEFAULT_PATH
 
 static var _shared: DebugSettings = null
+## True in an exported release build; tests set it to boot like the APK.
+static var release_build: bool = not OS.is_debug_build()
 
 
 ## The one instance the game uses, loaded from the save file on first use.
@@ -45,6 +53,8 @@ func from_dict(d: Dictionary) -> void:
 
 
 func load_saved() -> void:
+	if release_build:
+		return  # starts off in the APK, whatever an earlier session saved (G-491)
 	var v: Variant = SaveStore.new(path).read().section(SECTION)
 	if v is Dictionary:
 		from_dict(v as Dictionary)
@@ -68,7 +78,7 @@ func toggle_perf_overlay() -> void:
 
 ## The pause menu row's text and press, like `Weather.label` / `Weather.toggle`.
 static func label() -> String:
-	return "Performance overlay: %s" % ("On" if shared().perf_overlay else "Off")
+	return Tr.t("set.perf_overlay", [&"set.on" if shared().perf_overlay else &"set.off"])
 
 
 static func toggle() -> void:
