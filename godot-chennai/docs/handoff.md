@@ -1040,6 +1040,7 @@ the honk hook); people get no reaction hook (CityLife has none). Smoke is grey a
 smoke. Effect cost measured on the desktop only (G-273). The player still stops dead against a
 light traffic vehicle (the solver's wall); only the judgement is shared by mass.
 ## Thrown on boarding; people react to hits (agent/godot-crash2, G-360…G-363), 24 Nov 2026
+## Thrown on boarding; people react to hits (agent/godot-crash2, G-340…G-343), 24 Nov 2026
 **Owner's phone report on afed12f, fixed.** (1) "When I entered the bike I was thrown away for a
 long distance": root cause G-360. After TAKE OVER the traffic view of the taken agent was hidden
 in the bike's place; when the player sat down the agent was respawned and the view, shown and

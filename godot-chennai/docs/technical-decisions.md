@@ -2079,6 +2079,7 @@ its padding (`test_hud_glass.gd`). Rows now in both menus: Time, Weather, Sound,
 rows), Graphics (`PerfWiring`, QualitySettings Low/Medium/High, "(auto)" when detected), Performance overlay.
 
 ## Performance, second round: the owner's phone (G-340…G-346, branch `agent/godot-perf`, 24 Nov 2026)
+## Performance, second round: the owner's phone (G-340…G-345, branch `agent/godot-perf`, 24 Nov 2026)
 
 ### G-340: A frame timeline names what a slow frame was made of
 `FrameTimeline` (`src/game_engine/quality/`) cuts every frame at its edges: two probe nodes run
@@ -2164,6 +2165,7 @@ the overlay list use it. `step(delta)` is the clock, so tests drive it with 1/60
 Layers: pause and title are CanvasLayer 8, above the performance overlay (7); the overlay also hides
 while the pause menu or the Jobs dialog is open (`PerfWiring._modal_open`).
 ### G-360: A kinematic body that jumps does so with its box off
+### G-340: A kinematic body that jumps does so with its box off
 Root cause of the owner's report on afed12f ("when I entered the bike I was thrown away for a long
 distance"). Jolt moves every kinematic body to a transform set from code with `MoveKinematic`
 (velocity = jump / step), even an `AnimatableBody3D` with `sync_to_physics` off. `Carjacking` hides
