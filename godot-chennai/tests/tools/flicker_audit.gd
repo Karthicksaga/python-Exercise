@@ -288,7 +288,9 @@ static func surfaces(view: Node3D, paths: Array) -> Array[Tri]:
 				mesh = mmi.multimesh.mesh
 				# One instance per pack model: its own faces (thousands of triangles; every instance
 				# of every model ran this machine out of memory).
-				xforms = [mmi.multimesh.get_instance_transform(0)] if mmi.multimesh.instance_count > 0 else []
+				xforms.clear()
+				if mmi.multimesh.instance_count > 0:
+					xforms.append(mmi.multimesh.get_instance_transform(0))
 			if mesh == null:
 				continue
 			for s in mesh.get_surface_count():
