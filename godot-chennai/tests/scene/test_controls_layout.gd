@@ -77,6 +77,11 @@ func test_left_handed_is_the_exact_mirror() -> bool:
 				for key: Variant in r:
 					var a: Rect2 = r[key]
 					var b: Rect2 = l[key]
+					if key == &"exit":
+						# GET OUT stays in the top-right row with PAUSE and JOBS, which never mirror
+						# (G-494): mirrored, it sat on the mission column.
+						check(a == b and is_equal_approx(a.end.x, ui.x) and a.position.y == 0.0, "GET OUT stays top-right either way (%s vs %s)" % [a, b])
+						continue
 					check(is_equal_approx(b.position.x, ui.x - a.position.x - a.size.x) and is_equal_approx(b.position.y, a.position.y) and b.size == a.size, "%s mirrored exactly (%s vs %s)" % [key, a, b])
 	return true
 

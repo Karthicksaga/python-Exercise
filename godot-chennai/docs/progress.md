@@ -381,3 +381,12 @@ Details and numbers: `docs/transit.md`, `world/TRANSIT.md`.
 | Drive a bus on real stops (G-218) | Done (baked jobs moved; one real-route job) | `test_transit.gd` |
 | Stations as places, train interface (G-217) | Done; trains not built (phase 6) | `test_transit.gd`, screenshot |
 | Bicycles | Not built | — |
+## Touch in menus, GET OUT, overlay default (G-490 to G-494, branch `agent/godot-fixui`, 25 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Taps in every scrolling menu at the phone's stretch (G-490) | Done (desktop, engine touch emulation) | `test_menu_touch.gd` (915x412, 2460x1080 stretched, 2460x1080 UI); fails 25 rows without the fix |
+| Full map pans once per finger, minimap opens once, list under the map leaves its drags (G-492) | Done | `test_menu_touch.gd` map pan check |
+| Performance overlay off in a release boot, no three-finger toggle there (G-491) | Done | `test_overlay_release.gd` |
+| Overlay text wraps inside the screen (G-493) | Done | `test_overlay_release.gd` (30 long lines, real text, 915x412 and phone) |
+| GET OUT pill while driving or riding, stop-then-exit while moving (G-494) | Done | `test_get_out.gd` (parked car, bike, taken-over bike, moving) |
+| Seen on the owner's phone | Not done | — |

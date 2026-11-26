@@ -78,6 +78,10 @@ func _make_layer(layer_name: String, painter: Callable, parent: Control) -> _Lay
 
 
 func _gui_input(event: InputEvent) -> void:
+	# One finger is both a touch and an emulated click on a phone: count it once (G-492).
+	if event.device == InputEvent.DEVICE_ID_EMULATION:
+		accept_event()
+		return
 	var tapped := false
 	if event is InputEventMouseButton:
 		var b := event as InputEventMouseButton

@@ -19,12 +19,15 @@ signal all_on_pressed
 const TAP_DOWN_MS := 300
 const TAP_UP_MS := 600
 const FONT := 12
+## The numbers' widest line (px); narrower screens wrap at their own width.
+const MAX_TEXT_WIDTH := 760.0
 
 var _text: Label
 var _switches_button: Button
 var _panel: PanelContainer
 var _list: VBoxContainer
 var _ranked: Label
+var _area: Control
 var _down: Dictionary[int, int] = {}  # touch index → ms when pressed
 var _first_down: int = -1
 var _armed: bool = false
@@ -45,8 +48,10 @@ func _init() -> void:
 	margin.name = "Safe"
 	root.add_child(margin)
 	var area := Control.new()
+	area.name = "Area"
 	area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(area)
+	_area = area
 	var column := VBoxContainer.new()
 	column.name = "Column"
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -71,6 +76,10 @@ func _init() -> void:
 	_text = UiTheme.label("", FONT, UiTheme.TEXT)
 	_text.name = "Numbers"
 	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Long lines (the hitch breakdown) wrap at the screen's width and the block stops above the
+	# bottom edge (G-493); `_fit_text` sets both from the room inside the safe area.
+	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	plate.clip_contents = true
 	plate.add_child(_text)
 	_switches_button = UiTheme.button("SWITCHES")
 	_switches_button.name = "Switches"
@@ -121,6 +130,24 @@ func _init() -> void:
 	visible = false
 
 
+func _ready() -> void:
+	_area.resized.connect(_fit_text)
+	_fit_text()
+
+
+## The numbers wrap at the room inside the safe area, at most this wide, and show as many whole
+## lines as fit under the SWITCHES button.
+func _fit_text() -> void:
+	var room := _area.size
+	if room.x <= 0.0 or room.y <= 0.0:
+		room = get_viewport().get_visible_rect().size if is_inside_tree() else Vector2(915, 412)
+	_text.custom_minimum_size.x = clampf(room.x - 12.0, 120.0, MAX_TEXT_WIDTH)
+	# Column top (40) + SWITCHES (48) + the plate's margins (8); the rest takes whole lines.
+	var line := float(_text.get_line_height()) + float(_text.get_theme_constant(&"line_spacing"))
+	var free := room.y - 40.0 - UiTheme.MIN_TARGET - 8.0
+	_text.max_lines_visible = maxi(1, floori(free / maxf(line, 1.0)))
+
+
 func set_text(text: String) -> void:
 	_text.text = text
 
@@ -168,10 +195,11 @@ func switch_button(id: String) -> Button:
 
 
 ## Three fingers on the screen at once, lifted again quickly: toggle. The events are never
-## consumed, so the controls see them as usual.
+## consumed, so the controls see them as usual. Not in a release build (G-491): a thumb on the
+## stick, one on GAS and a finger on the view while driving is three fingers too.
 func _input(event: InputEvent) -> void:
 	var touch := event as InputEventScreenTouch
-	if touch == null:
+	if touch == null or DebugSettings.release_build:
 		return
 	var now := Time.get_ticks_msec()
 	if touch.pressed:

@@ -3,7 +3,7 @@ extends Control
 ## Touch driving controls, scheme A "wheel" (chennai-game-design §3, input-systems; decisions
 ## G-78, G-174): slide-to-steer anywhere on the left (a ring shows where the thumb landed), GAS
 ## (largest) and BRAKE under the right thumb (BRAKE says "hold to reverse" under it), HORN above
-## BRAKE (SIREN on the ambulance and police car), EXIT top-right (a round icon), speed and gear
+## BRAKE (SIREN on the ambulance and police car), GET OUT top-right (a labelled pill), speed and gear
 ## bottom-centre as a readout only. All round glass (G-290): the drawn circle is inset in a larger
 ## hit area, white labels, the accent only while held. No steering slider and no P / R / D chips. Each control appears only while
 ## driving; GET IN is the ACTION button on foot (`ActionContext`), not part of this set.
@@ -16,6 +16,8 @@ signal exit_pressed
 signal horn_pressed
 
 const GUTTER := 16.0
+## The GET OUT pill is drawn this far inside its hit area (96 x 40 to the eye in 104 x 48).
+const EXIT_INSET := 4.0
 
 ## The preferences it follows; may be swapped at any time (tests, a new profile).
 var settings: ControlSettings = ControlSettings.shared():
@@ -147,7 +149,7 @@ func _place() -> void:
 	steer_pad.size = zone.size
 	steer_pad.rest = Rect2((r[&"steer_rest"] as Rect2).position - zone.position, (r[&"steer_rest"] as Rect2).size)
 	steer_pad.queue_redraw()
-	for pair: Array in [[gas, 5.0], [brake, 4.0], [horn, 3.0], [exit_button, 4.0]]:
+	for pair: Array in [[gas, 5.0], [brake, 4.0], [horn, 3.0], [exit_button, EXIT_INSET]]:
 		UiTheme.set_round(pair[0] as Button, pair[1] as float)
 	for b: HoldButton in [gas, brake, horn]:
 		b.fit_text()
