@@ -3430,3 +3430,82 @@ game yet; the planned hook is `BuildingMeshes` through the existing kinds and `A
 provider, capture date, licence, attribution; Google rows, links to image files and image files in the folder
 are rejected.
 
+## Homes (agent/godot-homes), 24 Nov 2026
+
+### G-230: Homes are data, ported from the reviewed prototype
+Four home types (flat 6x5, beach cottage 7x5, terrace house 8x6, old house with a thinnai 9x6
+cells) and 47 generic props in seven categories (Living, Bedroom, Kitchen, Dining, Lighting, Pooja
+and decor, Utility and outdoor) live in `data/homes/homes.json` and `props.json`, converted from the
+prototype's JS builders by running them (every box, cylinder, sphere and torus recorded, not
+retyped). The prototype's three-digit colours (`0x888` is `#000888` in JS, a dark blue; meant grey)
+were read as the grey they were meant to be. English and Tamil names are the prototype's; every
+Tamil line needs native review (`docs/homes.md`). The pure logic is `src/homes/`, node-free.
+
+### G-231: One price file, one scale
+`data/homes/prices.json` has every price on the prototype's scale and one `scale` (0.05) the game
+multiplies by, rounded to ₹5, minimum ₹5, refund 0.5. Stage and job pay is ₹50 to ₹1,200 (about
+₹58,000 in all), so ₹60,000+ homes were out of reach: flat ₹3,000, cottage 4,500, terrace 6,000,
+old house 9,000, extensions ₹1,000 and ₹2,000, a sofa ₹225, the whole catalogue under ₹10,000.
+Tests pin these and the bounds (a home within reach, nothing free).
+
+### G-232: Furnishing rules
+The prototype's rules in `HomeEditor` (grid placement, overlap and bounds, quarter-turn rotation,
+refund half rounded down, extension 20,000 x n up to two at the prototype scale, wall pieces on
+the nearer of two walls, ceiling pieces one cell) with two deliberate changes: a wall piece takes
+`w` slots of its wall (so a 2 m tube light no longer overlaps the next piece), and floor pieces never
+cover the two doorway cells (the prototype let the way in be walled off). Actions return a `HomeResult` whose `delta` the caller applies; the editor never
+touches the wallet. Walking inside is a breadth-first search over free cells, straightened.
+
+### G-233: Homes for sale are real OSM buildings with a door
+`data/homes/listings.json`: 11 OSM way ids, 2 to 3 per area (Anna Nagar flats, Besant Nagar
+cottages, Velachery terrace houses, Mylapore old houses), picked with `tests/tools/home_picker.gd`
+(residential, 70 to 600 m2, at most 12 corners, a road within 28 m). The areas data
+(`agent/godot-areas`) was not merged, so the list is its own; centres follow that data. At load, on
+a worker, `HomeSite.resolve` reads each building's chunk and finds the footprint edge whose middle is
+nearest a road with the road on its outside: the door is its middle, the standing spot 1.3 m out,
+or `FareSpots.kerb_spot` when that falls on a carriageway; `RoadHeights` keeps homes on flyovers
+out. A listing whose building is not in the data is skipped with a warning. The board (a free-standing
+sign, two posts, `Label3D` in Barlow Condensed with the Tamil face behind it) and the door are
+made when the player is within 190 m and the street is loaded, and hidden beyond 240 m; the
+building is not touched. The trigger is the standing spot's reach of 3.2 m, tested by distance,
+not an `Area3D` (no physics cost, nothing to stream). BUY and ENTER are a source on the walking
+controls' `ActionContext`; `ActionCandidate.enabled` (new, default true) dims the button while
+BUY is out of reach and the press explains why.
+
+### G-234: Save section and rules of the house
+Own versioned section `chennai-homes-v1` in the one save file, written through the missions'
+session so one write saves both; no section is a new game, damaged data a new game, a newer
+`version` read-only and written back untouched, homes of unknown types kept, unknown props dropped.
+Peace zone (`HomeRules`): no combat, weapons or wanted level inside, a safe save point; ENTER is
+refused on a vehicle and with police stars (`HomesLayer.wanted_stars`, a Callable for the combat
+runtime; no live wanted level exists yet). No people inside, so no children anywhere they could be
+hurt; pooja items are a shelf, a brass lamp and a flame, never a deity image.
+
+### G-235: Inside means the street is put away, not paused
+Entering fades out, then the city's `process_mode` becomes disabled (no traffic, AI, streaming or
+scripts), the physics server is stopped and the city hidden; the interior scene is instanced under
+`HomesLayer`, the player's own `HumanFigure` is reparented into it, its camera is made current
+(with its own `Environment`, which beats the city's `WorldEnvironment`). The scene tree is NOT paused:
+`GameLoop`'s clock keeps ticking (the room follows dusk) and `Sound` keeps running, set to the
+enclosed bed. Leaving reverses it and frees the room. Main gains a `home` state (`set_home`) that
+hides the street HUD and controls; Back leaves. A state machine across suspension did not need
+`godot-complex`: the parts are one flag each. SLEEP reuses the life rules' sleep of the family home
+(`MissionSession.do_place("home", "sleep")`: until 07:00, health, saved).
+
+### G-236: Furniture is two draw calls
+Each prop is boxes, cylinders, spheres, cones and a torus (`PropMesh`, flat-shaded vertex
+colours); a room's pieces are merged into one solid mesh and one glow mesh (`FurnitureMesh`),
+rebuilt in a moment on every change, so furniture costs two draw calls however much there is.
+The glow mesh switches to unshaded at night; the room has one omni light and the sun, no other
+lights. Selection is by grid cell, not by ray-casting meshes.
+
+### G-237: Furnish editor layout
+Category column and piece list on the right (name and price, then Tamil), tools along the bottom
+left, DONE top left, the room pushed left by the camera. Buttons are dark and nearly opaque (the
+stock translucent ones vanished on a bright room), at least 48 tall at four screen shapes (test).
+Two-line labels are two `Label`s so the Tamil face (wider than the English one) is set smaller.
+
+### G-238: Not done on purpose
+No orbiting camera (a fixed three-quarter view fitted to the room), no moving a piece (remove and
+place again costs half), no second floor or stairs, no owned-home list or fast travel, ACTION on the
+street says BUY/ENTER in English only (the shared button takes one label; the board is bilingual).

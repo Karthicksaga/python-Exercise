@@ -1,0 +1,103 @@
+{
+ "format": 1,
+ "note": "The four home types from the reviewed prototype. width x depth are the room's size in 1 m cells before extensions; each extension adds 3 cells of width. Tamil text needs native review (docs/homes.md). Prices: prices.json.",
+ "wall_colours": [
+  "#e9dcc4",
+  "#f0d2b0",
+  "#c9e0e6",
+  "#e8c8a0",
+  "#d8e8c4",
+  "#f3c9d0",
+  "#f4efe6"
+ ],
+ "types": [
+  {
+   "id": "flat",
+   "en": "Flat in a planned block",
+   "ta": "அடுக்குமாடி வீடு",
+   "width": 6,
+   "depth": 5,
+   "wall": "#e9dcc4",
+   "features": [
+    {
+     "en": "2 rooms, a balcony",
+     "ta": "2 அறைகள், ஒரு பால்கனி"
+    },
+    {
+     "en": "Lift and terrace water tank",
+     "ta": "மின்தூக்கி, மொட்டை மாடி தண்ணீர் தொட்டி"
+    },
+    {
+     "en": "Quiet tree-lined street",
+     "ta": "மரங்கள் நிறைந்த அமைதியான தெரு"
+    }
+   ]
+  },
+  {
+   "id": "cottage",
+   "en": "Beach cottage",
+   "ta": "கடற்கரை குடிசை வீடு",
+   "width": 7,
+   "depth": 5,
+   "wall": "#c9e0e6",
+   "features": [
+    {
+     "en": "Sea breeze, a tiled roof",
+     "ta": "கடல் காற்று, ஓட்டுக் கூரை"
+    },
+    {
+     "en": "A small garden",
+     "ta": "சிறிய தோட்டம்"
+    },
+    {
+     "en": "Close to the beach",
+     "ta": "கடற்கரைக்கு அருகில்"
+    }
+   ]
+  },
+  {
+   "id": "terrace",
+   "en": "Terrace house",
+   "ta": "மாடி வீடு",
+   "width": 8,
+   "depth": 6,
+   "wall": "#f0d2b0",
+   "features": [
+    {
+     "en": "Ground floor and a terrace",
+     "ta": "தரை தளமும் மொட்டை மாடியும்"
+    },
+    {
+     "en": "Room to add more",
+     "ta": "இன்னும் அறைகள் சேர்க்கலாம்"
+    },
+    {
+     "en": "A garage spot",
+     "ta": "வாகனம் நிறுத்த இடம்"
+    }
+   ]
+  },
+  {
+   "id": "old",
+   "en": "Old house with a thinnai",
+   "ta": "திண்ணை வீடு",
+   "width": 9,
+   "depth": 6,
+   "wall": "#e8c8a0",
+   "features": [
+    {
+     "en": "A raised verandah (thinnai) for the kolam",
+     "ta": "கோலம் போட உயர்ந்த திண்ணை"
+    },
+    {
+     "en": "A courtyard and a pooja room",
+     "ta": "முற்றமும் பூஜை அறையும்"
+    },
+    {
+     "en": "Near the temple streets",
+     "ta": "கோயில் தெருக்களுக்கு அருகில்"
+    }
+   ]
+  }
+ ]
+}
