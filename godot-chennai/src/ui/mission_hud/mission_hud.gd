@@ -1,0 +1,832 @@
+class_name MissionHud
+extends Control
+## The mission HUD (port of the Three.js `Hud.ts` mission parts): money, stages and reputation;
+## the current objective with its distance, countdown and an arrow towards the marker; the JOBS
+## button; short toasts; the full-screen dialog (job board, results, places); the GO INSIDE
+## prompt at a place's entrance and the gym's needle. Gets everything from the composition root
+## (`MissionsLayer`) and reports taps by signals; no gameplay here (AGENTS.md: `ui`).
+##
+## Layout at the 915x412 base (chennai-game-design §3/§7): the column sits top-left under the
+## debug line, JOBS top-right left of the driving EXIT button, toasts at a quarter height in the
+## middle, GO INSIDE bottom-centre between the stick and the buttons. Every target is 48 tall.
+
+signal jobs_pressed
+signal map_pressed
+signal inside_pressed
+## A dialog row's button (`id` of the row).
+signal row_chosen(id: String)
+## A dialog's own button (CONTINUE, CLOSE, QUIT JOB...).
+signal action_chosen(id: String)
+## The gym's LIFT button.
+signal lift_pressed
+
+const COLUMN_WIDTH := 330.0
+## The column starts at the corner now that the FPS line is off by default (G-290); the
+## performance overlay sits top-centre instead.
+const COLUMN_TOP := 16.0
+const GUTTER := 16.0
+const JOBS_SIZE := Vector2(72, 48)
+## Room right of JOBS: the PAUSE button (48, 12 off the edge gutter) and the driving EXIT beside
+## it (`PauseMenu`, `DrivingControls`), plus a gap. JOBS used to sit exactly under PAUSE.
+const EXIT_ROOM := PauseMenu.PAUSE_RIGHT + 48.0 + 10.0
+## The corner map never gets smaller than this (px); under it, it moves left of the buttons.
+const MIN_PLATE := 84.0
+## Room the minimap and the JOBS and PAUSE buttons take on the right, for the toast beside the column.
+const MAP_ROOM := 170.0
+const URGENT := 10.0
+## A dialog row's height and what the rest of a dialog takes (title, buttons, gaps, margins).
+const ROW_HEIGHT := 56.0
+const DIALOG_CHROME := 128.0
+
+var _fit_toast := false
+var _toast_checks := 0
+
+var money_label: Label
+var stage_label: Label
+var reputation_label: Label
+var mission_panel: PanelContainer
+var mission_title: Label
+var objective_label: Label
+var meta_label: Label
+var arrow: TargetArrow
+var jobs_button: Button
+var toast_panel: PanelContainer
+var toast_title: Label
+var toast_detail: Label
+var inside_button: Button
+var dialog: Control
+var dialog_title: Label
+var dialog_message: Label
+var dialog_rows: VBoxContainer
+var dialog_actions: HBoxContainer
+var needle_box: Control
+var needle_bar: NeedleBar
+var lift_button: Button
+## G-144: the meters under the objective, the minimap, and the medals screen's body.
+var stability_row: HBoxContainer
+var stability_label: Label
+var stability_bar: MeterBar
+var suspicion_row: HBoxContainer
+var suspicion_bar: MeterBar
+var minimap: Minimap
+var medals_box: HBoxContainer
+var medal_badge: MedalBadge
+var medal_goals: VBoxContainer
+
+var street_banner: PanelContainer
+var _street_tag: Label
+var _street_title: Label
+var _street_sub: Label
+var _street_left := 0.0
+
+var nav_card: PanelContainer
+var _nav_dist: Label
+var _nav_turn: Label
+var _nav_road: Label
+var _nav_eta: Label
+
+var _toast_left := 0.0
+## The top-left column (stats, the combat row, the objective).
+var column: VBoxContainer
+## Buttons in the open dialog, by id (tests press them).
+var buttons: Dictionary[String, Button] = {}
+
+
+## A small arrow that points towards the marker, relative to where the camera looks.
+class TargetArrow:
+	extends Control
+	## Radians clockwise from straight ahead; NAN hides it.
+	var bearing := NAN
+
+	func _draw() -> void:
+		if is_nan(bearing):
+			return
+		var c := size / 2.0
+		var r := minf(size.x, size.y) * 0.45
+		var fwd := Vector2(sin(bearing), -cos(bearing))
+		var side := Vector2(-fwd.y, fwd.x)
+		draw_circle(c, r, Color(0, 0, 0, 0.35))
+		draw_colored_polygon(PackedVector2Array([c + fwd * r * 0.85, c - fwd * r * 0.5 + side * r * 0.55, c - fwd * r * 0.2, c - fwd * r * 0.5 - side * r * 0.55]), UiTheme.AMBER)
+
+
+## The gym's needle: sweeps 0..1; the good zone is drawn green.
+class NeedleBar:
+	extends Control
+	var value := 0.0
+	var zone := Vector2(0.38, 0.62)
+
+	func _draw() -> void:
+		var r := Rect2(Vector2.ZERO, size)
+		draw_rect(r, Color(1, 1, 1, 0.12))
+		draw_rect(Rect2(Vector2(size.x * zone.x, 0), Vector2(size.x * (zone.y - zone.x), size.y)), Color("#4ccb6b", 0.8))
+		draw_rect(Rect2(Vector2(size.x * value - 3.0, -4), Vector2(6, size.y + 8)), UiTheme.AMBER)
+
+
+func _ready() -> void:
+	name = "MissionHud"
+	theme = UiTheme.get_theme()
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_build_column()
+	jobs_button = _button("hud.jobs", "Jobs", 15, false)
+	jobs_button.anchor_left = 1.0
+	jobs_button.anchor_right = 1.0
+	jobs_button.offset_left = -GUTTER - EXIT_ROOM - JOBS_SIZE.x
+	jobs_button.offset_right = -GUTTER - EXIT_ROOM
+	jobs_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	jobs_button.offset_top = GUTTER
+	jobs_button.offset_bottom = GUTTER + JOBS_SIZE.y
+	jobs_button.pressed.connect(func() -> void: jobs_pressed.emit())
+	add_child(jobs_button)
+	minimap = Minimap.new()
+	minimap.pressed.connect(func() -> void: map_pressed.emit())
+	add_child(minimap)
+	_place_minimap()
+	get_viewport().size_changed.connect(_place_minimap)
+	ControlSettings.shared().changed.connect(_place_minimap)
+	_build_toast()
+	_build_street_banner()
+	_build_nav_card()
+	inside_button = _button("GO INSIDE", "Inside", 16, true)
+	inside_button.anchor_left = 0.5
+	inside_button.anchor_right = 0.5
+	inside_button.anchor_top = 1.0
+	inside_button.anchor_bottom = 1.0
+	inside_button.offset_left = -90
+	inside_button.offset_right = 90
+	inside_button.offset_top = -GUTTER - 56
+	inside_button.offset_bottom = -GUTTER
+	inside_button.visible = false
+	inside_button.pressed.connect(func() -> void: inside_pressed.emit())
+	add_child(inside_button)
+	_build_dialog()
+	set_mission({}, NAN)
+
+
+## Another system's row (the combat HUD's health and stars, G-413) right under the stats line.
+func add_column_row(row: Control) -> void:
+	column.add_child(row)
+	column.move_child(row, 1)
+
+
+func _button(text: String, node_name: String, font: int, accent: bool) -> Button:
+	var b := Button.new()
+	b.name = node_name
+	if literal:
+		b.text = text
+		b.add_theme_font_size_override("font_size", font)
+	else:
+		Tr.bind(b, text, null, false, &"text", font)
+	b.custom_minimum_size = Vector2(0, UiTheme.MIN_TARGET)
+	b.focus_mode = Control.FOCUS_ALL
+	# Glass pills; only the primary action carries the accent outline (G-290).
+	UiTheme.style_glass(b, accent, 0.0)
+	b.add_theme_stylebox_override("normal", _pill(accent))
+	b.add_theme_stylebox_override("hover", _pill(accent))
+	return b
+
+
+static func _plate(alpha: float = 0.5) -> StyleBoxFlat:
+	return UiTheme.glass_plate(alpha, 12)
+
+
+## A pill with room for its words.
+static func _pill(accent: bool) -> StyleBoxFlat:
+	var box := UiTheme.glass_box(UiTheme.GLASS_FILL, Color(UiTheme.AMBER, 0.95) if accent else UiTheme.GLASS_OUTLINE)
+	box.content_margin_left = 16
+	box.content_margin_right = 16
+	return box
+
+
+func _build_column() -> void:
+	column = VBoxContainer.new()
+	column.name = "Column"
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.position = Vector2(GUTTER, COLUMN_TOP)
+	column.custom_minimum_size = Vector2(COLUMN_WIDTH, 0)
+	column.size = Vector2(COLUMN_WIDTH, 0)
+	column.add_theme_constant_override("separation", 6)
+	add_child(column)
+	var stats_panel := PanelContainer.new()
+	stats_panel.name = "Stats"
+	stats_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stats_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	stats_panel.add_theme_stylebox_override("panel", _plate())
+	column.add_child(stats_panel)
+	var stats := HBoxContainer.new()
+	stats.add_theme_constant_override("separation", 12)
+	stats_panel.add_child(stats)
+	money_label = UiTheme.label("₹0", 16, Color("#ffd166"))
+	money_label.name = "Money"
+	stats.add_child(money_label)
+	stage_label = UiTheme.label(Tr.line("hud.stages", [0, 21]), 14)
+	stage_label.name = "Stages"
+	stats.add_child(stage_label)
+	reputation_label = UiTheme.label("★ 50", 14)
+	reputation_label.name = "Reputation"
+	stats.add_child(reputation_label)
+	mission_panel = PanelContainer.new()
+	mission_panel.name = "Mission"
+	mission_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mission_panel.add_theme_stylebox_override("panel", _plate())
+	column.add_child(mission_panel)
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", 2)
+	mission_panel.add_child(rows)
+	mission_title = UiTheme.label("", 12, Color("#ffd166"))
+	mission_title.name = "Title"
+	mission_title.uppercase = true
+	mission_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rows.add_child(mission_title)
+	objective_label = UiTheme.label("", 15)
+	objective_label.name = "Objective"
+	objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rows.add_child(objective_label)
+	var meta_row := HBoxContainer.new()
+	meta_row.add_theme_constant_override("separation", 8)
+	rows.add_child(meta_row)
+	arrow = TargetArrow.new()
+	arrow.name = "Arrow"
+	arrow.custom_minimum_size = Vector2(22, 22)
+	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	meta_row.add_child(arrow)
+	meta_label = UiTheme.label("", 13, UiTheme.TEXT_DIM)
+	meta_label.name = "Meta"
+	meta_row.add_child(meta_label)
+	stability_row = HBoxContainer.new()
+	stability_row.name = "StabilityRow"
+	stability_row.add_theme_constant_override("separation", 8)
+	stability_label = UiTheme.label(Tr.line("hud.cargo"), 12, UiTheme.TEXT_DIM)
+	stability_label.custom_minimum_size.x = 54
+	stability_row.add_child(stability_label)
+	stability_bar = MeterBar.new()
+	stability_bar.name = "Stability"
+	stability_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stability_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	stability_row.add_child(stability_bar)
+	stability_row.visible = false
+	rows.add_child(stability_row)
+	suspicion_row = HBoxContainer.new()
+	suspicion_row.name = "SuspicionRow"
+	suspicion_row.add_theme_constant_override("separation", 8)
+	var sl := UiTheme.label(Tr.line("hud.noticed"), 12, UiTheme.TEXT_DIM)
+	sl.custom_minimum_size.x = 54
+	suspicion_row.add_child(sl)
+	suspicion_bar = MeterBar.new()
+	suspicion_bar.name = "Suspicion"
+	suspicion_bar.bad_when_high = true
+	suspicion_bar.value = 0.0
+	suspicion_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	suspicion_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	suspicion_row.add_child(suspicion_bar)
+	suspicion_row.visible = false
+	rows.add_child(suspicion_row)
+
+
+func _build_toast() -> void:
+	toast_panel = PanelContainer.new()
+	toast_panel.name = "Toast"
+	toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var box := _plate(0.7)
+	box.content_margin_left = 20
+	box.content_margin_right = 20
+	box.content_margin_top = 10
+	box.content_margin_bottom = 10
+	toast_panel.add_theme_stylebox_override("panel", box)
+	toast_panel.anchor_left = 0.5
+	toast_panel.anchor_right = 0.5
+	toast_panel.anchor_top = 0.24
+	toast_panel.anchor_bottom = 0.24
+	toast_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	add_child(toast_panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	toast_panel.add_child(v)
+	toast_title = UiTheme.label("", 16)
+	toast_title.name = "ToastTitle"
+	toast_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	toast_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(toast_title)
+	toast_detail = UiTheme.label("", 13, UiTheme.TEXT_DIM)
+	toast_detail.name = "ToastDetail"
+	toast_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	toast_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(toast_detail)
+	toast_panel.visible = false
+
+
+func _build_street_banner() -> void:
+	street_banner = PanelContainer.new()
+	street_banner.name = "StreetBanner"
+	street_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	street_banner.visible = false
+	var box := _plate(0.84)
+	box.border_color = UiTheme.AMBER
+	box.set_border_width_all(1)
+	box.content_margin_left = 16
+	box.content_margin_right = 16
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	street_banner.add_theme_stylebox_override("panel", box)
+	street_banner.anchor_left = 0.5
+	street_banner.anchor_right = 0.5
+	street_banner.offset_left = -165.0
+	street_banner.offset_right = 165.0
+	street_banner.offset_top = 14.0
+	street_banner.offset_bottom = 72.0
+	add_child(street_banner)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	street_banner.add_child(v)
+	var f := RailFonts.with_tamil()
+	_street_tag = UiTheme.label("ENTERING STREET", 10, UiTheme.AMBER)
+	_street_tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(_street_tag)
+	_street_title = UiTheme.label("", 14, UiTheme.TEXT)
+	_street_title.add_theme_font_override("font", f)
+	_street_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(_street_title)
+	_street_sub = UiTheme.label("", 11, UiTheme.TEXT_DIM)
+	_street_sub.add_theme_font_override("font", f)
+	_street_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(_street_sub)
+
+
+func _build_nav_card() -> void:
+	nav_card = PanelContainer.new()
+	nav_card.name = "NavGuidance"
+	nav_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	nav_card.visible = false
+	var box := _plate(0.84)
+	box.border_color = Color("#38bdf8")
+	box.set_border_width_all(1)
+	box.content_margin_left = 12
+	box.content_margin_right = 12
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	nav_card.add_theme_stylebox_override("panel", box)
+	nav_card.anchor_left = 0.5
+	nav_card.anchor_right = 0.5
+	nav_card.offset_left = -150.0
+	nav_card.offset_right = 150.0
+	nav_card.offset_top = 80.0
+	nav_card.offset_bottom = 142.0
+	add_child(nav_card)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	nav_card.add_child(v)
+	var row := HBoxContainer.new()
+	v.add_child(row)
+	_nav_dist = UiTheme.label("IN 100 M", 13, UiTheme.AMBER)
+	row.add_child(_nav_dist)
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(sp)
+	_nav_turn = UiTheme.label("CONTINUE", 12, Color("#38bdf8"))
+	row.add_child(_nav_turn)
+	_nav_road = UiTheme.label("", 12, UiTheme.TEXT)
+	v.add_child(_nav_road)
+	_nav_eta = UiTheme.label("", 11, Color("#7ee787"))
+	v.add_child(_nav_eta)
+
+
+func _build_dialog() -> void:
+	dialog = Control.new()
+	dialog.name = "Dialog"
+	dialog.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dialog.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dialog)
+	var dim := ColorRect.new()
+	dim.color = Color(0.04, 0.05, 0.09, 0.9)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dialog.add_child(dim)
+	var margin := SafeAreaMargin.new()
+	margin.gutter = 12
+	dialog.add_child(margin)
+	var centre := CenterContainer.new()
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(centre)
+	var v := VBoxContainer.new()
+	v.name = "Body"
+	v.custom_minimum_size = Vector2(600, 0)
+	v.add_theme_constant_override("separation", 6)
+	centre.add_child(v)
+	dialog_title = UiTheme.label("", 20)
+	dialog_title.name = "DialogTitle"
+	dialog_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(dialog_title)
+	dialog_message = UiTheme.label("", 12, UiTheme.TEXT_DIM)
+	dialog_message.name = "DialogMessage"
+	dialog_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dialog_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(dialog_message)
+	medals_box = HBoxContainer.new()
+	medals_box.name = "Medals"
+	medals_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	medals_box.add_theme_constant_override("separation", 16)
+	medal_badge = MedalBadge.new()
+	medals_box.add_child(medal_badge)
+	medal_goals = VBoxContainer.new()
+	medal_goals.name = "Goals"
+	medal_goals.add_theme_constant_override("separation", 4)
+	medal_goals.custom_minimum_size.x = 420
+	medals_box.add_child(medal_goals)
+	medals_box.visible = false
+	v.add_child(medals_box)
+	var scroll := UiTheme.touch_scroll()
+	scroll.custom_minimum_size = Vector2(600, 0)
+	v.add_child(scroll)
+	dialog_rows = VBoxContainer.new()
+	dialog_rows.name = "Rows"
+	dialog_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dialog_rows.add_theme_constant_override("separation", 6)
+	scroll.add_child(dialog_rows)
+	needle_box = VBoxContainer.new()
+	needle_box.name = "Needle"
+	v.add_child(needle_box)
+	needle_bar = NeedleBar.new()
+	needle_bar.custom_minimum_size = Vector2(600, 28)
+	needle_box.add_child(needle_bar)
+	lift_button = _button("hud.lift", "Lift", 18, true)
+	lift_button.custom_minimum_size = Vector2(160, 56)
+	lift_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	lift_button.pressed.connect(func() -> void: lift_pressed.emit())
+	needle_box.add_child(lift_button)
+	needle_box.visible = false
+	dialog_actions = HBoxContainer.new()
+	dialog_actions.name = "Actions"
+	dialog_actions.alignment = BoxContainer.ALIGNMENT_CENTER
+	dialog_actions.add_theme_constant_override("separation", 12)
+	v.add_child(dialog_actions)
+	dialog.visible = false
+
+
+func _process(delta: float) -> void:
+	if _fit_toast:
+		# One frame on, the labels know their wrapped height: shrink to it (a panel outside a
+		# container keeps the tallest size it was ever given).
+		_fit_toast = false
+		toast_panel.size = Vector2(toast_panel.size.x, 0)
+		_toast_checks = 3
+	elif _toast_checks > 0 and toast_panel.visible:
+		# Tamil lines are taller than Latin ones: if the toast still runs off the bottom, smaller letters.
+		_toast_checks -= 1
+		var bottom := toast_panel.position.y + toast_panel.get_combined_minimum_size().y
+		var fs := toast_detail.get_theme_font_size("font_size")
+		if bottom > (size.y if size.y > 0.0 else 412.0) - 8.0 and fs > 9:
+			toast_detail.add_theme_font_size_override("font_size", fs - 1)
+			toast_panel.size = Vector2(toast_panel.size.x, 0)
+			_toast_checks = 3
+	if _toast_left > 0.0:
+		_toast_left -= delta
+		toast_panel.modulate.a = clampf(_toast_left / 0.3, 0.0, 1.0)
+		if _toast_left <= 0.0:
+			toast_panel.visible = false
+	if _street_left > 0.0:
+		_street_left -= delta
+		street_banner.modulate.a = clampf(_street_left / 0.35, 0.0, 1.0)
+		if _street_left <= 0.0:
+			street_banner.visible = false
+
+
+func set_stats(rupees: String, done: int, count: int, reputation: int) -> void:
+	_text(money_label, "₹%s" % rupees)
+	_text(stage_label, Tr.line("hud.stages", [done, count]))
+	_text(reputation_label, "★ %d" % reputation)
+
+
+static func _text(l: Label, t: String) -> void:
+	if l.text != t:
+		l.text = t
+
+
+## The mission panel: {title, objective, distance, seconds_left} ({} hides it); `bearing`: where
+## the marker is, radians clockwise from the camera's forward (NAN: no arrow).
+func set_mission(view: Dictionary, bearing: float) -> void:
+	mission_panel.visible = not view.is_empty()
+	if view.is_empty():
+		return
+	_text(mission_title, str(view["title"]))
+	_text(objective_label, str(view["objective"]))
+	var parts := PackedStringArray()
+	var distance: float = view["distance"]
+	if distance >= 0.0:
+		parts.append(Tr.line("hud.km", ["%.1f" % (distance / 1000.0)]) if distance >= 1000.0 else Tr.line("hud.m", [roundi(distance)]))
+	var seconds: float = view["seconds_left"]
+	if seconds >= 0.0:
+		var s := maxi(0, ceili(seconds))
+		parts.append("%d:%02d" % [s / 60, s % 60])
+	_text(meta_label, "  ·  ".join(parts))
+	meta_label.add_theme_color_override("font_color", UiTheme.DANGER if seconds >= 0.0 and seconds < URGENT else UiTheme.TEXT_DIM)
+	var stab: float = float(view.get("stability", -1.0))
+	stability_row.visible = stab >= 0.0
+	if stab >= 0.0:
+		stability_bar.set_value(stab)
+		_text(stability_label, str(view.get("stability_label", Tr.line("hud.cargo"))))
+	var susp: float = float(view.get("suspicion", -1.0))
+	suspicion_row.visible = susp >= 0.0
+	if susp >= 0.0:
+		suspicion_bar.set_value(susp)
+	arrow.visible = not is_nan(bearing) and distance >= 0.0
+	if arrow.bearing != bearing:
+		arrow.bearing = bearing
+		arrow.queue_redraw()
+
+
+func toast(title: String, detail: String = "", seconds: float = 3.2) -> void:
+	toast_title.text = title
+	toast_detail.text = detail
+	toast_detail.visible = detail != ""
+	# Width: the text's, up to 60 % of the screen and never wider than the gap between the mission
+	# column (left) and the minimap (right): Tamil and both-language texts are long (G-445). The
+	# panel grows both ways from the middle of that gap.
+	var screen_w := size.x if size.x > 0.0 else 915.0
+	var gap_left := GUTTER + COLUMN_WIDTH + 12.0
+	var gap_right := screen_w - (GUTTER + MAP_ROOM)
+	var widest := minf(screen_w * 0.6, maxf(200.0, gap_right - gap_left))
+	var width := minf(widest, maxf(240.0, toast_title.get_theme_font("font").get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 48.0))
+	if detail != "":
+		width = minf(widest, maxf(width, toast_detail.get_theme_font("font").get_string_size(detail, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x * 0.5 + 48.0))
+	var centre := (gap_left + gap_right) / 2.0 if gap_right - gap_left >= 200.0 else screen_w / 2.0
+	toast_panel.anchor_left = centre / screen_w
+	toast_panel.anchor_right = centre / screen_w
+	# Long Tamil or two-language text: smaller letters until the whole toast fits the screen.
+	var room := (size.y if size.y > 0.0 else 412.0) * 0.76 - 16.0
+	var title_h := _text_height(toast_title.get_theme_font("font"), title, width - 40.0, 16)
+	var fs := 13
+	if detail != "":
+		var detail_font := toast_detail.get_theme_font("font")
+		while fs > 9 and title_h + _text_height(detail_font, detail, width - 40.0, fs) + 28.0 > room:
+			fs -= 1
+	toast_detail.add_theme_font_size_override("font_size", fs)
+	# A fixed width for the labels to wrap at, and a height of what they need: a label wrapped
+	# at an earlier, narrower width must not keep its tall minimum size.
+	toast_title.custom_minimum_size = Vector2(width - 40.0, 0)
+	toast_detail.custom_minimum_size = Vector2(width - 40.0, 0)
+	toast_panel.offset_left = -width / 2.0
+	toast_panel.offset_right = width / 2.0
+	toast_panel.size = Vector2(width, 0)
+	_fit_toast = true
+	toast_panel.visible = true
+	toast_panel.modulate.a = 1.0
+	_toast_left = seconds
+
+
+## The height a wrapped label takes: its lines at the font's height plus the label's line gap.
+static func _text_height(font: Font, text: String, width: float, fs: int) -> float:
+	var h := font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, width, fs).y
+	return h + roundf(h / maxf(font.get_height(fs), 1.0)) * 3.0
+
+
+func toast_showing() -> bool:
+	return toast_panel.visible and _toast_left > 0.0
+
+
+func toast_text() -> String:
+	return "%s %s" % [toast_title.text, toast_detail.text] if toast_panel.visible else ""
+
+
+func show_street_banner(tag: String, title: String, subtitle: String, duration: float = 3.0) -> void:
+	_text(_street_tag, tag)
+	_text(_street_title, title)
+	_text(_street_sub, subtitle)
+	_street_sub.visible = subtitle != ""
+	street_banner.visible = true
+	street_banner.modulate.a = 1.0
+	_street_left = duration
+
+
+func set_nav_guidance(on: bool, dist_text: String = "", maneuver: String = "", road: String = "", eta_text: String = "") -> void:
+	nav_card.visible = on
+	if not on:
+		return
+	_text(_nav_dist, dist_text)
+	_text(_nav_turn, maneuver)
+	_text(_nav_road, road)
+	_text(_nav_eta, eta_text)
+
+
+## GO INSIDE at a place's entrance: the place's name, or "" to hide.
+func set_place_prompt(place_name: String) -> void:
+	inside_button.visible = place_name != ""
+	if place_name != "":
+		inside_button.tooltip_text = place_name
+
+
+## A full-screen dialog. `rows`: [{id, title, detail, meta, button, disabled}] (a disabled row
+## shows its reason instead of the detail); `actions`: [{id, label, quiet}].
+func show_dialog(title: String, message: String, rows: Array[Dictionary] = [], actions: Array[Dictionary] = []) -> void:
+	hide_dialog()
+	# A toast behind a full-screen dialog is noise: it goes (the dialog says the news).
+	toast_panel.visible = false
+	_toast_left = 0.0
+	dialog_title.text = title
+	dialog_message.text = message
+	dialog_message.visible = message != ""
+	var list_height := 0.0
+	for r in rows:
+		var row := _row(r)
+		dialog_rows.add_child(row)
+		# A Tamil or two-language row is taller than the base 56: count what it needs.
+		list_height += maxf(ROW_HEIGHT, row.get_combined_minimum_size().y) + 6.0
+	var scroll := dialog_rows.get_parent() as ScrollContainer
+	# The header (title, message) and the buttons stay pinned; the rows scroll in what is left:
+	# four rows at the 915x412 base.
+	var room := (size.y if size.y > 0.0 else 412.0) - DIALOG_CHROME - (18.0 if message != "" else 0.0)
+	scroll.custom_minimum_size.y = minf(list_height, maxf(ROW_HEIGHT, room))
+	scroll.visible = not rows.is_empty()
+	_fit_dialog.call_deferred()
+	for a in actions:
+		var b := _button(str(a["label"]), "Action_%s" % str(a["id"]), 16, not bool(a.get("quiet", false)), true)
+		b.custom_minimum_size = Vector2(150, 48)
+		var id := str(a["id"])
+		b.pressed.connect(func() -> void: action_chosen.emit(id))
+		dialog_actions.add_child(b)
+		buttons[id] = b
+	dialog.visible = true
+	var first: Button = null
+	for id in buttons:
+		if not buttons[id].disabled:
+			first = buttons[id]
+			break
+	if first != null:
+		var b := first
+		(func() -> void:
+			if is_instance_valid(b) and b.is_inside_tree() and b.is_visible_in_tree():
+				b.grab_focus()).call_deferred()
+
+
+## One frame after the dialog is built: if its header (a two-language title, a wrapped message)
+## makes the whole taller than the screen, the list of rows gives up the height (it scrolls).
+func _fit_dialog() -> void:
+	if not dialog.visible and not is_inside_tree():
+		return
+	await get_tree().process_frame
+	if not is_instance_valid(dialog) or not dialog.visible:
+		return
+	var body := dialog.find_child("Body", true, false) as Control
+	var scroll := dialog_rows.get_parent() as ScrollContainer
+	var over := body.get_combined_minimum_size().y - (size.y - 24.0)
+	if over > 0.5 and scroll.visible:
+		scroll.custom_minimum_size.y = maxf(ROW_HEIGHT, scroll.custom_minimum_size.y - over)
+
+
+func _row(r: Dictionary) -> Control:
+	var panel := PanelContainer.new()
+	panel.name = "Row_%s" % str(r["id"])
+	var box := _plate(0.0)
+	box.bg_color = Color(1, 1, 1, 0.08)
+	box.set_corner_radius_all(12)
+	box.content_margin_top = 4
+	box.content_margin_bottom = 4
+	panel.add_theme_stylebox_override("panel", box)
+	panel.custom_minimum_size.y = ROW_HEIGHT
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	panel.add_child(h)
+	var text := VBoxContainer.new()
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.add_theme_constant_override("separation", 0)
+	h.add_child(text)
+	text.add_child(UiTheme.label(str(r["title"]), 15))
+	var disabled := str(r.get("disabled", ""))
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 10)
+	text.add_child(line)
+	# Tamil and two-language rows are longer: the meta goes on a line of its own under the detail.
+	var meta_line: Control = line if Tr.mode == Tr.Mode.ENGLISH else text
+	var detail := UiTheme.label(disabled if disabled != "" else str(r.get("detail", "")), 12, UiTheme.TEXT_DIM)
+	detail.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	detail.custom_minimum_size.x = 60
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.add_child(detail)
+	var meta := str(r.get("meta", ""))
+	if meta != "":
+		var m := UiTheme.label(meta, 12, Color("#ffd166"))
+		meta_line.add_child(m)
+	var b := Button.new()
+	var id := str(r["id"])
+	b.name = "Take_%s" % id
+	b.text = str(r.get("button", Tr.t("hud.take")))
+	b.custom_minimum_size = Vector2(110, UiTheme.MIN_TARGET)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.disabled = disabled != ""
+	b.focus_mode = Control.FOCUS_ALL
+	b.pressed.connect(func() -> void: row_chosen.emit(id))
+	h.add_child(b)
+	buttons[id] = b
+	return panel
+
+
+## The gym's needle under the dialog's text; `value` 0..1, `zone` the good share.
+func show_needle(on: bool, value: float = 0.0, zone: Vector2 = Vector2(0.38, 0.62)) -> void:
+	needle_box.visible = on
+	needle_bar.value = value
+	needle_bar.zone = zone
+	needle_bar.queue_redraw()
+
+
+func hide_dialog() -> void:
+	buttons.clear()
+	for c in dialog_rows.get_children():
+		dialog_rows.remove_child(c)
+		c.queue_free()
+	for c in dialog_actions.get_children():
+		dialog_actions.remove_child(c)
+		c.queue_free()
+	needle_box.visible = false
+	medals_box.visible = false
+	for c in medal_goals.get_children():
+		medal_goals.remove_child(c)
+		c.queue_free()
+	dialog.visible = false
+
+
+func dialog_open() -> bool:
+	return dialog.visible
+
+
+## Press a dialog button by id (tests, keyboard).
+func press(id: String) -> bool:
+	var b: Button = buttons.get(id)
+	if b == null or b.disabled:
+		return false
+	b.pressed.emit()
+	return true
+
+
+## The medals screen (G-144): the medal, each bonus goal ticked or not, and the pay.
+## `goals`: [{label, met}].
+func show_medals(title: String, medal: String, goals: Array, paid: int, replay: bool, actions: Array[Dictionary]) -> void:
+	var met := 0
+	for g: Dictionary in goals:
+		met += 1 if bool(g["met"]) else 0
+	var message := "+₹%s%s" % [_thousands(paid), " " + Tr.line("hud.replay") if replay else ""]
+	if medal != "":
+		message += "  ·  %s  ·  %s" % [Tr.line("hud.medal_line", [Tr.ref(Medals.KEYS.get(medal, "hud.medal.bronze"))]), Tr.line("hud.goals_met", [met, goals.size()])]
+	show_dialog(title, message, [] as Array[Dictionary], actions)
+	medal_badge.set_medal(medal)
+	for g: Dictionary in goals:
+		var done := bool(g["met"])
+		var l := UiTheme.label("%s  %s" % ["✔" if done else "✘", str(g["label"])], 14, Color("#4ccb6b") if done else UiTheme.TEXT_DIM)
+		l.name = "Goal"
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		medal_goals.add_child(l)
+	medals_box.visible = true
+
+
+static func _thousands(n: int) -> String:
+	var s := str(absi(n))
+	var out := ""
+	while s.length() > 3:
+		out = "," + s.right(3) + out
+		s = s.left(s.length() - 3)
+	return ("-" if n < 0 else "") + s + out
+
+
+## The corner minimap goes under the PAUSE row on the right, as large as fits without covering any
+## button of either control set (on foot: JUMP, ACTION, RUN; driving: GAS, BRAKE, HORN, EXIT), JOBS
+## or PAUSE (`ControlsLayout`): tried at the right edge first, then left of the button columns. On a
+## screen too short for any spot of at least `MIN_PLATE` it is hidden (the pause menu's MAP opens the
+## big one). Left-handed layouts mirror the buttons, so it stays at the edge (G-281).
+func _place_minimap() -> void:
+	if minimap == null:
+		return
+	var area := get_viewport_rect().size
+	var settings := ControlSettings.shared()
+	var top := GUTTER + JOBS_SIZE.y + 4.0
+	var foot := ControlsLayout.foot(area, settings)
+	var drive := ControlsLayout.driving(area, settings)
+	var blocked: Array[Rect2] = []
+	for layout: Dictionary in [foot, drive]:
+		for key: Variant in ControlsLayout.buttons_of(layout):
+			blocked.append((layout[key] as Rect2).grow(4.0))
+	var edges: Array[float] = [area.x - GUTTER]
+	for key: Variant in [&"action", &"jump", &"brake", &"horn"]:
+		var r: Rect2 = (foot if foot.has(key) else drive)[key]
+		edges.append(r.position.x - 8.0)
+	edges.sort()
+	edges.reverse()
+	for plate: float in [Minimap.PLATE, 112.0, 100.0, 92.0, MIN_PLATE]:
+		for right in edges:
+			var rect := Rect2(right - plate, top, plate, plate)
+			if rect.position.x < COLUMN_WIDTH + GUTTER * 2.0 or rect.end.y > area.y - GUTTER:
+				continue
+			if not blocked.any(func(b: Rect2) -> bool: return b.intersects(rect)):
+				_put_minimap(rect)
+				return
+	minimap.visible = false
+
+
+func _put_minimap(rect: Rect2) -> void:
+	minimap.visible = true
+	minimap.anchor_left = 0.0
+	minimap.anchor_right = 0.0
+	minimap.offset_left = rect.position.x
+	minimap.offset_right = rect.end.x
+	minimap.offset_top = rect.position.y
+	minimap.offset_bottom = rect.end.y
+	minimap.custom_minimum_size = rect.size
+	minimap.size = rect.size
+	minimap.set_plate(rect.size.x)

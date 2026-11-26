@@ -1,0 +1,279 @@
+{
+ "format": 1,
+ "id": "ripon-building",
+ "kind": "civic",
+ "names": {
+  "en": "Ripon Building",
+  "ta": "ரிப்பன் மாளிகை",
+  "en_source": "Wikipedia article title; the OSM way carries no name",
+  "ta_source": "Tamil Wikipedia article title; not in OSM. Needs review by a native Tamil speaker (culture note §1)."
+ },
+ "style": "Neoclassical (white, colonnaded, central clock tower)",
+ "style_alternatives": [
+  {
+   "style": "Neoclassical",
+   "source": "https://en.wikipedia.org/wiki/Ripon_Building"
+  },
+  {
+   "style": "Neoclassical",
+   "source": "https://theculturetrip.com/asia/india/articles/8-heritage-buildings-and-structures-to-visit-in-chennai"
+  },
+  {
+   "style": "Indo-Saracenic and neoclassical",
+   "source": "https://navrangindia.blogspot.com/2015/08/ripon-building-heritage-structure.html"
+  }
+ ],
+ "style_chosen_because": "Two sources say neoclassical and the building's columns, pediments and white render read as neoclassical; the Indo-Saracenic label is recorded.",
+ "height": {
+  "value": 43.0,
+  "osm_tag": null,
+  "of": "the central clock tower",
+  "source": "https://en.wikipedia.org/wiki/Ripon_Building",
+  "alternatives": [
+   {
+    "value": 41.5,
+    "source": "https://theculturetrip.com/asia/india/articles/8-heritage-buildings-and-structures-to-visit-in-chennai",
+    "note": "136 ft"
+   },
+   {
+    "value": 58.0,
+    "source": "https://www.deccanchronicle.com/131126/news-current-affairs/article/100-and-going-strong",
+    "note": "building 30 m plus 28 m tower, quoted from an official; inconsistent with the others"
+   }
+  ],
+  "chosen_because": "Wikipedia's 43 m (141 ft) lies between the other two figures and the 41.5 m is within 4 %; the 58 m figure is an outlier."
+ },
+ "osm": {
+  "main": "building",
+  "exclude": [
+   "building"
+  ],
+  "parts": {
+   "building": {
+    "osm": "way/27618298",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6619.26,
+      249.13
+     ],
+     [
+      6638.88,
+      245.65
+     ],
+     [
+      6639.53,
+      249.31
+     ],
+     [
+      6666.89,
+      244.46
+     ],
+     [
+      6666.24,
+      240.8
+     ],
+     [
+      6685.61,
+      237.37
+     ],
+     [
+      6688.77,
+      256.83
+     ],
+     [
+      6659.3,
+      262.05
+     ],
+     [
+      6658.63,
+      258.28
+     ],
+     [
+      6652.92,
+      259.3
+     ],
+     [
+      6653.59,
+      263.07
+     ],
+     [
+      6622.42,
+      268.59
+     ]
+    ],
+    "centroid": [
+     6654.07,
+     253.52
+    ],
+    "area": 1203.0,
+    "rect": {
+     "yaw_deg": 10.06,
+     "long": 67.67,
+     "short": 19.72,
+     "corners": [
+      [
+       6689.05,
+       256.78
+      ],
+      [
+       6622.42,
+       268.6
+      ],
+      [
+       6618.98,
+       249.18
+      ],
+      [
+       6685.61,
+       237.37
+      ]
+     ]
+    },
+    "role": "model"
+   }
+  },
+  "wikidata": null,
+  "wikipedia": "en:Ripon Building",
+  "data_date": "2026-11-23T00:28:57Z",
+  "licence": "ODbL 1.0, © OpenStreetMap contributors"
+ },
+ "origin": [
+  6654.07,
+  253.52
+ ],
+ "yaw_deg": 10.06,
+ "recipe": {
+  "kit": "colonial_clocktower",
+  "params": {
+   "part": "building",
+   "front": "south",
+   "storeys": 3,
+   "storey_height": 5.8,
+   "parapet": 1.2,
+   "tower": {
+    "at": 0.0,
+    "size": 8.0,
+    "shaft_top": 28.5,
+    "clock_stage": 4.4,
+    "clock_diameter": 2.5,
+    "lantern_height": 4.2,
+    "dome_height": 2.6,
+    "finial": 1.8
+   },
+   "corner_turrets": {
+    "size": 3.6,
+    "height": 4.0
+   },
+   "bay": 3.3,
+   "colonnade_floors": [
+    1,
+    2
+   ]
+  }
+ },
+ "colours": {
+  "white": "#f2efe6",
+  "shade": "#d9d3c3",
+  "dark": "#4f4a42",
+  "roof": "#c9c3b5",
+  "clock": "#f7f4ea",
+  "hands": "#262626",
+  "gold": "#c9a24a"
+ },
+ "materials": [
+  {
+   "name": "white lime plaster over brick",
+   "where": "all walls"
+  },
+  {
+   "name": "painted iron and glass",
+   "where": "clock faces"
+  }
+ ],
+ "facts": [
+  {
+   "en": "Seat of the Greater Chennai Corporation, named after Lord Ripon.",
+   "source": "https://en.wikipedia.org/wiki/Ripon_Building"
+  },
+  {
+   "en": "The foundation stone was laid by the Viceroy, Lord Minto, on 11 December 1909.",
+   "source": "https://www.dtnext.in/amp/story/news/chennai/those-were-the-days-how-the-ripon-building-transformed-into-a-seat-of-local-governance-over-100-years"
+  },
+  {
+   "en": "The clock was installed in 1913 by Oakes and Co. and chimes the Westminster Quarters.",
+   "source": "https://en.wikipedia.org/wiki/Ripon_Building"
+  },
+  {
+   "en": "Published size: 85 m long and 32 m wide; OpenStreetMap's outline (way 27618298) is 68 m by 20 m, and the model follows OpenStreetMap.",
+   "source": "https://en.wikipedia.org/wiki/Ripon_Building"
+  }
+ ],
+ "references": [
+  {
+   "title": "File:Ripon Building panorama.jpg",
+   "author": "PlaneMad (Commons user)",
+   "licence": "CC BY-SA 2.5",
+   "url": "https://commons.wikimedia.org/wiki/File:Ripon_Building_panorama.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Ripon Building.jpg",
+   "author": "Karthikeyan321",
+   "licence": "CC BY 4.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Ripon_Building.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Ripon Building aerial view.jpg",
+   "author": "Saiphani02",
+   "licence": "CC BY-SA 4.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Ripon_Building_aerial_view.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Ripon Building corner aerial view.png",
+   "author": "Saiphani02",
+   "licence": "CC BY-SA 4.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Ripon_Building_corner_aerial_view.png",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Ripon Building Chennai.JPG",
+   "author": "unknown (public domain)",
+   "licence": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Ripon_Building_Chennai.JPG",
+   "use": "modelling reference; public domain, so usable as a texture"
+  },
+  {
+   "title": "File:Ripon building chennai.jpg",
+   "author": "Dreamora96x",
+   "licence": "CC0",
+   "url": "https://commons.wikimedia.org/wiki/File:Ripon_building_chennai.jpg",
+   "use": "modelling reference; CC0, so usable as a texture"
+  }
+ ],
+ "budget": {
+  "lod0_min": 5000,
+  "lod0_max": 15000,
+  "lod1_max": 6000,
+  "lod2_max": 2000
+ },
+ "lod": {
+  "lod0_end": 160.0,
+  "lod1_end": 600.0,
+  "lod2_end": 4000.0
+ },
+ "collision": {
+  "plan": "Jolt boxes: the main block split along its OSM outline, the tower.",
+  "min_boxes": 2
+ },
+ "estimated": [
+  "storey heights and the 21 m eaves",
+  "tower stages below the 43 m top",
+  "corner turrets",
+  "which side is the front (south, the side facing the Victoria Public Hall grounds)"
+ ]
+}

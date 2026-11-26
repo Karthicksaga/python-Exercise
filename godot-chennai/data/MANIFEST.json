@@ -1,0 +1,138 @@
+{
+  "format": 1,
+  "datasets": [
+    {
+      "id": "osm-tamil-nadu",
+      "url": "https://download.openstreetmap.fr/extracts/asia/india/tamil_nadu-latest.osm.pbf",
+      "file": "tamil_nadu-latest.osm.pbf",
+      "bytes": 130638648,
+      "sha256": "f6f3f7cd0e1161d0cecde6b3437a1d05d87f536f042413fcd8a0e4dddb289b01",
+      "osmDataTimestamp": "2026-11-23T00:28:57Z",
+      "lastModified": "Mon, 23 Nov 2026 00:31:39 GMT",
+      "downloaded": "2026-11-23T12:56:00Z",
+      "licence": "ODbL 1.0, © OpenStreetMap contributors",
+      "replicationSequence": 7384370,
+      "stateUrl": "https://download.openstreetmap.fr/extracts/asia/india/tamil_nadu.state.txt"
+    }
+  ],
+  "derived": [
+    {
+      "file": "data/raw/world.osm.pbf (not committed)",
+      "how": "osmium extract -p data/boundary/world-boundary.geojson -s smart -S types=multipolygon,boundary",
+      "from": "osm-tamil-nadu"
+    },
+    {
+      "file": "data/boundary/world-boundary.geojson (committed)",
+      "how": "python -m chennai_geo.cli boundary",
+      "from": "osm-tamil-nadu"
+    }
+  ],
+  "planned": [
+    {
+      "id": "google-openbuildings-2.5d",
+      "status": "not downloaded: the 2.5D Temporal height raster needs an Earth Engine account (none yet); a future height source (G-224)"
+    }
+  ],
+  "buildings": [
+    {
+      "id": "overture-buildings",
+      "url": "https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/release/2026-11-18.0/theme=buildings/type=building/",
+      "release": "2026-11-18.0",
+      "file": "overture-buildings.parquet",
+      "bytes": 192193933,
+      "sha256": "e19a97f03a270a57f96b9372555e95b07567ec6b108ea9c13eb19b75a4457e4f",
+      "rows": 1875288,
+      "box": {
+        "south": 12.68,
+        "west": 79.95,
+        "north": 13.5639111,
+        "east": 80.4
+      },
+      "query": "DuckDB read_parquet over HTTPS, bbox struct filter, ordered by GERS id",
+      "sourceFilesScanned": 512,
+      "downloaded": "2026-11-24T10:32:27Z",
+      "licence": "ODbL 1.0 (Overture buildings theme), © Overture Maps Foundation and its sources"
+    },
+    {
+      "id": "google-openbuildings-v3",
+      "url": "https://storage.googleapis.com/open-buildings-data/v3/polygons_s2_level_6_gzip_no_header/<s2 token>_buildings.csv.gz",
+      "s2Level": 6,
+      "cells": [
+        {
+          "token": "3a4d",
+          "url": "https://storage.googleapis.com/open-buildings-data/v3/polygons_s2_level_6_gzip_no_header/3a4d_buildings.csv.gz",
+          "bytes": 160842296,
+          "sha256": "9a63b27c3527ca2313ea89f9bc08703b17a816166c4918b7b69f17ae1e2b8faf",
+          "rows": 1727534
+        },
+        {
+          "token": "3a53",
+          "url": "https://storage.googleapis.com/open-buildings-data/v3/polygons_s2_level_6_gzip_no_header/3a53_buildings.csv.gz",
+          "bytes": 486165915,
+          "sha256": "3fd7cfb84e1b8b7ff32c0b8690c00a620cc12d930d73168efa7b54425e248e6f",
+          "rows": 5127255
+        }
+      ],
+      "file": "openbuildings-v3.csv.gz",
+      "bytes": 257622559,
+      "sha256": "d34d77ace17cee4987fc54cb95905b71c102c514f02ab7d2715982c37e13ef44",
+      "rows": 2716055,
+      "box": {
+        "south": 12.68,
+        "west": 79.95,
+        "north": 13.5639111,
+        "east": 80.4
+      },
+      "downloaded": "2026-11-24T10:33:22Z",
+      "licence": "ODbL 1.0 (chosen; also offered under CC BY 4.0), Google Open Buildings v3"
+    },
+    {
+      "id": "microsoft-ml-buildings",
+      "url": "https://minedbuildings.z5.web.core.windows.net/global-buildings/dataset-links.csv",
+      "location": "India",
+      "quadkeyLevel": 9,
+      "files": [
+        {
+          "quadkey": "123312201",
+          "url": "https://minedbuildings.z5.web.core.windows.net/global-buildings/2026-02-03/global-buildings.geojsonl/RegionName=India/quadkey=123312201/part-00170-4feead82-d499-422b-94cb-c036c212127a.c000.csv.gz",
+          "bytes": 1336461,
+          "sha256": "eeee8b1dedfb4d3bfdb8dd326e692a42e71c8ea1fc6538cb3942aaafb91b064f",
+          "rows": 17321
+        },
+        {
+          "quadkey": "123312203",
+          "url": "https://minedbuildings.z5.web.core.windows.net/global-buildings/2026-02-03/global-buildings.geojsonl/RegionName=India/quadkey=123312203/part-00159-4feead82-d499-422b-94cb-c036c212127a.c000.csv.gz",
+          "bytes": 27414977,
+          "sha256": "69a8f1f2a621e697c8b8661227d4fbe0ddc900dad8138fba10f8b377fed2b296",
+          "rows": 347026
+        },
+        {
+          "quadkey": "123312210",
+          "url": "https://minedbuildings.z5.web.core.windows.net/global-buildings/2026-02-03/global-buildings.geojsonl/RegionName=India/quadkey=123312210/part-00175-4feead82-d499-422b-94cb-c036c212127a.c000.csv.gz",
+          "bytes": 1499131,
+          "sha256": "5be372773b05ed659590955a49a0b3bb901dd1cc15e1072d496585fd9c6b3c60",
+          "rows": 19878
+        },
+        {
+          "quadkey": "123312212",
+          "url": "https://minedbuildings.z5.web.core.windows.net/global-buildings/2026-02-03/global-buildings.geojsonl/RegionName=India/quadkey=123312212/part-00010-4feead82-d499-422b-94cb-c036c212127a.c000.csv.gz",
+          "bytes": 42474993,
+          "sha256": "949969ad2e5ae614814b5cd8f566cd2e4b9071463af647e5ec3e2c84ab889a75",
+          "rows": 485261
+        }
+      ],
+      "file": "microsoft-ml.geojsonl.gz",
+      "bytes": 67733537,
+      "sha256": "2580316f1e61383d94f46e82b63fb118f75e3dbf6f9a3e57b0cc2d793780582d",
+      "rows": 807931,
+      "box": {
+        "south": 12.68,
+        "west": 79.95,
+        "north": 13.5639111,
+        "east": 80.4
+      },
+      "downloaded": "2026-11-24T10:32:23Z",
+      "licence": "CDLA Permissive 2.0, Microsoft Global ML Building Footprints"
+    }
+  ]
+}

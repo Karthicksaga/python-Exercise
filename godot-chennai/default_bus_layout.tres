@@ -1,0 +1,47 @@
+[gd_resource type="AudioBusLayout" format=3 uid="uid://dlm14wekn1c3r"]
+
+[sub_resource type="AudioEffectCompressor" id="glue"]
+resource_name = "Glue"
+threshold = -16.0
+attack_us = 2000.0
+release_ms = 200.0
+
+[sub_resource type="AudioEffectHardLimiter" id="limit"]
+resource_name = "Limiter"
+ceiling_db = -1.0
+
+[sub_resource type="AudioEffectLowPassFilter" id="muffle"]
+resource_name = "Muffle"
+cutoff_hz = 18000.0
+
+[resource]
+bus/0/effect/0/effect = SubResource("glue")
+bus/0/effect/0/enabled = true
+bus/0/effect/1/effect = SubResource("limit")
+bus/0/effect/1/enabled = true
+bus/1/name = &"Vehicles"
+bus/1/solo = false
+bus/1/mute = false
+bus/1/bypass_fx = false
+bus/1/volume_db = -5.19
+bus/1/send = &"Master"
+bus/2/name = &"World"
+bus/2/solo = false
+bus/2/mute = false
+bus/2/bypass_fx = false
+bus/2/volume_db = -6.1
+bus/2/send = &"Master"
+bus/3/name = &"Ambience"
+bus/3/solo = false
+bus/3/mute = false
+bus/3/bypass_fx = false
+bus/3/volume_db = -6.6
+bus/3/send = &"Master"
+bus/3/effect/0/effect = SubResource("muffle")
+bus/3/effect/0/enabled = true
+bus/4/name = &"UI"
+bus/4/solo = false
+bus/4/mute = false
+bus/4/bypass_fx = false
+bus/4/volume_db = -7.13
+bus/4/send = &"Master"

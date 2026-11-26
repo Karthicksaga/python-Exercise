@@ -1,0 +1,13 @@
+{
+ "about": "Landmark specs the game loads (G-181). One folder per landmark: spec.json, the GLB built from it and build.json.",
+ "landmarks": [
+  "anna-nagar-tower",
+  "chennai-central",
+  "chennai-egmore",
+  "chennai-lighthouse",
+  "generic-mall-royapettah",
+  "kapaleeshwarar-temple",
+  "kathipara-junction",
+  "ripon-building"
+ ]
+}

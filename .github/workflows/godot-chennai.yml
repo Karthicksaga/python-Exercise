@@ -1,0 +1,332 @@
+name: Godot Chennai
+# The Godot 4 version of the Chennai game (godot-chennai/): import, headless tests, the Android
+# APK and an emulator smoke run. Nothing else in this repo is built here.
+on:
+  push:
+    paths: ['godot-chennai/**', '.github/workflows/godot-chennai.yml']
+  pull_request:
+    paths: ['godot-chennai/**', '.github/workflows/godot-chennai.yml']
+  workflow_dispatch:
+    inputs:
+      smoke_runs:
+        description: 'Emulator smoke runs in parallel, as a list (e.g. "1,2,3,4,5,6") to check it is not flaky'
+        default: '1'
+      smoke_settle:
+        description: 'Wait for the emulator to settle before installing (1), or not (0, the old behaviour)'
+        default: '1'
+
+# A newer push to the same branch or PR cancels the run still in progress.
+concurrency:
+  group: godot-chennai-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: 4.7.2
+  # The size budget of the phone APK (arm64), in MB of 1,000,000 bytes (docs/app-size.md). The
+  # "APK size against the budget" step fails the build above it. Raise it only on purpose, with a
+  # line in docs/app-size.md saying what grew and why.
+  APK_BUDGET_MB: 260
+  # Google Play's limit for the base module of an app bundle (compressed download). Over it only
+  # warns: the plan is install-time asset packs (docs/app-size.md, "Play Store limits").
+  PLAY_BASE_LIMIT_MB: 200
+
+defaults:
+  run:
+    working-directory: godot-chennai
+
+jobs:
+  test:
+    # Synced copies match chennai-open-world, the project imports, and the headless tests pass.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot-${{ env.GODOT_VERSION }}
+          key: godot-${{ env.GODOT_VERSION }}-linux-v1
+      - name: Install Godot
+        run: tools/ci_install_godot.sh
+      - name: Synced assets match chennai-open-world
+        run: python3 tools/sync_from_threejs.py --check
+      - name: Translations match the mission content and the review table (G-442, G-443)
+        run: |
+          python3 tools/i18n/content_keys.py --check
+          python3 tools/i18n/review_table.py --check
+      - name: Railway file rebuilt from the Three.js extract (G-320)
+        run: python3 tools/rail/test_build_rail.py
+      - name: Sound files measured again against the manifest (G-371)
+        run: |
+          sudo apt-get install -y --no-install-recommends ffmpeg > /dev/null
+          python3 -m pip install --quiet numpy
+          python3 tools/audio/test_audio_files.py
+      # The import cache (.godot/imported) is rebuilt from scratch only when an asset or its
+      # import settings change.
+      - name: Cache the import
+        uses: actions/cache@v4
+        with:
+          path: godot-chennai/.godot
+          key: godot-import-${{ env.GODOT_VERSION }}-${{ hashFiles('godot-chennai/assets/**', 'godot-chennai/project.godot') }}
+      - name: Import and run the tests
+        # The suite (600+ tests) outgrew run_tests.sh's 600 s default; the job limit is 30 min.
+        env:
+          TEST_TIMEOUT: "1500"
+        run: ./run_tests.sh
+      - name: Upload the test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-chennai-test-log
+          path: godot-chennai/tests/out/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  android:
+    # The APK for phones (arm64) and the smoke-test APK for the emulator (x86_64).
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Cache Godot and its Android templates
+        uses: actions/cache@v4
+        with:
+          path: ~/godot-${{ env.GODOT_VERSION }}
+          key: godot-${{ env.GODOT_VERSION }}-linux-android-v1
+      - name: Install Godot and the Android export templates
+        run: tools/ci_install_godot.sh --android
+      - name: Cache the import
+        uses: actions/cache@v4
+        with:
+          path: godot-chennai/.godot
+          key: godot-import-${{ env.GODOT_VERSION }}-${{ hashFiles('godot-chennai/assets/**', 'godot-chennai/project.godot') }}
+      # A debug keystore made for this run only (never committed). Both APKs are signed with it:
+      # for testing, not for the Play Store.
+      - name: Debug keystore and Android editor settings
+        run: |
+          mkdir -p ~/keys
+          keytool -genkeypair -v -keystore ~/keys/debug.keystore -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US" > /dev/null 2>&1
+          for kind in DEBUG RELEASE; do
+            echo "GODOT_ANDROID_KEYSTORE_${kind}_PATH=$HOME/keys/debug.keystore" >> "$GITHUB_ENV"
+            echo "GODOT_ANDROID_KEYSTORE_${kind}_USER=androiddebugkey" >> "$GITHUB_ENV"
+            echo "GODOT_ANDROID_KEYSTORE_${kind}_PASSWORD=android" >> "$GITHUB_ENV"
+          done
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-4.7.tres <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$HOME/keys/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          sed -i 's/^ *//' ~/.config/godot/editor_settings-4.7.tres
+      - name: Import
+        run: timeout 900 godot --headless --audio-driver Dummy --path . --import > import.log 2>&1 || (cat import.log; exit 1)
+      # The commit the benchmark card prints (G-404); both APKs carry it.
+      - name: Stamp the build's commit
+        run: python3 tools/stamp_build.py "$GITHUB_SHA"
+      - name: Export the APKs
+        run: |
+          mkdir -p build/android
+          godot --headless --audio-driver Dummy --path . --export-release "Android" build/android/chennai-open-world.apk 2>&1 | tee export.log
+          test -s build/android/chennai-open-world.apk
+          godot --headless --audio-driver Dummy --path . --export-debug "Android Smoke" build/android/chennai-open-world-smoke.apk 2>&1 | tee -a export.log
+          test -s build/android/chennai-open-world-smoke.apk
+          ls -la build/android
+      # The A/B APK for weak phones (G-255): the same game on the Compatibility renderer (OpenGL ES 3),
+      # package name ending in .compat so it installs beside the Mobile (Vulkan) one. Its preset is
+      # derived from "Android" here, so it always carries the same export filters.
+      - name: Export the Compatibility-renderer APK
+        run: |
+          python3 tools/compat_preset.py
+          godot --headless --audio-driver Dummy --path . --export-release "Android Compatibility" build/android/chennai-open-world-compat.apk 2>&1 | tee -a export.log
+          test -s build/android/chennai-open-world-compat.apk
+          git checkout -- export_presets.cfg
+          ls -la build/android
+      - name: What the APKs declare (SDK levels, ABIs, orientation)
+        run: |
+          AAPT=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)aapt
+          for apk in build/android/*.apk; do
+            echo "== $apk"
+            "$AAPT" dump badging "$apk" | grep -E "^package:|sdkVersion|targetSdkVersion|native-code|launchable-activity" || true
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: godot-chennai-apk
+          path: godot-chennai/build/android/chennai-open-world.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: godot-chennai-apk-compat
+          path: godot-chennai/build/android/chennai-open-world-compat.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: godot-chennai-apk-smoke
+          path: godot-chennai/build/android/chennai-open-world-smoke.apk
+          if-no-files-found: error
+          retention-days: 7
+      # After the uploads, so an APK over the budget can still be downloaded and inspected.
+      - name: APK size against the budget
+        run: |
+          apk=build/android/chennai-open-world.apk
+          bytes=$(stat -c %s "$apk")
+          mb=$(awk -v b="$bytes" 'BEGIN { printf "%.2f", b / 1e6 }')
+          smoke_mb=$(awk -v b="$(stat -c %s build/android/chennai-open-world-smoke.apk)" 'BEGIN { printf "%.2f", b / 1e6 }')
+          {
+            echo "### APK size"
+            echo
+            echo "| APK | MB | Budget |"
+            echo "|---|---|---|"
+            echo "| arm64-v8a phone APK (\`chennai-open-world.apk\`) | **$mb** | $APK_BUDGET_MB |"
+            echo "| x86_64 smoke APK (emulator only) | $smoke_mb | not budgeted |"
+            echo
+            echo "Biggest items (MB stored in the APK):"
+            echo
+            echo '```'
+            tools/apk_size_report.sh "$apk" 25
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "APK size: $mb MB (budget $APK_BUDGET_MB MB)"
+          if awk -v m="$mb" -v b="$PLAY_BASE_LIMIT_MB" 'BEGIN { exit !(m > b) }'; then
+            echo "::warning::The APK is $mb MB, over Google Play's $PLAY_BASE_LIMIT_MB MB base-module limit: split the data into asset packs (docs/app-size.md)."
+          fi
+          if awk -v m="$mb" -v b="$APK_BUDGET_MB" 'BEGIN { exit !(m > b) }'; then
+            echo "::error::The APK is $mb MB, over the $APK_BUDGET_MB MB budget (APK_BUDGET_MB in .github/workflows/godot-chennai.yml). Run tools/apk_size_report.sh on the artifact; see docs/app-size.md."
+            exit 1
+          fi
+
+  benchmark:
+    # The benchmark mode (G-400..G-405) run on the build machine: the Compatibility renderer on
+    # software OpenGL under xvfb, a short route (scale 0.1), every level. It fails only if the
+    # benchmark itself does not finish (a crash, a script that stops it, no results file); its
+    # speed is not gated (software rendering is not a phone). benchmark.json is the artifact.
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot-${{ env.GODOT_VERSION }}
+          key: godot-${{ env.GODOT_VERSION }}-linux-v1
+      - name: Install Godot
+        run: tools/ci_install_godot.sh
+      - name: Install xvfb and software OpenGL
+        run: sudo apt-get update -q && sudo apt-get install -y -q xvfb libgl1-mesa-dri
+      - name: Cache the import
+        uses: actions/cache@v4
+        with:
+          path: godot-chennai/.godot
+          key: godot-import-${{ env.GODOT_VERSION }}-${{ hashFiles('godot-chennai/assets/**', 'godot-chennai/project.godot') }}
+      - name: Import
+        run: timeout 900 godot --headless --audio-driver Dummy --path . --import > import.log 2>&1 || (cat import.log; exit 1)
+      - name: Run the benchmark (Compatibility, software GL)
+        env:
+          CHENNAI_BUILD_COMMIT: ${{ github.sha }}
+        run: |
+          export XDG_DATA_HOME="$RUNNER_TEMP/bench-data"
+          mkdir -p "$XDG_DATA_HOME" bench-out
+          set +e
+          timeout 1800 xvfb-run -a -s "-screen 0 1830x824x24" godot --path . \
+            --rendering-method gl_compatibility --rendering-driver opengl3 --audio-driver Dummy \
+            --resolution 915x412 -- --start=play --benchmark --benchmark-quit --benchmark-scale=0.1 \
+            > bench-out/benchmark.log 2>&1
+          status=$?
+          set -e
+          dir="$XDG_DATA_HOME/godot/app_userdata/Chennai Open World"
+          cp "$dir"/benchmark.json "$dir"/benchmark.txt bench-out/ 2>/dev/null || true
+          grep -E "^\[bench\]" bench-out/benchmark.log || true
+          {
+            echo "### Benchmark (Compatibility renderer, software GL, scale 0.1; not a phone)"
+            echo
+            echo '```'
+            cat bench-out/benchmark.txt 2>/dev/null || echo "no benchmark.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" -ne 0 ]; then
+            tail -60 bench-out/benchmark.log
+            echo "::error::The benchmark exited with $status (crash, timeout or it could not run)."
+            exit 1
+          fi
+          python3 -c "import json,sys; d=json.load(open('bench-out/benchmark.json')); assert d['format']=='chennai-benchmark-1' and len(d['levels'])==3, d.keys(); print('benchmark.json:', d['recommendation']['text'])"
+      - name: Upload the benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-chennai-benchmark
+          path: godot-chennai/bench-out/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  android-smoke:
+    # Installs the smoke APK on an emulator and checks the game reaches the test world and keeps
+    # running (tools/android_smoke.sh reads "[boot]" lines from logcat).
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        run: ${{ fromJSON(format('[{0}]', inputs.smoke_runs || '1')) }}
+    env:
+      SMOKE_SETTLE: ${{ inputs.smoke_settle || '1' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: godot-chennai-apk-smoke
+          path: godot-chennai/smoke-apk
+      # Hardware acceleration for the emulator (from the android-emulator-runner README).
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # The system image comes from the network on every run otherwise; one smoke job failed
+      # with "Premature EOF" while downloading it.
+      - name: Cache the emulator system image
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/system-images/android-34/google_apis/x86_64
+          key: android-sysimg-34-google_apis-x86_64-v1
+      - name: Run the smoke test on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: true
+          # The emulator's Vulkan (SwiftShader through gfxstream) cannot present on this runner:
+          # Godot's main loop stopped after the first frames. Godot's own Vulkan-to-OpenGL
+          # fallback (guest Vulkan turned off) started the app once and lost it on the next run
+          # while switching. So the smoke APK starts on the Compatibility renderer itself
+          # (launch arguments in the "Android Smoke" preset); the Mobile renderer is judged on
+          # real phones (G-9).
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -skin 1280x576 -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          working-directory: godot-chennai
+          # One line: the action runs each script line as a separate command.
+          script: bash tools/android_smoke.sh smoke-apk/chennai-open-world-smoke.apk android-smoke
+      - name: Upload device log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-chennai-android-smoke-logcat-${{ matrix.run }}
+          path: godot-chennai/android-smoke/
+          if-no-files-found: ignore
+          retention-days: 14

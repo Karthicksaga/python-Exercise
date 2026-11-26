@@ -1,0 +1,9 @@
+{
+ "format": 1,
+ "default": {"type": "mixed", "walls": ["#F2E3C6"], "roofs": ["#9A9690"], "roof_types": {"flat": 1.0}, "storeys": {"2": 1.0}, "boundary": null},
+ "areas": {
+  "test-pete": {"type": "x", "walls": ["#112233", "#445566"], "roofs": ["#778899"], "roof_types": {"dome": 0.5, "flat": 0.5}, "storeys": {"1": 0.5, "4-5": 0.5}, "boundary": {"type": "circle", "centre_xz": [100.0, 100.0], "radius_m": 200}},
+  "test-road": {"type": "y", "walls": ["#AA0000"], "roofs": ["#00AA00"], "roof_types": {"flat": 1.0}, "storeys": {"3": 1.0}, "boundary": {"type": "corridor", "spine_xz": [[1000.0, 0.0], [1000.0, 1000.0]], "half_width_m": 50}},
+  "test-inner": {"type": "z", "walls": ["#0000AA"], "roofs": ["#00AA00"], "roof_types": {"flat": 1.0}, "storeys": {"2": 1.0}, "boundary": {"type": "circle", "centre_xz": [150.0, 100.0], "radius_m": 40}}
+ }
+}

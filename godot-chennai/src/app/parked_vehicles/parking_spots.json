@@ -1,0 +1,22 @@
+{
+  "comment": "Parked vehicles in the game (decision G-110). The Three.js game's parking (`content.ts`, baked by Rules into src/missions/content/content.json) is read from there; this file maps its kinds to vehicle variants and adds the vehicles the Three.js game did not park: taxis at the stations and in T. Nagar, the premium cars in the richer districts, the race car at the race track. `near` is a world point (metres, +X east, -Z north) taken from the place's latitude and longitude; the spot is the kerb of the nearest drivable road in the loaded data, so it follows the map when the data is rebuilt. Places are real; the exact spots are invented.",
+  "kinds": {
+    "car": "hatchback",
+    "auto": "auto",
+    "bike": "motorbike",
+    "ambulance": "ambulance",
+    "bus": "bus"
+  },
+  "spots": [
+    {"id": "saloon-anna-nagar", "variant": "saloon", "near": [-62.0, 40.0], "place": "Anna Nagar, near the start"},
+    {"id": "taxi-anna-nagar", "variant": "taxi", "near": [60.0, 95.0], "place": "Anna Nagar, near the start"},
+    {"id": "taxi-central", "variant": "taxi", "near": [7105.0, 248.0], "place": "Chennai Central"},
+    {"id": "taxi-egmore", "variant": "taxi", "near": [5405.0, 778.0], "place": "Egmore station"},
+    {"id": "taxi-t-nagar", "variant": "taxi", "near": [2859.0, 4948.0], "place": "T. Nagar, Pondy Bazaar"},
+    {"id": "saloon-nungambakkam", "variant": "saloon", "near": [4430.0, 2780.0], "place": "Nungambakkam"},
+    {"id": "suv-poes-garden", "variant": "suv", "near": [4971.0, 4114.0], "place": "Poes Garden"},
+    {"id": "suv-boat-club", "variant": "suv", "near": [4917.0, 7028.0], "place": "Boat Club Road, R. A. Puram"},
+    {"id": "coupe-besant-nagar", "variant": "coupe", "near": [6130.0, 9452.0], "place": "Besant Nagar"},
+    {"id": "race-car-irungattukottai", "variant": "race_car", "near": [-25247.0, 9896.0], "place": "the race track at Irungattukottai"}
+  ]
+}

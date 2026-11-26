@@ -1,0 +1,19 @@
+{
+ "id": "chennai-egmore",
+ "kit": "hero_station",
+ "script": "tools/blender/landmarks/hero_station.py",
+ "blender": "5.2.4 LTS",
+ "spec_sha256": "e7d109b7bf577168ecfc27adb6ff1964e054932782aaaf9682bb3f2195e1775b",
+ "glb_sha256": "78b21dd0b1700ce04c5fb0938f0b7f4db9578f23376e7fd3b609b60e6a9279bd",
+ "triangles": {
+  "lod0": 3676,
+  "lod1": 770,
+  "lod2": 124
+ },
+ "collision_boxes": 84,
+ "atlas": {
+  "file": "chennai-egmore_atlas.png",
+  "png_bytes": 139373,
+  "sha256": "1e5bb4663ceca90e938fc82142982425eebe663babcf069151f0489adddd1a8d"
+ }
+}

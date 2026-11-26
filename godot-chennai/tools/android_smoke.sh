@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+# Android smoke test (CI job `android-smoke`): installs an APK on a running emulator, launches
+# it and checks, from the device log, that the game reached the test world ("[boot] play",
+# printed by src/app/main.gd) and that the same process is still running 10 s later. Fails on
+# "[boot] failed", a crash, the app's process going away, or a timeout. The smoke preset passes
+# `--start=play`; if the game shows the title menu instead, ENTER presses the focused PLAY
+# button, as a player with a keyboard would.
+#
+#   tools/android_smoke.sh <app.apk> [out-dir]
+#
+# Before installing it waits until the emulator has settled (SMOKE_SETTLE=0 skips this, to
+# reproduce the old behaviour): boot finished, package manager and activity manager answering,
+# the screen unlocked, the display rotation fixed to landscape, and the global configuration
+# unchanged for a while. Every wait is bounded and says what it waited for.
+#
+# Needs adb on the PATH. Writes the device log to <out-dir>/logcat.txt (default android-smoke/).
+set -uo pipefail
+APK="${1:?usage: android_smoke.sh <app.apk> [out-dir]}"
+OUT="${2:-android-smoke}"
+PACKAGE=com.chennaiopenworld.godot
+TIMEOUT=240
+SETTLE="${SMOKE_SETTLE:-1}"
+mkdir -p "$OUT"
+log() { echo "[smoke $(date +%H:%M:%S)] $*"; }
+dev() { adb shell "$@" 2>/dev/null | tr -d '\r'; }
+boot_log() { adb logcat -d -s godot:V 2>/dev/null; }
+# Crashes of this app only (the crash buffer; native crashes name the process, truncated).
+crashed() { adb logcat -d -b crash 2>/dev/null | grep -qE "chennaiopenworld|openworld\.godot"; }
+# The whole global configuration line, including its sequence numbers (" as.N s.N"), which
+# change with every configuration change (rotation, overlays, SIM country, fonts...).
+config() { dev dumpsys window | grep -m1 -E "mGlobalConfiguration" | sed 's/^ *//'; }
+
+diagnose() {
+  echo "---- the app's log (tag godot) ----"
+  boot_log | tail -120
+  echo "---- why the app's process ended (ApplicationExitInfo) ----"
+  dev dumpsys activity exit-info "$PACKAGE" | head -40
+  echo "---- configuration changes and activity relaunches (events log) ----"
+  adb logcat -d -b events 2>/dev/null | grep -E "configuration_changed|handleRelaunchActivity|wm_relaunch" | head -40
+  echo "---- system events (activity and window lifecycle, configuration, kills), last 120 ----"
+  adb logcat -d -b events 2>/dev/null | grep -E "am_|wm_|configuration_changed" \
+    | grep -vE "am_pss|am_mem_factor|am_freeze|am_unfreeze|am_compact" | tail -120
+  echo "---- system and main log, last 200 lines (without package-filter noise) ----"
+  adb logcat -d -b main,system 2>/dev/null | grep -vE "AppsFilter|BlockstoreStorage| godot   :" | tail -200
+  echo "---- the 4 s before the game's activity was relaunched (main, system, events) ----"
+  if [ -f "$OUT/early.txt" ]; then
+    local at
+    at=$(grep -m1 -E "wm_relaunch_resume_activity|wm_relaunch_activity" "$OUT/early.txt" | awk '{print $2}')
+    if [ -n "$at" ]; then
+      awk -v at="$at" 'function sec(t,  a){split(t,a,":"); return a[1]*3600+a[2]*60+a[3]}
+        { d = sec(at) - sec($2) } d >= 0 && d <= 4' "$OUT/early.txt" \
+        | grep -vE "AppsFilter|GLES3|uniforms exceed|_compile_specialization|_display_error_with_code|Method/function failed|Instant App installer|ephemeral installer" | tail -250
+    else
+      echo "(no relaunch in the first 6 s)"
+    fi
+  fi
+  echo "---- crash buffer ----"
+  adb logcat -d -b crash 2>/dev/null | tail -60
+  echo "---- global configuration now ----"
+  config
+}
+save() { adb logcat -d > "$OUT/logcat.txt" 2>/dev/null; adb logcat -d -b events > "$OUT/events.txt" 2>/dev/null; log "device log in $OUT/"; }
+fail() { log "FAIL: $*"; diagnose; save; exit 1; }
+
+# wait_for <seconds> <what> <command...>: runs the command every 2 s until it succeeds.
+wait_for() {
+  local limit="$1" what="$2"; shift 2
+  local start; start=$(date +%s)
+  until "$@" > /dev/null 2>&1; do
+    [ $(( $(date +%s) - start )) -ge "$limit" ] && fail "emulator not ready after ${limit} s: $what"
+    sleep 2
+  done
+  log "ready: $what ($(( $(date +%s) - start )) s)"
+}
+# wait_soft <seconds> <command...>: like wait_for, but returns 1 instead of failing.
+wait_soft() {
+  local limit="$1"; shift
+  local start; start=$(date +%s)
+  until "$@" > /dev/null 2>&1; do
+    [ $(( $(date +%s) - start )) -ge "$limit" ] && return 1
+    sleep 2
+  done
+}
+booted() { [ "$(dev getprop sys.boot_completed)" = 1 ] && [ "$(dev getprop init.svc.bootanim)" = stopped ]; }
+services() { dev pm path android | grep -q package: && dev cmd activity get-config > /dev/null && dev dumpsys window | grep -q mCurrentFocus; }
+unlocked() { ! dev dumpsys window | grep -qE "mDreamingLockscreen=true|isKeyguardShowing=true|mShowingLockscreen=true"; }
+landscape() { config | grep -q " land "; }
+
+# Root cause of the flaky runs (24 Nov 2026): some seconds after boot (and again around an
+# install) Android's overlay manager changes which resource overlays are enabled (carrier
+# config, idmap2d; the events log shows `commit_sys_config_file: [overlays,...]`). That changes
+# every app's asset paths, so the game's activity is relaunched (`wm_relaunch_resume_activity`
+# with changes 0x80000000). Godot cannot start twice in one process and ends its own process
+# (exit reason SIGNALED, signal 9, no crash). So the launch waits until the overlay state and
+# the global configuration (with its sequence numbers) have both been unchanged for 20 s.
+steady_state() { config; dev cmd overlay list | md5sum; }
+config_steady() {
+  local limit=180 start last now stable_since
+  start=$(date +%s); last=$(steady_state); stable_since=$start
+  while true; do
+    sleep 3
+    now=$(steady_state)
+    if [ "$now" != "$last" ]; then
+      log "overlays or configuration changed: $(echo "$now" | head -1 | grep -oE " as\.[0-9]+ s\.[0-9]+")"
+      last=$now; stable_since=$(date +%s)
+    elif [ $(( $(date +%s) - stable_since )) -ge 20 ]; then
+      log "ready: overlays and configuration steady for 20 s"
+      return
+    fi
+    [ $(( $(date +%s) - start )) -ge "$limit" ] && fail "overlays or configuration still changing after ${limit} s"
+  done
+}
+
+if [ "$SETTLE" = 1 ]; then
+  wait_for 300 "boot completed" booted
+  wait_for 120 "package and activity managers answer" services
+  dev input keyevent KEYCODE_WAKEUP; dev wm dismiss-keyguard; dev input keyevent KEYCODE_MENU
+  wait_for 60 "screen unlocked" unlocked
+  # The game asks for landscape. The emulator's screen is landscape (-skin in the workflow),
+  # and the display ignores orientation requests, so nothing rotates when the game starts (the
+  # portrait-only launcher would otherwise turn the display, and the game back again).
+  dev cmd window set-ignore-orientation-request true
+  dev cmd window user-rotation lock 0
+  wait_soft 30 landscape || fail "the display is not landscape: $(config)"
+  log "ready: display in landscape"
+  config_steady
+fi
+
+adb logcat -c -b all
+log "installing $APK"
+adb install -r "$APK" || fail "adb install failed"
+wait_for 60 "package installed" dev pm path "$PACKAGE"
+if [ "$SETTLE" = 1 ]; then
+  # Installing sends broadcasts that other apps answer (launcher, Play services); wait until the
+  # system has delivered them before starting the game.
+  timeout 90 adb shell cmd activity wait-for-broadcast-idle > /dev/null 2>&1 \
+    && log "ready: broadcasts after the install delivered" || log "note: broadcast queue not idle after 90 s"
+  config_steady
+fi
+ACTIVITY=$(dev cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "$PACKAGE" | tail -1)
+case "$ACTIVITY" in */*) ;; *) fail "no launcher activity for $PACKAGE: $ACTIVITY";; esac
+dev am force-stop "$PACKAGE"
+log "configuration at launch: $(config)"
+log "launching $ACTIVITY"
+dev am start -W -n "$ACTIVITY" | grep -E "Status|LaunchState|TotalTime" | sed 's/^/  /'
+start=$(date +%s)
+( sleep 6; adb logcat -d -b main,system,events > "$OUT/early.txt" 2>/dev/null ) &
+pid=""
+pressed=0
+while true; do
+  sleep 2
+  now=$(date +%s)
+  current=$(dev pidof "$PACKAGE")
+  if [ -n "$current" ] && [ -z "$pid" ]; then pid=$current; log "app process $pid"; fi
+  if [ -n "$pid" ] && [ "$current" != "$pid" ]; then fail "the app's process $pid ended (now: '${current:-none}')"; fi
+  lines=$(boot_log | grep -F "[boot]" || true)
+  if echo "$lines" | grep -qF "[boot] failed"; then fail "the game reported a loading failure"; fi
+  if crashed; then fail "the app crashed"; fi
+  if echo "$lines" | grep -qF "[boot] play"; then break; fi
+  if echo "$lines" | grep -qF "[boot] title" && [ $((now - pressed)) -gt 10 ]; then
+    log "title menu shown: pressing ENTER on PLAY"
+    dev input keyevent KEYCODE_ENTER
+    pressed=$now
+  fi
+  [ -z "$pid" ] && [ $((now - start)) -gt 30 ] && fail "the app's process never started"
+  [ $((now - start)) -gt $TIMEOUT ] && fail "no \"[boot] play\" after ${TIMEOUT} s (last: $(echo "$lines" | tail -1))"
+done
+log "reached the test world after $(( $(date +%s) - start )) s; checking the same process keeps running"
+sleep 10
+current=$(dev pidof "$PACKAGE")
+[ "$current" != "$pid" ] && fail "the app's process $pid is gone 10 s after reaching the test world (now: '${current:-none}')"
+if crashed; then fail "the app crashed after reaching the test world"; fi
+boot_log | grep -F "[boot]" | sed 's/.*\[boot\]/  [boot]/'
+log "activity relaunches since launch: $(adb logcat -d -b events 2>/dev/null | grep -c wm_relaunch)"
+save
+log "pass (pid $pid)"

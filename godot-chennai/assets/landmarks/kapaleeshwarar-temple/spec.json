@@ -1,0 +1,1200 @@
+{
+ "format": 1,
+ "id": "kapaleeshwarar-temple",
+ "kind": "temple",
+ "names": {
+  "en": "Kapaleeshwarar Temple",
+  "ta": "கபாலீசுவரர் கோயில்",
+  "en_source": "OSM relation 21203725 name",
+  "ta_source": "OSM relation 21203725 name:ta (the complex way 1548155931 carries the same name:ta)"
+ },
+ "style": "Dravidian temple: gateway towers (gopurams) with painted stucco tiers, a walled compound with shrines and pillared halls, a stepped tank to the west",
+ "height": {
+  "value": 37.0,
+  "osm_tag": null,
+  "of": "the east gopuram, ground to the top of its finials",
+  "source": "https://www.ancient-history-sites.com/?p=133412",
+  "alternatives": [
+   {
+    "value": 36.6,
+    "source": "https://www.ancient-history-sites.com/?p=133412",
+    "note": "120 ft, built 1906"
+   },
+   {
+    "value": 40.0,
+    "source": "https://en.wikipedia.org/wiki/Kapaleeshwarar_Temple",
+    "note": "about 40 m"
+   }
+  ],
+  "chosen_because": "Two sources give 120 ft (36.6 m); 37 m is that figure rounded and the value the game already used; Wikipedia's 40 m is recorded as the alternative. OSM carries no height."
+ },
+ "osm": {
+  "main": "compound",
+  "exclude": [
+   "compound"
+  ],
+  "parts": {
+   "compound": {
+    "osm": "way/1548155931",
+    "tags": {
+     "name": "Kapaleeshwarar Temple complex",
+     "name:ta": "கபாலீசுவரர் கோயில்",
+     "amenity": "place_of_worship",
+     "religion": "hindu",
+     "layer": "1"
+    },
+    "footprint": [
+     [
+      6442.84,
+      5651.61
+     ],
+     [
+      6445.02,
+      5652.22
+     ],
+     [
+      6529.47,
+      5673.46
+     ],
+     [
+      6507.39,
+      5762.43
+     ],
+     [
+      6424.28,
+      5740.58
+     ]
+    ],
+    "centroid": [
+     6476.13,
+     5706.76
+    ],
+    "area": 7992.3,
+    "rect": {
+     "yaw_deg": 76.06,
+     "long": 92.01,
+     "short": 89.34,
+     "corners": [
+      [
+       6420.68,
+       5740.91
+      ],
+      [
+       6442.84,
+       5651.61
+      ],
+      [
+       6529.55,
+       5673.13
+      ],
+      [
+       6507.39,
+       5762.43
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "tank": {
+    "osm": "way/24270420",
+    "tags": {
+     "name": "Kapaleeshwara Koil Kulam",
+     "alt_name": "Kapaleeswar Tank",
+     "natural": "water",
+     "water": "pond"
+    },
+    "footprint": [
+     [
+      6299.04,
+      5633.71
+     ],
+     [
+      6429.23,
+      5651.1
+     ],
+     [
+      6397.92,
+      5833.46
+     ],
+     [
+      6260.27,
+      5816.76
+     ]
+    ],
+    "centroid": [
+     6346.36,
+     5734.56
+    ],
+    "area": 25065.1,
+    "rect": {
+     "yaw_deg": 80.26,
+     "long": 191.87,
+     "short": 138.49,
+     "corners": [
+      [
+       6260.27,
+       5816.76
+      ],
+      [
+       6292.74,
+       5627.66
+      ],
+      [
+       6429.23,
+       5651.1
+      ],
+      [
+       6396.76,
+       5840.2
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "east_gopuram": {
+    "osm": "way/208567697",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6509.61,
+      5711.42
+     ],
+     [
+      6514.34,
+      5712.96
+     ],
+     [
+      6516.58,
+      5713.69
+     ],
+     [
+      6520.4,
+      5714.93
+     ],
+     [
+      6517.62,
+      5723.32
+     ],
+     [
+      6514.9,
+      5731.88
+     ],
+     [
+      6505.72,
+      5728.9
+     ],
+     [
+      6504.11,
+      5728.38
+     ]
+    ],
+    "centroid": [
+     6512.24,
+     5721.65
+    ],
+    "area": 201.7,
+    "rect": {
+     "yaw_deg": 72.03,
+     "long": 17.83,
+     "short": 11.34,
+     "corners": [
+      [
+       6509.61,
+       5711.42
+      ],
+      [
+       6520.4,
+       5714.92
+      ],
+      [
+       6514.9,
+       5731.88
+      ],
+      [
+       6504.11,
+       5728.38
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "west_gopuram": {
+    "osm": "way/211277567",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6438.42,
+      5708.93
+     ],
+     [
+      6435.83,
+      5708.33
+     ],
+     [
+      6433.88,
+      5707.88
+     ],
+     [
+      6430.74,
+      5707.14
+     ],
+     [
+      6435.94,
+      5684.93
+     ],
+     [
+      6439.16,
+      5685.68
+     ],
+     [
+      6443.61,
+      5686.72
+     ]
+    ],
+    "centroid": [
+     6437.18,
+     5696.93
+    ],
+    "area": 179.8,
+    "rect": {
+     "yaw_deg": 76.85,
+     "long": 22.82,
+     "short": 7.89,
+     "corners": [
+      [
+       6430.74,
+       5707.15
+      ],
+      [
+       6435.93,
+       5684.93
+      ],
+      [
+       6443.61,
+       5686.72
+      ],
+      [
+       6438.42,
+       5708.94
+      ]
+     ]
+    },
+    "role": "area"
+   },
+   "shrine_main": {
+    "osm": "way/208567695",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6460.42,
+      5714.48
+     ],
+     [
+      6445.12,
+      5709.67
+     ],
+     [
+      6450.93,
+      5691.23
+     ],
+     [
+      6453.58,
+      5692.07
+     ],
+     [
+      6466.22,
+      5696.05
+     ]
+    ],
+    "centroid": [
+     6455.67,
+     5702.86
+    ],
+    "area": 309.9,
+    "rect": {
+     "yaw_deg": 72.51,
+     "long": 19.33,
+     "short": 16.04,
+     "corners": [
+      [
+       6466.23,
+       5696.05
+      ],
+      [
+       6460.42,
+       5714.49
+      ],
+      [
+       6445.12,
+       5709.67
+      ],
+      [
+       6450.93,
+       5691.23
+      ]
+     ]
+    },
+    "role": "area"
+   },
+   "shrine_second": {
+    "osm": "way/208567696",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6453.58,
+      5692.07
+     ],
+     [
+      6459.95,
+      5671.81
+     ],
+     [
+      6479.6,
+      5677.99
+     ],
+     [
+      6473.22,
+      5698.26
+     ],
+     [
+      6466.22,
+      5696.05
+     ]
+    ],
+    "centroid": [
+     6466.59,
+     5685.03
+    ],
+    "area": 437.5,
+    "rect": {
+     "yaw_deg": 72.53,
+     "long": 21.25,
+     "short": 20.6,
+     "corners": [
+      [
+       6453.57,
+       5692.08
+      ],
+      [
+       6459.95,
+       5671.81
+      ],
+      [
+       6479.6,
+       5677.99
+      ],
+      [
+       6473.22,
+       5698.26
+      ]
+     ]
+    },
+    "role": "area"
+   },
+   "hall_1": {
+    "osm": "way/208567700",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6460.42,
+      5714.48
+     ],
+     [
+      6466.22,
+      5696.05
+     ],
+     [
+      6473.22,
+      5698.26
+     ],
+     [
+      6491.96,
+      5704.15
+     ],
+     [
+      6486.16,
+      5722.59
+     ]
+    ],
+    "centroid": [
+     6476.19,
+     5709.32
+    ],
+    "area": 521.4,
+    "rect": {
+     "yaw_deg": 162.53,
+     "long": 26.98,
+     "short": 19.33,
+     "corners": [
+      [
+       6486.16,
+       5722.59
+      ],
+      [
+       6460.42,
+       5714.49
+      ],
+      [
+       6466.22,
+       5696.05
+      ],
+      [
+       6491.96,
+       5704.15
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "hall_2": {
+    "osm": "way/208567685",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6503.79,
+      5734.85
+     ],
+     [
+      6505.72,
+      5728.9
+     ],
+     [
+      6514.9,
+      5731.88
+     ],
+     [
+      6516.63,
+      5732.45
+     ],
+     [
+      6507.39,
+      5762.43
+     ],
+     [
+      6476.76,
+      5753.29
+     ],
+     [
+      6479.36,
+      5745.04
+     ],
+     [
+      6494.34,
+      5749.16
+     ],
+     [
+      6498.92,
+      5733.73
+     ]
+    ],
+    "centroid": [
+     6500.17,
+     5747.07
+    ],
+    "area": 624.3,
+    "rect": {
+     "yaw_deg": 162.86,
+     "long": 31.96,
+     "short": 31.84,
+     "corners": [
+      [
+       6476.76,
+       5753.29
+      ],
+      [
+       6486.14,
+       5722.86
+      ],
+      [
+       6516.68,
+       5732.28
+      ],
+      [
+       6507.31,
+       5762.7
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "hall_3": {
+    "osm": "way/208567693",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6491.96,
+      5704.15
+     ],
+     [
+      6494.66,
+      5695.55
+     ],
+     [
+      6503.09,
+      5698.19
+     ],
+     [
+      6494.58,
+      5725.23
+     ],
+     [
+      6486.16,
+      5722.59
+     ]
+    ],
+    "centroid": [
+     6494.62,
+     5710.39
+    ],
+    "area": 250.2,
+    "rect": {
+     "yaw_deg": 72.56,
+     "long": 28.35,
+     "short": 8.84,
+     "corners": [
+      [
+       6503.09,
+       5698.19
+      ],
+      [
+       6494.59,
+       5725.24
+      ],
+      [
+       6486.16,
+       5722.59
+      ],
+      [
+       6494.66,
+       5695.54
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "hall_4": {
+    "osm": "way/211277562",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6433.94,
+      5715.53
+     ],
+     [
+      6435.74,
+      5715.96
+     ],
+     [
+      6433.59,
+      5725.23
+     ],
+     [
+      6431.64,
+      5733.6
+     ],
+     [
+      6431.05,
+      5736.11
+     ],
+     [
+      6439.05,
+      5738.34
+     ],
+     [
+      6437.46,
+      5744.08
+     ],
+     [
+      6424.28,
+      5740.58
+     ],
+     [
+      6433.88,
+      5707.88
+     ],
+     [
+      6435.83,
+      5708.33
+     ]
+    ],
+    "centroid": [
+     6431.53,
+     5730.47
+    ],
+    "area": 193.6,
+    "rect": {
+     "yaw_deg": 74.52,
+     "long": 34.16,
+     "short": 13.63,
+     "corners": [
+      [
+       6424.28,
+       5740.58
+      ],
+      [
+       6433.4,
+       5707.66
+      ],
+      [
+       6446.54,
+       5711.3
+      ],
+      [
+       6437.42,
+       5744.22
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "hall_5": {
+    "osm": "way/211277563",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6516.58,
+      5713.69
+     ],
+     [
+      6514.34,
+      5712.96
+     ],
+     [
+      6522.62,
+      5686.53
+     ],
+     [
+      6503.33,
+      5680.78
+     ],
+     [
+      6503.64,
+      5678.64
+     ],
+     [
+      6499.48,
+      5677.25
+     ],
+     [
+      6500.45,
+      5673.63
+     ],
+     [
+      6496.61,
+      5672.56
+     ],
+     [
+      6497.14,
+      5670.12
+     ],
+     [
+      6450.87,
+      5658.27
+     ],
+     [
+      6443.61,
+      5686.72
+     ],
+     [
+      6439.16,
+      5685.68
+     ],
+     [
+      6445.02,
+      5652.22
+     ],
+     [
+      6529.47,
+      5673.46
+     ]
+    ],
+    "centroid": [
+     6489.13,
+     5672.78
+    ],
+    "area": 886.4,
+    "rect": {
+     "yaw_deg": 165.88,
+     "long": 87.08,
+     "short": 42.16,
+     "corners": [
+      [
+       6519.19,
+       5714.35
+      ],
+      [
+       6434.74,
+       5693.11
+      ],
+      [
+       6445.02,
+       5652.22
+      ],
+      [
+       6529.47,
+       5673.46
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "hall_6": {
+    "osm": "way/211277564",
+    "tags": {
+     "name": "Sri Singravelar Sannidhi",
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6461.45,
+      5726.11
+     ],
+     [
+      6463.43,
+      5719.12
+     ],
+     [
+      6483.93,
+      5724.92
+     ],
+     [
+      6481.95,
+      5731.92
+     ]
+    ],
+    "centroid": [
+     6472.69,
+     5725.52
+    ],
+    "area": 154.9,
+    "rect": {
+     "yaw_deg": 164.2,
+     "long": 21.3,
+     "short": 7.27,
+     "corners": [
+      [
+       6481.95,
+       5731.92
+      ],
+      [
+       6461.45,
+       5726.12
+      ],
+      [
+       6463.43,
+       5719.12
+      ],
+      [
+       6483.93,
+       5724.92
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "hall_7": {
+    "osm": "way/211277565",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6433.59,
+      5725.23
+     ],
+     [
+      6442.2,
+      5727.24
+     ],
+     [
+      6440.25,
+      5735.6
+     ],
+     [
+      6431.64,
+      5733.6
+     ]
+    ],
+    "centroid": [
+     6436.92,
+     5730.42
+    ],
+    "area": 75.9,
+    "rect": {
+     "yaw_deg": 166.86,
+     "long": 8.84,
+     "short": 8.59,
+     "corners": [
+      [
+       6442.2,
+       5727.24
+      ],
+      [
+       6440.25,
+       5735.61
+      ],
+      [
+       6431.64,
+       5733.6
+      ],
+      [
+       6433.59,
+       5725.23
+      ]
+     ]
+    },
+    "role": "model"
+   },
+   "hall_8": {
+    "osm": "way/211277566",
+    "tags": {
+     "building": "yes"
+    },
+    "footprint": [
+     [
+      6442.2,
+      5727.24
+     ],
+     [
+      6480.45,
+      5736.15
+     ],
+     [
+      6478.51,
+      5744.5
+     ],
+     [
+      6440.25,
+      5735.6
+     ]
+    ],
+    "centroid": [
+     6460.35,
+     5735.87
+    ],
+    "area": 336.9,
+    "rect": {
+     "yaw_deg": 166.9,
+     "long": 39.28,
+     "short": 8.58,
+     "corners": [
+      [
+       6442.19,
+       5727.24
+      ],
+      [
+       6480.45,
+       5736.14
+      ],
+      [
+       6478.51,
+       5744.5
+      ],
+      [
+       6440.25,
+       5735.6
+      ]
+     ]
+    },
+    "role": "model"
+   }
+  },
+  "wikidata": "Q1587164",
+  "wikipedia": "en:Kapaleeshwarar Temple",
+  "data_date": "2026-11-23T00:28:57Z",
+  "licence": "ODbL 1.0, © OpenStreetMap contributors"
+ },
+ "origin": [
+  6476.13,
+  5706.76
+ ],
+ "yaw_deg": 76.06,
+ "recipe": {
+  "kit": "gopuram_complex",
+  "params": {
+   "gopurams": [
+    {
+     "part": "east_gopuram",
+     "height": 37.0,
+     "tiers": 7,
+     "base_height": 8.4,
+     "finials": 7,
+     "crown_height": 3.4,
+     "finial_height": 2.0,
+     "tier_colours": [
+      "#efe0bf",
+      "#ecd6ae",
+      "#efe0bf",
+      "#ead2a6",
+      "#efe0bf",
+      "#ecd6ae",
+      "#efe0bf"
+     ],
+     "stucco_colours": [
+      "#3e7fbf",
+      "#c4442f",
+      "#3f985a",
+      "#e2b33b",
+      "#8a50a0",
+      "#de7b98",
+      "#2f9aa0"
+     ]
+    },
+    {
+     "part": "west_gopuram",
+     "height": 24.0,
+     "tiers": 5,
+     "base_height": 6.5,
+     "finials": 5,
+     "crown_height": 2.6,
+     "finial_height": 1.6,
+     "top_width": 0.5,
+     "passage_width": 3.0,
+     "passage_height": 5.0,
+     "tier_colours": [
+      "#efe0bf",
+      "#ecd6ae",
+      "#efe0bf",
+      "#ecd6ae",
+      "#efe0bf"
+     ],
+     "stucco_colours": [
+      "#3e7fbf",
+      "#c4442f",
+      "#3f985a",
+      "#e2b33b",
+      "#de7b98"
+     ],
+     "stucco_spacing": 2.6
+    }
+   ],
+   "wall": {
+    "part": "compound",
+    "height": 5.4,
+    "thickness": 1.0,
+    "inset": 0.5,
+    "stripe": 0.9
+   },
+   "vimanas": [
+    {
+     "part": "shrine_main",
+     "height": 15.0,
+     "tiers": 3,
+     "base_height": 5.5,
+     "size": 0.62,
+     "gilded": true,
+     "colours": [
+      "#e6c995",
+      "#ddb27a",
+      "#e6c995"
+     ]
+    },
+    {
+     "part": "shrine_second",
+     "height": 13.0,
+     "tiers": 2,
+     "base_height": 5.5,
+     "size": 0.5,
+     "colours": [
+      "#e6c995",
+      "#ddb27a"
+     ]
+    }
+   ],
+   "halls": {
+    "parts": [
+     "hall_1",
+     "hall_2",
+     "hall_3",
+     "hall_4",
+     "hall_5",
+     "hall_6",
+     "hall_7",
+     "hall_8"
+    ],
+    "height": 5.2,
+    "verandah": 1.4,
+    "pillar_spacing": 4.0
+   },
+   "flagstaff": {
+    "between": [
+     "east_gopuram",
+     "shrine_main"
+    ],
+    "at": 0.42,
+    "height": 11.0
+   },
+   "tank": {
+    "part": "tank",
+    "steps": 8,
+    "rise": 0.085,
+    "tread": 1.2,
+    "rim": 0.05,
+    "mandapam": {
+     "size": 9.0,
+     "height": 8.0
+    }
+   }
+  }
+ },
+ "colours": {
+  "stone": "#a39a89",
+  "stone_dark": "#847b6c",
+  "stone_light": "#c8bfab",
+  "shadow": "#3b3029",
+  "cornice": "#efe4c8",
+  "pilaster": "#f3e8cc",
+  "crown": "#d58a3c",
+  "gold": "#d6a62b",
+  "wall_white": "#f0ebdf",
+  "wall_ochre": "#b65a35",
+  "coping": "#e6dcc6",
+  "hall_wall": "#6a5646",
+  "roof": "#cfc5ae",
+  "pillar": "#d8cfb9",
+  "step_red": "#b4553b",
+  "step_white": "#ebe5d6"
+ },
+ "materials": [
+  {
+   "name": "granite",
+   "where": "gopuram bases, tank mandapam pillars, plinths"
+  },
+  {
+   "name": "painted stucco (lime plaster)",
+   "where": "gopuram tiers and crowns, shrine towers"
+  },
+  {
+   "name": "lime-washed brick",
+   "where": "compound wall (ochre and white vertical bands)"
+  },
+  {
+   "name": "gilded metal",
+   "where": "finials (kalasams) and the flagstaff"
+  }
+ ],
+ "facts": [
+  {
+   "en": "A Hindu temple of Shiva (as Kapaleeshwarar) and Parvati (as Karpagambal) in Mylapore.",
+   "source": "https://en.wikipedia.org/wiki/Kapaleeshwarar_Temple"
+  },
+  {
+   "en": "The east gateway tower, about 120 ft (37 m) tall, was built in 1906; a smaller west gopuram faces the tank.",
+   "source": "https://www.ancient-history-sites.com/?p=133412"
+  },
+  {
+   "en": "The temple tank measures about 190 m by 143 m; a sixteen-pillared stone mandapam stands at its centre and is used in the three-day float festival.",
+   "source": "https://en.wikipedia.org/wiki/Kapaleeshwarar_Temple"
+  },
+  {
+   "en": "OpenStreetMap maps the tank (way 24270420) as about 192 m by 138 m, matching the published size.",
+   "source": "https://www.openstreetmap.org/way/24270420"
+  }
+ ],
+ "references": [
+  {
+   "title": "File:Mylapore Kapaleeshwarar temple facade.jpg",
+   "author": "Commons user (see file page)",
+   "licence": "CC BY-SA 3.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Mylapore_Kapaleeshwarar_temple_facade.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Gopurams of Kapaleeshwarar Temple, Mylapore, Chennai, Tamil Nadu, India (2012).jpg",
+   "author": "H. Grobe",
+   "licence": "CC BY 3.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Gopurams_of_Kapaleeshwarar_Temple,_Mylapore,_Chennai,_Tamil_Nadu,_India_(2012).jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Kapaleeshwarar Temple, East Gopuram.jpg",
+   "author": "Roehan Rengadurai",
+   "licence": "CC BY-SA 3.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Kapaleeshwarar_Temple,_East_Gopuram.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Main tower at Kapaleeshwarar Temple.jpg",
+   "author": "KurinchiRays",
+   "licence": "CC BY 4.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Main_tower_at_Kapaleeshwarar_Temple.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Mylapore tank at dawn panorama.jpg",
+   "author": "Commons user (see file page)",
+   "licence": "CC BY-SA 3.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Mylapore_tank_at_dawn_panorama.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Temple-Tank-Mandapam-Kapaleeshwarar-Koil-Chennai-India.jpg",
+   "author": "N. Vivekananthamoorthy",
+   "licence": "CC BY 4.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Temple-Tank-Mandapam-Kapaleeshwarar-Koil-Chennai-India.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Chennai, Arulmigu Kapaleeswarar, mandapa 00.jpg",
+   "author": "Sailko",
+   "licence": "CC BY 3.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Chennai,_Arulmigu_Kapaleeswarar,_mandapa_00.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Chennai, Arulmigu Kapaleeswarar, portabandiere Dwajasthambam 01.jpg",
+   "author": "Sailko",
+   "licence": "CC BY 3.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Chennai,_Arulmigu_Kapaleeswarar,_portabandiere_Dwajasthambam_01.jpg",
+   "use": "modelling reference (proportions, colours)"
+  },
+  {
+   "title": "File:Kapaleeswarar Temple, Mylapore, Chennai.jpg",
+   "author": "Srinivasan G",
+   "licence": "CC BY-SA 2.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Kapaleeswarar_Temple,_Mylapore,_Chennai.jpg",
+   "use": "modelling reference (proportions, colours)"
+  }
+ ],
+ "budget": {
+  "lod0_min": 5000,
+  "lod0_max": 15000,
+  "lod1_max": 6000,
+  "lod2_max": 2000
+ },
+ "lod": {
+  "lod0_end": 320.0,
+  "lod1_end": 900.0,
+  "lod2_end": 4000.0
+ },
+ "collision": {
+  "plan": "Jolt boxes: compound wall runs (open at the gopurams), gopuram piers, lintel and tower mass, shrine towers, hall walls, the flagstaff. The tank is closed by the city's water bund (G-152).",
+  "min_boxes": 20
+ },
+ "estimated": [
+  "heights other than the east gopuram (west gopuram 24 m, shrines 13-15 m, halls 5.2 m, wall 5.4 m)",
+  "tier counts of the west gopuram and shrines",
+  "which OSM buildings are the west gopuram and the two main shrines (identified by position)",
+  "colours (painted stucco, from reference photos in general terms)",
+  "number of finials"
+ ],
+ "respect": "Architecture only: no deity figures or images; tier stucco shown as abstract coloured forms (culture note §3)."
+}

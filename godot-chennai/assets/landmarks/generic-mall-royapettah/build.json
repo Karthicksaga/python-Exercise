@@ -1,0 +1,14 @@
+{
+ "id": "generic-mall-royapettah",
+ "kit": "mall",
+ "script": "tools/blender/landmarks/mall.py",
+ "blender": "5.2.4 LTS",
+ "spec_sha256": "83487390b2b3d138f7dbd620a1f153dbd5f0bb15345702f0b6c9770267f9c4c4",
+ "glb_sha256": "fa75e9911077a8c9c57ee41c3a097b9021f7312b5c138f60daef9fcbb6943fba",
+ "triangles": {
+  "lod0": 5068,
+  "lod1": 982,
+  "lod2": 653
+ },
+ "collision_boxes": 28
+}

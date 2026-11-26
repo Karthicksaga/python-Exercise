@@ -1,0 +1,520 @@
+# World format 2: the regional world (Chengalpattu to Pulicat)
+
+This is the data the Godot game streams: `godot-chennai/world/`. It is written by the build-time
+Python tools in `godot-chennai/tools/geo/` (reference implementation: `chennai_geo/codec_v2.py`,
+`writer.py`; tests in `tools/geo/tests/`). Decisions behind it: G-20 to G-29 in
+`technical-decisions.md`. Today's format 1 (`chennai-open-world/packages/game-world/src/codec.ts`)
+is described at the end, with the converter path between the two.
+
+A reader needs nothing but this page. Everything is little-endian. Strings in JSON are UTF-8.
+
+## 1. Coordinates (unchanged from today, TD-2)
+
+- One fixed geographic origin, Anna Nagar Roundtana: `lat 13.085, lng 80.2101`
+  (`world.json` `origin`).
+- Equirectangular local tangent plane, metres: `x = (lng - lng0) * DEG * R * cos(lat0 * DEG)`,
+  `z = -(lat - lat0) * DEG * R`, with `R = 6371008.8`, `DEG = pi / 180`. +X east, +Y up,
+  **-Z north**. Inverse: `lat = lat0 - z / (DEG * R)`, `lng = lng0 + x / (DEG * R * cos(lat0 * DEG))`.
+- This is exactly `GeoProjection` in `chennai-open-world/packages/map-data/src/projection.ts`; the
+  Python port agrees with it to 1 cm on 12 reference points across the world
+  (`tests/fixtures/projection_reference.json`, written by node from the TS file).
+- The world reaches about 28 km west, 21 km east, 53 km north and 45 km south of the origin, so
+  the game uses a floating origin (Foundation G-7); file coordinates stay world metres.
+- Quantum: **5 cm** (`Q = 20` steps per metre) in every binary file.
+
+## 2. Grid, tiles and rings
+
+| Thing | Size | Index |
+|---|---|---|
+| Chunk | 250 m square | global `(col, row)`; chunk (0, 0) starts at `world.json grid.minX, grid.minZ` |
+| Region tile | 10 km = 40 × 40 chunks | `(tc, tr) = (floor(col / 40), floor(row / 40))` |
+
+- `col = floor((x - grid.minX) / 250)`, `row = floor((z - grid.minZ) / 250)`; the chunk centre
+  is `(grid.minX + (col + 0.5) * 250, grid.minZ + (row + 0.5) * 250)`.
+- The grid is **aligned with today's chunks**: today's `c/<c>_<r>.bin` is chunk
+  `(c + legacy.colOffset, r + legacy.rowOffset)` = `(c + 107, r + 225)`, with the same centre,
+  so the same quantised offsets.
+- Today: grid `minX -28365, minZ -57341`, 196 × 410 chunks, 5 × 11 tiles (47 with content).
+  Readers must take every number from `world.json`, never from constants.
+- **Rings** (MIGRATION_PROMPT §9 build order). Each ring is a lat/lng box intersected with the
+  world boundary; rings nest. A chunk's `ring` is the smallest ring whose area overlaps the
+  square. A build has a `maxRing`; everything in it is inside ring `maxRing`'s area.
+
+| Ring | Box (S, W, N, E) | What |
+|---|---|---|
+| 0 | today's exact bounds (from 12.98, 80.195, 13.095, 80.29, inset 20 m: x -1615..8633, z -1091..11655) | Anna Nagar to T. Nagar, Anna Salai, Marina |
+| 1 | 12.82, 80.10, 13.24, 80.40 | the whole city, the airport, Tambaram, Avadi, Tiruvottiyur, Ennore |
+| 2 | 12.75, 80.00, 13.40, 80.40 | suburbs and corridors: GST Road, Sriperumbudur road, Red Hills, OMR, ECR |
+| 3 | 12.68, 79.95, 13.60, 80.40 | rural edges to the state border: Chengalpattu, Sriperumbudur, Gummidipoondi, Pulicat |
+
+- **World boundary** (`godot-chennai/data/boundary/world-boundary.geojson`, lng/lat, committed):
+  the ring-3 box ∩ the OSM Tamil Nadu polygon (admin_level 4), plus the sea east of the coast
+  south of where the state border meets the coast (13.5639 N; north of it the water is Andhra
+  Pradesh's). `world.json boundary` is the same polygon in local metres (simplified to 5 m).
+
+## 3. Files
+
+```
+world/
+  world.json                       always loaded (≈120 KB)
+  ATTRIBUTION.md, REPORT.md, reports/<tc>_<tr>.md
+  tiles/<tc>_<tr>/tile.json        per tile: chunk table, points, airport, names
+  tiles/<tc>_<tr>/chunks.bin       every chunk file of the tile, packed ("COWP")
+  tiles/<tc>_<tr>/roads.bin        road pieces of the tile ("COWR" v2)
+  tiles/<tc>_<tr>/areas.bin        whole areas of the tile, simplified ("COWA"), for map/far layer
+  tiles/<tc>_<tr>/infra.bin        format 2.1 only: road heights, waterways, street spots ("COWI", §3.7)
+  tiles/<tc>_<tr>/detail.bin       format 2.2 only: building colours/parts, street objects, barriers, zones, sign categories ("COWD", §3.8)
+  tiles/<tc>_<tr>/fusion.bin       format 2.3 only: buildings from other datasets where OSM has none ("COWF", §3.9)
+  FUSION.md                        format 2.3: the fusion coverage report (by ring, source, reason, tile)
+```
+
+A reader loads `world.json`, then the tiles around the player (3 × 3 tiles covers 10 km in every
+direction; at 250 m chunk streaming one tile's `tile.json` + `roads.bin` is enough near its
+middle). Tiles are keyed by `tc_tr`, which may be any integer (signed) in principle; in this
+world they are all ≥ 0.
+
+### 3.1 `world.json`
+
+| Key | Type | Meaning |
+|---|---|---|
+| `format` | int | **2**. Refuse anything else. |
+| `name` | string | "Chennai" |
+| `origin` | {lat, lng} | geographic origin (§1) |
+| `projection` | object | `{type: "equirectangular", earthRadius: 6371008.8, axes}` |
+| `attribution`, `licence`, `dataDate` | string | "© OpenStreetMap contributors", ODbL 1.0, OSM data timestamp (ISO 8601) |
+| `source` | object | dataset manifest entries (URL, sha256, timestamps) and the boundary file |
+| `chunkSize`, `tileChunks`, `tileSize` | int | 250, 40, 10000 |
+| `grid` | {minX, minZ, cols, rows} | §2 |
+| `bounds` | {minX, maxX, minZ, maxZ} | bounding box of the built area (ring `maxRing`) |
+| `boundary` | [[x, z], …] | built area's outline, local metres, not closed |
+| `maxRing` | int | rings 0..maxRing are in the files |
+| `rings` | [{id, name, box {south, west, north, east}, built}] | §2 |
+| `legacy` | {colOffset, rowOffset} | today's chunk numbering |
+| `datasets` | [string] | provenance dataset table (§4); index = the `dataset` byte |
+| `tiles` | [[tc, tr, chunkFiles, bytes, firstRing]] | every tile directory |
+| `landmarks` | [Landmark] | as today's `index.json` (id, kind, name, x, z, height?, levels?, radius?, opened?, source, estimated) |
+| `sea` | {coast: [{x, z}], outline: [{x, z}], source} | as today: the coastline (land on its left) carried 3 km past the edge, and the water's outline |
+| `minor` | int | **1** from format 2.1, **2** from 2.2 (detail.bin), **3** from 2.3 (fusion.bin); absent = 2.0. Minor versions only add files and keys; a 2.0 reader ignores them |
+| `infra` | {file, deckStep, note} | 2.1: the per-tile file name (`infra.bin`) and the deck sample step (5 m), §3.7 |
+| `fusion` | {file, sources, present, credits, extracts, cells, note} | 2.3 (`minor` 3): the per-tile file (`fusion.bin`), the source table (FUSION_SOURCES), the sources present, one credit line each (shown on the About page), the extracts used (id, release, date, licence, sha256, rows), and `cells`: `[col, row, ring]` of every square that holds only added buildings (no chunk record, no road), which a reader adds to its chunk table, §3.9 |
+
+### 3.2 `tiles/<tc>_<tr>/tile.json`
+
+| Key | Type | Meaning |
+|---|---|---|
+| `format` | int | 2 |
+| `tile` | [tc, tr] | |
+| `bounds` | {minX, maxX, minZ, maxZ} | the tile square |
+| `rings` | [int] | rings present in the tile |
+| `chunkPack` | "chunks.bin" | |
+| `chunks` | [[col, row, offset, length, ring]] | every square with content, sorted by row then col. `length 0` = road surface only, no chunk record (as today's size-0 rows) |
+| `roads`, `roadPieces`, `roadNames` | "roads.bin", int, [string] | road file, its piece count, its string table (names and refs; index + 1 in the file, 0 = none) |
+| `areas` | "areas.bin" | |
+| `pois` | [[kind, x, z, name?]] | OSM amenity/shop nodes; name only for hospital and clinic (as today) |
+| `busStops` | [{x, z, name?}] | `highway=bus_stop` |
+| `signals` | [{x, z}] | `highway=traffic_signals` |
+| `districts` | [{name, kind, x, z}] | `place=suburb/neighbourhood/quarter/locality` (name:en preferred) |
+| `settlements` | [{name, kind, x, z, population?}] | `place=city/town/village/hamlet/isolated_dwelling` (new) |
+| `aeroways` | [{id, kind, source, closed, ref?, name?, width?, surface?, points: [[x, z]]}] | the airport (§11): `kind` from the aeroway table (§5); runways/taxiways are lines (`closed false`), aprons/terminals/hangars/helipads outlines (`closed true`, not repeated), gates/windsocks single points; `width` in metres where OSM maps it |
+
+Points, aeroways and areas belong to the tile holding their position (areas and aeroway outlines
+by vertex average).
+
+### 3.3 `chunks.bin` (pack)
+
+```
+u32 magic   0x50574F43 ("COWP")
+u16 format  2
+i16 tc, i16 tr
+u32 n
+n × { i16 col, i16 row, u32 offset, u32 length }    offsets from the start of the file
+then the n chunk records (3.4) back to back
+```
+
+`tile.json chunks` repeats the table, so a reader can seek straight to a chunk
+(`FileAccess.seek(offset)`, `get_buffer(length)`) without reading the header. The two must agree
+(`check_pack`).
+
+### 3.4 Chunk record (format 2)
+
+Offsets are i16 steps of 5 cm from the **chunk centre** (±1638 m).
+
+```
+u32 magic 0x43574F43 ("COWC")          same magic as format 1; the version tells them apart
+u16 format 2
+i16 col, i16 row                        global grid
+u8  ring
+u8  reserved (0)
+u16 nBuildings, u16 nTrees, u16 nAreas, u16 nSections
+
+Building × nBuildings:
+  u32 id                game id (§4)
+  u8  dataset, u64 sourceId             provenance (§4)
+  u8  nMerged, nMerged × { u8 dataset, u64 sourceId }   ids absorbed by fusion
+  u16 height × 10       metres, top of the parapet/roof base above ground
+  u16 minHeight × 10    building:min_height / min_height (0 = from the ground)
+  u8  floors
+  u8  kind              BUILDING_KINDS (house, apartments, commercial): today's meaning
+  u8  heightFrom        HEIGHT_FROM
+  u8  use               BUILDING_USES (from building=*)
+  u8  archetype         0 = not assigned yet (placeholder for the archetype step, blueprint §11)
+  u8  roofShape         ROOF_SHAPES (from roof:shape)
+  u8  roofLevels        roof:levels (0 = none mapped)
+  u8  color             index into WALL_COLORS (12 painted-plaster colours, invented)
+  u8  flags             1 levels mapped (building:levels used), 2 geometry repaired, 4 multipolygon part
+  u8  nRings            1 + holes
+  nRings × { u16 n, n × { i16 dx, i16 dz } }
+                        ring 0 = outline, anticlockwise seen from above in this frame
+                        (positive shoelace area with +X right, +Z down), last point not repeated;
+                        rings 1.. = courtyards (holes), opposite winding
+
+Tree × nTrees:          i16 dx, i16 dz, u8 scale × 100, u8 source (1 = OSM natural=tree, 0 = generated)
+
+Area × nAreas:          the area cut to this square (Sutherland-Hodgman; with holes, exact clipping)
+  u32 id                OSM id (way or relation; see dataset)
+  u8  dataset, u64 sourceId
+  u8  kind              AREA_KINDS
+  u8  nRings            1 + holes
+  nRings × { u16 n, n × { i16 dx, i16 dz } }
+
+Section × nSections:    u32 tag (four letters, little-endian), u32 length, length bytes
+                        Unknown tags are skipped. None are written yet; future per-chunk data
+                        (street objects, decks, junction polygons) goes here without a format bump.
+```
+
+The decoder rounds each point to 0.01 m after adding the centre (`round(v * 100) / 100`), as
+today. Trailing bytes are an error.
+
+### 3.5 `roads.bin` (format 2)
+
+Each road is split at tile edges: a segment belongs to the tile holding its midpoint, runs of
+segments become **pieces**, and neighbouring pieces share their end point exactly. Join them by
+`id` and `piece`. A piece may extend a little past its tile.
+
+```
+u32 magic 0x52574F43 ("COWR")
+u16 format 2
+i16 tc, i16 tr
+u32 count
+piece × count:
+  f64 id                way id × 10 + i (i = piece of the way after clipping to the world): today's road id
+  u16 piece             0, 1, 2… along the road, across tiles
+  u8  kind              ROAD_KINDS (what the game draws)
+  u8  class             HIGHWAY_CLASSES (the OSM highway=* value)
+  u8  flags             1 oneway, 2 lanes mapped, 4 bridge, 8 tunnel (or covered), 16 roundabout, 32 lit
+  i8  layer             OSM layer, -5..5 (0 = none)
+  u16 width × 100       carriageway, metres
+  u8  lanes             valid when flag 2
+  u8  widthFrom         0 class estimate, 1 width tag, 2 lanes × 3.3 m + 0.8 m
+  u8  surface           SURFACES (0 = not mapped)
+  u8  sidewalk          SIDEWALKS (0 = not mapped)
+  u8  maxspeed          km/h (0 = not mapped)
+  u16 name              roadNames index + 1 (0 = none)
+  u16 ref               roadNames index + 1 (e.g. "NH 48")
+  u8  dataset, u64 sourceId       the OSM way
+  f32 offset            metres along the whole road to this piece's first point (lane dashes stay in step)
+  f32 total             length of the whole road, metres
+  u16 n
+  i32 x0, i32 z0        first point, world metres × 20
+  (n - 1) × { i16 dx, i16 dz }    steps × 20; long segments are split so every step fits
+```
+
+Points run the way traffic goes on one-way roads (`oneway=-1` is reversed at build time).
+
+### 3.6 `areas.bin`
+
+Whole areas (not cut to chunks), outlines simplified to 1 m, for the minimap and the far layer.
+
+```
+u32 magic 0x41574F43 ("COWA"), u16 format 2, i16 tc, i16 tr, u32 count
+area × count:
+  u32 id, u8 dataset, u64 sourceId, u8 kind, u8 nRings
+  nRings × { u32 n, i32 x0, i32 z0, (n - 1) × { i16 dx, i16 dz } }
+```
+
+### 3.7 `infra.bin` (format 2.1, decisions G-150…G-153)
+
+Added on 24 Nov 2026 without touching any 2.0 file: the same PBF rebuilds every 2.0 file byte
+for byte (sha256 of the extract in `data/MANIFEST.json`), plus one `infra.bin` per tile and the
+`minor`/`infra` keys in `world.json`. 1.3 MB for the 47 tiles. Reference implementation:
+`tools/geo/chennai_geo/infra.py` (tests `tests/test_infra.py`); GDScript reader `InfraTile`.
+
+```
+u32 magic   0x49574F43 ("COWI")
+u16 format  2
+u16 minor   1
+i16 tc, i16 tr
+u16 nSections
+section × nSections: u32 tag (four letters, little-endian), u32 length, length bytes
+                     (unknown tags are skipped)
+
+"DECK"  f32 step (5.0)
+        u32 count
+        count × { u32 piece           index of the piece in this tile's roads.bin (file order)
+                  u16 n               samples: along 0, step, 2 step … and the last at the piece's end
+                  n × u16 height × 100   road surface above the ground, metres (estimated) }
+        Only pieces that are raised somewhere are listed; every other piece lies on the ground.
+"WATR"  u32 count
+        count × { f64 id (way id × 10 + clip piece), u8 dataset, u64 sourceId,
+                  u8 kind (WATERWAY_KINDS), u8 flags (1 tunnel/culvert or covered, 2 intermittent),
+                  u16 width × 100 (OSM width, else river 30, canal 18, stream 6, drain 3, ditch 1.5),
+                  u8 nameLength, name bytes (UTF-8, name:en preferred),
+                  u16 n, i32 x0, i32 z0, (n - 1) × { i16 dx, i16 dz }   as roads.bin }
+        Waterway centre lines (`waterway=river|canal|stream|drain|ditch`), split at tile edges
+        like road pieces (a segment belongs to the tile holding its midpoint).
+"SPOT"  u32 count
+        count × { u8 kind (SPOT_KINDS), u8 flags (1 mapped in OSM; 0 placed by rule),
+                  i32 x × 20, i32 z × 20, i16 yaw × 10000 (road direction, atan2(dx, dz)),
+                  u16 width × 100 (the carriageway), f64 road id }
+```
+
+| Table | Values (index order, append only) |
+|---|---|
+| WATERWAY_KINDS | river, canal, stream, drain, ditch |
+| SPOT_KINDS | zebra, signal_crossing, unmarked, bump, hump, table, cushion, rumble_strip |
+
+**Deck heights (estimated, G-151).** OSM maps `bridge`, `tunnel` and `layer`, never heights. A
+bridge chain (bridge roads joined end to end with the same `max(layer, 1)`) that crosses a lower
+road or a railway is raised 6.5 m per layer above what it crosses (5.5 m clearance and the deck),
+6 m for a footbridge, level for 100 m either side of every crossing, then down at 1:20; a chain
+that crosses nothing mapped (a river, a culvert) is level at `1 + 0.02 × length` m (1.2…5 m).
+Every other road gets the lowest heights that keep its grade within 1:20 (arterials), 1:14
+(streets, service roads) or 1:3.3 (footways: stairs), propagated over the road graph from the
+raised points, so heights agree at every shared node and across tile edges. Tunnels and covered
+roads stay at ground level and stop the propagation. The build reports the crossings checked and
+those with less than 4.5 m clearance (12 of 1,027 on 23 Nov data).
+
+**Spots.** Mapped `highway=crossing` (zebra for `crossing=zebra|marked|uncontrolled` or zebra
+markings, signal crossing, unmarked) and `traffic_calming=*` nodes, snapped to the widest drivable
+road through the node; none on decks. Rule spots (invented, flag 0): a zebra on every arm of the
+junction nearest a mapped traffic signal (within 25 m), set back half the widest road plus 2.5 m;
+a speed breaker 14 m from the main-road end of 40 % of residential, unclassified and living
+streets longer than 60 m (by a stable hash of the road id).
+
+### 3.8 `detail.bin` (format 2.2, decisions G-190…G-193)
+
+Added on 24 Nov 2026, the same way as `infra.bin`: one file per tile, `world.json` `minor` 2 and
+a `detail` key `{file, categories, note}`; every 2.0 and 2.1 file is byte for byte unchanged
+(`diff -r` of a rebuild). 0.6 MB for the 47 tiles. Reference implementation:
+`tools/geo/chennai_geo/detail.py` (tests `tests/test_detail.py`); GDScript reader `DetailTile`.
+Coverage per feature and tile: `world/DETAIL.md` (written with the world) and `docs/osm-detail.md`.
+
+```
+u32 magic 0x44574F43 ("COWD"), u16 format 2, u16 minor 2, i16 tc, i16 tr, u16 nSections
+section × nSections: u32 tag (four letters, little-endian), u32 length, length bytes (unknown tags are skipped)
+
+"BLDG"  u32 count; × { u32 id (the chunk record's game id), u8 flags, u8 material (MATERIALS),
+        u8 roofMaterial (ROOF_MATERIALS), u8 category (sign category id, 0 none),
+        u8 r, g, b wall, u8 r, g, b roof }
+        flags: 1 outline of its parts (draw the parts, not this), 2 wall colour mapped, 4 roof colour mapped.
+        Only buildings with something mapped; the tile of the building's centroid chunk.
+"PART"  u32 count; × { u32 gameId (0x20000000 | way id), u8 dataset, u64 sourceId, u8 flags (8 height mapped,
+        2 wall colour, 4 roof colour, 16 from a relation), u16 height × 10, u16 minHeight × 10, u8 floors,
+        u8 roofShape (ROOF_SHAPES), u8 roofLevels, u8 material, u8 roofMaterial, rgb wall, rgb roof,
+        u8 nRings, nRings × ring (as roads.bin: u16 n, i32 x0, i32 z0, (n-1) × {i16 dx, i16 dz}) }
+        `building:part` polygons. Height: `height`, else `building:levels` x 3.1 + 0.9, else the host's
+        (estimated). A part under a landmark footprint is left out.
+"OBJ_"  u32 count; × { u8 kind (OBJ_KINDS), u8 flags (1 mapped), i32 x × 20, i32 z × 20 }
+"LINE"  u32 count; × { u8 kind (LINE_KINDS), u8 flags (1 height mapped, 2 closed), u16 height × 100 (0 = not
+        mapped), ring }  cut at tile edges
+"ZONE"  u32 count; × { u8 kind (ZONE_KINDS), u8 sport (SPORTS), u8 dataset, u64 sourceId, ring }
+"SIGN"  u32 count; × { u8 category, u8 flags (1 node, 2 area, 4 public name), i32 x × 20, i32 z × 20,
+        [flags & 4: u8 len + name:ta UTF-8, u8 len + name:en UTF-8] }
+```
+
+| Table | Values (index order, append only) |
+|---|---|
+| OBJ_KINDS | bus_platform, bench, waste_basket, drinking_water, post_box, toilets, street_lamp, power_pole, power_tower, bollard, gate |
+| LINE_KINDS | wall, fence, hedge, retaining_wall, kerb, jersey_barrier, tree_row, platform, guard_rail, bus_platform |
+| ZONE_KINDS | pitch, playground, swimming_pool, track, allotments, platform, bus_platform |
+| SPORTS | (none), football, cricket, basketball, tennis, volleyball, badminton, kabaddi, athletics, hockey, other |
+| MATERIALS | (none), brick, concrete, stone, plaster, glass, metal, wood, other |
+| ROOF_MATERIALS | (none), tiles, metal, concrete, glass, thatch, other |
+
+**Sign categories** are in one data file, `assets/city/sign_categories.json` (id 1..47, Tamil word,
+English word, board colours, the OSM tags that map to it; append only), read by `detail.py` and by
+the game, which bakes the sign atlas from it. A shop, amenity, office or tourism node or area, and a
+building with such a tag, becomes a category; the OSM `name` is never stored. Only public places
+(a hospital, school, temple, station, police station, library, post office…) keep `name:ta` and
+`name:en`, for a name plate. Mapped bus stops stay in `tile.json busStops`; `bus_platform` adds the
+`public_transport=platform` nodes.
+
+### 3.9 `transit/` (transit version 1, decisions G-210…G-213)
+
+`world/transit/transit.json` and `world/transit/routes.bin` ("COWT"), plus `world/TRANSIT.md`:
+stops, stations, lines and bus routes snapped to the road points of `roads.bin`. Written by
+`cli transit` from the extract and the built world; no 2.x file or `world.json` key changes, the
+files carry their own version. Layout in `docs/transit.md` §1.
+### 3.9 `fusion.bin` (format 2.3, decisions G-220…G-226)
+
+Added on 24 Nov 2026 without touching any 2.0 or 2.1 file (sha256 of every one checked before and
+after `cli fuse`): one `fusion.bin` per tile, the `fusion` key, `minor` 3 and the dataset
+`microsoft:mlbuildings` in `world.json`. Buildings from Overture Maps, Google Open Buildings v3
+and Microsoft ML footprints where OSM has none, and the heights these datasets give OSM buildings
+whose height was estimated. Rules and numbers: `docs/fusion.md`. Reference implementation:
+`tools/geo/chennai_geo/fusion_codec.py` (tests `tests/test_fusion_multi.py`,
+`tests/test_fusion_world.py`); GDScript reader `FusionTile`.
+
+```
+u32 magic   0x46574F43 ("COWF")
+u16 format  2
+u16 minor   3
+i16 tc, i16 tr
+u16 nSections
+section × nSections: u32 tag, u32 length, length bytes (unknown tags are skipped)
+
+"HGHT"  u32 count
+        count × { u32 building id (a chunks.bin building of this tile), u16 height × 10,
+                  u8 floors, u8 heightFrom (HEIGHT_FROM), u8 source (FUSION_SOURCES) }
+        Applied only to a building still labelled estimated.
+"BLDG"  u32 chunks
+        chunks × { i16 col, i16 row, u8 ring, u32 firstId, u16 n, n × record }
+record: u8 head      bits 0-1 source (FUSION_SOURCES), 2-3 Overture origin (OVERTURE_ORIGINS),
+                     4 polygon (else box), 5 apartments (else house), 6 height stored (else
+                     floors × 3.1 + 0.9), 7 heightFrom stored (else estimated)
+        [u8 heightFrom]   when bit 7
+        u8 floors
+        [u16 height × 10] when bit 6
+        u8 colour         WALL_COLORS index (invented, by a hash of the id as for OSM)
+        u8 confidence × 200 (255 = the source gives none)
+        varint            source row: zigzag LEB128 of (row − the previous row of the same source
+                          in this chunk, 0 before the first); records are sorted by source, row
+        box:     i16 cx, i16 cz (5 cm steps from the chunk centre), u8 length × 10, u8 width × 10
+                 (metres, length >= width, at most 25.5), u8 angle × 256 / π (long side,
+                 atan2(dz, dx) in [0, π)); corners c ∓ u ∓ v, anticlockwise from above
+        polygon: u8 n, n × { i16 dx, i16 dz } from the chunk centre, anticlockwise from above,
+                 simplified by 10 cm
+```
+
+Building id of record i of a chunk: `firstId + i`. Chunks are written in tile order (row, then
+col), the tiles in `world.json tiles` order by (tr, tc); firstIds run on from `0xC0000000`
+(§4). A building belongs to the square holding the average of its outline points (as OSM).
+
+| Table | Values (index order, append only) |
+|---|---|
+| FUSION_SOURCES | osm, overture, google, microsoft |
+| OVERTURE_ORIGINS | (none), google, microsoft, other |
+
+**Provenance.** `(source, row)` is the row of the footprint in that source's extract file as
+recorded in `data/MANIFEST.json buildings` (release, sha256): Overture's extract ordered by GERS
+id, Google's and Microsoft's in the order their upstream files were streamed. The ids themselves
+(GERS UUIDs, plus codes) are not shipped (about 30 MB); the row and the pinned extract recover
+them. In the game: `Building.fusion_source`, `fusion_origin`, `confidence`, `dataset` (3, 4 or 6)
+and `source_id` (the row).
+
+## 4. Ids and provenance
+
+- **Game id** (`u32`, as today, feeds colour and estimated-floor variety via the TS `hash`):
+  OSM way buildings keep their way id (the build fails if a way id reaches 2^31). Multipolygon
+  relation parts: `0x80000000 | ((relationId << 3 | min(part, 7)) & 0x7FFFFFFF)`. New buildings
+  from fusion (format 2.3): from `0xC0000000` up. (The first design said `0x40000000`, but OSM way
+  ids already pass it: 1,583,238,959 in this world. Relation parts reach `0xC0000000` only once
+  relation ids pass 134 million, about 19 million today; the highest part id here is
+  `0x8A2A3E60`. `cli fuse` fails if an OSM id ever reaches the range.)
+- **Provenance** is a `(dataset, sourceId)` pair, never dropped. `datasets` in `world.json`:
+
+| dataset | Meaning of sourceId |
+|---|---|
+| 0 `osm:way` | OSM way id |
+| 1 `osm:relation` | OSM relation id |
+| 2 `osm:node` | OSM node id (64-bit; node ids already exceed 2^32) |
+| 3 `overture:buildings` | row in the Overture extract (format 2.3, §3.9; the first design's `ids/overture.txt` table is not written) |
+| 4 `google:openbuildings` | row in the Google Open Buildings extract (§3.9) |
+| 5 `derived` | made by the build (none yet) |
+| 6 `microsoft:mlbuildings` | row in the Microsoft extract (format 2.3, written by `cli fuse`) |
+
+The list only grows at the end.
+
+## 5. Enumerations (append only; `tests/test_codec_v2.py` pins them)
+
+| Table | Values (index order) |
+|---|---|
+| ROAD_KINDS | primary, secondary, tertiary, residential, service, footway, motorway, track, raceway |
+| HIGHWAY_CLASSES | (none), motorway, motorway_link, trunk, trunk_link, primary, primary_link, secondary, secondary_link, tertiary, tertiary_link, residential, unclassified, living_street, service, footway, path, pedestrian, track, raceway, steps, cycleway, bridleway, busway, road |
+| BUILDING_KINDS | house, apartments, commercial |
+| HEIGHT_FROM | estimated, levels, height, overture, openbuildings, min-height, microsoft |
+| BUILDING_USES | unknown, house, residential, commercial, retail, office, industrial, warehouse, religious, school, hospital, public, transport, hangar, shed, garage, hut, construction, roof, other |
+| ROOF_SHAPES | unknown, flat, gabled, hipped, pyramidal, dome, skillion, half-hipped, gambrel, mansard, round, onion, cone, saltbox, other |
+| AREA_KINDS | park, water, beach, reservoir, wetland, farmland, orchard, meadow, scrub, forest, residential, commercial, industrial, military, cemetery, bare, saltpan, aerodrome, apron, sport, railway, helipad, mangrove |
+| SURFACES | (none), asphalt, concrete, paved, paving_stones, sett, cobblestone, compacted, unpaved, gravel, fine_gravel, dirt, ground, earth, sand, grass, mud, wood, metal, other |
+| SIDEWALKS | (none), no, left, right, both, separate |
+| AEROWAY_KINDS (JSON strings) | runway, taxiway, apron, terminal, hangar, helipad, heliport, aerodrome, control_tower, gate, parking_position, holding_position, stopway, navigationaid, windsock, other |
+| WALL_COLORS | 0xF2E3C6, 0xE8C9A0, 0xCFE3D4, 0xF4D6CF, 0xD9E2F0, 0xF7EDB5, 0xE3D5EE, 0xFBF3E4, 0xC9DCCB, 0xEAD9C4, 0xDFE7D2, 0xF1DDB8 |
+
+The first entries of ROAD_KINDS, HEIGHT_FROM, AREA_KINDS are exactly format 1's tables.
+`heightFrom` other than `height`/`levels` is **estimated** and must be called so in the game and
+docs (AGENTS.md rule).
+
+## 6. What the values mean (rules, from OSM tags)
+
+Ported line for line from `buildWorldMap.ts` for everything today's game has (so ring 0 matches):
+
+- Road kind and estimated width by class: trunk 16, primary 15, *_link 7 (tertiary_link 6.5),
+  secondary 14, tertiary 10, residential/unclassified 7, living_street 6, service 4, footway/path 2,
+  pedestrian 3; new: motorway 18, track 3.5, raceway 12, steps/cycleway 2 (footway), busway 7
+  (service), road 6. Width = `width` tag (2..40 m) else `lanes` (1..10) × 3.3 + 0.8 (min 4) else
+  the class estimate, rounded to 0.1 m. One-way: `oneway=yes/1/true/-1` or a roundabout.
+- Building: dropped under 12 m²; height = `height` (2.5..250 m) else `building:levels` (1..60)
+  × 3.1 + 0.9 parapet, else estimated (2 floors; tagged apartments 3–5, commercial 2–4 by a
+  stable hash). Kind apartments/commercial from tags, else apartments over 420 m². Colour by hash.
+  A building whose centroid lies in a landmark's footprint is left out (the landmark has a model).
+- Areas: park (leisure park/garden/playground, landuse grass/recreation_ground), water
+  (natural=water), beach (natural beach/sand) as today; then aerodrome, apron, helipad, reservoir
+  (landuse reservoir/basin/aquaculture, waterway riverbank/dock), mangrove, wetland, forest, scrub,
+  meadow, bare, farmland, orchard, residential, commercial, industrial (incl. port, depot),
+  military, cemetery, saltpan, railway, sport (pitch, stadium, golf…).
+- Trees: mapped `natural=tree` nodes (not on a carriageway) and generated avenue trees (every
+  18 m on both sides of primary/secondary/tertiary roads) and park trees (one per ~110 m²), all
+  deterministic.
+- Kept on chunk squares: buildings and trees by position (building by vertex average), areas cut
+  to every square they cover (in rings ≥ 1 only squares touching the built area).
+
+## 7. Building the world
+
+```
+cd godot-chennai/tools/geo
+python3 -m venv /opt/tools/geo-venv && /opt/tools/geo-venv/bin/pip install -r requirements.txt
+apt-get install osmium-tool            # the osmium CLI, for the clip
+PY=/opt/tools/geo-venv/bin/python
+$PY -m chennai_geo.cli fetch           # TN PBF (124 MB) -> ../../data/raw/, records data/MANIFEST.json
+$PY -m chennai_geo.cli boundary        # only when the boundary should be re-derived
+$PY -m chennai_geo.cli clip            # osmium extract to the boundary (smart strategy; 12 s)
+$PY -m chennai_geo.cli build --max-ring 3   # -> godot-chennai/world/ + REPORT.md (about 2 min, 3 GB RAM)
+$PY -m chennai_geo.cli compare         # ring 0 with today's rules vs today's committed world
+./run_tests.sh                         # pytest, no network
+```
+
+`data/raw/` is git-ignored. Rebuilding with the same PBF gives the same bytes.
+
+## 8. Format 1 and the converter path
+
+Format 1 is today's `index.json` + `roads.bin` + `c/<c>_<r>.bin` (one rectangle, version field
+`u16 1` after the magic). `chennai_geo/codec_v1.py` is a port of `codec.ts`; it decodes and
+re-encodes all 1,877 of today's chunk files and `roads.bin` **byte for byte** (test).
+
+- Today → format 2: `cli.py convert-v1 [IN] OUT` (v2-only fields get defaults: provenance = OSM
+  way, roof unknown, no holes, archetype 0, ring 0).
+- OSM → format 1: `cli.py build-v1 OUT` builds ring 0 with the v1 rules only (no multipolygons,
+  no repair, v1 road classes and area kinds) and writes today's three files, for side-by-side
+  comparison with the Three.js game.
+- Ring 0 of the format-2 world reproduces today's counts (test, tolerances in
+  `tests/test_ring0_regression.py`): 23 Nov data, v1 rules: 106,622 buildings (today 106,619),
+  20,724 road pieces (20,625), 44,570 trees (44,541), 533 bus stops, 266 signals, 238 districts,
+  the same 4 landmarks at the same positions, heights from OSM 3,596 (3,593).
+
+## 9. Fusion (phase 2): done as format 2.3
+
+Built on 24 Nov 2026 as `fusion.bin` (§3.9, `docs/fusion.md`): `cli fetch-buildings` then
+`cli fuse` (`fusion_fetch.py`, `fusion_multi.py`, `fusion_world.py`). The design notes below are
+the first plan; where they differ (overlap cut, ids, no 2.5D raster, provenance tables) §3.9 and
+`docs/fusion.md` are what was built.
+
+### First design
+
+`chennai_geo/fusion.py`: `fuse(osm_buildings, external, raster)` with the `FootprintSource`
+(Overture via DuckDB + GeoParquet bbox filter) and `HeightRaster` (Open Buildings 2.5D export)
+interfaces. Matching in UTM 44N (IoU ≥ 0.5, or ≥ 0.8 contained; several small footprints inside
+one OSM building are absorbed); output back through `GeoProjection`. Height priority: OSM
+`height` > `levels` > external height/floors (`overture`) > raster median (`openbuildings`) >
+estimate. Absorbed ids go to `merged`; new buildings get `dataset 3/4` and an index into the
+external-id table. Hosts needed: see `handoff.md` "Data".

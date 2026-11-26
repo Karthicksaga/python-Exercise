@@ -1,0 +1,12 @@
+# Godot's import cache and editor state (rebuilt by `godot --headless --import`).
+.godot/
+# Export output, Android build template, local keystores (CI makes its own debug keystore).
+build/
+android/
+*.keystore
+*.jks
+export_credentials.cfg
+# Test and run logs.
+tests/out/
+__pycache__/
+*.pyc
