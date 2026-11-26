@@ -704,31 +704,31 @@ English only.
 | `c.jobs.ambulance-run.stops.1.label` | Drive the patient to the hospital | நோயாளியை மருத்துவமனைக்கு ஓட்டிச் செல்லுங்கள் | needs native review |
 | `c.jobs.courier.title` | Courier delivery | கூரியர் டெலிவரி | needs native review |
 | `c.jobs.courier.brief` | Collect a parcel from the post office and get it across town on the motorbike. No damage earns a bonus. | அஞ்சலகத்தில் ஒரு பார்சலை வாங்கி, மோட்டார் பைக்கில் ஊரின் மறுபக்கம் கொண்டு சேருங்கள். சேதமில்லாமல் கொடுத்தால் போனஸ் கிடைக்கும். | needs native review |
-| `c.jobs.courier.stops.0.label` | Collect the parcel at the post office on 8th Street | 8-வது தெருவில் உள்ள அஞ்சலகத்தில் பார்சலை வாங்குங்கள் | needs native review |
-| `c.jobs.courier.stops.1.label` | Deliver the parcel on 5th street | 5-வது தெருவில் பார்சலைக் கொடுங்கள் | needs native review |
+| `c.jobs.courier.stops.0.label` | Collect the parcel at the post office, Vada Agaram Road, Choolaimedu | 8-வது தெருவில் உள்ள அஞ்சலகத்தில் பார்சலை வாங்குங்கள் | needs native review |
+| `c.jobs.courier.stops.1.label` | Deliver the parcel, NGO Colony | 5-வது தெருவில் பார்சலைக் கொடுங்கள் | needs native review |
 | `c.jobs.cab-ride.title` | Cab ride | டாக்ஸி சவாரி | needs native review |
 | `c.jobs.cab-ride.brief` | A passenger is waiting for a car. The fare goes by distance; a smooth ride earns a tip. | ஒரு பயணி காருக்காகக் காத்திருக்கிறார். கட்டணம் தூரத்தைப் பொறுத்தது; சுமுகமாக ஓட்டினால் டிப்ஸ் கிடைக்கும். | needs native review |
 | `c.jobs.cab-ride.stops.0.label` | Pick up the passenger | பயணியை ஏற்றுங்கள் | needs native review |
-| `c.jobs.cab-ride.stops.1.label` | Drop the passenger on 4th Avenue (Santhi Colony Road) | பயணியை 4-வது அவென்யூவில் இறக்கிவிடுங்கள் (சாந்தி காலனி சாலை) | needs native review |
+| `c.jobs.cab-ride.stops.1.label` | Drop the passenger, Ayanavaram | பயணியை 4-வது அவென்யூவில் இறக்கிவிடுங்கள் (சாந்தி காலனி சாலை) | needs native review |
 | `c.jobs.bus-route.title` | Bus route | பேருந்து வழித்தடம் | needs native review |
 | `c.jobs.bus-route.brief` | Drive the city bus round its loop. Stop at every stop in order and keep to the timetable. | நகரப் பேருந்தை அதன் வட்டப் பாதையில் ஓட்டுங்கள். ஒவ்வொரு நிறுத்தத்திலும் வரிசையாக நின்று, நேரப்பட்டியலைப் பின்பற்றுங்கள். | needs native review |
-| `c.jobs.bus-route.stops.0.label` | Bus stop 1 of 4 on 4th Avenue (Santhi Colony Road) | 4 நிறுத்தங்களில் 1-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
-| `c.jobs.bus-route.stops.1.label` | Bus stop 2 of 4 on 4th Avenue (Santhi Colony Road) | 4 நிறுத்தங்களில் 2-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
-| `c.jobs.bus-route.stops.2.label` | Bus stop 3 of 4 on 4th Avenue (Santhi Colony Road) | 4 நிறுத்தங்களில் 3-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
-| `c.jobs.bus-route.stops.3.label` | Bus stop 4 of 4 on 4th Avenue (Santhi Colony Road) | 4 நிறுத்தங்களில் 4-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
+| `c.jobs.bus-route.stops.0.label` | Bus stop 1 of 4, Velachery Main Road, Guindy | 4 நிறுத்தங்களில் 1-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
+| `c.jobs.bus-route.stops.1.label` | Bus stop 2 of 4, Velachery Main Road | 4 நிறுத்தங்களில் 2-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
+| `c.jobs.bus-route.stops.2.label` | Bus stop 3 of 4, Velachery Main Road | 4 நிறுத்தங்களில் 3-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
+| `c.jobs.bus-route.stops.3.label` | Bus stop 4 of 4, Velachery Main Road | 4 நிறுத்தங்களில் 4-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
 | `c.jobs.hospital-transfer.title` | Hospital transfer | மருத்துவமனை மாற்றம் | needs native review |
 | `c.jobs.hospital-transfer.brief` | A stable patient needs moving between hospitals for a scan. Less rush, but a smooth ride matters even more. | உடல்நிலை சீராக உள்ள ஒரு நோயாளியை ஸ்கேனுக்காக ஒரு மருத்துவமனையிலிருந்து இன்னொன்றுக்கு மாற்ற வேண்டும். அவசரம் குறைவு, ஆனால் சீரான பயணம் இன்னும் முக்கியம். | needs native review |
-| `c.jobs.hospital-transfer.stops.0.label` | Collect the patient at the hospital on 6th Main Road | 6-வது மெயின் ரோட்டில் உள்ள மருத்துவமனையில் நோயாளியை ஏற்றுங்கள் | needs native review |
+| `c.jobs.hospital-transfer.stops.0.label` | Collect the patient at the hospital, Tank Bund Road, Mahalinga Puram | 6-வது மெயின் ரோட்டில் உள்ள மருத்துவமனையில் நோயாளியை ஏற்றுங்கள் | needs native review |
 | `c.jobs.hospital-transfer.stops.1.label` | Transfer to the hospital | நோயாளியை மருத்துவமனையில் சேர்த்துவிடுங்கள் | needs native review |
 | `c.jobs.food-delivery.title` | Lunch rush | மதிய உணவு அவசரம் | needs native review |
 | `c.jobs.food-delivery.brief` | Three hot lunches from one kitchen to three homes. Ride fast, ride clean. | ஒரே சமையலறையிலிருந்து மூன்று வீடுகளுக்கு மூன்று சூடான மதிய உணவுகள். வேகமாகவும் ஒழுங்காகவும் ஓட்டுங்கள். | needs native review |
-| `c.jobs.food-delivery.stops.0.label` | Collect the orders on 2nd Avenue, Anna Nagar West | ஆர்டர்களை வாங்குங்கள், 2-வது அவென்யூ, மேற்கு அண்ணா நகர் | needs native review |
-| `c.jobs.food-delivery.stops.1.label` | Delivery 1 of 3 | 3 டெலிவரிகளில் முதலாவது | needs native review |
-| `c.jobs.food-delivery.stops.2.label` | Delivery 2 of 3 on 5th street | 3 டெலிவரிகளில் இரண்டாவது, 5-வது தெரு | needs native review |
-| `c.jobs.food-delivery.stops.3.label` | Delivery 3 of 3 on 6th Main Road | 3 டெலிவரிகளில் மூன்றாவது, 6-வது மெயின் ரோடு | needs native review |
+| `c.jobs.food-delivery.stops.0.label` | Collect the orders, South Mada Street, Mylapore | ஆர்டர்களை வாங்குங்கள், 2-வது அவென்யூ, மேற்கு அண்ணா நகர் | needs native review |
+| `c.jobs.food-delivery.stops.1.label` | Delivery 1 of 3, Santhome | 3 டெலிவரிகளில் முதலாவது | needs native review |
+| `c.jobs.food-delivery.stops.2.label` | Delivery 2 of 3, Devadi Street, Mylapore | 3 டெலிவரிகளில் இரண்டாவது, 5-வது தெரு | needs native review |
+| `c.jobs.food-delivery.stops.3.label` | Delivery 3 of 3, Mandaveli Road, Mylapore | 3 டெலிவரிகளில் மூன்றாவது, 6-வது மெயின் ரோடு | needs native review |
 | `c.jobs.medicine-run.title` | Medicine run | மருந்து சவாரி | needs native review |
 | `c.jobs.medicine-run.brief` | A hospital ward has run short. Take a box of medicine from the chemist, quickly. | ஒரு மருத்துவமனை வார்டில் மருந்து தீர்ந்துவிட்டது. மருந்துக் கடையிலிருந்து ஒரு பெட்டி மருந்தை சீக்கிரம் எடுத்துச் செல்லுங்கள். | needs native review |
-| `c.jobs.medicine-run.stops.0.label` | Collect the medicine on 1st Main Road | 1-வது மெயின் ரோட்டில் மருந்தை வாங்குங்கள் | needs native review |
+| `c.jobs.medicine-run.stops.0.label` | Collect the medicine, Tana street, Purasawalkam | 1-வது மெயின் ரோட்டில் மருந்தை வாங்குங்கள் | needs native review |
 | `c.jobs.medicine-run.stops.1.label` | Deliver to the hospital | மருத்துவமனையில் கொடுங்கள் | needs native review |
 | `c.jobs.share-auto.title` | Share auto | ஷேர் ஆட்டோ | needs native review |
 | `c.jobs.share-auto.brief` | Run a share auto down 2nd Avenue, Thirumangalam to Anna Nagar East. People wave it down anywhere: pull up beside them to let them in (4 seats), and stop where each one asks to get off. Fares are small (about ₹10 plus ₹5 a km each, estimated); missing a drop or passing people by costs reputation. | 2-வது அவென்யூவில் திருமங்கலத்திலிருந்து கிழக்கு அண்ணா நகர் வரை ஒரு ஷேர் ஆட்டோவை ஓட்டுங்கள். மக்கள் எங்கு வேண்டுமானாலும் கை காட்டி நிறுத்துவார்கள்: அவர்கள் பக்கத்தில் நிறுத்தி ஏற்றுங்கள் (4 இருக்கைகள்); ஒவ்வொருவரும் கேட்கும் இடத்தில் நிறுத்தி இறக்குங்கள். கட்டணம் சிறியது (ஒருவருக்கு ஏறத்தாழ ₹10 + கி.மீ.க்கு ₹5, மதிப்பீடு); இறக்க வேண்டிய இடத்தைத் தவறவிட்டாலோ ஆட்களைத் தாண்டிச் சென்றாலோ நற்பெயர் குறையும். | needs native review |
@@ -736,14 +736,14 @@ English only.
 | `c.jobs.share-auto.share.name` | 2nd Avenue, Anna Nagar West | 2-வது அவென்யூ, மேற்கு அண்ணா நகர் | needs native review |
 | `c.jobs.tower-park-visit.title` | Tower Park visitor | டவர் பூங்கா பார்வையாளர் | needs native review |
 | `c.jobs.tower-park-visit.brief` | A visitor wants to see Anna Nagar Tower Park before it closes. Take them to the gate. | ஒரு பார்வையாளர் அண்ணா நகர் டவர் பூங்கா மூடுவதற்குள் அதைப் பார்க்க விரும்புகிறார். அவரை வாசலில் கொண்டுபோய்ச் சேருங்கள். | needs native review |
-| `c.jobs.tower-park-visit.stops.0.label` | Pick up the visitor on 2nd Avenue, Anna Nagar West | பார்வையாளரை ஏற்றுங்கள், 2-வது அவென்யூ, மேற்கு அண்ணா நகர் | needs native review |
-| `c.jobs.tower-park-visit.stops.1.label` | Drop them at Anna Nagar Tower Park | அவரை அண்ணா நகர் டவர் பூங்காவில் இறக்கிவிடுங்கள் | needs native review |
+| `c.jobs.tower-park-visit.stops.0.label` | Pick up the visitor, Anna Salai (Mount Road), Teynampet | பார்வையாளரை ஏற்றுங்கள், 2-வது அவென்யூ, மேற்கு அண்ணா நகர் | needs native review |
+| `c.jobs.tower-park-visit.stops.1.label` | Drop them at the park gate, Poes Garden | அவரை அண்ணா நகர் டவர் பூங்காவில் இறக்கிவிடுங்கள் | needs native review |
 | `c.jobs.evening-bus.title` | Evening bus, the other way | மாலைப் பேருந்து, எதிர்த் திசையில் | needs native review |
 | `c.jobs.evening-bus.brief` | The same loop backwards at the busy hour. Tighter timetable, more people waiting. | அதே வட்டப் பாதை, எதிர்த் திசையில், கூட்டமான நேரத்தில். இறுக்கமான நேரப்பட்டியல், காத்திருப்பவர்கள் அதிகம். | needs native review |
-| `c.jobs.evening-bus.stops.0.label` | Bus stop 1 of 4 on 4th Avenue (Santhi Colony Road) | 4 நிறுத்தங்களில் 1-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
-| `c.jobs.evening-bus.stops.1.label` | Bus stop 2 of 4 on 4th Avenue (Santhi Colony Road) | 4 நிறுத்தங்களில் 2-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
-| `c.jobs.evening-bus.stops.2.label` | Bus stop 3 of 4 on 4th Avenue (Santhi Colony Road) | 4 நிறுத்தங்களில் 3-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
-| `c.jobs.evening-bus.stops.3.label` | Bus stop 4 of 4 on 4th Avenue (Santhi Colony Road) | 4 நிறுத்தங்களில் 4-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
+| `c.jobs.evening-bus.stops.0.label` | Bus stop 1 of 4, Avvai Thiru Nagar | 4 நிறுத்தங்களில் 1-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
+| `c.jobs.evening-bus.stops.1.label` | Bus stop 2 of 4 | 4 நிறுத்தங்களில் 2-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
+| `c.jobs.evening-bus.stops.2.label` | Bus stop 3 of 4 | 4 நிறுத்தங்களில் 3-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
+| `c.jobs.evening-bus.stops.3.label` | Bus stop 4 of 4 | 4 நிறுத்தங்களில் 4-வது, 4-வது அவென்யூ (சாந்தி காலனி சாலை) | needs native review |
 | `c.jobs.marina-evening.title` | Marina evening drive | மெரினா மாலைப் பயணம் | needs native review |
 | `c.jobs.marina-evening.brief` | Take a friend from T. Nagar to Marina Beach for the evening breeze. Anna Salai is jammed at this hour: cross it, don't drive along it. Evenings only (16:00–20:30); the clock starts at the pick-up. | ஒரு நண்பரை தி. நகரிலிருந்து மாலைக் காற்றுக்காக மெரினா கடற்கரைக்கு அழைத்துச் செல்லுங்கள். இந்த நேரத்தில் அண்ணா சாலையில் நெரிசல்: குறுக்கே கடந்து செல்லுங்கள், அதிலேயே ஓட்டாதீர்கள். மாலை நேரத்தில் மட்டும் (16:00–20:30); நண்பரை ஏற்றும்போது நேரம் தொடங்கும். | needs native review |
 | `c.jobs.marina-evening.stops.0.label` | Pick up your friend on Sir Thyagaraya Road, T. Nagar | உங்கள் நண்பரை ஏற்றுங்கள், சர் தியாகராய சாலை, தி. நகர் | needs native review |

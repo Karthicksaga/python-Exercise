@@ -684,31 +684,31 @@ c.jobs.ambulance-run.stops.0.label,Pick up the patient
 c.jobs.ambulance-run.stops.1.label,Drive the patient to the hospital
 c.jobs.courier.title,Courier delivery
 c.jobs.courier.brief,Collect a parcel from the post office and get it across town on the motorbike. No damage earns a bonus.
-c.jobs.courier.stops.0.label,Collect the parcel at the post office on 8th Street
-c.jobs.courier.stops.1.label,Deliver the parcel on 5th street
+c.jobs.courier.stops.0.label,"Collect the parcel at the post office, Vada Agaram Road, Choolaimedu"
+c.jobs.courier.stops.1.label,"Deliver the parcel, NGO Colony"
 c.jobs.cab-ride.title,Cab ride
 c.jobs.cab-ride.brief,A passenger is waiting for a car. The fare goes by distance; a smooth ride earns a tip.
 c.jobs.cab-ride.stops.0.label,Pick up the passenger
-c.jobs.cab-ride.stops.1.label,Drop the passenger on 4th Avenue (Santhi Colony Road)
+c.jobs.cab-ride.stops.1.label,"Drop the passenger, Ayanavaram"
 c.jobs.bus-route.title,Bus route
 c.jobs.bus-route.brief,Drive the city bus round its loop. Stop at every stop in order and keep to the timetable.
-c.jobs.bus-route.stops.0.label,Bus stop 1 of 4 on 4th Avenue (Santhi Colony Road)
-c.jobs.bus-route.stops.1.label,Bus stop 2 of 4 on 4th Avenue (Santhi Colony Road)
-c.jobs.bus-route.stops.2.label,Bus stop 3 of 4 on 4th Avenue (Santhi Colony Road)
-c.jobs.bus-route.stops.3.label,Bus stop 4 of 4 on 4th Avenue (Santhi Colony Road)
+c.jobs.bus-route.stops.0.label,"Bus stop 1 of 4, Velachery Main Road, Guindy"
+c.jobs.bus-route.stops.1.label,"Bus stop 2 of 4, Velachery Main Road"
+c.jobs.bus-route.stops.2.label,"Bus stop 3 of 4, Velachery Main Road"
+c.jobs.bus-route.stops.3.label,"Bus stop 4 of 4, Velachery Main Road"
 c.jobs.hospital-transfer.title,Hospital transfer
 c.jobs.hospital-transfer.brief,"A stable patient needs moving between hospitals for a scan. Less rush, but a smooth ride matters even more."
-c.jobs.hospital-transfer.stops.0.label,Collect the patient at the hospital on 6th Main Road
+c.jobs.hospital-transfer.stops.0.label,"Collect the patient at the hospital, Tank Bund Road, Mahalinga Puram"
 c.jobs.hospital-transfer.stops.1.label,Transfer to the hospital
 c.jobs.food-delivery.title,Lunch rush
 c.jobs.food-delivery.brief,"Three hot lunches from one kitchen to three homes. Ride fast, ride clean."
-c.jobs.food-delivery.stops.0.label,"Collect the orders on 2nd Avenue, Anna Nagar West"
-c.jobs.food-delivery.stops.1.label,Delivery 1 of 3
-c.jobs.food-delivery.stops.2.label,Delivery 2 of 3 on 5th street
-c.jobs.food-delivery.stops.3.label,Delivery 3 of 3 on 6th Main Road
+c.jobs.food-delivery.stops.0.label,"Collect the orders, South Mada Street, Mylapore"
+c.jobs.food-delivery.stops.1.label,"Delivery 1 of 3, Santhome"
+c.jobs.food-delivery.stops.2.label,"Delivery 2 of 3, Devadi Street, Mylapore"
+c.jobs.food-delivery.stops.3.label,"Delivery 3 of 3, Mandaveli Road, Mylapore"
 c.jobs.medicine-run.title,Medicine run
 c.jobs.medicine-run.brief,"A hospital ward has run short. Take a box of medicine from the chemist, quickly."
-c.jobs.medicine-run.stops.0.label,Collect the medicine on 1st Main Road
+c.jobs.medicine-run.stops.0.label,"Collect the medicine, Tana street, Purasawalkam"
 c.jobs.medicine-run.stops.1.label,Deliver to the hospital
 c.jobs.share-auto.title,Share auto
 c.jobs.share-auto.brief,"Run a share auto down 2nd Avenue, Thirumangalam to Anna Nagar East. People wave it down anywhere: pull up beside them to let them in (4 seats), and stop where each one asks to get off. Fares are small (about ₹10 plus ₹5 a km each, estimated); missing a drop or passing people by costs reputation."
@@ -716,14 +716,14 @@ c.jobs.share-auto.stops.0.label,End of the route at Anna Nagar East
 c.jobs.share-auto.share.name,"2nd Avenue, Anna Nagar West"
 c.jobs.tower-park-visit.title,Tower Park visitor
 c.jobs.tower-park-visit.brief,A visitor wants to see Anna Nagar Tower Park before it closes. Take them to the gate.
-c.jobs.tower-park-visit.stops.0.label,"Pick up the visitor on 2nd Avenue, Anna Nagar West"
-c.jobs.tower-park-visit.stops.1.label,Drop them at Anna Nagar Tower Park
+c.jobs.tower-park-visit.stops.0.label,"Pick up the visitor, Anna Salai (Mount Road), Teynampet"
+c.jobs.tower-park-visit.stops.1.label,"Drop them at the park gate, Poes Garden"
 c.jobs.evening-bus.title,"Evening bus, the other way"
 c.jobs.evening-bus.brief,"The same loop backwards at the busy hour. Tighter timetable, more people waiting."
-c.jobs.evening-bus.stops.0.label,Bus stop 1 of 4 on 4th Avenue (Santhi Colony Road)
-c.jobs.evening-bus.stops.1.label,Bus stop 2 of 4 on 4th Avenue (Santhi Colony Road)
-c.jobs.evening-bus.stops.2.label,Bus stop 3 of 4 on 4th Avenue (Santhi Colony Road)
-c.jobs.evening-bus.stops.3.label,Bus stop 4 of 4 on 4th Avenue (Santhi Colony Road)
+c.jobs.evening-bus.stops.0.label,"Bus stop 1 of 4, Avvai Thiru Nagar"
+c.jobs.evening-bus.stops.1.label,Bus stop 2 of 4
+c.jobs.evening-bus.stops.2.label,Bus stop 3 of 4
+c.jobs.evening-bus.stops.3.label,Bus stop 4 of 4
 c.jobs.marina-evening.title,Marina evening drive
 c.jobs.marina-evening.brief,"Take a friend from T. Nagar to Marina Beach for the evening breeze. Anna Salai is jammed at this hour: cross it, don't drive along it. Evenings only (16:00–20:30); the clock starts at the pick-up."
 c.jobs.marina-evening.stops.0.label,"Pick up your friend on Sir Thyagaraya Road, T. Nagar"
