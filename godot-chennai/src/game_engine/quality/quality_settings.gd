@@ -315,6 +315,32 @@ func explain() -> String:
 	return Tr.t(EXPLAIN_KEYS[clampi(preset, LOW, HIGH)])
 
 
+## The player's choice of the motion blur (default off, G-451). It only takes effect where the
+## preset allows it (`motion_blur_available`: High).
+var motion_blur: bool = false
+
+
+func motion_blur_available() -> bool:
+	return bool(current()["motion_blur"])
+
+
+## Blur is drawn: chosen and allowed.
+func motion_blur_active() -> bool:
+	return motion_blur and motion_blur_available()
+
+
+func set_motion_blur(on: bool) -> void:
+	if on == motion_blur:
+		return
+	motion_blur = on
+	_commit()
+
+
+## The Settings row: "Motion blur: Off".
+func motion_blur_label() -> String:
+	return "Motion blur: %s" % ("On" if motion_blur else "Off")
+
+
 func set_overlay(on: bool) -> void:
 	overlay = on
 	_commit()
@@ -347,7 +373,7 @@ func to_dict() -> Dictionary:
 		if not switches[id]:
 			off.append(id)
 	off.sort()
-	return {"version": VERSION, "preset": preset, "auto": auto, "auto_cap": auto_cap, "overlay": overlay, "off": off}
+	return {"version": VERSION, "preset": preset, "auto": auto, "auto_cap": auto_cap, "overlay": overlay, "motion_blur": motion_blur, "off": off}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -359,6 +385,8 @@ func from_dict(d: Dictionary) -> void:
 	auto_cap = clampi(int(c) if (c is int or c is float) else HIGH, LOW, HIGH)
 	var o: Variant = d.get("overlay", false)
 	overlay = o if o is bool else false
+	var mb: Variant = d.get("motion_blur", false)
+	motion_blur = mb if mb is bool else false
 	switches.clear()
 	var off: Variant = d.get("off", [])
 	if off is Array:

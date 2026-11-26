@@ -159,13 +159,22 @@ func _cab() -> void:
 	var ok: bool = _railway().call("take_cab")
 	print("[rail_shots] take_cab %s" % ok)
 	var cab: Object = _railway().get("cab")
+	# A finger on the vigilance handle (G-454) while driving; let go for the warning picture.
+	var handle: Object = (_railway().get("hud") as Object).get("handle")
 	for k in 60 * 10:
 		await physics_frame
+	# Pressed once the HUD has settled (a hidden HUD lets go of the handle).
+	handle.call("press", true)
 	cab.call("set_notch", 7)
 	for k in 60 * 12:
 		await physics_frame
 	await _save("cab_driving")
 	print("[rail_shots] cab v %.1f m/s s %.0f score %s" % [float(cab.get("v")), float(cab.get("s")), cab.get("score")])
+	handle.call("press", false)
+	for k in 60 * 9:
+		await physics_frame
+	await _save("cab_warning")
+	print("[rail_shots] cab warning %s tripped %s" % [cab.get("warning"), cab.get("tripped")])
 
 
 func _ride() -> void:

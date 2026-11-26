@@ -90,3 +90,27 @@ func test_wet_footsteps_splash_and_doors_differ() -> bool:
 	assert_true(car < 150.0, "a car door thunks low (%.0f Hz)" % car)
 	assert_true(bus > thunk * 3.0, "a bus's air door hisses on after a car door has shut (%.4f vs %.4f)" % [bus, thunk])
 	return true
+
+
+## G-456: threaded loads nobody collects stay in the loader to the end of the run and were reported
+## as 146 leaked objects at exit by every test run; `drain` takes them (the autoload does at exit in
+## a headless run) and the library still serves every stream afterwards.
+func test_pending_loads_can_be_drained_and_streams_still_come() -> bool:
+	var lib := SoundLibrary.new()
+	lib.request_all()
+	assert_true(lib._pending.size() > 100, "a request for every file is pending (%d)" % lib._pending.size())
+	var one := "horn.car" if lib.has("horn.car") else str(lib.entries.keys()[0])
+	var taken := lib.stream(one)
+	assert_true(taken != null, "one stream taken the usual way")
+	var before := lib._pending.size()
+	lib.drain()
+	assert_true(before < lib._requested.size() and lib._pending.is_empty(), "the rest was collected and nothing is pending")
+	assert_true(lib.stream(one) == taken, "the one taken before is the same stream")
+	var other := ""
+	for id: String in lib.entries:
+		if id != one:
+			other = id
+			break
+	assert_true(lib.stream(other) != null, "a drained one still loads on request (%s)" % other)
+	lib.drain()
+	return true

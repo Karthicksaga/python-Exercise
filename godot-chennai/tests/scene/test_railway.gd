@@ -181,3 +181,39 @@ func test_drive_from_the_cab_out_of_egmore() -> bool:
 	await wait_game_seconds(12.0)
 	assert_eq(rail.cab.v, 0.0, "the emergency brake stops it")
 	return true
+
+
+## The vigilance handle in the real cab (G-454): HOLD keeps the train running; let go at speed and the
+## warning sounds, then the emergency brake stops the train.
+func test_the_vigilance_handle_keeps_the_cab_running_or_stops_it() -> bool:
+	if not assert_true(await _start(), "the game reaches play with the railway"):
+		return true
+	var line := rail.network.line(LINE)
+	var egmore := _stop(line, "Chennai Egmore")
+	var half := rail.models.train_length(line.train_type) / 2.0
+	await _to_platform(line, egmore, half - 4.0)
+	assert_true(await _train_at(line, egmore), "a train stands at Egmore")
+	await wait_physics_frames(30)
+	assert_true(rail.take_cab(), "into the cab")
+	assert_true(rail.cab.vigilance_on, "the handle is in force in the player's cab")
+	await wait_until(func() -> bool: return not rail.cab.doors_open, 60 * 12)
+	rail.hud.lever.set_notch(6, true)
+	await wait_frames(2)
+	# A finger on HOLD (the HUD reads it every step).
+	rail.hud.handle.press(true)
+	await wait_game_seconds(20.0)
+	assert_true(rail.cab.v > 4.0, "running with the handle held (%.1f m/s)" % rail.cab.v)
+	assert_false(rail.cab.warning or rail.cab.tripped, "no warning while it is held")
+	assert_eq(rail.hud.handle.text, "HOLD", "the button shows no countdown")
+	var chimes: int = int(Sound.rail.played["rail_vigilance"])
+	rail.hud.handle.press(false)
+	await wait_game_seconds(CabDrive.VIGILANCE_LIMIT + 1.0)
+	assert_true(rail.cab.warning and not rail.cab.tripped, "released for 8 s at speed: the warning")
+	assert_eq(rail.hud.handle.text, "HOLD!", "the button says so")
+	assert_true(int(Sound.rail.played["rail_vigilance"]) > chimes, "and the tone sounds")
+	await wait_game_seconds(CabDrive.WARNING_GRACE + 1.0)
+	assert_eq(rail.cab.notch_name(), "EMG", "ignored: the emergency brake")
+	await wait_game_seconds(25.0)
+	assert_eq(rail.cab.v, 0.0, "the train stands")
+	assert_false(rail.cab.tripped, "and the brake is released at standstill")
+	return true

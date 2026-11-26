@@ -32,10 +32,22 @@ signal crashed(vehicle: Vehicle, outcome: CrashRules.Outcome)
 signal bumped(vehicle: Vehicle, outcome: CrashRules.Outcome)
 ## The horn (or, on siren vehicles, the siren switch) was pressed.
 signal horn(vehicle: Vehicle)
+## The vehicle drove into a puddle at speed: `at` is the scene point, `strength` 0..1 (G-450).
+signal splashed(vehicle: Vehicle, at: Vector3, strength: float)
 ## A boarding event: &"door_opening", &"seated", &"shut", &"free", &"done".
 signal boarding_event(vehicle: Vehicle, event: StringName)
 
 var rider: RiderLink
+## What the road under a scene point does to a vehicle (`RoadSurface.feel_at` of its world
+## position), set by the composition root; invalid: good tar everywhere (G-450). Asked a few times
+## a second, not every step.
+var ground_source: Callable = Callable()
+## Seconds between two looks at the road under the driven vehicle.
+const GROUND_EVERY := 0.1
+## Slower than this (m/s) a puddle does not splash.
+const SPLASH_FROM := 2.5
+var _ground_clock := 0.0
+var _wet := false
 
 ## Touch controls held (copied in by the composition root each step).
 var touch_gas := false
@@ -249,6 +261,7 @@ func _drive_step(dt: float) -> void:
 	if hint != "":
 		toast.emit(hint)
 	_hold_seat(v)
+	_read_ground(v, dt, speed)
 	var hit := v.consume_hit()
 	if hit == null:
 		return
@@ -267,6 +280,26 @@ func _drive_step(dt: float) -> void:
 		rider.hurt(outcome.damage)
 		return
 	_throw(v, outcome)
+
+
+## Looks at the road under the driven vehicle a few times a second and tells the vehicle (bad
+## roads slow it, bump it and cut its grip); a puddle entered at speed splashes.
+func _read_ground(v: Vehicle, dt: float, speed: float) -> void:
+	if not ground_source.is_valid():
+		return
+	_ground_clock -= dt
+	if _ground_clock > 0.0:
+		return
+	_ground_clock = GROUND_EVERY
+	var feel: Dictionary = {}
+	var got: Variant = ground_source.call(v.global_position)
+	if got is Dictionary:
+		feel = got
+	v.apply_road(feel)
+	var wet := bool(feel.get("wet", false))
+	if wet and not _wet and absf(speed) > SPLASH_FROM:
+		splashed.emit(v, v.global_position, clampf(absf(speed) / 15.0, 0.2, 1.0))
+	_wet = wet
 
 
 ## The marks a hit leaves: both vehicles wobble and take dents (a parked one is shoved by the
@@ -398,6 +431,8 @@ func _seat(v: Vehicle) -> void:
 	rider.set_seated(v.type, 1.0)
 	rider.set_figure_visible(true)
 	gearbox.reset("D")
+	_ground_clock = 0.0
+	_wet = false
 	reverse_hold.reset()
 	_auto_reversed = false
 	_hold_seat(v)

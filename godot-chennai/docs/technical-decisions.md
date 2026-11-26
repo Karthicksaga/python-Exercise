@@ -3034,3 +3034,114 @@ JOURNAL pause row fits, and the four new ACTION labels fit the round ACTION butt
    JSON zone, a stand and a lamp equivalent, and its own respectful interaction written with care.
 4. Who reads the Tamil (G-443): this work adds 48 more rows.
 5. Whether to schedule the bicycle for `godot-complex` (G-488).
+## Polish (G-450 to G-459, agent/godot-polish), 25 Nov 2026
+
+### G-450: The condition of a road is felt: slower, bumpier, less grip, splashes
+`RoadStyle.feel(condition)` (G-315, was data only) now drives the vehicle. `RoadSurface`
+(`src/game_world/infra/road_surface.gd`, node-free, next to `RoadHeights` and `RoadBumps`) answers "what is under this
+world point": the nearest segment of the street layout's grid within the carriageway and 0.4 m, its way's condition
+(`RoadStyle.condition`, cached per road), and the puddle rectangles of that chunk. Chunks tell it what they drew: the
+chunk builder calls `note_chunk(cell, rural, marks)` on its worker thread (the open-country flag changes how arterials
+are judged, the puddles are the plan's own `RoadDetail.Mark`s), so the main thread only reads and never plans or builds;
+a tile whose layout is not built yet is plain tar (`has_tile`, never blocks). `Driving` asks it every 0.1 s for the
+driven vehicle (`ground_source`, set by `PlayWiring` from `CityWorld.surface`), `Vehicle.apply_road` scales the numbers
+by the kind (`ROAD_SENSITIVITY`: bike and auto 1.0, car 0.6, saloon 0.55, race 0.7, ambulance 0.4, SUV 0.35, bus 0.3)
+and `RaycastVehicle.set_ground(GroundFeel)` eases them in over about a second. What it changes: the engine's top speed
+(`spec.max_speed * top_speed`; faster than that and the surface drags at 3 m/s²: a crash is 1.6 m/s in one step),
+both tyre limits (`grip`) and a smooth vertical wobble along the distance rolled (`bump`, amplitude times
+`BUMP_GAIN`, scaled by speed). The speed readout is the real speed and a rough road is never a crash (the planar
+velocity is untouched, tested: no step changes speed by `Vehicle.IMPACT`). Puddles: 0.92 of the speed and 0.9 of the grip
+on top of the road's, and `Driving.splashed` (a puddle entered above 2.5 m/s) throws pale droplets from the glass pool
+of `CrashEffects` (`splash`). Measured in the yard (same bike, same controls, 6 s flat out): a good road leaves the body level (under 0.1 mm
+of height wander), a damaged one wanders 2.3 cm and tops out at 21.3 against 25.0 m/s, mud wanders 4.2 cm at 16.3 m/s
+(65 %); a hatchback in mud keeps 79 % of its speed (the bike 65 %) and wanders 6 cm. Not done: wheels do not take the puddle one by
+one (the vehicle's centre decides), no sound for the splash, and the bump is a smooth wobble, not holes at the holes.
+
+### G-451: Motion blur has a Settings row, High only
+`QualitySettings.motion_blur` is the player's choice (default off, saved with the preset in the same section, key
+`motion_blur`); `motion_blur_available()` is the preset's table key (High only) and `motion_blur_active()` both.
+`PerfWiring` adds a `MotionBlur` node to Main only while it is active, frees it (and its layer) the moment it is not,
+and calls `update(speed, dt)` once a frame with the driven vehicle's speed. The row ("Motion blur: Off") is in the pause
+menu and the title's Settings and is hidden on Low and Medium. Tests: off by default means no node and no layer in
+Main, High and chosen means one, Medium frees it although chosen.
+
+### G-452: Hero landmark materials follow the Low lighting like the shared ones
+`CityMaterials.set_flat` only knew the shared materials; each hero landmark builds its own atlas material on a worker
+(`LandmarkModels.atlas_material`, G-390), so Low (`vertex_lighting`) left them lit per pixel. `CityMaterials.add_hero`
+registers them (`CityWorld.setup` hands over every `Built.material` after the fixed nodes join the tree) and they take
+the lighting mode in force when they arrive and each change after.
+
+### G-453: The city jobs, the life places and the stories are spread over the districts
+Owner's phone report (G-280 left it open): 10 of the 13 city jobs, the five life places and the three stories were
+still in the Anna Nagar test box, so a job offered from the board started a few streets from the last one.
+`tools/rules/respace_stages.gd -- jobs` moves them like the stages (its core is now `_cluster`: first point to the
+nearest main road of the chosen district, the others at their original distances, bearing searched in 15 degree
+steps, slid until the marker, its kerb and the parked vehicle are outside buildings) but each job is a cluster of its
+own, 0.5 to 3 km across, in a district of its own, and raised roads and anything named flyover, bridge or subway are
+skipped (nobody is dropped on a flyover). The two bus jobs keep their stops on one main road (`_line`: the stops of a
+bus cannot be on streets that only look near each other; a first try that snapped each stop separately made a
+route 3.3 times as long by road). Output `tools/rules/job_sites.json`; `tools/rules/apply_job_sites.py` folds it into
+`content.json`: new stops and kerbs (hints dropped, `FareSpots` reproduces them), labels that no longer name Anna
+Nagar streets (the street the stop stands on, where the map names it, and its district), `startRadius` 300 m (the clock
+waits until the vehicle is at the start, as for the three far jobs), a vehicle parked behind each first stop
+(`ambulance-adyar`, `bus-guindy`, ...), and the clock scaled by how much longer the new road run is than the old one
+(the bake measures both by road, shortest drive over the layout; never shortened). Nine jobs moved to Adyar,
+Choolaimedu, Ayanavaram, Guindy, Mahalinga Puram (Nungambakkam), Mylapore, Purasawalkam, Teynampet and Koyambedu
+(the first stop's nearest district is what the test reads); `share-auto` stays on 2nd Avenue (its route is a recorded
+Anna Nagar road line) and the three jobs that were already far stay. Life places: hospital (Kellys), gym (West
+Mambalam), mall (Velachery) and cinema (Saligramam) moved with what the stories need beside them (the juice shop 120 m
+from the gym, Ravi 160 m from the cinema); home stays (the game starts there). Place points are on the pavement (the
+kerb spot), vehicle reaches on the road. Paati's way home from the hospital is 734 s (was 139 s for 300 m). New test
+`test_job_spread.gd`: jobs start in at least 8 districts (all different but share-auto), no gap between two stops of
+a job is over 3 km, everything is on loaded streets outside buildings, every moved job has its vehicle parked at the
+start, places are in four districts more than 2 km from home, the stories follow their places. `test_stage_spread.gd`
+and `test_content_on_map.gd` stay (one count in the latter changed: the kerb hints, below).
+Weak: the road clock is by shortest drive, not by the traffic and the signals; `share-auto` and home are still
+Anna Nagar; a job offered from the board far away means a drive to its start (the clock waits for it); the labels use
+the street the snap found, some of which have no name in the data ("Bus stop 2 of 4" alone).
+
+### G-454: The cab has a vigilance (dead man's) handle
+The Three.js notes say the real cab has a vigilance device; the owner's prototype has none. `CabDrive` gets one
+that is **off unless the game turns it on** (`vigilance_on`; `Railway.take_cab` does), so the prototype's scoring and
+the old tests are untouched and the handle adds **no points**: `set_handle(held)` each step; released for more than
+`VIGILANCE_LIMIT` (8 s) while moving faster than 1 m/s it sounds the warning (`vigilance_warning`, a toast, the door chime
+at pitch 1.6 every 0.7 s); not held again within `WARNING_GRACE` (3 s) the emergency brake comes on
+(`vigilance_tripped`, lever forced to EMG) and stays on until the train stands, then the lever is the driver's again.
+Standing or creeping needs no handle; taking hold again in time silences the warning and starts the count over.
+The HUD has a HOLD button in the glass style (`RailHud.handle`, a `HoldButton`, so any finger holds it while another
+works the lever; 48 px tall, with HORN and EMG at the bottom right) that counts down in the last five seconds ("HOLD 3"),
+shows "HOLD!" while the warning sounds and "BRAKING" while tripped. `Railway` reads `hud.handle_held()` every step
+(polling, so a HUD that hides while held cannot leave it stuck). The times are estimates. The cab starts with the handle
+not held: the first toast says to keep HOLD pressed while moving. Not done: no keyboard or pad key for the handle, no
+separate alarm sound, no vigilance on the passengers' ride (the timetable's trains).
+
+### G-455: The map credit steps aside for the pause menu
+On a 2460 x 1080 screen (938 x 412 UI units) the pause panel, as wide as its longest row (the perf summary, the graphics
+row), reached the "(c) OpenStreetMap contributors" plate at the bottom right (owner's screenshot). The credit is the
+data's licence, so it is moved, not dropped: `PauseMenu` carries its own credit line inside its panel (fed with the
+data's attribution by `Main`), and the HUD's plate hides while the menu is open (`PauseMenu.opened` and `closed`,
+`DebugHud.set_credit_shown`). Test: `test_ui_layout.gd` builds the pause menu with the real rows plus a long one at
+the five UI sizes (938 x 412 among them), `test_perf_wiring.gd` checks it in the booted game. The probe before the fix:
+at 938 x 412 the panel spanned x 200..737 and the credit x 721..926 at y 379..400. The same plate also sat over HORN and
+EMG in the cab: the rail HUD's bottom-right column now stands 30 units higher (`RailHud.CREDIT_CLEAR`) and the passenger
+and cab actions share a row so the speed dial keeps its room (`test_rail_hud_layout.gd`).
+
+### G-456: What every run leaked at exit: found, and the cheap ones fixed
+Every Godot run ended with "146 ObjectDB instances were leaked at exit", Main-booting tests with "2 resources still in
+use at exit" and a couple of mesh RIDs. Found with `godot --headless --verbose` on small tests and by taking the
+autoloads out one at a time (an empty script in the project: 146; with the `Sound` autoload removed: none):
+- **146 = the sound manifest's files.** `SoundLibrary.request_all` starts a threaded load of every file; whatever nothing
+  ever asked for stays in the loader to the end of the process. `SoundLibrary.drain` takes the pending loads
+  (`_pending`, separate from `_requested`) and `Sound._exit_tree` calls it **only in a headless run** (tests, tools, CI):
+  on a phone the process just ends and nothing waits. A tiny script that used to leak 146 now leaks nothing.
+- **"2 resources still in use" (`quality_settings.gd`, `railway_wiring.gd`)** was a reference cycle:
+  `RailwayWiring.wire` connected a lambda that captured the shared `QualitySettings` to that settings object's own
+  `changed` signal, so neither could be freed. It is now `Railway.apply_shared_quality`, a method of the (freed) railway.
+- **Node3D leaks:** `PlayerRiderLink` makes its ride anchor in a field initialiser and adds it to the tree on the first
+  ride; a link that never rode (every test, and a game where the player never got in) left it behind when freed.
+  `NOTIFICATION_PREDELETE` frees it when it has no parent.
+A Main-booting test went from 231 leaked objects, 2 resources and 2 RIDs to 82 objects and 2 RIDs.
+**Not found:** the remaining ~82 `RefCounted` instances (their class is not printed) and 1 to 4 `DummyMesh` RIDs after
+the game boots (68 to 210 in the other Main-booting tests); they are not the statics (clearing every `static var` cache
+changed nothing) and not the sound loads; my guess, not checked, is builds still in flight on worker threads when the process
+ends (chunks, layouts, models). Phones are not affected (the OS ends the process); CI only prints the warning.

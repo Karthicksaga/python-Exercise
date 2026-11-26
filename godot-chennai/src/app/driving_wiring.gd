@@ -121,6 +121,7 @@ static func wire(d: Driving, c: DrivingControls, player_rig: PlayerRig) -> Drivi
 		w._settings = player_rig.controls.settings
 	d.crashed.connect(w._on_crash)
 	d.bumped.connect(w._on_bump)
+	d.splashed.connect(func(_v: Vehicle, at: Vector3, strength: float) -> void: w.effects.splash(at, strength))
 	w.effects = CrashEffects.new()
 	w.effects.add_to_group(WorldOrigin.GROUP)
 	w.add_child(w.effects)

@@ -323,6 +323,9 @@ func _add_pause_menu() -> void:
 		host.call(&"add_setting", &"Sound", Sound.label, Sound.toggle)
 		host.call(&"add_setting", &"Language", language.label, language.next)
 	ControlSettingsRows.add_to(pause_menu, ControlSettings.shared())
+	# The HUD's map credit sits bottom-right and met the panel's corner on a wide phone: the menu has its own (G-455).
+	pause_menu.opened.connect(func() -> void: hud.set_credit_shown(false))
+	pause_menu.closed.connect(func() -> void: hud.set_credit_shown(true))
 	pause_menu.pause_requested.connect(pause)
 	pause_menu.resume_requested.connect(resume)
 	pause_menu.title_requested.connect(show_title)

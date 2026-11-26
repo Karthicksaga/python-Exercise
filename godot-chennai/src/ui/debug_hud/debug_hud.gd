@@ -92,6 +92,11 @@ func set_world_text(text: String) -> void:
 	_refresh()
 
 
+## The credit's plate shows or steps aside (the pause menu carries its own line, G-455).
+func set_credit_shown(on: bool) -> void:
+	(_credit.get_parent() as Control).visible = on
+
+
 func set_credit(text: String) -> void:
 	if text != "":
 		_credit.text = text

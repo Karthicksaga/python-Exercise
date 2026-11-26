@@ -17,6 +17,8 @@ var entries: Dictionary = {}
 var error: String = ""
 var _streams: Dictionary = {}
 var _requested: Dictionary = {}
+## Paths requested for a threaded load and not taken yet.
+var _pending: Dictionary = {}
 
 
 func _init(path: String = MANIFEST) -> void:
@@ -52,6 +54,16 @@ func request_all() -> void:
 		if path != "" and not _requested.has(path) and ResourceLoader.exists(path):
 			if ResourceLoader.load_threaded_request(path, "AudioStream") == OK:
 				_requested[path] = true
+				_pending[path] = true
+
+
+## Takes every load still pending and lets go of it (G-456): a threaded request nobody collects stays in
+## the loader to the end of the run and shows up as a leaked object at exit, one for each of the
+## library's files. Waits for loads still under way, so only a run that is about to end calls it.
+func drain() -> void:
+	for path: String in _pending.keys():
+		ResourceLoader.load_threaded_get(path)
+	_pending.clear()
 
 
 ## The stream for an id, or null. Never blocks on a load already under way unless it is needed now.
@@ -62,7 +74,8 @@ func stream(id: String) -> AudioStream:
 	if path == "":
 		return null
 	var s: AudioStream = null
-	if _requested.has(path):
+	if _pending.has(path):
+		_pending.erase(path)
 		s = ResourceLoader.load_threaded_get(path) as AudioStream
 	else:
 		s = load(path) as AudioStream

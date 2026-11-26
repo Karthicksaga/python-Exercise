@@ -207,6 +207,78 @@
    "z": 3610.0,
    "yaw": -2.76,
    "color": 1920649
+  },
+  {
+   "id": "ambulance-adyar",
+   "kind": "ambulance",
+   "x": 5163.39990234375,
+   "z": 8713.7998046875,
+   "yaw": 2.368,
+   "color": 16777215
+  },
+  {
+   "id": "bike-choolaimedu",
+   "kind": "bike",
+   "x": 1486.5,
+   "z": 2575.0,
+   "yaw": 2.864,
+   "color": 1920649
+  },
+  {
+   "id": "car-ayanavaram",
+   "kind": "car",
+   "x": 2717.0,
+   "z": -887.299987792969,
+   "yaw": -1.626,
+   "color": 12597547
+  },
+  {
+   "id": "bus-guindy",
+   "kind": "bus",
+   "x": 1087.19995117188,
+   "z": 8954.0,
+   "yaw": -0.216,
+   "color": 2060152
+  },
+  {
+   "id": "ambulance-mahalinga-puram",
+   "kind": "ambulance",
+   "x": 3101.80004882812,
+   "z": 2774.80004882812,
+   "yaw": -2.223,
+   "color": 16777215
+  },
+  {
+   "id": "bike-mylapore",
+   "kind": "bike",
+   "x": 6520.2001953125,
+   "z": 5879.7001953125,
+   "yaw": 1.265,
+   "color": 1920649
+  },
+  {
+   "id": "bike-purasawalkam",
+   "kind": "bike",
+   "x": 4826.60009765625,
+   "z": -455.799987792969,
+   "yaw": 0.265,
+   "color": 1920649
+  },
+  {
+   "id": "car-teynampet",
+   "kind": "car",
+   "x": 4119.7001953125,
+   "z": 4476.10009765625,
+   "yaw": 2.966,
+   "color": 12597547
+  },
+  {
+   "id": "bus-avvai-thiru-nagar",
+   "kind": "bus",
+   "x": -2020.40002441406,
+   "z": 1920.0,
+   "yaw": 0.023,
+   "color": 2060152
   }
  ],
  "missions": [
@@ -1576,30 +1648,30 @@
    "stops": [
     {
      "label": "Pick up the patient",
-     "x": -61.88292955157832,
-     "z": -231.29493112185722,
+     "x": 5153.6,
+     "z": 8723.8,
      "radius": 8,
      "dwell": 3,
      "fare": {
       "board": 1,
       "patient": true,
       "kerb": {
-       "x": -62.2,
-       "z": -227.2
+       "x": 5156.5,
+       "z": 8726.7
       }
      }
     },
     {
      "label": "Drive the patient to the hospital",
-     "x": -326.5054635386301,
-     "z": 315.5207691984795,
+     "x": 5197.9,
+     "z": 9327.8,
      "radius": 9,
      "fare": {
       "alight": 1,
       "patient": true,
       "kerb": {
-       "x": -329.1,
-       "z": 315.3
+       "x": 5198.0,
+       "z": 9322.2
       }
      }
     }
@@ -1607,7 +1679,8 @@
    "timeLimit": 197,
    "payout": 900,
    "fine": 150,
-   "maxBumps": 5
+   "maxBumps": 5,
+   "startRadius": 300.0
   },
   {
    "id": "courier",
@@ -1617,9 +1690,9 @@
    "vehicle": "bike",
    "stops": [
     {
-     "label": "Collect the parcel at the post office on 8th Street",
-     "x": -275.4385220041321,
-     "z": 58.72550674762929,
+     "label": "Collect the parcel at the post office, Vada Agaram Road, Choolaimedu",
+     "x": 1482.6,
+     "z": 2588.4,
      "radius": 6,
      "dwell": 2,
      "goods": {
@@ -1629,15 +1702,15 @@
       ],
       "who": "sender",
       "kerb": {
-       "x": -275.6,
-       "z": 62.8
+       "x": 1488.0,
+       "z": 2589.9
       }
      }
     },
     {
-     "label": "Deliver the parcel on 5th street",
-     "x": 366.33105117445416,
-     "z": 373.56537092051127,
+     "label": "Deliver the parcel, NGO Colony",
+     "x": 943.6,
+     "z": 2118.1,
      "radius": 6,
      "dwell": 1,
      "goods": {
@@ -1646,15 +1719,16 @@
        "parcel"
       ],
       "kerb": {
-       "x": 366.1,
-       "z": 377.7
+       "x": 947.2,
+       "z": 2118.4
       }
      }
     }
    ],
-   "timeLimit": 174,
+   "timeLimit": 180,
    "payout": 450,
-   "fine": 80
+   "fine": 80,
+   "startRadius": 300.0
   },
   {
    "id": "cab-ride",
@@ -1665,36 +1739,37 @@
    "stops": [
     {
      "label": "Pick up the passenger",
-     "x": -325.05,
-     "z": -336.35,
+     "x": 2731.0,
+     "z": -886.6,
      "radius": 7,
      "dwell": 2,
      "fare": {
       "board": 1,
       "kerb": {
-       "x": -326.6,
-       "z": -332.5
+       "x": 2737.4,
+       "z": -891.8
       }
      }
     },
     {
-     "label": "Drop the passenger on 4th Avenue (Santhi Colony Road)",
-     "x": 229.91681228233566,
-     "z": 281.74567202946014,
+     "label": "Drop the passenger, Ayanavaram",
+     "x": 2988.9,
+     "z": -1676.3,
      "radius": 7,
      "dwell": 1,
      "fare": {
       "alight": 1,
       "kerb": {
-       "x": 230.1,
-       "z": 277.5
+       "x": 2984.8,
+       "z": -1676.7
       }
      }
     }
    ],
    "timeLimit": 240,
    "payout": 487,
-   "fine": 60
+   "fine": 60,
+   "startRadius": 300.0
   },
   {
    "id": "bus-route",
@@ -1704,25 +1779,24 @@
    "vehicle": "bus",
    "stops": [
     {
-     "label": "Bus stop 1 of 4 on 4th Avenue (Santhi Colony Road)",
-     "x": -190.9,
-     "z": 261.9,
+     "label": "Bus stop 1 of 4, Velachery Main Road, Guindy",
+     "x": 1090.2,
+     "z": 8940.4,
      "radius": 8,
      "dwell": 4,
      "due": 79,
      "fare": {
       "board": 3,
       "kerb": {
-       "x": -191.1,
-       "z": 266.2
-      },
-      "kerbSide": 1
+       "x": 1086.0,
+       "z": 8939.5
+      }
      }
     },
     {
-     "label": "Bus stop 2 of 4 on 4th Avenue (Santhi Colony Road)",
-     "x": -451.9,
-     "z": 266.6,
+     "label": "Bus stop 2 of 4, Velachery Main Road",
+     "x": 1149.9,
+     "z": 8686.8,
      "radius": 8,
      "dwell": 4,
      "due": 158,
@@ -1730,16 +1804,15 @@
       "board": 1,
       "alight": 2,
       "kerb": {
-       "x": -451.7,
-       "z": 262.3
-      },
-      "kerbSide": 1
+       "x": 1146.0,
+       "z": 8685.0
+      }
      }
     },
     {
-     "label": "Bus stop 3 of 4 on 4th Avenue (Santhi Colony Road)",
-     "x": -715.2,
-     "z": 256.6,
+     "label": "Bus stop 3 of 4, Velachery Main Road",
+     "x": 1270.6,
+     "z": 8452.6,
      "radius": 8,
      "dwell": 4,
      "due": 237,
@@ -1747,33 +1820,32 @@
       "board": 2,
       "alight": 1,
       "kerb": {
-       "x": -715,
-       "z": 252.3
-      },
-      "kerbSide": 1
+       "x": 1266.8,
+       "z": 8450.7
+      }
      }
     },
     {
-     "label": "Bus stop 4 of 4 on 4th Avenue (Santhi Colony Road)",
-     "x": -974.9,
-     "z": 233.5,
+     "label": "Bus stop 4 of 4, Velachery Main Road",
+     "x": 1395.8,
+     "z": 8224.0,
      "radius": 8,
      "dwell": 4,
      "due": 316,
      "fare": {
       "alight": 3,
       "kerb": {
-       "x": -975,
-       "z": 237.8
-      },
-      "kerbSide": 1
+       "x": 1399.6,
+       "z": 8226.0
+      }
      }
     }
    ],
    "timeLimit": 376,
    "payout": 1100,
    "fine": 120,
-   "minReputation": 55
+   "minReputation": 55,
+   "startRadius": 300.0
   },
   {
    "id": "hospital-transfer",
@@ -1783,40 +1855,41 @@
    "vehicle": "ambulance",
    "stops": [
     {
-     "label": "Collect the patient at the hospital on 6th Main Road",
-     "x": 305.0751383388488,
-     "z": 55.018491021537464,
+     "label": "Collect the patient at the hospital, Tank Bund Road, Mahalinga Puram",
+     "x": 3113.0,
+     "z": 2783.3,
      "radius": 10,
      "dwell": 4,
      "fare": {
       "board": 1,
       "patient": true,
       "kerb": {
-       "x": 299.5,
-       "z": 54.8
+       "x": 3117.6,
+       "z": 2777.2
       }
      }
     },
     {
      "label": "Transfer to the hospital",
-     "x": -326.5054635386301,
-     "z": 315.5207691984795,
+     "x": 2439.9,
+     "z": 2702.1,
      "radius": 9,
      "dwell": 2,
      "fare": {
       "alight": 1,
       "patient": true,
       "kerb": {
-       "x": -329.1,
-       "z": 315.3
+       "x": 2439.9,
+       "z": 2698.0
       }
      }
     }
    ],
-   "timeLimit": 205,
+   "timeLimit": 213,
    "payout": 700,
    "fine": 120,
-   "maxBumps": 3
+   "maxBumps": 3,
+   "startRadius": 300.0
   },
   {
    "id": "food-delivery",
@@ -1826,9 +1899,9 @@
    "vehicle": "bike",
    "stops": [
     {
-     "label": "Collect the orders on 2nd Avenue, Anna Nagar West",
-     "x": 271.45464652701753,
-     "z": 25.603234911046332,
+     "label": "Collect the orders, South Mada Street, Mylapore",
+     "x": 6506.8,
+     "z": 5875.5,
      "radius": 6,
      "dwell": 2,
      "goods": {
@@ -1840,15 +1913,15 @@
       ],
       "who": "shopkeeper",
       "kerb": {
-       "x": 271.3,
-       "z": 29.9
+       "x": 6505.1,
+       "z": 5880.8
       }
      }
     },
     {
-     "label": "Delivery 1 of 3",
-     "x": -279.1946061833359,
-     "z": -332.31379220899674,
+     "label": "Delivery 1 of 3, Santhome",
+     "x": 6791.2,
+     "z": 6463.2,
      "radius": 6,
      "dwell": 1,
      "goods": {
@@ -1857,15 +1930,15 @@
        "food-bag"
       ],
       "kerb": {
-       "x": -279.5,
-       "z": -328.2
+       "x": 6795.1,
+       "z": 6464.3
       }
      }
     },
     {
-     "label": "Delivery 2 of 3 on 5th street",
-     "x": 60.88464417087991,
-     "z": 360.07483689887306,
+     "label": "Delivery 2 of 3, Devadi Street, Mylapore",
+     "x": 6890.1,
+     "z": 5686.9,
      "radius": 6,
      "dwell": 1,
      "goods": {
@@ -1874,15 +1947,15 @@
        "food-bag"
       ],
       "kerb": {
-       "x": 60.7,
-       "z": 364.2
+       "x": 6884.6,
+       "z": 5687.6
       }
      }
     },
     {
-     "label": "Delivery 3 of 3 on 6th Main Road",
-     "x": 323.79357038638204,
-     "z": -380.2674758173467,
+     "label": "Delivery 3 of 3, Mandaveli Road, Mylapore",
+     "x": 6258.7,
+     "z": 6197.5,
      "radius": 6,
      "dwell": 1,
      "goods": {
@@ -1891,15 +1964,16 @@
        "food-bag"
       ],
       "kerb": {
-       "x": 318.2,
-       "z": -380.5
+       "x": 6258.9,
+       "z": 6191.9
       }
      }
     }
    ],
    "timeLimit": 411,
    "payout": 650,
-   "fine": 90
+   "fine": 90,
+   "startRadius": 300.0
   },
   {
    "id": "medicine-run",
@@ -1909,9 +1983,9 @@
    "vehicle": "bike",
    "stops": [
     {
-     "label": "Collect the medicine on 1st Main Road",
-     "x": 299.37115599505563,
-     "z": -55.363193572311495,
+     "label": "Collect the medicine, Tana street, Purasawalkam",
+     "x": 4823.0,
+     "z": -469.3,
      "radius": 6,
      "dwell": 2,
      "goods": {
@@ -1921,15 +1995,15 @@
       ],
       "who": "shopkeeper",
       "kerb": {
-       "x": 299.2,
-       "z": -51.3
+       "x": 4817.6,
+       "z": -467.8
       }
      }
     },
     {
      "label": "Deliver to the hospital",
-     "x": -326.5054635386301,
-     "z": 315.5207691984795,
+     "x": 4626.6,
+     "z": -1169.8,
      "radius": 8,
      "dwell": 1,
      "goods": {
@@ -1938,15 +2012,16 @@
        "medicine"
       ],
       "kerb": {
-       "x": -329.1,
-       "z": 315.3
+       "x": 4630.6,
+       "z": -1170.7
       }
      }
     }
    ],
    "timeLimit": 144,
    "payout": 380,
-   "fine": 70
+   "fine": 70,
+   "startRadius": 300.0
   },
   {
    "id": "share-auto",
@@ -2044,38 +2119,38 @@
    "vehicle": "car",
    "stops": [
     {
-     "label": "Pick up the visitor on 2nd Avenue, Anna Nagar West",
-     "x": -330.83504366850207,
-     "z": -14.262927826112353,
+     "label": "Pick up the visitor, Anna Salai (Mount Road), Teynampet",
+     "x": 4117.3,
+     "z": 4489.8,
      "radius": 7,
      "dwell": 2,
      "fare": {
       "board": 1,
       "kerb": {
-       "x": -330.7,
-       "z": -18.6
+       "x": 4123.2,
+       "z": 4490.8
       }
      }
     },
     {
-     "label": "Drop them at Anna Nagar Tower Park",
-     "x": 315.4496656181309,
-     "z": -186.47004840995686,
+     "label": "Drop them at the park gate, Poes Garden",
+     "x": 4763.5,
+     "z": 4660.1,
      "radius": 8,
      "dwell": 1,
      "fare": {
       "alight": 1,
       "kerb": {
-       "x": 321,
-       "z": -186.2
-      },
-      "kerbSide": 1
+       "x": 4764.0,
+       "z": 4656.0
+      }
      }
     }
    ],
-   "timeLimit": 215,
+   "timeLimit": 402,
    "payout": 408,
-   "fine": 60
+   "fine": 60,
+   "startRadius": 300.0
   },
   {
    "id": "evening-bus",
@@ -2085,25 +2160,24 @@
    "vehicle": "bus",
    "stops": [
     {
-     "label": "Bus stop 1 of 4 on 4th Avenue (Santhi Colony Road)",
-     "x": -974.9,
-     "z": 233.5,
+     "label": "Bus stop 1 of 4, Avvai Thiru Nagar",
+     "x": -2020.7,
+     "z": 1906.0,
      "radius": 8,
      "dwell": 5,
      "due": 174,
      "fare": {
       "board": 3,
       "kerb": {
-       "x": -975,
-       "z": 237.8
-      },
-      "kerbSide": 1
+       "x": -2026.3,
+       "z": 1906.1
+      }
      }
     },
     {
-     "label": "Bus stop 2 of 4 on 4th Avenue (Santhi Colony Road)",
-     "x": -715.2,
-     "z": 256.6,
+     "label": "Bus stop 2 of 4",
+     "x": -1910.8,
+     "z": 1743.8,
      "radius": 8,
      "dwell": 5,
      "due": 248,
@@ -2111,16 +2185,15 @@
       "board": 1,
       "alight": 2,
       "kerb": {
-       "x": -715,
-       "z": 252.3
-      },
-      "kerbSide": 1
+       "x": -1910.9,
+       "z": 1738.2
+      }
      }
     },
     {
-     "label": "Bus stop 3 of 4 on 4th Avenue (Santhi Colony Road)",
-     "x": -451.9,
-     "z": 266.6,
+     "label": "Bus stop 3 of 4",
+     "x": -1647.4,
+     "z": 1737.9,
      "radius": 8,
      "dwell": 5,
      "due": 323,
@@ -2128,33 +2201,32 @@
       "board": 2,
       "alight": 1,
       "kerb": {
-       "x": -451.7,
-       "z": 262.3
-      },
-      "kerbSide": 1
+       "x": -1641.3,
+       "z": 1743.3
+      }
      }
     },
     {
-     "label": "Bus stop 4 of 4 on 4th Avenue (Santhi Colony Road)",
-     "x": -190.9,
-     "z": 261.9,
+     "label": "Bus stop 4 of 4",
+     "x": -1386.5,
+     "z": 1730.9,
      "radius": 8,
      "dwell": 5,
      "due": 398,
      "fare": {
       "alight": 3,
       "kerb": {
-       "x": -191.1,
-       "z": 266.2
-      },
-      "kerbSide": 1
+       "x": -1386.6,
+       "z": 1725.3
+      }
      }
     }
    ],
    "timeLimit": 454,
    "payout": 1400,
    "fine": 150,
-   "minReputation": 62
+   "minReputation": 62,
+   "startRadius": 300.0
   },
   {
    "id": "marina-evening",
@@ -4600,32 +4672,32 @@
    "id": "hospital",
    "kind": "hospital",
    "name": "Sugam Hospital",
-   "x": 311.4,
-   "z": 45.2,
+   "x": 3581.6,
+   "z": 179.4,
    "radius": 3
   },
   {
    "id": "gym",
    "kind": "gym",
    "name": "Thol Power Gym",
-   "x": -112.5,
-   "z": -148.7,
+   "x": 1068.8,
+   "z": 4735.8,
    "radius": 3
   },
   {
    "id": "mall",
    "kind": "mall",
    "name": "Vaanavil Mall",
-   "x": 156.6,
-   "z": -301.2,
+   "x": 1198.8,
+   "z": 11979.7,
    "radius": 3
   },
   {
    "id": "cinema",
    "kind": "cinema",
    "name": "Minnal Cinemas",
-   "x": 314.8,
-   "z": -29.1,
+   "x": -707.4,
+   "z": 3404.4,
    "radius": 3
   }
  ],
@@ -4646,8 +4718,8 @@
     {
      "type": "reach",
      "label": "Drive Paati to Sugam Hospital. Gently: she is holding a tiffin box",
-     "x": 311.4,
-     "z": 45.2,
+     "x": 3583.5,
+     "z": 186.7,
      "radius": 10,
      "mode": "car",
      "stop": true
@@ -4657,8 +4729,8 @@
      "label": "Walk Paati in for her check-up (ENTER Sugam Hospital)",
      "place": "hospital",
      "activity": "checkup",
-     "x": 311.4,
-     "z": 45.2,
+     "x": 3581.6,
+     "z": 179.4,
      "radius": 3
     },
     {
@@ -4669,7 +4741,7 @@
      "radius": 10,
      "mode": "car",
      "stop": true,
-     "timeLimit": 139
+     "timeLimit": 734
     }
    ]
   },
@@ -4686,15 +4758,15 @@
      "label": "Match Selva: 4 good reps out of 5 (in the gym)",
      "place": "gym",
      "activity": "gym-bet",
-     "x": -112.5,
-     "z": -148.7,
+     "x": 1068.8,
+     "z": 4735.8,
      "radius": 3
     },
     {
      "type": "reach",
      "label": "Race Selva to the juice shop, on foot",
-     "x": -102.4,
-     "z": -270,
+     "x": 1163.3,
+     "z": 4644.4,
      "radius": 5,
      "mode": "foot",
      "timeLimit": 50
@@ -4717,8 +4789,8 @@
     {
      "type": "reach",
      "label": "Pick up Ravi (he is still choosing a shirt)",
-     "x": 157.4,
-     "z": -60.3,
+     "x": -654.8,
+     "z": 3550.7,
      "radius": 7,
      "mode": "bike",
      "stop": true
@@ -4726,8 +4798,8 @@
     {
      "type": "reach",
      "label": "Ride to Minnal Cinemas before the hero's entry",
-     "x": 314.8,
-     "z": -29.1,
+     "x": -707.0,
+     "z": 3398.8,
      "radius": 10,
      "mode": "bike",
      "stop": true,
@@ -4738,8 +4810,8 @@
      "label": "Go in for the first show (ENTER Minnal Cinemas)",
      "place": "cinema",
      "activity": "first-show",
-     "x": 314.8,
-     "z": -29.1,
+     "x": -707.4,
+     "z": 3404.4,
      "radius": 3
     }
    ]

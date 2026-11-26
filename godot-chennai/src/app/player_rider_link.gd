@@ -25,6 +25,13 @@ var _advanced_frame: int = -1
 var _throwing := false
 
 
+## The anchor joins the tree on the first ride; a link that never rode would leave its node behind
+## when it is freed (a node is not reference counted), so the last owner frees it (G-456).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(_anchor) and _anchor.get_parent() == null:
+		_anchor.free()
+
+
 static func make(p: PlayerController) -> PlayerRiderLink:
 	var link := PlayerRiderLink.new()
 	link.player = p

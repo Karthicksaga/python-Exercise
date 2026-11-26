@@ -302,3 +302,62 @@ func test_the_overlay_steps_aside_for_the_pause_menu() -> bool:
 	DebugSettings.reset_shared()
 	_restore()
 	return true
+
+
+## Motion blur (G-451): off by default, so Main holds no blur node and no layer; on only where the
+## preset is High and the row was pressed; the row is hidden on Low and Medium.
+func test_motion_blur_row_and_node() -> bool:
+	DebugSettings.reset_shared()
+	var main := await _boot()
+	var s := main.perf.settings
+	var layers_before := _blur_layers(main)
+	assert_true(main.perf.blur == null and main.find_child("MotionBlur", false, false) == null, "default: no blur node in Main")
+	assert_eq(layers_before, 0, "and no blur layer anywhere")
+	for host: Object in [main.pause_menu, main.title]:
+		var row: Button = host.call(&"setting_button", &"MotionBlur")
+		assert_true(row != null and row.text == "Motion blur: Off" and row.visible, "%s: the row shows on High, Off" % host)
+	main.pause_menu.setting_button(&"MotionBlur").pressed.emit()
+	assert_true(s.motion_blur and main.perf.blur != null and main.perf.blur.is_on(), "pressing it on High adds the node")
+	assert_eq(main.title.setting_button(&"MotionBlur").text, "Motion blur: On", "and the title row follows")
+	assert_eq(_blur_layers(main), 1, "its one layer exists")
+	s.set_preset(QualitySettings.MEDIUM)
+	assert_true(main.perf.blur == null and _blur_layers(main) == 0, "Medium: the node and layer are gone although chosen")
+	assert_false(main.pause_menu.setting_button(&"MotionBlur").visible or main.title.setting_button(&"MotionBlur").visible, "and the rows are hidden")
+	s.set_preset(QualitySettings.LOW)
+	assert_true(main.perf.blur == null, "Low: none")
+	s.set_preset(QualitySettings.HIGH)
+	assert_true(main.perf.blur != null and main.pause_menu.setting_button(&"MotionBlur").visible, "back on High: it returns, as chosen")
+	main.pause_menu.setting_button(&"MotionBlur").pressed.emit()
+	await wait_frames(2)
+	assert_true(main.perf.blur == null and _blur_layers(main) == 0, "pressed off: node freed, no layer")
+	DebugSettings.reset_shared()
+	_restore()
+	return true
+
+
+func _blur_layers(main: Main) -> int:
+	var n := 0
+	for c in main.find_children("MotionBlurLayer", "CanvasLayer", true, false):
+		if not c.is_queued_for_deletion():
+			n += 1
+	return n
+
+
+## The map credit (G-455): the HUD's steps aside while the pause menu is open, the menu's own
+## line stays, and both come back as they were.
+func test_the_map_credit_steps_aside_for_the_pause_menu() -> bool:
+	DebugSettings.reset_shared()
+	var main := await _boot()
+	var plate := main.hud.find_child("Credit", true, false).get_parent() as Control
+	assert_true(plate.is_visible_in_tree(), "the credit shows in play")
+	main.pause()
+	await wait_frames(3)
+	assert_false(plate.is_visible_in_tree(), "hidden while paused")
+	var own := main.pause_menu.find_child("Credit", true, false) as Label
+	assert_true(own.is_visible_in_tree() and own.text.contains("OpenStreetMap"), "the menu's own credit line shows: %s" % own.text)
+	main.resume()
+	await wait_frames(3)
+	assert_true(plate.is_visible_in_tree(), "back after resuming")
+	DebugSettings.reset_shared()
+	_restore()
+	return true

@@ -24,6 +24,8 @@ const OFF := &"off"
 const STATION := &"station"
 const RIDE := &"ride"
 const CAB := &"cab"
+## Room kept at the bottom right for the map credit's plate (`DebugHud`), UI units.
+const CREDIT_CLEAR := 30.0
 
 var mode: StringName = OFF
 var tamil_font: Font = null
@@ -39,6 +41,8 @@ var lever: NotchLever
 var dial: SpeedDial
 var horn: Button
 var emg: Button
+## The vigilance handle (dead man's handle, G-454): hold it while the train moves.
+var handle: HoldButton
 var doors: Label
 var leave: Button
 var step_off: Button
@@ -59,6 +63,7 @@ var _centre: VBoxContainer
 ## empty container is laid out (an empty one had a zero height, G-330).
 var _buttons: VBoxContainer
 var _cab_row: HBoxContainer
+var _action_row: HBoxContainer
 var _dragging: bool = false
 
 
@@ -155,6 +160,8 @@ func _ready() -> void:
 	right.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	right.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Above the map credit's plate at the bottom right (it sat over HORN and EMG, G-455).
+	right.offset_bottom = -CREDIT_CLEAR
 	layer.add_child(right)
 	doors = RailHudStyle.label(Tr.t("rail.hud.doors_closed"), 14)
 	doors.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -170,7 +177,7 @@ func _ready() -> void:
 	right.add_child(seat)
 	view = RailHudStyle.button_key("rail.hud.view")
 	view.pressed.connect(func() -> void: view_pressed.emit())
-	right.add_child(view)
+	actions.add_child(view)
 	var row := HBoxContainer.new()
 	row.name = "CabRow"
 	_cab_row = row
@@ -252,6 +259,7 @@ func set_mode(next: StringName) -> void:
 	dial.visible = cab
 	horn.visible = cab
 	emg.visible = cab
+	handle.visible = cab
 	doors.visible = cab
 	score.visible = cab
 	signal_chip.visible = cab
@@ -270,12 +278,13 @@ func set_mode(next: StringName) -> void:
 
 ## Shows a container only while one of its children shows.
 func _tidy() -> void:
-	_cab_row.visible = horn.visible or emg.visible
+	_cab_row.visible = horn.visible or emg.visible or handle.visible
+	_action_row.visible = leave.visible or step_off.visible or seat.visible or view.visible
 	var any := false
 	for c: Node in _buttons.get_children():
-		if c != _cab_row and (c as Control).visible:
+		if (c as Control).visible:
 			any = true
-	_buttons.visible = any or _cab_row.visible
+	_buttons.visible = any
 
 
 func set_info(title: String, tamil: String, line: String) -> void:
@@ -318,6 +327,31 @@ func set_cab(kmh: float, limit: float, notch: int, doors_open: bool, aspect: Str
 	score.text = Tr.line("rail.hud.score", [points])
 
 
+## The vigilance handle's state: seconds left before the warning (0 when it does not count),
+## the warning sounding, the emergency brake tripped. The label and colour follow.
+func set_vigilance(left: float, warning: bool, tripped: bool) -> void:
+	var text := "HOLD"
+	var colour := RailHudStyle.TEXT
+	if tripped:
+		text = "BRAKING"
+		colour = RailHudStyle.DANGER
+	elif warning:
+		text = "HOLD!"
+		colour = RailHudStyle.DANGER
+	elif left > 0.0 and left <= 5.0:
+		text = "HOLD %d" % ceili(left)
+		colour = RailHudStyle.AMBER
+	if handle.text != text:
+		handle.text = text
+		handle.add_theme_color_override("font_color", colour)
+		handle.add_theme_color_override("font_pressed_color", colour)
+
+
+## True while a finger (or the mouse) holds the handle and it is on screen.
+func handle_held() -> bool:
+	return handle.is_visible_in_tree() and handle.held()
+
+
 ## The timetable sheet: a title, rows of text, and the route map's data.
 func show_timetable(title: String, rows: PackedStringArray, lines: Array[Array], stations: Array[Array], at: Vector2, credit: String) -> void:
 	sheet_title.text = title
@@ -353,7 +387,7 @@ func _on_look_input(event: InputEvent) -> void:
 ## Every visible button (layout tests).
 func visible_buttons() -> Array[Button]:
 	var out: Array[Button] = []
-	for b: Button in [leave, step_off, seat, view, horn, emg, timetable, drive]:
+	for b: Button in [leave, step_off, seat, view, horn, emg, handle, timetable, drive]:
 		if b.is_visible_in_tree():
 			out.append(b)
 	return out

@@ -99,6 +99,13 @@ func _ready() -> void:
 	_load_settings()
 
 
+func _exit_tree() -> void:
+	# Tests and tools end here: collect the loads nobody asked for so they are not reported as
+	# leaks at exit (G-456). On a phone the process just ends; nothing waits.
+	if library != null and DisplayServer.get_name() == "headless":
+		library.drain()
+
+
 func _loop_player(id: String, bus: StringName) -> AudioStreamPlayer:
 	var p := AudioStreamPlayer.new()
 	p.bus = bus

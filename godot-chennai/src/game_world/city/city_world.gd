@@ -33,6 +33,8 @@ const SPAWN_NEAR := Vector2(40.0, 60.0)
 
 var source: WorldSource
 var layouts: CityLayouts
+## What the roads do to vehicles on them (G-450), filled in as chunks are built.
+var surface: RoadSurface
 var models: CityModels
 var building_pack: BuildingPack
 var materials: CityMaterials
@@ -80,6 +82,8 @@ func setup(world: WorldSource) -> String:
 	kit.road_extras = road_extras
 	kit.source = world
 	kit.layouts = layouts
+	surface = RoadSurface.create(layouts)
+	kit.surface = surface
 	kit.models = models
 	kit.materials = materials
 	var tree_models: TreeModels = await BackgroundTask.start(TreeKit.build_models).finish(get_tree())
@@ -104,9 +108,14 @@ func setup(world: WorldSource) -> String:
 	if show_landmarks:
 		landmarks = await BackgroundTask.start(func() -> Array[LandmarkSpec]: return LandmarkSpec.load_all()).finish(get_tree())
 	kit.landmarks = landmarks
-	var fixed: Array = await BackgroundTask.start(_build_fixed).finish(get_tree())
-	for node: Node3D in fixed:
+	var fixed: Dictionary = await BackgroundTask.start(_build_fixed).finish(get_tree())
+	var fixed_nodes: Array = fixed["nodes"]
+	for node: Node3D in fixed_nodes:
 		_fixed.add_child(node)
+	# The heroes' own atlas materials follow the preset's lighting like the shared ones (G-452).
+	var fixed_materials: Array = fixed["materials"]
+	for m: StandardMaterial3D in fixed_materials:
+		materials.add_hero(m)
 	if focus_node == null and focus == Vector2.ZERO:
 		focus = spawn["point"]
 	streamer.focus = _focus_world()
@@ -146,8 +155,9 @@ func nearest_road_point(point: Vector2) -> Dictionary:
 
 ## Landmarks, sea and edge walls as nodes outside the tree (worker thread). Landmark models come
 ## from their specs and GLBs (`LandmarkModels`, G-183); the GLBs load here, on the worker.
-func _build_fixed() -> Array:
+func _build_fixed() -> Dictionary:
 	var out: Array = []
+	var hero_materials: Array[StandardMaterial3D] = []
 	var bounds := source.get_bounds()
 	for spec in landmarks:
 		if not bounds.has_point(spec.origin):
@@ -157,11 +167,13 @@ func _build_fixed() -> Array:
 			push_warning(built.error)
 		if built.node != null:
 			out.append(built.node)
+		if built.material != null:
+			hero_materials.append(built.material)
 	var sea := source.get_sea()
 	if sea != null and sea.outline.size() >= 3:
 		out.append(_sea(sea))
 	out.append(_edges(source.get_bounds()))
-	return out
+	return {"nodes": out, "materials": hero_materials}
 
 
 ## Places itself at its world point when it enters the tree, and follows the floating origin.

@@ -162,17 +162,49 @@ func _add_rows() -> void:
 			continue
 		host.call(&"add_setting", &"Quality", func() -> String: return "%s\n%s" % [settings.row_label(), settings.explain()], func() -> void: settings.next_preset())
 		host.call(&"add_setting", &"PerfOverlay", DebugSettings.label, DebugSettings.toggle)
+		# The motion blur (G-451): off by default, a row only where the preset can draw it (High).
+		var blur_row := host.call(&"add_setting", &"MotionBlur", settings.motion_blur_label, func() -> void: settings.set_motion_blur(not settings.motion_blur)) as Button
+		blur_row.visible = settings.motion_blur_available()
 	if main.pause_menu != null:
 		main.pause_menu.add_setting(&"PerfSummary", func() -> String: return summary + " (tap: copy log)", copy_log)
 
 
 func _on_settings() -> void:
 	apply()
+	_refresh_blur_rows()
 	_show_overlay(DebugSettings.shared().perf_overlay)
 	if main.pause_menu != null:
 		main.pause_menu.refresh()
 	if main.title != null:
 		main.title.refresh_settings()
+
+
+## The motion blur (G-451): a node in Main only while it is chosen and the preset allows it (High);
+## otherwise none exists, so it holds no layer and costs nothing.
+var blur: MotionBlur = null
+
+
+func _apply_motion_blur(v: Dictionary) -> void:
+	if settings.motion_blur_active():
+		if blur == null:
+			blur = MotionBlur.new()
+			main.add_child(blur)
+		blur.configure(v, settings.motion_blur)
+	elif blur != null:
+		blur.configure(v, false)
+		main.remove_child(blur)
+		blur.queue_free()
+		blur = null
+
+
+## Rows exist where the preset can draw the blur (the pause menu and the title's Settings).
+func _refresh_blur_rows() -> void:
+	for host: Object in [main.pause_menu, main.title]:
+		if host == null:
+			continue
+		var row := host.call(&"setting_button", &"MotionBlur") as Button
+		if row != null:
+			row.visible = settings.motion_blur_available()
 
 
 ## The shader warm-up at the end of loading (G-346): its result, for tests and the log.
@@ -269,6 +301,7 @@ func apply() -> void:
 		if tw.camera != null:
 			tw.camera.far = minf(900.0, float(v["camera_far"]) * 1.5)
 	switches.apply_all()
+	_apply_motion_blur(v)
 
 
 ## Optional road detail follows the preset (G-317 on agent/godot-roads: 0 Low, 1 Medium, 2 High,
@@ -382,6 +415,13 @@ func _post_draw() -> void:
 enum Counter { NODES, OBJECTS, PIPELINES, BUFFERS, TEXTURES }
 
 
+## The player's speed in a vehicle while playing (m/s), else 0: what the blur follows.
+func _driven_speed() -> float:
+	if main.state != &"play" or main.play_wiring == null or main.play_wiring.driving.vehicle == null:
+		return 0.0
+	return main.play_wiring.driving.vehicle.forward_speed()
+
+
 func _frame_closed() -> void:
 	var now := PackedInt64Array([
 		int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),
@@ -411,6 +451,8 @@ func _process(_delta: float) -> void:
 	var ms := (now - _last_usec) / 1000.0
 	var dt := ms / 1000.0
 	_last_usec = now
+	if blur != null:
+		blur.update(_driven_speed(), dt)
 	var physics := Engine.get_physics_frames()
 	var steps := physics - _last_physics
 	_last_physics = physics

@@ -52,6 +52,12 @@ const STEER_RATE := 2.6
 ## Rapier's chassis damping (linear 0.08, angular 1.2 per second).
 const LINEAR_DAMP := 0.08
 const ANGULAR_DAMP := 1.2
+## Rolling faster than a surface allows slows the vehicle at this rate (m/s²).
+const SURFACE_DRAG := 3.0
+## How fast the surface's top speed and grip are eased in, per second.
+const GROUND_EASE := 1.0
+## Vertical acceleration per metre of surface bump amplitude (m/s² of the wobble; the body rides it as a few centimetres).
+const BUMP_GAIN := 500.0
 ## Rapier's gravity, m/s².
 const GRAVITY := 9.81
 
@@ -61,6 +67,10 @@ var throttle: float = 0.0
 var steer: float = 0.0
 ## 0 to 1.
 var brake: float = 0.0
+## The surface the vehicle is on, as the wiring last reported it (`set_ground`), and what the
+## wheels use now: eased towards it so a change of road is felt, not a jolt (G-450).
+var ground_target: GroundFeel = GroundFeel.new()
+var ground: GroundFeel = GroundFeel.new()
 
 var spec: VehicleSpec
 
@@ -79,6 +89,8 @@ var _halt_requested := false
 var _teleport_to: Transform3D
 var _teleport_requested := false
 var _ray := PhysicsRayQueryParameters3D.new()
+## Distance rolled (metres), the phase of the surface bumps.
+var _travel := 0.0
 
 
 ## Builds the chassis from a spec: mass, box collider, damping, axis locks, CCD. Call before
@@ -141,6 +153,11 @@ func set_controls(new_throttle: float, new_steer: float, new_brake: float) -> vo
 	brake = clampf(new_brake, 0.0, 1.0)
 	if throttle != 0.0 or brake > 0.0:
 		sleeping = false
+
+
+## Tell the vehicle what it is driving on (null: good tar). Takes effect gradually.
+func set_ground(feel: GroundFeel) -> void:
+	ground_target = feel if feel != null else GroundFeel.new()
 
 
 ## Heading in radians: 0 faces -Z (north), positive turning left.
@@ -230,12 +247,17 @@ func _drive(state: PhysicsDirectBodyState3D) -> void:
 	var w := state.angular_velocity
 	var speed := v.dot(forward)
 
-	# Engine: full force at standstill, fading to nothing at top speed.
+	_ease_ground(dt)
+	# Engine: full force at standstill, fading to nothing at top speed (less on a bad surface).
+	var top := spec.max_speed * ground.top_speed
 	var force := 0.0
-	if throttle > 0.0 and speed < spec.max_speed:
-		force = spec.engine_force * throttle * minf(1.0, (spec.max_speed - speed) / 4.0)
-	elif throttle < 0.0 and speed > -spec.max_speed / 3.0:
+	if throttle > 0.0 and speed < top:
+		force = spec.engine_force * throttle * minf(1.0, (top - speed) / 4.0)
+	elif throttle < 0.0 and speed > -top / 3.0:
 		force = spec.engine_force * 0.6 * throttle
+	if speed > top:
+		# Rolled onto mud faster than it allows: the surface drags it down, gently (a crash is 1.6 m/s in one step).
+		v -= forward * minf(speed - top, SURFACE_DRAG * dt)
 	# Lifting off slows the vehicle gently, like engine braking.
 	var coasting := throttle == 0.0 and brake == 0.0
 	var brake_total := brake * spec.brake_force + (spec.brake_force * 0.06 if coasting else 0.0)
@@ -322,7 +344,7 @@ func _drive(state: PhysicsDirectBodyState3D) -> void:
 		fwds[i] = normal.cross(axle).normalized()
 		var r := contact_point[i] - com
 		var rel := (v + w.cross(r)).dot(axle)
-		side_imp[i] = -SIDE_CONTACT_DAMPING * rel / _denominator(r, axle) * _side_stiffness[i]
+		side_imp[i] = -SIDE_CONTACT_DAMPING * rel / _denominator(r, axle) * _side_stiffness[i] * ground.grip
 	var sliding := false
 	var skid := PackedFloat32Array()
 	skid.resize(n)
@@ -341,7 +363,7 @@ func _drive(state: PhysicsDirectBodyState3D) -> void:
 			var vrel := (v + w.cross(r)).dot(fwds[i])
 			rolling = clampf(-vrel / _denominator(r, fwds[i]) / on_ground, -max_imp, max_imp)
 		fwd_imp[i] = rolling
-		var max_imp_grip := susp_force[i] * dt * _friction_slip[i]
+		var max_imp_grip := susp_force[i] * dt * _friction_slip[i] * ground.grip
 		var x := rolling * FORWARD_FACTOR
 		var y := side_imp[i]
 		var sq := x * x + y * y
@@ -360,8 +382,29 @@ func _drive(state: PhysicsDirectBodyState3D) -> void:
 		var j := fwds[i] * fwd_imp[i] + axles[i] * side_imp[i]
 		v += j / spec.mass
 		w.y += _inv_yaw_inertia * r.cross(j).y
+	if ground.bump > 0.0 and on_ground > 0:
+		v.y += _jostle(speed, dt)
 	state.linear_velocity = v
 	state.angular_velocity = Vector3(0.0, w.y, 0.0)
+
+
+## Moves `ground` towards `ground_target`: at once when nothing is set, else over about a second.
+func _ease_ground(dt: float) -> void:
+	var t := ground_target
+	var g := ground
+	var rate := GROUND_EASE * dt
+	g.top_speed = move_toward(g.top_speed, t.top_speed, rate)
+	g.grip = move_toward(g.grip, t.grip, rate)
+	g.bump = move_toward(g.bump, t.bump, rate * 0.1)
+	g.wet = t.wet
+
+
+## A small vertical push for this step on a rough surface: a smooth pseudo-random wobble along the
+## distance rolled, so the same stretch always feels the same, scaled by speed.
+func _jostle(speed: float, dt: float) -> float:
+	_travel += absf(speed) * dt
+	var n := sin(_travel * 2.3) * 0.6 + sin(_travel * 5.9 + 1.3) * 0.4
+	return ground.bump * BUMP_GAIN * n * minf(absf(speed) / 10.0, 1.0) * dt
 
 
 ## Bullet's impulse denominator for a unit impulse along `dir` at `r` from the centre (only yaw can turn).

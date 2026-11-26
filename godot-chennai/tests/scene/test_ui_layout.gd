@@ -101,3 +101,65 @@ func test_screens_fit_every_size() -> bool:
 		vp.queue_free()
 		await wait_frames(1)
 	return true
+
+
+## The pause menu's panel grows with its widest row (the perf summary and the graphics row are long),
+## and on an ultra-wide phone (2460 x 1080 is 938 x 412 UI units) its corner met the map credit
+## (owner's screenshot, G-455). The credit is not drawn while the menu is open; the menu carries its
+## own credit line inside the panel, so the attribution stays on screen and nothing overlaps.
+const PAUSE_SIZES: Array[Vector2i] = [Vector2i(938, 412), Vector2i(915, 412), Vector2i(915, 458), Vector2i(1098, 412), Vector2i(915, 686)]
+
+
+func _pause_menu(vp: SubViewport) -> PauseMenu:
+	var menu := PauseMenu.new()
+	vp.add_child(menu)
+	var rows := {
+		&"Time": "Time: Evening (17:45)", &"Weather": "Weather: Clear", &"Sound": "Sound: On",
+		&"Quality": "Graphics: Auto (High)\nfull resolution, long shadows, full traffic", &"PerfOverlay": "Performance overlay: Off",
+		&"MotionBlur": "Motion blur: Off", &"MinimapMode": "Minimap: turns with you",
+		&"PerfSummary": "Perf: 29 fps · worst 71 ms · GPU-bound · High (tap: copy log)",
+	}
+	for id: StringName in rows:
+		var text: String = rows[id]
+		menu.add_setting(id, func() -> String: return text, func() -> void: pass)
+	ControlSettingsRows.add_to(menu, ControlSettings.new())
+	return menu
+
+
+func test_pause_menu_and_the_map_credit_never_overlap() -> bool:
+	for size in PAUSE_SIZES:
+		var vp := _viewport(size)
+		var hud: DebugHud = HUD.instantiate()
+		hud.settings = DebugSettings.new()
+		hud.settings.path = "user://layout-test-debug.json"
+		vp.add_child(hud)
+		var menu := _pause_menu(vp)
+		menu.set_credit("© OpenStreetMap contributors")
+		await wait_frames(2)
+		var credit := hud.find_child("Credit", true, false) as Control
+		check(credit.is_visible_in_tree(), "%s: the credit shows while playing" % size)
+		menu.open()
+		hud.set_credit_shown(false)
+		await wait_frames(3)
+		check(not credit.is_visible_in_tree(), "%s: the HUD credit is hidden while paused" % size)
+		var panel := menu.find_child("Panel", true, false) as Control
+		var own := menu.find_child("Credit", true, false) as Control
+		check(own != null and own.is_visible_in_tree() and own.get_global_rect().size.y > 0.0, "%s: the menu shows its own credit line" % size)
+		var screen := Rect2(Vector2.ZERO, Vector2(vp.size))
+		check(screen.encloses(panel.get_global_rect().grow(-0.5)), "%s: the pause panel is on screen %s" % [size, panel.get_global_rect()])
+		check(panel.get_global_rect().encloses(own.get_global_rect().grow(-0.5)), "%s: the menu's credit sits inside its panel" % size)
+		# What shows of a row is what is inside the list's window (the rest scrolls, clipped).
+		var scrolls := menu.find_children("*", "TouchScroll", true, false)
+		var window: Control = scrolls[0] as Control if not scrolls.is_empty() else null
+		for b in menu.find_children("*", "Button", true, false):
+			var btn := b as Button
+			if btn.is_visible_in_tree():
+				var shown := btn.get_global_rect().intersection(window.get_global_rect()) if window != null else btn.get_global_rect()
+				check(shown.size.x <= 0.0 or shown.size.y <= 0.0 or not shown.intersects(own.get_global_rect()), "%s: %s does not cover the credit line" % [size, btn.name])
+		menu.close()
+		hud.set_credit_shown(true)
+		await wait_frames(2)
+		check(credit.is_visible_in_tree(), "%s: back after resuming" % size)
+		vp.queue_free()
+		await wait_frames(1)
+	return true

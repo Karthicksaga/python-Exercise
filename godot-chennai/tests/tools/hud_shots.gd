@@ -53,6 +53,12 @@ func _run() -> void:
 	root.add_child(menu)
 	ControlSettingsRows.add_to(menu, s)
 	menu.add_setting(&"PerfOverlay", DebugSettings.label, DebugSettings.toggle)
+	# The long rows of the real game (they make the panel wide) and Main's credit wiring (G-455).
+	menu.add_setting(&"Quality", func() -> String: return "Graphics: Auto (High)\nfull resolution, long shadows, full traffic", func() -> void: pass)
+	menu.add_setting(&"PerfSummary", func() -> String: return "Perf: 29 fps · worst 71 ms · GPU-bound · High (tap: copy log)", func() -> void: pass)
+	menu.set_credit("© OpenStreetMap contributors")
+	menu.opened.connect(func() -> void: hud_node.call("set_credit_shown", false))
+	menu.closed.connect(func() -> void: hud_node.call("set_credit_shown", true))
 	menu.show_pause_button(true)
 	await _frames(30)
 	match shot:
