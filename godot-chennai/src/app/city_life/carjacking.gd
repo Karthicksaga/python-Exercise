@@ -36,6 +36,8 @@ var life: CityLife
 var driving: Driving
 ## The game's wanted level (Phase 5 wires one); null: the crime is only signalled.
 var wanted: Wanted = null
+## Peace zones (G-481): nobody is pulled from a vehicle and no crime is reported inside one; null: none.
+var peace: PeaceZones = null
 ## The swapped vehicle waiting to be taken, its agent and its seated driver.
 var vehicle: Vehicle = null
 var agent_id: int = -1
@@ -134,6 +136,8 @@ func _step(dt: float) -> void:
 func offer() -> Variant:
 	if driving.mode() != &"foot" or driving.rider == null or driving.boarding != null:
 		return null
+	if peace != null and not peace.allows("take_over", WorldOrigin.to_world(driving.rider.position())):
+		return null
 	if vehicle != null:
 		if _pulled:
 			return null
@@ -218,7 +222,7 @@ func _on_boarding(v: Vehicle, event: StringName) -> void:
 	v.remove_meta(&"driver_aboard")
 	var at := WorldOrigin.to_world(v.global_position)
 	var look := life.views[agent_id].variant.id
-	if wanted != null:
+	if wanted != null and (peace == null or peace.allows("wanted", at)):
 		wanted.report("carjacking")
 	carjacked.emit(look, at)
 	_scare_at = at

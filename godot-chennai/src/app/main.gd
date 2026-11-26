@@ -38,6 +38,8 @@ var life: CityLife = null
 var railway: Railway = null
 ## Taking over traffic cars, autos and bikes on foot (G-300); the ACTION button's TAKE OVER.
 var carjacking: Carjacking = null
+## The heritage journal, the temple visit, the peace zones and swimming (G-480…G-489).
+var culture: CultureWiring = null
 ## People and traffic riders react to being hit by the player's vehicle (G-362, G-363).
 var street_reactions: StreetReactions = null
 ## Health, fights, weapons, gangs, the wanted level and the police (G-410…G-429).
@@ -266,6 +268,23 @@ func _add_combat() -> String:
 	return error
 
 
+## The heritage journal, the temple visit, peace zones and swimming (`CultureWiring`); its toasts use the
+## mission HUD's, the peace zones go to the systems that keep their rules.
+func _add_culture() -> void:
+	if culture != null:
+		return
+	culture = CultureWiring.make(world, rig, play_wiring.driving)
+	culture.toast = func(title: String, detail: String, seconds: float) -> void:
+		var layer := find_child("MissionsLayer", false, false) as MissionsLayer
+		if layer != null and layer.hud != null:
+			layer.hud.toast(title, detail, seconds)
+	world.add_child(culture)
+	culture.share_peace([play_wiring.wiring, carjacking, street_reactions])
+	culture.active = state == &"play"
+	state_changed.connect(func(s: StringName) -> void: culture.active = s == &"play")
+	title.new_game_requested.connect(culture.new_game)
+
+
 ## The railway (G-320…G-334): tracks, stations, trains, riding and driving, its HUD.
 func _add_railway() -> String:
 	if railway != null:
@@ -308,6 +327,7 @@ func _add_pause_menu() -> void:
 	pause_menu.resume_requested.connect(resume)
 	pause_menu.title_requested.connect(show_title)
 	pause_menu.map_requested.connect(_open_map)
+	pause_menu.journal_requested.connect(_open_journal)
 	# The map's one option, on the pause menu and on the title's SETTINGS page like the others (G-281).
 	var map_settings := MapSettings.shared()
 	for host: Object in [pause_menu, title]:
@@ -444,6 +464,12 @@ func _on_map_closed() -> void:
 		pause_menu.open()
 
 
+## The heritage journal, from the pause menu (G-482).
+func _open_journal() -> void:
+	if culture != null:
+		culture.open_journal()
+
+
 func resume() -> void:
 	if state != &"paused":
 		return
@@ -480,6 +506,8 @@ func go_back() -> void:
 	# The full map is a level above the pause menu: Back closes it first (G-281).
 	var layer := find_child("MissionsLayer", false, false) as MissionsLayer
 	if layer != null and layer.close_map():
+		return
+	if culture != null and culture.close_journal():
 		return
 	match state:
 		&"play":

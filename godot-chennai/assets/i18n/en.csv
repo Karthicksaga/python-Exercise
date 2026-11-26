@@ -37,6 +37,53 @@ ctl.jump,JUMP
 ctl.reverse,REVERSE
 ctl.run,RUN
 ctl.siren,SIREN
+cul.act.get_out,GET OUT
+cul.act.leave_shoes,LEAVE SANDALS
+cul.act.light_lamp,LIGHT LAMP
+cul.act.swim,SWIM
+cul.journal.close_tip,Close the journal
+cul.journal.count,{0} of {1} places visited
+cul.journal.done,Visit completed
+cul.journal.empty,Nothing is written here yet. Visit the places of the city and they fill in.
+cul.journal.locked,A place to find in Chennai
+cul.journal.locked_hint,Visit it and it is written here.
+cul.journal.title,HERITAGE JOURNAL
+cul.peace.no_violence,Not here. This is a peaceful place.
+cul.stop.anna-nagar-tower.line,Built for the 1968 World Trade Fair; about 41 m tall with 12 floors.
+cul.stop.anna-nagar-tower.name,Anna Nagar Tower
+cul.stop.chennai-central.line,Opened in 1873; the clock tower in the middle of the building was added around 1900.
+cul.stop.chennai-central.name,Chennai Central
+cul.stop.chennai-egmore.line,"Opened in 1908 in the Indo-Saracenic style, with Dravidian motifs."
+cul.stop.chennai-egmore.name,Chennai Egmore
+cul.stop.chennai-lighthouse.line,"Lit in 1977: a triangular concrete tower, 45.7 m tall, on the Marina."
+cul.stop.chennai-lighthouse.name,Chennai Lighthouse
+cul.stop.kapaleeshwarar-tank.line,"The temple's stepped water tank, west of the temple. People walk its steps and watch the water; nobody goes in."
+cul.stop.kapaleeshwarar-tank.name,Kapaleeshwarar Temple Tank
+cul.stop.kapaleeshwarar-temple.line,"A Dravidian temple in Mylapore; its seven-tier east gateway tower, built in 1906, is about 37 m tall."
+cul.stop.kapaleeshwarar-temple.name,Kapaleeshwarar Temple
+cul.stop.kathipara-junction.line,A cloverleaf junction where the Inner Ring Road meets the Grand Southern Trunk Road.
+cul.stop.kathipara-junction.name,Kathipara Junction
+cul.stop.marina-beach.line,"A long city beach on the Bay of Bengal. Walk the sand, swim in the shallows and stay inside the rope line."
+cul.stop.marina-beach.name,Marina Beach
+cul.stop.ripon-building.line,Home of the Greater Chennai Corporation; its foundation stone was laid in 1909.
+cul.stop.ripon-building.name,Ripon Building
+cul.swim.bank,Stay between the banks.
+cul.swim.energy,ENERGY
+cul.swim.hint,Shallow water. Swim towards the shore to get out.
+cul.swim.not_here,Not here: this water is not for swimming.
+cul.swim.rope,Stay inside the rope line.
+cul.swim.tired,You are tired. The water carries you back to the shore.
+cul.temple.complete,You have walked round the shrines
+cul.temple.complete_detail,A quiet visit. It is written in your heritage journal.
+cul.temple.half,Halfway round.
+cul.temple.lamp,The lamp is lit
+cul.temple.lamp_detail,"Walk once round the shrines, keeping them on your right."
+cul.temple.shoes_off,Your sandals are on the stand.
+cul.temple.shoes_on,You take your sandals back. Come again.
+cul.temple.vehicle_outside,Please leave your vehicle outside the temple.
+cul.temple.welcome,Kapaleeshwarar Temple
+cul.temple.welcome_detail,"A place of worship. Please walk quietly, and leave your sandals at the stand."
+cul.toast.added,Added to your heritage journal
 dlg.choice_wait,Nothing happens until you decide.
 dlg.choose,CHOOSE
 dlg.close,CLOSE
@@ -304,6 +351,7 @@ map.kind.vehicle,Vehicle
 map.me,ME
 map.north,N
 map.title,MAP
+menu.pause.journal,HERITAGE JOURNAL
 menu.pause.map,MAP
 menu.pause.quit,QUIT TO TITLE
 menu.pause.resume,RESUME

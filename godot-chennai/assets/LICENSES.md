@@ -145,3 +145,8 @@ is not worn by anyone here).
 |---|---|---|---|
 | `assets/buildings/pack_100/*.glb`, `assets/buildings/pack_100/catalog.json`, `assets/buildings/pack_100/lookup.bin` | 100 sculpted Chennai building archetypes across Residential, Commercial, Mixed-Use, Industrial, Institutional, Heritage, North Chennai, Coastal, and Canal/Streetscape packs (`LOD0/LOD1/LOD2` + `COL_*` collision boxes, linear vertex-coloured PBR) | Original models built in **Blender 5.3.0** by `tools/blender/buildings/chennai_kit.py` + `shard_1.py`..`shard_5.py` inspired by Chennai architectural styles; no photographs, no third-party meshes, no real brands | **CC0 1.0**, original work for the project |
 | `assets/i18n/en.csv`, `assets/i18n/ta.csv` | The game's text, one key per string: English and Tamil (G-440). Every Tamil row is marked `needs native review` until a native speaker has read it | Original, written for the project; the English is the game's own text, the Tamil is machine-written and unreviewed | **CC0 1.0**, original work for the project |
+
+## Culture and life (decisions G-480 to G-489)
+| Files | What | Source | Licence |
+|---|---|---|---|
+| `assets/culture/culture.json` | The heritage journal's places, the peace zone, the temple visit's places and the swimming rules (data only; the texts are `cul.*` keys in `assets/i18n`) | Original. Positions are from the landmark specs and `world/world.json` (OpenStreetMap, ODbL 1.0, © OpenStreetMap contributors); the one-line facts are from the specs' sourced facts | Original work for the project; map positions ODbL 1.0 |

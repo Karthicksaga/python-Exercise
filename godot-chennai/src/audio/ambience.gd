@@ -64,7 +64,7 @@ func level(name: String) -> float:
 
 
 ## Call every frame while playing. state: {hour, rain 0..1, coast m (INF inland), traffic 0..1, enclosed,
-## street (a `PlaceMap.KINDS` name, optional)}.
+## street (a `PlaceMap.KINDS` name, optional), calm 0..1 (a peace zone: the city's beds fade, G-483)}.
 func update(dt: float, state: Dictionary) -> void:
 	var hour: float = state.get("hour", 12.0)
 	var rain: float = state.get("rain", 0.0)
@@ -73,9 +73,12 @@ func update(dt: float, state: Dictionary) -> void:
 		var want := 1400.0 if enclosed else 18000.0
 		_muffle.cutoff_hz = lerpf(_muffle.cutoff_hz, want, 1.0 - exp(-dt / 0.3))
 	var street: StringName = state.get("street", &"")
+	var calm: float = clampf(float(state.get("calm", 0.0)), 0.0, 1.0)
 	var targets := SoundProfiles.ambience_levels(hour, rain, float(state.get("coast", INF)), float(state.get("traffic", 0.5)), street)
 	for name: String in targets:
-		_bed(name, dt, float(targets[name]))
+		# A calm place (the temple) lets the street's beds fade; the sea, rain and crickets stay.
+		var fade := 1.0 - 0.8 * calm if name in ["city", "market", "tea"] else 1.0
+		_bed(name, dt, float(targets[name]) * fade)
 	if enclosed:
 		return
 	var birds := SoundProfiles.wildlife(hour)
@@ -92,9 +95,10 @@ func update(dt: float, state: Dictionary) -> void:
 			played["crow"] = int(played["crow"]) + 1
 	_next_bell -= dt
 	if _next_bell <= 0.0:
-		_next_bell = SoundProfiles.temple_bell_wait(hour) * (0.7 + rng.randf() * 0.6)
-		if street == &"temple" and rain < 0.6:
-			_shot("bell.temple", 110.0, 240.0, 1.0)
+		_next_bell = SoundProfiles.temple_bell_wait(hour) * (0.7 + rng.randf() * 0.6) * (1.0 - 0.6 * calm)
+		if (street == &"temple" or calm > 0.3) and rain < 0.6:
+			# Inside the compound the bell is close and softer; on the street it is far off.
+			_shot("bell.temple", 110.0 - 85.0 * calm, 240.0 - 200.0 * calm, 1.0 - 0.4 * calm)
 			played["temple"] = int(played["temple"]) + 1
 	_next_honk -= dt
 	if _next_honk <= 0.0:
@@ -104,6 +108,11 @@ func update(dt: float, state: Dictionary) -> void:
 			var kinds: PackedStringArray = ["car", "car", "auto", "auto", "bike", "bus"]
 			_shot("horn.%s" % kinds[rng.randi_range(0, kinds.size() - 1)], 80.0, 220.0, 0.6)
 			played["honk"] = int(played["honk"]) + 1
+
+
+## A one-shot placed round the listener (the temple bell near the lamp), outside the random schedule.
+func ring(id: String, near: float, far: float, gain: float) -> void:
+	_shot(id, near, far, gain)
 
 
 func stop_all() -> void:
