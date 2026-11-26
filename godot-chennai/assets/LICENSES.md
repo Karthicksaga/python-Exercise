@@ -15,6 +15,20 @@ assets (for example the new cast in `assets/people/`) outside the markers.
 | `assets/fonts/*.woff2`, `assets/fonts/OFL.txt` | Noto Sans Tamil Bold cut to the shop-sign glyphs (`noto-sans-tamil-signs`), Noto Sans Tamil and Devanagari cut to the station names; `OFL.txt` is the licence text | Noto fonts (via `@fontsource`), subset with `pyftsubset` (`chennai-open-world/assets/README.md`) | SIL Open Font Licence 1.1, © The Noto Project Authors (`fonts/OFL.txt`) |
 <!-- sync_from_threejs:end -->
 
+## World building footprints (decisions G-220…G-226)
+The regional world in `world/` (not under `assets/`, listed here so every dataset in the game has
+its row) is built from OpenStreetMap; format 2.3 adds `world/tiles/*/fusion.bin`, buildings from
+three more datasets where OSM has none (`docs/fusion.md`; extract dates and checksums in
+`data/MANIFEST.json` and `world/ATTRIBUTION.md`). The combined files are a Derived Database under
+the ODbL 1.0.
+
+| Files | What | Source | Licence |
+|---|---|---|---|
+| `world/**` | Roads, buildings, areas, trees, places of the Chengalpattu-Pulicat world | OpenStreetMap, Tamil Nadu extract of 23 Nov 2026 (download.openstreetmap.fr) | **ODbL 1.0**: © OpenStreetMap contributors (ODbL) |
+| `world/tiles/*/fusion.bin` (source overture) | Building footprints Overture carries from Google and Microsoft machine learning, where OSM has none | Overture Maps Foundation (ODbL for buildings), release 2026-11-18.0, extract downloaded 24 Nov 2026 | **ODbL 1.0** |
+| `world/tiles/*/fusion.bin` (source google) | Building footprints (confidence at least 0.75) | Contains data from Google Open Buildings (ODbL), v3 polygons, downloaded 24 Nov 2026 | **ODbL 1.0** (Google offers CC BY 4.0 or ODbL; ODbL chosen, G-225) |
+| `world/tiles/*/fusion.bin` (source microsoft) | Building footprints | Microsoft Global ML Building Footprints (CDLA Permissive 2.0), release 2026-02-03, downloaded 24 Nov 2026 | **CDLA Permissive 2.0** (combined into the ODbL database) |
+
 ## Title screen fonts (decision G-160)
 | Files | What | Source | Licence |
 |---|---|---|---|

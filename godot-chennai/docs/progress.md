@@ -424,3 +424,13 @@ Details and numbers: `docs/transit.md`, `world/TRANSIT.md`.
 | Props as merged procedural meshes, glow at night, one real light (G-236) | Done | `test_every_prop_builds_a_small_model`, `test_a_furnished_room_is_two_meshes`, `test_a_furnished_room_is_cheap_to_draw`, `test_lamps_glow_only_at_night` |
 | Peace zone, police and vehicle entry rules (G-234) | Done (no live wanted level exists yet; a hook is ready) | `test_peace_zone_and_entry_rules`, `test_the_police_keep_you_out_and_back_leaves` |
 | Seen on a phone | Not done | — |
+## Building fusion: OSM + Overture + Google Open Buildings + Microsoft (branch `agent/godot-fusion`, 24 Nov 2026)
+| Item | State | How it was tested |
+|---|---|---|
+| Downloads for the world box (G-220) | Done: Overture 192 MB extract, Google 647 MB streamed (258 MB kept), Microsoft 73 MB | run by hand; pure helpers in pytest |
+| Fusion rules, measured thresholds 15 %/30 %, masks (G-222) | Done | `tools/geo/tests/test_fusion_multi.py` (fixture `fusion_small.json`) |
+| Height priority and validation (G-223) | Done; no independent heights in this box | `test_fusion_multi.py` |
+| `fusion.bin` format 2.3, provenance per building (G-221) | Done: 1,389,771 added, 23.4 MB | round trip and committed-world tests (`test_fusion_world.py`), `tests/unit/test_fusion.gd` |
+| Game: added buildings through the normal building path | Done (headless) | `test_fusion.gd` (no new draw calls, budgets, streaming of fusion-only squares) |
+| Credits on About, ATTRIBUTION.md, LICENSES.md (G-226) | Done | pytest + GDScript credit tests |
+| Screenshots before/after, main-thread measurement, APK size | Not done | — |

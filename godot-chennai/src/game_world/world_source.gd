@@ -60,6 +60,17 @@ func cell_at(point: Vector2) -> Vector2i:
 	return Vector2i(floori((point.x - o.x) / size), floori((point.y - o.y) / size))
 
 
+## Adds what other datasets give one decoded chunk (format 2.3, G-221): buildings where OSM has
+## none and heights for estimated OSM buildings. Nothing for worlds without them. Thread-safe.
+func apply_fusion(_chunk: ChunkData) -> void:
+	pass
+
+
+## Every credit line the data needs ("© OpenStreetMap contributors" first), for the About page.
+func get_data_credits() -> PackedStringArray:
+	return PackedStringArray([get_attribution()])
+
+
 ## Squares with content or road surface in the world (for the HUD).
 func chunk_count() -> int:
 	var index := index_at(get_bounds().get_center())

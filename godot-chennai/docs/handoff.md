@@ -1738,3 +1738,31 @@ scripts). Entering and leaving cost one fade each; suspending is four assignment
 - The doors and boards stand on the OSM walls, which are estimated geometry: a building drawn with
   a different front than its footprint edge may show the door a little off.
 - The 11 buildings were chosen by size and road distance, not looked at one by one.
+## Building fusion (agent/godot-fusion), 24 Nov 2026
+Format 2.3 (`fusion.bin`), decisions G-220…G-226; read `docs/fusion.md` (datasets, rules, measured
+thresholds, licences, weak points) and `world/FUSION.md` (per ring, tile and reason).
+
+**Data.** `tools/geo`: `cli fetch-buildings` (Overture 2026-11-18.0 via DuckDB bbox filter, Google
+Open Buildings v3 S2 cells 3a4d/3a53, Microsoft quadkeys; cache `$CHENNAI_FUSION_CACHE`, never
+committed; recorded in `data/MANIFEST.json buildings`), then `cli fuse` after every `build`
+(`build` deletes `world/`; fuse is deterministic, about 4.5 min, needs ~9 GB). 391,283 OSM
+buildings + 1,389,771 added (Overture 762,654, Google 602,434, Microsoft 24,683) = 1,781,054;
+ring 2 ×32, ring 3 ×115. No dataset has an independent height in this box; all added buildings
+are estimated. 23.4 MB of fusion.bin; world 37.0 → 62.3 MB.
+**Game.** `FusionTile` (`src/game_world/fusion/`), `RegionalWorldSource.tile_fusion/apply_fusion`,
+`WorldSource.apply_fusion/get_data_credits` (no-op/default for other sources),
+`ChunkBuilder.build` calls `apply_fusion` right after `read_chunk` (before landmarks and
+`apply_detail`, so palettes apply to added estimated houses). `read_chunk` is unchanged.
+Fusion-only squares come from `world.json fusion.cells`. About page: `TitleMenu.set_credits(…,
+others)`. `--no-fusion` in `city_shot.gd` and `infra_measure.gd` for before/after.
+**Measured (headless worker build, `test_fusion.gd`, one run, cold caches so noisy):** village
+(50, 210): 0 → 350 buildings, near triangles 824 → 35,955, draw calls 1 → 6 (the normal building
+layers), build ~75–91 ms; T. Nagar (121, 248): 103 → 155 buildings, near triangles 54,160 →
+69,198, draw calls 9 → 9.
+**Not done (stopped early at the coordinator's request, memory-limited machine):** before/after
+screenshots (village and city street, Compatibility 915×412 and 1830×824); `infra_measure`
+main-thread numbers with and without fusion (the full suite's
+`test_main_thread_budget_under_cpu_load` failed once with a 41.9 ms step, a known wall-clock
+flake, but whether fusion's larger chunks raise the step is NOT measured); a full `./run_tests.sh`
+after the merge of feat (filtered suites fusion/osm_detail/regional/boot pass; the full run
+before the merge had only that flake plus two expectations since fixed); APK size from CI.

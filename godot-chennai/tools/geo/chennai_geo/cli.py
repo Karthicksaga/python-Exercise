@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -38,6 +39,8 @@ BOUNDARY = DATA / "boundary" / "world-boundary.geojson"
 MANIFEST = DATA / "MANIFEST.json"
 WORLD = GODOT / "world"
 TODAY = REPO / "chennai-open-world" / "apps" / "game" / "public" / "world"
+# Building extracts (hundreds of MB) live outside the repository; never committed.
+FUSION_CACHE = Path(os.environ.get("CHENNAI_FUSION_CACHE", str(Path.home() / "geo-cache" / "fusion")))
 
 
 def _manifest() -> dict:

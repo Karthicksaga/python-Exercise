@@ -64,6 +64,8 @@ world/
   tiles/<tc>_<tr>/areas.bin        whole areas of the tile, simplified ("COWA"), for map/far layer
   tiles/<tc>_<tr>/infra.bin        format 2.1 only: road heights, waterways, street spots ("COWI", §3.7)
   tiles/<tc>_<tr>/detail.bin       format 2.2 only: building colours/parts, street objects, barriers, zones, sign categories ("COWD", §3.8)
+  tiles/<tc>_<tr>/fusion.bin       format 2.3 only: buildings from other datasets where OSM has none ("COWF", §3.9)
+  FUSION.md                        format 2.3: the fusion coverage report (by ring, source, reason, tile)
 ```
 
 A reader loads `world.json`, then the tiles around the player (3 × 3 tiles covers 10 km in every
@@ -92,8 +94,9 @@ world they are all ≥ 0.
 | `tiles` | [[tc, tr, chunkFiles, bytes, firstRing]] | every tile directory |
 | `landmarks` | [Landmark] | as today's `index.json` (id, kind, name, x, z, height?, levels?, radius?, opened?, source, estimated) |
 | `sea` | {coast: [{x, z}], outline: [{x, z}], source} | as today: the coastline (land on its left) carried 3 km past the edge, and the water's outline |
-| `minor` | int | **1** from format 2.1 (absent = 2.0). Minor versions only add files and keys; a 2.0 reader ignores them |
+| `minor` | int | **1** from format 2.1, **2** from 2.2 (detail.bin), **3** from 2.3 (fusion.bin); absent = 2.0. Minor versions only add files and keys; a 2.0 reader ignores them |
 | `infra` | {file, deckStep, note} | 2.1: the per-tile file name (`infra.bin`) and the deck sample step (5 m), §3.7 |
+| `fusion` | {file, sources, present, credits, extracts, cells, note} | 2.3 (`minor` 3): the per-tile file (`fusion.bin`), the source table (FUSION_SOURCES), the sources present, one credit line each (shown on the About page), the extracts used (id, release, date, licence, sha256, rows), and `cells`: `[col, row, ring]` of every square that holds only added buildings (no chunk record, no road), which a reader adds to its chunk table, §3.9 |
 
 ### 3.2 `tiles/<tc>_<tr>/tile.json`
 
@@ -342,13 +345,72 @@ building with such a tag, becomes a category; the OSM `name` is never stored. On
 stops, stations, lines and bus routes snapped to the road points of `roads.bin`. Written by
 `cli transit` from the extract and the built world; no 2.x file or `world.json` key changes, the
 files carry their own version. Layout in `docs/transit.md` §1.
+### 3.9 `fusion.bin` (format 2.3, decisions G-220…G-226)
+
+Added on 24 Nov 2026 without touching any 2.0 or 2.1 file (sha256 of every one checked before and
+after `cli fuse`): one `fusion.bin` per tile, the `fusion` key, `minor` 3 and the dataset
+`microsoft:mlbuildings` in `world.json`. Buildings from Overture Maps, Google Open Buildings v3
+and Microsoft ML footprints where OSM has none, and the heights these datasets give OSM buildings
+whose height was estimated. Rules and numbers: `docs/fusion.md`. Reference implementation:
+`tools/geo/chennai_geo/fusion_codec.py` (tests `tests/test_fusion_multi.py`,
+`tests/test_fusion_world.py`); GDScript reader `FusionTile`.
+
+```
+u32 magic   0x46574F43 ("COWF")
+u16 format  2
+u16 minor   3
+i16 tc, i16 tr
+u16 nSections
+section × nSections: u32 tag, u32 length, length bytes (unknown tags are skipped)
+
+"HGHT"  u32 count
+        count × { u32 building id (a chunks.bin building of this tile), u16 height × 10,
+                  u8 floors, u8 heightFrom (HEIGHT_FROM), u8 source (FUSION_SOURCES) }
+        Applied only to a building still labelled estimated.
+"BLDG"  u32 chunks
+        chunks × { i16 col, i16 row, u8 ring, u32 firstId, u16 n, n × record }
+record: u8 head      bits 0-1 source (FUSION_SOURCES), 2-3 Overture origin (OVERTURE_ORIGINS),
+                     4 polygon (else box), 5 apartments (else house), 6 height stored (else
+                     floors × 3.1 + 0.9), 7 heightFrom stored (else estimated)
+        [u8 heightFrom]   when bit 7
+        u8 floors
+        [u16 height × 10] when bit 6
+        u8 colour         WALL_COLORS index (invented, by a hash of the id as for OSM)
+        u8 confidence × 200 (255 = the source gives none)
+        varint            source row: zigzag LEB128 of (row − the previous row of the same source
+                          in this chunk, 0 before the first); records are sorted by source, row
+        box:     i16 cx, i16 cz (5 cm steps from the chunk centre), u8 length × 10, u8 width × 10
+                 (metres, length >= width, at most 25.5), u8 angle × 256 / π (long side,
+                 atan2(dz, dx) in [0, π)); corners c ∓ u ∓ v, anticlockwise from above
+        polygon: u8 n, n × { i16 dx, i16 dz } from the chunk centre, anticlockwise from above,
+                 simplified by 10 cm
+```
+
+Building id of record i of a chunk: `firstId + i`. Chunks are written in tile order (row, then
+col), the tiles in `world.json tiles` order by (tr, tc); firstIds run on from `0xC0000000`
+(§4). A building belongs to the square holding the average of its outline points (as OSM).
+
+| Table | Values (index order, append only) |
+|---|---|
+| FUSION_SOURCES | osm, overture, google, microsoft |
+| OVERTURE_ORIGINS | (none), google, microsoft, other |
+
+**Provenance.** `(source, row)` is the row of the footprint in that source's extract file as
+recorded in `data/MANIFEST.json buildings` (release, sha256): Overture's extract ordered by GERS
+id, Google's and Microsoft's in the order their upstream files were streamed. The ids themselves
+(GERS UUIDs, plus codes) are not shipped (about 30 MB); the row and the pinned extract recover
+them. In the game: `Building.fusion_source`, `fusion_origin`, `confidence`, `dataset` (3, 4 or 6)
+and `source_id` (the row).
 
 ## 4. Ids and provenance
 
 - **Game id** (`u32`, as today, feeds colour and estimated-floor variety via the TS `hash`):
   OSM way buildings keep their way id (the build fails if a way id reaches 2^31). Multipolygon
   relation parts: `0x80000000 | ((relationId << 3 | min(part, 7)) & 0x7FFFFFFF)`. New buildings
-  from fusion: from `0x40000000` up (phase 2).
+  from fusion (format 2.3): from `0xC0000000` up. (The first design said `0x40000000`, but OSM way
+  ids already pass it: 1,583,238,959 in this world. Relation parts reach `0xC0000000` only once
+  relation ids pass 134 million, about 19 million today; the highest part id here is
+  `0x8A2A3E60`. `cli fuse` fails if an OSM id ever reaches the range.)
 - **Provenance** is a `(dataset, sourceId)` pair, never dropped. `datasets` in `world.json`:
 
 | dataset | Meaning of sourceId |
@@ -356,9 +418,10 @@ files carry their own version. Layout in `docs/transit.md` §1.
 | 0 `osm:way` | OSM way id |
 | 1 `osm:relation` | OSM relation id |
 | 2 `osm:node` | OSM node id (64-bit; node ids already exceed 2^32) |
-| 3 `overture:buildings` | index into the world's external-id table (`ids/overture.txt`, one GERS id per line; phase 2) |
-| 4 `google:openbuildings` | index into `ids/openbuildings.txt` (plus codes; phase 2) |
+| 3 `overture:buildings` | row in the Overture extract (format 2.3, §3.9; the first design's `ids/overture.txt` table is not written) |
+| 4 `google:openbuildings` | row in the Google Open Buildings extract (§3.9) |
 | 5 `derived` | made by the build (none yet) |
+| 6 `microsoft:mlbuildings` | row in the Microsoft extract (format 2.3, written by `cli fuse`) |
 
 The list only grows at the end.
 
@@ -369,7 +432,7 @@ The list only grows at the end.
 | ROAD_KINDS | primary, secondary, tertiary, residential, service, footway, motorway, track, raceway |
 | HIGHWAY_CLASSES | (none), motorway, motorway_link, trunk, trunk_link, primary, primary_link, secondary, secondary_link, tertiary, tertiary_link, residential, unclassified, living_street, service, footway, path, pedestrian, track, raceway, steps, cycleway, bridleway, busway, road |
 | BUILDING_KINDS | house, apartments, commercial |
-| HEIGHT_FROM | estimated, levels, height, overture, openbuildings, min-height |
+| HEIGHT_FROM | estimated, levels, height, overture, openbuildings, min-height, microsoft |
 | BUILDING_USES | unknown, house, residential, commercial, retail, office, industrial, warehouse, religious, school, hospital, public, transport, hangar, shed, garage, hut, construction, roof, other |
 | ROOF_SHAPES | unknown, flat, gabled, hipped, pyramidal, dome, skillion, half-hipped, gambrel, mansard, round, onion, cone, saltbox, other |
 | AREA_KINDS | park, water, beach, reservoir, wetland, farmland, orchard, meadow, scrub, forest, residential, commercial, industrial, military, cemetery, bare, saltpan, aerodrome, apron, sport, railway, helipad, mangrove |
@@ -439,7 +502,14 @@ re-encodes all 1,877 of today's chunk files and `roads.bin` **byte for byte** (t
   20,724 road pieces (20,625), 44,570 trees (44,541), 533 bus stops, 266 signals, 238 districts,
   the same 4 landmarks at the same positions, heights from OSM 3,596 (3,593).
 
-## 9. Fusion (phase 2, designed, not run)
+## 9. Fusion (phase 2): done as format 2.3
+
+Built on 24 Nov 2026 as `fusion.bin` (§3.9, `docs/fusion.md`): `cli fetch-buildings` then
+`cli fuse` (`fusion_fetch.py`, `fusion_multi.py`, `fusion_world.py`). The design notes below are
+the first plan; where they differ (overlap cut, ids, no 2.5D raster, provenance tables) §3.9 and
+`docs/fusion.md` are what was built.
+
+### First design
 
 `chennai_geo/fusion.py`: `fuse(osm_buildings, external, raster)` with the `FootprintSource`
 (Overture via DuckDB + GeoParquet bbox filter) and `HeightRaster` (Open Buildings 2.5D export)
