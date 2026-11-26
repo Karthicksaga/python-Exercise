@@ -101,7 +101,7 @@ class Build:
 		for k in triangles:
 			if k == "collider" or (near and (k == "far" or k == "pack_far")):
 				continue
-			if not near and k in ["walls", "roofs", "kit", "objects"]:
+			if not near and k in ["walls", "roofs", "kit", "rails", "objects"]:
 				continue
 			n += triangles[k]
 		return n
@@ -247,6 +247,7 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	_add_mesh(out, near, "walls", meshes.walls, kit.materials.walls, kit.shadows)
 	_add_mesh(out, near, "roofs", meshes.roofs, kit.materials.roofs, kit.shadows)
 	_add_mesh(out, near, "kit", meshes.kit, kit.materials.kit, false)
+	_add_mesh(out, near, "rails", meshes.rails, kit.materials.rails, false)
 	_add_mesh(out, far, "far", meshes.far, kit.materials.objects, kit.shadows)
 	_add_pack_buildings(kit, out, near, far, pack_near, pack_far)
 

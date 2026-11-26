@@ -39,7 +39,7 @@ const ALL: Array[Array] = [
 ]
 ## Chunk layer nodes per switch: direct children of a chunk's view or of its Near/Far.
 const LAYERS: Dictionary[String, PackedStringArray] = {
-	"decks": ["Decks"], "objects": ["Objects"], "kit": ["Kit"], "pack100_buildings": ["PackBuildings", "Far/PackFar"], "trees": ["Trees", "Palms"],
+	"decks": ["Decks"], "objects": ["Objects"], "kit": ["Kit", "Rails"], "pack100_buildings": ["PackBuildings", "Far/PackFar"], "trees": ["Trees", "Palms"],
 	"far": ["Far/Far"], "water": ["Water"],
 }
 ## Collider bodies per switch, by name prefix (`ChunkBuilder._body` labels).

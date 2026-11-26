@@ -95,6 +95,9 @@ class WallFrame:
 var walls := MeshBuilder.new()
 var roofs := MeshBuilder.new()
 var kit := MeshBuilder.new()
+## Balcony railings (G-501): their own surface, drawn alpha-blended (`CityMaterials.rails`) so a
+## bar thinner than a pixel fades instead of popping on and off from frame to frame.
+var rails := MeshBuilder.new()
 ## One quad per wall and a flat roof: the far look of the same buildings.
 var far := MeshBuilder.new()
 ## Local origin: the chunk centre (world metres).
@@ -360,7 +363,7 @@ func _add_balcony(f: WallFrame, bay_width: float, y0: float, colour: Color) -> v
 	var mid := bay_width / 2.0
 	var top := y0 + 0.04
 	box(walls, f, mid - half, mid + half, top - BALCONY_THICK, top, 0.0, BALCONY_DEPTH, {"front": _plaster_flat, "top": _plaster_flat, "bottom": _plaster_flat}, colour)
-	box(kit, f, mid - half, mid + half, top + 0.015, top + RAIL_HEIGHT, 0.0, BALCONY_DEPTH - 0.02, {"front": _rail_uv, "ends": _rail_uv}, Color.WHITE)
+	box(rails, f, mid - half, mid + half, top + 0.015, top + RAIL_HEIGHT, 0.0, BALCONY_DEPTH - 0.02, {"front": _rail_uv, "ends": _rail_uv}, Color.WHITE)
 
 
 ## The wall colour of a building: the mapped `building:colour`, else (estimated) the colour of

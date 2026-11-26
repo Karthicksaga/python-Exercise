@@ -14,6 +14,8 @@ const WATER_SHADER := preload("res://src/game_engine/city/shaders/water.gdshader
 var walls: StandardMaterial3D
 var roofs: StandardMaterial3D
 var kit: StandardMaterial3D
+## Balcony railings (G-501): the kit atlas, alpha-blended instead of alpha-cut.
+var rails: StandardMaterial3D
 var ground: ShaderMaterial
 ## Vertex colours only: street furniture, props, far buildings.
 var objects: StandardMaterial3D
@@ -77,6 +79,15 @@ static func create() -> CityMaterials:
 		c.kit.emission_texture = kit_glow
 		c.kit.emission = Color.BLACK
 		c.kit.emission_energy_multiplier = 0.0
+	# Railings are bars a few pixels wide that become thinner than a pixel a few metres away: cut
+	# at alpha 0.5 they flashed on and off as the camera moved (the most flashing pixels of every
+	# street measured, G-501). Blended, the mipmapped alpha fades them smoothly. A separate
+	# surface, so the opaque kit keeps its cut and the blend costs only railing pixels.
+	c.rails = _vertex_coloured(0.8)
+	c.rails.albedo_texture = c.kit.albedo_texture
+	c.rails.texture_repeat = false
+	c.rails.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	c.rails.cull_mode = BaseMaterial3D.CULL_DISABLED
 	c.ground = ShaderMaterial.new()
 	c.ground.shader = GROUND_SHADER
 	var atlas := _texture("ground.png", c.loaded)
@@ -117,7 +128,7 @@ func set_flat(on: bool) -> void:
 		return
 	flat = on
 	var mode := BaseMaterial3D.SHADING_MODE_PER_VERTEX if on else BaseMaterial3D.SHADING_MODE_PER_PIXEL
-	for m: StandardMaterial3D in [walls, roofs, kit, objects, landmark, decks]:
+	for m: StandardMaterial3D in [walls, roofs, kit, rails, objects, landmark, decks]:
 		if m != null:
 			m.shading_mode = mode
 	ground.shader = vertex_lit(GROUND_SHADER) if on else GROUND_SHADER
