@@ -142,6 +142,7 @@ func setup(city: CityWorld, player: PlayerRig, drive: Driving) -> void:
 		holder.add_child.call_deferred(beacon)
 		holder.add_child.call_deferred(figures)
 	_watch_driving()
+	_init_navigation_services()
 	session.announce_stage()
 
 
@@ -167,6 +168,7 @@ func _physics_process(dt: float) -> void:
 	var st := status()
 	_measure_feel(dt, st)
 	session.step(dt, st, _impact)
+	_step_street_and_nav(dt, Vector2(st.x, st.z))
 	_apply_hazards(st)
 	_follow_rain()
 	_impact = 0.0
@@ -641,6 +643,9 @@ var _mini_roads: MapRoads = MapRoads.new()
 var _map_feed := MapRoadFeed.new()
 var full_map: FullMap
 var _map_held := false
+var geo_index: ChennaiGeoIndex = null
+var street_service: StreetNameService = null
+var _player_route: Dictionary = {}
 
 
 func _update_minimap(dt: float, at: Vector2, st: MissionData.PlayerStatus) -> void:
@@ -691,7 +696,10 @@ func open_map() -> void:
 		full_map = FullMap.new()
 		full_map.credit = "%s, estimated heights and widths" % (world.source.get_attribution() if world != null and world.source != null else "© OpenStreetMap contributors")
 		full_map.closed.connect(_on_map_closed)
+		full_map.route_requested.connect(_on_full_map_route)
 		add_child(full_map)
+	full_map.geo_index = geo_index
+	full_map.street_service = street_service
 	var at := Vector2(status().x, status().z)
 	var yaw := rig.body.global_rotation.y if driven() == null else driven().global_rotation.y
 	if not get_tree().paused:
@@ -747,3 +755,68 @@ func new_game() -> void:
 			driving.cancel_boarding()
 		rig.place(WorldOrigin.to_scene_xz(float(s["x"]), float(s["z"]), _ground_y() + 0.05), float(s["yaw"]))
 	session.announce_stage()
+
+
+func _init_navigation_services() -> void:
+	if world == null or world.source == null or geo_index != null:
+		return
+	geo_index = ChennaiGeoIndex.new()
+	geo_index.open(world.source)
+	street_service = StreetNameService.new()
+	street_service.geo = geo_index
+	street_service.on_street_entered.connect(func(sname: String, loc_name: String, loc_ta: String) -> void:
+		if hud != null:
+			var s_ta := street_service.current_street_ta
+			var title_txt := "%s · %s" % [sname.to_upper(), s_ta] if s_ta != "" else sname.to_upper()
+			var sub := "%s (%s), Chennai" % [loc_name, loc_ta] if loc_ta != "" else "%s, Chennai" % loc_name
+			hud.show_street_banner("ENTERING STREET", title_txt, sub, 2.8)
+	)
+	street_service.on_locality_entered.connect(func(loc_name: String, loc_ta: String) -> void:
+		if hud != null:
+			var sub := "%s · CHENNAI" % loc_ta if loc_ta != "" else "CHENNAI"
+			hud.show_street_banner("ENTERING LOCALITY", loc_name.to_upper(), sub, 3.0)
+	)
+
+
+func _on_full_map_route(route: Dictionary) -> void:
+	_player_route = route
+	var poly: PackedVector2Array = route.get("polyline", PackedVector2Array()) if bool(route.get("ok", false)) else PackedVector2Array()
+	if hud != null:
+		hud.minimap.route_polyline = poly
+		hud.minimap.queue_redraw()
+		if poly.size() < 2:
+			hud.set_nav_guidance(false)
+
+
+func _step_street_and_nav(dt: float, at: Vector2) -> void:
+	if street_service != null:
+		street_service.update_player(dt, at, false)
+	if _player_route.is_empty() or not bool(_player_route.get("ok", false)) or hud == null:
+		return
+	var poly: PackedVector2Array = _player_route.get("polyline", PackedVector2Array())
+	if poly.size() < 2:
+		return
+	var dest: Vector2 = poly[poly.size() - 1]
+	if at.distance_to(dest) <= 22.0:
+		hud.show_street_banner("ARRIVED", "DESTINATION REACHED", "Navigation complete", 3.0)
+		_on_full_map_route({})
+		return
+	# Off-route check (> 65m from route polyline)
+	var min_d := INF
+	for i in range(poly.size() - 1):
+		var c := Geometry2D.get_closest_point_to_segment(at, poly[i], poly[i + 1])
+		min_d = minf(min_d, at.distance_to(c))
+	if min_d > 65.0 and geo_index != null:
+		var stops: Array = _player_route.get("stops", [])
+		if stops.size() >= 2:
+			var new_stops: Array[Dictionary] = [{"role": "start", "name": "Current Position", "pos": at}]
+			for i in range(1, stops.size()):
+				new_stops.append(stops[i] as Dictionary)
+			var mode := str(_player_route.get("mode", "fastest"))
+			_on_full_map_route(ChennaiRouter.compute_route(geo_index, new_stops, mode))
+			return
+	var rem := at.distance_to(dest)
+	var eta_min := maxi(1, roundi(rem / 9.5 / 60.0))
+	var steps: Array = _player_route.get("steps", [])
+	var next_step: Dictionary = steps[0] if not steps.is_empty() else {}
+	hud.set_nav_guidance(true, "IN " + MapProjection.distance_text(rem).to_upper(), str(next_step.get("maneuver", "CONTINUE")), str(next_step.get("road", "Route")), "Remaining: %s · EST. %d min" % [MapProjection.distance_text(rem), eta_min])

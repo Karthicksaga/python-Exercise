@@ -70,6 +70,18 @@ var medals_box: HBoxContainer
 var medal_badge: MedalBadge
 var medal_goals: VBoxContainer
 
+var street_banner: PanelContainer
+var _street_tag: Label
+var _street_title: Label
+var _street_sub: Label
+var _street_left := 0.0
+
+var nav_card: PanelContainer
+var _nav_dist: Label
+var _nav_turn: Label
+var _nav_road: Label
+var _nav_eta: Label
+
 var _toast_left := 0.0
 ## Buttons in the open dialog, by id (tests press them).
 var buttons: Dictionary[String, Button] = {}
@@ -127,6 +139,8 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_place_minimap)
 	ControlSettings.shared().changed.connect(_place_minimap)
 	_build_toast()
+	_build_street_banner()
+	_build_nav_card()
 	inside_button = _button("GO INSIDE", "Inside", 16, true)
 	inside_button.anchor_left = 0.5
 	inside_button.anchor_right = 0.5
@@ -286,6 +300,81 @@ func _build_toast() -> void:
 	toast_panel.visible = false
 
 
+func _build_street_banner() -> void:
+	street_banner = PanelContainer.new()
+	street_banner.name = "StreetBanner"
+	street_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	street_banner.visible = false
+	var box := _plate(0.84)
+	box.border_color = UiTheme.AMBER
+	box.set_border_width_all(1)
+	box.content_margin_left = 16
+	box.content_margin_right = 16
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	street_banner.add_theme_stylebox_override("panel", box)
+	street_banner.anchor_left = 0.5
+	street_banner.anchor_right = 0.5
+	street_banner.offset_left = -165.0
+	street_banner.offset_right = 165.0
+	street_banner.offset_top = 14.0
+	street_banner.offset_bottom = 72.0
+	add_child(street_banner)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	street_banner.add_child(v)
+	var f := RailFonts.with_tamil()
+	_street_tag = UiTheme.label("ENTERING STREET", 10, UiTheme.AMBER)
+	_street_tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(_street_tag)
+	_street_title = UiTheme.label("", 14, UiTheme.TEXT)
+	_street_title.add_theme_font_override("font", f)
+	_street_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(_street_title)
+	_street_sub = UiTheme.label("", 11, UiTheme.TEXT_DIM)
+	_street_sub.add_theme_font_override("font", f)
+	_street_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(_street_sub)
+
+
+func _build_nav_card() -> void:
+	nav_card = PanelContainer.new()
+	nav_card.name = "NavGuidance"
+	nav_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	nav_card.visible = false
+	var box := _plate(0.84)
+	box.border_color = Color("#38bdf8")
+	box.set_border_width_all(1)
+	box.content_margin_left = 12
+	box.content_margin_right = 12
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	nav_card.add_theme_stylebox_override("panel", box)
+	nav_card.anchor_left = 0.5
+	nav_card.anchor_right = 0.5
+	nav_card.offset_left = -150.0
+	nav_card.offset_right = 150.0
+	nav_card.offset_top = 80.0
+	nav_card.offset_bottom = 142.0
+	add_child(nav_card)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	nav_card.add_child(v)
+	var row := HBoxContainer.new()
+	v.add_child(row)
+	_nav_dist = UiTheme.label("IN 100 M", 13, UiTheme.AMBER)
+	row.add_child(_nav_dist)
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(sp)
+	_nav_turn = UiTheme.label("CONTINUE", 12, Color("#38bdf8"))
+	row.add_child(_nav_turn)
+	_nav_road = UiTheme.label("", 12, UiTheme.TEXT)
+	v.add_child(_nav_road)
+	_nav_eta = UiTheme.label("", 11, Color("#7ee787"))
+	v.add_child(_nav_eta)
+
+
 func _build_dialog() -> void:
 	dialog = Control.new()
 	dialog.name = "Dialog"
@@ -369,6 +458,11 @@ func _process(delta: float) -> void:
 		toast_panel.modulate.a = clampf(_toast_left / 0.3, 0.0, 1.0)
 		if _toast_left <= 0.0:
 			toast_panel.visible = false
+	if _street_left > 0.0:
+		_street_left -= delta
+		street_banner.modulate.a = clampf(_street_left / 0.35, 0.0, 1.0)
+		if _street_left <= 0.0:
+			street_banner.visible = false
 
 
 func set_stats(rupees: String, done: int, count: int, reputation: int) -> void:
@@ -442,6 +536,26 @@ func toast_showing() -> bool:
 
 func toast_text() -> String:
 	return "%s %s" % [toast_title.text, toast_detail.text] if toast_panel.visible else ""
+
+
+func show_street_banner(tag: String, title: String, subtitle: String, duration: float = 3.0) -> void:
+	_text(_street_tag, tag)
+	_text(_street_title, title)
+	_text(_street_sub, subtitle)
+	_street_sub.visible = subtitle != ""
+	street_banner.visible = true
+	street_banner.modulate.a = 1.0
+	_street_left = duration
+
+
+func set_nav_guidance(on: bool, dist_text: String = "", maneuver: String = "", road: String = "", eta_text: String = "") -> void:
+	nav_card.visible = on
+	if not on:
+		return
+	_text(_nav_dist, dist_text)
+	_text(_nav_turn, maneuver)
+	_text(_nav_road, road)
+	_text(_nav_eta, eta_text)
 
 
 ## GO INSIDE at a place's entrance: the place's name, or "" to hide.
