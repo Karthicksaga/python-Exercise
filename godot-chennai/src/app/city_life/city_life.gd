@@ -241,8 +241,41 @@ func prepare(start: Vector2) -> String:
 	heads.use(area.signals)
 	_thread = Thread.new()
 	_thread.start(_run_steps, Thread.PRIORITY_LOW)
+	_spawn_chennai_npcs(area, start)
 	_prepared = true
 	return ""
+
+
+## Spawns realistic ChennaiNpc instances on valid street nodes near `start` (Milestone 4).
+func _spawn_chennai_npcs(area: AiArea, start: Vector2) -> void:
+	var scene_path := "res://src/player/chennai_npc/chennai_npc.tscn"
+	if not ResourceLoader.exists(scene_path):
+		return
+	var packed := ResourceLoader.load(scene_path) as PackedScene
+	if packed == null:
+		return
+	var offsets := [
+		[Vector2(4.0, -6.0), Vector2(4.0, -24.0)],
+		[Vector2(-5.0, -10.0), Vector2(-5.0, -28.0)],
+		[Vector2(8.0, 4.0), Vector2(22.0, 4.0)],
+	]
+	for pair: Array in offsets:
+		var w0: Vector2 = start + (pair[0] as Vector2)
+		var w1: Vector2 = start + (pair[1] as Vector2)
+		if not _ground_ready(w0):
+			continue
+		var npc := packed.instantiate() as ChennaiNpc
+		if npc == null:
+			continue
+		npc.add_to_group(WorldOrigin.GROUP)
+		var y0 := _heights.height_at(w0) if _heights != null else 0.0
+		var y1 := _heights.height_at(w1) if _heights != null else 0.0
+		var p0 := WorldOrigin.to_scene(w0, y0 + 0.05)
+		var p1 := WorldOrigin.to_scene(w1, y1 + 0.05)
+		npc.position = p0
+		add_child(npc)
+		var pts: Array[Vector3] = [p1, p0]
+		npc.set_patrol_waypoints(pts, 2.0)
 
 
 ## On the AI thread: take the new area, then step as usual.

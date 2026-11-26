@@ -143,3 +143,8 @@ is not worn by anyone here).
 | Files | What | Source | Licence |
 |---|---|---|---|
 | `assets/buildings/pack_100/*.glb`, `assets/buildings/pack_100/catalog.json`, `assets/buildings/pack_100/lookup.bin` | 100 sculpted Chennai building archetypes across Residential, Commercial, Mixed-Use, Industrial, Institutional, Heritage, North Chennai, Coastal, and Canal/Streetscape packs (`LOD0/LOD1/LOD2` + `COL_*` collision boxes, linear vertex-coloured PBR) | Original models built in **Blender 5.3.0** by `tools/blender/buildings/chennai_kit.py` + `shard_1.py`..`shard_5.py` inspired by Chennai architectural styles; no photographs, no third-party meshes, no real brands | **CC0 1.0**, original work for the project |
+
+## Chennai v2 NPC (`assets/people/chennai_v2/`)
+| Files | What | Source | Licence |
+|---|---|---|---|
+| `assets/people/chennai_v2/chennai_male.glb` | Realistic ~25-year-old Chennai male NPC on the 52-bone `mixamo` skeleton with 8 retargeted animations (`idle`, `walk`, `run`, `jump`, `talk`, `wave`, `sitting`, `using_phone`) | Built in **Blender 5.3.0** with **MPFB 2.0.18** + MakeHuman system assets (`young_african_male` skin, `short02` hair, `eyebrow001`, `eyelashes01`, `low-poly` eyes, `male_casualsuit06` plaid shirt + jeans, `shoes04`); animations downloaded via Mixamo (free) and retargeted in Blender | Character mesh & textures: **CC0** (MPFB2 / MakeHuman system assets, recoloured); animations: Mixamo free character animation licence (royalty-free for commercial and non-commercial games) |

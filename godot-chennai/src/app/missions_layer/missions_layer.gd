@@ -761,7 +761,7 @@ func _init_navigation_services() -> void:
 	if world == null or world.source == null or geo_index != null:
 		return
 	geo_index = ChennaiGeoIndex.new()
-	geo_index.open(world.source)
+	geo_index.open(world.source as RegionalWorldSource if world.source is RegionalWorldSource else null)
 	street_service = StreetNameService.new()
 	street_service.geo = geo_index
 	street_service.on_street_entered.connect(func(sname: String, loc_name: String, loc_ta: String) -> void:
