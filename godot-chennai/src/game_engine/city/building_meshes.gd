@@ -53,7 +53,7 @@ const SHUTTER_TOP := 2.45
 const SIGN_BOTTOM := 2.5
 const SIGN_TOP := 3.05
 const SIGN_DEPTH := 0.14
-const SHUTTER_OFFSET := 0.03
+const SHUTTER_OFFSET := 0.06
 const CHAJJA_DEPTH := 0.55
 const CHAJJA_THICK := 0.1
 const BALCONY_DEPTH := 0.85
@@ -335,7 +335,7 @@ func _add_shop_fronts(b: Building, wall: int, f: WallFrame, length: float, bays:
 			var mapped := _is_mapped_category(b, category)
 			stats["sign_mapped" if mapped else "sign_estimated"] = stats.get("sign_mapped" if mapped else "sign_estimated", 0) + 1
 			var sign_uv := CityAtlas.kit_uv(CityAtlas.sign_rect(category))
-			box(kit, f, s_a + 0.05, s_a + bay_width - 0.05, SIGN_BOTTOM, SIGN_TOP, 0.0, SIGN_DEPTH, {"front": sign_uv, "top": _plain_uv, "bottom": _plain_uv, "ends": _plain_uv}, Color.WHITE)
+			box(kit, f, s_a + 0.05, s_a + bay_width - 0.05, SIGN_BOTTOM, SIGN_TOP, 0.01, SIGN_DEPTH, {"front": sign_uv, "top": _plain_uv, "bottom": _plain_uv, "ends": _plain_uv}, Color.WHITE)
 
 
 func _is_mapped_category(b: Building, category: int) -> bool:
@@ -360,7 +360,7 @@ func _add_balcony(f: WallFrame, bay_width: float, y0: float, colour: Color) -> v
 	var mid := bay_width / 2.0
 	var top := y0 + 0.04
 	box(walls, f, mid - half, mid + half, top - BALCONY_THICK, top, 0.0, BALCONY_DEPTH, {"front": _plaster_flat, "top": _plaster_flat, "bottom": _plaster_flat}, colour)
-	box(kit, f, mid - half, mid + half, top, top + RAIL_HEIGHT, 0.0, BALCONY_DEPTH - 0.02, {"front": _rail_uv, "ends": _rail_uv}, Color.WHITE)
+	box(kit, f, mid - half, mid + half, top + 0.015, top + RAIL_HEIGHT, 0.0, BALCONY_DEPTH - 0.02, {"front": _rail_uv, "ends": _rail_uv}, Color.WHITE)
 
 
 ## The wall colour of a building: the mapped `building:colour`, else (estimated) the colour of

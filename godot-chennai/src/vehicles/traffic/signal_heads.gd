@@ -25,16 +25,18 @@ var _frame: int = 0
 func _init() -> void:
 	name = "SignalHeads"
 	var pole := BoxMesh.new()
-	pole.size = Vector3(0.12, POLE_HEIGHT, 0.12)
+	pole.size = Vector3(0.16, POLE_HEIGHT, 0.16)
 	var pole_mat := StandardMaterial3D.new()
 	pole_mat.albedo_color = Color(0.16, 0.17, 0.18)
+	pole_mat.roughness = 0.85
+	pole_mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	pole.material = pole_mat
 	# The head (a dark box) is part of the pole mesh: one draw call for both.
 	var head := BoxMesh.new()
 	head.size = Vector3(0.36, 1.0, 0.24)
 	var st := SurfaceTool.new()
 	st.append_from(pole, 0, Transform3D(Basis.IDENTITY, Vector3(0, POLE_HEIGHT / 2.0, 0)))
-	st.append_from(head, 0, Transform3D(Basis.IDENTITY, Vector3(0, POLE_HEIGHT + 0.3, 0)))
+	st.append_from(head, 0, Transform3D(Basis.IDENTITY, Vector3(0, POLE_HEIGHT + 0.5, 0)))
 	var body := st.commit()
 	body.surface_set_material(0, pole_mat)
 	_poles.multimesh = _multi(body, false)
@@ -52,6 +54,8 @@ func _init() -> void:
 	line.size = Vector2(1.0, 0.35)
 	var line_mat := StandardMaterial3D.new()
 	line_mat.albedo_color = Color(0.86, 0.86, 0.82)
+	line_mat.roughness = 0.9
+	line_mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	line.material = line_mat
 	_lines.multimesh = _multi(line, false)
 	for m: MultiMeshInstance3D in [_poles, _lamps, _lines]:
@@ -92,9 +96,10 @@ func refresh(focus: Vector2) -> void:
 
 func _place() -> void:
 	var n := _shown.size()
-	_poles.multimesh.instance_count = n
-	_lamps.multimesh.instance_count = n * 3
-	_lines.multimesh.instance_count = n
+	if _poles.multimesh.instance_count != n:
+		_poles.multimesh.instance_count = n
+		_lamps.multimesh.instance_count = n * 3
+		_lines.multimesh.instance_count = n
 	for i in n:
 		var a := _shown[i]
 		var left := Vector2(a.dir.y, -a.dir.x)
@@ -104,11 +109,11 @@ func _place() -> void:
 		var facing := atan2(a.dir.x, a.dir.y)
 		var basis := Basis(Vector3.UP, facing)
 		_poles.multimesh.set_instance_transform(i, Transform3D(basis, at))
-		var toward := Vector3(-a.dir.x, 0.0, -a.dir.y) * 0.13
+		var toward := Vector3(-a.dir.x, 0.0, -a.dir.y) * 0.155
 		for k in 3:
-			var lamp := at + Vector3(0, POLE_HEIGHT + 0.3 + LAMP_SPACING * (1 - k), 0) + toward
+			var lamp := at + Vector3(0, POLE_HEIGHT + 0.5 + LAMP_SPACING * (1 - k), 0) + toward
 			_lamps.multimesh.set_instance_transform(i * 3 + k, Transform3D(Basis.IDENTITY, lamp))
 		# The stop line across the lanes coming in (the left half of a two-way road).
 		var centre := a.point + left * (a.width / 4.0)
 		var line_basis := Basis(Vector3.UP, facing).scaled(Vector3(maxf(1.0, a.width / 2.0 - 0.3), 1.0, 1.0))
-		_lines.multimesh.set_instance_transform(i, Transform3D(line_basis, WorldOrigin.to_scene(centre, 0.045)))
+		_lines.multimesh.set_instance_transform(i, Transform3D(line_basis, WorldOrigin.to_scene(centre, 0.075)))

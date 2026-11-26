@@ -16,7 +16,7 @@ const Y_SEA := 0.01
 const Y_PARK := 0.02
 const Y_VERGE := 0.035
 const Y_ROAD := 0.06
-const Y_MARKING := 0.08
+const Y_MARKING := 0.09
 const DASH := 3.2
 const DASH_PITCH := 9.0
 ## No paint this close to a road's ends, where junctions usually are.

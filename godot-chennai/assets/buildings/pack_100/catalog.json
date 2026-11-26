@@ -1,0 +1,4219 @@
+{
+  "count": 100,
+  "generator": "Blender 5.3.0 (shards 1..5)",
+  "models": [
+    {
+      "id": "B01_trad_house",
+      "title": "Traditional Chennai House",
+      "source_card": "01",
+      "category": "residential",
+      "substyle": "traditional_house",
+      "preferred_localities": [
+        "Mylapore",
+        "Triplicane",
+        "George Town"
+      ],
+      "dimensions_m": {
+        "width": 8.0,
+        "depth": 12.0,
+        "height": 5.54
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B01_trad_house.glb",
+      "glb_bytes": 413376,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2576,
+          "tris": 4092
+        },
+        "LOD1": {
+          "verts": 744,
+          "tris": 1124
+        },
+        "LOD2": {
+          "verts": 62,
+          "tris": 96
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B02_old_residential",
+      "title": "Old Chennai Residential",
+      "source_card": "02",
+      "category": "residential",
+      "substyle": "old_urban",
+      "preferred_localities": [
+        "George Town",
+        "Triplicane",
+        "Mylapore"
+      ],
+      "dimensions_m": {
+        "width": 10.0,
+        "depth": 14.0,
+        "height": 8.06
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B02_old_residential.glb",
+      "glb_bytes": 337100,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2084,
+          "tris": 3144
+        },
+        "LOD1": {
+          "verts": 718,
+          "tris": 1080
+        },
+        "LOD2": {
+          "verts": 40,
+          "tris": 60
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B36_chettinad_house",
+      "title": "Traditional Tamil House (Chettinad)",
+      "source_card": "36",
+      "category": "heritage",
+      "substyle": "chettinad",
+      "preferred_localities": [
+        "Mylapore",
+        "Adyar",
+        "Besant Nagar"
+      ],
+      "dimensions_m": {
+        "width": 15.0,
+        "depth": 25.0,
+        "height": 9.17
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B36_chettinad_house.glb",
+      "glb_bytes": 489816,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3110,
+          "tris": 4848
+        },
+        "LOD1": {
+          "verts": 888,
+          "tris": 1340
+        },
+        "LOD2": {
+          "verts": 54,
+          "tris": 84
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_001_agraharam",
+      "title": "Agraharam House",
+      "source_card": "CHN_001",
+      "category": "residential",
+      "substyle": "agraharam",
+      "preferred_localities": [
+        "Mylapore",
+        "Triplicane"
+      ],
+      "dimensions_m": {
+        "width": 9.0,
+        "depth": 18.0,
+        "height": 5.69
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_001_agraharam.glb",
+      "glb_bytes": 291232,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1864,
+          "tris": 2896
+        },
+        "LOD1": {
+          "verts": 536,
+          "tris": 804
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_002_mylapore_trad",
+      "title": "Mylapore Traditional House",
+      "source_card": "CHN_002",
+      "category": "residential",
+      "substyle": "mylapore_trad",
+      "preferred_localities": [
+        "Mylapore",
+        "Mandaveli"
+      ],
+      "dimensions_m": {
+        "width": 10.0,
+        "depth": 16.0,
+        "height": 5.95
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_002_mylapore_trad.glb",
+      "glb_bytes": 356136,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2192,
+          "tris": 3440
+        },
+        "LOD1": {
+          "verts": 672,
+          "tris": 1016
+        },
+        "LOD2": {
+          "verts": 46,
+          "tris": 72
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_003_courtyard_old",
+      "title": "Old Chennai Courtyard House",
+      "source_card": "CHN_003",
+      "category": "residential",
+      "substyle": "courtyard_old",
+      "preferred_localities": [
+        "George Town",
+        "Mylapore"
+      ],
+      "dimensions_m": {
+        "width": 12.0,
+        "depth": 20.0,
+        "height": 8.86
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_003_courtyard_old.glb",
+      "glb_bytes": 410652,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2610,
+          "tris": 4008
+        },
+        "LOD1": {
+          "verts": 736,
+          "tris": 1112
+        },
+        "LOD2": {
+          "verts": 54,
+          "tris": 84
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_005_tiled_city",
+      "title": "Tiled Roof City House",
+      "source_card": "CHN_005",
+      "category": "residential",
+      "substyle": "tiled_city",
+      "preferred_localities": [
+        "Triplicane",
+        "Mylapore"
+      ],
+      "dimensions_m": {
+        "width": 6.0,
+        "depth": 12.0,
+        "height": 5.27
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_005_tiled_city.glb",
+      "glb_bytes": 213960,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1344,
+          "tris": 2104
+        },
+        "LOD1": {
+          "verts": 352,
+          "tris": 528
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_006_verandah_house",
+      "title": "Verandah House",
+      "source_card": "CHN_006",
+      "category": "residential",
+      "substyle": "verandah",
+      "preferred_localities": [
+        "Royapettah",
+        "Mylapore"
+      ],
+      "dimensions_m": {
+        "width": 8.0,
+        "depth": 18.0,
+        "height": 5.97
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_006_verandah_house.glb",
+      "glb_bytes": 356120,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2140,
+          "tris": 3364
+        },
+        "LOD1": {
+          "verts": 716,
+          "tris": 1088
+        },
+        "LOD2": {
+          "verts": 40,
+          "tris": 60
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_007_colonial_res",
+      "title": "Colonial Residence (Local)",
+      "source_card": "CHN_007",
+      "category": "residential",
+      "substyle": "colonial_local",
+      "preferred_localities": [
+        "Egmore",
+        "Nungambakkam",
+        "Kilpauk"
+      ],
+      "dimensions_m": {
+        "width": 14.0,
+        "depth": 20.0,
+        "height": 9.05
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_007_colonial_res.glb",
+      "glb_bytes": 506532,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3360,
+          "tris": 5192
+        },
+        "LOD1": {
+          "verts": 824,
+          "tris": 1256
+        },
+        "LOD2": {
+          "verts": 40,
+          "tris": 60
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_008_inner_row",
+      "title": "Inner City Row House",
+      "source_card": "CHN_008",
+      "category": "residential",
+      "substyle": "inner_row",
+      "preferred_localities": [
+        "George Town",
+        "Triplicane"
+      ],
+      "dimensions_m": {
+        "width": 6.0,
+        "depth": 14.0,
+        "height": 8.29
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_008_inner_row.glb",
+      "glb_bytes": 157528,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 864,
+          "tris": 1356
+        },
+        "LOD1": {
+          "verts": 400,
+          "tris": 612
+        },
+        "LOD2": {
+          "verts": 40,
+          "tris": 60
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_009_trad_terrace",
+      "title": "Traditional House with Terrace",
+      "source_card": "CHN_009",
+      "category": "residential",
+      "substyle": "trad_terrace",
+      "preferred_localities": [
+        "Mylapore",
+        "Anna Nagar"
+      ],
+      "dimensions_m": {
+        "width": 10.0,
+        "depth": 18.0,
+        "height": 8.23
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_009_trad_terrace.glb",
+      "glb_bytes": 459884,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3132,
+          "tris": 4880
+        },
+        "LOD1": {
+          "verts": 676,
+          "tris": 1020
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_011_narrow_lane",
+      "title": "Narrow Lane House",
+      "source_card": "CHN_011",
+      "category": "residential",
+      "substyle": "narrow_lane_2f",
+      "preferred_localities": [
+        "George Town",
+        "Royapuram"
+      ],
+      "dimensions_m": {
+        "width": 5.0,
+        "depth": 12.0,
+        "height": 8.28
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_011_narrow_lane.glb",
+      "glb_bytes": 162080,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1004,
+          "tris": 1552
+        },
+        "LOD1": {
+          "verts": 300,
+          "tris": 456
+        },
+        "LOD2": {
+          "verts": 40,
+          "tris": 60
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_012_madras_terrace",
+      "title": "Madras Terrace Brick House",
+      "source_card": "CHN_012",
+      "category": "residential",
+      "substyle": "madras_terrace",
+      "preferred_localities": [
+        "Mylapore",
+        "Egmore"
+      ],
+      "dimensions_m": {
+        "width": 8.0,
+        "depth": 16.0,
+        "height": 8.62
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_012_madras_terrace.glb",
+      "glb_bytes": 424900,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2800,
+          "tris": 4348
+        },
+        "LOD1": {
+          "verts": 710,
+          "tris": 1076
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_013_twin_house",
+      "title": "Twin House (Shared Wall)",
+      "source_card": "CHN_013",
+      "category": "residential",
+      "substyle": "twin_house",
+      "preferred_localities": [
+        "West Mambalam",
+        "Mylapore"
+      ],
+      "dimensions_m": {
+        "width": 12.0,
+        "depth": 14.0,
+        "height": 5.7
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_013_twin_house.glb",
+      "glb_bytes": 484288,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3148,
+          "tris": 5012
+        },
+        "LOD1": {
+          "verts": 776,
+          "tris": 1180
+        },
+        "LOD2": {
+          "verts": 60,
+          "tris": 96
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_014_corner_trad",
+      "title": "Corner Traditional House",
+      "source_card": "CHN_014",
+      "category": "residential",
+      "substyle": "corner_trad",
+      "preferred_localities": [
+        "Mylapore",
+        "T. Nagar"
+      ],
+      "dimensions_m": {
+        "width": 14.0,
+        "depth": 18.0,
+        "height": 8.57
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_014_corner_trad.glb",
+      "glb_bytes": 343984,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2136,
+          "tris": 3304
+        },
+        "LOD1": {
+          "verts": 640,
+          "tris": 964
+        },
+        "LOD2": {
+          "verts": 46,
+          "tris": 72
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_015_nalukettu",
+      "title": "Courtyard House (Nalukettu)",
+      "source_card": "CHN_015",
+      "category": "residential",
+      "substyle": "nalukettu",
+      "preferred_localities": [
+        "Mylapore",
+        "Adyar"
+      ],
+      "dimensions_m": {
+        "width": 18.0,
+        "depth": 24.0,
+        "height": 5.01
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_015_nalukettu.glb",
+      "glb_bytes": 502924,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3316,
+          "tris": 5204
+        },
+        "LOD1": {
+          "verts": 720,
+          "tris": 1076
+        },
+        "LOD2": {
+          "verts": 72,
+          "tris": 108
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_016_worker_house",
+      "title": "Worker's Traditional House",
+      "source_card": "CHN_016",
+      "category": "residential",
+      "substyle": "worker_house",
+      "preferred_localities": [
+        "Royapuram",
+        "Washermanpet"
+      ],
+      "dimensions_m": {
+        "width": 5.0,
+        "depth": 10.0,
+        "height": 4.41
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_016_worker_house.glb",
+      "glb_bytes": 186108,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1226,
+          "tris": 1904
+        },
+        "LOD1": {
+          "verts": 278,
+          "tris": 416
+        },
+        "LOD2": {
+          "verts": 22,
+          "tris": 32
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_017_thatch_house",
+      "title": "Rustic Thatched Roof House",
+      "source_card": "CHN_017",
+      "category": "residential",
+      "substyle": "rustic_thatch",
+      "preferred_localities": [
+        "Outer Suburbs",
+        "Kasimedu"
+      ],
+      "dimensions_m": {
+        "width": 4.0,
+        "depth": 8.0,
+        "height": 4.0
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_017_thatch_house.glb",
+      "glb_bytes": 159796,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1076,
+          "tris": 1700
+        },
+        "LOD1": {
+          "verts": 200,
+          "tris": 304
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_022_deep_verandah",
+      "title": "Deep Verandah House",
+      "source_card": "CHN_022",
+      "category": "residential",
+      "substyle": "deep_verandah",
+      "preferred_localities": [
+        "Mylapore",
+        "Triplicane"
+      ],
+      "dimensions_m": {
+        "width": 10.0,
+        "depth": 20.0,
+        "height": 5.85
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_022_deep_verandah.glb",
+      "glb_bytes": 286772,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1852,
+          "tris": 2904
+        },
+        "LOD1": {
+          "verts": 464,
+          "tris": 696
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_023_madras_patio",
+      "title": "Madras Patio House",
+      "source_card": "CHN_023",
+      "category": "residential",
+      "substyle": "madras_patio",
+      "preferred_localities": [
+        "Mylapore",
+        "Adyar"
+      ],
+      "dimensions_m": {
+        "width": 12.0,
+        "depth": 18.0,
+        "height": 5.32
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_023_madras_patio.glb",
+      "glb_bytes": 470064,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3068,
+          "tris": 4836
+        },
+        "LOD1": {
+          "verts": 716,
+          "tris": 1072
+        },
+        "LOD2": {
+          "verts": 52,
+          "tris": 76
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_026_angled_corner",
+      "title": "Angled Corner Urban House",
+      "source_card": "CHN_026",
+      "category": "residential",
+      "substyle": "angled_corner",
+      "preferred_localities": [
+        "Triplicane",
+        "George Town"
+      ],
+      "dimensions_m": {
+        "width": 12.0,
+        "depth": 18.0,
+        "height": 8.4
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_026_angled_corner.glb",
+      "glb_bytes": 339156,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 6246,
+          "tris": 3220
+        },
+        "LOD1": {
+          "verts": 1980,
+          "tris": 1000
+        },
+        "LOD2": {
+          "verts": 300,
+          "tris": 156
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_029_colonial_bungalow",
+      "title": "British-Era Bungalow (Local)",
+      "source_card": "CHN_029",
+      "category": "residential",
+      "substyle": "bungalow",
+      "preferred_localities": [
+        "Adyar",
+        "Kilpauk",
+        "Nungambakkam"
+      ],
+      "dimensions_m": {
+        "width": 18.0,
+        "depth": 28.0,
+        "height": 10.1
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_029_colonial_bungalow.glb",
+      "glb_bytes": 517000,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 10368,
+          "tris": 5308
+        },
+        "LOD1": {
+          "verts": 2460,
+          "tris": 1236
+        },
+        "LOD2": {
+          "verts": 216,
+          "tris": 108
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_030_thinnai_house",
+      "title": "Traditional House with Thinnai",
+      "source_card": "CHN_030",
+      "category": "residential",
+      "substyle": "thinnai",
+      "preferred_localities": [
+        "Mylapore",
+        "Triplicane"
+      ],
+      "dimensions_m": {
+        "width": 9.0,
+        "depth": 16.0,
+        "height": 5.8
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_030_thinnai_house.glb",
+      "glb_bytes": 352492,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 6216,
+          "tris": 3256
+        },
+        "LOD1": {
+          "verts": 2196,
+          "tris": 1104
+        },
+        "LOD2": {
+          "verts": 408,
+          "tris": 204
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_036_tenement_1f",
+      "title": "Worker's Tenement House",
+      "source_card": "CHN_036",
+      "category": "north_chennai",
+      "substyle": "tenement_1f",
+      "preferred_localities": [
+        "Washermanpet",
+        "Tondiarpet"
+      ],
+      "dimensions_m": {
+        "width": 5.0,
+        "depth": 12.0,
+        "height": 5.0
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_036_tenement_1f.glb",
+      "glb_bytes": 124024,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1752,
+          "tris": 880
+        },
+        "LOD1": {
+          "verts": 1056,
+          "tris": 536
+        },
+        "LOD2": {
+          "verts": 216,
+          "tris": 108
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B03_modern_indep",
+      "title": "Modern Independent House",
+      "source_card": "03",
+      "category": "residential",
+      "substyle": "modern_independent",
+      "preferred_localities": [
+        "Anna Nagar",
+        "Adyar",
+        "Besant Nagar"
+      ],
+      "dimensions_m": {
+        "width": 10.0,
+        "depth": 15.0,
+        "height": 8.95
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B03_modern_indep.glb",
+      "glb_bytes": 224868,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3228,
+          "tris": 1596
+        },
+        "LOD1": {
+          "verts": 2052,
+          "tris": 1028
+        },
+        "LOD2": {
+          "verts": 336,
+          "tris": 168
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B04_compact_urban",
+      "title": "Compact Urban House",
+      "source_card": "04",
+      "category": "residential",
+      "substyle": "compact_urban",
+      "preferred_localities": [
+        "Velachery",
+        "Ashok Nagar",
+        "Kodambakkam"
+      ],
+      "dimensions_m": {
+        "width": 6.0,
+        "depth": 12.0,
+        "height": 8.85
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B04_compact_urban.glb",
+      "glb_bytes": 275880,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 4476,
+          "tris": 2288
+        },
+        "LOD1": {
+          "verts": 2124,
+          "tris": 1064
+        },
+        "LOD2": {
+          "verts": 312,
+          "tris": 156
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B05_duplex_house",
+      "title": "Duplex House (Chennai Style)",
+      "source_card": "05",
+      "category": "residential",
+      "substyle": "duplex",
+      "preferred_localities": [
+        "Anna Nagar",
+        "Adyar",
+        "Thiruvanmiyur"
+      ],
+      "dimensions_m": {
+        "width": 12.0,
+        "depth": 16.0,
+        "height": 9.45
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B05_duplex_house.glb",
+      "glb_bytes": 265048,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3804,
+          "tris": 1880
+        },
+        "LOD1": {
+          "verts": 2412,
+          "tris": 1208
+        },
+        "LOD2": {
+          "verts": 432,
+          "tris": 216
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B06_apt_lowrise",
+      "title": "Apartment (Low-Rise)",
+      "source_card": "06",
+      "category": "residential",
+      "substyle": "apartment_low",
+      "preferred_localities": [
+        "Velachery",
+        "Thiruvanmiyur",
+        "Adyar"
+      ],
+      "dimensions_m": {
+        "width": 15.0,
+        "depth": 18.0,
+        "height": 11.85
+      },
+      "floors": 3,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B06_apt_lowrise.glb",
+      "glb_bytes": 481500,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 9972,
+          "tris": 5224
+        },
+        "LOD1": {
+          "verts": 1848,
+          "tris": 928
+        },
+        "LOD2": {
+          "verts": 336,
+          "tris": 168
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B07_apt_midrise",
+      "title": "Mid-Rise Apartment",
+      "source_card": "07",
+      "category": "residential",
+      "substyle": "apartment_mid",
+      "preferred_localities": [
+        "Anna Nagar",
+        "Velachery",
+        "Adyar"
+      ],
+      "dimensions_m": {
+        "width": 18.0,
+        "depth": 24.0,
+        "height": 15.45
+      },
+      "floors": 4,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B07_apt_midrise.glb",
+      "glb_bytes": 417948,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 7560,
+          "tris": 3792
+        },
+        "LOD1": {
+          "verts": 2520,
+          "tris": 1264
+        },
+        "LOD2": {
+          "verts": 480,
+          "tris": 240
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B08_gated_block",
+      "title": "Gated Residential Block",
+      "source_card": "08",
+      "category": "residential",
+      "substyle": "gated_apartment",
+      "preferred_localities": [
+        "OMR",
+        "Velachery",
+        "Anna Nagar"
+      ],
+      "dimensions_m": {
+        "width": 30.0,
+        "depth": 40.0,
+        "height": 17.9
+      },
+      "floors": 5,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B08_gated_block.glb",
+      "glb_bytes": 389296,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_EastWing": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 7218,
+          "tris": 3548
+        },
+        "LOD1": {
+          "verts": 2268,
+          "tris": 1140
+        },
+        "LOD2": {
+          "verts": 312,
+          "tris": 156
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B10_modern_townhouse",
+      "title": "Modern Townhouse",
+      "source_card": "10",
+      "category": "residential",
+      "substyle": "modern_townhouse",
+      "preferred_localities": [
+        "Adyar",
+        "Besant Nagar",
+        "Anna Nagar"
+      ],
+      "dimensions_m": {
+        "width": 9.0,
+        "depth": 14.0,
+        "height": 12.05
+      },
+      "floors": 3,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B10_modern_townhouse.glb",
+      "glb_bytes": 225736,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3180,
+          "tris": 1568
+        },
+        "LOD1": {
+          "verts": 2076,
+          "tris": 1040
+        },
+        "LOD2": {
+          "verts": 384,
+          "tris": 192
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B42_highrise_apt",
+      "title": "Premium Apartment (High-Rise)",
+      "source_card": "42",
+      "category": "residential",
+      "substyle": "apartment_highrise",
+      "preferred_localities": [
+        "OMR",
+        "Anna Nagar",
+        "Adyar"
+      ],
+      "dimensions_m": {
+        "width": 32.0,
+        "depth": 48.0,
+        "height": 52.0
+      },
+      "floors": 16,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B42_highrise_apt.glb",
+      "glb_bytes": 361952,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_EastTower": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Podium": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 6840,
+          "tris": 3420
+        },
+        "LOD1": {
+          "verts": 1800,
+          "tris": 900
+        },
+        "LOD2": {
+          "verts": 408,
+          "tris": 204
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "K08_tnhb_block",
+      "title": "Corporation Apartment (TNHB)",
+      "source_card": "K08",
+      "category": "residential",
+      "substyle": "tnhb_block",
+      "preferred_localities": [
+        "Anna Nagar",
+        "Ashok Nagar",
+        "Perambur"
+      ],
+      "dimensions_m": {
+        "width": 16.0,
+        "depth": 34.0,
+        "height": 15.3
+      },
+      "floors": 4,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/K08_tnhb_block.glb",
+      "glb_bytes": 381668,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 6792,
+          "tris": 3396
+        },
+        "LOD1": {
+          "verts": 2544,
+          "tris": 1272
+        },
+        "LOD2": {
+          "verts": 336,
+          "tris": 168
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_041_contemp_indep",
+      "title": "Contemporary Independent House",
+      "source_card": "CHN_041",
+      "category": "residential",
+      "substyle": "contemp_indep",
+      "preferred_localities": [
+        "Anna Nagar",
+        "Adyar",
+        "Besant Nagar"
+      ],
+      "dimensions_m": {
+        "width": 12.0,
+        "depth": 18.0,
+        "height": 9.15
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_041_contemp_indep.glb",
+      "glb_bytes": 223864,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3108,
+          "tris": 1532
+        },
+        "LOD1": {
+          "verts": 2100,
+          "tris": 1052
+        },
+        "LOD2": {
+          "verts": 384,
+          "tris": 192
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_043_duplex_pergola",
+      "title": "Duplex House with Pergola",
+      "source_card": "CHN_043",
+      "category": "residential",
+      "substyle": "duplex_pergola",
+      "preferred_localities": [
+        "Anna Nagar",
+        "Thiruvanmiyur"
+      ],
+      "dimensions_m": {
+        "width": 12.0,
+        "depth": 16.0,
+        "height": 9.35
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_043_duplex_pergola.glb",
+      "glb_bytes": 246376,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3468,
+          "tris": 1712
+        },
+        "LOD1": {
+          "verts": 2292,
+          "tris": 1148
+        },
+        "LOD2": {
+          "verts": 408,
+          "tris": 204
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_044_terrace_modern",
+      "title": "Terrace Modern House (3F)",
+      "source_card": "CHN_044",
+      "category": "residential",
+      "substyle": "terrace_modern",
+      "preferred_localities": [
+        "Velachery",
+        "Anna Nagar"
+      ],
+      "dimensions_m": {
+        "width": 10.0,
+        "depth": 16.0,
+        "height": 11.7
+      },
+      "floors": 3,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_044_terrace_modern.glb",
+      "glb_bytes": 208016,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2988,
+          "tris": 1472
+        },
+        "LOD1": {
+          "verts": 2052,
+          "tris": 1028
+        },
+        "LOD2": {
+          "verts": 144,
+          "tris": 72
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_045_corner_modern",
+      "title": "Corner Plot House (Modern)",
+      "source_card": "CHN_045",
+      "category": "residential",
+      "substyle": "corner_modern",
+      "preferred_localities": [
+        "Anna Nagar",
+        "Adyar"
+      ],
+      "dimensions_m": {
+        "width": 14.0,
+        "depth": 20.0,
+        "height": 9.25
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_045_corner_modern.glb",
+      "glb_bytes": 205576,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3048,
+          "tris": 1480
+        },
+        "LOD1": {
+          "verts": 1896,
+          "tris": 956
+        },
+        "LOD2": {
+          "verts": 180,
+          "tris": 96
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_046_gated_villa",
+      "title": "Gated Villa (Individual)",
+      "source_card": "CHN_046",
+      "category": "residential",
+      "substyle": "villa",
+      "preferred_localities": [
+        "ECR",
+        "Adyar",
+        "Anna Nagar"
+      ],
+      "dimensions_m": {
+        "width": 16.0,
+        "depth": 24.0,
+        "height": 9.35
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_046_gated_villa.glb",
+      "glb_bytes": 369468,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 6618,
+          "tris": 3484
+        },
+        "LOD1": {
+          "verts": 2292,
+          "tris": 1152
+        },
+        "LOD2": {
+          "verts": 384,
+          "tris": 192
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_047_row_modern",
+      "title": "Row House (Modern)",
+      "source_card": "CHN_047",
+      "category": "residential",
+      "substyle": "row_modern",
+      "preferred_localities": [
+        "Velachery",
+        "OMR"
+      ],
+      "dimensions_m": {
+        "width": 6.0,
+        "depth": 14.0,
+        "height": 8.85
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_047_row_modern.glb",
+      "glb_bytes": 215576,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3012,
+          "tris": 1484
+        },
+        "LOD1": {
+          "verts": 2004,
+          "tris": 1004
+        },
+        "LOD2": {
+          "verts": 360,
+          "tris": 180
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_048_small_apt",
+      "title": "Small Apartment (4 Units)",
+      "source_card": "CHN_048",
+      "category": "residential",
+      "substyle": "small_apt",
+      "preferred_localities": [
+        "Ashok Nagar",
+        "Velachery",
+        "Adyar"
+      ],
+      "dimensions_m": {
+        "width": 12.0,
+        "depth": 18.0,
+        "height": 11.75
+      },
+      "floors": 3,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_048_small_apt.glb",
+      "glb_bytes": 282904,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 24,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 24,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 4836,
+          "tris": 2404
+        },
+        "LOD1": {
+          "verts": 1932,
+          "tris": 968
+        },
+        "LOD2": {
+          "verts": 336,
+          "tris": 168
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_051_walkup_apt",
+      "title": "Walk-up Apartment",
+      "source_card": "CHN_051",
+      "category": "residential",
+      "substyle": "walkup_apt",
+      "preferred_localities": [
+        "Kodambakkam",
+        "Ashok Nagar"
+      ],
+      "dimensions_m": {
+        "width": 10.0,
+        "depth": 20.0,
+        "height": 11.45
+      },
+      "floors": 3,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_051_walkup_apt.glb",
+      "glb_bytes": 462896,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3032,
+          "tris": 4708
+        },
+        "LOD1": {
+          "verts": 708,
+          "tris": 1072
+        },
+        "LOD2": {
+          "verts": 112,
+          "tris": 168
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_052_builder_floor",
+      "title": "Builder Floor Apartment",
+      "source_card": "CHN_052",
+      "category": "residential",
+      "substyle": "builder_floor",
+      "preferred_localities": [
+        "Anna Nagar",
+        "T. Nagar",
+        "Adyar"
+      ],
+      "dimensions_m": {
+        "width": 14.0,
+        "depth": 22.0,
+        "height": 14.5
+      },
+      "floors": 4,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_052_builder_floor.glb",
+      "glb_bytes": 394024,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2532,
+          "tris": 3852
+        },
+        "LOD1": {
+          "verts": 720,
+          "tris": 1084
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_058_apt_with_shops",
+      "title": "Apartment with Shops (G+3)",
+      "source_card": "CHN_058",
+      "category": "mixed_use",
+      "substyle": "apt_shops_4f",
+      "preferred_localities": [
+        "Anna Nagar",
+        "T. Nagar",
+        "Velachery"
+      ],
+      "dimensions_m": {
+        "width": 18.0,
+        "depth": 28.0,
+        "height": 14.8
+      },
+      "floors": 4,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/CHN_058_apt_with_shops.glb",
+      "glb_bytes": 445208,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2800,
+          "tris": 4288
+        },
+        "LOD1": {
+          "verts": 900,
+          "tris": 1360
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "CHN_059_studio_apt",
+      "title": "Service Apartment / Studio Block",
+      "source_card": "CHN_059",
+      "category": "residential",
+      "substyle": "studio_5f",
+      "preferred_localities": [
+        "Nungambakkam",
+        "T. Nagar",
+        "OMR"
+      ],
+      "dimensions_m": {
+        "width": 16.0,
+        "depth": 24.0,
+        "height": 17.55
+      },
+      "floors": 5,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/CHN_059_studio_apt.glb",
+      "glb_bytes": 305332,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1996,
+          "tris": 3024
+        },
+        "LOD1": {
+          "verts": 520,
+          "tris": 784
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B09_house_with_shop",
+      "title": "Individual House with Shop",
+      "source_card": "09",
+      "category": "mixed_use",
+      "substyle": "house_shop",
+      "preferred_localities": [
+        "Mylapore",
+        "Anna Nagar",
+        "Kodambakkam"
+      ],
+      "dimensions_m": {
+        "width": 8.0,
+        "depth": 12.0,
+        "height": 8.7
+      },
+      "floors": 2,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/B09_house_with_shop.glb",
+      "glb_bytes": 281008,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1556,
+          "tris": 2416
+        },
+        "LOD1": {
+          "verts": 764,
+          "tris": 1156
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B11_street_shop",
+      "title": "Street Shop (Local Market)",
+      "source_card": "11",
+      "category": "commercial",
+      "substyle": "street_shop",
+      "preferred_localities": [
+        "T. Nagar",
+        "George Town",
+        "Mylapore"
+      ],
+      "dimensions_m": {
+        "width": 6.0,
+        "depth": 12.0,
+        "height": 7.4
+      },
+      "floors": 2,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/B11_street_shop.glb",
+      "glb_bytes": 169916,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 944,
+          "tris": 1472
+        },
+        "LOD1": {
+          "verts": 428,
+          "tris": 648
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B12_mixed_use_shop",
+      "title": "Mixed-Use Building (Shops+Res)",
+      "source_card": "12",
+      "category": "mixed_use",
+      "substyle": "mixed_3f",
+      "preferred_localities": [
+        "T. Nagar",
+        "Parrys Corner",
+        "Anna Nagar"
+      ],
+      "dimensions_m": {
+        "width": 10.0,
+        "depth": 15.0,
+        "height": 11.75
+      },
+      "floors": 3,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/B12_mixed_use_shop.glb",
+      "glb_bytes": 362916,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2264,
+          "tris": 3452
+        },
+        "LOD1": {
+          "verts": 772,
+          "tris": 1168
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B13_showroom_auto",
+      "title": "Vehicle Showroom",
+      "source_card": "13",
+      "category": "commercial",
+      "substyle": "showroom",
+      "preferred_localities": [
+        "Anna Salai",
+        "Guindy",
+        "Nungambakkam"
+      ],
+      "dimensions_m": {
+        "width": 18.0,
+        "depth": 30.0,
+        "height": 7.4
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B13_showroom_auto.glb",
+      "glb_bytes": 151716,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 804,
+          "tris": 1292
+        },
+        "LOD1": {
+          "verts": 396,
+          "tris": 600
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B14_shopping_complex",
+      "title": "Shopping Complex (Retail)",
+      "source_card": "14",
+      "category": "commercial",
+      "substyle": "shopping_complex",
+      "preferred_localities": [
+        "T. Nagar",
+        "Anna Nagar",
+        "Velachery"
+      ],
+      "dimensions_m": {
+        "width": 24.0,
+        "depth": 36.0,
+        "height": 14.5
+      },
+      "floors": 4,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/B14_shopping_complex.glb",
+      "glb_bytes": 416996,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2648,
+          "tris": 3984
+        },
+        "LOD1": {
+          "verts": 840,
+          "tris": 1260
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B15_it_office",
+      "title": "IT Office Building",
+      "source_card": "15",
+      "category": "commercial",
+      "substyle": "it_office",
+      "preferred_localities": [
+        "Taramani",
+        "Guindy",
+        "OMR"
+      ],
+      "dimensions_m": {
+        "width": 30.0,
+        "depth": 40.0,
+        "height": 21.15
+      },
+      "floors": 6,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B15_it_office.glb",
+      "glb_bytes": 164136,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 912,
+          "tris": 1404
+        },
+        "LOD1": {
+          "verts": 384,
+          "tris": 576
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B16_bank_heritage",
+      "title": "Bank Building (Heritage Style)",
+      "source_card": "16",
+      "category": "commercial",
+      "substyle": "heritage_bank",
+      "preferred_localities": [
+        "Parrys Corner",
+        "George Town",
+        "Anna Salai"
+      ],
+      "dimensions_m": {
+        "width": 18.0,
+        "depth": 28.0,
+        "height": 9.8
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B16_bank_heritage.glb",
+      "glb_bytes": 261664,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1794,
+          "tris": 2792
+        },
+        "LOD1": {
+          "verts": 374,
+          "tris": 576
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B19_wholesale_market",
+      "title": "Wholesale Market Hall",
+      "source_card": "19",
+      "category": "commercial",
+      "substyle": "market_hall",
+      "preferred_localities": [
+        "Koyambedu",
+        "Parrys Corner"
+      ],
+      "dimensions_m": {
+        "width": 50.0,
+        "depth": 80.0,
+        "height": 12.1
+      },
+      "floors": 1,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/B19_wholesale_market.glb",
+      "glb_bytes": 126484,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 800,
+          "tris": 1116
+        },
+        "LOD1": {
+          "verts": 328,
+          "tris": 392
+        },
+        "LOD2": {
+          "verts": 116,
+          "tris": 64
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B20_multiplex",
+      "title": "Multiplex / Cinema",
+      "source_card": "20",
+      "category": "commercial",
+      "substyle": "multiplex",
+      "preferred_localities": [
+        "T. Nagar",
+        "Vadapalani",
+        "Anna Nagar"
+      ],
+      "dimensions_m": {
+        "width": 36.0,
+        "depth": 50.0,
+        "height": 13.2
+      },
+      "floors": 4,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B20_multiplex.glb",
+      "glb_bytes": 137616,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 676,
+          "tris": 1068
+        },
+        "LOD1": {
+          "verts": 392,
+          "tris": 588
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B41_it_park_omr",
+      "title": "IT Park / Corporate Office",
+      "source_card": "41",
+      "category": "commercial",
+      "substyle": "it_campus",
+      "preferred_localities": [
+        "OMR",
+        "Taramani",
+        "Guindy"
+      ],
+      "dimensions_m": {
+        "width": 80.0,
+        "depth": 120.0,
+        "height": 27.5
+      },
+      "floors": 8,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B41_it_park_omr.glb",
+      "glb_bytes": 352588,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2016,
+          "tris": 3096
+        },
+        "LOD1": {
+          "verts": 824,
+          "tris": 1236
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B43_shopping_mall",
+      "title": "Large Shopping Mall",
+      "source_card": "43",
+      "category": "commercial",
+      "substyle": "mega_mall",
+      "preferred_localities": [
+        "Velachery",
+        "Vadapalani",
+        "Anna Nagar"
+      ],
+      "dimensions_m": {
+        "width": 80.0,
+        "depth": 110.0,
+        "height": 20.6
+      },
+      "floors": 4,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/B43_shopping_mall.glb",
+      "glb_bytes": 127216,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 651,
+          "tris": 1086
+        },
+        "LOD1": {
+          "verts": 269,
+          "tris": 412
+        },
+        "LOD2": {
+          "verts": 40,
+          "tris": 68
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B44_sez_tech_office",
+      "title": "SEZ / Tech Office Building",
+      "source_card": "44",
+      "category": "commercial",
+      "substyle": "sez_office",
+      "preferred_localities": [
+        "Taramani",
+        "Guindy",
+        "OMR"
+      ],
+      "dimensions_m": {
+        "width": 60.0,
+        "depth": 90.0,
+        "height": 24.4
+      },
+      "floors": 7,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B44_sez_tech_office.glb",
+      "glb_bytes": 284716,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1584,
+          "tris": 2416
+        },
+        "LOD1": {
+          "verts": 736,
+          "tris": 1104
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B48_business_hotel",
+      "title": "Business Hotel (City)",
+      "source_card": "48",
+      "category": "commercial",
+      "substyle": "hotel_tower",
+      "preferred_localities": [
+        "Anna Salai",
+        "Nungambakkam",
+        "Guindy"
+      ],
+      "dimensions_m": {
+        "width": 34.0,
+        "depth": 62.0,
+        "height": 24.4
+      },
+      "floors": 7,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B48_business_hotel.glb",
+      "glb_bytes": 155496,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 856,
+          "tris": 1312
+        },
+        "LOD1": {
+          "verts": 360,
+          "tris": 540
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "K05_metal_market_shop",
+      "title": "Mixed-Use Market Hardware Shop",
+      "source_card": "K05",
+      "category": "mixed_use",
+      "substyle": "hardware_shop",
+      "preferred_localities": [
+        "Parrys Corner",
+        "George Town",
+        "Chintadripet"
+      ],
+      "dimensions_m": {
+        "width": 8.0,
+        "depth": 14.0,
+        "height": 8.7
+      },
+      "floors": 2,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/K05_metal_market_shop.glb",
+      "glb_bytes": 173432,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1032,
+          "tris": 1628
+        },
+        "LOD1": {
+          "verts": 384,
+          "tris": 580
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "K09_bazaar_block",
+      "title": "Busy Market Bazaar Strip",
+      "source_card": "K09",
+      "category": "commercial",
+      "substyle": "bazaar_strip",
+      "preferred_localities": [
+        "T. Nagar",
+        "George Town",
+        "Mylapore"
+      ],
+      "dimensions_m": {
+        "width": 10.0,
+        "depth": 18.0,
+        "height": 7.4
+      },
+      "floors": 2,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/K09_bazaar_block.glb",
+      "glb_bytes": 239284,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1268,
+          "tris": 1952
+        },
+        "LOD1": {
+          "verts": 712,
+          "tris": 1072
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "K11_canal_mixed_row",
+      "title": "Canal Road Mixed Row Block",
+      "source_card": "K11",
+      "category": "mixed_use",
+      "substyle": "canal_row",
+      "preferred_localities": [
+        "Perambur",
+        "Korattur",
+        "Chintadripet"
+      ],
+      "dimensions_m": {
+        "width": 10.0,
+        "depth": 18.0,
+        "height": 11.75
+      },
+      "floors": 3,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/K11_canal_mixed_row.glb",
+      "glb_bytes": 352992,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2284,
+          "tris": 3560
+        },
+        "LOD1": {
+          "verts": 664,
+          "tris": 1000
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B17_hospital_multi",
+      "title": "Hospital (Multi-Speciality)",
+      "source_card": "17",
+      "category": "institutional",
+      "substyle": "hospital",
+      "preferred_localities": [
+        "Nungambakkam",
+        "Adyar",
+        "Anna Salai"
+      ],
+      "dimensions_m": {
+        "width": 30.0,
+        "depth": 40.0,
+        "height": 19.1
+      },
+      "floors": 5,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B17_hospital_multi.glb",
+      "glb_bytes": 318320,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 1956,
+          "tris": 2996
+        },
+        "LOD1": {
+          "verts": 648,
+          "tris": 984
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B18_college_inst",
+      "title": "College / Institutional Building",
+      "source_card": "18",
+      "category": "institutional",
+      "substyle": "college",
+      "preferred_localities": [
+        "Guindy",
+        "Adyar",
+        "Nungambakkam"
+      ],
+      "dimensions_m": {
+        "width": 40.0,
+        "depth": 60.0,
+        "height": 16.3
+      },
+      "floors": 4,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B18_college_inst.glb",
+      "glb_bytes": 517232,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 3310,
+          "tris": 5068
+        },
+        "LOD1": {
+          "verts": 986,
+          "tris": 1492
+        },
+        "LOD2": {
+          "verts": 38,
+          "tris": 56
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B21_factory",
+      "title": "Factory Building (Industrial)",
+      "source_card": "21",
+      "category": "industrial",
+      "substyle": "factory",
+      "preferred_localities": [
+        "Ambattur",
+        "Guindy",
+        "Manali"
+      ],
+      "dimensions_m": {
+        "width": 40.0,
+        "depth": 60.0,
+        "height": 17.76
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B21_factory.glb",
+      "glb_bytes": 186320,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 972,
+          "tris": 1580
+        },
+        "LOD1": {
+          "verts": 492,
+          "tris": 784
+        },
+        "LOD2": {
+          "verts": 54,
+          "tris": 84
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B22_warehouse",
+      "title": "Warehouse / Storage",
+      "source_card": "22",
+      "category": "industrial",
+      "substyle": "warehouse",
+      "preferred_localities": [
+        "Ambattur",
+        "Manali",
+        "Chennai Port"
+      ],
+      "dimensions_m": {
+        "width": 30.0,
+        "depth": 50.0,
+        "height": 12.16
+      },
+      "floors": 1,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/B22_warehouse.glb",
+      "glb_bytes": 104356,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 618,
+          "tris": 948
+        },
+        "LOD1": {
+          "verts": 214,
+          "tris": 320
+        },
+        "LOD2": {
+          "verts": 22,
+          "tris": 32
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B23_workshop",
+      "title": "Workshop Building (Small Industry)",
+      "source_card": "23",
+      "category": "industrial",
+      "substyle": "workshop",
+      "preferred_localities": [
+        "Ambattur",
+        "Guindy",
+        "Korattur"
+      ],
+      "dimensions_m": {
+        "width": 18.0,
+        "depth": 30.0,
+        "height": 7.8
+      },
+      "floors": 1,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/B23_workshop.glb",
+      "glb_bytes": 109412,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 542,
+          "tris": 820
+        },
+        "LOD1": {
+          "verts": 318,
+          "tris": 476
+        },
+        "LOD2": {
+          "verts": 22,
+          "tris": 32
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B24_substation",
+      "title": "Power Substation (Utility)",
+      "source_card": "24",
+      "category": "industrial",
+      "substyle": "substation",
+      "preferred_localities": [
+        "Ambattur",
+        "Manali",
+        "Guindy"
+      ],
+      "dimensions_m": {
+        "width": 25.0,
+        "depth": 40.0,
+        "height": 9.45
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B24_substation.glb",
+      "glb_bytes": 298728,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 1684,
+          "tris": 2760
+        },
+        "LOD1": {
+          "verts": 748,
+          "tris": 1200
+        },
+        "LOD2": {
+          "verts": 40,
+          "tris": 60
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B25_water_tower",
+      "title": "Water Tank Facility (Metro Water)",
+      "source_card": "25",
+      "category": "institutional",
+      "substyle": "water_tower",
+      "preferred_localities": [
+        "Anna Nagar",
+        "Kilpauk",
+        "Velachery"
+      ],
+      "dimensions_m": {
+        "width": 20.0,
+        "depth": 20.0,
+        "height": 19.2
+      },
+      "floors": 3,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B25_water_tower.glb",
+      "glb_bytes": 237540,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 1188,
+          "tris": 1944
+        },
+        "LOD1": {
+          "verts": 728,
+          "tris": 1160
+        },
+        "LOD2": {
+          "verts": 48,
+          "tris": 84
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B26_govt_office",
+      "title": "Government Office (District/Public)",
+      "source_card": "26",
+      "category": "institutional",
+      "substyle": "govt_office",
+      "preferred_localities": [
+        "George Town",
+        "Egmore",
+        "Saidapet"
+      ],
+      "dimensions_m": {
+        "width": 30.0,
+        "depth": 45.0,
+        "height": 15.4
+      },
+      "floors": 3,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B26_govt_office.glb",
+      "glb_bytes": 498980,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 3506,
+          "tris": 5596
+        },
+        "LOD1": {
+          "verts": 638,
+          "tris": 968
+        },
+        "LOD2": {
+          "verts": 22,
+          "tris": 32
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B27_police_station",
+      "title": "Police Station (Urban)",
+      "source_card": "27",
+      "category": "institutional",
+      "substyle": "police_station",
+      "preferred_localities": [
+        "Mylapore",
+        "Anna Nagar",
+        "Royapuram"
+      ],
+      "dimensions_m": {
+        "width": 18.0,
+        "depth": 28.0,
+        "height": 11.4
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B27_police_station.glb",
+      "glb_bytes": 272004,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 1444,
+          "tris": 2232
+        },
+        "LOD1": {
+          "verts": 772,
+          "tris": 1168
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B28_fire_station",
+      "title": "Fire Station (City)",
+      "source_card": "28",
+      "category": "institutional",
+      "substyle": "fire_station",
+      "preferred_localities": [
+        "Egmore",
+        "Teynampet",
+        "Guindy"
+      ],
+      "dimensions_m": {
+        "width": 25.0,
+        "depth": 35.0,
+        "height": 17.05
+      },
+      "floors": 2,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/B28_fire_station.glb",
+      "glb_bytes": 133420,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 602,
+          "tris": 920
+        },
+        "LOD1": {
+          "verts": 456,
+          "tris": 684
+        },
+        "LOD2": {
+          "verts": 30,
+          "tris": 44
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B29_bus_depot",
+      "title": "Bus Depot (MTC)",
+      "source_card": "29",
+      "category": "institutional",
+      "substyle": "bus_depot",
+      "preferred_localities": [
+        "Koyambedu",
+        "Adyar",
+        "Tondiarpet"
+      ],
+      "dimensions_m": {
+        "width": 60.0,
+        "depth": 90.0,
+        "height": 12.5
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B29_bus_depot.glb",
+      "glb_bytes": 251268,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 1276,
+          "tris": 1808
+        },
+        "LOD1": {
+          "verts": 892,
+          "tris": 1228
+        },
+        "LOD2": {
+          "verts": 116,
+          "tris": 64
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B30_metro_station",
+      "title": "Metro Station (Entrance)",
+      "source_card": "30",
+      "category": "institutional",
+      "substyle": "metro_station",
+      "preferred_localities": [
+        "Anna Nagar",
+        "Guindy",
+        "Vadapalani"
+      ],
+      "dimensions_m": {
+        "width": 35.0,
+        "depth": 50.0,
+        "height": 12.74
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B30_metro_station.glb",
+      "glb_bytes": 134448,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 804,
+          "tris": 1096
+        },
+        "LOD1": {
+          "verts": 380,
+          "tris": 460
+        },
+        "LOD2": {
+          "verts": 116,
+          "tris": 64
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B46_metro_modern",
+      "title": "Metro Station (Modern Elevated)",
+      "source_card": "46",
+      "category": "institutional",
+      "substyle": "metro_modern",
+      "preferred_localities": [
+        "Anna Nagar",
+        "Guindy",
+        "Vadapalani"
+      ],
+      "dimensions_m": {
+        "width": 40.0,
+        "depth": 95.0,
+        "height": 12.74
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B46_metro_modern.glb",
+      "glb_bytes": 144684,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 812,
+          "tris": 1108
+        },
+        "LOD1": {
+          "verts": 452,
+          "tris": 568
+        },
+        "LOD2": {
+          "verts": 124,
+          "tris": 76
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B47_hospital_tower",
+      "title": "Multi-Speciality Hospital Tower",
+      "source_card": "47",
+      "category": "institutional",
+      "substyle": "hospital_tower",
+      "preferred_localities": [
+        "Greams Road",
+        "Adyar",
+        "OMR"
+      ],
+      "dimensions_m": {
+        "width": 45.0,
+        "depth": 75.0,
+        "height": 29.8
+      },
+      "floors": 8,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B47_hospital_tower.glb",
+      "glb_bytes": 330872,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 2000,
+          "tris": 3032
+        },
+        "LOD1": {
+          "verts": 728,
+          "tris": 1104
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B49_bus_terminus",
+      "title": "Bus Terminus (Koyambedu Style)",
+      "source_card": "49",
+      "category": "institutional",
+      "substyle": "bus_terminus",
+      "preferred_localities": [
+        "Koyambedu",
+        "Kilambakkam"
+      ],
+      "dimensions_m": {
+        "width": 80.0,
+        "depth": 120.0,
+        "height": 11.4
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B49_bus_terminus.glb",
+      "glb_bytes": 154824,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 818,
+          "tris": 1064
+        },
+        "LOD1": {
+          "verts": 630,
+          "tris": 752
+        },
+        "LOD2": {
+          "verts": 224,
+          "tris": 116
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B50_stadium_bowl",
+      "title": "Stadium / Sports Complex",
+      "source_card": "50",
+      "category": "institutional",
+      "substyle": "stadium",
+      "preferred_localities": [
+        "Chepauk",
+        "Nehru Park",
+        "Velachery"
+      ],
+      "dimensions_m": {
+        "width": 95.0,
+        "depth": 120.0,
+        "height": 31.84
+      },
+      "floors": 3,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B50_stadium_bowl.glb",
+      "glb_bytes": 198212,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 960,
+          "tris": 1456
+        },
+        "LOD1": {
+          "verts": 592,
+          "tris": 896
+        },
+        "LOD2": {
+          "verts": 104,
+          "tris": 164
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "K10_govt_school",
+      "title": "School Building (Govt. Style)",
+      "source_card": "K10",
+      "category": "institutional",
+      "substyle": "govt_school",
+      "preferred_localities": [
+        "Mylapore",
+        "Anna Nagar",
+        "Triplicane"
+      ],
+      "dimensions_m": {
+        "width": 16.0,
+        "depth": 38.0,
+        "height": 9.25
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/K10_govt_school.glb",
+      "glb_bytes": 167380,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 698,
+          "tris": 1052
+        },
+        "LOD1": {
+          "verts": 642,
+          "tris": 964
+        },
+        "LOD2": {
+          "verts": 24,
+          "tris": 36
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "N03_fish_market",
+      "title": "Fish Market Building (Kasimedu)",
+      "source_card": "N03",
+      "category": "north_chennai",
+      "substyle": "fish_market",
+      "preferred_localities": [
+        "Kasimedu",
+        "Royapuram"
+      ],
+      "dimensions_m": {
+        "width": 22.0,
+        "depth": 34.0,
+        "height": 11.6
+      },
+      "floors": 1,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/N03_fish_market.glb",
+      "glb_bytes": 174240,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 974,
+          "tris": 1360
+        },
+        "LOD1": {
+          "verts": 554,
+          "tris": 724
+        },
+        "LOD2": {
+          "verts": 124,
+          "tris": 76
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "N04_port_warehouse",
+      "title": "Port Warehouse (Chennai Port)",
+      "source_card": "N04",
+      "category": "north_chennai",
+      "substyle": "port_warehouse",
+      "preferred_localities": [
+        "Chennai Port",
+        "Royapuram",
+        "Manali"
+      ],
+      "dimensions_m": {
+        "width": 32.0,
+        "depth": 55.0,
+        "height": 13.85
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/N04_port_warehouse.glb",
+      "glb_bytes": 118480,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 740,
+          "tris": 1128
+        },
+        "LOD1": {
+          "verts": 212,
+          "tris": 316
+        },
+        "LOD2": {
+          "verts": 22,
+          "tris": 32
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B38_auditorium_hall",
+      "title": "Community Hall / Auditorium",
+      "source_card": "38",
+      "category": "institutional",
+      "substyle": "auditorium",
+      "preferred_localities": [
+        "Triplicane",
+        "Teynampet",
+        "T. Nagar"
+      ],
+      "dimensions_m": {
+        "width": 40.0,
+        "depth": 50.0,
+        "height": 16.55
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B38_auditorium_hall.glb",
+      "glb_bytes": 149776,
+      "lod_stats": {
+        "LOD0": {
+          "verts": 774,
+          "tris": 1240
+        },
+        "LOD1": {
+          "verts": 378,
+          "tris": 584
+        },
+        "LOD2": {
+          "verts": 42,
+          "tris": 68
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B31_temple_hall",
+      "title": "Hindu Temple (Dravidian Hall)",
+      "source_card": "31",
+      "category": "heritage",
+      "substyle": "temple_dravidian",
+      "preferred_localities": [
+        "Mylapore",
+        "Triplicane",
+        "George Town"
+      ],
+      "dimensions_m": {
+        "width": 40.0,
+        "depth": 60.0,
+        "height": 17.48
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B31_temple_hall.glb",
+      "glb_bytes": 402192,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2327,
+          "tris": 3438
+        },
+        "LOD1": {
+          "verts": 967,
+          "tris": 1356
+        },
+        "LOD2": {
+          "verts": 157,
+          "tris": 234
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B32_church_gothic",
+      "title": "Church (Neo-Gothic)",
+      "source_card": "32",
+      "category": "heritage",
+      "substyle": "church_gothic",
+      "preferred_localities": [
+        "Santhome",
+        "George Town",
+        "Royapuram"
+      ],
+      "dimensions_m": {
+        "width": 30.0,
+        "depth": 50.0,
+        "height": 32.5
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B32_church_gothic.glb",
+      "glb_bytes": 455524,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3208,
+          "tris": 5084
+        },
+        "LOD1": {
+          "verts": 518,
+          "tris": 792
+        },
+        "LOD2": {
+          "verts": 72,
+          "tris": 108
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B33_mosque_urban",
+      "title": "Mosque (Urban Chennai)",
+      "source_card": "33",
+      "category": "heritage",
+      "substyle": "mosque_urban",
+      "preferred_localities": [
+        "Triplicane",
+        "Royapettah",
+        "Royapuram"
+      ],
+      "dimensions_m": {
+        "width": 20.0,
+        "depth": 30.0,
+        "height": 17.55
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B33_mosque_urban.glb",
+      "glb_bytes": 413172,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2658,
+          "tris": 4256
+        },
+        "LOD1": {
+          "verts": 628,
+          "tris": 1000
+        },
+        "LOD2": {
+          "verts": 129,
+          "tris": 206
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B34_colonial_heritage",
+      "title": "Colonial Heritage Block",
+      "source_card": "34",
+      "category": "heritage",
+      "substyle": "colonial_civic",
+      "preferred_localities": [
+        "Parrys Corner",
+        "Egmore"
+      ],
+      "dimensions_m": {
+        "width": 40.0,
+        "depth": 80.0,
+        "height": 30.24
+      },
+      "floors": 3,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B34_colonial_heritage.glb",
+      "glb_bytes": 503524,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3284,
+          "tris": 5228
+        },
+        "LOD1": {
+          "verts": 846,
+          "tris": 1340
+        },
+        "LOD2": {
+          "verts": 52,
+          "tris": 80
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B35_museum_heritage",
+      "title": "Museum / Hall (Heritage)",
+      "source_card": "35",
+      "category": "heritage",
+      "substyle": "museum",
+      "preferred_localities": [
+        "Egmore",
+        "Mylapore"
+      ],
+      "dimensions_m": {
+        "width": 50.0,
+        "depth": 60.0,
+        "height": 17.8
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B35_museum_heritage.glb",
+      "glb_bytes": 356184,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2383,
+          "tris": 3700
+        },
+        "LOD1": {
+          "verts": 431,
+          "tris": 672
+        },
+        "LOD2": {
+          "verts": 151,
+          "tris": 234
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B37_rotunda_historic",
+      "title": "Rotunda Pavilion (Historic)",
+      "source_card": "37",
+      "category": "heritage",
+      "substyle": "rotunda",
+      "preferred_localities": [
+        "Triplicane",
+        "Marina"
+      ],
+      "dimensions_m": {
+        "width": 20.0,
+        "depth": 20.0,
+        "height": 13.5
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B37_rotunda_historic.glb",
+      "glb_bytes": 193908,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 988,
+          "tris": 1632
+        },
+        "LOD1": {
+          "verts": 468,
+          "tris": 764
+        },
+        "LOD2": {
+          "verts": 115,
+          "tris": 188
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B39_market_heritage",
+      "title": "Market Hall (Heritage Brick)",
+      "source_card": "39",
+      "category": "heritage",
+      "substyle": "heritage_market",
+      "preferred_localities": [
+        "George Town",
+        "Egmore"
+      ],
+      "dimensions_m": {
+        "width": 60.0,
+        "depth": 80.0,
+        "height": 27.9
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B39_market_heritage.glb",
+      "glb_bytes": 403304,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2744,
+          "tris": 4268
+        },
+        "LOD1": {
+          "verts": 594,
+          "tris": 924
+        },
+        "LOD2": {
+          "verts": 62,
+          "tris": 92
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B40_public_library",
+      "title": "Public Library (Heritage)",
+      "source_card": "40",
+      "category": "heritage",
+      "substyle": "library",
+      "preferred_localities": [
+        "Egmore",
+        "Mylapore"
+      ],
+      "dimensions_m": {
+        "width": 40.0,
+        "depth": 50.0,
+        "height": 15.0
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B40_public_library.glb",
+      "glb_bytes": 472828,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 3378,
+          "tris": 5424
+        },
+        "LOD1": {
+          "verts": 470,
+          "tris": 712
+        },
+        "LOD2": {
+          "verts": 94,
+          "tris": 148
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "B45_beach_apartment",
+      "title": "Beachside Building (Marina/ECR)",
+      "source_card": "45",
+      "category": "coastal",
+      "substyle": "beach_apartment",
+      "preferred_localities": [
+        "Marina Beach",
+        "Thiruvanmiyur",
+        "Besant Nagar"
+      ],
+      "dimensions_m": {
+        "width": 24.0,
+        "depth": 40.0,
+        "height": 16.25
+      },
+      "floors": 4,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/B45_beach_apartment.glb",
+      "glb_bytes": 339672,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1932,
+          "tris": 2952
+        },
+        "LOD1": {
+          "verts": 776,
+          "tris": 1168
+        },
+        "LOD2": {
+          "verts": 112,
+          "tris": 168
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "N01_georgetown_shop",
+      "title": "Old Commercial Block (George Town)",
+      "source_card": "N01",
+      "category": "north_chennai",
+      "substyle": "gt_commercial",
+      "preferred_localities": [
+        "George Town",
+        "Parrys Corner",
+        "Sowcarpet"
+      ],
+      "dimensions_m": {
+        "width": 10.0,
+        "depth": 16.0,
+        "height": 9.67
+      },
+      "floors": 2,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/N01_georgetown_shop.glb",
+      "glb_bytes": 237040,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1466,
+          "tris": 2320
+        },
+        "LOD1": {
+          "verts": 364,
+          "tris": 556
+        },
+        "LOD2": {
+          "verts": 150,
+          "tris": 228
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "N02_north_tenement",
+      "title": "Tenement / Urban Housing (North)",
+      "source_card": "N02",
+      "category": "north_chennai",
+      "substyle": "north_tenement",
+      "preferred_localities": [
+        "Royapuram",
+        "Washermanpet",
+        "Tondiarpet"
+      ],
+      "dimensions_m": {
+        "width": 8.0,
+        "depth": 16.0,
+        "height": 11.97
+      },
+      "floors": 3,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/N02_north_tenement.glb",
+      "glb_bytes": 254488,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1548,
+          "tris": 2392
+        },
+        "LOD1": {
+          "verts": 440,
+          "tris": 664
+        },
+        "LOD2": {
+          "verts": 144,
+          "tris": 216
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "N05_lighthouse_complex",
+      "title": "Lighthouse Complex (North)",
+      "source_card": "N05",
+      "category": "north_chennai",
+      "substyle": "lighthouse_complex",
+      "preferred_localities": [
+        "Royapuram",
+        "Marina"
+      ],
+      "dimensions_m": {
+        "width": 16.0,
+        "depth": 22.0,
+        "height": 23.9
+      },
+      "floors": 4,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/N05_lighthouse_complex.glb",
+      "glb_bytes": 366264,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Verandah": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 2195,
+          "tris": 3592
+        },
+        "LOD1": {
+          "verts": 679,
+          "tris": 1088
+        },
+        "LOD2": {
+          "verts": 131,
+          "tris": 210
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "C01_beach_stalls",
+      "title": "Beachside Food Stall Block",
+      "source_card": "B01",
+      "category": "coastal",
+      "substyle": "beach_stalls",
+      "preferred_localities": [
+        "Marina Beach",
+        "Besant Nagar",
+        "Thiruvanmiyur"
+      ],
+      "dimensions_m": {
+        "width": 6.0,
+        "depth": 16.0,
+        "height": 5.7
+      },
+      "floors": 1,
+      "shop_ground": true,
+      "glb_path": "res://assets/buildings/pack_100/C01_beach_stalls.glb",
+      "glb_bytes": 127676,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 760,
+          "tris": 1220
+        },
+        "LOD1": {
+          "verts": 248,
+          "tris": 376
+        },
+        "LOD2": {
+          "verts": 40,
+          "tris": 60
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "C02_beach_police",
+      "title": "Beachside Police Station",
+      "source_card": "B02",
+      "category": "coastal",
+      "substyle": "beach_police",
+      "preferred_localities": [
+        "Marina Beach",
+        "Besant Nagar"
+      ],
+      "dimensions_m": {
+        "width": 16.0,
+        "depth": 24.0,
+        "height": 12.1
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/C02_beach_police.glb",
+      "glb_bytes": 292216,
+      "lod_stats": {
+        "COL_Compound": {
+          "verts": 8,
+          "tris": 12
+        },
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1908,
+          "tris": 3008
+        },
+        "LOD1": {
+          "verts": 420,
+          "tris": 636
+        },
+        "LOD2": {
+          "verts": 80,
+          "tris": 120
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "C03_beach_sports",
+      "title": "Beach Recreation Complex",
+      "source_card": "B03",
+      "category": "coastal",
+      "substyle": "beach_sports",
+      "preferred_localities": [
+        "Marina Beach",
+        "Elliot's Beach"
+      ],
+      "dimensions_m": {
+        "width": 22.0,
+        "depth": 34.0,
+        "height": 18.15
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/C03_beach_sports.glb",
+      "glb_bytes": 164648,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1114,
+          "tris": 1624
+        },
+        "LOD1": {
+          "verts": 356,
+          "tris": 436
+        },
+        "LOD2": {
+          "verts": 30,
+          "tris": 44
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "C04_beach_cafe",
+      "title": "Beachside Cafe / Restaurant",
+      "source_card": "B04",
+      "category": "coastal",
+      "substyle": "beach_cafe",
+      "preferred_localities": [
+        "Besant Nagar",
+        "Elliot's Beach",
+        "Thiruvanmiyur"
+      ],
+      "dimensions_m": {
+        "width": 14.0,
+        "depth": 20.0,
+        "height": 7.05
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/C04_beach_cafe.glb",
+      "glb_bytes": 200132,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 1060,
+          "tris": 1632
+        },
+        "LOD1": {
+          "verts": 396,
+          "tris": 612
+        },
+        "LOD2": {
+          "verts": 80,
+          "tris": 120
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "C05_lifeguard_tower",
+      "title": "Lifeguard / Beach Safety Tower",
+      "source_card": "B05",
+      "category": "coastal",
+      "substyle": "lifeguard_tower",
+      "preferred_localities": [
+        "Marina Beach",
+        "Elliot's Beach",
+        "Thiruvanmiyur"
+      ],
+      "dimensions_m": {
+        "width": 4.0,
+        "depth": 4.0,
+        "height": 7.6
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/C05_lifeguard_tower.glb",
+      "glb_bytes": 183480,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 942,
+          "tris": 1428
+        },
+        "LOD1": {
+          "verts": 530,
+          "tris": 796
+        },
+        "LOD2": {
+          "verts": 56,
+          "tris": 84
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "K03_canal_informal",
+      "title": "Canal-Side Housing (Informal)",
+      "source_card": "K03",
+      "category": "north_chennai",
+      "substyle": "canal_informal",
+      "preferred_localities": [
+        "Koovam",
+        "Chintadripet",
+        "Perambur"
+      ],
+      "dimensions_m": {
+        "width": 5.0,
+        "depth": 8.0,
+        "height": 3.74
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/K03_canal_informal.glb",
+      "glb_bytes": 97696,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 566,
+          "tris": 880
+        },
+        "LOD1": {
+          "verts": 196,
+          "tris": 296
+        },
+        "LOD2": {
+          "verts": 32,
+          "tris": 48
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "K04_north_lane_house",
+      "title": "Old Residential Lane House",
+      "source_card": "K04",
+      "category": "north_chennai",
+      "substyle": "narrow_lane",
+      "preferred_localities": [
+        "Royapuram",
+        "Washermanpet",
+        "George Town"
+      ],
+      "dimensions_m": {
+        "width": 6.0,
+        "depth": 12.0,
+        "height": 8.6
+      },
+      "floors": 2,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/K04_north_lane_house.glb",
+      "glb_bytes": 166720,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 924,
+          "tris": 1444
+        },
+        "LOD1": {
+          "verts": 308,
+          "tris": 472
+        },
+        "LOD2": {
+          "verts": 150,
+          "tris": 228
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    },
+    {
+      "id": "K06_slum_cluster",
+      "title": "High-Density Cluster Dwelling",
+      "source_card": "K06",
+      "category": "residential",
+      "substyle": "cluster_housing",
+      "preferred_localities": [
+        "Koovam",
+        "Kasimedu",
+        "Tondiarpet"
+      ],
+      "dimensions_m": {
+        "width": 6.0,
+        "depth": 9.0,
+        "height": 4.01
+      },
+      "floors": 1,
+      "shop_ground": false,
+      "glb_path": "res://assets/buildings/pack_100/K06_slum_cluster.glb",
+      "glb_bytes": 100600,
+      "lod_stats": {
+        "COL_Main": {
+          "verts": 8,
+          "tris": 12
+        },
+        "LOD0": {
+          "verts": 576,
+          "tris": 884
+        },
+        "LOD1": {
+          "verts": 182,
+          "tris": 272
+        },
+        "LOD2": {
+          "verts": 62,
+          "tris": 92
+        }
+      },
+      "atlas": "vertex_colored",
+      "blender_version": "5.3.0"
+    }
+  ]
+}

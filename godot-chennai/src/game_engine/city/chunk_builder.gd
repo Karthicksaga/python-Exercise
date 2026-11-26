@@ -63,6 +63,9 @@ class Kit:
 	## the sign categories. Null palettes mean today's generic Chennai palette.
 	var palettes: AreaPalettes
 	var signs: SignCategories
+	## Optional Blender 100-building pack (`BuildingPack`): replaces eligible non-protected OSM
+	## buildings with sculpted GLB instances (`LOD0` MultiMesh in `Near`, `LOD2` merged in `Far`).
+	var building_pack: BuildingPack
 
 
 ## A finished build, ready to add.
@@ -96,7 +99,7 @@ class Build:
 	func total_triangles(near: bool = true) -> int:
 		var n := 0
 		for k in triangles:
-			if k == "collider" or (near and k == "far"):
+			if k == "collider" or (near and (k == "far" or k == "pack_far")):
 				continue
 			if not near and k in ["walls", "roofs", "kit", "objects"]:
 				continue
@@ -222,7 +225,20 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	meshes.table = kit.signs if kit.signs != null else SignCategories.shared()
 	meshes.signs = _signs_near(kit.source, cell)
 	var boxes := StreetFurniture.building_boxes(chunk.buildings)
+	var pack_near: Dictionary[int, Array] = {}
+	var pack_far := MeshBuilder.new()
 	for b in chunk.buildings:
+		var lookup_id := b.source_id if b.source_id > 0 else b.id
+		var aidx := kit.building_pack.asset_index_for(lookup_id) if kit.building_pack != null and b.min_height <= 0.0 and b.outline.size() >= 3 else -1
+		if aidx >= 0 and kit.building_pack.lod0_meshes[aidx] != null:
+			var xform := BuildingPack.placement_for(b, spans, kit.building_pack.asset_dims[aidx], out.centre)
+			if not pack_near.has(aidx):
+				pack_near[aidx] = []
+			(pack_near[aidx] as Array).append(xform)
+			if kit.building_pack.lod2_builders[aidx] != null:
+				pack_far.append(kit.building_pack.lod2_builders[aidx], xform)
+			out.detail["pack100_replaced"] = out.detail.get("pack100_replaced", 0) + 1
+			continue
 		var plan := BuildingMeshes.plan_facade(b, spans)
 		meshes.palette = kit.palettes.at(BuildingMeshes.centre_of(b)) if kit.palettes != null else null
 		meshes.add(b, plan)
@@ -232,6 +248,7 @@ static func build(kit: Kit, cell: Vector2i) -> Build:
 	_add_mesh(out, near, "roofs", meshes.roofs, kit.materials.roofs, kit.shadows)
 	_add_mesh(out, near, "kit", meshes.kit, kit.materials.kit, false)
 	_add_mesh(out, far, "far", meshes.far, kit.materials.objects, kit.shadows)
+	_add_pack_buildings(kit, out, near, far, pack_near, pack_far)
 
 	for pole in out.furniture.poles:
 		CityModels.place(objects, kit.models.pole_of(pole.kind), _local3(pole.position, out.centre), pole.yaw)
@@ -333,6 +350,55 @@ static func _add_mesh(out: Build, parent: Node3D, layer: String, builder: MeshBu
 	parent.add_child(mi)
 	out.triangles[layer] = builder.triangle_count()
 	out.surfaces += 1
+
+
+static func _add_pack_buildings(kit: Kit, out: Build, near: Node3D, far: Node3D, pack_near: Dictionary[int, Array], pack_far: MeshBuilder) -> void:
+	if kit.building_pack == null or pack_near.is_empty():
+		return
+	var shadow_mode := GeometryInstance3D.SHADOW_CASTING_SETTING_ON if kit.shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var holder := Node3D.new()
+	holder.name = "PackBuildings"
+	for aidx: int in pack_near:
+		var xforms: Array = pack_near[aidx]
+		var mesh := kit.building_pack.lod0_meshes[aidx]
+		if mesh == null or xforms.is_empty():
+			continue
+		var local_box := mesh.get_aabb()
+		var lo := Vector3(INF, INF, INF)
+		var hi := Vector3(-INF, -INF, -INF)
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = mesh
+		mm.instance_count = xforms.size()
+		for i in xforms.size():
+			var xf := xforms[i] as Transform3D
+			mm.set_instance_transform(i, xf)
+			for c_idx in 8:
+				var pt := xf * local_box.get_endpoint(c_idx)
+				lo = lo.min(pt)
+				hi = hi.max(pt)
+		var box := AABB(lo, (hi - lo).max(Vector3.ONE)).grow(0.5)
+		mm.custom_aabb = box
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = kit.building_pack.asset_ids[aidx]
+		mmi.multimesh = mm
+		mmi.custom_aabb = box
+		mmi.material_override = kit.materials.landmark
+		mmi.layers = RENDER_LAYER
+		mmi.cast_shadow = shadow_mode
+		holder.add_child(mmi)
+		out.surfaces += 1
+	near.add_child(holder)
+
+	var far_mesh := pack_far.commit(kit.materials.landmark)
+	if far_mesh != null:
+		var far_mi := MeshInstance3D.new()
+		far_mi.name = "PackFar"
+		far_mi.mesh = far_mesh
+		far_mi.layers = RENDER_LAYER
+		far_mi.cast_shadow = shadow_mode
+		far.add_child(far_mi)
+		out.triangles["pack_far"] = pack_far.triangle_count()
 
 
 ## Wall AC units and rooftop dishes (`buildingFixtures`), invented: AC units only on buildings

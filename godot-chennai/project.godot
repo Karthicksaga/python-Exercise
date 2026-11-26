@@ -36,6 +36,7 @@ window/size/viewport_height=412
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=4
+window/dpi/allow_hidpi=true
 
 [importer_defaults]
 
@@ -52,6 +53,7 @@ pointing/emulate_touch_from_mouse=true
 3d/physics_engine="Jolt Physics"
 common/physics_ticks_per_second=60
 common/max_physics_steps_per_frame=5
+common/physics_interpolation=true
 
 [shader_globals]
 

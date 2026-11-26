@@ -51,6 +51,7 @@ func recentre(world_x: float, world_z: float) -> void:
 		var n3 := node as Node3D
 		if n3 != null:
 			n3.global_position += offset
+			n3.reset_physics_interpolation()
 	shifted.emit(offset)
 
 

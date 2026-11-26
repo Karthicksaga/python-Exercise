@@ -29,10 +29,14 @@ const SENSITIVITY := 0.0055
 const MIN_PITCH := -0.2
 const MAX_PITCH := 1.15
 ## Distance behind a person on foot, metres, and the closest it comes.
+## MIN_DISTANCE 0.9→1.6: prevents the camera from diving into the player's back
+## when a wall is directly behind the player (the probe sphere was clipping the body).
 const DISTANCE := 5.6
-const MIN_DISTANCE := 0.9
+const MIN_DISTANCE := 1.6
 ## Height above the feet that the camera looks at (about the shoulders).
-const LOOK_HEIGHT := 1.5
+## LOOK_HEIGHT 1.5→1.65: raises the focus above the shoulder blades so at min distance
+## the view is still above the collar, not into the torso.
+const LOOK_HEIGHT := 1.65
 const FOLLOW_RATE := 14.0
 const SNAP_DISTANCE := 8.0
 ## Look-ahead: seconds of travel ahead on foot and in a vehicle, at most this far, eased at this rate.
@@ -48,7 +52,7 @@ const SPEED_FOV := 7.0
 const TRAVEL_TRAIL_FROM := 3.0
 const TRAIL_RATE := 2.6
 ## Collision: probe radius (larger than the near plane's half size), gap kept from a hit, metres.
-const PROBE_RADIUS := 0.22
+const PROBE_RADIUS := 0.28
 const MARGIN := 0.15
 ## An obstacle along the view thinner than this is a pole or a person, not a wall, metres.
 const THIN := 0.8
@@ -99,8 +103,8 @@ func _init() -> void:
 	camera = Camera3D.new()
 	camera.name = "Camera"
 	camera.fov = BASE_FOV
-	camera.near = 0.1
-	camera.far = 1500.0
+	camera.near = 0.25
+	camera.far = 750.0
 	add_child(camera)
 	_probe.radius = PROBE_RADIUS
 
@@ -247,6 +251,8 @@ func update(dt: float) -> void:
 	var look_at_point := _focus + Vector3(_lead.x, 0.0, _lead.z)
 	if global_position.distance_to(look_at_point) > 0.01:
 		look_at(look_at_point, Vector3.UP)
+	if snapping:
+		reset_physics_interpolation()
 	_shake(dt)
 
 
